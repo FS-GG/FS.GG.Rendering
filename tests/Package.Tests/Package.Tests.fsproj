@@ -65,6 +65,16 @@
     <Compile Include="AudioSkillSurfaceTests.fs" />
     <Compile Include="ApiSurfaceMirrorTests.fs" />
     <Compile Include="SkillPackageReachTests.fs" />
+    <!-- #720 — the frozen-mirror VERDICT: why a mirror differs from its canonical (this change edited it
+         / the canonical moved / cannot be told from the digests) and what to tell the reader to do about
+         it. SHARED with `scripts/check-frozen-mirrors.fsx`, which `#load`s this same file — the
+         `SurfaceRenderer.fs` rule above, for the same reason (#661).
+
+         It is a separate file because it is the half that needs NO NETWORK AND NO TOKEN, and that is what
+         makes it testable: Feature541FrozenMirrorGuardTests drives it against real, throwaway git trees
+         with no mocks at all. The `gh` reads (the org registry, the owners' canonical bodies) stay in the
+         script, where a mock really would only assert that the mock works. -->
+    <Compile Include="..\..\scripts\FrozenMirrorVerdict.fs" Link="FrozenMirrorVerdict.fs" />
     <Compile Include="Feature541FrozenMirrorGuardTests.fs" />
     <!-- #507 — S-DOC, the mirror image of SkillPackageReachTests' R-REACH: R-REACH stops a skill naming a
          package the product was not given; S-DOC stops a package the product WAS given going undocumented

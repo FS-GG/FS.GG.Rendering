@@ -32,7 +32,7 @@ The signatures you consume are bundled with this product:
   and this persistence request surface — the pinned Canvas api-surface is exactly `Elements.fsi` and
   `Persistence.fsi`. It carries **no audio** (that vocabulary was retired at the Canvas `0.3.0` major;
   audio is `FS.GG.Audio.Core`/`FS.GG.Audio.Host`, a separate package your product pins itself) and
-  **no simulation primitives** (those are `FS.GG.Game.Core`). [[fs-gg-audio]] says the same thing from
+  **no simulation primitives** (those are `FS.GG.Game.Core`). [[fs-gg-game:fs-gg-audio]] says the same thing from
   its side; if the two ever disagree, the api-surface bundled with your product settles it.
 
 All helpers are **total**: the save-format version is clamped to `>= minVersion` at the boundary, and
@@ -97,7 +97,7 @@ own deserialize step.
 ## Deciding *when* to save: the cue seam, and the `Init` blind spot
 
 Products decide their save/load requests in **one place**, by analogy with `AudioCues.forTransition`
-([[fs-gg-audio]]): a `SaveCues.forTransition : Msg -> Model -> Model -> PersistenceEffect list` that
+([[fs-gg-game:fs-gg-audio]]): a `SaveCues.forTransition : Msg -> Model -> Model -> PersistenceEffect list` that
 maps a **transition** to the effects it implies. Writing one is the normal thing to do; this section is
 about the hole in the pattern.
 
@@ -346,8 +346,8 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
-- [[fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
+- [[fs-gg-game:fs-gg-game-core]] — the simulation half of a game product; the seeded, deterministic `Model` is the natural thing to save.
+- [[fs-gg-game:fs-gg-audio]] — the sibling requested-effect surface; persistence and audio are both effects requested from `update`.
 - [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests a save/load.
 
 ## Sources / links

@@ -1,14 +1,56 @@
-dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/package-proof/nuget-cache
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
   Determining projects to restore...
-  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj (in 399 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj (in 8.52 sec).
 
-dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/package-proof/nuget-cache
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
   Determining projects to restore...
-  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj (in 280 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.App/AntShowcase.App.fsproj (in 272 ms).
   1 of 2 projects are up-to-date for restore.
 
-dotnet restore /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering/specs/163-package-feed-validation-lanes/readiness/lanes/package-proof/nuget-cache
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
   Determining projects to restore...
-  Restored /home/developer/projects/FS.GG.Rendering/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj (in 277 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj (in 2.09 sec).
+  2 of 3 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.App/ControlsGallery.App.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.App/ControlsGallery.App.fsproj (in 298 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/ControlsGallery.Core.fsproj (in 298 ms).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Tests/ControlsGallery.Tests.fsproj (in 298 ms).
   1 of 2 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/ControlsGallery.Core.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/SampleApps.App.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/SampleApps.Core.fsproj (in 281 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.App/SampleApps.App.fsproj (in 281 ms).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Tests/SampleApps.Tests.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Tests/SampleApps.Tests.fsproj (in 307 ms).
+  1 of 2 projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SampleApps/SampleApps.Core/SampleApps.Core.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj (in 279 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj (in 279 ms).
+  Restored /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Tests/SecondAntShowcase.Tests.fsproj (in 279 ms).
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.Core/SecondAntShowcase.Core.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+
+dotnet restore /home/developer/projects/FS.GG.Rendering-702/samples/SecondAntShowcase/SecondAntShowcase.App/SecondAntShowcase.App.fsproj --configfile specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config --packages /home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache
+  Determining projects to restore...
+  All projects are up-to-date for restore.
 
