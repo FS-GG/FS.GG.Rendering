@@ -6,13 +6,14 @@
 // disappearing on a type that already exists (issue #200):
 //   readiness/surface-baselines/<pkg>.txt          — one line per exported TYPE
 //   readiness/surface-baselines/members/<pkg>.txt  — one line per exported MEMBER, with its signature
-// The type-level file keeps its exact format: `build/Governance/PackageSurface.fs`, `Tests.fs` and the
-// sample surface tests all read those paths by name. The member file is additive, so nothing that
-// reads the old format has to change.
+// The type-level file keeps its exact format: `Tests.fs` and the sample surface tests read those
+// paths by name. The member file is additive, so nothing that reads the old format has to change.
 //
-// This is the SINGLE authoritative baseline location: the live gate `SurfaceAreaTests` and the
-// `build/Governance/PackageSurface.fs` governance check both READ `readiness/surface-baselines/`, so
-// the generator WRITES there too — writer and readers agree by construction (no second copy to sync).
+// This is the SINGLE authoritative baseline location: the live gate `SurfaceAreaTests` READS
+// `readiness/surface-baselines/`, so the generator WRITES there too — writer and reader agree by
+// construction (no second copy of the baselines to sync). This header used to name
+// `build/Governance/PackageSurface.fs` as a second, governance-side reader. It is not one: no project
+// compiles it and no code opens it (#666). Do not preserve anything for its benefit.
 //
 // Loads each assembly by path (with a cross-assembly resolve handler) rather than `#r` + a hardcoded
 // representative type, so adding a package is a one-line table entry.
