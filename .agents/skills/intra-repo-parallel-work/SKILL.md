@@ -85,6 +85,10 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 ## The loop
 
 **Once per machine, first:** `dotnet tool install -g FS.GG.Coord.Cli`
+**And keep it current:** `dotnet tool update -g FS.GG.Coord.Cli` — a global tool does NOT self-update, and
+**a stale engine is worse than no engine** (#655). `fsgg-coord` carries a floor and REFUSES to shadow
+below it (a recorded skip, never an error), because engines before `0.1.1` mis-parse every dotfile path
+and will call a HELD item startable (#649).
 
 Optional, and safe to skip — `fsgg-coord` works exactly as before without it. What it buys is the
 **shadow** (ADR-0034): with an engine present, every `take`/`next`/`batch` is decided by *both* the
