@@ -69,17 +69,89 @@
 # pointer OUT of the product for a skill that is in fact IN it. Retiring the mirror (#696) is the real
 # fix and makes the qualifiers merely redundant rather than load-bearing; this is the coherent cheap one.
 #
+# ── 0b. THE TWO SURFACES: WHAT WE SHIP, AND WHAT WE READ HERE (#698) ────────────────────────────
+# This gate used to take its subject from the manifest ALONE — the 21 bodies that MATERIALIZE into a
+# product. That is the right subject for a promise made to a STRANGER, and § 0 is the argument for it.
+# It is not the only place this repo makes promises, and for one generation it was the only place we
+# looked:
+#
+#   src/*/skill/SKILL.md            10 bodies, 37 refs   the LIBRARY-facing skills — the canonical
+#                                                        instructions `.claude/skills/<id>/` points at
+#   template/product-skills/README.md  1 body,  2 refs   the authoring note ABOUT this convention
+#
+# ROT WAS ALREADY THERE. `src/Testing/skill/SKILL.md` wrote `[[fsharp-build-orchestration]]` — a skill
+# in NO registry row, NO manifest, and NO directory anywhere in the org. It was caught only because it
+# happened to have a TWIN in a published body, which the manifest-scoped gate did see (#697 removed
+# that one). The library copy survived, and nothing here would ever have reported it. That is luck, and
+# luck is not a gate — which is the whole of #698.
+#
+# WHY THIS IS NOT "RUN THE GATE OVER MORE DIRECTORIES". A `[[ref]]`'s verdict is RELATIVE TO WHAT
+# RESOLVES WHERE THE READER IS STANDING. That is § 0's own argument, and it is what forces TWO
+# VOCABULARIES rather than one wider glob:
+#
+#   a reader of a PUBLISHED body stands in a SCAFFOLDED PRODUCT — what resolves there is what we
+#     MATERIALIZE, so the vocabulary is the MANIFEST;
+#   a reader of a LIBRARY body stands in THIS REPO, driving an agent — what resolves there is what the
+#     agent can INVOKE, so the vocabulary is `.claude/skills/`.
+#
+# AND THE TWO SETS GENUINELY DISAGREE. This is not a technicality to be globbed away — the SAME STRING
+# NAMES A DIFFERENT BODY on each surface:
+#
+#   [[fs-gg-scene]] in a PUBLISHED body -> template/product-skills/fs-gg-scene/  (the PRODUCT skill)
+#   [[fs-gg-scene]] in a LIBRARY   body -> src/Scene/skill/                      (the LIBRARY skill)
+#
+# because `.claude/skills/` must disambiguate the two and calls the product variant
+# `fs-gg-product-scene`, while the manifest ships into a product where no library skill exists and so
+# needs no such prefix. Judge one surface with the other's vocabulary and you are not merely stricter
+# or looser — you are answering about the wrong body.
+#
+# The sets differ in MEMBERSHIP too, and in the direction that would produce false reds: `.claude/skills/`
+# carries skills the manifest never ships (`fs-gg-ant-design`, `speckit-*`, `cross-repo-coordination`),
+# and the library bodies point at them CORRECTLY. Against the manifest, five sound refs to
+# `fs-gg-ant-design` would be reported dangling — a gate firing on correct work, which is the one thing
+# it may never do.
+#
+# THERE IS NO `--surface` FLAG, AND THAT IS THE DESIGN. The obvious shape is a flag, and a flag is an
+# OPT-IN: the subject becomes whatever the CALL SITE remembers to ask for. That is this gate's own bug,
+# one level up. It checked the manifest because the manifest is what it was POINTED AT, and 39 refs sat
+# unexamined behind a green check for as long as nobody thought to point it anywhere else. A subject a
+# caller can NARROW is a subject a caller can FORGET. So both surfaces are checked on every invocation;
+# gate.yml and skill-refs-sweep.yml are unchanged and did not have to be taught anything; and there is
+# no way to invoke this script that checks less than everything it knows about.
+#
+# WHAT DOES NOT CHANGE ACROSS SURFACES. § 2 is repo-independent — a CLOSED issue is closed wherever you
+# read it — and so are the owner vocabulary, both escape hatches, the marker audit, and the scope/sweep
+# split (§ 4). Only § 1's VOCABULARY and § 3's VERDICT turn on the surface. § 3's inversion is the one
+# judgement here worth reading in full; it is argued where it happens.
+#
 # ── 1. WIKI REFS (Game#35) ──────────────────────────────────────────────────────────────────────
-# A skill body that writes `[[fs-gg-ballistics]]` promises the reader a skill this repo publishes. It
-# does not: `fs-gg-ballistics` is authored in FS.GG.Game and has NO body here, so it materializes
-# into no product of ours. An agent following the pointer finds nothing.
+# A skill body that writes `[[fs-gg-ballistics]]` promises the reader a skill that RESOLVES WHERE THEY
+# ARE STANDING — in a product, one this repo publishes; in this tree, one an agent here can invoke
+# (§ 0b). It does not: `fs-gg-ballistics` is authored in FS.GG.Game and has NO body here, so it
+# materializes into no product of ours and is in no `.claude/skills/`. An agent following the pointer
+# finds nothing, on either surface.
 #
 # THE CONVENTION. A `[[ref]]` is either
-#   * BARE      — `[[fs-gg-scene]]`                → MUST name a skill this repo publishes, or
+#   * BARE      — `[[fs-gg-scene]]`                → MUST resolve in the reader's set: the MANIFEST in
+#                 a published body, `.claude/skills/` in a repo-internal one (§ 0b), or
 #   * QUALIFIED — `[[fs-gg-game:fs-gg-ballistics]]` → `<owner>:<skill-id>`, naming the publishing
 #                 repo's registry `owner` id (registry/skills.yml in FS-GG/.github).
 # Anything else is a dangling ref and fails. Bare code spans (`fs-gg-scene`) are prose, not
 # pointers, and are deliberately NOT checked — only `[[...]]` promises resolvability.
+#
+# AND A BODY MAY DISCUSS THE SYNTAX WITHOUT INVOKING IT. `template/product-skills/README.md` is the
+# doc that TEACHES this convention, so it writes `[[link]]` as an ILLUSTRATION — a shape, not a
+# pointer. The old script's answer was to declare the README out of subject and check nothing in it,
+# which is how its two real refs went unchecked; "a gate that fires on the document explaining it is a
+# gate people learn to ignore" was right about the hazard and wrong about the remedy. The remedy is the
+# one this script already uses twice: reject by default, and let the author declare the exception.
+#
+#     <!-- skill-refs: prose-ok [[link]] — the SHAPE of a ref, not a ref -->
+#
+# Same marker as § 3's, same sentence — "this pointer-shaped token is prose" — extended from a bare
+# `#N` to a `[[ref]]`, because it is the identical claim about the identical kind of token. It is
+# audited the same way too: a `prose-ok` that excuses nothing is reported, because dead config is where
+# the next rot hides.
 #
 # The owner vocabulary is the registry's: a qualified ref whose owner is unknown is a typo, and a
 # ref qualified with THIS repo's own owner must resolve locally (write it bare instead).
@@ -149,6 +221,41 @@
 # Teaching the script that difference would make the gate's verdict depend on the surrounding
 # sentence — unpredictable to the author, and wrong often enough to be turned off. The author knows
 # which one they meant; the marker is how they say it, and it is self-documenting to the next reader.
+#
+# ── § 3 INVERTS ON THE REPO SURFACE (#698) — THE PREMISE MOVES, NOT THE POLICY ──────────────────
+# Every word above rests on ONE fact: the body is MATERIALIZED into a stranger's repo, so GitHub
+# renders `#999` against THEIR tracker and the ref can never point here. THAT FACT IS FALSE OF A
+# REPO-INTERNAL BODY. `src/Scene/skill/SKILL.md` ships nowhere. It is read HERE, in this repo, through
+# the `.claude/skills/` wrapper that points an agent at it — and GitHub renders a `#999` in it against
+# FS.GG.Rendering, which IS our tracker. THE POINTER IS CORRECT.
+#
+# So rejecting it here would demand a fix for a defect that does not exist, on the one surface where
+# the idiomatic `#999` is the RIGHT thing to write. That is how a gate becomes the one people turn off,
+# and § 3 has already made this argument once — about markdown link labels, two paragraphs up. The
+# reasoning does not change just because the token does.
+#
+# BUT SILENCE IS NOT THE ALTERNATIVE, AND IN THIS SCRIPT IT NEVER IS. The ref still promises "there is
+# a LIVE issue at the other end" — and that is § 2's question, which § 2 can answer. A bare `#999` in a
+# repo-internal body IS a link to `FS.GG.Rendering#999`, because that is exactly what GitHub makes of
+# it. So it is not REJECTED here; it is RESOLVED — against this repo, and it must be OPEN or carry a
+# `closed-ok` marker like any other link. `prose-ok #N` still works, and now means "do not resolve
+# this", which is the same sentence it always meant.
+#
+# The surface therefore goes from ZERO checking to § 2's full strictness, and the verdict each surface
+# gets is the one its reader can actually act on. Degrade toward MORE checking, never less.
+#
+# THE LIMIT, SAID OUT LOUD RATHER THAN DISCOVERED LATER. A bare `#419` that MEANT `FS-GG/.github#419`
+# is indistinguishable from one that meant ours, and it will be resolved against OURS — quietly, and
+# possibly against a live issue of ours that has nothing to do with it. The gate cannot separate them
+# and does not guess. It is not thereby WRONG: GitHub renders that ref against FS.GG.Rendering too, so
+# the DOCUMENT already points where the gate says it points, and the defect is the author's to fix by
+# QUALIFYING it. This is the same honest limit § 3 already owns for an all-numeric colour — the gate
+# reports what the reader will actually get, and asks the author who knows what they meant.
+#
+# (This is why `.claude/skills/` is NOT in the subject: its ~35 bodies are largely MIRRORS of
+# FS-GG/.github's canonical protocol docs, whose 85 bare `#N` are `.github`'s numbers, not ours.
+# Resolving those against FS.GG.Rendering would be the limit above, 85 times over, on bodies we do not
+# author — the § 0 frozen-mirror argument in a second costume. Filed rather than papered over: #723.)
 #
 # NETWORK. Resolving a link needs the API (REST only; a handful of calls, no GraphQL). The gate must
 # never SELF-SKIP: under GITHUB_ACTIONS an unresolvable link is a FAILURE, never a pass. Locally,
@@ -247,14 +354,18 @@ done
 # the publish set, and every other source of truth here is downstream of it.
 MANIFEST="template/skill-manifest/skill-manifest.json"
 
-# The SUBJECT is those 21 published bodies — the files that MATERIALIZE into somebody's product and
-# so make promises to a reader who is not us. Deliberately NOT `find $SKILL_ROOT -name '*.md'`, which
-# is Game's scan: that sweeps `template/product-skills/README.md` too, and the README is a Rendering-
-# internal doc ABOUT the convention, not a published body. It ships nowhere, promises nobody, and it
-# discusses `[[…]]` refs in the abstract — so scanning it reports its illustrations as dangling refs.
-# A gate that fires on the document explaining it is a gate people learn to ignore. Repo-internal docs
-# are a different subject with different stakes; this script does not claim them, and says so here
-# rather than leaving the boundary to be inferred from a glob.
+# The PUBLISHED SUBJECT: those 21 bodies, which MATERIALIZE into somebody's product and so make
+# promises to a reader who is not us. Their vocabulary is the manifest (§ 0b).
+#
+# It used to be the ONLY subject, and the comment here used to explain why `template/product-skills/
+# README.md` was excluded from it: the README ships nowhere, and it discusses `[[…]]` refs in the
+# abstract, so scanning it as a published body reports its ILLUSTRATIONS as dangling refs — "a gate
+# that fires on the document explaining it is a gate people learn to ignore". That hazard was real and
+# the diagnosis was right. The remedy was not: it declared the README (and the ten library bodies with
+# it) OUT OF SUBJECT, and out of subject means UNCHECKED — which is how 39 refs, one of them already
+# dead, came to sit behind a green gate (#698). The README is in the subject now, on the REPO surface,
+# with `.claude/skills/` for a vocabulary and a `prose-ok [[…]]` marker for its illustrations. Reject
+# by default, let the author declare the exception — the answer this script already gives twice.
 SELF_OWNER="fs-gg-rendering"
 # This repo's GitHub name — the qualification a bare `#N` in a body of OURS almost always wants. It
 # is only ever a SUGGESTION in § 3's message: the author may well have meant another repo, and the
@@ -306,11 +417,83 @@ while IFS= read -r b; do
 done <<<"$body_paths"
 ((missing_bodies)) && exit 1
 
+# ── THE REPO SURFACE (#698) ─────────────────────────────────────────────────────────────────────
+# The bodies that ship NOWHERE, and whose reader is therefore standing HERE (§ 0b): the ten canonical
+# library skills that `.claude/skills/<id>/SKILL.md` wraps and points an agent at, plus the one
+# authoring note about this very convention.
+#
+# `if`, NOT `[[ -f $b ]] && printf`. The LAST thing this loop tests is the README, and a tree without
+# one leaves the `for` returning 1 — which `set -o pipefail` (line 1) promotes to the whole pipeline,
+# so the assignment fails and `set -e` kills the script: exit 1, no findings, no banner, nothing. A
+# gate that dies without a word is the worst thing in this file's value system, and the existence of
+# an OPTIONAL member of the subject must not be able to cause it.
+repo_body_paths=$(
+  for b in src/*/skill/SKILL.md template/product-skills/README.md; do
+    if [[ -f $b ]]; then printf '%s\n' "$b"; fi
+  done | sort -u)
+
+# The RESOLVABLE SET for a body read HERE: the skills an agent in this tree can actually INVOKE. Not
+# the manifest — § 0b is the argument, and the two sets name different bodies under the same string.
+#
+# `.claude/skills/` and `.agents/skills/` are held in lockstep by the `skill-parity` check in this same
+# required job, so either would give the same vocabulary; this reads the Claude one because CLAUDE.md
+# is what drives an agent standing in this tree.
+CLAUDE_SKILLS=".claude/skills"
+# `if`, not `&&` — same pipefail trap as `repo_body_paths` below. With no `.claude/skills/` at all the
+# glob stays literal, `[[ -d ]]` is false, the `for` returns 1, pipefail reddens the pipeline and the
+# script dies silently — swallowing the very "no vocabulary" refusal written three lines down to
+# announce it.
+repo_vocab=$(
+  for d in "$CLAUDE_SKILLS"/*/; do
+    if [[ -d $d ]]; then basename "$d"; fi
+  done | sort -u)
+
+# The same refusal the manifest gets, for the same reason. An empty vocabulary is not "nothing
+# resolves" — it is the repo surface's subject gone missing, and every one of its 37 refs would be
+# reported dangling: a gate so loud it is indistinguishable from a broken one, and the fix would look
+# like deleting the refs. If `.claude/skills/` is gone, this gate is broken; say so.
+if [[ -z $repo_vocab ]]; then
+  echo "check-skill-refs: FAILED — no skills under $CLAUDE_SKILLS/, so nothing a repo-internal body" >&2
+  echo "  points at can be resolved. This gate cannot be green without its vocabulary." >&2
+  exit 1
+fi
+if [[ -z $repo_body_paths ]]; then
+  echo "check-skill-refs: FAILED — no repo-internal skill bodies found (src/*/skill/SKILL.md)." >&2
+  echo "  That is a subject this gate is supposed to have; finding none means it moved, not that" >&2
+  echo "  there is nothing to check. See § 0b." >&2
+  exit 1
+fi
+
+# The FULL subject: both surfaces. There is no invocation that checks one and not the other (§ 0b).
+# The two sets are disjoint by construction — `src/*/skill/` and the README on one side, the manifest's
+# `supplied-by` roots on the other — so a body has exactly one surface and `is_repo_body` decides it.
+all_body_paths=$(printf '%s\n%s\n' "$body_paths" "$repo_body_paths" | grep -v '^[[:space:]]*$' | sort -u)
+
 # NUL-separated, so a path with a space cannot split. `-r` on every consuming xargs: with an empty
 # list, xargs would otherwise run its command with NO file operands, and grep/awk would then read
 # THIS SCRIPT'S stdin — reporting zero hits from whatever it found there. A silent no-op is the one
 # outcome this gate may never produce.
-body_files() { while IFS= read -r b; do [[ -n $b ]] && printf '%s\0' "$b"; done <<<"$body_paths"; }
+body_files() { while IFS= read -r b; do [[ -n $b ]] && printf '%s\0' "$b"; done <<<"$all_body_paths"; }
+
+# The PUBLISHED bodies alone — § 3's subject, and only § 3's. A bare `#N` is a defect BY FORM there and
+# is RESOLVED rather than rejected on the repo surface; the argument is in § 3's inversion note.
+#
+# `if`, NOT `[[ … ]] && … && printf`. A `while` returns the status of the LAST command its body ran, so
+# an `&&` chain that short-circuits on the final line makes the whole function return 1 — and under
+# `set -o pipefail` (line 1) that reddens every pipeline it feeds, aborting the assignment downstream
+# and killing the script with a bare `exit 1` and NOT ONE WORD of output. The filter's verdict on the
+# last file is not the function's verdict. An `if` with no `else` returns 0 whichever way it goes.
+published_body_files() {
+  while IFS= read -r b; do
+    if [[ -n $b ]] && ! is_repo_body "$b"; then printf '%s\0' "$b"; fi
+  done <<<"$all_body_paths"
+}
+
+is_repo_body() { grep -qxF -- "$1" <<<"$repo_body_paths"; }
+
+# The whole-tree set the hermetic halves (§ 1, § 3) sweep. Defined HERE rather than down in § 2 because
+# § 1 consumes it and § 1 runs first; the argument for why it is never scoped lives at its old site.
+md_files() { body_files; }
 
 # The directories the bodies live in — the pathspec `--changed` diffs against (§ 4). Derived from the
 # manifest too, so a skill supplied from a new root is picked up here the moment it is published,
@@ -322,11 +505,31 @@ body_files() { while IFS= read -r b; do [[ -n $b ]] && printf '%s\0' "$b"; done 
 # subject it never examined, arriving through the very fallback that exists to prevent it (§ 4).
 mapfile -t body_dirs < <(jq -r '.skills[]."supplied-by"' "$MANIFEST" | sed 's:/*$::' | sort -u)
 
+# The repo bodies join the pathspec as FILES, not as their directories. `src/Scene/skill` would work,
+# but `template/product-skills` — the README's directory — is the parent of every published body, so
+# naming it would make the link scope match all 17 of them on a diff that touched only the README. The
+# file path IS a valid pathspec and matches exactly the one body. Being exact costs nothing here.
+mapfile -t repo_body_specs < <(printf '%s\n' "$repo_body_paths")
+body_dirs+=("${repo_body_specs[@]}")
+
 # -x -F, never -w: `grep -w game` matches inside `fs-gg-game` (a `-` is a word boundary), and an
 # unanchored pattern is a REGEX, so `fs.gg.game` would match too. Both would wave a typo'd owner
 # through — and a foreign qualified ref is trusted, so nothing downstream would catch it.
 is_published() { grep -qxF -- "$1" <<<"$published"; }
 is_known_owner() { grep -qxF -- "$1" <<<"$KNOWN_OWNERS"; }
+in_repo_vocab() { grep -qxF -- "$1" <<<"$repo_vocab"; }
+
+# § 1's verdict, and the ONE thing that turns on the surface (§ 0b): does this id resolve WHERE THIS
+# BODY IS READ? In a product, that is what we materialize. In this tree, it is what an agent can invoke.
+resolves_for() { # file id
+  if is_repo_body "$1"; then in_repo_vocab "$2"; else is_published "$2"; fi
+}
+
+# Every § 1 finding NAMES the set that judged it — so a dangling ref says which vocabulary answered
+# rather than leaving the author to guess why `[[fs-gg-ant-design]]` is fine in one body and dangling
+# in another. That is written into each message at its site, in that surface's own words, rather than
+# funnelled through one generic helper: "we do not publish it" and "no skill by that name resolves
+# here" are different sentences because they are different facts (§ 0b).
 
 fail=0
 report() {
@@ -420,16 +623,106 @@ is_mirror() { [[ -n $mirror_bodies ]] && grep -qxF -- "$1" <<<"$mirror_bodies"; 
 # § 2 and § 3 always failed on a mirror and still do: a CLOSED issue is closed in every repo and a bare
 # `#N` is unresolvable in every repo, so those verdicts never depended on whose publish set you ask.
 # What changed is that § 1's verdict no longer does either.
+#
+# AND THE SET IT IS RELATIVE TO IS NOW THE READER'S (#698). "The publish set" was only ever the right
+# set because the only bodies in the subject were PUBLISHED ones. With the repo surface in the subject
+# (§ 0b), the general rule is the one that was always underneath: a `[[ref]]` resolves against WHAT THE
+# READER OF THIS BODY HAS. `resolves_for` picks that set, and the three rules above are unchanged —
+# only the noun "published" widens to "resolves". A mirror is a published body, so `is_mirror` is
+# unaffected: a repo-internal body is never mirrored, because it is never shipped.
+
+# Strip skill-refs markers, terminating on `-->` rather than on the first `>`. A rationale is prose
+# and may well contain one ("superseded -> #9"), and a marker left un-stripped is scanned as a ref
+# and EXCUSES ITSELF — the exact defect the strip exists to prevent. Other HTML comments are kept: a
+# ref inside one is still a ref.
+#
+# Shared by ALL THREE scans, and load-bearing for each. For § 2 an un-stripped `closed-ok FS.GG.X#9` is
+# a link that vouches for itself; for § 3 an un-stripped `prose-ok #9` is *itself a bare `#9`*. § 1 got
+# this LATE (#698) and had a latent hole until it did: its scan was a raw `grep`, so a marker was never
+# stripped from it, and the moment `prose-ok [[…]]` exists a marker becomes *itself a `[[ref]]`* —
+# reporting the very config written to silence it. Nothing in the tree had a `[[…]]` inside a marker, so
+# the hole was invisible; that is what a latent hole is. Config must not be its own subject — in any § .
+AWK_STRIP='
+  function strip_markers(s,   res, i, j, seg) {
+    res = ""
+    while ((i = index(s, "<!--")) > 0) {
+      j = index(substr(s, i), "-->")
+      if (j == 0) {                       # unterminated — drop it if it is ours, else stop
+        if (substr(s, i) ~ /^<!--[[:space:]]*skill-refs:/) s = substr(s, 1, i - 1)
+        break
+      }
+      seg = substr(s, i, j + 2)
+      res = res substr(s, 1, i - 1)
+      if (seg !~ /^<!--[[:space:]]*skill-refs:/) res = res seg
+      s = substr(s, i + j + 2)
+    }
+    return res s
+  }'
+
+# Every `[[ref]]`, normalised to `file:line:ref`. `read` with three names puts every remaining `:` in
+# the last one, which is what a QUALIFIED `owner:id` needs — so this shape survives the colon it carries.
+emit_wiki() {
+  body_files | xargs -0 -r awk -v OFS=':' "$AWK_STRIP"'
+      {
+        s = strip_markers($0)
+        while (match(s, /\[\[[A-Za-z0-9._:-]+\]\]/)) {
+          print FILENAME, FNR, substr(s, RSTART + 2, RLENGTH - 4)
+          s = substr(s, RSTART + RLENGTH)
+        }
+      }'
+}
+wikirefs=$(emit_wiki | sort -u | sort -t: -k1,1 -k2,2n)
+
+# The prose-ok allowlist for § 1 — `prose-ok [[id]]`, normalised to `file<TAB>id`. A body that TEACHES
+# this convention must be able to write its shape without invoking it (§ 1). WHOLE-TREE, pairing with
+# § 1: no network, no decay, so nothing to scope away from.
+#
+# FILE-SCOPED, exactly like the other two markers, and the same caveat applies: it excuses EVERY
+# `[[link]]` in that file. Keep them rare.
+ref_markers=$( { md_files | xargs -0 -r grep -HEon \
+    '<!--[[:space:]]*skill-refs:[[:space:]]*prose-ok[[:space:]]+\[\[[A-Za-z0-9._:-]+\]\]' \
+    || true; } | while IFS= read -r m; do
+    [[ -z $m ]] && continue
+    mfile=${m%%:*}; mrest=${m#*:}; mline=${mrest%%:*}
+    mid=${m##*\[\[}; mid=${mid%%\]\]*}
+    printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mid"
+  done)
+
+is_ref_prose() { # file id
+  [[ -n $ref_markers ]] &&
+    awk -F'\t' -v f="$1" -v r="$2" '$1==f && $3==r {found=1} END{exit !found}' <<<"$ref_markers"
+}
+
+# A `file:line:ref` row's REF is everything past the second colon — NOT `$3`. A qualified
+# `[[fs-gg-game:fs-gg-scene]]` carries a colon of its own, so a field-split would compare against
+# `fs-gg-game` and silently never match: the marker would be reported stale while it was doing its job.
+wiki_has() { # file id
+  awk -v f="$1" -v r="$2" \
+    '{ ref = $0; sub(/^[^:]*:[0-9]+:/, "", ref)
+       split($0, p, ":")
+       if (p[1] == f && ref == r) found = 1 } END { exit !found }' <<<"$wikirefs"
+}
+
 while IFS=: read -r file line ref; do
   [[ -z ${ref:-} ]] && continue
+  is_ref_prose "$file" "$ref" && continue
   finding=""
   if [[ $ref == *:* ]]; then
     owner=${ref%%:*}
     id=${ref#*:}
     if ! is_known_owner "$owner"; then
       finding="dangling [[$ref]] — unknown owner '$owner' (known: $KNOWN_OWNERS)"
-    elif [[ $owner == "$SELF_OWNER" ]] && ! is_published "$id"; then
-      finding="dangling [[$ref]] — qualified to this repo, which does not publish '$id'"
+    elif [[ $owner == "$SELF_OWNER" ]] && ! resolves_for "$file" "$id"; then
+      # Say WHICH set failed it, in that set's own vocabulary. "This repo does not publish it" is the
+      # true and useful sentence for a PUBLISHED body — and it is the wrong one for a repo-internal
+      # body, which does not publish anything and whose reader wants to hear about `.claude/skills/`.
+      # One generic message would be a small lie on both surfaces; the author needs to know which
+      # vocabulary answered, because the same ref can resolve in one and dangle in the other (§ 0b).
+      if is_repo_body "$file"; then
+        finding="dangling [[$ref]] — qualified to this repo, where '$id' does not resolve ($CLAUDE_SKILLS/)"
+      else
+        finding="dangling [[$ref]] — qualified to this repo, which does not publish '$id'"
+      fi
     fi
     # A SELF-qualified ref that RESOLVES is accepted (Game#279 / #714). It used to be refused —
     # "write it bare as [[$id]]" — and that refusal is what made the convention unmirrorable, so it
@@ -442,13 +735,30 @@ while IFS=: read -r file line ref; do
     # wrapped over several lines still matches on its first line, and every continuation line is then
     # silently dropped by the sweep — so the issue it files would carry half the reason.
     finding="bare [[$ref]] in a MIRRORED body — the same bytes are judged by BOTH repos, and a bare ref resolves in exactly ONE publish set ([[fs-gg-scene]] resolves here and dangles in Game; [[fs-gg-ballistics]] the reverse), so it is wrong in one of them whichever way you write it. QUALIFY it as [[<owner>:$ref]]. Fix it in the OWNING canonical (FS.GG.Game) and re-sync — do NOT edit the mirror here, which would break the byte-identity ADR-0022 §6 requires"
-  elif ! is_published "$ref"; then
-    finding="dangling [[$ref]] — this repo does not publish it; qualify it as [[<owner>:$ref]]"
+  elif ! resolves_for "$file" "$ref"; then
+    # The finding NAMES THE SET it was judged against (§ 0b): the same `[[fs-gg-ant-design]]` resolves
+    # in a repo-internal body and dangles in a published one, and an author who is not told which
+    # vocabulary answered will read the verdict as a bug in the gate.
+    if is_repo_body "$file"; then
+      finding="dangling [[$ref]] — no skill by that name resolves in this repo ($CLAUDE_SKILLS/), so an agent reading this body cannot invoke it. Name a skill that is there, or qualify it as [[<owner>:$ref]] if another repo publishes it"
+    else
+      finding="dangling [[$ref]] — this repo does not publish it; qualify it as [[<owner>:$ref]]"
+    fi
   fi
   [[ -z $finding ]] && continue
   report "$file" "$line" "$finding"
-done < <(body_files | xargs -0 -r grep -HEon '\[\[[A-Za-z0-9._:-]+\]\]' \
-  | sed -E 's/\[\[(.*)\]\]$/\1/')
+done <<<"$wikirefs"
+
+# A `prose-ok [[…]]` that excuses nothing is dead config, exactly as a stale `closed-ok` is — the
+# illustration it guarded was reworded, or renamed. Markers are stripped before extraction, so one
+# cannot vouch for itself and this check means something.
+if [[ -n $ref_markers ]]; then
+  while IFS=$'\t' read -r mfile mline mid; do
+    [[ -z ${mid:-} ]] && continue
+    wiki_has "$mfile" "$mid" ||
+      report "$mfile" "$mline" "stale prose-ok marker — nothing in this file writes [[$mid]]; drop it"
+  done <<<"$ref_markers"
+fi
 
 # ────────────────────────────────────────────────────────────────────────────────────────────────
 # 2. ISSUE / PR LINKS
@@ -469,35 +779,10 @@ done < <(body_files | xargs -0 -r grep -HEon '\[\[[A-Za-z0-9._:-]+\]\]' \
 # token precedes it, so nothing matches. It is consumed by the match, so the ref is re-trimmed. A
 # bare ref is no longer thereby IGNORED — § 3 scans for exactly what this pattern declines to claim.
 
-# Strip skill-refs markers, terminating on `-->` rather than on the first `>`. A rationale is prose
-# and may well contain one ("superseded -> #9"), and a marker left un-stripped is scanned as a ref
-# and EXCUSES ITSELF — the exact defect the strip exists to prevent. Other HTML comments are kept: a
-# ref inside one is still a ref.
-#
-# Shared by BOTH scans, and load-bearing for each. For § 2 an un-stripped `closed-ok FS.GG.X#9` is a
-# link that vouches for itself; for § 3 an un-stripped `prose-ok #9` is *itself a bare `#9`* — it
-# would excuse itself and every marker would be self-justifying. Config must not be its own subject.
-AWK_STRIP='
-  function strip_markers(s,   res, i, j, seg) {
-    res = ""
-    while ((i = index(s, "<!--")) > 0) {
-      j = index(substr(s, i), "-->")
-      if (j == 0) {                       # unterminated — drop it if it is ours, else stop
-        if (substr(s, i) ~ /^<!--[[:space:]]*skill-refs:/) s = substr(s, 1, i - 1)
-        break
-      }
-      seg = substr(s, i, j + 2)
-      res = res substr(s, 1, i - 1)
-      if (seg !~ /^<!--[[:space:]]*skill-refs:/) res = res seg
-      s = substr(s, i + j + 2)
-    }
-    return res s
-  }'
-
-# WHOLE-TREE, and it stays that way even under `--changed`. § 1 and § 3 are f(tree): they need no
-# network, they cost nothing, and they cannot decay — so there is no reason to scope them and one
+# `md_files` (the whole-tree set § 1 and § 3 sweep) is defined up with `body_files`, because § 1 needs
+# it and § 1 now runs above this point. The reason it is whole-tree is here: § 1 and § 3 are f(tree) —
+# they need no network, cost nothing, and cannot decay, so there is no reason to scope them and one
 # good reason not to. Scoping a hermetic check buys nothing and can only lose coverage.
-md_files() { body_files; }
 
 # The files § 2 resolves links in — the ONLY check that is f(world), and so the only one scoped.
 # See § 4. Deletions are excluded (--diff-filter=ACMR): a body the diff REMOVED has no pointers
@@ -594,8 +879,12 @@ emit_links() {
 # The leading class carries `/` and `#`, which is what excludes the three near-misses: a URL fragment
 # (`…/page#1`), a markdown heading (`## 3`), and the `#535` of a qualified `FS.GG.Rendering#535` —
 # that last one is § 2's ref, and reporting it here would double-report every honest link.
-emit_bare() {
-  md_files | xargs -0 -r awk -v OFS='\t' "$AWK_STRIP"'
+#
+# ONE extractor, TWO subjects, TWO verdicts (#698). The scan is identical on both surfaces — a bare
+# `#N` is a bare `#N` wherever it is written — but what it MEANS is not, so the caller passes the file
+# set and decides. On a published body the form is the defect (§ 3 rejects it); on a repo-internal one
+# the ref genuinely points at OUR tracker, so it is fed to § 2 and RESOLVED. See § 3's inversion note.
+BARE_AWK='
       {
         s = strip_markers($0)
 
@@ -618,16 +907,84 @@ emit_bare() {
           if (t ~ /^[0-9]+$/) print FILENAME, FNR, t
         }
       }'
+emit_bare_rows() { "$1" | xargs -0 -r awk -v OFS='\t' "$AWK_STRIP$BARE_AWK"; }
+
+# § 3's subject: PUBLISHED bodies, whole tree. Unchanged.
+emit_bare() { emit_bare_rows published_body_files; }
+
+# § 2's extra subject: the bare `#N` of a REPO-INTERNAL body, which is a link to THIS repo (§ 3's
+# inversion note). SCOPED WITH § 2, not with § 3 — it is now f(world), so it decays like any other link
+# and must not redden a diff that did not touch the body. `repo_link_files` is the intersection of the
+# link scope with the repo surface, so `--changed` governs it exactly as it governs an explicit link.
+repo_link_files() {
+  link_md_files | while IFS= read -r -d '' f; do
+    # `if`, not `&&` — see published_body_files. A filter whose last file fails the test must not
+    # thereby report FAILURE for the whole scan; under `pipefail` that kills the script silently.
+    if is_repo_body "$f"; then printf '%s\0' "$f"; fi
+  done
+}
+
+# The prose-ok allowlist, normalised to `file<TAB>line<TAB>num` — one row per marker.
+# WHOLE-TREE, pairing with § 3: no network, no decay, so nothing to scope away from.
+#
+# It must be read BEFORE the repo surface's bare refs are promoted to links below, because that
+# promotion consults it: on the repo surface `prose-ok #N` suppresses the RESOLUTION rather than a
+# rejection (§ 3's inversion note), so a marker read too late would be a marker that excused nothing.
+prose_markers=$( { md_files | xargs -0 -r grep -HEon \
+    '<!--[[:space:]]*skill-refs:[[:space:]]*prose-ok[[:space:]]+#[0-9]+' \
+    || true; } | while IFS= read -r m; do
+    [[ -z $m ]] && continue
+    mfile=${m%%:*}; mrest=${m#*:}; mline=${mrest%%:*}; mnum=${m##*#}
+    printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mnum"
+  done)
+
+is_prose() { # file num
+  [[ -n $prose_markers ]] &&
+    awk -F'\t' -v f="$1" -v n="$2" '$1==f && $3==n {found=1} END{exit !found}' <<<"$prose_markers"
 }
 
 # `sort -u` must dedupe on the WHOLE row — keying it would collapse two distinct refs sharing a line.
 # Order for display in a second, non-unique pass.
-links=$(emit_links | sort -u | sort -t$'\t' -k1,1 -k2,2n)
 bares=$(emit_bare | sort -u | sort -t$'\t' -k1,1 -k2,2n)
+
+# The repo surface's bare refs, promoted to § 2 link rows against THIS repo — because that is precisely
+# what GitHub makes of them where this body is read. A `prose-ok #N` still suppresses one: on this
+# surface the marker means "do not RESOLVE this", which is the same sentence it always meant.
+#
+# A row here can COLLIDE with one emit_links already produced — `[#260](https://…/260)` is a link whose
+# label the bare scan drops, but a body that writes both the bare `#260` and the URL yields the same
+# `owner/repo#num` twice. `sort -u` on the whole row collapses them, so it is resolved once and reported
+# once, exactly as the two overlapping § 2 scans have always been.
+repo_bares=$(emit_bare_rows repo_link_files | sort -u)
+
+# `if`, NOT `[[ -n $repo_bares ]] && while …`. Under `set -e` a command substitution whose LAST command
+# fails aborts the assignment — and with no repo-surface bare refs (the normal case, and the state of
+# the tree today) that `[[ -n … ]]` is simply FALSE, so the substitution exits 1 and the whole script
+# dies. Silently: exit 1, no findings, no banner, which reads exactly like a gate that failed and told
+# you nothing. An `if` with no `else` returns 0. This script may not fail without saying why — it is
+# the defect it exists to prevent, and it does not get to commit it itself.
+repo_bare_links=$(
+  if [[ -n $repo_bares ]]; then
+    while IFS=$'\t' read -r f l n; do
+      [[ -z ${n:-} ]] && continue
+      is_prose "$f" "$n" && continue
+      printf '%s\t%s\t%s\t%s\t%s\n' "$f" "$l" "$DEFAULT_OWNER" "$SELF_REPO" "$n"
+    done <<<"$repo_bares"
+  fi)
+
+links=$( { emit_links; [[ -n $repo_bare_links ]] && printf '%s\n' "$repo_bare_links"; true; } \
+  | sort -u | sort -t$'\t' -k1,1 -k2,2n)
+
+# The bodies the link half actually LOOKED at — materialised ONCE. `link_md_files` shells out to
+# `git diff` under `--changed`, so calling it per marker in the audit below would re-run the diff for
+# every marker in the tree. It is also the honest answer to "did we examine this file?", which is a
+# question the audits have to ask and must not guess at (§ 4).
+link_files_list=$(link_md_files | tr '\0' '\n' | grep -v '^$' || true)
+is_link_scoped() { grep -qxF -- "$1" <<<"$link_files_list"; }
 
 # How many bodies the link half actually LOOKED at — reported, so a scoped run states its subject
 # rather than leaving the reader to infer it from a count of zero.
-n_link_files=$(link_md_files | tr '\0' '\n' | grep -c . || true)
+n_link_files=$(grep -c . <<<"$link_files_list" || true)
 
 # The closed-ok allowlist, normalised to `file<TAB>line<TAB>owner/repo#num` — one row per marker.
 #
@@ -649,21 +1006,6 @@ markers=$( { link_md_files | xargs -0 -r grep -HEon \
     [[ $mref == */* ]] || mref="$DEFAULT_OWNER/$mref"
     printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mref"
   done)
-
-# The prose-ok allowlist, normalised to `file<TAB>line<TAB>num` — one row per marker.
-# WHOLE-TREE, pairing with § 3: no network, no decay, so nothing to scope away from.
-prose_markers=$( { md_files | xargs -0 -r grep -HEon \
-    '<!--[[:space:]]*skill-refs:[[:space:]]*prose-ok[[:space:]]+#[0-9]+' \
-    || true; } | while IFS= read -r m; do
-    [[ -z $m ]] && continue
-    mfile=${m%%:*}; mrest=${m#*:}; mline=${mrest%%:*}; mnum=${m##*#}
-    printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mnum"
-  done)
-
-is_prose() { # file num
-  [[ -n $prose_markers ]] &&
-    awk -F'\t' -v f="$1" -v n="$2" '$1==f && $3==n {found=1} END{exit !found}' <<<"$prose_markers"
-}
 
 is_excused() { # file owner/repo#num
   [[ -n $markers ]] && awk -F'\t' -v f="$1" -v r="$2" '$1==f && $3==r {found=1} END{exit !found}' <<<"$markers"
@@ -795,11 +1137,29 @@ fi
 # A prose-ok marker that excuses nothing is dead config, exactly as a stale closed-ok is: the
 # sentence it guarded was rewritten, or its number changed and the marker kept the old one. Markers
 # are stripped before extraction, so one cannot vouch for itself and this check means something.
+#
+# AUDITED AGAINST BOTH SURFACES' BARE REFS (#698). A `prose-ok #N` in a repo-internal body is a live
+# marker doing a real job — it stops the ref being RESOLVED (§ 3's inversion note) — but its bare ref
+# lands in `repo_bares`, never in `bares`. Auditing against `bares` alone would call every one of them
+# stale and tell the author to drop the marker that is the only thing keeping their line green. A
+# staleness check that fires on live config is worse than none: it teaches people to ignore it.
+#
+# The union is scope-aware and honestly so: under `--changed`, `repo_bares` holds only the bodies this
+# diff touched, so a marker in an UNTOUCHED repo body has nothing to pair with here. That is why the
+# audit is gated on the LINK scope — the same reason the `closed-ok` audit is (it is § 2's question,
+# and it decays like § 2). A tree-wide run audits every marker; the sweep is where that happens.
+all_bares=$(printf '%s\n%s\n' "$bares" "$repo_bares" | grep -v '^[[:space:]]*$' || true)
 if [[ -n $prose_markers ]]; then
   while IFS=$'\t' read -r mfile mline mnum; do
     [[ -z ${mnum:-} ]] && continue
+    # Under a scoped run, a repo body outside the diff was never scanned for bare refs — so we cannot
+    # tell a dead marker from an unexamined one, and "I did not look" must never be reported as "I
+    # found nothing" (§ 4). Skip it; the full sweep audits it.
+    if [[ $link_scope == diff ]] && is_repo_body "$mfile" && ! is_link_scoped "$mfile"; then
+      continue
+    fi
     if ! awk -F'\t' -v f="$mfile" -v n="$mnum" \
-         '$1==f && $3==n {found=1} END{exit !found}' <<<"$bares"; then
+         '$1==f && $3==n {found=1} END{exit !found}' <<<"$all_bares"; then
       report "$mfile" "$mline" "stale prose-ok marker — nothing in this file writes a bare #$mnum; drop it"
     fi
   done <<<"$prose_markers"
@@ -807,9 +1167,20 @@ fi
 
 if ((fail)); then
   echo >&2
-  echo "check-skill-refs: FAILED — every pointer in a published skill must resolve: a [[ref]] to a" >&2
+  # THE PINNED SENTENCE. skill-refs-sweep.yml greps this line to learn "the script reported at least
+  # one finding" — the sentinel that tells a DRIFTED parser (banner, but zero findings scraped) apart
+  # from a clean run. Change it and you must change the grep in .github/workflows/skill-refs-sweep.yml
+  # and the pin in scripts/test-skill-refs-sweep.sh, which is what makes it a contract rather than a
+  # string. It used to say "a published skill"; #698 widened the subject past what ships, so it says
+  # "a skill body" — the noun that is true of BOTH surfaces. A contract sentence that is false of half
+  # its subject is how the two ends drift apart in the first place.
+  echo "check-skill-refs: FAILED — every pointer in a skill body must resolve: a [[ref]] to a" >&2
   echo "  skill, and an issue/PR link to a LIVE issue (or a marked, deliberate citation of history)." >&2
-  echo "  A bare #N is not a pointer at all — qualify it, or mark it as prose." >&2
+  echo "  In a PUBLISHED body a bare #N is not a pointer at all — qualify it, or mark it as prose." >&2
+  echo >&2
+  echo "  A [[ref]] is judged against WHAT ITS READER HAS (§ 0b): the skill manifest for a published" >&2
+  echo "  body, $CLAUDE_SKILLS/ for a repo-internal one. The same ref can resolve in one and dangle" >&2
+  echo "  in the other, and that is correct — check which body you are in before 'fixing' it." >&2
   echo >&2
   echo "  If the body is one of the four FROZEN MIRRORS (game-core, audio, persistence, model-swap)," >&2
   echo "  do NOT fix it here — our bytes must stay identical to FS.GG.Game's. Fix it there and" >&2
@@ -817,10 +1188,23 @@ if ((fail)); then
   exit 1
 fi
 
-n_skills=$(grep -c . <<<"$published")
+# `|| true` on the count, and it is not defensive noise — it is a silent death. `grep -c .` prints `0`
+# and EXITS 1 on empty input, so with an empty publish set (a manifest that lists no skills — legal,
+# and the state of a repo that publishes nothing yet) `set -e` kills the script HERE, after every check
+# has passed: exit 1, no findings, no banner, not one word. The verdict would be a lie and the reason
+# for it invisible. Nothing about counting a subject may decide the gate's verdict.
+n_skills=$(grep -c . <<<"$published" || true)
+n_repo_bodies=$(grep -c . <<<"$repo_body_paths" || true)
+n_repo_vocab=$(grep -c . <<<"$repo_vocab" || true)
 # No "we OWN" hedge any more (#714). Every [[ref]] in every published body — the four mirrors included —
 # is now judged, and every one of them resolves. That sentence could not be said while the stopgap stood.
-echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] resolves."
+#
+# BOTH SUBJECTS ARE NAMED, and neither is allowed to be silent (#698). "Every [[ref]] resolves" was true
+# of the published bodies while 37 refs in the library ones went unexamined — a true sentence that read
+# as a claim about the whole tree. A gate that states a narrower subject than the reader assumes is the
+# `.github#416` shape wearing a green tick, and this script has now been on both ends of it.
+echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] in them resolves against the manifest."
+echo "check-skill-refs: ok — $n_repo_bodies repo-internal body/bodies; every [[ref]] in them resolves against $CLAUDE_SKILLS/ ($n_repo_vocab skills)."
 
 # The link half reports its SUBJECT, not just its verdict. "I found no stale links" and "I did not
 # look at any" are different sentences, and a gate that prints one when it means the other is the

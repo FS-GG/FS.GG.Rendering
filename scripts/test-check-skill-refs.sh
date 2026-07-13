@@ -127,7 +127,12 @@ skill fs-gg-beta <<'MD'
 MD
 run
 expect_rc 0 'clean tree passes'
-expect_out_has 'every [[ref]] resolves' 'says the wiki half resolved'
+expect_out_has 'every [[ref]] in them resolves against the manifest' 'says the wiki half resolved, and against WHICH set'
+# BOTH subjects, or the claim is narrower than the reader will take it for (#698). "Every [[ref]]
+# resolves" was TRUE of the published bodies for a whole generation while 37 refs in the library ones
+# went unexamined — a true sentence that read as a claim about the tree. The green line must name every
+# subject it actually looked at, so a surface that quietly stops being checked cannot hide behind it.
+expect_out_has 'repo-internal body/bodies' 'and names the REPO surface as a subject it examined'
 
 case_start '§1 a bare [[ref]] to a skill this repo does NOT publish fails'
 fixture
@@ -634,7 +639,7 @@ run
 expect_rc 0 'green'
 expect_out_hasnt 'in the frozen mirrors' 'no note stream — the mirrors are CHECKED, not excused'
 expect_out_hasnt 'not ours to fix' 'and no note findings'
-expect_out_has 'every [[ref]] resolves' 'says it plainly: every ref, mirrors included'
+expect_out_has 'every [[ref]] in them resolves' 'says it plainly: every ref, mirrors included'
 
 case_start '§6 the SAME ref outside a mirror still FAILS — the hatch is scoped to the four bodies'
 fixture
@@ -702,6 +707,266 @@ MD
 run
 expect_rc 1 'a bare ref in a mirror is still a hard failure'
 expect_out_has 'bare ref' 'names it as a bare ref, not a note'
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# § 7  THE REPO SURFACE (#698) — the bodies that ship NOWHERE
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# The subject used to be the manifest and nothing else, so 37 refs in `src/*/skill/` and 2 in the
+# authoring note were checked by NOTHING — and one of them was already dead (`[[fsharp-build-
+# orchestration]]`, a skill in no registry, no manifest and no directory anywhere in the org). It
+# survived only because its published TWIN happened to be caught by the manifest-scoped gate; that is
+# luck, and these cases are the gate that replaces it.
+#
+# The load-bearing claim, and the one every case here circles: A `[[ref]]`'S VERDICT IS RELATIVE TO
+# WHAT RESOLVES WHERE ITS READER STANDS. A published body's reader is in a scaffolded product, so the
+# manifest answers. A library body's reader is in THIS repo driving an agent, so `.claude/skills/`
+# answers. The two sets disagree — in membership, and in which BODY a name points at — so a suite that
+# only proved "more files are scanned now" would prove the easy half and miss the design.
+
+case_start '§7 a repo body resolves its refs against .claude/skills/, NOT the manifest'
+# THE case. `fs-gg-ant-design` is a real skill an agent here can invoke, and it is NOT published — the
+# manifest never ships it. Judged against the publish set (the pre-#698 vocabulary) this CORRECT ref is
+# reported dangling, and five of them sit in the library bodies today. A gate that reddens correct work
+# is one people switch off, so the wrong vocabulary is not a stricter gate; it is a broken one.
+fixture
+claude_skill fs-gg-ant-design
+repo_skill Controls <<'MD'
+# Controls
+Apply the tokens per [[fs-gg-ant-design]].
+MD
+run
+expect_rc 0 'a ref to a .claude/skills/ skill the manifest does NOT publish is CORRECT here'
+
+case_start '§7 ...and the converse: PUBLISHED is not enough for a repo body'
+# The other half, and the one that proves the surfaces are not simply UNIONED. A skill the manifest
+# publishes but that no wrapper exposes cannot be invoked by an agent standing here, so the pointer
+# leads nowhere for THIS body's reader — which is the only reader it has.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha — published, but no .claude/skills/ wrapper
+MD
+repo_skill Scene <<'MD'
+# Scene
+See [[fs-gg-alpha]].
+MD
+run
+expect_rc 1 'a manifest-only skill does not resolve for a reader standing in this repo'
+expect_out_has '.claude/skills/' 'and the finding names the vocabulary that judged it'
+
+case_start '§7 the rot that was actually there: a ref to a skill that exists NOWHERE'
+# `[[fsharp-build-orchestration]]`, verbatim, in the body it was verbatim in.
+fixture
+repo_skill Testing <<'MD'
+# Testing
+
+## Related
+- [[fsharp-build-orchestration]] runs the governed targets these helpers back.
+MD
+run
+expect_rc 1 'the dead ref #698 was filed about is now caught'
+expect_out_has 'fsharp-build-orchestration' 'and named'
+
+case_start '§7 the finding tells the author WHICH set failed it, not just that it failed'
+# The same string resolves on one surface and dangles on the other, so "dangling" without a vocabulary
+# reads as a bug in the gate. An author who cannot tell which set answered cannot tell a real dangling
+# ref from a ref they wrote on the wrong surface.
+fixture
+repo_skill Layout <<'MD'
+# Layout
+See [[fs-gg-nowhere]].
+MD
+run
+expect_rc 1 'dangles'
+expect_out_has 'cannot invoke it' 'says what the reader would actually experience'
+expect_out_has '.claude/skills/' 'names the set'
+
+case_start '§7 a published body is STILL judged against the manifest — the surfaces do not bleed'
+# `.claude/skills/` is a superset of the manifest in practice, so a bug that judged EVERYTHING against
+# it would pass every existing case and quietly stop checking the published bodies — green, and wrong.
+fixture
+claude_skill fs-gg-ant-design
+skill fs-gg-alpha <<'MD'
+# alpha
+A published body pointing at a skill that is in .claude/skills/ but is NOT published: [[fs-gg-ant-design]].
+MD
+run
+expect_rc 1 'a product reader has no .claude/skills/, so this dangles where it is READ'
+expect_out_has 'does not publish it' 'and it is the PUBLISH set that says so'
+
+# ── § 7.1  the authoring note, and writing a syntax without invoking it ─────────────────────────
+
+case_start '§7 the README may WRITE [[link]] without INVOKING it — prose-ok [[…]]'
+# The doc that TEACHES the convention has to be able to show its shape. The old script's answer was to
+# declare the README out of subject, which is how its two real refs went unchecked. Reject by default;
+# let the author declare the exception — the answer this script already gives twice.
+fixture
+repo_readme <<'MD'
+# Product skills — authoring notes
+
+<!-- skill-refs: prose-ok [[link]] — the SHAPE of a ref, not a ref -->
+**A `[[link]]` is not an instrument declaration.**
+MD
+run
+expect_rc 0 'the illustration is excused, and the doc can explain itself'
+
+case_start '§7 ...but an UNMARKED illustration still fails — silence is never the default'
+fixture
+repo_readme <<'MD'
+# Product skills — authoring notes
+**A `[[link]]` is not an instrument declaration.**
+MD
+run
+expect_rc 1 'no marker, no exemption'
+expect_out_has 'dangling [[link]]' 'reported like any other unresolvable ref'
+
+case_start '§7 a prose-ok [[…]] marker cannot excuse ITSELF'
+# § 1's scan was a raw `grep` until #698 and never stripped markers — harmless while no marker could
+# contain a `[[…]]`, and a live hole the moment one can. An un-stripped marker IS a `[[ref]]`: it would
+# report the very config written to silence it, and then excuse its own report. Config must not be its
+# own subject. Here the marker names a ref the body does NOT write, so if the marker were scanned it
+# would find its own `[[ghost]]` and call the marker live; it is stale, and must be reported so.
+fixture
+repo_skill Scene <<'MD'
+# Scene
+
+<!-- skill-refs: prose-ok [[ghost]] — nothing in this body writes it -->
+No refs here at all.
+MD
+run
+expect_rc 1 'a marker that excuses nothing is dead config'
+expect_out_has 'stale prose-ok marker' 'and it is reported, not silently believed'
+expect_out_has 'ghost' 'naming the ref it claimed to excuse'
+
+# ── § 7.2  § 3 INVERTS: a bare #N in a repo body is RESOLVED, not rejected ──────────────────────
+# § 3 rejects a bare `#N` because the body MATERIALIZES into a stranger's repo, where GitHub renders it
+# against THEIR tracker. That premise is false of a body that ships nowhere: it is read HERE, and
+# GitHub renders `#N` in it against OUR tracker. The pointer is correct — so rejecting it would fire on
+# correct work, and the gate would be the one people turn off.
+#
+# But silence is not the alternative. The ref still promises a LIVE issue at the other end, which is
+# § 2's question, so it is RESOLVED against this repo instead. The surface goes from zero checking to
+# § 2's full strictness, and each surface gets the verdict its reader can act on.
+
+case_start '§7 a bare #N in a repo body is RESOLVED against this repo, and passes when OPEN'
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' open
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+The remaining gap is tracked in #4242.
+MD
+run
+expect_rc 0 'a bare ref to a LIVE issue of ours is correct in a body that ships nowhere'
+expect_out_hasnt 'bare ref —' 'and it is NOT rejected as a bare ref: that verdict belongs to the other surface'
+
+case_start '§7 ...and FAILS when that issue is CLOSED — as a stale LINK, not as a bare ref'
+# The verdict AND its name matter. "Bare ref — qualify it" would tell the author to fix a form that is
+# already correct here; "stale link" tells them the truth: the issue is closed, repoint or excuse it.
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' closed
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+The remaining gap is tracked in #4242.
+MD
+run
+expect_rc 1 'a closed issue is closed wherever it is read'
+expect_out_has 'stale link' 'and it is reported as § 2 decay, which is what it is'
+expect_out_has 'closed-ok' 'offering the marker that fits an honest citation of history'
+
+case_start '§7 ...and a bare #N pointing at NOTHING dangles'
+fixture
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+See #4242.
+MD
+run
+expect_rc 1 'an issue that does not exist is a dangling pointer, bare or not'
+expect_out_has 'dangling link' 'named for what it is'
+
+case_start '§7 prose-ok #N still works on the repo surface — it suppresses the RESOLUTION'
+# Same marker, same sentence — "this pointer-shaped token is prose" — doing a different job because
+# the default verdict differs. Without it the gate would resolve `#1` against our tracker and report
+# whatever it found there.
+fixture
+repo_skill LineDrawing <<'MD'
+# Line drawing
+
+<!-- skill-refs: prose-ok #1 — the design doc's number-one bug, not issue #1 -->
+Mind the design doc's "#1 LOS bug".
+MD
+run
+expect_rc 0 'the marker stops it being resolved at all'
+# AND IT IS NOT THEN CALLED DEAD FOR IT. The staleness audit pairs each marker against the bare refs it
+# FOUND — but a repo body's bare refs are promoted into the LINK half, never into § 3's list. An audit
+# that consulted § 3's list alone would find nothing to pair with and report every one of these markers
+# stale: "drop it", said of the only thing keeping the author's line green. A staleness check that
+# fires on live config is worse than no check at all — it teaches people to ignore it.
+expect_out_hasnt 'stale prose-ok' 'the marker is doing its job, and is not slandered for it'
+
+case_start '§7 §3 STILL rejects a bare #N in a PUBLISHED body — the inversion is scoped'
+# The premise that moved is "this body is materialized". It did not move for the bodies that are.
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' open
+skill fs-gg-alpha <<'MD'
+# alpha
+The remaining gap is tracked in #4242.
+MD
+run
+expect_rc 1 'a bare ref in a SHIPPED body is wrong by its form, however live the issue is'
+expect_out_has 'bare ref' 'and it is rejected on FORM, not resolved'
+expect_out_has 'MATERIALIZED' 'for the reason that is true only of a shipped body'
+
+# ── § 7.3  the subject, and refusing to run without it ──────────────────────────────────────────
+
+case_start '§7 the gate REFUSES to run with no .claude/skills/ — a missing vocabulary is not "no refs"'
+# The `.github#416` shape, one surface down. With no vocabulary every repo ref dangles — but reporting
+# 37 findings would be a gate so loud it looks broken, and the "fix" would look like deleting the refs.
+# With a TOLERANT reading it would instead pass green over ten unexamined bodies. Neither. Refuse.
+fixture
+rm -rf "$FIX/.claude"
+run
+expect_rc 1 'no vocabulary, no verdict'
+expect_out_has 'cannot be green without its vocabulary' 'and it says exactly that'
+
+case_start '§7 the gate REFUSES to run with no repo bodies — the subject cannot silently vanish'
+fixture
+rm -rf "$FIX/src"
+run
+expect_rc 1 'a subject that has gone missing is not a subject with nothing in it'
+expect_out_has 'repo-internal skill bodies' 'and it names what it went looking for'
+
+case_start '§7 a green run NAMES both subjects — neither surface may pass silently'
+# The sentence that was true and misleading for a whole generation: "every [[ref]] resolves", said
+# while 37 refs went unexamined. A gate that states a narrower subject than its reader assumes is the
+# `.github#416` shape wearing a green tick, and this script has now been on both ends of it.
+fixture
+claude_skill fs-gg-ant-design
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+repo_skill Scene <<'MD'
+# Scene
+See [[fs-gg-ant-design]].
+MD
+run
+expect_rc 0 'green'
+expect_out_has 'skills published' 'names the published subject'
+expect_out_has 'repo-internal body/bodies' 'and names the repo subject'
+expect_out_has '.claude/skills/' 'and the vocabulary it judged the second one against'
+
+case_start '§7 a tree with NO repo bare refs exits 0 WITH output — never a silent exit 1'
+# A regression pin for a real bug in this change, and the ugliest kind. Under `set -o pipefail` a
+# filter loop whose LAST test fails returns 1, which reddens the pipeline it feeds, which aborts the
+# assignment, which `set -e` turns into a bare `exit 1` — no findings, no banner, not one word. It fired
+# on the NORMAL tree (no repo body has a bare `#N`), so the gate died silently on every clean run and
+# every fixture at once. A gate that fails without saying why is the defect this whole script exists to
+# prevent; it does not get to commit it itself.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+MD
+run
+expect_rc 0 'a clean tree with no repo-surface bare refs is green'
+expect_out_has 'check-skill-refs: ok' 'and it SAYS so — an exit code with no words is not a verdict'
 
 # ── summary ─────────────────────────────────────────────────────────────────────────────────────
 harness_summary test-check-skill-refs

@@ -136,7 +136,14 @@ STUB
 
 # The FAILED banner. The sweep step keys `reported=` on this exact sentence, so it is a contract
 # between two files — pinned for real, against the real script, in § 5.
-BANNER='check-skill-refs: FAILED — every pointer in a published skill must resolve: a [[ref]] to a'
+#
+# "a skill body", not "a published skill" (#698). The script's subject grew past what it PUBLISHES —
+# it now also sweeps the library bodies under src/*/skill/ and the authoring note, which ship nowhere
+# and whose refs are judged against `.claude/skills/` instead of the manifest. The banner had to stop
+# saying "published" to stay true, and this pin is what forced the sweep's grep to move with it: § 5
+# runs the REAL script over REAL planted decay, so a banner the workflow can no longer find is a red
+# test rather than a sweep that silently files nothing.
+BANNER='check-skill-refs: FAILED — every pointer in a skill body must resolve: a [[ref]] to a'
 
 sweep_green()   { echo 0 >"$FIX/stub.rc"; printf 'check-skill-refs: ok — every [[ref]] resolves\n' >"$FIX/stub.err"; }
 sweep_findings() { echo 1 >"$FIX/stub.rc"; { cat; printf '%s\n' "$BANNER"; } >"$FIX/stub.err"; }   # findings on stdin
