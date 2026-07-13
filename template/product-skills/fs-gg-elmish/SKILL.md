@@ -197,7 +197,8 @@ responsiveness evidence that **validates pointer and keyboard activation separat
 from screenshot readiness**, and separates routing from update/render/present
 latency. These are the instruments for it. They ship in the package you already
 have, and until now no skill named them — so the rules demanded evidence and
-withheld every means of producing it (#507).
+withheld every means of producing it (FS.GG.Rendering#507).
+<!-- skill-refs: closed-ok FS.GG.Rendering#507 — cited as the issue that NAMED the gap and closed it, not as somewhere to go. Closed is correct; it stays closed. -->
 
 **`ControlsElmish.respondsProofOf` / `captureRespondsProof`** are the only evidence
 class that tells *renders* from *responds*:
