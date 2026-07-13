@@ -1,0 +1,136 @@
+name: Generated-product local feed
+description: >-
+  Pack the framework set at the TEMPLATE'S PIN into a runner-local NuGet feed, and point the machine
+  at it, so a scaffolded product can be restored and built against THE TREE UNDER REVIEW rather than
+  against whatever is published on nuget.org.
+
+  The single definition of that feed (#680). It was written for `release.yml`'s release-only
+  generated-product job and is now shared with `gate.yml`'s PR-time `generated-product-gate`, because
+  the whole point of that gate is to be a faithful proxy for the release lane: two hand-maintained
+  copies of this logic would drift, and the first thing a drift would cost is the gate's ability to
+  predict the release — which is the exact failure #679/#680 are about.
+
+  WHY PACK RATHER THAN RESTORE THE PUBLISHED PIN. Two independent reasons, and each alone is
+  sufficient:
+
+    1. On a RELEASE PR the pin names a version nuget.org does not carry yet (the bump is what CAUSES
+       the publish), so a stock restore fails NU1102 — by construction, on every framework release.
+       That is the #506 trap: a gate that is expected-red at release time is a gate people merge past,
+       and it is blind at the one moment it matters most.
+    2. Restoring the PUBLISHED pin tests the template against the LAST RELEASE, not against this
+       diff. A source change that breaks the scaffolded product would sail through. The lifecycle
+       gate already made this call for the template itself (#452: it installs THIS WORKING TREE's
+       template, never an installed package) — "green, fast, and about the wrong artifact" is worse
+       than no gate at all. Same reasoning, one layer down, for the framework the template consumes.
+
+  So the FS.GG.UI.* axis is hermetic here: it resolves from this feed and nowhere else. Everything
+  else — FSharp.Core, Expecto, FS.GG.Game.Core, FS.GG.Audio.* — still comes from nuget.org, exactly
+  as a real consumer restores. That residual feed dependency is why a job using this action cannot be
+  a REQUIRED check (cadence-map §4b/§5): a nuget.org outage would otherwise wedge every merge.
+
+outputs:
+  pin:
+    description: The framework pin ($(FsGgUiVersion)) the scaffolded product restores.
+    value: ${{ steps.pin.outputs.version }}
+  feed:
+    description: Absolute path of the runner-local feed the framework set was packed into.
+    value: ${{ steps.pack.outputs.feed }}
+
+runs:
+  using: composite
+  steps:
+    # The generated product consumes FS.GG.UI.* as PACKAGES at $(FsGgUiVersion) — the FRAMEWORK pin,
+    # which is DECOUPLED from the template-package release tag (a template-only release ships new
+    # template content over an UNCHANGED framework pin; registry fs-gg-ui-template: version=pin vs
+    # package-version=tag). Pack at the PIN — what the instantiated product actually restores. Packing
+    # at the tag would leave a dead-weight feed the product never touches.
+    - name: Read the framework pin (FsGgUiVersion — what the product restores)
+      id: pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        pin="$(grep -oP '(?<=<FsGgUiVersion>)[^<]+' template/base/Directory.Packages.props)"
+        [[ -n "$pin" ]] || { echo "::error::<FsGgUiVersion> not found in template/base/Directory.Packages.props"; exit 1; }
+        echo "version=$pin" >> "$GITHUB_OUTPUT"
+        echo "Framework pin for the local feed: $pin"
+
+    # THE PACK DELIBERATELY DOES NOT TAKE `--no-restore`. `-p:Version=$PIN` has to be in effect during
+    # restore, because pack converts each ProjectReference into a package dependency at the version the
+    # restore resolved. Packing with `--no-restore` would reuse assets restored at the projects' own
+    # <Version> and emit a coherent set whose INTERNAL dependencies point at the wrong version — a
+    # broken set that every gate here would still call green.
+    #
+    # THE FEED MUST BE REACHABLE FROM THE GENERATED PRODUCT, which is instantiated under `mktemp -d`
+    # (/tmp), not under this repo. `dotnet nuget add source` writes to the NEAREST nuget.config, and
+    # since #186 that is this repo's own pinned `nuget.config` — which declares `<clear />` and maps
+    # every pattern to nuget.org, so the added source would be both invisible to /tmp and excluded by
+    # mapping where it IS visible. That regression stayed latent until it took a publish down (#225):
+    # the product resolved FS.GG.UI.* from nuget.org, found only the previous major, and failed NU1102.
+    #
+    # Write the USER-LEVEL config instead: NuGet applies it whatever directory the restore is rooted
+    # in. Author it WHOLE rather than appending a source, so the mapping is explicit and this does not
+    # depend on whatever the runner image left behind. The mapping also excludes the SDK's implicit
+    # `FSharp/library-packs` source, matching the hermeticity #186 established for the repo.
+    #
+    # This repo's OWN restores are unaffected: its `nuget.config` <clear />s packageSources, which
+    # drops this feed for anything rooted here.
+    - name: Pack the framework set (at the pin) to a runner-local feed
+      id: pack
+      shell: bash
+      env:
+        PIN: ${{ steps.pin.outputs.version }}
+      run: |
+        set -euo pipefail
+        feed="$RUNNER_TEMP/product-local-feed"
+        mkdir -p "$feed"
+        echo "feed=$feed" >> "$GITHUB_OUTPUT"
+
+        dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$PIN" -o "$feed"
+
+        cfg="$HOME/.nuget/NuGet/NuGet.Config"
+        mkdir -p "$(dirname "$cfg")"
+        cat > "$cfg" <<XML
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <packageSources>
+            <clear />
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+            <add key="product-local-feed" value="$feed" />
+          </packageSources>
+          <packageSourceMapping>
+            <packageSource key="product-local-feed">
+              <package pattern="FS.GG.UI" />
+              <package pattern="FS.GG.UI.*" />
+            </packageSource>
+            <packageSource key="nuget.org">
+              <package pattern="*" />
+            </packageSource>
+          </packageSourceMapping>
+        </configuration>
+        XML
+
+        echo "Packed FS.GG.UI.* $PIN to $feed"; ls -1 "$feed"/*.nupkg
+        echo "--- user-level NuGet.Config ---"; cat "$cfg"
+
+    # Fail here, loudly, rather than forty lines deep in an NU1102 dump: the whole point of the feed is
+    # that the product restores the pin FROM IT, so prove the pin is actually in it before we go near a
+    # template. A pack that silently produced a different version is the failure this catches.
+    #
+    # FS.GG.UI.Testing is in this list and must stay: the scaffolded product's test project
+    # PackageReferences it (template/base/tests/Product.Tests), so it is the one package whose absence
+    # would break exactly the thing #680 exists to compile.
+    - name: Assert the local feed carries the pin
+      shell: bash
+      env:
+        PIN: ${{ steps.pin.outputs.version }}
+        FEED: ${{ steps.pack.outputs.feed }}
+      run: |
+        set -euo pipefail
+        for id in FS.GG.UI.Scene FS.GG.UI.SkiaViewer FS.GG.UI.Elmish FS.GG.UI.Testing; do
+          [[ -f "$FEED/$id.$PIN.nupkg" ]] || {
+            echo "::error::$id.$PIN.nupkg is not in the runner-local feed — the generated product cannot restore the pin."
+            ls -1 "$FEED" || true
+            exit 1
+          }
+        done
+        echo "✓ runner-local feed carries the framework set at $PIN"

@@ -713,6 +713,117 @@ jobs:
           path: specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md
           if-no-files-found: warn
 
+  # #680 — THE SCAFFOLDED PRODUCT IS COMPILED ON PULL REQUESTS, not only at publish time.
+  #
+  # `template/base/tests/Product.Tests/**` becomes the generated product's own test suite. Until this
+  # job, the ONLY thing in the repo that ever compiled it was release.yml's release-only
+  # `template-product-tests`. The lifecycle gate above scaffolds every profile × lifecycle and AUDITS
+  # THE EMITTED TREE — it reads files; it never builds them. Package.Tests reads the template as TEXT.
+  # So an uncompilable scaffolded test was green everywhere and detonated at the worst possible moment:
+  # mid-publish, after `release-tags` had already pushed the v0.9.1 tag triple, leaving `main` pinned to
+  # a version that does not exist (#679).
+  #
+  # The rule this repo already believes elsewhere, stated plainly: A GATE THAT ONLY EVER RUNS AT PUBLISH
+  # TIME IS A GATE THAT DISCOVERS ITS FINDINGS AT THE WORST POSSIBLE MOMENT.
+  #
+  # ALL FIVE PROFILES, AND THAT IS NOT GOLD-PLATING — IT IS THE WHOLE GATE (measured, #680). #680
+  # proposed one representative profile per PR to hold the cost down. One profile is NOT ENOUGH, and we
+  # know that because a one-profile gate would have been GREEN over a live break: the two test files are
+  # cut into MUTUALLY EXCLUSIVE `//#if (profile == …)` regions, so each profile compiles DIFFERENT SOURCE.
+  #   * BehaviorTests.fs   → 3 regions: {governed|headless-scene} · {game} · {app|sample-pack}
+  #   * GovernanceTests.fs → 2 regions: {governed|headless-scene} · {the rest}
+  # `app` — the obvious "representative" — touches neither of the governed/headless-scene regions. And a
+  # stray `//#endif` in GovernanceTests.fs (introduced with #436, the same change family that caused
+  # #679) had left BOTH of those profiles UNCOMPILABLE on green `main`; it is fixed in the same PR as
+  # this job, because a gate you cannot turn on green is not a gate. A profile that is not compiled is a
+  # profile that is not gated — the #452 lesson one layer down.
+  #
+  # THE COST ARGUMENT IS DEAD, so do not "optimise" this back to one profile. The pack DOMINATES and is
+  # SHARED: pack once (~40s), then each profile is only an instantiate + build + test (~15-20s). All five
+  # land in ~2min. Note this is deliberately ONE job with a loop, NOT a `strategy.matrix` — a matrix gives
+  # each profile a fresh runner, and each would re-pack the whole solution, paying the dominant cost five
+  # times to buy nothing.
+  #
+  # UNCONDITIONAL — no `paths:` filter, no `if:` (the #452 rule). A lane that only runs when someone
+  # predicted in advance which paths could break it is a lane that reports green on the PR that breaks it
+  # in a way nobody predicted. #679 is the proof: the break arrived through a TEST file, which no
+  # plausible hand-written filter over `src/**` would have caught.
+  #
+  # NOT REQUIRED, AND IT MUST STAY THAT WAY (cadence-map §4b/§5). The product restores its third-party
+  # dependencies (FSharp.Core, Expecto, and Game/Audio on the game+sample-pack profiles) from nuget.org,
+  # and requiring a feed-dependent check takes a dependency on that feed's availability — an outage would
+  # wedge every merge in the repo. Exactly the reasoning that keeps `template-payload-restore-gate` and
+  # `packaged-consumer` non-required, and that let `api-compatibility-gate` be elevated (it can tell a
+  # silent feed apart from a break; this cannot). NOT-REQUIRED IS NOT `continue-on-error` (#216): this
+  # job has none and must not grow one. A red here is the gate reporting what it found.
+  #
+  # The FS.GG.UI.* axis itself is hermetic — packed from THIS TREE at the pin, not restored from
+  # nuget.org — so this job is green on a release PR, where the pin names an unpublished version by
+  # construction. See `.github/actions/product-local-feed` for why that is load-bearing rather than
+  # incidental (#506's trap: a gate that is expected-red at release time is a gate people merge past).
+  generated-product-gate:
+    name: Generated product gate (scaffold every profile, compile and run its tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # Packs FS.GG.UI.* from THIS TREE at the template's pin and points the machine at that feed.
+      # Shared verbatim with release.yml's `template-product-tests`, so the PR gate and the release
+      # lane cannot drift apart — which is the only thing that makes this job a proxy for that one.
+      - name: Pack the framework set to a runner-local feed
+        uses: ./.github/actions/product-local-feed
+
+      # #452's rule, and it applies here for the same reason: install THE TEMPLATE UNDER TEST. Left to
+      # its own devices `dotnet new` would scaffold from whatever FS.GG.UI.Template happens to be on the
+      # machine — auditing a PUBLISHED PACKAGE while reporting a verdict about the tree under review.
+      - name: Install the template under test
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet new install .
+
+      # One loop, one runner, one pack (see the header). `set -euo pipefail` + an explicit per-profile
+      # failure means this fails CLOSED, per #266: "nothing to check" and "checked, and it's fine" must
+      # not share an exit code. `continue` on failure would be a fail-open; we exit non-zero at the end
+      # having named EVERY broken profile, rather than only the first — a caller fixing five profiles
+      # should not need five red runs to see all five.
+      - name: Scaffold every profile, then compile and run its tests
+        shell: bash
+        run: |
+          set -uo pipefail
+          work="$(mktemp -d)"
+          failed=()
+
+          for profile in app governed headless-scene sample-pack game; do
+            echo "::group::profile=$profile"
+            out="$work/$profile/GeneratedProduct"
+            ok=1
+
+            dotnet new fs-gg-ui --name GeneratedProduct --profile "$profile" --output "$out" || ok=0
+            [[ $ok == 1 ]] && { dotnet build "$out" || ok=0; }
+            [[ $ok == 1 ]] && { dotnet test  "$out" || ok=0; }
+
+            echo "::endgroup::"
+            if [[ $ok == 1 ]]; then
+              echo "✓ profile=$profile — scaffolded, compiled, tests passed"
+            else
+              failed+=("$profile")
+              echo "::error::profile=$profile — the SCAFFOLDED PRODUCT failed to build or its tests failed. This is the generated product, not this repo's suites: look in template/base/ (and remember each profile compiles a DIFFERENT slice of the //#if regions in tests/Product.Tests, so a break can be invisible on the other four)."
+            fi
+          done
+
+          if (( ${#failed[@]} > 0 )); then
+            echo "::error::generated-product gate FAILED for: ${failed[*]}"
+            exit 1
+          fi
+          echo "✓ all five profiles scaffolded, compiled, and passed their tests"
+
   # ---------------------------------------------------------------------------------------------
   # Lock-range coherence (FS-GG/.github#495, adopted per #521; ADR-0006, epic #266).
   #
