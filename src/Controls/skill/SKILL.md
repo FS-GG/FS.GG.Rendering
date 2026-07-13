@@ -255,20 +255,20 @@ because the fill lands in the control's `Children`, not a parallel channel.
 
 ## Build Commands
 
-Run `./fake.sh build -t Dev` for normal development and
-`./fake.sh build -t VerifyPreflight` before broad verification. Run
-`./fake.sh build -t Verify` before readiness sign-off. Use `./fake.sh build -t
-PackLocal` and `./fake.sh build -t PackageSurfaceCheck` when changing `.fsi`
-files. If `Verify` or `Ci` reports `environment-failure`, focused gates are
-diagnostic only; final readiness needs a later healthy broad pass in a fresh
-shell, fresh container, or CI runner.
+Run `dotnet build FS.GG.Rendering.slnx` while developing, and
+`DISPLAY=:1 dotnet test FS.GG.Rendering.slnx -c Release` for the broad pass before readiness
+sign-off. When changing `.fsi` files, regenerate the public-surface baseline with
+`dotnet fsi scripts/refresh-surface-baselines.fsx` and commit it — the gate re-runs the generator
+and fails on any diff — then run `dotnet test tests/Package.Tests/Package.Tests.fsproj`, which is
+where the capability-catalog, public-surface and local-pack rules actually live.
+
+If a GL-dependent test reports an environment failure, the focused run is diagnostic only; final
+readiness needs a later healthy broad pass in a fresh shell, fresh container, or CI runner.
 
 ## Test Commands
 
-Run `dotnet test tests/Controls.Tests/Controls.Tests.fsproj` for focused
-coverage. The governed targets are `./fake.sh build -t ControlsCatalogCheck`,
-`./fake.sh build -t ControlsInteractionCheck`, and
-`./fake.sh build -t ControlsRenderingCheck`.
+Run `dotnet test tests/Controls.Tests/Controls.Tests.fsproj` for focused coverage — the catalog,
+interaction and rendering rules are Expecto tests inside it, not separate build targets.
 
 ## Evidence
 

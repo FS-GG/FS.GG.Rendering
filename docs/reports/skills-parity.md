@@ -23,20 +23,20 @@ Wrappers: `65`
 ## API Symbol Coverage
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
-| fs-gg-audio | 4 | 4 | 0 | 0 |
+| fs-gg-audio | 6 | 6 | 0 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
-| fs-gg-elmish | 10 | 10 | 0 | 0 |
+| fs-gg-elmish | 18 | 18 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
 | fs-gg-persistence | 5 | 5 | 0 | 0 |
 | fs-gg-samples | 2 | 2 | 0 | 0 |
-| fs-gg-scene | 12 | 12 | 0 | 0 |
-| fs-gg-skiaviewer | 4 | 4 | 0 | 0 |
+| fs-gg-scene | 14 | 14 | 0 | 0 |
+| fs-gg-skiaviewer | 5 | 5 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
-| fs-gg-testing | 7 | 7 | 0 | 0 |
-| fs-gg-ui-widgets | 41 | 41 | 0 | 0 |
+| fs-gg-testing | 12 | 12 | 0 | 0 |
+| fs-gg-ui-widgets | 44 | 44 | 0 | 0 |
 
 ## Guarded Theme Coverage
 | Theme | Scoped | Resolved | Dangling | Unnamed |

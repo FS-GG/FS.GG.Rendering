@@ -27,11 +27,63 @@ let private envelope =
       Slot = slot
       Payload = SavePayload "{score:42}" }
 
+type private Msg =
+    | RequestSave
+    | SaveAnswered of PersistenceOutcome
+
+type private Model = { Saves: int }
+
+let private persistenceHost: GeneratedAppHost<Model, Msg> =
+    { Init = fun () -> { Saves = 0 }, []
+      Update =
+        fun msg model ->
+            match msg with
+            | RequestSave -> model, [ Persist [ Persistence.save envelope ] ]
+            | SaveAnswered _ -> { model with Saves = model.Saves + 1 }, []
+      View = fun model -> Text((0.0, 0.0), $"saves {model.Saves}", { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy })
+      MapKey = fun _ _ -> None
+      Tick = fun _ -> None
+      Diagnostics = Viewer.defaultDiagnostics }
+
 [<Tests>]
 let issue535PersistenceSeamTests =
     testList
         "Issue535 persistence host seam"
         [
+          // The PUBLIC entry point, not just the internal fold above. `runAppWithPersistence` is what a
+          // product actually calls and what `fs-gg-skiaviewer` documents, and nothing exercised it — a
+          // documented seam no test calls is precisely the "may be dead" shape this epic exists to catch.
+          // It cannot open a window headlessly (`PersistentWindow` is false), so what is assertable here
+          // is the contract that holds on EVERY host: it fails exactly as `runApp` does, and a launch that
+          // never happened touches nobody's disk.
+          test "runAppWithPersistence never reaches the sink on a host that cannot open a window" {
+              let written = List<PersistenceEffect>()
+
+              if Viewer.runtimeCapability().PersistentWindow then
+                  skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+              else
+                  let options =
+                      { Title = "Product"
+                        InitialSize = { Width = 640; Height = 480 }
+                        PresentMode = ViewerPresentMode.OffscreenReadback
+                        FrameRateCap = None
+                        LogicalSize = None }
+
+                  let sink batch =
+                      written.AddRange batch
+                      batch |> List.map (fun e -> PersistenceOutcome.Failed(e, "no host"))
+
+                  match Viewer.runAppWithPersistence options sink (SaveAnswered >> Some) persistenceHost with
+                  | Result.Ok _ -> failtest "an unsupported host cannot report a successful launch"
+                  | Result.Error failure ->
+                      Expect.equal
+                          failure.Classification
+                          UnsupportedEnvironment
+                          "runAppWithPersistence classifies an unsupported host exactly as runApp does"
+
+                  Expect.isEmpty written "no save is written when no window ever opened"
+          }
+
           // THE BUG, DIRECTLY. A `Persist` batch must REACH a sink. If this fails, a product's save
           // requests are dropped on the floor by the framework and nothing anywhere says so.
           test "a Persist batch reaches the sink, in dispatch order" {

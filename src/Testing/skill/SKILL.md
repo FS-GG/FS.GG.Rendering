@@ -36,11 +36,16 @@ When changing this area:
 
 ## Build Commands
 
-Run `./fake.sh build -t CapabilityCheck`, `./fake.sh build -t PackageSurfaceCheck`, and `./fake.sh build -t PackLocal`.
+Run `dotnet build FS.GG.Rendering.slnx`. The capability-catalog, public-surface and local-pack
+checks are Expecto tests, not build targets — `dotnet test tests/Package.Tests/Package.Tests.fsproj`
+covers all three. After an `.fsi` change, regenerate the baseline with
+`dotnet fsi scripts/refresh-surface-baselines.fsx` and commit it: the gate re-runs the generator
+and fails on any diff.
 
 ## Test Commands
 
-Run `dotnet test tests/Testing.Tests/Testing.Tests.fsproj` and `./fake.sh build -t GeneratedProductCheck`.
+Run `dotnet test tests/Testing.Tests/Testing.Tests.fsproj` and
+`dotnet test tests/Package.Tests/Package.Tests.fsproj` (generated-product and package validation).
 
 ## Evidence
 
@@ -126,7 +131,6 @@ rather than hard-failing the phase.
 ## Related
 
 - [[fs-gg-scene]] supplies the `LayoutEvidenceReport` types these helpers validate.
-- [[fsharp-build-orchestration]] runs the governed targets these helpers back.
 - [[fs-gg-ui-widgets]] produces retained inspection artifacts through
   `ControlInspection.inspectRetained`.
 

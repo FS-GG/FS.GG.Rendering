@@ -574,14 +574,20 @@ let behaviorTests =
             // discard audio.) So compare the RENDER half — the part SkiaViewer draws, and the part
             // this test is actually about — rather than the raw list length, which would now differ
             // by exactly the cue batch and turn a correctly-wired seam into a red test.
-            let renderEffects effects =
-                effects |> List.filter (function RenderScene _ -> true | _ -> false)
+            // Compare what `RenderScene` CARRIES, not the effects as values: `ViewerEffect` has no
+            // structural equality. `ViewerDiagnosticsOptions.Sink` is a function, and it reaches the DU
+            // through `StartBoundedRun of ViewerRunRequest`, so `Expect.equal` over a `ViewerEffect list`
+            // does not compile (FS0001) — and the generated product is only ever compiled by the
+            // release-only job, so it failed nowhere until it failed the release (#679). `SceneNode` has
+            // equality, and it is the payload this assertion was always about.
+            let renderedScenes effects =
+                effects |> List.choose (function RenderScene scene -> Some scene | _ -> None)
 
             Expect.equal
-                (renderEffects hostViewerEffects)
-                (renderEffects viewerEffects)
+                (renderedScenes hostViewerEffects)
+                (renderedScenes viewerEffects)
                 "generated host returns the boundary's render effects to SkiaViewer, unchanged"
-            Expect.isNonEmpty (renderEffects hostViewerEffects) "generated host returns render effects to SkiaViewer"
+            Expect.isNonEmpty (renderedScenes hostViewerEffects) "generated host returns render effects to SkiaViewer"
 
             // ...and nothing ELSE. Comparing only the render half would stop noticing a host that
             // emitted a stray effect — a duplicated `PlayAudio` (every sound played twice, if a future

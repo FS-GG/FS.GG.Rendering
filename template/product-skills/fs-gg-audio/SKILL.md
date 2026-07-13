@@ -18,8 +18,11 @@ skill covers requesting sound and proving what was requested.
 This skill materializes for the `app`, `game`, and `sample-pack` profiles — every profile that opens
 a viewer window, and so every profile that can make a sound (FS.GG.Rendering#436). It is **not** a
 game-only capability: a Controls app wants a click, a page turn, a save chime, and "every game with a
-menu" was the motivating case for giving the Controls host family an audio sink at all (#429). The
-`headless-scene` and `governed` profiles launch no viewer and get neither the skill nor the packages.
+menu" was the motivating case for giving the Controls host family an audio sink at all
+(FS.GG.Rendering#429). The `headless-scene` and `governed` profiles launch no viewer and get neither
+the skill nor the packages.
+<!-- skill-refs: closed-ok FS.GG.Rendering#436 — cited as the issue that WIDENED the profile set to `app`, not as somewhere to go. Closed is correct; it stays closed. -->
+<!-- skill-refs: closed-ok FS.GG.Rendering#429 — cited as the issue that gave the Controls family an audio sink, not as somewhere to go. Closed is correct; it stays closed. -->
 
 ## Public Contract
 
@@ -109,6 +112,10 @@ let evidence =
 - **Expecting actual sound in a headless test.** The record-only interpreter yields the *requested*
   values, and the device backend degrades to a null/record path with no hardware. Assert on
   `AudioEvidence.Requested`, not on audio output.
+- **Expecting the initial model to make a sound.** It makes no *transition*, so `forTransition` is
+  never called for it and anything the initial state implies — a restored volume, a menu track — is
+  silently never requested. Handle it under `Started`; see
+  [`Started` — the initial model makes no transition](#started--the-initial-model-makes-no-transition).
 
 ## Build Commands
 
@@ -131,7 +138,8 @@ product's `readiness/` paths. Do not copy framework readiness reports into the p
 interpreter pull in no viewer, layout, widget, or rendering machinery. The rest of the component sits
 behind that same edge. Keep device work out of `update` regardless of which piece you reach for.
 
-The four packages are **not all on every profile** — check before you `open` one (#436):
+The four packages are **not all on every profile** — check before you `open` one
+(FS.GG.Rendering#436):
 
 | Package | What it is | Profiles |
 | --- | --- | --- |
@@ -155,11 +163,14 @@ requests, and `Audio.interpret` them for evidence in tests; at runtime the host 
 through `FS.GG.Audio.Host`, with no change to your `update`.
 
 The seam is real and the scaffold ships it wired (FS.GG.Rendering#245). Two files carry it:
+<!-- skill-refs: closed-ok FS.GG.Rendering#245 — cited as the issue that WIRED the seam, not as somewhere to go. Closed is correct; it stays closed. -->
+
 
 - **`src/<ProductDir>/AudioCues.fs`** — *yours*. `forTransition : Msg -> Model -> Model -> AudioEffect list`
   is the one place the product decides what to play. Pure: a function of the message and the
   before/after model. Rewrite it when you swap the model; it names your `Msg` cases.
-- **`src/<ProductDir>/Program.fs`** — *durable*. It creates a backend once and hands the viewer a sink:
+- **`src/<ProductDir>/Program.fs`** — *durable*. It creates a backend once and builds the sink the
+  viewer's launcher takes:
 
 ```fsharp
 open FS.GG.Audio.Host
@@ -173,29 +184,84 @@ use backend = OpenAlBackend.create AudioCues.resolver
 let audioSink = Audio.play backend
 ```
 
+The entry point that *accepts* that sink differs by profile — see
+[the launch entry point is per family](#the-launch-entry-point-is-per-family--take-the-one-your-profile-launches-with)
+below.
+
+### `Started` — the initial model makes no transition
+
+`forTransition` is a function of a **transition**, and the initial model does not make one: it comes
+out of `initialModel`, and nothing is ever dispatched into it. So any sound the initial state
+*implies* is never requested. That is a hole in the pattern rather than a bug in a function, and it
+bites the moment you **load** state instead of transitioning into it.
+
+Load the player's saved volume in `initialModel` and the model is correct — the setting genuinely
+*is* loaded — and the mixer is never told, because no transition ever carried it there. Nothing
+catches this: no type is wrong, and a test that asserts on the model **passes**, because from inside
+the model a restored volume the mixer never heard is indistinguishable from one that was applied. It
+reaches the player as *turn the music down, restart, and get full-volume music from a settings screen
+that correctly reports it as quiet*. A save game, a restored window, a resumed session, a replayed
+checkpoint — anything that enters the model through a door a transition-shaped seam is not watching
+has this same shape.
+
+`Started` is that door, and the scaffold ships it wired: the generated host dispatches it from `Init`
+as `AudioCues.forTransition Started m m` — the **same** function `Update` calls, with the initial
+model on both sides, so there is no separate startup-cue path to keep in sync. Put whatever the
+initial state implies under it:
+
+```fsharp
+let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
+    match msg with
+    // The initial model is LOADED, not transitioned into, so `Started` is the only chance state that
+    // arrived that way has to reach the mixer: a restored volume, a menu track, a resumed session.
+    | Started ->
+        [ Audio.setMasterVolume next.Settings.Volume
+          Audio.playMusic (TrackId "menu") true ]
+    | Fired -> [ Audio.playSfx (SoundId "fire") 0.8 ]
+```
+
+Assert it **at the sink, not at the model**: the only test that catches this class asks what the
+mixer was *told*, not what the model *holds* — which is exactly what `GeneratedAppHost.audioRequests`
+(below) hands you. [[fs-gg-rendering:fs-gg-testing]] works the case end to end.
+
 ### The launch entry point is per FAMILY — take the one your profile launches with
 
 The sink is the same value everywhere; only the entry point that accepts it differs. Reaching for the
 game family's function on a Controls product (or vice versa) will not type-check, so this is the table
-to read before you wire anything (FS.GG.Rendering#429, #436):
+to read before you wire anything (FS.GG.Rendering#429, FS.GG.Rendering#436):
 
 | Profile | Host record | Silent (discards audio) | **With sound** |
 | --- | --- | --- | --- |
 | `app` | `interactiveHost` | `ControlsElmish.runInteractiveApp` | **`ControlsElmish.runInteractiveAppWithAudio`** |
 | `game`, `sample-pack` | `generatedHost` | `Viewer.runApp` | **`Viewer.runAppWithAudio`** |
 
-```fsharp
-// app (Controls family) — pointer-aware host
-ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+Each takes the sink **between** `viewerOptions` and your host record, and each has a **silent** twin
+that is the same call with that argument left out. Take one line: the family you scaffolded with, and —
+all but always — the `*WithAudio` one.
 
-// game / sample-pack — keyboard host
-Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+```fsharp
+// `app` — the Controls family. Host record: `interactiveHost`.
+let appOutcome       = ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+let appSilentOutcome = ControlsElmish.runInteractiveApp          viewerOptions           interactiveHost
+
+// `game`, `sample-pack` — the viewer family. Host record: `generatedHost`.
+let gameOutcome       = Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+let gameSilentOutcome = Viewer.runApp          viewerOptions           generatedHost
 ```
 
-Each has a window-behavior sibling that takes the parsed `--window-*` request as its second argument:
-`ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio` and
-`Viewer.runAppWithWindowBehaviorAndAudio`. The scaffold's `Program.fs` already picks between the two
-by whether a window flag was supplied — you should not need to touch it.
+All four return `Result<ViewerLaunchOutcome, ViewerRunFailure>`, so a failed launch is an `Error`
+**value** rather than an exception — `ViewerRunFailure` names the stage it blocked at, and that stage is
+not always an early one (`WindowCreation`, but also `FirstFrameRender`, `ControlledExit`,
+`ArtifactWrite`). Do not read `Ok` as *a window appeared*, either: `ViewerLaunchOutcome` is a **record
+of what actually happened** — `WindowOpened`, `FirstFramePresented`, `CloseReason` — so the run that
+reports itself is the thing to ask, not the `Result` tag. Neither type is audio-specific: a `*WithAudio`
+launcher returns exactly what its silent twin does, which is why the block above can bind all four the
+same way.
+
+Each has a window-behavior sibling — `ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio` and
+`Viewer.runAppWithWindowBehaviorAndAudio` — which slots the parsed `--window-*` request in ahead of
+the sink, so the sink becomes the third argument rather than the second. The scaffold's `Program.fs`
+already picks between the two by whether a window flag was supplied — you should not need to touch it.
 
 These are not forks of the loop. Each `*WithAudio` entry point is the *same* message → update →
 retained-step code path as its silent twin with the terminal viewer launcher swapped, so what you hear
@@ -210,10 +276,10 @@ sound **without editing the host**: add a case to `AudioCues.forTransition` and 
 an id with no file resolves to `None`, which the backend records as a no-op rather than throwing. So a
 product with no assets yet still runs, and still requests the right sounds.
 
-Two escape hatches you rarely need. The silent entry points in the table above still exist and simply
-**discard** audio — use one when a product should make no sound. And `GeneratedAppHost.audioRequests :
-ViewerEffect list -> AudioEffect list` flattens a frame's batches in dispatch order, so a test can
-assert what was requested with no window and no device:
+Two escape hatches you rarely need. The silent entry points — the second line of each family in the
+launcher block above — simply **discard** audio: use one when a product should make no sound at all.
+And `GeneratedAppHost.audioRequests : ViewerEffect list -> AudioEffect list` flattens a frame's batches
+in dispatch order, so a test can assert what was requested with no window and no device:
 
 ```fsharp
 GeneratedAppHost.dispatchKey host keyEvent model
@@ -235,7 +301,7 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation half of a game product; audio requests come from the same `update`.
+- [[fs-gg-game:fs-gg-game-core]] — the simulation half of a game product; audio requests come from the same `update`.
 - [[fs-gg-rendering:fs-gg-skiaviewer]] — the host window; audio's own device backend lives in `FS.GG.Audio.Host`.
 - [[fs-gg-rendering:fs-gg-keyboard-input]] — map input to the `Msg` values whose `update` requests sound.
 - [[fs-gg-rendering:fs-gg-scene]] — the visual half; audio and scene are both effects requested from `update`.

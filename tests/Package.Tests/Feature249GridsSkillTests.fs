@@ -9,6 +9,7 @@ module Feature249GridsSkillTests
 // list the helper as consumer-owned replaceable source (US1/US2/US3).
 
 open System.IO
+open System.Text.RegularExpressions
 open System.Text.Json
 open Expecto
 open FS.GG.TestSupport
@@ -132,6 +133,14 @@ let feature249GridsSkillTests =
           // ---- US3: swap-guidance surfaces list the helper as consumer-owned replaceable source ----
           test "model-swap and scaffold-map classify Grids.fs as replaceable/adaptable" {
               Expect.stringContains modelSwapBody "Grids.fs" "model-swap lists the grid-parts helper"
-              Expect.stringContains modelSwapBody "[[fs-gg-grids]]" "model-swap links the grids skill"
+              // OWNER-AGNOSTIC, and it must be (#714). This body is a FROZEN MIRROR of FS.GG.Game's, and
+              // Game now QUALIFIES every ref in it — `[[fs-gg-game:fs-gg-grids]]` — because the same bytes are
+              // judged by both repos and a bare ref resolves in exactly one publish set (Game#279). Pinning
+              // the bare spelling asserted a CONVENTION we do not own, in a body we may not edit, so it broke
+              // the moment the owner re-qualified. What this test actually means is "the body LINKS that
+              // skill", so that is what it now asks — with or without an owner prefix.
+              Expect.isTrue
+                  (Regex.IsMatch(modelSwapBody, @"\[\[(?:[a-z][a-z-]*:)?fs\-gg\-grids\]\]"))
+                  "model-swap links the grids skill (bare or owner-qualified)"
               Expect.stringContains scaffoldMap "Grids.fs" "scaffold-map classifies the grid-parts helper"
           } ]

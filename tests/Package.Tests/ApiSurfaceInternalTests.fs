@@ -22,9 +22,10 @@ module ApiSurfaceInternalTests
 // `InternalsVisibleTo` seams that Controls.Tests / Elmish.Tests reach, and an `.fsi` that simply
 // omits a value makes it PRIVATE to its implementation file rather than internal to the assembly, so
 // deleting them at the source would break the tests that legitimately use them. The mirror is
-// therefore its original MINUS the internals — not a byte copy — and M-MIR
-// (`ApiSurfaceMirrorTests` / `ApiSurfaceMirrorCoherenceTests`, `stripInternalDeclarations`) compares
-// it that way.
+// therefore its original MINUS the internals — not a byte copy — and M-MIR (`ApiSurfaceMirrorTests`,
+// `stripInternalDeclarations`) compares it that way. (M-MIR used to be named here alongside a PR-time
+// twin, `ApiSurfaceMirrorCoherenceTests`; #613 retired it — this project has been on the PR gate since
+// #540, so the rule already fires there at its source.)
 //
 // WHY NOT S-DOC. `SurfaceDocCoverageTests`' `publicValRegex` excludes `internal` ON PURPOSE, and that
 // exclusion must stay. Admitting internals there would let a leak be LAUNDERED into "documented" by

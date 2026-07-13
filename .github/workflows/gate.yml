@@ -121,9 +121,22 @@ jobs:
       # rule out of Package.Tests for exactly this reason).
       #
       # The release checks do NOT leak in, because they were never held out by the SOLUTION — they are
-      # deferred by their own env flags, which only release.yml sets (FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE,
-      # FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE). The split is by TIMING and it lives in the code, where the
-      # author writing the rule can see it. Membership costs this gate ~4s.
+      # deferred by their own env flag, which only release.yml sets: FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE
+      # (release.yml:63; read by tests/Package.Tests, which says so in Tests.fs:15). The split is by
+      # TIMING and it lives in the code, where the author writing the rule can see it. Membership costs
+      # this gate ~4s.
+      #
+      # This used to name a second flag, FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE, and that was FALSE (#635):
+      # release.yml never sets it, THIS file does (in `template-payload-restore-gate` below), and no test
+      # in Package.Tests reads it — it gates a script, `validate-template-payload-pins.fsx`, and has
+      # nothing to do with deferring a Package.Tests suite.
+      #
+      # Worth spelling out rather than quietly deleting, because of what the sentence is FOR: it exists to
+      # reassure a reader that requiring Package.Tests here is safe. Offering a false fact as proof of a
+      # true claim is the worst possible way to be wrong — a reader who checks it finds the flag set in
+      # this very file, concludes the reasoning is broken, and either "fixes" a non-problem or stops
+      # trusting the comment. #613 is what that costs: 15 tests deleted on the strength of a header that
+      # nobody had re-checked.
       # --no-restore: restore already happened in the locked step above (FR-002, GR3) — exactly once.
       - name: Build solution (net10.0)
         run: dotnet build FS.GG.Rendering.slnx -c Debug --no-restore
@@ -425,13 +438,22 @@ jobs:
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
-  # "ADVISORY" MEANS NOT-REQUIRED, NOT continue-on-error (#216). This job has NO `continue-on-error`
-  # and must not grow one. Advisory is a statement about branch protection — this job's context is
-  # not in the required set, so a red here informs a merge rather than blocking one. It is NOT a
-  # statement that the job may report success when it failed. `continue-on-error: true` would paint
-  # the check green whatever it found, which is the green-by-omission class this gate exists to
-  # detect, and would make the elevation below meaningless. The contradiction #216 named — "advisory"
-  # prose next to a job that reddens the run — resolves in favour of the job: it should redden.
+  # THIS JOB IS REQUIRED (ADR-0103), AND THE ELEVATION HAS HAPPENED (#618). `API compatibility gate
+  # (breaking-change → SemVer major)` — the string in this job's `name:` — is in branch protection's
+  # required-contexts set on `main`. A red here does NOT inform a merge; it BLOCKS every merge in the
+  # repo until it is green. Everything below that reads as "advisory", "not required yet", or "elevation
+  # is a one-line change" was written before that happened and has been corrected in place; if you meet
+  # such a sentence anywhere else, the branch-protection API is the source of truth, not the prose.
+  #
+  # That is the point of the gate and it is also its hazard, so it is worth saying plainly: THE COST OF A
+  # RED HERE IS THE WHOLE REPO. It must never be red on `main`, and a change that reddens it must carry
+  # its own discharge (a published SemVer major, or a re-baseline) in the SAME PR — because the only PR
+  # that could fix it is the one that broke it, and that is a deadlock, not a merge conflict. #618 is the
+  # cross-repo warning about exactly this shape; see the ADR-0032 note below.
+  #
+  # NO `continue-on-error`, AND IT MUST NOT GROW ONE (#216). That would paint the check green whatever it
+  # found — the green-by-omission class this gate exists to detect. "Advisory" was only ever a statement
+  # about branch protection, never a licence for the job to report success when it failed.
   #
   # ENFORCING AT THE WORKFLOW LEVEL (FS-GG/.github#20 resolved): a SEPARATE job (Package Validation
   # stays OFF in the normal build/release, so the required `gate` job above is unaffected). The
@@ -450,29 +472,43 @@ jobs:
   # split out as FeedUnavailable so ADR-0101's bound still holds (requiring this job takes a
   # dependency on the feed, and a feed outage must not wedge the repo).
   #
-  # WHY NOT A REQUIRED CHECK YET (#219, ADR-0101). Not because the detector is weak — it is a sound
-  # hard gate — but because it was RED ON `main` AS OF 2026-07-09, and a required check that is red
-  # on the base branch wedges every merge in the repo. Three packables carried public-API breaks that
-  # no published major had discharged: FS.GG.UI.Controls (`CustomControlDefinition<'msg>` lost its
-  # type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved out of the `StyleResolver` module,
-  # and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign (which re-exports that policy).
-  # The gate is doing its job: those breaks force the next FS.GG.UI release to be a SemVer major.
+  # HOW IT BECAME REQUIRED, since the history is the argument. It was RED on `main` as of 2026-07-09:
+  # three packables carried public-API breaks no published major had discharged — FS.GG.UI.Controls
+  # (`CustomControlDefinition<'msg>` lost its type parameter), FS.GG.UI.DesignSystem (`IntentPolicy` moved
+  # out of the `StyleResolver` module, and `Theme` lost `IComparable`), and FS.GG.UI.Themes.AntDesign
+  # (which re-exports that policy). The gate was doing its job. #225 cut the major that discharged them,
+  # it published, the job went green on `main`, and only THEN was the context added to the required set —
+  # because a required check that is red on the base branch wedges the repo, which is the same trap in a
+  # different coat.
   #
-  # THAT SENTENCE HAS AN EXPIRY. #225 cut `0.4.0-preview.1` to discharge exactly those three; this
-  # job goes green the moment that major is PUBLISHED to the feed (the cut alone is not enough — the
-  # baseline is read from the feed, not from the tree). Do not read the paragraph above as current
-  # state. The live answer is one line: the `summary:` line in this job's log, which now also reports
-  # how many packables were actually `compared`.
+  # DO NOT RE-DERIVE THAT RED FROM FOLKLORE. Until 2026-07-09 both this comment and ADR-0100 blamed the
+  # `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK and Audio appears in
+  # none of the CP#### lines. The run log is the source of truth; read it before asserting a cause.
   #
-  # DO NOT re-derive that red from folklore. Until 2026-07-09 both this comment and ADR-0100 blamed
-  # the `FS.GG.UI.Canvas.Audio` removal from specs/252 — but `FS.GG.UI.Canvas` reports OK, and Audio
-  # appears in none of the CP#### lines. The run log is the source of truth; read it before
-  # asserting a cause.
+  # THE LIVE ANSWER IS ONE LINE, and it is the only thing worth trusting here:
   #
-  # ELEVATION IS A ONE-LINE CHANGE, on ONE precondition: this job goes green on `main` (i.e. the
-  # major that discharges the three breaks is published to the feed). Then add the context named by
-  # this job's `name:` to branch protection's required set — cadence-map §5 already authorizes it
-  # and lists the exact string. No workflow or script change is needed.
+  #   summary: OK=17  BREAK=0  NoBaselineYet=0  Indeterminate=0  FeedUnavailable=0  (total 17, compared 17)
+  #
+  # `compared` is the number that matters. A green with `compared 0` is a gate that ran and asked nothing
+  # — check it before you believe the check.
+  #
+  # ADR-0032 DOES NOT DEADLOCK THIS REPO, and the reason is worth writing down because the org's
+  # blast-radius table said it would (#618, FS-GG/FS.GG.SDD#384). The predicted trap: ADR-0032 moves
+  # FSharp.Core off the SDK's `library-packs` and onto nuget.org, the two copies carry the same VERSION but
+  # different BYTES and different nullable metadata, so every assembly built after the switch differs — as
+  # ApiCompat sees it — from a baseline published before it. CP0002 on a type nobody touched, on a REQUIRED
+  # gate, fixable only by the PR that caused it. SDD sat merge-frozen on precisely that.
+  #
+  # Rendering is immune, and not by luck: it disabled the implicit library-packs source on 2026-07-09
+  # (#186/#214, `Directory.Build.local.props`), and cut fs-gg-ui 0.9.0 on 2026-07-11 — so THE BASELINE THIS
+  # GATE COMPARES AGAINST WAS ITSELF BUILT FROM NUGET.ORG'S FSharp.Core. There is no pre/post boundary to
+  # straddle. The 2026-07-12 shared-config sync (#571) set the same property a second time and changed
+  # nothing about what restore resolves. Confirmed, not assumed: with the switch on and the baseline at
+  # 0.9.0, this gate reports `Indeterminate=0 … compared 17` and zero CP0002s.
+  #
+  # So the precondition for the deadlock is NOT "adopting ADR-0032". It is "adopting ADR-0032 while your
+  # published baseline was built against the SDK's FSharp.Core." A repo whose baseline predates its own
+  # switch is the one at risk. Rendering has no such baseline.
   #
   # The baseline this compares against is each package's LATEST published feed version, computed as
   # a SemVer max — see the `latest_version` note in scripts/apicompat-check.sh for why it must never
@@ -677,6 +713,127 @@ jobs:
           path: specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md
           if-no-files-found: warn
 
+  # #680 — THE SCAFFOLDED PRODUCT IS COMPILED ON PULL REQUESTS, not only at publish time.
+  #
+  # `template/base/tests/Product.Tests/**` becomes the generated product's own test suite. Until this
+  # job, the ONLY thing in the repo that ever compiled it was release.yml's release-only
+  # `template-product-tests`. The lifecycle gate above scaffolds every profile × lifecycle and AUDITS
+  # THE EMITTED TREE — it reads files; it never builds them. Package.Tests reads the template as TEXT.
+  # So an uncompilable scaffolded test was green everywhere and detonated at the worst possible moment:
+  # mid-publish, after `release-tags` had already pushed the v0.9.1 tag triple, leaving `main` pinned to
+  # a version that does not exist (#679).
+  #
+  # The rule this repo already believes elsewhere, stated plainly: A GATE THAT ONLY EVER RUNS AT PUBLISH
+  # TIME IS A GATE THAT DISCOVERS ITS FINDINGS AT THE WORST POSSIBLE MOMENT.
+  #
+  # ALL FIVE PROFILES, AND THAT IS NOT GOLD-PLATING — IT IS THE WHOLE GATE (measured, #680). #680
+  # proposed one representative profile per PR to hold the cost down. One profile is NOT ENOUGH, and we
+  # know that because a one-profile gate would have been GREEN over a live break: the two test files are
+  # cut into MUTUALLY EXCLUSIVE `//#if (profile == …)` regions, so each profile compiles DIFFERENT SOURCE.
+  #   * BehaviorTests.fs   → 3 regions: {governed|headless-scene} · {game} · {app|sample-pack}
+  #   * GovernanceTests.fs → 2 regions: {governed|headless-scene} · {the rest}
+  # `app` — the obvious "representative" — touches neither of the governed/headless-scene regions. And a
+  # stray `//#endif` in GovernanceTests.fs (introduced with #436, the same change family that caused
+  # #679) had left BOTH of those profiles UNCOMPILABLE on green `main`; it is fixed in the same PR as
+  # this job, because a gate you cannot turn on green is not a gate. A profile that is not compiled is a
+  # profile that is not gated — the #452 lesson one layer down.
+  #
+  # THE COST ARGUMENT IS DEAD, so do not "optimise" this back to one profile. The pack DOMINATES and is
+  # SHARED: pack once (~40s), then each profile is only an instantiate + build + test (~15-20s). All five
+  # land in ~2min. Note this is deliberately ONE job with a loop, NOT a `strategy.matrix` — a matrix gives
+  # each profile a fresh runner, and each would re-pack the whole solution, paying the dominant cost five
+  # times to buy nothing.
+  #
+  # UNCONDITIONAL — no `paths:` filter, no `if:` (the #452 rule). A lane that only runs when someone
+  # predicted in advance which paths could break it is a lane that reports green on the PR that breaks it
+  # in a way nobody predicted. #679 is the proof: the break arrived through a TEST file, which no
+  # plausible hand-written filter over `src/**` would have caught.
+  #
+  # NOT REQUIRED, AND IT MUST STAY THAT WAY (cadence-map §4b/§5). The product restores its third-party
+  # dependencies (FSharp.Core, Expecto, and Game/Audio on the game+sample-pack profiles) from nuget.org,
+  # and requiring a feed-dependent check takes a dependency on that feed's availability — an outage would
+  # wedge every merge in the repo. Exactly the reasoning that keeps `template-payload-restore-gate` and
+  # `packaged-consumer` non-required, and that let `api-compatibility-gate` be elevated (it can tell a
+  # silent feed apart from a break; this cannot). NOT-REQUIRED IS NOT `continue-on-error` (#216): this
+  # job has none and must not grow one. A red here is the gate reporting what it found.
+  #
+  # The FS.GG.UI.* axis itself is hermetic — packed from THIS TREE at the pin, not restored from
+  # nuget.org — so this job is green on a release PR, where the pin names an unpublished version by
+  # construction. See `.github/actions/product-local-feed` for why that is load-bearing rather than
+  # incidental (#506's trap: a gate that is expected-red at release time is a gate people merge past).
+  generated-product-gate:
+    name: Generated product gate (scaffold every profile, compile and run its tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # Packs FS.GG.UI.* from THIS TREE at the template's pin and points the machine at that feed.
+      # Shared verbatim with release.yml's `template-product-tests`, so the PR gate and the release
+      # lane cannot drift apart — which is the only thing that makes this job a proxy for that one.
+      - name: Pack the framework set to a runner-local feed
+        uses: ./.github/actions/product-local-feed
+
+      # #452's rule, and it applies here for the same reason: install THE TEMPLATE UNDER TEST. Left to
+      # its own devices `dotnet new` would scaffold from whatever FS.GG.UI.Template happens to be on the
+      # machine — auditing a PUBLISHED PACKAGE while reporting a verdict about the tree under review.
+      - name: Install the template under test
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet new install .
+
+      # One loop, one runner, one pack (see the header). Fails CLOSED, per #266: "nothing to check" and
+      # "checked, and it's fine" must not share an exit code — every profile must pass or the job exits
+      # non-zero, and it names EVERY broken profile rather than only the first (a caller fixing three
+      # profiles should not need three red runs to find all three).
+      #
+      # `set -uo pipefail`, and the MISSING `-e` IS DELIBERATE — do not "tidy" it to `-euo`. Collecting
+      # all five verdicts requires the loop to survive a failing profile. With `-e`, the first failure
+      # sets `ok=0`, the following `[[ $ok == 1 ]] && { … }` guard then evaluates false and returns 1 as
+      # the loop body's last command, and the shell aborts mid-loop: the remaining profiles never run and
+      # the summary below never prints. Failure is carried by `ok`/`failed`, not by `-e`.
+      - name: Scaffold every profile, then compile and run its tests
+        shell: bash
+        run: |
+          set -uo pipefail
+          work="$(mktemp -d)"
+          failed=()
+
+          for profile in app governed headless-scene sample-pack game; do
+            echo "::group::profile=$profile"
+            out="$work/$profile/GeneratedProduct"
+            ok=1
+
+            dotnet new fs-gg-ui --name GeneratedProduct --profile "$profile" --output "$out" || ok=0
+            [[ $ok == 1 ]] && { dotnet build "$out" || ok=0; }
+            [[ $ok == 1 ]] && { dotnet test  "$out" || ok=0; }
+
+            echo "::endgroup::"
+            if [[ $ok == 1 ]]; then
+              echo "✓ profile=$profile — scaffolded, compiled, tests passed"
+            else
+              failed+=("$profile")
+              echo "::error::profile=$profile — the SCAFFOLDED PRODUCT failed to build or its tests failed. This is the generated product, not this repo's suites: look in template/base/ (and remember each profile compiles a DIFFERENT slice of the //#if regions in tests/Product.Tests, so a break can be invisible on the other four)."
+            fi
+
+            # Five fully restored-and-built products would otherwise co-exist on the runner. Drop each
+            # one as soon as its verdict is recorded, so peak disk is ONE product rather than five —
+            # ENOSPC here would surface as a baffling mid-loop build error, not as a disk message.
+            rm -rf "$out"
+          done
+
+          if (( ${#failed[@]} > 0 )); then
+            echo "::error::generated-product gate FAILED for: ${failed[*]}"
+            exit 1
+          fi
+          echo "✓ all five profiles scaffolded, compiled, and passed their tests"
+
   # ---------------------------------------------------------------------------------------------
   # Lock-range coherence (FS-GG/.github#495, adopted per #521; ADR-0006, epic #266).
   #
@@ -756,3 +913,115 @@ jobs:
             echo "::error::build-config drift — Directory.Build.props / Directory.Packages.props / .config/dotnet-tools.json differ from FS-GG/.github → dist/dotnet/. These are DISTRIBUTED files: do not hand-edit them here. Re-sync with 'scripts/sync-build-config.sh <repo>' from a checkout of FS-GG/.github and commit the result. If the sync changes what the restore graph resolves (ADR-0032), regenerate the lock files in the SAME commit."
             exit 1
           fi
+
+  # Every pointer a published skill body makes to its reader must resolve (FS.GG.Rendering#655).
+  # Ported from FS.GG.Game's gate (Game#35 → #202 → #208 → #238/#241); the argument for each of the
+  # three checks, and for the two escape hatches, lives in the header of scripts/check-skill-refs.sh.
+  #
+  # THE LINK HALF IS SCOPED TO THE DIFF, and that is the half of #238 that matters here. Link state is
+  # f(tree, WORLD): it decays with no commit, so an unscoped link check fails whoever happens to have a
+  # PR open, demanding a fix in a skill body their item never declared — which under ADR-0021/0027 they
+  # cannot even make without widening onto a file they have nothing to do with. So `--changed <base>`
+  # asks the link question only of the bodies THIS diff touches, where the fix is always inside the
+  # diff. The `[[ref]]` and bare-`#N` halves are f(tree), hermetic, and always sweep everything.
+  #
+  # The FULL link sweep still runs — daily, in skill-refs-sweep.yml, where it gates nothing and a red
+  # means "the world moved", addressed to the repo rather than at a stranger's PR. Adopt both or
+  # neither: scoping without the sweep would leave every link in an unchanged file resolved by nobody,
+  # which is the `.github#416` shape ("a gate reports green over a subject it never examined") this
+  # gate exists to close, reintroduced by its own fix.
+  #
+  # GH_TOKEN: resolving a link is a handful of REST reads (no GraphQL) against PUBLIC repos, so the
+  # default token suffices. The script REFUSES to self-skip in CI: a link it cannot read is one it will
+  # not call green.
+  skill-refs:
+    name: Dangling skill refs (published skill bodies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # `--changed <base>` must be able to REACH the base to diff against it, and the default
+          # depth-1 checkout does not contain it. The script fails safe if the base is unresolvable —
+          # it announces the fallback and sweeps the whole tree — but that fallback hands back the very
+          # false-red this scoping removes, so fetch the history and mean it.
+          fetch-depth: 0
+
+      # QUOTED, and it must stay quoted: an unquoted ` #N` is a YAML comment, and the step name would
+      # silently lose the very words that name the third check.
+      - name: "Fail on a dangling [[ref]], a stale issue/PR link, or a bare #N"
+        # The base to scope the LINK half against: the PR's merge base, or — on a push to main — the
+        # commit main was at before. workflow_dispatch has neither, so it sweeps everything, which is
+        # the right answer for a run somebody asked for by hand.
+        #
+        # `github.event.before` is all-zeros on a branch's first push and after a force push. That is
+        # NOT "nothing changed": the script refuses to read it that way, says so, and sweeps the whole
+        # tree. Degrade toward more checking, never less.
+        run: |
+          if [[ -n "${SKILL_REFS_BASE:-}" ]]; then
+            scripts/check-skill-refs.sh --changed "$SKILL_REFS_BASE"
+          else
+            scripts/check-skill-refs.sh
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKILL_REFS_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+  # Tests for the gate ABOVE. check-skill-refs.sh is ~600 lines of load-bearing bash that decides
+  # whether every published skill body may ship. In FS.GG.Game it had none, and #241 came within one
+  # review of shipping a one-flag bug — a missing `grep -H` — that would have reddened every correctly
+  # marked citation on exactly the PRs that touch a skill, i.e. the ones where the gate is supposed to
+  # be trustworthy. It would have looked like the gate WORKING.
+  #
+  # The suite pins that case and every other promise the script makes, above all the one it makes when
+  # it says nothing: "I will not report green over a subject I did not examine." It also pins the two
+  # things that are OURS and that Game's suite cannot state (FS.GG.Rendering#655): that the publish set
+  # is the MANIFEST and not a directory listing (four of our 21 skills are supplied from outside the
+  # skill root, and a directory scan calls every one of them unpublished), and that a § 1 finding in a
+  # frozen mirror is a NOTE on stdout — never a finding on stderr, which the sweep would file as decay
+  # every day forever.
+  #
+  # Separate job = distinct signal: a red HERE means the GATE is broken, which is a different fact from
+  # "a skill body has a bad pointer" and wants a different reader — and if the gate is broken, its
+  # verdict on the bodies is worth nothing anyway.
+  #
+  # Hermetic: fixture trees, a fake `gh`, no token, no network, no fetch-depth.
+  skill-refs-tests:
+    name: Skill-refs gate tests (scripts/check-skill-refs.sh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Behavioural test suite (fixture tree in, exit code + subject claim out)
+        run: scripts/test-check-skill-refs.sh
+
+  # Tests for the SWEEP — the other half of skill-refs, and the half that FILES an issue. That filing
+  # path is load-bearing, and the trigger you would expect to cover it cannot: skill-refs-sweep.yml
+  # runs on `pull_request` precisely so a change to the sweep is checked BY the sweep, but its
+  # interesting code only runs when the tree is DECAYED — and the tree is normally green. So a PR that
+  # rewrites the renderer gets a GREEN run in which the renderer never executed: a green check over a
+  # subject it never examined, the `.github#416` shape, sitting in the code whose whole job is to not
+  # do that.
+  #
+  # This suite plants the decay that trigger cannot, and drives the workflow's OWN `run:` blocks —
+  # extracted from the YAML at test time, never transcribed — against a fake `gh`. It also pins the
+  # CROSS-FILE contract the sweep cannot self-diagnose: the `path:line: message` line that
+  # check-skill-refs.sh emits on stderr and this workflow greps for. If those two drift apart the sweep
+  # files "could not read it" and names no files — so the suite runs the REAL script over REAL planted
+  # decay and asserts the REAL parser still reads it.
+  #
+  # Runs on every PR, not just ones touching the sweep: that contract has two ends, and a PR editing
+  # check-skill-refs.sh breaks it just as easily as one editing the workflow.
+  skill-refs-sweep-tests:
+    name: Skill-refs sweep tests (.github/workflows/skill-refs-sweep.yml)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Behavioural test suite (planted decay in, filed issue out)
+        run: scripts/test-skill-refs-sweep.sh
