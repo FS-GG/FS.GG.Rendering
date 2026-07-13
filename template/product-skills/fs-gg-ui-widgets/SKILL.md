@@ -48,6 +48,29 @@ primitive controls** (`Border` + `TextBlock` + `Stack`); a reusable recipe is a 
 composed of framed cells/rows that `renderTree` paints reliably. Reserve `CustomControl` for
 non-visual extension seams.
 
+## Check the control you authored — `validate`
+
+Authoring errors in a control tree are **not** type errors: a custom control with a missing accessible
+label, a definition that declares an event nothing routes, a control that fails its accessibility
+contract — all of these compile, render, and ship. `validate` is the entry point that says so, and it
+is the same name in each authoring module:
+
+```fsharp
+open FS.GG.UI.Controls
+
+Accessibility.validate control       // ControlDiagnostic list — the a11y contract this control breaks
+CustomControl.validate definition    // ControlDiagnostic list — authoring errors in a CustomControlDefinition
+Catalog.validate ()                  // ControlDiagnostic list — the catalog's own self-check
+```
+
+Each returns a `ControlDiagnostic` list — **empty means clean**, so the assertion is
+`Expect.isEmpty`, and it costs one line in the suite you already have. Validate a control you authored
+by hand, and *every* `CustomControlDefinition` you write: it is the only check standing between a
+mislabeled extension seam and a screen reader that says nothing.
+
+`Control.diagnostics` is the tree-wide companion — it collects what a whole `Control<'msg>` reports,
+without rendering it. See [[fs-gg-elmish]] for it and the runtime/adapter `diagnostics` beside it.
+
 ## No-new-dependency property tests
 
 When the product test project ships no FsCheck reference and the governance decision is
