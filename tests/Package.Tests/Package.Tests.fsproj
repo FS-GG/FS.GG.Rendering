@@ -82,6 +82,7 @@
     <Compile Include="Feature282EmbeddedTokenGuardTests.fs" />
     <Compile Include="Issue496FSharpCoreShadowingTests.fs" />
     <Compile Include="ApiSurfaceInternalTests.fs" />
+    <Compile Include="Feature706TemplateConditionalBalanceTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
