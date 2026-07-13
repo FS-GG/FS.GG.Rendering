@@ -9,6 +9,7 @@ open System.Reflection.PortableExecutable
 open System.Text
 open System.Text.RegularExpressions
 open Expecto
+open FS.GG.TestSupport
 
 // Issue #504 — the template-vs-PIN assertion.
 //
@@ -881,39 +882,42 @@ let private docKey (s: DocSymbol) = $"{s.Doc}::{s.Module}.{s.Member}"
 let private isJudgedDocModule (qualifier: string) (moduleName: string) =
     isFrameworkCall qualifier moduleName && not (scaffoldModules.Contains moduleName)
 
-/// `Module.member` inside the ```fsharp fences of a product skill — the block a reader COPIES, which is
-/// what makes it the sharpest subject. The PROSE around it is judged too, by `skillProseSymbols` below
-/// (#597); this extractor stays fence-only so the two can be read, and reasoned about, separately.
+/// `Module.member` inside the F# fences of a product skill — the block a reader COPIES, which is what
+/// makes it the sharpest subject. The PROSE around it is judged too, by `skillProseSymbols` below (#597);
+/// this extractor stays fence-only so the two can be read, and reasoned about, separately.
+///
+/// #669: WHERE THE FENCE IS READ, and where it is not. This used to hand-roll its own reader —
+/// backticks only, toggled, F# = `StartsWith "fsharp"` — which disagreed with S-DOC's about what an F#
+/// block IS: it missed `fs`/`fsx`/`fsi`/`f#` and opened on anything merely prefixed `fsharp`. Fences are
+/// now `MarkdownFences.scan`'s answer, once, for all three extractors. What stays here is what is
+/// genuinely this rule's own: an F# block is read as F# SOURCE — `stripCommentsAndStrings`, so a name in
+/// a comment or a string literal is not a call site.
+///
+/// THE FENCES ARE READ FROM THE RAW DOCUMENT, and the F#-level erasure is applied AFTERWARDS, to the
+/// lines the scan says are F#. A fence is a markdown fact; `(* ... *)` is not one, and letting the F#
+/// erasure run first meant a block comment could eat a fence line. `eraseKeepingLines` preserves the line
+/// count precisely so the erased text can still be indexed by the scan's (1-based) line numbers.
 let private skillFenceSymbols =
     Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
     |> Seq.collect (fun path ->
         let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
-        let mutable inFence = false
+        let text = (File.ReadAllText path).Replace("\r\n", "\n")
+        let erased = (eraseKeepingLines text).Split('\n')
 
-        (File.ReadAllText path |> eraseKeepingLines).Split('\n')
-        |> Array.mapi (fun i line -> i + 1, line)
-        |> Array.collect (fun (lineNo, raw) ->
-            let opener = raw.TrimStart()
+        MarkdownFences.scan text
+        |> MarkdownFences.fsharpLines
+        |> List.collect (fun line ->
+            // Same document, same line count — so the scan's line number indexes the erased text too.
+            let source = erased.[line.Number - 1]
 
-            if opener.StartsWith("```", StringComparison.Ordinal) then
-                // Close ANY fence; open only an fsharp one. A ```console block's closing fence is seen
-                // while `inFence` is false and correctly opens nothing.
-                inFence <-
-                    not inFence
-                    && opener.TrimStart('`').TrimStart().StartsWith("fsharp", StringComparison.OrdinalIgnoreCase)
-
-                [||]
-            elif not inFence then
-                [||]
-            else
-                callRegex.Matches(stripCommentsAndStrings raw)
-                |> Seq.map (fun m ->
-                    m.Groups.[1].Value,
-                    { Doc = rel
-                      Line = lineNo
-                      Module = m.Groups.[2].Value
-                      Member = m.Groups.[3].Value })
-                |> Array.ofSeq))
+            callRegex.Matches(stripCommentsAndStrings source)
+            |> Seq.map (fun m ->
+                m.Groups.[1].Value,
+                { Doc = rel
+                  Line = line.Number
+                  Module = m.Groups.[2].Value
+                  Member = m.Groups.[3].Value })
+            |> List.ofSeq))
     |> List.ofSeq
 
 /// The public `val`s of the SHIPPED api-surface mirror, qualified by the INNERMOST module that declares
@@ -1338,9 +1342,11 @@ let private typeMemberKey (m: TypeMember) = $"{m.Doc}::{m.Type}.{m.Member}"
 /// `Persistence`), and the three F# SOURCE extensions. Not a blanket extension list: `md`/`txt`/`json` are
 /// legal F# identifiers, so blacklisting them fails OPEN the day someone exports one (#266).
 ///
-/// A NON-fsharp FENCE IS NEITHER. `skillFenceSymbols` opens only on ```fsharp; this one must skip EVERY
-/// fence, or a ```console block's `dotnet build` becomes a call site. So it tracks any fence open/close,
-/// and reads only what falls outside.
+/// A FENCE OF ANY LANGUAGE IS NEITHER. `skillFenceSymbols` reads only F# blocks; this one must skip EVERY
+/// fence, or a ```console block's `dotnet build` becomes a call site. So it reads only what falls OUTSIDE
+/// every fence — `MarkdownFences.proseLines`, which is that idea and nothing else (#669). It used to
+/// hand-roll the tracking, toggling on any line starting with three backticks: a ```` ~~~ ```` block was
+/// invisible to it, and its contents were judged as prose.
 ///
 /// FOUR OF THESE SKILLS ARE FROZEN MIRRORS THIS REPO MAY NOT EDIT, and a violation in one has a DIFFERENT
 /// remedy — read this before "fixing the doc" the failure tells you to fix. `fs-gg-persistence`,
@@ -1358,32 +1364,25 @@ let private skillProseSymbols =
     Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
     |> Seq.collect (fun path ->
         let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
-        let mutable inFence = false
 
-        File.ReadAllLines path
-        |> Array.mapi (fun i line -> i + 1, line)
-        |> Array.collect (fun (lineNo, raw) ->
-            let opener = raw.TrimStart()
-
-            if opener.StartsWith("```", StringComparison.Ordinal) then
-                // ANY fence, not just an fsharp one: inside a ```console or ```json block this rule has no
-                // subject, and outside every fence it has all of them.
-                inFence <- not inFence
-                [||]
-            elif inFence then
-                [||]
-            else
-                callRegex.Matches raw
-                |> Seq.filter (fun m ->
-                    let precededBySlash = m.Index > 0 && raw.[m.Index - 1] = '/'
-                    not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
-                |> Seq.map (fun m ->
-                    m.Groups.[1].Value,
-                    { Doc = rel
-                      Line = lineNo
-                      Module = m.Groups.[2].Value
-                      Member = m.Groups.[3].Value })
-                |> Array.ofSeq))
+        File.ReadAllText path
+        |> MarkdownFences.scan
+        |> MarkdownFences.proseLines
+        |> List.collect (fun line ->
+            // Prose is English, NOT F#: no `stripCommentsAndStrings` here (a `//` in a sentence is not a
+            // comment), and #598's two guards instead — a preceding `/` (prose names PATHS constantly), and
+            // the three F# source extensions.
+            callRegex.Matches line.Text
+            |> Seq.filter (fun m ->
+                let precededBySlash = m.Index > 0 && line.Text.[m.Index - 1] = '/'
+                not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
+            |> Seq.map (fun m ->
+                m.Groups.[1].Value,
+                { Doc = rel
+                  Line = line.Number
+                  Module = m.Groups.[2].Value
+                  Member = m.Groups.[3].Value })
+            |> List.ofSeq))
     |> List.ofSeq
 
 /// Every shipped doc surface, reduced to the symbols this rule may judge — EVERY occurrence, not one per
@@ -2217,37 +2216,36 @@ let templateConsumesPinnedApiTests =
                  be extracted from it. If it falls out, prose is being read and thrown away — the #597 blind \
                  spot, reopened while every test stays green."
 
-            // #597's fence tracking FAILS OPEN, so the fences have to be proven balanced.
+            // #597's fence tracking FAILS OPEN, so the fences have to be proven closed.
             //
-            // `skillProseSymbols` decides prose-vs-code by toggling on every ``` line. An UNBALANCED fence
-            // — an opener whose closer was dropped, a stray ``` in a sentence — therefore leaves the reader
-            // stuck "inside code" for the WHOLE REST OF THE FILE, and every prose line below it is silently
-            // skipped. A skill could then name any unpinned symbol past that point and this rule would report
-            // green having read none of it: "nothing to check" and "checked, and it's fine" sharing an exit
-            // code, which is the shape (.github#266) this file refuses everywhere else.
+            // An UNCLOSED fence — an opener whose closer was dropped, a stray fence in a sentence — leaves the
+            // prose reader stuck "inside code" for the WHOLE REST OF THE FILE, and every prose line below it is
+            // silently skipped. A skill could then name any unpinned symbol past that point and this rule would
+            // report green having read none of it: "nothing to check" and "checked, and it's fine" sharing an
+            // exit code, which is the shape (.github#266) this file refuses everywhere else.
             //
             // The anti-vacuity anchor above cannot catch it — it proves ONE symbol in ONE file survives, and
-            // says nothing about the other sixteen. An even fence count per file is what actually holds it.
-            let unbalanced =
+            // says nothing about the other sixteen.
+            //
+            // #669: this used to count ``` lines and demand the count be EVEN, which is a fourth hand-rolled
+            // reading of a fence and a weaker one — it cannot see a ~~~ block at all, and it calls a document
+            // balanced when a ```` closes a ``` it never opened. The scanner already answers this exactly, and
+            // it is the same scanner the reader above uses, so the property proven here is the property the
+            // reader actually has.
+            let unclosed =
                 Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
-                |> Seq.choose (fun path ->
-                    let fences =
-                        File.ReadAllLines path
-                        |> Array.filter (fun line -> line.TrimStart().StartsWith("```", StringComparison.Ordinal))
-                        |> Array.length
-
-                    if fences % 2 = 0 then
-                        None
-                    else
-                        Some $"{Path.GetRelativePath(repoRoot, path).Replace('\\', '/')} ({fences} fence lines)")
+                |> Seq.filter (fun path -> (MarkdownFences.scan (File.ReadAllText path)).UnclosedFence)
+                |> Seq.map (fun path -> Path.GetRelativePath(repoRoot, path).Replace('\\', '/'))
                 |> List.ofSeq
 
+            let unclosedList = String.Join(", ", unclosed)
+
             Expect.isEmpty
-                unbalanced
-                "every shipped product skill closes every ``` fence it opens. An ODD fence count leaves the \
-                 prose reader stuck inside a code block for the rest of the file, so every symbol below the \
-                 unclosed fence goes UNJUDGED and this rule reports green having read nothing — the fails-open \
-                 shape (.github#266). Fix the fence in the skill; do not relax this."
+                unclosed
+                $"every shipped product skill closes every fence it opens. An unclosed fence leaves the prose \
+                  reader stuck inside a code block for the rest of the file, so every symbol below it goes \
+                  UNJUDGED and this rule reports green having read nothing — the fails-open shape (.github#266). \
+                  Fix the fence in the skill; do not relax this. Unclosed: {unclosedList}"
 
             // #598's path guard, held from BOTH sides.
             //
