@@ -93,11 +93,21 @@
 # (A phantom TAG — not this ledger's PHANTOM ENTRY, which is the unrelated rule above: a line no shipped doc
 # names any more, i.e. the doc was fixed. Same word, different subject; mind which one you are reading.)
 #
-# AND NOTE WHAT DID NOT CATCH IT, BECAUSE IT IS THE SAME BLIND SPOT ON BOTH LEDGERS. A pin bump reds every
+# AND NOTE WHAT DID NOT CATCH IT, BECAUSE IT WAS THE SAME BLIND SPOT ON BOTH LEDGERS. A pin bump reds every
 # LINE, on purpose, so a release forces each entry to be judged afresh. Both files are EMPTY — the goal
 # state — so the 0.9.1 -> 0.9.2 bump had nothing to red, and the prose went on naming a release that does
-# not exist with every gate green. The entries are machine-checked; the paragraph explaining them is not.
-# When you retire the next entry here, the release you name in its epitaph is checked by nobody but you.
+# not exist with every gate green. The entries were machine-checked; the paragraph explaining them was not.
+#
+# THE PARAGRAPH IS MACHINE-CHECKED NOW (#709). `tests/Package.Tests/LedgerNarrativeTests.fs` holds BOTH
+# ledgers' present-tense pin claims against the real `$(FsGgUiVersion)`, so the sentence above naming 0.9.2
+# reds if the pin moves and nobody comes back here. It binds `$(FsGgUiVersion)` is [now] <version> — the only
+# phrase in either file that asserts what the pin IS — and deliberately nothing else: every OTHER version
+# here is history (the 0.9.1 phantom, the 0.9.0 -> 0.9.2 published line), and a guard that reddened on a
+# correct account of the past is a guard somebody deletes. It also refuses to go vacuous: if this file ever
+# stops making a claim the extractor can see, that is a hard failure rather than a silent pass — an empty
+# ledger with nothing to red is how #690 rode green in the first place, and the check on the PROSE is not
+# allowed to rot the same way. So the pin you name in the next epitaph IS checked; the release you credit
+# for publishing the symbol is still yours to get right.
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
