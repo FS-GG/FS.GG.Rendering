@@ -55,7 +55,8 @@ device). The model is the *input* to that decision, never the evidence that it w
 made. So a test that asserts on the model **cannot see whether the effect ever
 left the building**, and it passes just as happily when it did not.
 
-The bite (issue #458, and it shipped): `forTransition` is a function of a
+<!-- skill-refs: closed-ok FS.GG.Rendering#458 — cited as the issue where this bug SHIPPED, not as somewhere to go. Closed is correct; it stays closed. -->
+The bite (issue FS.GG.Rendering#458, and it shipped): `forTransition` is a function of a
 **transition**, and *loaded* state does not make one. Restore the player's saved
 volume in `initialModel` and the model is correct, the setting genuinely **is**
 loaded — and the mixer is never told. Nothing catches it. No type is wrong. A test

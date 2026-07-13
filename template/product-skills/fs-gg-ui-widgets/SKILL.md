@@ -2,13 +2,14 @@
 name: fs-gg-ui-widgets
 description: Generated product guidance for Skia-rendered FS.GG.UI Controls, rich text, chart controls, graph controls, DataGrid, and custom wrappers.
 # This skill MANDATES a rule whose instrument lives in another skill. Declaring it holds the two
-# `materializes-when` sets to each other (R-INST, #624): if `fs-gg-elmish` ever stops materializing
-# where this skill does, a product would be handed the rule and never the instrument. See
-# template/product-skills/README.md.
+# `materializes-when` sets to each other (R-INST, FS.GG.Rendering#624): if `fs-gg-elmish` ever stops
+# materializing where this skill does, a product would be handed the rule and never the instrument.
+# See template/product-skills/README.md.
 instruments:
   - rule: responsiveness evidence (respondsProofOf / captureRespondsProof, OnFrameMetrics)
     skill: fs-gg-elmish
 ---
+<!-- skill-refs: closed-ok FS.GG.Rendering#624 — cited as the issue that ESTABLISHED the R-INST rule, not as somewhere to go. Closed is correct; it stays closed. The ref it excuses is in the YAML frontmatter above, which cannot host an HTML comment without breaking the parse; closed-ok is file-scoped, so it is honoured from here. -->
 
 # Generated Controls
 

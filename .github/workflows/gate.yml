@@ -792,3 +792,115 @@ jobs:
             echo "::error::build-config drift — Directory.Build.props / Directory.Packages.props / .config/dotnet-tools.json differ from FS-GG/.github → dist/dotnet/. These are DISTRIBUTED files: do not hand-edit them here. Re-sync with 'scripts/sync-build-config.sh <repo>' from a checkout of FS-GG/.github and commit the result. If the sync changes what the restore graph resolves (ADR-0032), regenerate the lock files in the SAME commit."
             exit 1
           fi
+
+  # Every pointer a published skill body makes to its reader must resolve (FS.GG.Rendering#655).
+  # Ported from FS.GG.Game's gate (Game#35 → #202 → #208 → #238/#241); the argument for each of the
+  # three checks, and for the two escape hatches, lives in the header of scripts/check-skill-refs.sh.
+  #
+  # THE LINK HALF IS SCOPED TO THE DIFF, and that is the half of #238 that matters here. Link state is
+  # f(tree, WORLD): it decays with no commit, so an unscoped link check fails whoever happens to have a
+  # PR open, demanding a fix in a skill body their item never declared — which under ADR-0021/0027 they
+  # cannot even make without widening onto a file they have nothing to do with. So `--changed <base>`
+  # asks the link question only of the bodies THIS diff touches, where the fix is always inside the
+  # diff. The `[[ref]]` and bare-`#N` halves are f(tree), hermetic, and always sweep everything.
+  #
+  # The FULL link sweep still runs — daily, in skill-refs-sweep.yml, where it gates nothing and a red
+  # means "the world moved", addressed to the repo rather than at a stranger's PR. Adopt both or
+  # neither: scoping without the sweep would leave every link in an unchanged file resolved by nobody,
+  # which is the `.github#416` shape ("a gate reports green over a subject it never examined") this
+  # gate exists to close, reintroduced by its own fix.
+  #
+  # GH_TOKEN: resolving a link is a handful of REST reads (no GraphQL) against PUBLIC repos, so the
+  # default token suffices. The script REFUSES to self-skip in CI: a link it cannot read is one it will
+  # not call green.
+  skill-refs:
+    name: Dangling skill refs (published skill bodies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # `--changed <base>` must be able to REACH the base to diff against it, and the default
+          # depth-1 checkout does not contain it. The script fails safe if the base is unresolvable —
+          # it announces the fallback and sweeps the whole tree — but that fallback hands back the very
+          # false-red this scoping removes, so fetch the history and mean it.
+          fetch-depth: 0
+
+      # QUOTED, and it must stay quoted: an unquoted ` #N` is a YAML comment, and the step name would
+      # silently lose the very words that name the third check.
+      - name: "Fail on a dangling [[ref]], a stale issue/PR link, or a bare #N"
+        # The base to scope the LINK half against: the PR's merge base, or — on a push to main — the
+        # commit main was at before. workflow_dispatch has neither, so it sweeps everything, which is
+        # the right answer for a run somebody asked for by hand.
+        #
+        # `github.event.before` is all-zeros on a branch's first push and after a force push. That is
+        # NOT "nothing changed": the script refuses to read it that way, says so, and sweeps the whole
+        # tree. Degrade toward more checking, never less.
+        run: |
+          if [[ -n "${SKILL_REFS_BASE:-}" ]]; then
+            scripts/check-skill-refs.sh --changed "$SKILL_REFS_BASE"
+          else
+            scripts/check-skill-refs.sh
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKILL_REFS_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+  # Tests for the gate ABOVE. check-skill-refs.sh is ~600 lines of load-bearing bash that decides
+  # whether every published skill body may ship. In FS.GG.Game it had none, and #241 came within one
+  # review of shipping a one-flag bug — a missing `grep -H` — that would have reddened every correctly
+  # marked citation on exactly the PRs that touch a skill, i.e. the ones where the gate is supposed to
+  # be trustworthy. It would have looked like the gate WORKING.
+  #
+  # The suite pins that case and every other promise the script makes, above all the one it makes when
+  # it says nothing: "I will not report green over a subject I did not examine." It also pins the two
+  # things that are OURS and that Game's suite cannot state (FS.GG.Rendering#655): that the publish set
+  # is the MANIFEST and not a directory listing (four of our 21 skills are supplied from outside the
+  # skill root, and a directory scan calls every one of them unpublished), and that a § 1 finding in a
+  # frozen mirror is a NOTE on stdout — never a finding on stderr, which the sweep would file as decay
+  # every day forever.
+  #
+  # Separate job = distinct signal: a red HERE means the GATE is broken, which is a different fact from
+  # "a skill body has a bad pointer" and wants a different reader — and if the gate is broken, its
+  # verdict on the bodies is worth nothing anyway.
+  #
+  # Hermetic: fixture trees, a fake `gh`, no token, no network, no fetch-depth.
+  skill-refs-tests:
+    name: Skill-refs gate tests (scripts/check-skill-refs.sh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Behavioural test suite (fixture tree in, exit code + subject claim out)
+        run: scripts/test-check-skill-refs.sh
+
+  # Tests for the SWEEP — the other half of skill-refs, and the half that FILES an issue. That filing
+  # path is load-bearing, and the trigger you would expect to cover it cannot: skill-refs-sweep.yml
+  # runs on `pull_request` precisely so a change to the sweep is checked BY the sweep, but its
+  # interesting code only runs when the tree is DECAYED — and the tree is normally green. So a PR that
+  # rewrites the renderer gets a GREEN run in which the renderer never executed: a green check over a
+  # subject it never examined, the `.github#416` shape, sitting in the code whose whole job is to not
+  # do that.
+  #
+  # This suite plants the decay that trigger cannot, and drives the workflow's OWN `run:` blocks —
+  # extracted from the YAML at test time, never transcribed — against a fake `gh`. It also pins the
+  # CROSS-FILE contract the sweep cannot self-diagnose: the `path:line: message` line that
+  # check-skill-refs.sh emits on stderr and this workflow greps for. If those two drift apart the sweep
+  # files "could not read it" and names no files — so the suite runs the REAL script over REAL planted
+  # decay and asserts the REAL parser still reads it.
+  #
+  # Runs on every PR, not just ones touching the sweep: that contract has two ends, and a PR editing
+  # check-skill-refs.sh breaks it just as easily as one editing the workflow.
+  skill-refs-sweep-tests:
+    name: Skill-refs sweep tests (.github/workflows/skill-refs-sweep.yml)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Behavioural test suite (planted decay in, filed issue out)
+        run: scripts/test-skill-refs-sweep.sh
