@@ -9,20 +9,14 @@ open FS.GG.TestSupport
 let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
-let private xmlValue (doc: XDocument) (name: string) =
-    doc.Descendants()
-    |> Seq.tryFind (fun e -> e.Name.LocalName = name)
-    |> Option.map (fun e -> e.Value.Trim())
-
-let private packageVersions () : Map<string, string> =
-    Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
-    |> Array.choose (fun (project: string) ->
-        let doc = XDocument.Load project
-        match xmlValue doc "PackageId", xmlValue doc "Version", xmlValue doc "IsPackable" with
-        | Some id, Some version, Some packable when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) && String.Equals(packable, "true", StringComparison.OrdinalIgnoreCase) ->
-            Some(id, version)
-        | _ -> None)
-    |> Map.ofArray
+/// id -> the `<Version>` its project declares, for every package the real pack path produces.
+///
+/// #674 — this used to re-derive the packable rule by hand. It now asks the harness's
+/// `PackageFeed.discoverPackablePackages`, which is the function the real `package-feed` workflow uses
+/// to decide what the feed must contain. This test's whole job is to catch a sample pin that disagrees
+/// with the source-controlled package version (the Renovate PR #233 failure), so the set of "source
+/// versions" it compares against had better be the one that actually ships.
+let private packageVersions () : Map<string, string> = PackablePackages.packablePackageVersions ()
 
 let private packageReferences (project: string) : (string * string) list =
     let doc = XDocument.Load project

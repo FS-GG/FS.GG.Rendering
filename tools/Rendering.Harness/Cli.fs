@@ -561,7 +561,7 @@ let private flagValues (flag: string) (rest: string list) =
 let private hasFlag (flag: string) (rest: string list) =
     rest |> List.exists ((=) flag)
 
-let private runPackageFeedCmd (rest: string list) =
+let private runPackageFeedProof (rest: string list) =
     let mode =
         flagValue "--mode" rest
         |> Option.defaultValue "check"
@@ -593,9 +593,17 @@ let private runPackageFeedCmd (rest: string list) =
             eprintfn "package-feed: no package-consuming samples found under samples/ (a sample qualifies by mapping FS.GG.UI.* to the local feed in its own nuget.config), and none given with --sample"
             2
         else
+            // Default OUT of the worktree, not into it (#702). The default used to be feature 163's
+            // committed readiness directory, so a bare `package-feed --mode proof` overwrote a
+            // recorded validation run as a side effect of merely running the tool — and proof output
+            // is verbatim tool output (a fresh `generatedAtUtc`, `restore.log`, `project.assets.json`),
+            // so it churned on every run and the churn was indistinguishable from a real change. That
+            // is how the committed record drifted into a mixture: two tables refreshed in July, five
+            // proof files left over from a June run against one sample. Writing the readiness record
+            // is now something you ASK for with an explicit `--out`, and `artifacts/` is gitignored.
             let out =
                 flagValue "--out" rest
-                |> Option.defaultValue "specs/163-package-feed-validation-lanes/readiness/package-proof"
+                |> Option.defaultValue "artifacts/package-proof"
 
             let feed =
                 flagValue "--feed" rest
@@ -654,6 +662,21 @@ let private runPackageFeedCmd (rest: string list) =
             | PackageFeed.Passed -> 0
             | PackageFeed.Failed -> 1
             | PackageFeed.EnvironmentLimited -> 3
+
+/// #677 — discovery now REFUSES a `src/` tree it cannot read as one, rather than quietly expecting
+/// fewer packages than the repository ships. Print that refusal where every other package-feed failure
+/// is printed — stderr, which is the thing a CI reader actually opens — instead of letting it land as an
+/// unhandled stack trace, and give it the same exit code the command already uses for a bad input ("no
+/// samples selected", above). It is deliberately NOT `Failed`: a proof whose expected-feed set could not
+/// even be derived did not run, so it has no verdict to report. Same shape as the `CatalogError` handler
+/// below.
+let private runPackageFeedCmd (rest: string list) =
+    try
+        runPackageFeedProof rest
+    with PackageFeed.PackageDiscoveryError message ->
+        eprintfn "package-feed: %s" message
+        eprintfn "package-feed: the expected-feed set could not be derived, so NOTHING was checked — this is not a pass."
+        2
 
 let private runValidationLanesCmd (rest: string list) =
     let repositoryRoot = Directory.GetCurrentDirectory()

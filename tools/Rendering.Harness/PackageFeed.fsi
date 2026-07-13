@@ -131,6 +131,13 @@ module PackageFeed =
         | ReadRestoreAssets
         | WritePackageEvidence
 
+    /// A project under `src/` that declares itself packable but cannot be read as one — an
+    /// unparseable/unreadable `.fsproj`, a packable project whose `<Version>` resolves to nothing, or
+    /// a repository root with no `src/` at all. Discovery RAISES rather than omitting: the discovered
+    /// set IS the expected-feed set, so a project that silently leaves it is a package the feed check
+    /// stops looking for (#677 — the fails-open class of FS-GG/.github#266).
+    exception PackageDiscoveryError of string
+
     val defaultFeedPath: string
 
     /// Why a sample pin must equal `src/*/*.fsproj` `<Version>` — printed alongside the offending
@@ -157,8 +164,19 @@ module PackageFeed =
 
     val update: msg: Msg -> model: Model -> Model * Effect list
 
+    /// The packages the real feed must contain: every `src/**/*.fsproj` declaring
+    /// `<PackageId>FS.GG.UI.*` + `<IsPackable>true`, at the version MSBuild would pack it at (inline
+    /// `<Version>`, else the one inherited from the nearest `Directory.Build[.local].props`).
+    ///
+    /// FAILS CLOSED. Identity and version resolution are separate concerns: a project that declares
+    /// itself packable and cannot be read as one raises `PackageDiscoveryError` naming the file — it
+    /// is never quietly absent from the result, because absent means "not expected", and a package
+    /// that is not expected is one `MissingExpectedPackage` can never fire for.
     val discoverPackablePackages: repositoryRoot: string -> feedPath: string -> PackablePackage list
 
+    /// The `FS.GG.UI.*` pins declared by the selected samples, classified against `currentPackages`.
+    /// Raises `PackageDiscoveryError` on a sample project it cannot parse — an unreadable sample
+    /// contributes no pins, and a sample with no pins has nothing that can be stale (#677).
     val readSelectedPackagePins:
         repositoryRoot: string ->
         selectedSamples: string list ->

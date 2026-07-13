@@ -150,8 +150,16 @@ jobs:
           # UNCHECKED" over a run that completed fine and found real decay, and point the fixer at the
           # wrong files. A check that misreports its own subject is the thing this workflow exists to
           # stop; it does not get to do it to itself.
+          # THE PINNED SENTENCE — one half of the two-ended contract above; the other is `report`'s
+          # `path:line: message`. It said "a published skill" until #698, which widened the script's
+          # subject past what ships (it now also sweeps the LIBRARY skill bodies under src/*/skill/ and
+          # the authoring note, whose reader stands in THIS repo rather than in a scaffolded product).
+          # "A skill body" is the noun that is true of both surfaces. A contract sentence that is false
+          # of half its subject is exactly how two ends drift apart without either looking wrong —
+          # which is what this `banner` check exists to catch, so it does not get to be the thing that
+          # rots. scripts/test-skill-refs-sweep.sh drives the REAL script and pins this.
           banner=false
-          grep -qF 'every pointer in a published skill must resolve' "$RUNNER_TEMP/sweep.err" && banner=true
+          grep -qF 'every pointer in a skill body must resolve' "$RUNNER_TEMP/sweep.err" && banner=true
 
           {
             echo "rc=$rc"

@@ -171,9 +171,72 @@ fixture_new() {
   : >"$FIX/skills.tsv"                # id<TAB>supplied-by — the fixture's publish set
   echo '[]' >"$FIX/trackers.json"    # issues carrying DECAY_LABEL. Empty: no tracker exists yet.
   echo '[]' >"$FIX/unlabelled.json"  # issues that do NOT carry it — visible only if `labels=` is dropped
+  # FS-GG/.github's coordination-kit roster (#723). check-skill-refs.sh verifies its `KIT_SKILLS`
+  # constant against this, because that constant decides which bodies it does NOT examine and its
+  # fail-open direction is a body of ours going unchecked. Defaults to the four real kit skills, so a
+  # fixture that does not care about the kit gets a roster that AGREES with the subject and is silent.
+  # `kit_roster` overrides it to drive the drift cases.
+  printf '%s\n' cross-repo-coordination intra-repo-parallel-work check-board pnext-item >"$FIX/kit.txt"
   _write_manifest                     # a real manifest, even when empty: the subject refuses to run without one
+  _seed_repo_surface                  # ditto the REPO surface (#698) — see below
   _write_fake_gh
 }
+
+# The REPO surface, seeded into every fixture (#698). The subject checks TWO subjects now — the bodies
+# it PUBLISHES (the manifest) and the bodies it merely READS here (`src/*/skill/`, and the authoring
+# note under template/product-skills/) — and it REFUSES TO RUN without either one, for the same reason
+# it refuses without a manifest: a subject that has gone missing is not "nothing to check", and passing
+# green over it is the `.github#416` shape the whole gate exists to close.
+#
+# So a fixture needs a repo surface exactly as it needs a manifest, and for exactly as long as the
+# subject is entitled to demand one. Seeded EMPTY-BUT-REAL: one vocabulary entry and one body with no
+# refs in it. It contributes no findings, so every case that predates #698 keeps asserting precisely
+# what it asserted before — and the surface is nonetheless PRESENT, so a case that wants to exercise it
+# adds to it (`claude_skill`, `repo_skill`) rather than conjuring it.
+#
+# DO NOT "fix" a repo-surface failure by making the subject tolerate an absent one. That would trade a
+# loud, correct refusal for a gate that silently stops checking ten skill bodies the day somebody moves
+# them — which is the exact defect #698 was filed about, re-introduced through its own test harness.
+_seed_repo_surface() {
+  mkdir -p "$FIX/.claude/skills/fs-gg-fixture" "$FIX/src/Fixture/skill"
+  printf -- '---\nname: fs-gg-fixture\n---\n\n# Fixture wrapper\n' \
+    >"$FIX/.claude/skills/fs-gg-fixture/SKILL.md"
+  printf -- '# Fixture library skill\n\nNo refs.\n' >"$FIX/src/Fixture/skill/SKILL.md"
+}
+
+# claude_skill <id> — add <id> to the REPO vocabulary: the set a `[[ref]]` in a repo-internal body
+# resolves against (`.claude/skills/`). This is NOT the manifest, and the difference is the whole point
+# of #698 — `[[fs-gg-ant-design]]` resolves HERE and dangles in a published body, and the same string
+# can name a different body on each surface. A case that wants a repo ref to RESOLVE registers it here;
+# one that wants it to DANGLE simply does not.
+claude_skill() {
+  mkdir -p "$FIX/.claude/skills/$1"
+  printf -- '---\nname: %s\n---\n\n# %s\n' "$1" "$1" >"$FIX/.claude/skills/$1/SKILL.md"
+}
+
+# repo_skill <name> — a LIBRARY-facing body at src/<name>/skill/SKILL.md, content on stdin. Ships
+# nowhere, so its reader is standing in this repo: its `[[refs]]` are judged against `.claude/skills/`,
+# and its bare `#N` are RESOLVED against this repo rather than rejected (the subject's § 3 inversion).
+repo_skill() {
+  mkdir -p "$FIX/src/$1/skill"
+  cat >"$FIX/src/$1/skill/SKILL.md"
+}
+
+# repo_readme — the authoring note at template/product-skills/README.md, content on stdin. A repo body
+# like any other, and the one that must be able to WRITE the `[[…]]` syntax without INVOKING it.
+repo_readme() { cat >"$FIX/template/product-skills/README.md"; }
+
+# claude_body / agents_body <id> — a WRAPPER body with real content on stdin (#723). `claude_skill`
+# above writes a ref-less stub, because its job is to put a NAME in the vocabulary; these write a body
+# worth SCANNING, because since #723 the wrappers are a subject and not just a word list.
+#
+# TWO HELPERS, NOT ONE, and the duplication is the point: the two roots are NOT byte-identical in the
+# real repo (the wrapper line reads "Claude-active" in one and "Codex-active" in the other), Codex reads
+# `.agents/` and Claude reads `.claude/`, and a ref added to one is invisible in the other. A suite that
+# could only write to one root could not tell a two-root subject from a one-root one — which is the
+# defect these exist to make expressible.
+claude_body() { mkdir -p "$FIX/.claude/skills/$1"; cat >"$FIX/.claude/skills/$1/SKILL.md"; }
+agents_body() { mkdir -p "$FIX/.agents/skills/$1"; cat >"$FIX/.agents/skills/$1/SKILL.md"; }
 
 # The fixture's skill-manifest — the PUBLISH SET the subject reads (Rendering's script asks the
 # manifest, not the directory listing; see the MANIFEST note in check-skill-refs.sh).
@@ -205,6 +268,7 @@ gh_env() {
   echo "GH_STATE=$FIX/gh-state"
   echo "GH_TRACKERS=$FIX/trackers.json"
   echo "GH_UNLABELLED=$FIX/unlabelled.json"
+  echo "GH_KIT=$FIX/kit.txt"
 }
 
 # skill <id> — the SKILL.md body on stdin. Publishes it from the conventional root, and REGISTERS it
@@ -235,6 +299,12 @@ unpublished() { mkdir -p "$FIX/$2"; cat >"$FIX/$2/SKILL.md"; }
 # issue <owner/repo#num> <open|closed> — link state. Anything not registered 404s as missing.
 issue() { printf '%s\t%s\n' "$1" "$2" >>"$FIX/gh-state"; }
 
+# kit_roster <id>… — FS-GG/.github's coordination-kit roster, as the fake serves it (#723). No args =
+# an empty kit. Use it to drive KIT_SKILLS drift in BOTH directions: a name the subject excludes but
+# the roster does not have (fail-OPEN — a body of ours going unexamined), and a name the roster has
+# but the subject does not exclude (the kit grew, and the subject is resolving .github's numbers here).
+kit_roster() { printf '%s\n' "$@" >"$FIX/kit.txt"; }
+
 # The repo's issues, as a flat JSON array on stdin. `trackers` carry DECAY_LABEL; `unlabelled` do not.
 trackers()   { cat >"$FIX/trackers.json"; }
 unlabelled() { cat >"$FIX/unlabelled.json"; }
@@ -262,19 +332,31 @@ esac
 
 raw="$*"
 path=""; method=""; jqx=""; input=""; silent=0; has_field=0; slurp=0
-fields=()
+fields=(); headers=()
 while (($#)); do
   case $1 in
     -X|--method)      method=$2; shift 2 ;;
     -f|-F|--raw-field|--field) fields+=("$2"); has_field=1; shift 2 ;;
     --input)          input=$2; has_field=1; shift 2 ;;
     --jq)             jqx=$2; shift 2 ;;
+    # `-H` takes a VALUE, so it must consume two words. It used to fall through to the `-*` catch-all,
+    # which shifts ONE — leaving `Accept: …` to be read as a positional, i.e. very nearly as the PATH.
+    # It survived only because the path was always already set by then. A fake that mis-parses the real
+    # tool's argv is a fake that answers a question nobody asked.
+    -H|--header)      headers+=("$2"); shift 2 ;;
     --silent)         silent=1; shift ;;
     --slurp)          slurp=1; shift ;;
     --paginate)       shift ;;
     -*)               shift ;;
     *)                [[ -z $path ]] && path=$1; shift ;;
   esac
+done
+# Did the caller ask for the RAW representation? `contents` is the one endpoint whose answer changes
+# shape on this header: with it you get the file's bytes, without it a JSON object whose `.content` is
+# base64. The fake honours the difference rather than serving one shape to both — see the roster case.
+wants_raw=0
+for h in "${headers[@]-}"; do
+  [[ $h == *[Aa]ccept:*raw* ]] && wants_raw=1
 done
 # Exactly `gh`'s rule, and the reason `-X GET` is not decoration.
 [[ -z $method ]] && { if ((has_field)); then method=POST; else method=GET; fi; }
@@ -349,6 +431,39 @@ case "$method $path" in
       open|closed) resp="{\"state\":\"$st\"}" ;;
       *) echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
     esac ;;
+  "GET repos/FS-GG/.github/contents/registry/repos.yml")
+    # GH_KIT_FAIL — the request itself fails (rate limit, 403, network), as opposed to succeeding and
+    # returning a roster the subject cannot parse. These are DIFFERENT states and the subject must not
+    # conflate them: it is the .github#430 defect ("blames the wrong thing") that this models.
+    [[ ${GH_KIT_FAIL:-0} == 1 ]] && { echo "gh: API rate limit exceeded (HTTP 403)" >&2; exit 1; }
+    # THE COORDINATION-KIT ROSTER (#723). `GH_KIT` holds the kit skill ids, one per line; an EMPTY file
+    # is a roster with no `kind: skill` kit rows at all, which is a real state the subject must refuse
+    # over rather than read as "the kit is empty". No special-case branch for it: the loop below simply
+    # contributes no rows, which is exactly what an empty roster means.
+    #
+    # AND IT IS A FAKE THAT CAN BE WRONG — three ways, deliberately:
+    #
+    #  * TWO DECOYS. `kind: skill` rows that are NOT kit rows, one BEFORE the `kit:` block and one
+    #    AFTER it. A parse that greps the whole file picks up the first; one that enters the block and
+    #    never leaves picks up the second. Either way the drift check reddens instead of passing.
+    #  * A `kind: client` ROW INSIDE the block. `fsgg-coord` is a genuine kit row, but it is a script,
+    #    not a body — a parse that takes every kit row would exclude a skill that does not exist.
+    #  * THE ACCEPT HEADER IS HONOURED. Ask for raw and you get the file's bytes; ask without it and
+    #    you get the real API's JSON envelope, whose `.content` is base64. A subject that forgot the
+    #    header gets an envelope it cannot parse as YAML, which is precisely what the real API would
+    #    hand it. Serving raw to both would be a fake that cannot be wrong about the one line that
+    #    decides the response shape.
+    rows=""
+    while IFS= read -r id; do
+      [[ -z $id ]] && continue
+      rows+="  - { id: $id, kind: skill,  source: .claude/skills/$id }"$'\n'
+    done <"${GH_KIT:-/dev/null}"
+    yaml=$'repos:\n  - { id: rendering, full: FS-GG/FS.GG.Rendering, role: framework }\nbefore-kit:\n  - { id: decoy-before, kind: skill, source: nowhere }\nkit:\n'"$rows"$'  - { id: fsgg-coord, kind: client, source: scripts/fsgg-coord }\nafter-kit:\n  - { id: decoy-after, kind: skill, source: nowhere }\n'
+    if ((wants_raw)); then
+      resp=$yaml
+    else
+      resp=$(jq -nc --arg c "$(printf '%s' "$yaml" | base64 | tr -d '\n')" '{content:$c}')
+    fi ;;
   *)
     echo "fake gh: unmodelled endpoint: $method $path" >&2; exit 1 ;;
 esac
