@@ -425,27 +425,72 @@ while IFS= read -r b; do
 done <<<"$body_paths"
 ((missing_bodies)) && exit 1
 
-# ── THE REPO SURFACE (#698) ─────────────────────────────────────────────────────────────────────
-# The bodies that ship NOWHERE, and whose reader is therefore standing HERE (§ 0b): the ten canonical
-# library skills that `.claude/skills/<id>/SKILL.md` wraps and points an agent at, plus the one
-# authoring note about this very convention.
+# ── 0c. THE THIRD SURFACE, AND THE FOUR BODIES IN IT WE DO NOT OWN (#723) ───────────────────────
+# #698 brought two surfaces under this gate and named a THIRD it did not take: the 53 skill bodies under
+# `.claude/skills/` and `.agents/skills/`. It left them out DELIBERATELY, on a real argument — they carry
+# 88 bare `#N`, and § 3's inversion would resolve every one of them against FS.GG.Rendering, where they
+# would dangle or, worse, quietly hit an unrelated open issue of ours and pass green.
 #
-# `if`, NOT `[[ -f $b ]] && printf`. The LAST thing this loop tests is the README, and a tree without
-# one leaves the `for` returning 1 — which `set -o pipefail` (line 1) promotes to the whole pipeline,
-# so the assignment fails and `set -e` kills the script: exit 1, no findings, no banner, nothing. A
-# gate that dies without a word is the worst thing in this file's value system, and the existence of
-# an OPTIONAL member of the subject must not be able to cause it.
-repo_body_paths=$(
-  for b in src/*/skill/SKILL.md template/product-skills/README.md; do
-    if [[ -f $b ]]; then printf '%s\n' "$b"; fi
-  done | sort -u)
+# THE ARGUMENT WAS RIGHT AND THE CONCLUSION WAS TOO BROAD, and the provenance is what settles it. All 88
+# of those bare refs sit in EXACTLY FOUR BODIES — `pnext-item` (38), `intra-repo-parallel-work` (29),
+# `cross-repo-coordination` (12), `check-board` (9) — and those four are THE COORDINATION KIT:
+#
+#   * declared as `kind: skill` kit rows in FS-GG/.github `registry/repos.yml`;
+#   * content-addressed there — each body's sha256 is the kit digest, pinned in `repos.lock`;
+#   * written into BOTH roots here by `scripts/coordination-sync`, run by a bot, not by us;
+#   * and byte-identity to canonical ENFORCED ON EVERY PR by `coordination-coherence.yml`, a required
+#     check in this very run.
+#
+# So their `#419`, `#551`, `#322` are `.github`'s numbers — and, the part that settles it, WE COULD NOT
+# QUALIFY THEM IF WE WANTED TO. Editing `#419` to `FS-GG/.github#419` in our copy changes the bytes, and
+# `coordination-coherence` goes red. A ref gate over these bodies would not merely manufacture a red no
+# diff of ours can clear; it would demand a diff that a DIFFERENT required gate rejects. Two gates in
+# direct opposition, and no tree satisfies both. That is § 0's frozen-mirror argument in a second
+# costume, and the fix is upstream: `.github` qualifies its own bare `#N` (the two-publish-sets
+# arithmetic of #714/Game#279), and the sync brings the qualified bytes down.
+#
+# THE OTHER 49 ARE OURS, AND THEY CARRY NOTHING: zero `[[wiki refs]]`, zero links, zero bare `#N`. So
+# this widening finds no defect today — and that is exactly why it is worth doing NOW rather than after
+# one appears. An empty surface with no gate is not a clean surface, it is an UNWATCHED one, and § 0b's
+# own lesson is that "no refs today" is luck: `src/Testing/skill/SKILL.md`'s dead `[[…]]` sat behind a
+# green gate for a generation and was caught by a coincidence. `speckit-*` and the `fs-gg-*` wrappers are
+# ours to edit, so a ref CAN appear in them tomorrow, and nothing here would have said a word.
+#
+# BOTH ROOTS, NOT ONE. `repo_vocab` reads `.claude/skills/` alone and is right to — a VOCABULARY needs
+# only the directory NAMES, and both roots carry the same ones. A SUBJECT is a different question, and
+# the bodies genuinely differ: 33 of the 53 pairs are NOT byte-identical (the wrapper line reads
+# "Claude-active" in one root, "Codex-active" in the other). Codex reads `.agents/`, Claude reads
+# `.claude/`, both are read by a real agent, and a ref added to one is invisible in the other. Scanning
+# one root and calling the surface checked would rebuild, one directory over, the exact hole § 0b closed.
+#
+# ── THE REPO SURFACE (#698, WIDENED BY #723) ────────────────────────────────────────────────────
+# The bodies that ship NOWHERE, and whose reader is therefore standing HERE (§ 0b): the ten canonical
+# library skills that `.claude/skills/<id>/SKILL.md` wraps and points an agent at, the one authoring note
+# about this very convention — and, since #723, THE WRAPPERS THEMSELVES, in both skill roots.
+AGENT_SKILLS=".agents/skills"
+# The COORDINATION KIT (§ 0c): the four bodies in the skill roots that FS-GG/.github authors and a bot
+# syncs. OUT OF THE SUBJECT — their refs are `.github`'s to qualify — but firmly IN the vocabulary
+# below, because an agent standing in this tree really can invoke `[[pnext-item]]`, and a body of ours
+# that points at one is CORRECT.
+#
+# UNLIKE `MIRRORED_SKILLS`, THIS ONE IS VERIFIED — and it has to be, because it does not fail safe. A
+# name wrongly IN this list is a body of OURS excluded from its own gate: its refs go unexamined and the
+# gate still says `ok`. That is fail-OPEN, it is the `.github#416` shape, and it is the precise hazard
+# § 0b refused a `--surface` flag over ("a subject a caller can NARROW is a subject a caller can
+# FORGET"). `MIRRORED_SKILLS` can honestly say "nothing verifies it" because BOTH its rot directions
+# fail SAFE; this list cannot, so it does not get that tolerance. The kit rows are fetched from canonical
+# and compared against it below — the subject stays hermetic (it is built from THIS constant, so § 4's
+# f(tree) split still holds for § 1 and § 3), and the fetch is a § 2-style f(world) check that the
+# constant still tells the truth.
+KIT_SKILLS=$'cross-repo-coordination\nintra-repo-parallel-work\ncheck-board\npnext-item'
 
 # The RESOLVABLE SET for a body read HERE: the skills an agent in this tree can actually INVOKE. Not
 # the manifest — § 0b is the argument, and the two sets name different bodies under the same string.
 #
-# `.claude/skills/` and `.agents/skills/` are held in lockstep by the `skill-parity` check in this same
-# required job, so either would give the same vocabulary; this reads the Claude one because CLAUDE.md
-# is what drives an agent standing in this tree.
+# `.claude/skills/` and `.agents/skills/` carry the same directory NAMES — `skill-parity`, a check in
+# this same required job, is what holds that true — so either root gives the same vocabulary; this reads
+# the Claude one because CLAUDE.md is what drives an agent standing in this tree. (Their CONTENTS are
+# not identical, which is why the SUBJECT must read both. A vocabulary needs only the names.)
 CLAUDE_SKILLS=".claude/skills"
 # `if`, not `&&` — same pipefail trap as `repo_body_paths` below. With no `.claude/skills/` at all the
 # glob stays literal, `[[ -d ]]` is false, the `for` returns 1, pipefail reddens the pipeline and the
@@ -456,6 +501,43 @@ repo_vocab=$(
     if [[ -d $d ]]; then basename "$d"; fi
   done | sort -u)
 
+# THE REPO SUBJECT (§ 0b, widened by § 0c) — TWO CONSTITUENTS, AND EACH ONE MUST BE THERE.
+#
+# It is tempting to build this as one union and refuse only when the whole thing is empty. That is a
+# BUG, and the test suite caught it: with the union, deleting every `src/*/skill/SKILL.md` no longer
+# refuses, because the `.claude/skills/` wrappers are still standing and the union is non-empty. The
+# gate would report green over a library surface that had VANISHED — the precise `.github#416` shape
+# § 0b was written to close, rebuilt by the very widening meant to close another one. A subject with
+# two constituents needs two refusals: an absent constituent is one that MOVED, not one that is empty.
+#
+# `if`, NOT `[[ -f $b ]] && printf`. The LAST thing the first loop tests is the README, and a tree
+# without one leaves the `for` returning 1 — which `set -o pipefail` (line 1) promotes to the whole
+# pipeline, so the assignment fails and `set -e` kills the script: exit 1, no findings, no banner,
+# nothing. A gate that dies without a word is the worst thing in this file's value system, and the
+# existence of an OPTIONAL member of the subject must not be able to cause it.
+lib_body_paths=$(
+  for b in src/*/skill/SKILL.md template/product-skills/README.md; do
+    if [[ -f $b ]]; then printf '%s\n' "$b"; fi
+  done | sort -u)
+
+# The wrappers, in BOTH roots, minus the kit (§ 0c). Keyed on the SET, not on either root's presence:
+# root-vs-root symmetry is `skill-parity`'s question, and this gate does not need to answer it twice.
+wrapper_body_paths=$(
+  for root in "$CLAUDE_SKILLS" "$AGENT_SKILLS"; do
+    for d in "$root"/*/; do
+      if [[ -d $d ]] && ! grep -qxF -- "$(basename "$d")" <<<"$KIT_SKILLS" && [[ -f ${d}SKILL.md ]]; then
+        printf '%s\n' "${d}SKILL.md"
+      fi
+    done
+  done | sort -u)
+
+# `|| true`, and it is NOT decoration — it is the same pipefail trap the two loops above are written to
+# dodge, one level up. If BOTH constituents were empty, `grep -v` would match nothing, exit 1, redden
+# the pipeline under `set -o pipefail`, abort the assignment, and `set -e` would kill the script: exit 1
+# with no findings and no banner. The two refusals below are what SAY so, and they are written three
+# lines too late to survive that. Let the assignment succeed, and let the refusals do the talking.
+repo_body_paths=$(printf '%s\n%s\n' "$lib_body_paths" "$wrapper_body_paths" | grep -v '^[[:space:]]*$' | sort -u || true)
+
 # The same refusal the manifest gets, for the same reason. An empty vocabulary is not "nothing
 # resolves" — it is the repo surface's subject gone missing, and every one of its 37 refs would be
 # reported dangling: a gate so loud it is indistinguishable from a broken one, and the fix would look
@@ -465,11 +547,123 @@ if [[ -z $repo_vocab ]]; then
   echo "  points at can be resolved. This gate cannot be green without its vocabulary." >&2
   exit 1
 fi
-if [[ -z $repo_body_paths ]]; then
+if [[ -z $lib_body_paths ]]; then
   echo "check-skill-refs: FAILED — no repo-internal skill bodies found (src/*/skill/SKILL.md)." >&2
   echo "  That is a subject this gate is supposed to have; finding none means it moved, not that" >&2
   echo "  there is nothing to check. See § 0b." >&2
   exit 1
+fi
+# The SECOND constituent, refused separately — see the two-refusals note above `lib_body_paths`. The
+# vocabulary refusal does NOT cover this: `.claude/skills/` can be full of directories (so `repo_vocab`
+# is happy) while every non-kit SKILL.md inside them has been deleted or renamed, and the wrapper
+# subject would then vanish in silence behind a green tick.
+if [[ -z $wrapper_body_paths ]]; then
+  echo "check-skill-refs: FAILED — no non-kit wrapper bodies found under $CLAUDE_SKILLS/ or $AGENT_SKILLS/." >&2
+  echo "  That is a subject this gate is supposed to have (§ 0c); finding none means the wrappers moved," >&2
+  echo "  not that there is nothing to check. The coordination kit alone is NOT this gate's subject." >&2
+  exit 1
+fi
+
+# ── THE KIT EXCLUSION IS CHECKED, NOT ASSUMED (§ 0c) ────────────────────────────────────────────
+# `KIT_SKILLS` decides what this gate DOES NOT LOOK AT, and § 0c is the argument for why that list, of
+# all the lists in this repo, may not go unverified: its fail-open direction is a body of OURS whose refs
+# are silently never examined, under a gate that still prints `ok`.
+#
+# IT SITS HERE, NEXT TO THE SUBJECT IT VALIDATES, and not down with the link half where the rest of the
+# network work lives. `KIT_SKILLS` narrowed `wrapper_body_paths` twenty lines up; § 1 is about to judge
+# that narrowed set. A check that says "the narrowing was legitimate" belongs BEFORE the narrowing is
+# relied on, not several hundred lines after — the dependency and the ordering should agree, or the next
+# person to add a finding between them inherits a verdict over a subject nobody had validated yet.
+#
+# f(world), like § 2, and it inherits § 2's contract: in CI it MUST run, because a self-skip here widens
+# the blind spot in silence. THE SUBJECT DOES NOT MOVE EITHER WAY — it is built from the constant,
+# hermetically, so § 4's f(tree) split still holds for § 1 and § 3. What an unverified run loses is only
+# the promise that the exclusion still matches canonical: the same bodies are checked, and no MORE are
+# skipped.
+#
+# NOT gated on `SKILL_REFS_SKIP_LINKS`, and NOT on `link_mode`. That flag means "skip the LINK half" —
+# it says nothing about whether the roster can be read, and honouring it here would trade a whole
+# 1-request check away for nothing, on a laptop that could perfectly well have made the request. § 3's
+# rule is "degrade toward MORE checking, never less", and skipping a check the environment can run is
+# the wrong direction. (`link_mode` is worse still: it is `empty` on a tree with no links at all, a
+# branch taken BEFORE the `gh` probe, so it says nothing about `gh` either.)
+kit_mode=checked
+kit_skip_reason=""
+if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+    echo "check-skill-refs: FAILED — no authenticated \`gh\` in CI, so the coordination-kit roster" >&2
+    echo "  (FS-GG/.github registry/repos.yml) cannot be read, and KIT_SKILLS cannot be verified." >&2
+    echo "  That list decides which bodies this gate does NOT examine (§ 0c) — leaving it unchecked is" >&2
+    echo "  a blind spot, not a detail. Give the step a token (env: GH_TOKEN: \${{ secrets.GITHUB_TOKEN }})." >&2
+    exit 1
+  fi
+  kit_mode=skipped
+  kit_skip_reason="no authenticated \`gh\` (run \`gh auth login\`)"
+fi
+
+if [[ $kit_mode == checked ]]; then
+  # "COULD NOT READ IT" AND "READ IT AND IT SAID NOTHING" ARE DIFFERENT SENTENCES, and this gate has
+  # already been burned once by a tool that conflated them — `verify-paths` reports "not inside a GitHub
+  # checkout" when the real cause is an exhausted rate limit (.github#430), sending the reader to debug a
+  # checkout that was fine. So the fetch is kept SEPARATE from the parse: `gh`'s own stderr is captured
+  # and quoted back, and a failed request never gets to masquerade as a roster whose shape we misread.
+  #
+  # `Accept: …raw` — the file's BYTES, not the `contents` JSON envelope whose `.content` is base64.
+  # It is one fewer stage, and it drops `base64 -d`, which is GNU-only: BSD/macOS spell it `-D`, so the
+  # decode would have failed on a maintainer's laptop and surfaced as the empty-roster refusal below —
+  # a portability bug wearing the costume of a parse bug.
+  kit_err=$(mktemp)
+  if ! kit_yaml=$(gh api repos/FS-GG/.github/contents/registry/repos.yml \
+                    -H 'Accept: application/vnd.github.raw' 2>"$kit_err"); then
+    kit_why=$(grep -v '^[[:space:]]*$' "$kit_err" | head -2 | tr '\n' ' ' | sed 's/[[:space:]]*$//' || true)
+    rm -f "$kit_err"
+    : "${kit_why:=\`gh api\` failed with no message}"
+    if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+      echo "check-skill-refs: FAILED — could not READ FS-GG/.github registry/repos.yml: $kit_why" >&2
+      echo "  So KIT_SKILLS (§ 0c) is unverified, and that list decides which bodies this gate does NOT" >&2
+      echo "  examine. This is the ROSTER being unreadable, not the roster being wrong — do not go" >&2
+      echo "  looking for a parse bug. A check that did not run has proved nothing." >&2
+      exit 1
+    fi
+    # Locally, an unreachable roster is the offline case, not a defect in the tree. Announce and degrade.
+    kit_mode=skipped
+    kit_skip_reason="could not read the roster: $kit_why"
+  else
+    rm -f "$kit_err"
+    # The kit rows of the roster: `kind: skill` only. `fsgg-coord` is a kit row too, but it is
+    # `kind: client` — a script, not a body — and no part of this gate's subject either way.
+    kit_canonical=$(
+      printf '%s\n' "$kit_yaml" \
+        | awk '/^kit:/{inkit=1; next} inkit && /^[^ \t#-]/{inkit=0} inkit' \
+        | grep -E 'kind:[[:space:]]*skill' \
+        | sed -nE 's/.*[{,][[:space:]]*id:[[:space:]]*([A-Za-z0-9_.-]+).*/\1/p' \
+        | sort -u || true)
+
+    # NOW an empty result really does mean what this message says: the bytes arrived and carried no kit
+    # rows. That is the roster's shape changing under us, and it is not something to pass green over —
+    # it would excuse every name in the constant on the strength of a parse that matched nothing.
+    if [[ -z $kit_canonical ]]; then
+      echo "check-skill-refs: FAILED — read FS-GG/.github registry/repos.yml ($(wc -l <<<"$kit_yaml") lines)" >&2
+      echo "  but found no \`kind: skill\` kit rows in it. KIT_SKILLS (§ 0c) is therefore unverified, and" >&2
+      echo "  this gate will not call an unverified exclusion green. The roster PARSED to nothing, so its" >&2
+      echo "  shape has changed: teach this parse. Do not skip it." >&2
+      exit 1
+    fi
+
+    if ! kit_diff=$(diff <(sort -u <<<"$KIT_SKILLS") <(printf '%s\n' "$kit_canonical")); then
+      echo "check-skill-refs: FAILED — KIT_SKILLS does not match FS-GG/.github's coordination-kit roster." >&2
+      echo "  '<' is in this script and NOT canonical; '>' is canonical and NOT in this script:" >&2
+      # `|| true`: a `grep` that matches nothing exits 1, which `set -o pipefail` would promote and
+      # `set -e` would turn into a wordless death — killing the three lines below, which are the ones
+      # that say which direction is dangerous. A gate does not die mid-explanation.
+      grep -E '^[<>]' <<<"$kit_diff" | sed 's/^/    /' >&2 || true
+      echo "  A '<' line is the DANGEROUS one: this gate is skipping a body that no coordination-kit row" >&2
+      echo "  protects, so its refs are examined by NOTHING (§ 0c). A '>' line means the kit grew, and this" >&2
+      echo "  gate is now resolving another repo's issue numbers against $SELF_REPO." >&2
+      echo "  Fix KIT_SKILLS in this script to match the roster." >&2
+      exit 1
+    fi
+  fi
 fi
 
 # A BODY HAS EXACTLY ONE SURFACE, AND THAT IS CHECKED, NOT ASSUMED.
@@ -1257,6 +1451,18 @@ n_repo_vocab=$(grep -c . <<<"$repo_vocab" || true)
 # `.github#416` shape wearing a green tick, and this script has now been on both ends of it.
 echo "check-skill-refs: ok — $n_skills skills published; every [[ref]] in them resolves against the manifest."
 echo "check-skill-refs: ok — $n_repo_bodies repo-internal body/bodies; every [[ref]] in them resolves against $CLAUDE_SKILLS/ ($n_repo_vocab skills)."
+
+# AND THE EXCLUSION IS REPORTED TOO — because it is the one thing this gate deliberately does NOT read,
+# and an unstated exclusion is indistinguishable from a subject that never had those bodies in it. That
+# is the `.github#416` shape one last time: say what you did not look at, and say whether you were
+# entitled to skip it.
+n_kit=$(grep -c . <<<"$KIT_SKILLS" || true)
+if [[ $kit_mode == checked ]]; then
+  echo "check-skill-refs: ok — $n_kit coordination-kit body/bodies per skill root are OUT of subject (§ 0c); KIT_SKILLS verified against FS-GG/.github's kit roster."
+else
+  echo "check-skill-refs: NOTE — $n_kit coordination-kit body/bodies per skill root were skipped as OUT of subject (§ 0c), but KIT_SKILLS was NOT verified against FS-GG/.github's roster ($kit_skip_reason)." >&2
+  echo "  A name wrongly in that list is a body of OURS whose refs nothing examined. CI verifies it; this run did not." >&2
+fi
 
 # The link half reports its SUBJECT, not just its verdict. "I found no stale links" and "I did not
 # look at any" are different sentences, and a gate that prints one when it means the other is the
