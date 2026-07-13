@@ -3,10 +3,14 @@ module SurfaceAreaTests
 open System
 open System.IO
 open System.Reflection
-open System.Runtime.CompilerServices
-open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
+// The renderer this gate re-derives its surface with is the SAME code that writes the baselines it
+// compares against — `scripts/SurfaceRenderer.fs`, compiled in by this project (#661). It used to be
+// a hand-mirrored copy of the one in `scripts/refresh-surface-baselines.fsx`, which meant a bug in
+// both copies agreed with itself and passed this comparison silently (#657), while a fix to one copy
+// alone reddened the gate in a way regenerating could not repair.
+open FsGg.Governance.SurfaceRenderer
 
 let repositoryRoot = RepositoryRoot.value
 
@@ -23,24 +27,7 @@ let memberBaseline packageName =
     Path.Combine(repositoryRoot, "readiness", "surface-baselines", "members", packageName + ".txt")
     |> readBaseline
 
-let private fullNameOf (ty: Type) =
-    match ty.FullName with
-    | null -> ty.Name
-    | value -> value
-
-// `fullName` always ends with `ty.Name`, so the suffix is exact at `Length - "Module".Length`. A
-// `Replace` would strip the word wherever it occurs: `ModuleRegistryModule` renders as `…Registry`,
-// naming a type that does not exist. Must match `scripts/refresh-surface-baselines.fsx`.
-let private displayName (ty: Type) =
-    let fullName = fullNameOf ty
-
-    if ty.Name.EndsWith("Module", StringComparison.Ordinal) then
-        fullName.Substring(0, fullName.Length - "Module".Length)
-    else
-        fullName
-
-let exportedNames (assembly: Assembly) =
-    assembly.GetExportedTypes() |> Array.map displayName |> Set.ofArray
+let exportedNames (assembly: Assembly) = typeNames assembly |> Set.ofArray
 
 let assertBaseline packageName (assembly: Assembly) =
     let expected = baseline packageName
@@ -51,110 +38,13 @@ let assertBaseline packageName (assembly: Assembly) =
     Expect.isEmpty unexpected $"no unapproved public exports were added to {packageName}"
 
 // ---------------------------------------------------------------------------------------------
-// Member-level surface. This mirrors the renderer in `scripts/refresh-surface-baselines.fsx`, which
-// WRITES `members/<package>.txt`; here we re-derive the signatures and READ that file back. The two
-// renderers must agree character-for-character — and if they ever drift apart, this comparison is
-// what fails, so the divergence cannot pass silently.
+// Member-level surface. `memberSignatures` is the same function that WRITES `members/<package>.txt`;
+// here we run it against the built assemblies and compare the result to the committed file. So this
+// gate asserts what it is actually for — that the recorded baseline still matches the shipped
+// surface — rather than that two copies of one renderer agree with each other, which they always did.
 // ---------------------------------------------------------------------------------------------
 
-let private isCompilerGenerated (m: MemberInfo) =
-    m.GetCustomAttributes(typeof<CompilerGeneratedAttribute>, false).Length > 0
-    || m.Name.StartsWith("<", StringComparison.Ordinal)
-
-/// Stable rendering of a type reference: no assembly-qualified generic arguments, no arity suffix.
-let rec private typeRef (ty: Type) : string =
-    if ty.IsGenericParameter then
-        ty.Name
-    elif ty.IsArray || ty.IsByRef || ty.IsPointer then
-        let suffix =
-            if ty.IsArray then "[]"
-            elif ty.IsByRef then "&"
-            else "*"
-
-        match ty.GetElementType() with
-        | null -> ty.Name
-        | element -> typeRef element + suffix
-    elif ty.IsGenericType then
-        // A constructed generic's `FullName` carries the arity on EVERY generic segment, not just the
-        // last (`Dictionary`2+Enumerator[[…],[…]]`), and appends its arguments assembly-qualified in
-        // brackets. Cut the arguments, then strip the arity per segment. Truncating at the FIRST
-        // backtick instead would erase a nested generic's own name — and because THIS renderer is the
-        // gate (it re-derives the signatures and compares them to the baseline), that erasure is the
-        // gate going blind: a member returning `Dictionary<K,V>.Enumerator` and one returning
-        // `Dictionary<K,V>` would render to the same line, and a change between them would compare
-        // equal. Must match `scripts/refresh-surface-baselines.fsx`.
-        let stem =
-            let raw = fullNameOf ty
-
-            let withoutArguments =
-                match raw.IndexOf('[') with
-                | -1 -> raw
-                | bracket -> raw.Substring(0, bracket)
-
-            Regex.Replace(withoutArguments, @"`\d+", "")
-
-        let args = ty.GetGenericArguments() |> Array.map typeRef |> String.concat ", "
-        $"{stem}<{args}>"
-    else
-        fullNameOf ty
-
-let private parameters (ps: ParameterInfo array) =
-    ps |> Array.map (fun p -> typeRef p.ParameterType) |> String.concat ", "
-
-let private isAccessor (m: MethodInfo) =
-    m.IsSpecialName
-    && [ "get_"; "set_"; "add_"; "remove_" ]
-       |> List.exists (fun prefix -> m.Name.StartsWith(prefix, StringComparison.Ordinal))
-
-let private memberFlags =
-    BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static ||| BindingFlags.DeclaredOnly
-
-/// Deliberately not `GetMembers`, which also populates nested types and so forces the runtime to
-/// resolve assemblies a public signature never names. See the generator for the full rationale.
-let private membersOf (ty: Type) : MemberInfo array =
-    [| yield! ty.GetConstructors(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetMethods(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetProperties(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetFields(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetEvents(memberFlags) |> Array.map (fun m -> m :> MemberInfo) |]
-
-let private signature (owner: string) (m: MemberInfo) =
-    match m with
-    | :? ConstructorInfo as ctor -> Some $"{owner}.new({parameters (ctor.GetParameters())})"
-    | :? MethodInfo as method' when isAccessor method' -> None
-    | :? MethodInfo as method' ->
-        let generics =
-            if method'.IsGenericMethodDefinition then
-                let args = method'.GetGenericArguments() |> Array.map _.Name |> String.concat ", "
-                $"<{args}>"
-            else
-                ""
-
-        Some $"{owner}.{method'.Name}{generics}({parameters (method'.GetParameters())}) : {typeRef method'.ReturnType}"
-    | :? PropertyInfo as property ->
-        let accessors =
-            [ if property.CanRead then "get"
-              if property.CanWrite then "set" ]
-            |> String.concat ", "
-
-        Some $"{owner}.{property.Name} : {typeRef property.PropertyType} [{accessors}]"
-    | :? FieldInfo as field -> Some $"{owner}.{field.Name} : {typeRef field.FieldType}"
-    | :? EventInfo as event' ->
-        match event'.EventHandlerType with
-        | null -> Some $"{owner}.{event'.Name} : event"
-        | handler -> Some $"{owner}.{event'.Name} : event {typeRef handler}"
-    | _ -> None
-
-let exportedMembers (assembly: Assembly) =
-    assembly.GetExportedTypes()
-    |> Array.filter (fun ty -> not (isCompilerGenerated ty))
-    |> Array.collect (fun ty ->
-        let owner = displayName ty
-
-        membersOf ty
-        |> Array.filter (fun m -> not (isCompilerGenerated m))
-        |> Array.choose (signature owner))
-    |> Set.ofArray
+let exportedMembers (assembly: Assembly) = memberSignatures assembly |> Set.ofArray
 
 let assertMemberBaseline packageName (assembly: Assembly) =
     let expected = memberBaseline packageName
