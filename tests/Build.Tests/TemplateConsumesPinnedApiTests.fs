@@ -2436,6 +2436,32 @@ let templateConsumesPinnedApiTests =
                 "the probe must spell a nested call site by its path WITHIN the namespace. A bare `Perf.runScript` \
                  cannot bind under `open FS.GG.UI.Controls.Elmish`, so the probe would fail to compile and report \
                  the PIN as missing an API that is present — a wrong diagnosis on a real failure."
+
+            // THE CONTAINER MUST SURVIVE UN-HOISTING, held where it can actually fail. Attributing `val`s to
+            // the module that really declares them empties the pure CONTAINERS — `DesignTokens` around
+            // `Light`/`Dark`, the Elmish `Audio` around `Cmd` declare no `val` of their own — and the old walk
+            // would have dropped them for it. `frameworkModules` deliberately keeps them (see its comment), and
+            // this is the assertion that says so: if a member-less module is ever filtered out again, a doc
+            // naming `DesignTokens.<member>` stops being framework, goes UNJUDGED, and the rule reports green
+            // having read nothing. An unjudged symbol is not a failure, it is a SILENCE — no other test here
+            // would go red.
+            Expect.isTrue
+                (frameworkModules |> List.exists (fun m -> m.Path = "DesignTokens"))
+                "`DesignTokens` declares no `val` of its own — its members live in the nested `Light`/`Dark` — \
+                 but it is still a framework module a doc can name. If it has fallen out of the mirror's module \
+                 set, un-hoisting the nested members has quietly narrowed the closed world."
+
+            // AND THE MULTI-CANDIDATE NAME STILL RESOLVES THROUGH THE MODULE THAT DECLARES THE MEMBER. `Audio`
+            // is declared by THREE mirrors — Audio.Core, Audio.Host, and the member-less Elmish container above
+            // — and the shipped audio skills name `Audio.interpret` / `Audio.playSfx` ~40 times. `resolveModule`
+            // picks the candidate that owns the member, so an EMPTY container sharing the name must never be
+            // what answers for them. This is the highest-traffic surface in the corpus, and nothing else pins it.
+            Expect.isTrue
+                (judged.Contains "Audio.interpret" && judged.Contains "Audio.playSfx")
+                "`Audio.interpret` / `Audio.playSfx` are taught throughout the audio skills and declared by the \
+                 Audio.Core / Audio.Host mirrors. They must stay judged. If they fall out, the `Audio` name is \
+                 resolving through the EMPTY Elmish container instead of the mirrors that declare the members, \
+                 and the real audio surface has gone unjudged — silently, with every other test still green."
         }
 
         // The walk itself, against a mirror written FOR the test — the only way to assert the half of it the
