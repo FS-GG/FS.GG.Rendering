@@ -28,14 +28,6 @@ description: >-
   as a real consumer restores. That residual feed dependency is why a job using this action cannot be
   a REQUIRED check (cadence-map §4b/§5): a nuget.org outage would otherwise wedge every merge.
 
-outputs:
-  pin:
-    description: The framework pin ($(FsGgUiVersion)) the scaffolded product restores.
-    value: ${{ steps.pin.outputs.version }}
-  feed:
-    description: Absolute path of the runner-local feed the framework set was packed into.
-    value: ${{ steps.pack.outputs.feed }}
-
 runs:
   using: composite
   steps:

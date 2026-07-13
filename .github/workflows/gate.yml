@@ -788,11 +788,16 @@ jobs:
           set -euo pipefail
           dotnet new install .
 
-      # One loop, one runner, one pack (see the header). `set -euo pipefail` + an explicit per-profile
-      # failure means this fails CLOSED, per #266: "nothing to check" and "checked, and it's fine" must
-      # not share an exit code. `continue` on failure would be a fail-open; we exit non-zero at the end
-      # having named EVERY broken profile, rather than only the first — a caller fixing five profiles
-      # should not need five red runs to see all five.
+      # One loop, one runner, one pack (see the header). Fails CLOSED, per #266: "nothing to check" and
+      # "checked, and it's fine" must not share an exit code — every profile must pass or the job exits
+      # non-zero, and it names EVERY broken profile rather than only the first (a caller fixing three
+      # profiles should not need three red runs to find all three).
+      #
+      # `set -uo pipefail`, and the MISSING `-e` IS DELIBERATE — do not "tidy" it to `-euo`. Collecting
+      # all five verdicts requires the loop to survive a failing profile. With `-e`, the first failure
+      # sets `ok=0`, the following `[[ $ok == 1 ]] && { … }` guard then evaluates false and returns 1 as
+      # the loop body's last command, and the shell aborts mid-loop: the remaining profiles never run and
+      # the summary below never prints. Failure is carried by `ok`/`failed`, not by `-e`.
       - name: Scaffold every profile, then compile and run its tests
         shell: bash
         run: |
@@ -816,6 +821,11 @@ jobs:
               failed+=("$profile")
               echo "::error::profile=$profile — the SCAFFOLDED PRODUCT failed to build or its tests failed. This is the generated product, not this repo's suites: look in template/base/ (and remember each profile compiles a DIFFERENT slice of the //#if regions in tests/Product.Tests, so a break can be invisible on the other four)."
             fi
+
+            # Five fully restored-and-built products would otherwise co-exist on the runner. Drop each
+            # one as soon as its verdict is recorded, so peak disk is ONE product rather than five —
+            # ENOSPC here would surface as a baffling mid-loop build error, not as a disk message.
+            rm -rf "$out"
           done
 
           if (( ${#failed[@]} > 0 )); then
