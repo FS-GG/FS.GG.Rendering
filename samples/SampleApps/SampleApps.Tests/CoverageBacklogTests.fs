@@ -11,15 +11,25 @@ open SampleApps.Core.Harness
 /// machine-checked — no dangling control id, input union complete, all 22 specs dispositioned,
 /// the 6 adopted match the registry, and the committed report matches the rendered text.
 
-/// Walk up from the test assembly to find the committed report (the tree root).
-let rec private findUp (dir: DirectoryInfo) (name: string): string option =
-    let candidate = Path.Combine(dir.FullName, name)
-    if File.Exists candidate then
-        Some candidate
-    else
-        match Option.ofObj dir.Parent with
-        | Some parent -> findUp parent name
-        | None -> None
+/// The committed report. `SampleApps.Tests.fsproj` copies `../coverage-backlog.md` — the one at the
+/// sample tree root, next to `Directory.Build.props` — into the build output, so the file this suite
+/// judges is PLACED by the build rather than hunted for at runtime.
+///
+/// This used to ascend from `AppContext.BaseDirectory` looking for the nearest ancestor holding a
+/// file called `coverage-backlog.md` (#725). Two reasons that is gone, and the second is the one that
+/// matters:
+///
+///   1. A sample must not hand-roll a root walk. `tests/TestSupport/RepositoryRoot.fs` is the repo's
+///      one finder, and a sample structurally cannot consume it — the sample references the published
+///      packages, not this repo's projects, and a `ProjectReference` to reach the finder would
+///      puncture the shadowing isolation the sample exists to prove. The way out of that bind is not
+///      a second finder; it is not needing one.
+///   2. A marker-file walk fails loud when it finds NOTHING, but it cannot fail loud about finding
+///      the WRONG file — it binds to the nearest ancestor copy and compares against that. The name is
+///      not unique in this repo (`specs/134-sample-apps-g2/contracts/coverage-backlog.md` is another),
+///      so the walk's correctness rested on no copy ever appearing between the test binary and the
+///      sample root. An MSBuild copy names the file it means, once, and cannot drift onto another.
+let private committedReport = Path.Combine(AppContext.BaseDirectory, "coverage-backlog.md")
 
 [<Tests>]
 let coverageBacklogTests =
@@ -74,8 +84,16 @@ let coverageBacklogTests =
         }
 
         test "committed coverage-backlog.md matches Coverage.render () (no drift, T035/SC-005)" {
-            match findUp (DirectoryInfo(AppContext.BaseDirectory)) "coverage-backlog.md" with
-            | Some path -> Expect.equal (File.ReadAllText path) (Coverage.render ()) "committed report == rendered report"
-            | None -> failtest "committed coverage-backlog.md not found alongside the sample tree"
+            // Fail-loud on the COPY, before the comparison. If the `<None Include="..\coverage-backlog.md"
+            // CopyToOutputDirectory="PreserveNewest" />` item is ever dropped from the fsproj, this suite
+            // must say so in one line — not throw a bare FileNotFoundException, and above all not tempt
+            // the next reader into "fixing" it by re-adding an ancestor walk.
+            Expect.isTrue
+                (File.Exists committedReport)
+                (sprintf
+                    "coverage-backlog.md was not copied next to the test binary (looked in %s). The fsproj item that places it is missing — restore it: <None Include=\"..\\coverage-backlog.md\" Link=\"coverage-backlog.md\" CopyToOutputDirectory=\"PreserveNewest\" />. Do NOT replace it with a walk up the tree."
+                    AppContext.BaseDirectory)
+
+            Expect.equal (File.ReadAllText committedReport) (Coverage.render ()) "committed report == rendered report"
         }
     ]

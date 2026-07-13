@@ -165,6 +165,15 @@
 #   fsgg-coord take [--repo R] [--tries N]    # pick + claim the next SCHEDULABLE item in one step,
 #                                             # retrying on a lost race so a worker never idles.
 #   fsgg-coord batch [--repo R] [-n N] [--json] [--include-backlog]
+#   fsgg-coord lanes [--repo R] [--json]      # partition the board into LANES — connected components
+#                                             # of the item-overlap graph. Items in DIFFERENT lanes can
+#                                             # never collide, so they are PROVABLY safe to run at once.
+#                                             # Prints the CEILING (how many workers this board can
+#                                             # actually absorb — fan out wider and the extras are handed
+#                                             # nothing), names the CHOKEPOINT lanes, and lists the items
+#                                             # that cannot be laned at all: the ones invisible to every
+#                                             # worker who asks for work. DERIVED from the touch-sets in
+#                                             # the typed core, never asserted by anyone (#428, #485).
 #                                             # the scheduler: a maximal set of Ready items whose
 #                                             # touch-sets are disjoint from EACH OTHER and from
 #                                             # every in-flight claim. Hand one to each worker.
@@ -1637,6 +1646,7 @@ next() {
   # handing FRESH down into either call would rescan the whole board again. `next --fresh` would then
   # silently cost two or three full scans of the one budget #418 exists to protect.
   [ -n "$fresh" ] && CACHED=1 FRESH=1 board_items >/dev/null
+
   pickid="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" \
               "${ignflag[@]+"${ignflag[@]}"}" -n 1 --json | jq -r '.[0] // empty')"
   if [ -z "$pickid" ]; then
@@ -2400,6 +2410,57 @@ done_cmd() {
   # exists (cheap probe above) so non-epic items pay nothing.
   local has_parent; has_parent="$(jq -r '.data.repository.issue.parent.number // ""' <<<"$out")"
   [ -n "$flip" ] && [ -n "$has_parent" ] && epic_rollup "$ref"
+
+  # PUBLISH THE SHADOW EVIDENCE HERE, BECAUSE ASKING DID NOT WORK (#656).
+  #
+  # The kit asked every worker to run `divergence --publish` at the end of its loop — in the canonical
+  # doc and in both skill roots. Measured against a live fleet of 28 workers and 597 compared
+  # item-verdicts: it was run ZERO times. Not once, by anybody, including by the worker who wrote it.
+  # ASKING IS NOT A MECHANISM. A request at the end of a long recipe, competing with the worker actual
+  # job, is what an 0% hit rate looks like.
+  #
+  # So it happens HERE — in the one command every worker runs when it finishes an item. No new step in
+  # the recipe, no discipline required, nothing to remember.
+  #
+  # AND IT MAY NEVER COST A WORKER THEIR DONE-STAMP. This runs AFTER the green banner and after the
+  # roll-up: the stamp is already earned and printed. A publish that fails — no network, an exhausted
+  # REST budget, a ledger issue somebody renamed — is a publish that failed, and it is not a reason to
+  # tell a worker that their merged, green, rolled-up work is not done. Advisory, silent on the happy
+  # path, and its failure is swallowed on purpose.
+  #
+  # Idempotent by construction: the ledger row is keyed on (worker, day, engine) and REWRITTEN in place,
+  # so publishing on every `done` costs one REST call and cannot double-count a day.
+  done_publish_evidence
+
+  return 0
+}
+
+# The shadow evidence, published as a side effect of finishing work (#656). Never fails its caller.
+#
+# Silent unless it did something. A worker with no evidence — no engine, or a shadow that never compared
+# anything — has nothing to say, and saying so on every `done` is noise that trains people to stop reading
+# the output of the one command that carries their DONE-STAMP.
+done_publish_evidence() {
+  [ -s "$DIVERGENCE_LOG" ] || return 0
+
+  # `soft_run`, NOT a bare `$( )`. A `die` in this tool is FATAL BY DEFAULT — `die_rc` ends in
+  # `kill -s TERM $$`, which takes the whole shell down, and a command substitution does NOT contain it.
+  # `soft_run` sets SOFT_DIE=1 so the die unwinds only its own subshell and its chosen exit code comes
+  # back as an ordinary rc. That is the mechanism this file already uses everywhere a die must be
+  # survived (`soft_run claim_cmd`, `soft_run set_field`).
+  #
+  # Getting this wrong is not academic: the ledger issue being unreadable would have killed the worker
+  # `done` MID-STAMP — the exact thing the comment above promises it cannot do. It did, until this line.
+  local out rc=0
+  out="$(soft_run divergence_publish 2>&1)" || rc=$?
+  case "$rc" in
+    0) printf '%s\n' "$out" | grep -E '^fsgg-coord: published' || true ;;
+    3) : ;;                                   # nothing worth publishing. The honest answer, and not news.
+    *) echo "fsgg-coord: note — could not publish the shadow divergence evidence to the fleet ledger." >&2
+       echo "  Your work is DONE and stamped; this is bookkeeping. The evidence is still in your local" >&2
+       echo "  log, and the next done will republish it. To see why: fsgg-coord divergence --publish" >&2
+       ;;
+  esac
   return 0
 }
 
@@ -2671,6 +2732,7 @@ claim_cmd() {
   # that branch's commits into this item's PR (.github#319).
   printf '  isolate:  git worktree add ../%s-%s -b %s origin/main\n' "$R_REPO" "$R_NUM" "$branch"
   printf '  attribute: git commit --trailer "FSGG-Worker: %s"\n' "$w"
+  lane_note "$R_OWNER/$R_REPO#$R_NUM"
   warn_shared_identity
 }
 
@@ -3740,6 +3802,13 @@ SHADOW_UNOBSERVED=0
 # In `auto`, the presence of an engine IS the switch. In `shadow`, the switch is the caller's word, and
 # a missing engine is a skip they get told about — because they asked for a comparison and did not get
 # one, which is a different fact from "this machine does not do comparisons".
+# `lanes` needs the item set the SCHEDULER sees — the same scan, the same bodies, the same claims — so
+# that a lane can never disagree with the batch about what exists or what it reserves (#485). It must do
+# that with the shadow OFF, so the collection is switched on independently of shadowing. Collecting is
+# free: it appends to a temp file and decides nothing.
+LANES_COLLECT=""
+shadow_collecting() { [ -n "$LANES_COLLECT" ] && return 0; shadow_enabled; }
+
 shadow_enabled() {
   case "$ENGINE_MODE" in
     shadow|fs) return 0 ;;
@@ -3827,6 +3896,41 @@ shadow_log() {  # <json object on stdin>
 # counts only the rows for the build under test, and republishing the engine legitimately restarts the
 # three-day clock. Resolved ONCE per process: this runs in a worker's hot scheduling loop, and an
 # `--version` fork per invocation would be a real cost for a string that cannot change mid-run.
+# THE OLDEST ENGINE WHOSE EVIDENCE IS WORTH ANYTHING (#655).
+#
+# A global `dotnet tool` does not self-update, and the kit only ever said INSTALL. So the fleet went on
+# shadowing with 0.1.0 long after it was superseded — and 0.1.0 is not merely old, it is WRONG: it strips
+# the leading dot from every dotfile path (#649), so `.github/workflows/gate.yml` becomes a token that
+# matches no file, conflicts with nothing, and the engine reports STARTABLE on an item a live claim is
+# holding. The shadow caught it 7 times on the live board in one day.
+#
+# A STALE ENGINE IS WORSE THAN NO ENGINE. A worker without one contributes nothing and says so. A worker
+# with a superseded one contributes DIVERGENCES FROM A BUILD NOBODY SHOULD TRUST — noise that buries the
+# real findings, and, before #644 stamped the rows with a version, noise that could not even be
+# attributed to the build that produced it. `Divergence.evaluate` already refuses to count it (it counts
+# only reports from the build under test); this refuses to GENERATE it.
+#
+# Raise this whenever a republished engine changes a SCHEDULING ANSWER. It travels with the kit, so
+# raising it here is what actually reaches the fleet — and `tests/fsgg-coord` asserts it never exceeds
+# the version this repo builds, so the floor can never lock everybody out of shadowing.
+ENGINE_MIN_VERSION="0.1.1"
+
+# `sort -V` is the only version comparator worth using in bash, and it handles the 4-part assembly
+# version the engine actually reports (`0.1.1.0`) against a 3-part floor without special-casing.
+version_lt() {  # 0 iff $1 < $2
+  [ "$1" = "$2" ] && return 1
+  [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]
+}
+
+# An engine too old to trust. `unknown` counts as stale: an engine that cannot say what it is cannot be
+# known to be current, and "I could not tell" is not "it is fine" (#266).
+engine_is_stale() {
+  local v; v="$(engine_version 2>/dev/null)" || return 0
+  [ -n "$v" ] || return 0
+  [ "$v" = "unknown" ] && return 0
+  version_lt "$v" "$ENGINE_MIN_VERSION"
+}
+
 ENGINE_VERSION=""
 engine_version() {
   [ -n "$ENGINE_VERSION" ] && { printf '%s' "$ENGINE_VERSION"; return 0; }
@@ -3882,7 +3986,8 @@ shadow_compare() {  # $1=bash verdict NDJSON file  $2=engine decision JSON file 
     --slurpfile engine "$enginef" \
     --slurpfile bash_rows "$bashf" \
     --arg ts "$(now_iso)" --arg mode "$ENGINE_MODE" --arg repo "$repo" \
-    --arg worker "$(shadow_worker)" --arg engine "$(engine_version 2>/dev/null || echo none)" \
+    --arg worker "$(shadow_worker)" \
+    --arg engine_ver "$(engine_version 2>/dev/null || echo none)" \
     --argjson extra "$SHADOW_EXTRA_READS" --argjson unobserved "$SHADOW_UNOBSERVED" '
     ($engine[0] // {}) as $e
     | ($bash_rows | map(select(. != null))) as $b
@@ -3915,7 +4020,16 @@ shadow_compare() {  # $1=bash verdict NDJSON file  $2=engine decision JSON file 
     # green: a confident agreement with an engine that had agreed to nothing. An id only one engine
     # ruled on was not compared; saying otherwise is the same lie as a shadow that never ran.
     | ( [ $ids[] | select($bmap[.] != null and $emap[.] != null) ] | length ) as $paired
-    | { ts: $ts, mode: $mode, repo: $repo, worker: $worker, engine: $engine, ran: true,
+    # $engine_ver, NOT $engine. The --slurpfile above ALREADY binds $engine, to the decision document
+    # the engine emitted, and a second --arg engine beside it silently loses the collision. The
+    # comparison still worked (the slurpfile won, so $engine[0] was still the decision) — but every row
+    # got stamped with that whole JSON document in place of a version string, which breaks the two
+    # things the stamp exists for: --publish groups by engine, and --fleet counts only the build under
+    # test. The ledger would have matched nothing, forever.
+    #
+    # Found by reading 144 real rows, not by a test. The fixture asserted only that the field was
+    # non-empty, and a JSON array is non-empty. It now asserts the TYPE and the SHAPE.
+    | { ts: $ts, mode: $mode, repo: $repo, worker: $worker, engine: $engine_ver, ran: true,
         engineVerdict: ($e.verdict // "missing"),
         compared: $paired,
         extraReads: $extra,
@@ -3936,7 +4050,7 @@ SHADOW_VERDICTS=""
 SHADOW_SEEN=""
 
 shadow_init() {
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   SHADOW_ITEMS="$(mktemp "$CACHE/.snap-items.XXXXXX")"
   SHADOW_VERDICTS="$(mktemp "$CACHE/.snap-verdicts.XXXXXX")"
   SHADOW_SEEN="$(mktemp "$CACHE/.snap-seen.XXXXXX")"
@@ -3948,7 +4062,7 @@ shadow_init() {
 # BASH's verdict for one candidate, in the vocabulary the typed core also speaks. The tokens are the
 # comparable surface; the human sentence beside them in `skipped` is not, and never was.
 shadow_verdict() {  # <short> <verdict> [holder-kind] [paths(newline-separated)]
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   jq -c -n --arg short "$1" --arg verdict "$2" --arg holder "${3:-}" --arg paths "${4:-}" \
     '{short: $short, verdict: $verdict,
       holder: (if $holder == "" then null else $holder end),
@@ -3959,7 +4073,7 @@ shadow_verdict() {  # <short> <verdict> [holder-kind] [paths(newline-separated)]
 # facts. Anything the engine had to fetch for itself would be a second observation of a moving board,
 # and the comparison would be measuring the clock rather than the rule.
 shadow_item() {  # <owner> <repo> <num> <status> <state> <body-file> <blockers-json> <claim-json>
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   printf '%s/%s#%s\n' "$1" "$2" "$3" >>"$SHADOW_SEEN"
   jq -c -n \
     --arg owner "$1" --arg repo "$2" --argjson number "$3" \
@@ -4012,7 +4126,7 @@ shadow_claim_json() {  # <worker> <ageSec> <liveness-kind> [pr]
 # Record ONE candidate exactly as bash saw it: the board row, the body it read (or did not), and the
 # claim — including WHICH liveness question was actually asked.
 shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec> [pr]
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   local it="$1" body="$2" kind="$3" worker="$4" age="${5:-0}" pr="${6:-}"
   local r num owner repo status state bf claim blockers
   r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
@@ -4035,7 +4149,7 @@ shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec>
 # Bash's verdict for every candidate a jq filter selects — the bulk pre-filters (closed, blocked),
 # which never reach the per-item loop and so have no other place to be recorded.
 shadow_verdict_bulk() {  # <cands json> <jq select expr> <verdict token>
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   local id
   while IFS= read -r id; do
     [ -n "$id" ] || continue
@@ -4055,7 +4169,7 @@ shadow_verdict_bulk() {  # <cands json> <jq select expr> <verdict token>
 # dies under fan-out. If this number turns out to be large in practice, that is a real argument about
 # the check ORDER, and it belongs in the flip decision with evidence attached rather than in a guess.
 shadow_sweep() {  # <all cands json>
-  shadow_enabled || return 0
+  shadow_collecting || return 0
   local n i=0 it r num id body hold holder age stale alive kind pr
   n="$(jq 'length' <<<"$1" 2>/dev/null || echo 0)"
   while [ "$i" -lt "$n" ]; do
@@ -4142,6 +4256,15 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
     # Rule 2. This script is byte-copied into six repos, and a repo without the engine simply does not
     # shadow. That is a fact to RECORD, not an error to raise — it may never red a receiver's CI.
     shadow_skip "no engine (install it: dotnet tool restore, or dotnet tool install -g FS.GG.Coord.Cli)"
+    return 0
+  fi
+
+  # A STALE ENGINE IS WORSE THAN NO ENGINE (#655), and this is the same rule one notch stricter: it is a
+  # SKIP, not an error. A receiver whose worker has an old tool must not have its CI redded over it, and
+  # the skip is RECORDED — so "we did not compare" can never be mistaken for "they agreed", which is the
+  # whole of #266 and the reason the skip exists at all.
+  if engine_is_stale; then
+    shadow_skip "engine $(engine_version) is STALE (need >= $ENGINE_MIN_VERSION) — its answers are known-wrong, so its evidence is not collected. Update: dotnet tool update -g FS.GG.Coord.Cli"
     return 0
   fi
 
@@ -4369,8 +4492,21 @@ DIVERGENCE_MARKER_RE="^<!--\\s*fsgg:divergence\\s+worker=(?<w>[^\\s>]+)\\s+day=(
 # Grouped by ENGINE too, so that a worker who upgrades mid-day does not silently blend evidence from
 # two builds into a single row that is true of neither.
 divergence_summaries() {  # -> JSONL, one summary per (worker, engine, day)
+  # ONLY ROWS THAT NAME A BUILD, AND NAME IT AS A VERSION.
+  #
+  # Before #644 the engine stamp was the ENGINE DECISION DOCUMENT — a JSON object, not a version —
+  # because `--slurpfile engine` and `--arg engine` collided. Those rows are still sitting in every
+  # worker local log, and folding one would emit a marker whose `engine=` field is a JSON blob full of
+  # spaces and quotes. `--fleet` REFUSES to compute a verdict over a marker it cannot parse (correctly:
+  # an unreadable row might be the one that diverged), so ONE bad marker would make the ledger
+  # permanently unreadable for everybody.
+  #
+  # Evidence that cannot be attributed to a build is not evidence: `Divergence.evaluate` counts only
+  # reports from the build under test and would discard it anyway. Drop it HERE, where it can still be
+  # dropped quietly, rather than in the ledger, where it cannot.
   jq -c -s '
     map(select(.ran))
+    | map(select((.engine | type) == "string" and (.engine | test("^[0-9]+[.][0-9]+"))))
     | group_by([(.worker // "unknown-worker"), (.engine // "unknown"), (.ts[0:10])])
     | map({ worker:   (.[0].worker // "unknown-worker"),
             engine:   (.[0].engine // "unknown"),
@@ -4572,6 +4708,170 @@ divergence_fleet() {
     4) return 3 ;;
     *) echo "fsgg-coord: the engine could not fold the ledger (exit $rc) — no verdict." >&2; return 3 ;;
   esac
+}
+
+# KEEPING TABS: tell a worker which lane it just entered, and who else is in it (#428).
+#
+# The claim already says WHAT you took. This says WHERE — because a lane is the set of items your
+# touch-set can contend with, and the two facts a worker actually needs are: is anybody else in here with
+# me, and what else is in here that I will probably want next? (Follow-up findings land in the files you
+# were just standing in, which is the same lane, which is why this is worth printing at all.)
+#
+# Advisory, and never fatal. A lane is a nicety; a claim is a lock. If the partition cannot be computed —
+# no engine, a scan that did not collect — the claim stands exactly as before and this says nothing.
+lane_note() {  # <owner/repo#n>
+  engine_resolve >/dev/null 2>&1 || return 0
+  [ -s "${SHADOW_ITEMS:-}" ] || return 0
+
+  local snap part id
+  id="${1#*/}"                                 # owner/repo#n -> repo#n, the form the engine prints
+  snap="$(mktemp "$CACHE/.lanenote.XXXXXX")"; TMPFILES+=("$snap")
+  jq -n --slurpfile items "$SHADOW_ITEMS" --arg schema "$SNAPSHOT_SCHEMA" \
+    '{ schema: $schema, allowBacklog: true, limit: 0, inFlight: [], items: $items }' >"$snap" 2>/dev/null || return 0
+  part="$("${ENGINE_ARGV[@]}" lanes --json <"$snap" 2>/dev/null)" || return 0
+
+  jq -r --arg id "$id" '
+    ( .partition[] | select(.items[].ref == $id) ) as $lane
+    | if $lane == null then empty
+      else
+        "  lane:     \($lane.id)  ·  \($lane.items | length) item(s) share files with this one"
+        + ( if ($lane.heldBy | length) > 0
+            then "\n  SHARING:  \($lane.heldBy | join(", ")) " +
+                 "— you are NOT alone in this lane. Your touch-sets may still be disjoint (batch proved " +
+                 "this item is), but a `widen` here can collide. Say so early: fsgg-coord say <issue> --to <worker>"
+            else "\n  yours:    nobody else is in this lane — your follow-ups here will not be locked out"
+            end )
+      end' <<<"$part" 2>/dev/null || true
+}
+
+# Prefer a FREE lane — a lane nobody is standing in (#428).
+#
+# THIS MAKES NO SAFETY CLAIM, AND IT CANNOT. Every id handed to it is one `batch` has ALREADY proven
+# startable and disjoint from every live claim and from every other id in the set. This only chooses
+# WHICH of those equally-safe items to hand over. If it picks wrong, a worker gets a safe item in a busy
+# lane — a preference missed, never a collision. That distinction is the whole reason this is allowed to
+# be a heuristic at all: the moment an ordering could make an unsafe pick, it would have to move into the
+# typed core and be proven, and it does not.
+#
+# WHY PREFER A FREE LANE. Two items in the SAME lane may still be pairwise disjoint (A—B, B—C leaves A
+# and C disjoint), so the scheduler is right to offer both, and forbidding it would UNDER-schedule. But a
+# worker dropped into an occupied lane is one `widen` away from a collision, and — the part that actually
+# bites — its own FOLLOW-UP findings land in the files it was just standing in, i.e. the same lane, where
+# somebody else is now holding the lock. That is #533's shape one level up: the recipe reliably produces
+# an item its own author is locked out of.
+#
+# Degrades to today's behaviour with no engine: the partition is computed in the typed core, and a
+# receiver without one simply gets the batch's own order, exactly as before.
+lane_prefer() {  # <json array of ids, batch order> -> the same ids, free-lane ones first
+  local ids="$1"
+  [ "$(jq 'length' <<<"$ids" 2>/dev/null || echo 0)" -gt 1 ] || { printf '%s' "$ids"; return 0; }
+  engine_resolve || { printf '%s' "$ids"; return 0; }
+  [ -s "${SHADOW_ITEMS:-}" ] || { printf '%s' "$ids"; return 0; }
+
+  local snap part
+  snap="$(mktemp "$CACHE/.lanepref.XXXXXX")"; TMPFILES+=("$snap")
+  jq -n --slurpfile items "$SHADOW_ITEMS" --arg schema "$SNAPSHOT_SCHEMA"     '{ schema: $schema, allowBacklog: true, limit: 0, inFlight: [], items: $items }' >"$snap" 2>/dev/null     || { printf '%s' "$ids"; return 0; }
+
+  part="$("${ENGINE_ARGV[@]}" lanes --json <"$snap" 2>/dev/null)" || { printf '%s' "$ids"; return 0; }
+
+  # A STABLE PARTITION, not a re-sort: `batch`'s order is deterministic and two workers depend on
+  # agreeing about it, so free-lane ids keep their relative order and the rest follow in theirs.
+  jq -c --argjson ids "$ids" '
+    [ .partition[] | select(.free) | .items[].ref ] as $freeRefs
+    | ( $ids | map(select(. as $i | $freeRefs | index($i))) ) as $preferred
+    | ( $ids | map(select(. as $i | $freeRefs | index($i) | not)) ) as $rest
+    | $preferred + $rest' <<<"$part" 2>/dev/null || printf '%s' "$ids"
+}
+
+# ---- lanes: the partition of the board into work that can NEVER collide (#428) --------------------
+#
+# `batch` answers "what may run RIGHT NOW, given what is in flight?" — a question about this instant,
+# recomputed every call. A LANE is the structural fact underneath it: two items whose touch-sets do not
+# overlap, and which are not joined by any CHAIN of items that do, can never contend for a file no
+# matter who claims what or in which order. So a lane is a connected component of the item-overlap
+# graph, and items in different lanes are PROVABLY safe to run concurrently.
+#
+# DERIVED, NEVER ASSERTED. Nobody declares that two items are safe together — not an agent, not a human,
+# not a label on an issue. Safety is COMPUTED, in the typed core, by the same `TouchSet.conflicts` the
+# scheduler already reserves against, so a lane cannot disagree with the batch about what collides
+# (#485: one question, five implementations, agreeing in none). An agent's job is to improve the INPUT —
+# to give an undeclared item an honest touch-set — never to pronounce on the OUTPUT. If it could, a
+# confident wrong answer would put two workers in one file, which is the failure this whole protocol
+# exists to prevent (#273, #461).
+#
+# WHAT IT BUYS over `batch`:
+#   THE CEILING     the number of free lanes is how many workers this board can actually absorb. Fan out
+#                   wider and the extra workers are handed NOTHING — and `take` reports an empty queue
+#                   over a board full of work (#440's shape), which is indistinguishable from "no work".
+#   THE CHOKEPOINT  a lane that swallows the board is not a scheduling accident; it is ONE over-broad
+#                   touch-set gluing unrelated work together. `scripts/fsgg-coord` is exactly that, and
+#                   it serialises four open items (#428). The partition makes it a STRUCTURE you can see
+#                   rather than a series of surprises.
+#   THE CHORE       the items that cannot be laned at all — the ones invisible to every worker who asks
+#                   for work. That list is the agent chore's whole input.
+lanes_cmd() {
+  local repo="" json="" want_backlog=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)            repo="${2:?--repo needs a value}"; shift 2 ;;
+      --json)            json=1; shift ;;
+      --include-backlog) want_backlog=1; shift ;;
+      *) die "lanes: unknown argument '$1'." ;;
+    esac
+  done
+
+  # THE PARTITION IS THE ENGINE'S, SO THERE MUST BE ONE. Computing "which items can never collide?" with
+  # no engine present would mean reimplementing the conflict closure in jq — a SIXTH place that answers
+  # a question already answered in five (#485). Refuse, and say how to fix it.
+  if ! engine_resolve; then
+    echo "fsgg-coord: no engine resolves, so lanes cannot be computed." >&2
+    echo "  A lane is a claim about SAFETY, and it is computed in the typed core — not guessed at here." >&2
+    echo "  Install it:  dotnet tool install -g FS.GG.Coord.Cli" >&2
+    return 3
+  fi
+
+  # A STALE ENGINE MAY NOT PARTITION THE BOARD (#655). Unlike the shadow — where a stale engine merely
+  # produces evidence nobody should count — here its answer is USED. Engines before 0.1.1 strip the
+  # leading dot from every dotfile path (#649), so `.github/workflows/**` becomes a token that matches no
+  # file: it conflicts with nothing, and the lane it belongs to is wrong. A wrong lane is not a bad
+  # suggestion, it is a corrupted lock — it tells a worker two items are safe to run together when they
+  # are not. Refuse, loudly, and say exactly how to fix it.
+  if engine_is_stale; then
+    echo "fsgg-coord: the engine ($(engine_version)) is STALE — need >= $ENGINE_MIN_VERSION." >&2
+    echo "  Engines before 0.1.1 mis-parse every dotfile path (.github/, .agents/, .claude/), so the" >&2
+    echo "  partition they compute is WRONG — and a wrong lane says two items are safe to run together" >&2
+    echo "  when they are not (#649, #273). Refusing to print one." >&2
+    echo "  Update:  dotnet tool update -g FS.GG.Coord.Cli" >&2
+    return 3
+  fi
+
+  # THE SCHEDULER'S OWN SCAN. `batch` populates the snapshot as a side effect of deciding, so lanes and
+  # the batch see the SAME items, the SAME bodies and the SAME claims by construction. Recomputing the
+  # candidate set here would be a second observation of a moving board — and a lane that disagreed with
+  # the batch about what exists is worse than no lane at all.
+  LANES_COLLECT=1
+  local rc=0
+  batch_cmd ${repo:+--repo "$repo"} --include-backlog --json >/dev/null 2>&1 || rc=$?
+  # rc is the BATCH's verdict (75 = budget, 1 = refused). A refused batch still observed the board, so
+  # the partition is computable; only an unreadable board is not.
+  if [ "$rc" -eq 75 ]; then
+    die_rate
+  fi
+  [ -s "$SHADOW_ITEMS" ] || {
+    echo "fsgg-coord: the board scan produced no items — refusing to report an empty partition." >&2
+    echo "  An empty board and an unread board are not the same thing (#266)." >&2
+    return 3
+  }
+
+  local snap; snap="$(mktemp "$CACHE/.lanes.XXXXXX")"; TMPFILES+=("$snap")
+  jq -n --slurpfile items "$SHADOW_ITEMS" --arg schema "$SNAPSHOT_SCHEMA"     --argjson allow "$([ -n "$want_backlog" ] && echo true || echo false)" '
+    { schema: $schema, allowBacklog: $allow, limit: 0, inFlight: [], items: $items }' >"$snap"     || die "lanes: could not assemble the board snapshot."
+
+  if [ -n "$json" ]; then
+    "${ENGINE_ARGV[@]}" lanes --json <"$snap" || die "lanes: the engine could not partition the board."
+  else
+    "${ENGINE_ARGV[@]}" lanes --text <"$snap" || die "lanes: the engine could not partition the board."
+  fi
 }
 
 # ---- batch: THE scheduler. A maximal set of items that may run at once. --------------------------
@@ -5009,15 +5309,48 @@ take_cmd() {
     [ "$attempt" -gt 1 ] && export FRESH=1
     local berr from_backlog=""
     berr="$(mktemp "$CACHE/.batch-err.XXXXXX")"
-    pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>"$berr" | jq -r '.[0] // empty')"
-    # READY, ELSE BACKLOG — the same rule `next` already follows (#440). `take` used to stop at
-    # `Ready`, so a board with zero Ready items and a queue of startable Backlog ones reported
-    # "nothing to do" while a worker stood idle in front of it. The two commands a worker treats as
-    # "what do I do next" must agree about what EXISTS; this is the line that makes them.
+    # PREFER A FREE LANE (#428) — a lane nobody is standing in. This asks `batch` for the WHOLE
+    # startable set rather than just its first member, because `-n 1` makes the lane invisible:
+    # whatever the batch happened to order first is the only thing on offer.
+    #
+    # IT IS A PREFERENCE OVER AN ALREADY-SAFE SET, and it makes no safety claim of its own. Every id in
+    # that set is one `batch` has proven startable, disjoint from every live claim, and disjoint from
+    # every other id in it. Choosing differently among them can miss a preference; it cannot cause a
+    # collision. That is the only reason this is allowed to be a heuristic instead of a proof.
+    local ids="[]" lrc=0
+    LANES_COLLECT=1
+    ids="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" --json 2>"$berr")" || lrc=$?
+    [ "$lrc" -eq 0 ] && [ -n "$ids" ] || ids="[]"
+    if [ "$(jq 'length' <<<"$ids" 2>/dev/null || echo 0)" -eq 0 ]; then
+      lrc=0
+      ids="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" --include-backlog --json 2>"$berr")" || lrc=$?
+      [ "$lrc" -eq 0 ] && [ -n "$ids" ] || ids="[]"
+      [ "$(jq 'length' <<<"$ids" 2>/dev/null || echo 0)" -gt 0 ] && from_backlog=1
+    fi
+    pick="$(jq -r '.[0] // empty' <<<"$(lane_prefer "$ids")")"
+
+    # THE FALLBACK, AND IT IS NOT OPTIONAL. `batch` fails CLOSED on a touch-set it could not read — it
+    # refuses to schedule against a body it never saw, and that is correct (it is the whole Red leg).
+    # But `-n 1` STOPPED AT THE FIRST PICK, so it never reached a later unreadable item; asking for the
+    # WHOLE set walks straight into one. A single unreadable issue body anywhere on the board would then
+    # leave `take` with NOTHING — a lane preference costing a worker their item, which is exactly
+    # backwards. Measured: the fixture's FS.GG.Governance#203 does this, and the uncapped read returns
+    # an empty batch where the capped one returns #202.
+    #
+    # A PREFERENCE MAY NEVER SUBTRACT. If the wide read failed for any reason, fall back to precisely
+    # the pick `take` made before lanes existed. The worker loses the preference and keeps the work.
     if [ -z "$pick" ]; then
-      pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" --include-backlog -n 1 --json 2>"$berr" \
-              | jq -r '.[0] // empty')"
-      [ -n "$pick" ] && from_backlog=1
+      from_backlog=""
+      pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" -n 1 --json 2>"$berr" | jq -r '.[0] // empty')"
+      # READY, ELSE BACKLOG — the same rule `next` already follows (#440). `take` used to stop at
+      # `Ready`, so a board with zero Ready items and a queue of startable Backlog ones reported
+      # "nothing to do" while a worker stood idle in front of it. The two commands a worker treats as
+      # "what do I do next" must agree about what EXISTS; this is the line that makes them.
+      if [ -z "$pick" ]; then
+        pick="$(CACHED=1 batch_cmd "${repoflag[@]+"${repoflag[@]}"}" --include-backlog -n 1 --json 2>"$berr" \
+                | jq -r '.[0] // empty')"
+        [ -n "$pick" ] && from_backlog=1
+      fi
     fi
     if [ -z "$pick" ]; then
       # Say what is TRUE, and let `batch` say WHY — per item, in its own words. The old sentence
@@ -5647,6 +5980,7 @@ case "$cmd" in
   reap)      reap_cmd "$@" ;;
   take)      take_cmd "$@" ;;
   batch)     batch_cmd "$@" ;;
+  lanes)     lanes_cmd "$@" ;;
   overlap)   overlap_cmd "$@" ;;
   widen)     widen_cmd "$@" ;;
   say)       say_cmd "$@" ;;

@@ -76,15 +76,38 @@
 # ---------------------------------------------------------------------------------------------------
 # EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
 #
-# The one entry this file was filed for — `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #594` — was RETIRED by
-# the 0.9.1 release (FS.GG.Rendering#587). `$(FsGgUiVersion)` is 0.9.1, published FS.GG.UI.SkiaViewer 0.9.1
-# exports the case, and so M-MIR/TYPE takes its member back: the shipped SkiaViewer mirror now DECLARES
-# `Persist`, which is the whole point — the omission was a debt against an unpublished member, and the
-# release paid it.
+# The one entry this file was filed for — `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #594` — is RETIRED.
+# `$(FsGgUiVersion)` is 0.9.2, published FS.GG.UI.SkiaViewer 0.9.2 exports the case, and so M-MIR/TYPE takes
+# its member back: the shipped SkiaViewer mirror now DECLARES `Persist`, which is the whole point — the
+# omission was a debt against an unpublished member, and the release paid it.
 #
 # Its creditor on the other side of the same debt — `pinned-api-doc-ledger.txt`'s
 # `SkiaViewer.fsi::Viewer.runAppWithPersistence` — was deleted in the same change, as that file said it
 # must be ("One release retires both lines. Delete them together.").
+#
+# 0.9.1 IS A PHANTOM TAG — IT WAS TAGGED AND ABANDONED, AND IT NEVER PUBLISHED (FS.GG.Rendering#690). A
+# phantom TAG, note, not P-PEND/SRC's PHANTOM ENTRY above (a line whose member `src/` no longer declares).
+# Same word, different subject; mind which one you are reading. The line
+# was deleted by the 0.9.1 cut (#587 / commit 1fddbd0b), and this paragraph credited that release ever since
+# — but 0.9.1 is not a release. Its tag triple was cut, then BOTH release-only gate jobs failed,
+# `publish-packages` was correctly skipped, and no `0.9.1` package was ever pushed to nuget.org: the
+# published line runs 0.9.0 -> 0.9.2, and `fs-gg-ui/v0.9.1` still points at 1fddbd0b as an explained gap
+# rather than an unexplained hole in the version history. The release that actually made `Persist` bindable
+# is 0.9.2 (#679 / #684), which is why this paragraph now credits it. The DELETION was right; only the
+# creditor was misnamed.
+#
+# Nothing can pin the phantom, and `main` proved it: it pinned 0.9.1 for EXACTLY ONE COMMIT (1fddbd0b), and
+# the very next commit bumped to 0.9.2 (88f8ae2c) — because with the pin naming a version nuget.org does not
+# have, every PR restore was NU1102 and the ONLY PR that could go green was the one that bumped it (#679).
+# A phantom tag is not a version you can restore from. It is a version nobody ever could.
+#
+# THAT THIS ROTTED AT ALL IS THE ONE THING THE RATCHET ABOVE CANNOT CATCH, AND IT IS WORTH KNOWING. P-PEND/PIN
+# reds EVERY LINE on a pin bump, on purpose, so that a release forces each entry to be judged afresh. It binds
+# LINES. This file has none — it is empty, which is the goal state — so the 0.9.1 -> 0.9.2 bump forced no
+# re-judgement of anything, and the prose went on naming a release that does not exist with every gate green.
+# That is precisely the SILENT ROT this file's own rules were built to prevent, one level up: the entries are
+# machine-checked, and the paragraph that explains them is not. If you retire the next entry here, the pin you
+# name in its epitaph is checked by nobody but you.
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry, and
 # the next mirrored type that grows a case ahead of the pin lands here.

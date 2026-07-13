@@ -24,6 +24,42 @@ The signatures you consume are bundled with this product at
 `ElmishAdapter.update` are pure: they return the next model and a list of
 requested effects as plain values, interpreted later at the host boundary.
 
+## The front door — `ControlsElmish.program`
+
+This is where an Elmish product starts, and your scaffold already calls it: `View.fs` builds
+
+```fsharp
+open FS.GG.UI.Controls.Elmish
+
+// init -> update -> view -> subscriptions, assembled into one AdapterProgram.
+let adapterProgram =
+    ControlsElmish.program AppRoot.Model.init AppRoot.Model.update controlsExampleView AppRoot.Model.subscriptions
+```
+
+`ControlsElmish.program` takes the four Elmish functions and returns an
+`AdapterProgram<'model, 'msg>` — a record carrying exactly them, as `Init` / `Update` / `View` /
+`Subscriptions`. The `view` it wants returns a `Control<'msg>`.
+
+**It bundles; it does not run.** Nothing in the shipped surface *consumes* an `AdapterProgram`, so
+do not go hunting for a `run(program)` — there isn't one, and that absence is the design. What the
+program gives you is the pure four, reachable and callable as plain values:
+
+```fsharp
+let model, initCommands = adapterProgram.Init()
+let updated, saveCommands = adapterProgram.Update SaveRequested model
+let rendered = adapterProgram.View updated
+let subs = adapterProgram.Subscriptions updated
+```
+
+That is a whole product's MVU, folded in a test with no window, no GL and no host — and it is
+precisely what your generated `BehaviorTests.fs` does with it.
+
+The **live window** is a separate record: `InteractiveAppHost`, handed to
+`ControlsElmish.runInteractiveApp` (and its `…WithAudio` / `…WithWindowBehavior` variants). Your
+scaffold builds that one too, in `EvidenceCommands.fs`. Two records, two jobs — the program is the
+pure declarative bundle you assert against, the host is what the viewer drives. Keep them straight
+and neither will surprise you.
+
 ## Usage
 
 ```fsharp
@@ -225,8 +261,64 @@ separation the rule asks for, and it cannot be produced from a screenshot.
 adapter path without opening a window"*. Reach for it when you need one raw pointer
 route rather than a scripted fold; prefer the derivatives otherwise.
 
+### `Pointer.replay` — the fold determinism rests on
+
+One level below the app: `Pointer.replay` folds a recorded `PointerMsg` sequence to a final
+`PointerState` plus the ordered interactions it produced. Identical input yields identical output —
+that is SC-005, and this is the surface it is asserted on.
+
+```fsharp
+open FS.GG.UI.Controls
+
+// `policy` (a PixelSnapPolicy) and `layout` (a LayoutResult) are the SAME inputs your live route
+// already threads. Pointer.replay never fetches them — that is exactly what keeps it pure and
+// replayable, so a recorded sequence folds to a byte-identical result on any machine.
+let finalState, interactions =
+    Pointer.replay policy layout recorded (Pointer.init ())
+```
+
+Use it to pin a recorded pointer trace against regression, or to reason about pointer state without
+standing up a host. It is *pointer-level*: it returns interactions, not your model. When the question
+is "what did the interaction do to my product", stay with `Perf.runScriptToModel` above, which drives
+the whole route and hands you the model back.
+
 The rule to carry away, and it is the same one [[fs-gg-testing]] states at the sink:
 **a frame proves the renderer ran. Only a verdict proves the app answered.**
+
+## Ask what went wrong — `diagnostics`
+
+The `Diagnostics` *constructors* build a report. `diagnostics` is the **query that hands you the
+list** — how a product asks what is wrong with the thing it just built. It is the same name, and the
+same question, at three levels:
+
+```fsharp
+open FS.GG.UI.Controls
+open FS.GG.UI.Controls.Elmish
+
+Control.diagnostics rendered          // authoring issues in a Control<'msg> tree, without rendering it
+ControlRuntime.diagnostics runtime    // what the focus/hover/press/drag runtime has accumulated
+AdapterCmd.diagnostics command        // what an interpreter REPORTED while producing this command
+```
+
+Mind the module on the third: it is **`AdapterCmd`**, beside `AdapterCmd.productMessages` — not
+`ControlsElmish`, which is the *runner* module next door.
+
+<!-- skill-refs: closed-ok FS.GG.Rendering#457 — cited as the issue where this gap was FOUND, not as somewhere to go. Closed is correct; it stays closed. -->
+That third one is the one that bites. **`AdapterCmd.productMessages` extracts messages and nothing
+else** — so a routing site that calls it alone *silently drops every diagnostic the interpreter
+raised*: a pointer hit-test miss, a stale target, an unresolved control id (issue
+FS.GG.Rendering#457). Route both, as the shipped pointer routing sites now do:
+
+```fsharp
+let messages = AdapterCmd.productMessages command
+let reported = AdapterCmd.diagnostics command   // AdapterDiagnostic list, in order
+
+// Hand `reported` to your observer/log. Dropping it is how a mis-routed click
+// becomes "nothing happened" with nothing anywhere saying why.
+```
+
+A command built from a plain product message carries none, so this is free on the happy path and
+loud on the unhappy one — which is the whole point of asking.
 
 ## Build Commands
 

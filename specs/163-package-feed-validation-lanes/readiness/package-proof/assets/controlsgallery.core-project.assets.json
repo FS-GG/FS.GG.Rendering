@@ -210,33 +210,24 @@
           "lib/net10.0/FS.GG.UI.SkiaViewer.dll": {}
         }
       },
-      "FS.GG.UI.Testing/0.4.0-preview.1": {
-        "type": "package",
-        "dependencies": {
-          "FS.GG.UI.Diagnostics": "0.4.0-preview.1",
-          "FS.GG.UI.Scene": "0.4.0-preview.1",
-          "FSharp.Core": "10.1.301",
-          "SkiaSharp": "4.150.0",
-          "SkiaSharp.NativeAssets.Win32": "4.150.0"
-        },
-        "compile": {
-          "lib/net10.0/FS.GG.UI.Testing.dll": {}
-        },
-        "runtime": {
-          "lib/net10.0/FS.GG.UI.Testing.dll": {}
-        }
-      },
-      "FS.GG.UI.Themes.AntDesign/0.4.0-preview.1": {
+      "FS.GG.UI.Themes.Default/0.4.0-preview.1": {
         "type": "package",
         "dependencies": {
           "FS.GG.UI.DesignSystem": "0.4.0-preview.1",
           "FSharp.Core": "10.1.301"
         },
         "compile": {
-          "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll": {}
+          "lib/net10.0/FS.GG.UI.Themes.Default.dll": {}
         },
         "runtime": {
-          "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll": {}
+          "lib/net10.0/FS.GG.UI.Themes.Default.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/any/any/design-tokens.tokens.json": {
+            "buildAction": "Content",
+            "codeLanguage": "any",
+            "copyToOutput": false
+          }
         }
       },
       "FSharp.Core/10.1.301": {
@@ -922,27 +913,16 @@
         "lib/net10.0/FS.GG.UI.SkiaViewer.dll"
       ]
     },
-    "FS.GG.UI.Testing/0.4.0-preview.1": {
-      "sha512": "cuqVW605h7cEzQElPUe3b9BhR6C1aW4kc8mHsVSU9Ji6drQ12TrFh6V9pMjcyxNOzn+i3/kRw7qnbmeRPwGWsQ==",
+    "FS.GG.UI.Themes.Default/0.4.0-preview.1": {
+      "sha512": "LWeH1l7YFmD8N8+ATufP73lSzQ0D2Wcg6Hp5OjQAQJyAopFZ7E2ofaXSc6hiTxdxDIYvP7LDD56drakrMj8YBg==",
       "type": "package",
-      "path": "fs.gg.ui.testing/0.4.0-preview.1",
+      "path": "fs.gg.ui.themes.default/0.4.0-preview.1",
       "files": [
         ".nupkg.metadata",
-        "README.md",
-        "fs.gg.ui.testing.0.4.0-preview.1.nupkg.sha512",
-        "fs.gg.ui.testing.nuspec",
-        "lib/net10.0/FS.GG.UI.Testing.dll"
-      ]
-    },
-    "FS.GG.UI.Themes.AntDesign/0.4.0-preview.1": {
-      "sha512": "aSNHPojcOsXSdFVl2w66y1F9hUQShlUcOKVcXind+JWXTzBTtOszmPvfCQTcr7veyTbOo42ol+KuIFLFnn1KlA==",
-      "type": "package",
-      "path": "fs.gg.ui.themes.antdesign/0.4.0-preview.1",
-      "files": [
-        ".nupkg.metadata",
-        "fs.gg.ui.themes.antdesign.0.4.0-preview.1.nupkg.sha512",
-        "fs.gg.ui.themes.antdesign.nuspec",
-        "lib/net10.0/FS.GG.UI.Themes.AntDesign.dll"
+        "contentFiles/any/any/design-tokens.tokens.json",
+        "fs.gg.ui.themes.default.0.4.0-preview.1.nupkg.sha512",
+        "fs.gg.ui.themes.default.nuspec",
+        "lib/net10.0/FS.GG.UI.Themes.Default.dll"
       ]
     },
     "FSharp.Core/10.1.301": {
@@ -1619,11 +1599,8 @@
       "FS.GG.UI.Controls >= 0.4.0-preview.1",
       "FS.GG.UI.Controls.Elmish >= 0.4.0-preview.1",
       "FS.GG.UI.DesignSystem >= 0.4.0-preview.1",
-      "FS.GG.UI.KeyboardInput >= 0.4.0-preview.1",
-      "FS.GG.UI.Scene >= 0.4.0-preview.1",
       "FS.GG.UI.SkiaViewer >= 0.4.0-preview.1",
-      "FS.GG.UI.Testing >= 0.4.0-preview.1",
-      "FS.GG.UI.Themes.AntDesign >= 0.4.0-preview.1",
+      "FS.GG.UI.Themes.Default >= 0.4.0-preview.1",
       "FSharp.Core >= 10.1.301"
     ]
   },
@@ -1633,11 +1610,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
-      "projectName": "AntShowcase.Core",
-      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/AntShowcase.Core.fsproj",
+      "projectUniqueName": "/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/ControlsGallery.Core.fsproj",
+      "projectName": "ControlsGallery.Core",
+      "projectPath": "/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/ControlsGallery.Core.fsproj",
       "packagesPath": "/home/developer/projects/FS.GG.Rendering-702/artifacts/package-feed-cache",
-      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/AntShowcase/AntShowcase.Core/obj/",
+      "outputPath": "/home/developer/projects/FS.GG.Rendering-702/samples/ControlsGallery/ControlsGallery.Core/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/developer/projects/FS.GG.Rendering-702/specs/163-package-feed-validation-lanes/readiness/package-proof/source-rules.nuget.config"
@@ -1684,27 +1661,12 @@
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
           },
-          "FS.GG.UI.KeyboardInput": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.Scene": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
           "FS.GG.UI.SkiaViewer": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
           },
-          "FS.GG.UI.Testing": {
-            "target": "Package",
-            "version": "[0.4.0-preview.1, )",
-            "generatePathProperty": true
-          },
-          "FS.GG.UI.Themes.AntDesign": {
+          "FS.GG.UI.Themes.Default": {
             "target": "Package",
             "version": "[0.4.0-preview.1, )",
             "generatePathProperty": true
