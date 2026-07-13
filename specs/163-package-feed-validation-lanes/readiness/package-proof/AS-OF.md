@@ -21,6 +21,12 @@ It proves the stronger of the two available claims: the samples not only **resto
 packed from this commit, they **build** against it (`build.log`). Restore proves the packages resolve;
 only the build proves they compose.
 
+**All four samples were restored and built** — `restore.log` and `build.log` each name all four, and
+`assets/` holds all twelve `project.assets.json`. Do not read the single `Restore command:` line in
+`source-proof.md` (and `restoreCommand` in `source-proof.json`) as the whole run: that field records
+only the *first* sample's command, a leftover from when the lane proved exactly one sample. The logs,
+not that field, are the record of what ran.
+
 ## How to regenerate it
 
 The record is written only when you ask for it by name. `--out` no longer defaults here (#702) — a bare
@@ -46,8 +52,10 @@ relative — which is why the tables below name `artifacts/package-feed/…` rat
 
 ## Which files are reproducible, and which are not
 
-**Machine-independent** — regenerating on another machine at the same commit reproduces these
-byte-for-byte. They are the reviewable evidence:
+**Machine-independent** — regenerating on another machine at the same commit **with the command above**
+reproduces these byte-for-byte. (The command matters: point `--feed` at your own feed instead and the
+`Feed package` column in `package-versions.md` goes back to naming your `$HOME`, because the relativiser
+can only relativise what sits under the repository root.) They are the reviewable evidence:
 
 - `package-versions.md` — the 16 discovered packages and their versions
 - `package-pins.md` — the 57 sample pins and their stale/current status
