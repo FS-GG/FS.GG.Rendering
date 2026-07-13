@@ -561,7 +561,7 @@ let private flagValues (flag: string) (rest: string list) =
 let private hasFlag (flag: string) (rest: string list) =
     rest |> List.exists ((=) flag)
 
-let private runPackageFeedCmd (rest: string list) =
+let private runPackageFeedProof (rest: string list) =
     let mode =
         flagValue "--mode" rest
         |> Option.defaultValue "check"
@@ -654,6 +654,21 @@ let private runPackageFeedCmd (rest: string list) =
             | PackageFeed.Passed -> 0
             | PackageFeed.Failed -> 1
             | PackageFeed.EnvironmentLimited -> 3
+
+/// #677 — discovery now REFUSES a `src/` tree it cannot read as one, rather than quietly expecting
+/// fewer packages than the repository ships. Print that refusal where every other package-feed failure
+/// is printed — stderr, which is the thing a CI reader actually opens — instead of letting it land as an
+/// unhandled stack trace, and give it the same exit code the command already uses for a bad input ("no
+/// samples selected", above). It is deliberately NOT `Failed`: a proof whose expected-feed set could not
+/// even be derived did not run, so it has no verdict to report. Same shape as the `CatalogError` handler
+/// below.
+let private runPackageFeedCmd (rest: string list) =
+    try
+        runPackageFeedProof rest
+    with PackageFeed.PackageDiscoveryError message ->
+        eprintfn "package-feed: %s" message
+        eprintfn "package-feed: the expected-feed set could not be derived, so NOTHING was checked — this is not a pass."
+        2
 
 let private runValidationLanesCmd (rest: string list) =
     let repositoryRoot = Directory.GetCurrentDirectory()

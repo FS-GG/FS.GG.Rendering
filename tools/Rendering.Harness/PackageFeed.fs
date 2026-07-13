@@ -222,9 +222,37 @@ module PackageFeed =
         | "" -> ()
         | directory -> Directory.CreateDirectory directory |> ignore
 
+    exception PackageDiscoveryError of string
+
+    /// Parses a project or props file, raising `PackageDiscoveryError` — naming the file and the
+    /// underlying reason — rather than reporting the absence of what it could not read.
+    ///
+    /// #677: `discoverPackablePackages` used to wrap its whole body in `try … with _ -> None`, so a
+    /// malformed, unreadable or permission-denied `.fsproj` was skipped exactly like a project that
+    /// is legitimately not ours. The discovered set IS the expected-feed set, so a project that
+    /// silently leaves it is a package the feed check stops looking for: `MissingExpectedPackage`
+    /// cannot fire for a package that is no longer expected, and `package-feed --mode check` reports
+    /// `Passed` over a package that never packed. That is FS-GG/.github#266's fails-open class —
+    /// scanning fewer inputs and scanning clean inputs must not share a verdict — and the same shape
+    /// as `generatedProductInputs` (#511) and `buildFrontEnd()`'s `else ""` (#667).
+    let private loadProjectXml (path: string) : XDocument =
+        try
+            XDocument.Load path
+        with ex ->
+            raise (PackageDiscoveryError $"cannot read '{path}' as a project file: {ex.Message}")
+
+    /// An MSBuild property value: a `<name>` element inside a `<PropertyGroup>`, first one wins.
+    ///
+    /// Parent-scoped on purpose. An unscoped descendant search matches a `<Version>` nested under a
+    /// `<PackageReference>` (the element form of the pin) just as happily as the property, so the
+    /// tighter read is also the correct one.
     let xmlValue (doc: XDocument) (name: string) =
         doc.Descendants()
-        |> Seq.tryFind (fun e -> e.Name.LocalName = name)
+        |> Seq.tryFind (fun e ->
+            e.Name.LocalName = name
+            && (match e.Parent with
+                | null -> false
+                | parent -> parent.Name.LocalName = "PropertyGroup"))
         |> Option.map (fun e -> e.Value.Trim())
 
     let xmlBool (value: string option) =
@@ -232,35 +260,104 @@ module PackageFeed =
         | Some v -> String.Equals(v, "true", StringComparison.OrdinalIgnoreCase)
         | None -> false
 
+    /// The version of a packable project, resolved the way MSBuild resolves it: the project's own
+    /// inline `<Version>` if it has one, otherwise the one it inherits from the nearest
+    /// `Directory.Build.props` / `Directory.Build.local.props` walking up to the repository root
+    /// (`.local.props` wins inside a directory, because the canonical props imports it last and the
+    /// last definition wins).
+    ///
+    /// #677: identity (`PackageId` + `IsPackable`) and version RESOLUTION are separate concerns, and
+    /// discovery used to conflate them — a packable project that centralized its version was not
+    /// discovered *at all*, rather than discovered and reported. Centralizing a version is an
+    /// ordinary refactor and `Directory.Build.props` already exists, so the silently-dropped case was
+    /// one edit away: it is what let `Feature207BomMembershipTests`, the BOM membership DRIFT
+    /// DETECTOR, go green while the BOM omitted a shipping member.
+    ///
+    /// This is an XML scan, not an MSBuild evaluation — it does not evaluate conditions, property
+    /// functions, or arbitrary imports. When it resolves nothing, discovery REFUSES (see
+    /// `discoverPackablePackages`); it never guesses, and it never drops the project.
+    let private resolveProjectVersion (repositoryRoot: string) (projectPath: string) (projectDoc: XDocument) : string option =
+        match xmlValue projectDoc "Version" with
+        | Some inline_ when not (String.IsNullOrWhiteSpace inline_) -> Some inline_
+        | _ ->
+            // Trailing separators trimmed on BOTH sides. `Path.GetDirectoryName` never emits one, so an
+            // untrimmed `stopAt` of "…/repo/" never equals the "…/repo" the walk is supposed to stop at,
+            // and the walk leaves the repository — resolving the version from whatever
+            // `Directory.Build.props` happens to sit above the checkout. That would be a fails-open
+            // introduced while fixing a fails-open, so it gets the boundary test it deserves.
+            let normalize (path: string) =
+                Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+
+            let stopAt = normalize repositoryRoot
+
+            let rec walkUp (directory: string) =
+                let inherited =
+                    // `.local.props` first: the canonical `Directory.Build.props` imports it LAST, so
+                    // its properties override the org defaults (MSBuild last-write-wins).
+                    [ "Directory.Build.local.props"; "Directory.Build.props" ]
+                    |> List.tryPick (fun name ->
+                        let path = Path.Combine(directory, name)
+
+                        if File.Exists path then
+                            match xmlValue (loadProjectXml path) "Version" with
+                            | Some v when not (String.IsNullOrWhiteSpace v) -> Some v
+                            | _ -> None
+                        else
+                            None)
+
+                match inherited with
+                | Some version -> Some version
+                | None when String.Equals(normalize directory, stopAt, StringComparison.Ordinal) -> None
+                | None ->
+                    match Path.GetDirectoryName directory with
+                    | null
+                    | "" -> None
+                    | parent -> walkUp parent
+
+            match Path.GetDirectoryName(Path.GetFullPath projectPath) with
+            | null
+            | "" -> None
+            | directory -> walkUp directory
+
     let discoverPackablePackages (repositoryRoot: string) (feedPath: string) : PackablePackage list =
         let src = Path.Combine(repositoryRoot, "src")
 
+        // #677: `[]` here said "this repository expects no packages", which every downstream check
+        // then confirms — `checkLocalFeed` over an empty set is `Passed`. A repository root with no
+        // `src/` is a broken input, not a repository with nothing to pack, and the two must not share
+        // a verdict. (Same rule the `package-feed` CLI already states for its sample set: "no samples
+        // selected" and "all samples pass" must not share an exit code.)
         if not (Directory.Exists src) then
-            []
-        else
-            Directory.GetFiles(src, "*.fsproj", SearchOption.AllDirectories)
-            |> Array.choose (fun projectPath ->
-                try
-                    let doc = XDocument.Load projectPath
-                    let packageId = xmlValue doc "PackageId"
-                    let version = xmlValue doc "Version"
-                    let isPackable = xmlBool (xmlValue doc "IsPackable")
+            raise (PackageDiscoveryError $"no 'src' directory under repository root '{repositoryRoot}': nothing to discover, which is a broken root rather than a repository with no packable package")
 
-                    match packageId, version with
-                    | Some id, Some ver when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) && isPackable ->
-                        let package: PackablePackage =
-                            { PackageId = id
-                              Version = ver
-                              ProjectPath = relativePath repositoryRoot projectPath
-                              IsPackable = true
-                              PackageFilePath = Path.Combine(feedPath, $"{id}.{ver}.nupkg") }
+        Directory.GetFiles(src, "*.fsproj", SearchOption.AllDirectories)
+        |> Array.choose (fun projectPath ->
+            let doc = loadProjectXml projectPath
+            let packageId = xmlValue doc "PackageId"
+            let isPackable = xmlBool (xmlValue doc "IsPackable")
 
-                        Some package
-                    | _ -> None
-                with _ ->
-                    None)
-            |> Array.sortBy _.PackageId
-            |> Array.toList
+            // IDENTITY first. A project is ours because of what it declares itself to be, and a
+            // failure to resolve its version cannot un-declare that — it can only fail the run.
+            match packageId with
+            | Some id when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) && isPackable ->
+                match resolveProjectVersion repositoryRoot projectPath doc with
+                | Some version ->
+                    let package: PackablePackage =
+                        { PackageId = id
+                          Version = version
+                          ProjectPath = relativePath repositoryRoot projectPath
+                          IsPackable = true
+                          PackageFilePath = Path.Combine(feedPath, $"{id}.{version}.nupkg") }
+
+                    Some package
+                | None ->
+                    raise (
+                        PackageDiscoveryError
+                            $"'{relativePath repositoryRoot projectPath}' declares itself packable as '{id}' but no <Version> could be resolved for it — not inline, and not from any Directory.Build.props / Directory.Build.local.props up to the repository root. Declare one, or this package leaves the expected-feed set and the feed check stops looking for it (#677)."
+                    )
+            | _ -> None)
+        |> Array.sortBy _.PackageId
+        |> Array.toList
 
     let projectFilesForSample (repositoryRoot: string) (sample: string) : string list =
         let path = absolutePath repositoryRoot sample
@@ -355,27 +452,27 @@ module PackageFeed =
         selectedSamples
         |> List.collect (projectFilesForSample repositoryRoot)
         |> List.collect (fun projectPath ->
-            try
-                let doc = XDocument.Load projectPath
+            // #677: this was `try … with _ -> []`, the discovery bug one function down — a sample
+            // project that cannot be parsed contributed no pins, and a sample with no pins is a
+            // sample with nothing to be stale. The gate reported green over exactly the input it
+            // could not read. `loadProjectXml` names the file and fails the run instead.
+            loadProjectXml projectPath
+            |> _.Descendants()
+            |> Seq.filter (fun e -> e.Name.LocalName = "PackageReference")
+            |> Seq.choose (fun reference ->
+                match includeFromPackageReference reference with
+                | Some id when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) ->
+                    let pin: PackagePin =
+                        { PackageId = id
+                          DeclaredVersion = versionFromPackageReference reference
+                          ExpectedVersion = None
+                          ProjectFilePath = projectPath
+                          Status = NotSelected
+                          CompatibilityExceptionId = None }
 
-                doc.Descendants()
-                |> Seq.filter (fun e -> e.Name.LocalName = "PackageReference")
-                |> Seq.choose (fun reference ->
-                    match includeFromPackageReference reference with
-                    | Some id when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) ->
-                        let pin: PackagePin =
-                            { PackageId = id
-                              DeclaredVersion = versionFromPackageReference reference
-                              ExpectedVersion = None
-                              ProjectFilePath = projectPath
-                              Status = NotSelected
-                              CompatibilityExceptionId = None }
-
-                        Some pin
-                    | _ -> None)
-                |> Seq.toList
-            with _ ->
-                [])
+                    Some pin
+                | _ -> None)
+            |> Seq.toList)
         |> classifyPackagePins currentPackages allowedExceptionIds compatibilityExceptions
 
     let checkLocalFeed (currentPackages: PackablePackage list) : FeedPackageStatus list =
@@ -396,7 +493,7 @@ module PackageFeed =
             if not (File.Exists fullPath) then
                 None
             else
-                let doc = XDocument.Load fullPath
+                let doc = loadProjectXml fullPath
                 let expected = filePins |> List.map (fun pin -> pin.PackageId, pin.ExpectedVersion.Value) |> Map.ofList
                 let mutable changed = false
 
