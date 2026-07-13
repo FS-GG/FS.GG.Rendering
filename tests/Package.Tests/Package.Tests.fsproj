@@ -23,6 +23,12 @@
 
 
   <ItemGroup>
+    <!-- #661 — the public-surface renderer, SHARED with `scripts/refresh-surface-baselines.fsx`
+         (which `#load`s this same file). SurfaceAreaTests is the gate that re-derives the surface and
+         compares it to the baselines that script writes; when the renderer was hand-mirrored into
+         both, a bug in both copies agreed with itself and the gate stayed green while recording
+         something other than the public surface (#657). One definition, two consumers, no drift. -->
+    <Compile Include="..\..\scripts\SurfaceRenderer.fs" Link="SurfaceRenderer.fs" />
     <Compile Include="SurfaceAreaTests.fs" Condition="Exists('SurfaceAreaTests.fs')" />
     <Compile Include="PackageApiReferenceTests.fs" />
     <Compile Include="NameCollisionSafetyTests.fs" />
