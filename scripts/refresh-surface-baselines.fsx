@@ -11,9 +11,13 @@
 //
 // This is the SINGLE authoritative baseline location: the live gate `SurfaceAreaTests` READS
 // `readiness/surface-baselines/`, so the generator WRITES there too — writer and reader agree by
-// construction (no second copy of the baselines to sync). This header used to name
-// `build/Governance/PackageSurface.fs` as a second, governance-side reader. It is not one: no project
-// compiles it and no code opens it (#666). Do not preserve anything for its benefit.
+// construction (no second copy of the baselines to sync).
+//
+// This header used to name `build/Governance/PackageSurface.fs` as a second, governance-side reader
+// that also READ `readiness/surface-baselines/`. It does not read anything: no project compiles it
+// and nothing executes it. It is an inert DECLARATION — a list of baseline paths that
+// `tests/Package.Tests/Tests.fs` text-scans (#666). So it constrains nothing about this generator's
+// output, and there is no third consumer of the baseline format to preserve anything for.
 //
 // Loads each assembly by path (with a cross-assembly resolve handler) rather than `#r` + a hardcoded
 // representative type, so adding a package is a one-line table entry.

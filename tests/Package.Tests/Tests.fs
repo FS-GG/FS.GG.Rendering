@@ -49,19 +49,41 @@ let repositoryPath (relativePath: string) =
 // Feature 045: build.fsx was relocated into compiled build/Governance modules; the PackLocal
 // package list and build wiring now live there. Aggregate those sources for the contract
 // assertions that historically scanned build.fsx text (behaviour/intent preserved).
+//
+// #666 — a MISSING subject fails LOUDLY. This used to `else ""`, and every NEGATIVE assertion over
+// the result then passed vacuously: `Expect.isFalse (build.Contains "FS.GG.UI.Charts")` is green
+// because there is no build wiring at all, not because the wiring is Charts-free. Proven by deleting
+// `build/Governance/` and re-running: "controls boundary has no active Charts package capability"
+// — whose ONLY build-based assertion is that negative — still passed. Its two sibling tests reddened,
+// but only because they happen to also assert POSITIVES (`stringContains`), which an empty string
+// fails. That is an accident of assertion order, not a guard.
+//
+// It is a live trap rather than a theoretical one: #666 was filed proposing to DELETE
+// `build/Governance/PackageSurface.fs` as dead code (it is not — it is the text these guards scan).
+// A worker who does that, sees the two positive tests red, and "fixes" them by dropping the
+// assertions, silently converts the remaining Charts guard into a tautology.
+//
+// Scanning zero inputs and scanning a clean one must not share a verdict — the same fails-open class
+// #511 fixed for `generatedProductInputs` a few tests below, in this same file.
 let buildFrontEnd () =
     let dir = Path.Combine(repositoryRoot, "build", "Governance")
 
-    if Directory.Exists dir then
+    if not (Directory.Exists dir) then
+        failtestf
+            "build front-end sources are missing: %s does not exist. The PackLocal and Charts guards below scan this text; with no text, every one of their negative assertions passes vacuously."
+            dir
+
+    let sources =
         Directory.GetFiles(dir, "*.fs", SearchOption.AllDirectories)
         |> Array.filter (fun p ->
             let n = p.Replace('\\', '/')
             not (n.Contains "/bin/" || n.Contains "/obj/"))
         |> Array.sort
-        |> Array.map File.ReadAllText
-        |> String.concat Environment.NewLine
-    else
-        ""
+
+    if Array.isEmpty sources then
+        failtestf "build front-end sources are missing: %s contains no .fs files. See above — an empty scan is not a clean scan." dir
+
+    sources |> Array.map File.ReadAllText |> String.concat Environment.NewLine
 
 let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
