@@ -40,44 +40,20 @@ open System.Text.Json
 open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
-// #670 — the harness that OWNS the pack path. `PackageFeed.discoverPackablePackages` is the function the
-// real `package-feed` workflow uses to decide which packages the feed must contain; the pack guards below
-// call it rather than re-deriving the rule, so there is one definition and no copy to drift (the #661
-// lesson: two copies of one rule agree with each other, including when they are both wrong).
 open Rendering.Harness
+
+// WHAT ACTUALLY PACKS. The pack guards below watch the code that packs, not a document describing it:
+// `PackablePackages` wraps the harness's own `PackageFeed.discoverPackablePackages`, which is what the
+// real `package-feed` workflow uses to decide what the feed must contain. Read that module before
+// changing any of them — it carries the history (#670: these guards used to scan an inert text file that
+// nothing ran) and the two invariants that keep them honest (a discovery that returns nothing, or that
+// silently drops a project, fails loudly instead of quietly satisfying every negative assertion).
+open PackablePackages
 
 let repositoryRoot = RepositoryRoot.value
 
 let repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
-
-// #670 — WHAT ACTUALLY PACKS. These guards call the production discovery function, so they watch the
-// code that packs rather than a document describing it.
-//
-// The real pack path is `dotnet pack FS.GG.Rendering.slnx` (PackageFeed.runPackIfRequested), and what
-// it produces is decided by two things and no list: slnx membership, and each `src/**/*.fsproj`'s
-// `<PackageId>FS.GG.UI.*` + `<IsPackable>true`. `PackageFeed.discoverPackablePackages` is the harness's
-// own reading of that rule — the set it expects to find in the feed — so asking IT is asking the pack
-// path itself.
-//
-// What these guards used to watch: `buildFrontEnd()`, which read every `.fs` under `build/Governance/`
-// as TEXT. The only file there was `PackageSurface.fs`: two hardcoded lists stranded when feature 045's
-// relocation of `build.fsx` into compiled build modules never completed. No project compiled it, nothing
-// executed it, and `./fake.sh` is absent from the repo root — so `PackLocal` and `PackageSurfaceCheck`,
-// the targets those lists fed, could not be run at all. `Expect.stringContains build
-// "src/Scene/Scene.fsproj"` therefore asserted that an inert file mentioned a string the test itself also
-// hardcoded: green forever, and blind in both directions. Add a package to the real pack path and nothing
-// here moved; re-introduce the retired Charts package THROUGH the real pack path and the Charts guards
-// would not have seen it. The list named five packages, its own comment said nine, and the repo ships
-// seventeen — nobody noticed, because nothing read it.
-//
-// That is FS-GG/.github#266's "gate reports green on a missing subject" one level up: the subject was
-// present, but it was not the subject that mattered.
-//
-// #674 moved the call itself — and the fail-loudly-on-empty invariant that keeps these negative guards
-// from passing vacuously — into `PackablePackages`, which `Feature207BomMembershipTests` and
-// `Feature163PackageFeedValidationTests` now share. They each used to re-derive the rule by hand.
-open PackablePackages
 
 let runDotnetWithin (timeoutMilliseconds: int) (workingDirectory: string) (arguments: string) =
     let startInfo: ProcessStartInfo = ProcessStartInfo("dotnet", arguments)
