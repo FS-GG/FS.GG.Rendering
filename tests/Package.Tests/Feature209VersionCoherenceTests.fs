@@ -20,13 +20,30 @@ let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
 /// Run `exe args` in `workDir`; return its exit code and stdout+stderr merged. Used by the exit-code
-/// contract tests, which invoke the real guard script against a throwaway root.
+/// contract tests and the #514 fixture, which invoke the real guard script against a throwaway root.
+///
+/// THE CHILD NEVER INHERITS THE RELEASE LANE (#679). `release.yml`'s `package-tests` sets
+/// FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 for the whole JOB, and a spawned `dotnet fsi` inherits the
+/// job's environment. That variable disables every RELEASE-PENDING waiver — right for THIS process (the
+/// in-process mirror below reads it deliberately; it is the point of the release lane) and wrong for a
+/// guard run against a SYNTHETIC repo whose tag namespace the fixture owns. The #514 fixture asserts the
+/// guard is coherent at a release commit whose tags are NOT CUT YET — a state that is legal only BECAUSE
+/// the waivers hold — so inheriting the lane made it demand tags for its own fixture version one step
+/// before it cuts them. It went DRIFT on a repo that was fine, and only in the release lane: the PR gate
+/// never sets the variable, so this passed every PR and failed the one run that publishes. That is the
+/// 0.9.1 wedge — the release aborted, `main` stayed pinned to a version nobody published, and every PR
+/// went red on NU1102.
+///
+/// The fixtures own their world; the ambient lane of the job running them is not part of it. Scrubbed at
+/// the single choke point every subprocess here goes through, so a new guard-spawning test cannot
+/// reintroduce this by forgetting.
 let private runIn (workDir: string) (exe: string) (args: string list) =
     let psi = ProcessStartInfo(exe)
     psi.WorkingDirectory <- workDir
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
     psi.RedirectStandardError <- true
+    psi.Environment.Remove "FS_GG_VERSION_COHERENCE_RELEASE_LANE" |> ignore
     args |> List.iter psi.ArgumentList.Add
     match Process.Start psi with
     | null -> failwithf "%s could not be started" exe
