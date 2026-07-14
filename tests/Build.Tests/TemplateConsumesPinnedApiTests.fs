@@ -2507,7 +2507,7 @@ let private omissionLedger =
 /// completeness rule can go green by appending one line — which is exactly what the header forbids and
 /// nothing else would detect. Lower it as the debt is paid; never raise it.
 [<Literal>]
-let private OmissionLedgerCeiling = 380
+let private OmissionLedgerCeiling = 373
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
