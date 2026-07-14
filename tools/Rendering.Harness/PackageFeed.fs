@@ -362,6 +362,30 @@ module PackageFeed =
             | "" -> None
             | directory -> walkUp directory
 
+    /// The bare id of the BOM / metapackage — the one package whose id is NOT dotted.
+    [<Literal>]
+    let UmbrellaPackageId = "FS.GG.UI"
+
+    /// Does this `PackageId` belong to the FS.GG.UI package set — the set `dotnet pack
+    /// FS.GG.Rendering.slnx` produces?
+    ///
+    /// #727: this used to be `id.StartsWith("FS.GG.UI.")` inline, and that trailing DOT is a filter, not
+    /// a prefix. The BOM's id is exactly `FS.GG.UI`, so the umbrella did not match and was dropped —
+    /// `dotnet pack` emits 17 packages and discovery found 16. The discovered set IS the expected-feed
+    /// set, so the seventeenth was not pin-checked, not in the source proof, and not covered by
+    /// packaged-consumer: `MissingExpectedPackage` cannot fire for a package nobody expects. That is the
+    /// same fails-open class as #677 one line above (a package that silently leaves the set takes its
+    /// own guard with it), reached through identity rather than through version resolution.
+    ///
+    /// It is what let the BOM ship UNRESTORABLE: its version fell back to the repo default while its 16
+    /// EXACT `[$version$]` pins named that same non-existent version, and no guard was looking at it.
+    ///
+    /// The umbrella is a MEMBER of the packable set (it packs, so the feed must contain it) but NOT a
+    /// member of the BOM's own dependency list (a BOM must not depend on itself). Those are two
+    /// different sets, and conflating them is what hid this — see `PackablePackages.memberPackages`.
+    let isFsGgUiPackageId (id: string) =
+        id = UmbrellaPackageId || id.StartsWith("FS.GG.UI.", StringComparison.Ordinal)
+
     let discoverPackablePackages (repositoryRoot: string) (feedPath: string) : PackablePackage list =
         let src = Path.Combine(repositoryRoot, "src")
 
@@ -382,7 +406,7 @@ module PackageFeed =
             // IDENTITY first. A project is ours because of what it declares itself to be, and a
             // failure to resolve its version cannot un-declare that — it can only fail the run.
             match packageId with
-            | Some id when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) && isPackable ->
+            | Some id when isFsGgUiPackageId id && isPackable ->
                 match resolveProjectVersion repositoryRoot projectPath doc with
                 | Some version ->
                     let package: PackablePackage =

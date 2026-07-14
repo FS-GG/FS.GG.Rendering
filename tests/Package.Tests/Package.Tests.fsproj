@@ -98,6 +98,12 @@
     <Compile Include="Issue496FSharpCoreShadowingTests.fs" />
     <Compile Include="ApiSurfaceInternalTests.fs" />
     <Compile Include="Feature706TemplateConditionalBalanceTests.fs" />
+    <!-- #727 — the BOM/umbrella held against the members it pins. The nuspec spends one $version$ on the
+         BOM's own version AND on all 16 EXACT [$version$] pins, so a BOM whose version drifts from its
+         members pins 16 packages that do not exist and cannot restore (NU1102 x16). It shipped that way,
+         because the discovery rule's dotted `FS.GG.UI.` prefix hid the bare-id umbrella from every version
+         guard in the repo — including the tripwire that exists to catch exactly that. -->
+    <Compile Include="Issue727UmbrellaVersionTests.fs" />
     <!-- #709 — the ledgers' PROSE, held against the pin it narrates. Both release ledgers red every LINE on
          a pin bump; both are EMPTY, which is their goal state, so a bump reds nothing and the paragraph
          crediting the release rots in silence (#690). This guards the half that no parser read: the

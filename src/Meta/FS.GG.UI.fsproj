@@ -19,6 +19,22 @@
     flows to `$version$` via NuspecProperties, so the BOM's own version and every member
     dependency derive from one literal (INV-1 / FR-009). Wired into FS.GG.Rendering.slnx under
     /src/ so it ships in the same snapshot/tag as the members (FR-006).
+
+    #727: that coherent pack is the RELEASE path, and it is not the only path. `dotnet pack
+    FS.GG.Rendering.slnx` with no `-p:Version` is what CI, `packaged-consumer.yml` and
+    `PackageFeed.runPackIfRequested` actually run, and this project used to declare no `<Version>`
+    of its own — so `$(Version)` fell back to the repo default in Directory.Build.local.props
+    (0.1.0-preview.1) while the 16 members pin themselves inline at 0.4.0-preview.1. `$version$`
+    then stamped BOTH the BOM's own version AND its 16 `[$version$]` EXACT pins at a version no
+    member has ever published: `PackageReference Include="FS.GG.UI"` could not restore at all
+    (NU1102, sixteen times). The front door was the one package that did not open.
+
+    So the version is declared inline here, exactly as the 16 members declare theirs — the BOM is
+    coherent with them under the plain `dotnet pack` that CI actually runs. A command-line
+    `-p:Version=V` is a GLOBAL property and still overrides this one, so the coherent release pack
+    above is unchanged; this is its fallback, not its replacement.
+
+    Keep this in lockstep with the members. `Issue727UmbrellaVersionTests` reds if it drifts.
   -->
 
   <PropertyGroup>
@@ -26,6 +42,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI</PackageId>
     <AssemblyName>FS.GG.UI.Meta</AssemblyName>
+    <Version>0.4.0-preview.1</Version>
 
     <!-- Dependencies-only metapackage: no assembly, no doc xml, no symbols shipped. -->
     <IncludeBuildOutput>false</IncludeBuildOutput>

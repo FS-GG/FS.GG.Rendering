@@ -29,9 +29,14 @@ let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.Dire
 
 let private nuspecPath = repo "src/Meta/FS.GG.UI.nuspec"
 
-/// The discovered packable framework set: IsPackable=true projects under src/** whose PackageId is
-/// `FS.GG.UI.*`. ColorPolicy (IsPackable=false) and the bare BOM itself are excluded by construction —
-/// the rule matches the DOTTED prefix `FS.GG.UI.`, which the bare id does not satisfy.
+/// The discovered MEMBER set: IsPackable=true projects under src/** whose PackageId is a dotted
+/// `FS.GG.UI.*`. ColorPolicy (IsPackable=false) is excluded because it is not packable; the bare BOM is
+/// excluded because a BOM must not list itself as a dependency.
+///
+/// #727 — the BOM's exclusion used to be a SIDE EFFECT of the discovery rule's dotted prefix rather than
+/// a choice this test made. That prefix also hid the umbrella from every feed and version guard in the
+/// repo, and it shipped unrestorable. Discovery now sees all 17; the subtraction that is genuinely this
+/// test's business is now made here, explicitly, by `memberPackageIds`.
 ///
 /// #674 — this used to re-derive that rule by hand, in a copy that happened to agree with the harness's.
 /// It now asks the harness. The parity this test proves is only worth something if the "discovered" side
@@ -39,7 +44,12 @@ let private nuspecPath = repo "src/Meta/FS.GG.UI.nuspec"
 /// would still compare cleanly against the nuspec and stay green, while proving parity between the BOM
 /// and a stale reading of the source tree. Same shape as #661/#657, where a bug in two copies of one
 /// renderer agreed with itself and the gate never noticed.
-let private discoveredMembers () : Set<string> = PackablePackages.packablePackageIds ()
+/// #727 — this asked for `packablePackageIds()`, the set of everything that PACKS, and that was only
+/// correct while the umbrella was (wrongly) missing from it. The two sets differ by exactly the BOM
+/// itself: it packs, so it is packable; it must not depend on itself, so it is not a member. Discovery
+/// now sees all 17, so this asks for the 16 explicitly rather than relying on a filter bug to subtract
+/// the one it must not compare against.
+let private discoveredMembers () : Set<string> = PackablePackages.memberPackageIds ()
 
 /// (id, rawVersionString) for every <dependency> in the nuspec.
 let private nuspecDependencies () : (string * string) list =
