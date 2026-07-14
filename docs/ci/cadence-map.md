@@ -526,6 +526,63 @@ few weeks; #679 cost days.
 
 Tracking issues: FS.GG.Rendering#681 (this order), FS.GG.Rendering#679 (the wedged release it produced).
 
+## 4f. Frozen skill mirrors — chosen gate behavior (#738)
+
+This repo ships byte-identical copies of four product skills whose canonical bodies live in **FS.GG.Game**
+(ADR-0022 §6). `scripts/check-frozen-mirrors.fsx` guards them. It used to run, whole, inside the required
+`Deterministic gate` — and it asked **two questions that are not the same kind of question**:
+
+| | question | whose commit decides it | lane |
+|---|---|---|---|
+| 1 | did **this change** edit a body this repo does not own? | **this one** — `git`, against the merge base | `--required` |
+| 2 | is our mirror what FS.GG.Game's `main` says it is *right now*? | **somebody else's** | `--freshness` |
+
+Question 2 has an input that is not in this tree, so its answer moves when another repo merges. In a
+required, `enforce_admins` gate that is a **merge freeze on a pristine `main`**: FS.GG.Game lands a skill
+edit, every open PR here goes red, and no change in this repo can clear it — someone has to hand-copy
+bytes. That is #714, and #696 records the rate: *"Nine 'main is RED, nothing can merge' incidents in three
+days; this is one of the recurring sources."* The job is called **Deterministic gate**; with question 2 in
+it, it was not one.
+
+**[ADR-0105](../product/decisions/0105-a-required-gate-reads-only-the-commit.md)** is the rule this
+settles under, and its one-sentence test is the whole of the decision:
+
+> **Could this gate turn an already-green commit red without anyone changing this repository?**
+> If yes, it may not be required.
+
+**The split.**
+
+- **`--required`**, in the `Deterministic gate`. Reads the working tree and `git` — **no registry, no
+  canonical, no network, and no `GH_TOKEN`** (its `env:` block is gone, and a test asserts the absence).
+  It reds on `MIRROR EDITED`, which is #541's entire case and is provable from the commit alone; on a
+  mirror **deleted** or a `NoCounterpart` body **vendored in**; and — failing closed — on a `git` probe
+  that could not answer, since with the canonical gone from this lane a blind probe would leave the
+  required gate with nothing at all to say about a mirror edit. That last red is permissible here because
+  its subject is *this checkout's* `fetch-depth`, not another repo's `main`.
+- **`--freshness`**, in the **non-required** `Frozen mirror freshness` job. Reads the org registry and the
+  owners' live bodies. Reds on `CANONICAL MOVED` and `FROZEN MIRROR STALE`, prints the runnable re-freeze
+  command, and asserts the in-tree pin (`FrozenMirrorVerdict.foreignSkills`) against the registry so a new
+  foreign skill cannot arrive unguarded. Its remedy is a **re-freeze PR** — which is ADR-0105 option (1)
+  working as intended: the external thing moving produces a reviewable, schedulable PR here instead of a
+  red `main`.
+
+**Two things this is not.**
+
+It is **not a demotion to a warning.** Every drift verdict still reds a lane; `FrozenMirrorVerdict.failsIn`
+is the one place that decides which. The freshness job carries **no `continue-on-error`** (#216) and must
+never grow one: not-required means branch protection does not *block* on it, not that a stale mirror may
+merge in silence. A stale mirror ships a `--profile game` scaffold a skill FS.GG.Game has already moved on
+from.
+
+And it is **not enough to demote `CANONICAL MOVED` alone**, which is what #738 originally proposed.
+`CANONICAL MOVED` and `FROZEN MIRROR STALE` are the **same stale mirror at two moments in time**: `decide`
+returns the first only while the registry's nightly bot has not yet reconciled, and the identical,
+untouched, still-stale mirror falls through to the second the moment it does. Demoting one and not the
+other buys a wedge that waits for a cron job. Both moved; both still red the freshness lane.
+
+Tracking issues: FS.GG.Rendering#738 (this split), FS.GG.Rendering#714 (the live wedge),
+FS.GG.Rendering#541 (why the guard exists), FS.GG.Rendering#720 (the verdict split it depends on).
+
 ## 5. Branch protection (one-time maintainer step)
 
 The spec defines which checks are required; **enabling** branch protection is the maintainer's
@@ -545,6 +602,14 @@ one-time action (it cannot be set from the repo tree). On `main`:
   feed-dependent, and ADR-0101's bound applies to it as it does to ApiCompat (§4b). Unlike ApiCompat,
   it has **no elevation path**: its subject *is* an external feed, so a nuget.org outage is
   indistinguishable from a bad pin and must stay unable to wedge the repo.
+- Leave **`Frozen mirror freshness (our mirrors still match FS.GG.Game's canonicals)`** unselected, and
+  **it may never be elevated** (§4f, ADR-0105). Its subject is *another repo's `main`*, so it fails
+  ADR-0105's test outright: FS.GG.Game merging a skill edit turns an already-green commit here red, with
+  no change in this repo and no PR here able to prevent it. Requiring it is not a hypothetical mistake —
+  it is what this job's other half was doing until #738, and it wedged every merge in the repo on a
+  pristine `main` (#714). The half of that guard whose verdict **is** a function of this commit
+  (`--required`: did *this change* edit a mirror?) stays where it was, in the required `Deterministic
+  gate`, with all of #541's teeth.
 - Leave **`Packaged-consumer gate (samples build against the packed feed)`** (`packaged-consumer.yml`)
   unselected, for the same reason, plus a second one: it is `paths:`-filtered, and a required check
   that is path-skipped never reports its context — it would block the merge button on every PR that

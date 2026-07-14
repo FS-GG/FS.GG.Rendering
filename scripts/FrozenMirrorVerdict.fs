@@ -88,10 +88,98 @@ type Verdict =
     /// ago. READ THE DIFF before re-freezing.
     | DriftUnattributed
 
+/// WHICH LANE is asking — and therefore WHOSE COMMIT is allowed to decide the verdict (ADR-0105, #738).
+///
+/// This is the whole of #738 in one type. The guard used to run in ONE place, the required, admin-enforced
+/// `Deterministic gate`, and to answer a question it CANNOT answer from this repo's tree: "is our mirror
+/// byte-identical to the body that is in FS.GG.Game's `main` RIGHT NOW?" The answer moves when FS.GG.Game
+/// merges, so the same commit here was green today and red tomorrow — and because the gate is
+/// `enforce_admins`, that red wedged EVERY merge in the repo, fixable only by a human copying bytes
+/// (#714, and nine such incidents in three days per #696).
+///
+/// ADR-0105's test: *could this gate turn an already-green commit red without anyone changing this
+/// repository?* Each lane below answers it, and the answer is what decides where it may run.
+type Lane =
+    /// The REQUIRED `Deterministic gate`. Its verdict must be a function of THIS COMMIT ALONE, so it reads
+    /// the tree and `git` and NOTHING else — no registry, no canonical, no network, no token. It can
+    /// therefore answer exactly one question, which is also the only one #541 ever asked: *did THIS change
+    /// edit a body this repo does not own?*
+    | Required
+    /// The NON-REQUIRED `frozen-mirror-freshness` lane. Its SUBJECT *is* another repo's `main`, so by the
+    /// rule `gate.yml` already applies to the template-payload restore gate it may report a stale mirror
+    /// and must never be able to wedge the repo. Its remedy is a re-freeze PR — which is ADR-0105's
+    /// option (1) working as intended: the external thing moving produces a reviewable PR here, not a red
+    /// `main`.
+    | Freshness
+
+/// What this repo does about a product skill it does not own. Absence is a DECISION, never an inference
+/// from a missing file.
+type Disposition =
+    /// This repo ships a byte-identical copy (ADR-0022 §6, the two-copies cost of the P4 migration).
+    | Mirrored
+    /// Authored in the owning repo and never migrated — this repo has no counterpart and must not grow one
+    /// (.github#486; Rendering#505 asked for exactly this and was refused).
+    | NoCounterpart
+
+/// One foreign (non-Rendering-owned) product skill, PINNED IN THIS TREE.
+///
+/// This table is ADR-0105 option (1) — "pin the external input into the tree" — and it is the reason the
+/// required lane needs no network. It used to live half here (`dispositions`) and half in the org registry
+/// (`owner`, `source`), which meant the required gate had to FETCH `FS-GG/.github`'s `main` just to learn
+/// which files it was guarding. Three consequences, all of them ADR-0105 violations, and only the first is
+/// the one #738 was filed about:
+///
+///   * a canonical that MOVED reddened it (the wedge everyone noticed);
+///   * a NEW registry row reddened it — `.github` adding any `owner: fs-gg-game` product row makes this
+///     repo's required gate fail `undeclared foreign skill`, with no change here and nothing a PR here
+///     could do about it;
+///   * a registry it could not READ reddened it (exit 2, by design — and `check-frozen-mirrors.fsx`'s own
+///     reasoning for that, *"a check that did not run has proved nothing"*, is SOUND, which is precisely
+///     ADR-0105:87-90's point: a gate that must fail closed on an input it does not own is a gate that
+///     hands the merge button to another repo).
+///
+/// Pinned here, all three become facts about THIS commit. The pin cannot rot silently: the `Freshness`
+/// lane asserts this table against the live registry (owner, source, and the registry's own `mirrored:`
+/// flag), and reds — non-required — when they disagree.
+type Foreign =
+    { Id: string
+      Owner: string
+      /// `<repo>/<path>` — where the OWNER keeps the canonical body. The registry's `source` field.
+      Source: string
+      Disposition: Disposition }
+
+/// The pinned table. Every product row in the org registry whose `owner` is not `fs-gg-rendering`.
+///
+/// A row the registry has and this table does not is a HARD FAIL in the `Freshness` lane — that is what
+/// stops a ninth mirror arriving unguarded, and it is the property #541's acceptance asks for. It is no
+/// longer a hard fail in the REQUIRED lane, because a row appearing is another repo's commit.
+let foreignSkills: Foreign list =
+    let game id disposition =
+        { Id = id
+          Owner = "fs-gg-game"
+          Source = $"FS.GG.Game/template/product-skills/{id}/SKILL.md"
+          Disposition = disposition }
+
+    [ game "fs-gg-game-core" Mirrored
+      game "fs-gg-audio" Mirrored
+      game "fs-gg-persistence" Mirrored
+      game "fs-gg-model-swap" Mirrored
+      game "fs-gg-ballistics" NoCounterpart
+      game "fs-gg-ai" NoCounterpart
+      game "fs-gg-effects" NoCounterpart
+      game "fs-gg-physics" NoCounterpart ]
+
+/// Where this repo keeps its copy of a foreign skill's body.
+let mirrorPath (id: string) = $"template/product-skills/{id}/SKILL.md"
+
 /// The verdict. PURE — every input is already resolved, so this is a truth table and is tested as one.
 ///
 /// `local` is the body in the working tree, `registry` the org registry's `sha256` (a lagging CACHE of the
 /// canonical, NOT the oracle — #629), and `canonical` the owner's live body (the oracle ADR-0022 §6 names).
+///
+/// TWO OF ITS FOUR OUTCOMES ARE NOT THE REQUIRED LANE'S BUSINESS, and `failsIn` is where that is enforced:
+/// `canonical` is an input this repo does not own, so any verdict that turns on it belongs to `Freshness`.
+/// The required lane never calls this function at all — it has no `canonical` to pass.
 let decide (baseline: Baseline) (local: string) (registry: string) (canonical: string) : Verdict =
     if local = canonical then
         InSync
@@ -118,31 +206,47 @@ let decide (baseline: Baseline) (local: string) (registry: string) (canonical: s
             else
                 DriftUnattributed
 
-/// Does this verdict RED the gate?
+/// Does this verdict RED **this lane**? (#738)
 ///
-/// All three drift verdicts do, today. That is deliberate and it is NOT the same claim as "all three
-/// belong in the required gate" — `CanonicalMoved`'s subject is ANOTHER repo's `main`, which can move at
-/// any moment for reasons no PR here controls, so it makes the required, admin-enforced `Deterministic
-/// gate` non-deterministic in this repo's tree: the same commit is green today and red tomorrow because
-/// FS.GG.Game merged something. By the repo's own rule for feed-dependent lanes (cadence-map §4b/§5) that
-/// is a lane which should not be required.
+/// It used to be `fails : Verdict -> bool`, and every drift verdict reded the one gate there was. The
+/// predicate is unchanged for `Freshness`; what changed is that there is now somewhere else to ask from.
 ///
-/// Moving it is a GATE-POLICY change, not a message fix: demoting it to a warning inside the required job
-/// with nowhere else to land would be a fail-open, and this guard exists precisely because "a warning in
-/// that stream is a warning nobody reads". It needs a non-required lane to land in first (gate.yml,
-/// cadence-map, CadenceCoverageTests) — filed separately.
+/// The split is ADR-0105's test, applied verdict by verdict — *could this turn an already-green commit red
+/// without anyone changing this repository?*
 ///
-/// WHOEVER DOES THAT: this predicate is where the decision belongs, but flipping it is not the whole job,
-/// and a comment claiming otherwise would be the next thing to mislead somebody. `describe` emits a
-/// literal `::error` for every drift verdict, and an `::error` annotation on a verdict that no longer reds
-/// the gate is the same class of lie this file was written to remove — the ANNOTATION LEVEL has to move
-/// with the exit code.
-let fails (verdict: Verdict) : bool =
+///   * `MirrorEdited` — NO. `decide` returns it only when `git` says THIS change edited or added the body
+///     (`EditedHere`/`AddedHere`), which is a fact about this commit's diff and nothing else. It keeps
+///     every tooth it had in #541, in the required lane, where it belongs.
+///   * `CanonicalMoved` — YES, trivially: FS.GG.Game merges, and a commit that was green is red.
+///   * `DriftUnattributed` — **YES, AND THIS IS THE ONE THAT LOOKS SAFE AND IS NOT.** #738's suggested
+///     shape moved only `CanonicalMoved`, which would have left the wedge in place with a new name on it:
+///     the two verdicts are the SAME STALE MIRROR at two moments in time. `decide` returns `CanonicalMoved`
+///     only while `local = registry`, i.e. while the nightly bot has not yet reconciled the registry to the
+///     moved canonical. The moment it does, `local <> registry` and the identical, untouched, still-stale
+///     mirror falls through to `DriftUnattributed`. Demoting one and not the other buys a wedge that waits
+///     for a cron job.
+///
+/// So the required lane fails on exactly what this change DID, and the freshness lane fails on everything
+/// that is true of the world. `InSync` reds nothing, anywhere.
+///
+/// AND THE ANNOTATION LEVEL MOVES WITH THE EXIT CODE — the trap the old comment here warned whoever did
+/// this. It is now closed BY CONSTRUCTION rather than by a matching rule that could drift: `describe` is
+/// only ever reached from the freshness lane, which reds on every verdict it can produce, and the required
+/// lane prints its own message (`describeEditedHere`) for the only verdict it can produce. Neither lane can
+/// emit an `::error` for something it does not fail on, because neither lane can emit the other's verdicts.
+let failsIn (lane: Lane) (verdict: Verdict) : bool =
     match verdict with
     | InSync -> false
-    | MirrorEdited
+
+    // This change's own diff. Deterministic; reds both lanes.
+    | MirrorEdited -> true
+
+    // The world's. Reportable, never a merge freeze.
     | CanonicalMoved
-    | DriftUnattributed -> true
+    | DriftUnattributed ->
+        match lane with
+        | Required -> false
+        | Freshness -> true
 
 // ---- the git probe ----------------------------------------------------------------------------
 //
@@ -278,9 +382,45 @@ let refreezeCommand (source: string) (relative: string) =
 
     $"gh api repos/FS-GG/{repo}/contents/{path} --jq .content | base64 -d > {relative}"
 
+/// The REQUIRED lane's `MIRROR EDITED` line (#738). Offline, so it has NO canonical digest to name — and
+/// that absence is the point, not a shortcoming: this lane convicts on `git`'s answer about THIS diff, and
+/// it never needed the canonical to do it. #541's case was always provable from the commit alone; the
+/// guard simply never separated it from the questions that were not.
+///
+/// Every "do NOT" from #541 survives here verbatim. The strictness was never what made the gate wedge.
+let describeEditedHere (id: string) (owner: string) (source: string) (relative: string) (baseline: Baseline) (local: string) : string =
+    let evidence =
+        match baseline with
+        | AddedHere ->
+            "This change ADDED this body; it did not exist at the merge base. Vendoring in a skill this repo has no counterpart for is itself the break (.github#486)."
+        | EditedHere baseSha ->
+            $"This change EDITED it: at the merge base it hashed {shortSha baseSha}, and it now hashes {shortSha local}."
+        | UnchangedHere _
+        | Unknown _ -> $"Your copy now hashes {shortSha local}." // unreachable: those baselines do not convict.
+
+    $"::error file={relative}::FROZEN MIRROR EDITED — `{id}` is owned by {owner} ({source}), and this repo only ships a byte-identical copy (ADR-0022 §6). {evidence}\n\nDO NOT REVERT YOUR WORK, do NOT re-freeze this file from the canonical (that would silently delete it), and DO NOT ADD A WAIVER FOR YOURSELF in scripts/check-frozen-mirrors.fsx — a waiver records drift that already existed before this guard, and is not a way to land new drift. Take the change to the OWNING repo's canonical body ({source}), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541)."
+
+/// The REQUIRED lane cannot CLEAR you if `git` did not answer, so it does not pass you (#738).
+///
+/// This fails CLOSED, and unlike everything else this file removed from the required gate, it is allowed
+/// to: its subject is THIS CHECKOUT'S configuration — `fetch-depth: 0`, which `gate.yml` sets — and not
+/// another repo's `main`. It cannot be tripped by FS.GG.Game merging anything, so ADR-0105's test still
+/// answers NO.
+///
+/// It is the last place #541's teeth could have been lost quietly. With the canonical comparison gone from
+/// this lane, a blind probe would mean the required gate simply had NOTHING to say about a mirror edit —
+/// a silent fail-open, in the exact family (#266) this repo keeps closing. A gate that cannot run its
+/// probe has proved nothing, and reporting green for it is how a gate becomes decoration.
+let describeProbeFailed (id: string) (relative: string) (why: string) : string =
+    $"::error file={relative}::FROZEN MIRROR PROBE DID NOT RUN — `git` could not tell whether this change edited `{id}`'s mirrored body ({why}).\n\nThis lane's ONLY question is \"did THIS change edit a body this repo does not own?\" (#541), and it answers it from `git` alone. A probe that cannot answer has proved nothing, so this is NOT a pass — it fails closed, on purpose.\n\nThis is a fault in the CHECKOUT, not in your change, and it is fixable here: the job needs full history (`fetch-depth: 0`, which .github/workflows/gate.yml already sets). On a fork or an unusual remote, set FSGG_FROZEN_MIRROR_BASE to the ref this branch forked from."
+
 /// The GitHub-Actions error line for a drift verdict. The TEXT is the bug #720 is about, so it is defined
 /// here, next to the verdict that selects it, and asserted in the tests — not assembled at the call site
 /// where the two can drift apart.
+///
+/// FRESHNESS LANE ONLY (#738). Every verdict it can be handed reds that lane, so every line it emits is an
+/// `::error` and that is honest. The required lane cannot reach it — it has no `canonical` to pass — which
+/// is what keeps the annotation level and the exit code from drifting apart.
 let describe
     (verdict: Verdict)
     (id: string)
