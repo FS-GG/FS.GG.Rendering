@@ -91,7 +91,7 @@ R5 source label `infra (R5)` and are not validation-set members.
 | harness **T-uinput** (`input --backend uinput`) | infra (R5) | capability | uinput | inert + disclosed (backend pending) | capability.yml |
 | `Package.Tests` (default tier) | validation-set | **gate** + release | none | hermetic; slnx member since #540 | gate.yml (slnx-derived loop), release.yml |
 | `Package.Tests` (release tier) | release-only | release | none | deferred behind `FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE` | release.yml |
-| `Product.Tests` (template) | release-only | release | none | runs on release trigger (template instantiation) | release.yml |
+| `Product.Tests` (template) | validation-set | **gate** + release | none | instantiated from the template; all five profiles on every PR since #680 (§4d) | gate.yml `generated-product-gate`, release.yml |
 
 ## 3. Audit invariants and result
 
@@ -124,8 +124,14 @@ after the gate loop became slnx-derived and the coverage machine-enforced. **PAS
    `CadenceCoverageTests` now asserts `deterministic ∪ GL == slnx test set` with no overlap.
 2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 17 slnx test projects (the 15
    deterministic members above + `SkiaViewer, Smoke` GL) plus `surface-baselines`, `fsdocs`, and
-   harness `offscreen` (T0/T1) only. Template `Product.Tests` appears **only** in `release.yml` (it is
-   instantiated from the template and exists in no checkout).
+   harness `offscreen` (T0/T1) only.
+   **Re-audited 2026-07-13 (#680):** template `Product.Tests` used to appear **only** in `release.yml`,
+   and that is no longer true — nor should it have been. It is instantiated from the template and exists
+   in no checkout, but "hard to reach" is not "release-only": nothing compiled it until publish day, so
+   an uncompilable scaffolded test rode green `main` and detonated mid-release (#679). `gate.yml`'s
+   `generated-product-gate` now scaffolds all five profiles and compiles + runs their tests on every PR
+   (§4d). This does not violate the invariant: the *release-scoped* checks (the consumer smoke, the
+   `RELEASE_LANE` coherence mirror) still run nowhere but the release lane.
    **Re-audited 2026-07-12 (#540):** `Package.Tests` is now a slnx member, so the gate's slnx-derived
    loop *does* reach it — deliberately. Its default tier is hermetic (working-tree reads only, ~4s) and
    its release-scoped checks stay out of the gate by being deferred behind
@@ -195,8 +201,11 @@ It runs `scripts/validate-version-coherence.fsx` in two layers, both merge-block
   `WarningsAsErrors=NU1605;NU1608` consumer policy (FR-004).
 - **Scoped restore-grounded proof (`FS_GG_RUN_VERSION_COHERENCE_SMOKE=1`).** One Release pack + one
   clean restore of `FS.GG.UI@V` asserting the **complete** 16-member set resolves to exactly `V`
-  (FR-008, anti-text-grep). The deeper full generate→restore→build of a product from the template
-  stays on the release lane (`release.yml` `template-product-tests`), not duplicated in the gate.
+  (FR-008, anti-text-grep). The deeper full generate→restore→build of a product from the template ran
+  **only** on the release lane until #680; it now also runs on every PR (`gate.yml`
+  `generated-product-gate`, §4d), because a check that first speaks at publish time speaks too late
+  (#679). `release.yml`'s `template-product-tests` is kept as the last line of defence and as the
+  `push: tags` escape hatch's only gate.
 
 Exit codes: `0` coherent · `1` drift (names the location expected-vs-actual) · `2` guard error (inputs
 unreadable / tags not fetched) — **fails closed**, never green-by-absence. On drift the `DRIFT […]`
@@ -211,6 +220,14 @@ compared by the guard.
 `release.yml`'s `package-tests` job sets `FS_GG_VERSION_COHERENCE_RELEASE_LANE=1`, which disables every
 RELEASE-PENDING waiver: at publish time no tag can be "cut next", so a missing tag is drift. That job
 `needs:`-gates `publish-packages`, so nothing ships until the guard is green.
+
+**Except on the pre-cut validation run (#681, §4e), where it is deliberately OFF.** `release-tags.yml`
+now calls `release.yml` once with `validate-only: true` *before* it pushes any tag, so that a commit
+whose validators fail never gets a tag that cannot be taken back. On that run the tags genuinely do not
+exist yet — cutting them is the *next* step — so the RELEASE-PENDING waivers are exactly right, and
+forcing them off would red the lane by construction on every release (the always-red-lane failure #506
+removed, one workflow up). On the real publishing call the flag is `1` and a missing tag is drift,
+unchanged.
 
 But the guard's **subject** is the version it reads from the repo (`<Version>` in
 `.template.package/FS.GG.UI.Template.fsproj`), while `publish-packages`' **object** is the version it
@@ -447,6 +464,67 @@ NOT-REQUIRED IS NOT `continue-on-error` (#216): the job has none and must not gr
 
 Tracking issues: FS.GG.Rendering#680 (this lane), FS.GG.Rendering#679 (the wedged release it exists to
 prevent).
+
+## 4e. The cut order — chosen release behavior (#681)
+
+`release-tags.yml` used to do two things, in this order, on a push to `main`: **cut** the tag triple
+(on the strength of the coherence guard's exit code), then **call** `release.yml`, whose release-only
+validators gate the publish.
+
+That order is backwards, and it produced #679. The guard's exit code is a **structural** verdict — it
+says nothing about whether the artifacts the commit describes can be built, tested or published. On
+`1fddbd0b` the cut succeeded, the validators failed, the publish was correctly skipped, and `main` was
+left with the full `v0.9.1` tag triple, **no package on any feed**, and a pin naming a version that does
+not exist.
+
+**The trap is the second half.** `release-tags` derives what to cut from the guard's `RELEASE-PENDING`
+block. With `fs-gg-ui/v0.9.1` pushed, the guard reads `pin == latest tag` and reports **COHERENT, exit
+0, nothing pending** — the same thing it reports after a release that *worked*. So no future push to
+`main` would ever cut, therefore never call `release.yml`, therefore **never publish 0.9.1**. The repo's
+own guard certified a release that did not exist, and no automation could reach it.
+
+**The order is now:**
+
+```
+plan  →  validate  →  cut  →  publish  →  (rollback-failed-cut)
+```
+
+| job | does | pushes a tag? |
+|---|---|---|
+| `plan` | guard verdict, parse the triple, #517 purity proof (tags cut **locally**) | **no** |
+| `validate` | `release.yml` with `validate-only: true` — the real validators, no publish | no |
+| `cut` | pushes the triple, in the guard's order | **yes** |
+| `release` | `release.yml` — validators again (release-lane), then `publish-packages` | no |
+| `rollback-failed-cut` | deletes the triple if the publish failed or was cancelled | deletes |
+
+**Why this is the fix, stated as the property that actually matters.** Both orders fail into a freeze —
+unavoidable once a bump is on `main` — but they fail into *different* freezes:
+
+- **cut-then-validate**: tags cut · publish failed · guard says `COHERENT` · `RELEASE-PENDING` gone
+  ⇒ the release can **never** be retried by any automation. Human surgery (delete three tags, or cut a
+  new version).
+- **validate-then-cut**: no tags · publish never ran · guard still says `RELEASE-PENDING`
+  ⇒ fix the cause, push to `main`, and the workflow cuts and publishes. **Self-healing.**
+
+**`rollback-failed-cut` is the compensating half, not the fix.** `validate` removes the *known* cause;
+it cannot remove a publish that fails *after* the cut for reasons no pre-cut check can see (a nuget.org
+5xx, an expired Trusted-Publishing trust). Then the tags come back off — `v*` deleted **first**, so
+every intermediate state stays one the guard reads as `RELEASE-PENDING` — and the release is retryable
+again. Retrying is safe even after a partial publish: `publish-packages` pushes `--skip-duplicate`, and
+a retry necessarily republishes the *same* version (`<Version>` is a property of the commit).
+
+**Known residual.** If the runner dies between `cut` and `rollback-failed-cut`, the phantom state
+returns and the guard will again call it `COHERENT`. Closing that needs the guard itself to treat a
+`v*` tag with no package behind it as **drift** rather than coherence — a change to
+`scripts/validate-version-coherence.fsx`, tracked separately.
+
+**Cost.** The heavy validators run twice on a release (once pre-cut, once in the publishing call). That
+is deliberate: `release.yml` is also the entry point for the operator's manual `push: tags` escape
+hatch, which nothing else validates, and its `package-tests` re-runs with the release-lane waivers *off*
+— a genuinely different assertion (that the tags just cut are actually there). A release happens every
+few weeks; #679 cost days.
+
+Tracking issues: FS.GG.Rendering#681 (this order), FS.GG.Rendering#679 (the wedged release it produced).
 
 ## 5. Branch protection (one-time maintainer step)
 
