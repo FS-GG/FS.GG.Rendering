@@ -89,7 +89,17 @@ permissions:
 
 env:
   DECAY_LABEL: skill-refs-decay
-  DECAY_TITLE: "[skill-refs] A published skill points at something that no longer resolves"
+  # "a skill body", not "a published skill" — the same correction #698 made to the script's FAILED
+  # banner, and did not make here (#733). The sweep runs the checker UNSCOPED, so its subject is both
+  # surfaces: a decayed pointer it files may sit in a LIBRARY body (`src/*/skill/`), the authoring
+  # note, or a wrapper — none of which this repo publishes. A tracker titled "a published skill"
+  # would then be describing the wrong body, on the one artifact a human is asked to go and read.
+  #
+  # SAFE TO CHANGE, and that is checked rather than assumed: the sweep dedupes its tracker on
+  # DECAY_LABEL (see `tracker=` below), never on the title, so an existing open tracker is still
+  # found and rewritten rather than duplicated. `scripts/test-skill-refs-sweep.sh` reads this value
+  # out of the workflow instead of hardcoding it, so the pin follows the string.
+  DECAY_TITLE: "[skill-refs] A skill body points at something that no longer resolves"
 
 jobs:
   sweep:
@@ -225,7 +235,7 @@ jobs:
                 echo
                 echo "\`check-skill-refs.sh\` exited non-zero **without judging a single pointer**, so this is not"
                 echo "decay: the sweep itself failed to run. Nothing was verified. Until it runs clean, every"
-                echo "issue/PR link published in a product skill is unchecked — which is the exact"
+                echo "issue/PR link in every skill body is unchecked — which is the exact"
                 echo "\`FS-GG/.github#416\` shape (a green over an unread subject) that this sweep exists to close."
                 echo
                 echo "Usual causes: no authenticated \`gh\` in the job, an exhausted REST budget, or a link the"
@@ -244,7 +254,7 @@ jobs:
             } >> "$body"
           else
             {
-              echo "The daily skill-refs sweep is **red**: a pointer published in a product skill no longer"
+              echo "The daily skill-refs sweep is **red**: a pointer in a skill body no longer"
               echo "resolves."
               echo
               echo "**Nobody's commit did this.** The world moved under a citation we published — an issue we"
@@ -391,7 +401,7 @@ jobs:
               if ! gh api "repos/$REPO/labels/$DECAY_LABEL" --silent 2>/dev/null; then
                 gh api -X POST "repos/$REPO/labels" \
                   -f "name=$DECAY_LABEL" -f color=B60205 \
-                  -f "description=A pointer published in a product skill stopped resolving. Filed by the skill-refs sweep." \
+                  -f "description=A pointer in a skill body stopped resolving. Filed by the skill-refs sweep." \
                   --silent 2>/dev/null || echo "note: could not create label $DECAY_LABEL (it probably exists)"
               fi
 

@@ -1061,7 +1061,14 @@ jobs:
   # default token suffices. The script REFUSES to self-skip in CI: a link it cannot read is one it will
   # not call green.
   skill-refs:
-    name: Dangling skill refs (published skill bodies)
+    # The name is what a reader sees in the checks list, so it must name the subject the job HAS.
+    # It said "published skill bodies" — which was true until #698 widened the subject to the LIBRARY
+    # bodies (`src/*/skill/`) and the authoring note, and #723 widened it again to the non-kit
+    # wrappers in both skill roots. A check that names a NARROWER subject than it examines is the
+    # #698 shape in the safe direction — understating rather than overstating — and it is still the
+    # shape that lets a surface go unwatched, because nobody audits a gate for the thing its name
+    # says it does not do (#733).
+    name: Dangling skill refs (published + repo-internal skill bodies)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -857,6 +857,39 @@ expect_rc 1 'a marker that excuses nothing is dead config'
 expect_out_has 'stale prose-ok marker' 'and it is reported, not silently believed'
 expect_out_has 'ghost' 'naming the ref it claimed to excuse'
 
+case_start '§7 a prose-ok [[…]] marker survives a QUALIFIED ref — the delimiter is IN the value (#733)'
+# THE ONE SUBTLETY `row_has` CARRIES, PINNED — because until this case the suite could not SEE it.
+#
+# A wiki row is `file:line:ref`, and a QUALIFIED ref carries a colon OF ITS OWN. Field-split that row
+# on `:` and take `$3` and you compare against `fs-gg-rendering`, never `fs-gg-rendering:ghost` — so
+# the lookup matches nothing and a LIVE marker is reported STALE. The author is then told to drop the
+# one line keeping their body green, and doing what the gate says turns a green tree red. That
+# reasoning lived in a comment on exactly ONE of four near-identical lookups; #733 moved it into
+# `row_has`, where all four inherit it — and a fifth caller inherits the fix instead of the bug.
+#
+# IT WAS A LATENT HOLE AND WOULD HAVE STAYED ONE. Every other prose-ok case in this suite writes a
+# BARE ref (`[[link]]`, `[[ghost]]`), where a field-split is ACCIDENTALLY correct — the value has no
+# delimiter in it, so `$3` is the whole value. Measured, not assumed: a deliberately field-splitting
+# `row_has` passes all 226 of the other assertions. This is the case that fails, which is the only
+# reason the consolidation is safe to make. It is the `grep -H` / Game#241 one-flag-bug class, and a
+# gate does not get to commit the defect it exists to catch.
+#
+# The marker is LOAD-BEARING here, not decorative, so BOTH tables are exercised at once:
+# `fs-gg-rendering:ghost` is SELF-qualified and does NOT resolve, so § 1 dangles it without the
+# marker. The TAB table (`is_ref_prose`) must still EXCUSE it, and the COLON table (`wiki_has`) must
+# not then call the live marker stale.
+fixture
+repo_readme <<'MD'
+# Product skills — authoring notes
+
+<!-- skill-refs: prose-ok [[fs-gg-rendering:ghost]] — the SHAPE of a QUALIFIED ref, not a ref -->
+**A qualified ref names its publishing repo: `[[fs-gg-rendering:ghost]]`.**
+MD
+run
+expect_rc 0 'the qualified illustration is excused, exactly as a bare one is'
+expect_out_hasnt 'stale prose-ok marker' 'the LIVE marker is not called stale — its ref carries the delimiter'
+expect_out_hasnt 'dangling' 'and the ref it excuses is not reported dangling either'
+
 # ── § 7.2  § 3 INVERTS: a bare #N in a repo body is RESOLVED, not rejected ──────────────────────
 # § 3 rejects a bare `#N` because the body MATERIALIZES into a stranger's repo, where GitHub renders it
 # against THEIR tracker. That premise is false of a body that ships nowhere: it is read HERE, and
