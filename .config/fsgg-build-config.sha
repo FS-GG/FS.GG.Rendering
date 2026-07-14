@@ -1,0 +1,11 @@
+# The FS-GG/.github commit whose dist/dotnet/ this repo's managed build files were synced from.
+#
+# The shared-build-config drift check compares those files against THIS commit — not against
+# .github@main — so the check's answer depends only on this repo's own tree, and a change landing in
+# .github can never red-light an open PR here (.github#592). Being behind main is not a failure: the
+# build-config-propagate bot (.github#626) opens a rolling, auto-merging PR that bumps these files and
+# this pin together.
+#
+# Written by scripts/sync-build-config.sh. Do not hand-edit: editing the pin without re-syncing the
+# files is how you would tell the gate to check your work against the wrong baseline.
+55a21d37ceb5032f2e9772123f1a554c42dc6955
