@@ -13,10 +13,48 @@
 // `readiness/surface-baselines/`, so the generator WRITES there too — writer and reader agree by
 // construction (no second copy of the baselines to sync).
 //
-// This header used to name `build/Governance/PackageSurface.fs` as a second, governance-side reader of
-// `readiness/surface-baselines/`. It never read anything — no project compiled it and nothing executed
-// it (#666) — and as of #670 it is DELETED, along with the `Tests.fs` text-scan that was its only
-// consumer. There is no second reader of the baselines and no other consumer of their format.
+// ---------------------------------------------------------------------------------------------------
+// WHY THESE BASELINES CANNOT BE RETIRED (#754). This is the canonical statement of it; `gate.yml` and
+// `scripts/apicompat-check.sh` POINT here rather than restating it, because three copies of an argument
+// drift for the same reason three copies of a renderer did — "one definition, two consumers, no drift",
+// the `SurfaceRenderer.fs` rule (#661).
+// ---------------------------------------------------------------------------------------------------
+//
+// THERE IS A SECOND READER, AND IT IS NOT A GATE — IT IS A CONSUMER.
+// `tools/Rendering.Harness/SkillParity.fs` (`loadSurfaceMembers`) reads `members/**` and parses THIS
+// script's member format as the API-symbol input to skill-parity evidence (Feature 168): it is how that
+// layer knows whether an API a skill documents actually exists, and whether any test exercises it. So
+// the member format is a CONTRACT with SkillParity, not a private detail of this script — changing it
+// means changing `SkillParity.parseBaselineMember` too.
+//
+// This header used to end "There is no second reader of the baselines and no other consumer of their
+// format." (It was correcting an EARLIER error: it had named `build/Governance/PackageSurface.fs` as a
+// governance-side reader, which never read anything — nothing compiled or executed it, #666 — and which
+// #670 deleted.) But the replacement sentence was itself false the day it was written: SkillParity had
+// been reading `members/` since Feature 168. That sentence is what did the damage. Epic #694 reasoned
+// from it that these baselines were a redundant third copy of the public surface which Microsoft
+// ApiCompat already covered, and filed #754 to delete them.
+//
+// ApiCompat (`scripts/apicompat-check.sh`, the required `api-compatibility-gate`) answers a DIFFERENT
+// question and cannot be asked to answer this one:
+//   * It is SemVer-AWARE by construction — it reports BREAKS. An ADDITIVE change to the public surface
+//     is not a break and never errors there. The drift gate catches ANY movement of the surface; it is
+//     an "a human must acknowledge the surface moved" gate, and nothing else in the repo provides it.
+//   * It exits 0 having compared NOTHING on `FeedUnavailable` — which includes every fork PR, since
+//     they get no feed token — and on `NoBaselineYet`. Deliberate (ADR-0101), but it means ApiCompat is
+//     not a floor. The drift gate is offline, deterministic, and always runs.
+//
+// Deleting the baselines DOES redden a test — `Feature168ApiSymbolTests` asserts the layer resolves
+// against the real repository. But that is the only thing standing here, and it is thinner than it
+// looks: outside the test suite `loadSurfaceMembers` returns `None`, `resolveSymbols` turns that into a
+// CAVEAT, and the harness report still renders and still exits 0 with an empty symbol coverage. #754
+// therefore corrected that test to say WHY it exists, so that a worker deliberately retiring the
+// baselines cannot read its failure as a chore and delete it.
+//
+// The regenerate-and-commit tax on an .fsi-touching PR is not incidental to the acknowledgement signal
+// — it IS the signal. Removing the tax removes the acknowledgement. And "keep the files but drop the
+// gate" (the ungated-projection ending #754 also offered) is not free either: the drift gate is the
+// only thing that keeps SkillParity's input FRESH, and a stale input degrades that layer silently.
 //
 // THE PACKAGE TABLE BELOW IS A GATE, not a convenience. `SurfaceAreaTests` live-compares only the three
 // packages it holds a ProjectReference to; for every other package the ONLY thing standing between a
