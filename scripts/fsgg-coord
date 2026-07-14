@@ -4452,8 +4452,16 @@ engine_is_stale() {
 # exec and is cached. A candidate that cannot answer it is not an engine we have; it is a path we hoped
 # about.
 engine_probe() {  # 0 iff ENGINE_ARGV runs AND names a version. Caches it in ENGINE_VERSION.
-  local v
-  v="$("${ENGINE_ARGV[@]}" --version 2>/dev/null | head -1 | tr -d '[:space:]')" || return 1
+  local out v
+  # CAPTURE FIRST, SLICE AFTER — do not pipe the engine into `head`. This is the one place that tests the
+  # engine's OWN exit status, and under `set -o pipefail` a pipeline reports the status of whichever stage
+  # failed. `… --version | head -1` closes the pipe after one line, so an engine that ever printed a
+  # second stdout line (a banner, a warning) would take SIGPIPE, the pipeline would report 141, and a
+  # perfectly working engine would be declared unrunnable — the same fail-quiet this whole change exists
+  # to remove. Slicing the captured string cannot fail that way.
+  out="$("${ENGINE_ARGV[@]}" --version 2>/dev/null)" || return 1
+  v="${out%%$'\n'*}"
+  v="$(printf '%s' "$v" | tr -d '[:space:]')"
   [ -n "$v" ] || return 1
   ENGINE_VERSION="$v"
   return 0
@@ -4483,11 +4491,21 @@ engine_restore() {  # <repo top> — 0 iff a restore ran and reported success
   fi
 
   mkdir -p "$CACHE" 2>/dev/null || true
-  if ( cd "$top" && dotnet tool restore ) >/dev/null 2>&1; then
+
+  # BOUND IT. The hourly mark below only ever fires for a restore that RETURNS — and a feed that
+  # blackholes TCP rather than refusing does not return. Unbounded, that wedges the scheduling call
+  # this sits inside, then every other worker on the machine behind it, with no mark ever written to
+  # break the cycle. A restore is bookkeeping; bookkeeping does not get to hang a worker forever.
+  # (`timeout` is coreutils and is not on a stock macOS, so it is used where present and skipped where
+  # not — a bound we can enforce is better than a bound we refuse to have.)
+  local restore=(dotnet tool restore)
+  command -v timeout >/dev/null 2>&1 && restore=(timeout 180 dotnet tool restore)
+
+  if ( cd "$top" && "${restore[@]}" ) >/dev/null 2>&1; then
     rm -f "$mark" 2>/dev/null || true
     return 0
   fi
-  # Remember the failure, so the next scheduling call does not pay for it again.
+  # Remember the failure — a timeout included — so the next scheduling call does not pay for it again.
   echo "$now" >"$mark" 2>/dev/null || true
   return 1
 }
@@ -5147,7 +5165,18 @@ divergence_publish_throttled() {
   # same log would each find no row for worker W and each CREATE one. `mkdir` is the only atomic
   # primitive bash has.
   if ! mkdir "$lock" 2>/dev/null; then
-    at="$(cat "$lock/at" 2>/dev/null || echo 0)"
+    # AGE THE LOCK BY THE DIRECTORY'S OWN MTIME, which the kernel stamps *inside* `mkdir`.
+    #
+    # A separate `at` file cannot do this, and the version that used one had a hole straight through the
+    # middle of it: the file is written a moment AFTER the directory appears, so a racer landing in that
+    # window reads no file, ages the lock from epoch 0, decides a LIVE lock is ancient, deletes it, and
+    # publishes alongside the holder. That is the exact double-publish this lock exists to prevent.
+    #
+    # And it would not have been rare. The throttle SYNCHRONISES the fleet: every worker on the machine
+    # shares one `divergence.published` stamp, so when the window expires they do not arrive here spread
+    # out — they arrive together, which is precisely when the window between `mkdir` and its follow-up
+    # write is most likely to be straddled.
+    at="$(mtime "$lock")"
     case "$at" in ''|*[!0-9]*) at=0 ;; esac
     # Somebody is publishing right now — not our turn. Unless they died mid-publish, in which case a
     # crashed worker's lock directory would wedge the ledger for every worker on the machine, forever.
@@ -5155,7 +5184,6 @@ divergence_publish_throttled() {
     rm -rf "$lock" 2>/dev/null || true
     mkdir "$lock" 2>/dev/null || return 0
   fi
-  echo "$now" >"$lock/at" 2>/dev/null || true
 
   # Stamp BEFORE the attempt. A publish that cannot work — no network, an exhausted REST budget, a ledger
   # issue somebody renamed — must cost one try per window, not one per scheduling call.
