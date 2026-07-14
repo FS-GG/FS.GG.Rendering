@@ -347,7 +347,6 @@ vocabulary  initRun
 vocabulary  initWithWindowBehavior
 vocabulary  present
 vocabulary  runAppWithWindowBehavior
-vocabulary  runInteractiveViewer
 vocabulary  runInteractiveViewerScriptWithAudio
 vocabulary  runInteractiveViewerScriptWithWindowBehaviorAndAudio
 vocabulary  runInteractiveViewerWithAudio
