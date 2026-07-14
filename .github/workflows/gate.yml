@@ -651,6 +651,67 @@ jobs:
           FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE: '1'
         run: dotnet fsi scripts/validate-template-payload-pins.fsx
 
+  # #718 (epic #693) — DOES THE RELEASE THE TAG PROMISES ACTUALLY EXIST?
+  #
+  # The `Version coherence guard` step in the required job above decides coherence from the TAG NAMESPACE
+  # alone, and `pin == latest tag` is EXACTLY what a release that worked looks like — and exactly what a
+  # release that was tagged and never published looks like. So it printed
+  #
+  #     version coherence: COHERENT (structural verdict-core). pin 0.9.1 == latest tag
+  #
+  # over a repo whose 0.9.1 packages did not exist. And a COHERENT verdict emits no RELEASE-PENDING block,
+  # so `release-tags.yml` had nothing to cut, so `release.yml` was never called, so 0.9.1 was NEVER
+  # PUBLISHED — a wedged state the repo's own guard certified as healthy, that no automation could reach,
+  # and that a human had to undo by hand (#679). `main` sat pinned to a version nobody could restore.
+  #
+  # #681 closes the two ways IN (validate-before-cut, and roll the tags back on a failed publish). It
+  # cannot close the STATE: if the runner dies between the cut and the rollback, the tags are pushed,
+  # nothing is published, no rollback runs, and the guard goes right back to calling it COHERENT. The
+  # compensating action is itself fallible. This job is the half that does not depend on any of that going
+  # right — it observes the world as it actually is.
+  #
+  # WHY IT IS NOT — AND MAY NEVER BE — REQUIRED. ADR-0105's one-sentence test: *could this gate turn an
+  # already-green commit red without anyone changing this repository?* Yes, trivially: a yank, or a release
+  # dying. So it may not be required, and that is not a limitation to route around. Requiring it would mean
+  # a genuine phantom release WEDGES EVERY MERGE IN THE REPO — #515's disease (a red `main` that no merge
+  # can fix) bolted on top of #679's. This job must REPORT a wedged release, never amplify it into a merge
+  # freeze. The one thing it must never do is go quiet.
+  #
+  # It is the same line `template-payload-restore-gate` above is drawn on, and the opposite side of the one
+  # `api-compatibility-gate` sits on: ApiCompat reads a feed only to FIND A BASELINE, so a silent feed
+  # cannot redden a green commit and it can be required (ADR-0103). Here the feed is half the SUBJECT.
+  #
+  # NOT-REQUIRED IS NOT `continue-on-error` (#216): this job has none and must not grow one. Its exits are
+  # the guard's contract — 0 coherent · 1 drift · 2 guard error — with one deliberate addition: a feed that
+  # DID NOT ANSWER is exit 0 plus a loud `::error::`, never a silent pass and never a red. "The feed was
+  # down" and "every release here is a phantom" must not produce the same observable, in either direction.
+  release-publish-gate:
+    name: Release publish gate (a cut tag has a real package behind it)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # The lane reads `git tag --list` and ages each tag with `git for-each-ref`, and the structural
+        # rules it re-runs read `git diff HEAD~1 HEAD`. All three fail CLOSED (exit 2) on a shallow clone,
+        # which is right — but the fix is to fetch, not to waive.
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # No token, and none needed: the subject is PUBLIC nuget.org — the feed a consumer actually restores
+      # from. `release.yml` dual-publishes to the org feed first and nuget.org second (ADR-0012 §4), so
+      # "present on nuget.org" is the strictly stronger claim, and an org push that landed while the public
+      # push failed is a phantom for every consumer and visible only here. It also means fork PRs get a real
+      # answer instead of the no-token `FeedUnavailable` that `apicompat-check.sh` has to live with.
+      - name: Does the feed carry the packages the cut tags promise?
+        env:
+          FS_GG_RUN_VERSION_COHERENCE_FEED: '1'
+        run: dotnet fsi scripts/validate-version-coherence.fsx
+
   # #475 — skill parity. `scripts/check-agent-skill-parity.fsx` was a real check that ran only when a
   # human remembered to: it was referenced by NO workflow. So `docs/reports/skills-parity.md` — a
   # TRACKED, DERIVED artifact — drifted, and on main it was a day stale with a whole skill (fs-gg-game-core)
