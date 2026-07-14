@@ -12,9 +12,10 @@ deleting a slot. Persistence here is **requested as pure values** — your `upda
 `PersistenceEffect` values, it never touches the filesystem. You serialize your own `Model` into an
 opaque payload and stamp a save-format version; a record-only interpreter folds the requests into
 ordered evidence, so the whole thing is deterministic and testable with no writable save location.
-Real file I/O (and dispatching a loaded save back to your model) is the host's job (a deferred
-backend); this skill covers requesting save/load and proving what was requested. This skill
-materializes for the `game` and `sample-pack` profiles.
+Real file I/O is a **host** concern: the framework carries your requests to a host and carries the
+answers back (`Viewer.runAppWithPersistence`), but **the sink that writes the bytes is code you
+write** — no file backend ships in this org. This skill covers requesting save/load, proving what was
+requested, and reaching a real host with it. It materializes for the `game` and `sample-pack` profiles.
 
 > **Building the file backend rather than consuming it?** Then the testing guidance below is written
 > for the wrong reader, and following it will hand you a suite that passes against a backend that
@@ -39,33 +40,20 @@ All helpers are **total**: the save-format version is clamped to `>= minVersion`
 no helper throws or performs I/O. The payload is **opaque** — the framework never parses it.
 
 > **`Persistence.interpretRecordOnly` PERSISTS NOTHING.** It records your requests into
-> `PersistenceEvidence.Requested` and drops them. No file is written, read or deleted — not here, and
-> not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
-> ever see one. A product that calls it has saved nothing.
+> `PersistenceEvidence.Requested` and drops them. No file is written, read or deleted. The name says
+> exactly what it does: it is a **record-only fold**, the thing you assert on in a test, and a product
+> whose only sink is this one has saved nothing.
 >
-> **The name says so now. It did not always, and the old one is still in the package**, so you will
-> meet it: this function was called `Persistence.interpret`, and that name was a trap — though not in
-> the way you would guess. It is **not** that `interpret*` means *perform the effect* everywhere else
-> in this framework and this one was the lone exception. **Nothing named `interpret` here performs
-> anything.** The surface your product pins carries exactly two functions so spelled, and both are pure
-> folds that hand you back a value: this function under its old name, and `Audio.interpret` — which
-> calls itself a *"record-only interpreter"* with *"no device access"* and returns an `AudioEvidence`,
-> precisely as this returns a `PersistenceEvidence`. Performing an effect is always a **host** call:
-> `Audio.play` takes a backend, `Viewer.runApp` opens a window. **Not one of them is spelled
-> `interpret`.**
+> **That is not the same as saying the requests have nowhere to go — they do now.**
+> `ViewerEffect.Persist` carries a batch of `PersistenceEffect` to a host, and
+> `Viewer.runAppWithPersistence` hands that batch to a **sink you supply**, then dispatches each
+> `PersistenceOutcome` the sink returns back into your `update` as a message. So a `Load` is
+> answerable and a `Save` can really reach the disk — through code **you** write. See
+> [Reaching a real host](#reaching-a-real-host).
 >
-> So do not go looking for a counter-example among its siblings — it has one, and it has this same
-> shape. What `interpret` really promised you was a **downstream**: something, somewhere, that
-> eventually carries your requests out. For persistence there is none, and that is the whole defect.
-> The convention is what misleads you here, not an exception to it — which makes the honest reading
-> the stronger one.
->
-> **The rename does not fix that, and does not pretend to.** `interpretRecordOnly` is the same
-> function under a name that cannot mislead you: it still records, and still drops. What it buys you is
-> that you no longer have to read this callout to know that.
->
-> `Persistence.interpret` remains in the `FS.GG.UI.Canvas` your product pins, as an `[<Obsolete>]`
-> forwarder with identical behaviour, and a later release removes it. **Call `interpretRecordOnly`.**
+> The two are not rivals, and knowing which one you are standing in front of is the whole skill:
+> **`interpretRecordOnly` is what you assert on; the sink is what actually writes.** Requests are not
+> effects, and the fold that records them is not the host that performs them.
 
 ## Requesting save/load from `update`
 
@@ -86,7 +74,7 @@ let serialize (model: Model) : string = // JSON, a custom encoding, whatever you
 let persistFor (model: Model) (msg: Msg) : PersistenceEffect =
     match msg with
     | CheckpointReached -> Persistence.save (Persistence.saveEnvelope 1 (SaveSlot "slot-1") (serialize model))
-    | ContinueGame      -> Persistence.load (SaveSlot "slot-1")     // result comes back as a Msg (deferred backend)
+    | ContinueGame      -> Persistence.load (SaveSlot "slot-1")     // answer arrives as a Msg, via mapOutcome
     | EraseSave         -> Persistence.deleteSlot (SaveSlot "slot-1")
 ```
 
@@ -115,10 +103,11 @@ that was.
 
 `Started` is the door that closes it — **and unlike audio's, you have to hang it yourself.** Audio's
 seam is scaffold-wired: the generated host calls `AudioCues.forTransition Started m m` from `Init`.
-**Persistence has no such host.** No `ViewerEffect` case carries a `PersistenceEffect`, so nothing in
-the framework will ever call a `SaveCues` of yours — see [Package Boundary](#package-boundary), which
-spells out that today there is no host at all. The seam, the `Started` case, and the call from your own
-`Init` are **all product-owned**:
+**Persistence has no scaffold-wired equivalent.** A host that *performs* your requests does exist
+(`Viewer.runAppWithPersistence` — see [Reaching a real host](#reaching-a-real-host)), but nothing in
+the framework calls a `SaveCues` of **yours**: the framework carries the effects you hand it, and an
+effect nobody constructed is an effect it never sees. The seam, the `Started` case, and the call from
+your own `Init` are **all product-owned**:
 
 - give your `Msg` a `Started` case;
 - from wherever you build the initial model, call `SaveCues.forTransition Started m m` yourself — the
@@ -151,14 +140,15 @@ let forTransition (msg: Msg) (previous: Model) (next: Model) : PersistenceEffect
     | EraseSave -> [ Persistence.deleteSlot (SaveSlot next.Slot) ]
 ```
 
-(The `Load` result cannot come *back* while the backend is deferred — that is the next pitfall down, and
-it is a different defect from this one. A product that genuinely needs restored state at frame 0 still
-builds it in `initialModel`; `Started` is then where it *declares* what it did, so the sink hears about
-it and a test can prove it.)
+(The `Load` answer comes back as a **message**, not as a return value — `Viewer.runAppWithPersistence`
+dispatches each `PersistenceOutcome` into `update` — so it still cannot arrive *before* frame 0, and
+under `interpretRecordOnly` it never arrives at all. A product that genuinely needs restored state at
+frame 0 still builds it in `initialModel`; `Started` is then where it *declares* what it did, so the
+sink hears about it and a test can prove it.)
 
 **Assert at the sink, not at the model.** The only test shape that catches this class asks what the
 sink was *told*, not what the model *holds* — [[fs-gg-rendering:fs-gg-testing]] works the case end to
-end. While the backend is deferred the "sink" is the record-only interpreter, so that means asserting
+end. Under `interpretRecordOnly` the "sink" is the record-only fold, so that means asserting
 on `PersistenceEvidence.Requested`; if you own a real backend, assert on the **files** it wrote (see
 [If you own the backend](#if-you-own-the-backend)).
 
@@ -194,31 +184,39 @@ let evidence =
 ## Common pitfalls
 
 - **Reading/writing a file inside `update`.** `update` must stay pure — return a `PersistenceEffect`
-  value and let the host (or, today, the record-only interpreter) act on it. I/O in `update` breaks
+  value and let the host — or, in a test, the record-only fold — act on it. I/O in `update` breaks
   determinism and testability.
-- **Expecting `Load` to return the save synchronously.** The pure surface only *requests* a load;
-  the loaded payload comes back as a `Msg` your `update` handles, once a real backend lands. Today the
-  interpreter just records the request.
+- **Expecting `Load` to return the save synchronously.** The pure surface only *requests* a load. Under
+  `Viewer.runAppWithPersistence` the answer comes back as a `Msg` your `update` handles (your
+  `mapOutcome` turns the `PersistenceOutcome` into one); under `interpretRecordOnly` the request is
+  merely recorded and nothing ever answers it. Either way, it is never a return value.
+- **Launching under a runner that does not carry persistence.** Only `Viewer.runAppWithPersistence` and
+  `Viewer.runAppWithAudioAndPersistence` interpret `ViewerEffect.Persist`. **Every other runner discards
+  it** — `Viewer.runApp`, `Viewer.runAppWithAudio`, the `WindowBehavior` forms, the interactive-viewer
+  family. They say so on the diagnostics channel rather than dropping it in silence, but they write
+  nothing: a product that requests saves and launches with any other runner loses every one of them,
+  while the model looks perfectly correct throughout. The list of runners that persist is an
+  **allow-list of two** — check yours against it.
 - **Letting the framework own your format.** `SavePayload` is opaque — serialize and version your
   `Model` yourself. The framework carries the bytes verbatim and never parses them; a schema change is
   your deserialize step's job, which is why you stamp the version.
 - **Expecting `Load`/`DeleteSlot` of an empty slot to error.** The interpreter records exactly what
-  you request; "no such save" is a deferred-backend concern, not an exception here.
+  you request; "no such save" is your sink's concern, and it answers `PersistenceOutcome.Absent` — not
+  an exception here.
 - **Expecting a save restored in `initialModel` to have *asked* for anything.** The initial model
   makes no *transition*, so `forTransition` never runs for it and every request the loaded state
   implies is silently never made — while the model is perfectly correct and a test that asserts on it
   **passes**. This is the main path for persistence, not an edge case. Handle it under `Started`; see
   [Deciding *when* to save](#deciding-when-to-save-the-cue-seam-and-the-init-blind-spot).
-- **Expecting real save files in CI — *while the backend is deferred*.** With the record-only
-  interpreter there is no file backend, so the evidence is the *requested* values: assert on
-  `PersistenceEvidence.Requested`, not on files on disk. **If you are building the backend, invert
-  this** — a `Requested`-only suite passes against a backend that writes nothing. See
-  [If you own the backend](#if-you-own-the-backend).
+- **Expecting real save files from `interpretRecordOnly`.** The record-only fold is not a backend, so
+  under it the evidence is the *requested* values: assert on `PersistenceEvidence.Requested`, not on
+  files on disk. **If you are building the backend, invert this** — a `Requested`-only suite passes
+  against a sink that writes nothing. See [If you own the backend](#if-you-own-the-backend).
 
 ## If you own the backend
 
-Everything above is written for a product that *consumes* a deferred backend. **If your work item is
-to build the file backend itself, the guidance above describes the trap, not the target.**
+Everything above is written for a product that *consumes* a backend somebody else wrote. **If your work
+item is to build the file backend itself, the guidance above describes the trap, not the target.**
 
 `Persistence.interpretRecordOnly`/`record` are **record-only**: they fold requests into
 `PersistenceEvidence.Requested` and touch no filesystem. So a suite that asserts on `Requested`
@@ -242,8 +240,8 @@ Assert on the **effect**, not the request:
 ⚠️ **The answer half of the vocabulary has LANDED — report in it, and do not invent your own.**
 `PersistenceEffect` is request-only (`Save`/`Load`/`DeleteSlot`), so a product that asked for a `Load`
 once had nowhere to receive the answer: it could be asked and never answered, and nothing said so.
-The `FS.GG.UI.Canvas` this product pins (**0.9.2**) closes that hole with `PersistenceOutcome` — what
-a host reports back *after actually performing* a request:
+The `FS.GG.UI.Canvas` this product pins closes that hole with `PersistenceOutcome` — what a host
+reports back *after actually performing* a request:
 
 ```fsharp
 open FS.GG.UI.Canvas
@@ -267,13 +265,48 @@ to prevent** — the same bug the bullet above warns you about, now guarded by t
 than by your memory. A single `LoadFailed` case lets a corrupt save be reported as a new game, and the
 next autosave then overwrites the bytes the player was about to lose.
 
-**But nothing in the framework produces one, and that has not changed.**
-`Persistence.interpretRecordOnly` cannot invent a `PersistenceOutcome` — it writes no bytes, so it has
-nothing to report — and no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner in this
-org will hand you one either (see [Package Boundary](#package-boundary)). **A `PersistenceOutcome` is
-produced by the backend *you* write.** What the pinned surface gives you is the vocabulary to report
-in: so that you are not inventing a private result type, and so that two products' backends answer in
-the same words.
+**Nothing in the framework *invents* a `PersistenceOutcome` — your sink does.**
+`Persistence.interpretRecordOnly` cannot produce one: it writes no bytes, so it has nothing to report.
+What the framework now does is **carry** them. `Viewer.runAppWithPersistence` takes your sink —
+`PersistenceEffect list -> PersistenceOutcome list` — and hands each outcome it returns to your
+`mapOutcome`, dispatching into `update` the ones you map to `Some` (an outcome you map to `None` is
+dropped). So the words in the list above are the words **you answer in**, and the framework is the
+thing that delivers them: you are not inventing a private result type, and two products' backends
+answer in the same vocabulary.
+
+## Reaching a real host
+
+Everything above the record-only fold is testable without a host. **Durability is not** — and the
+dispatch path that gets you there is a runner you have to choose on purpose.
+
+- `ViewerEffect.Persist` carries a `PersistenceEffect list` to the host. It is the only case that does.
+- **Exactly two runners interpret it**: `Viewer.runAppWithPersistence` and
+  `Viewer.runAppWithAudioAndPersistence`. They hand the batch to your `persistenceSink`
+  (`PersistenceEffect list -> PersistenceOutcome list`), then pass each answer to your `mapOutcome`
+  (`PersistenceOutcome -> 'msg option`) and dispatch the ones it maps to `Some` into `update`. An
+  outcome you map to `None` is **dropped** — the host still answered; you chose not to listen. The
+  paired audio form exists so you do not have to trade sound for saves.
+- **Every other runner discards `ViewerEffect.Persist`** — `Viewer.runApp`, `Viewer.runAppWithAudio`,
+  the `WindowBehavior` forms, the `runInteractiveViewer` family, all of them. They report the drop on
+  the diagnostics channel rather than swallowing it in silence, but they perform nothing. **Read that
+  as an allow-list, not a deny-list:** if the runner you launched is not one of the two named above,
+  your saves are being thrown away.
+
+**The sink is still yours to write.** No file backend ships in this org: the framework gives you the
+request vocabulary, the answer vocabulary, and the dispatch path between them — the bytes are your
+code. Test it as [If you own the backend](#if-you-own-the-backend) says, on the files, not the requests.
+
+Two hazards in the seam, both of which cost real products real bugs:
+
+- ⚠️ **The sink runs on the window thread.** It is called from the effect fold that the tick and key
+  handlers drive, so **a slow save stalls the frame** for as long as the write takes. Unlike the audio
+  sink (fire-and-forget, `-> unit`), this one must return an answer, so it cannot simply be made async.
+  Keep it fast, or hand the work to your own worker and answer later with a message.
+- 🛑 **Never request a persistence effect from the handler for a `PersistenceOutcome`.** The dispatch is
+  **synchronous recursion**, not the Elmish dispatch queue: an outcome whose handler requests another
+  save recurses on one stack and terminates in a `StackOverflowException` — which .NET **cannot catch**.
+  The process dies with no diagnostic at all. If an outcome must trigger further work, record the
+  intent in your `Model` and let the next transition request it.
 
 ## Build Commands
 
@@ -281,9 +314,9 @@ Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
 
 ## Test Commands
 
-Run `./fake.sh build -t Test` to exercise product-owned save/load examples. While the backend is
-deferred, assert the `PersistenceEvidence.Requested` sequence your `update` produces for a set of
-events. **If you own a file backend, assert on the files it wrote instead** — see
+Run `./fake.sh build -t Test` to exercise product-owned save/load examples. To prove what your `update`
+*requested*, assert the `PersistenceEvidence.Requested` sequence it produces for a set of events.
+**If you own a file backend, assert on the files it wrote instead** — see
 [If you own the backend](#if-you-own-the-backend).
 
 ## Evidence
@@ -298,42 +331,46 @@ framework readiness reports into the product.
 `game`/`sample-pack` profiles). Canvas depends only on Scene — the persistence request surface pulls
 in no viewer, layout, or widget machinery. Real file I/O belongs in a **host**, not in `update`.
 
-Be clear about what that host is today: **there isn't one.** No host in this org interprets a
-`PersistenceEffect` into file I/O — `fs-gg-skiaviewer` scopes itself to window, render, and
-screenshot I/O and documents no persistence sink. Nothing will pick these requests up unless you
-write the backend yourself ([If you own the backend](#if-you-own-the-backend)).
+Be clear about what that host is: **a runner you choose, driving a sink you wrote.**
+`Viewer.runAppWithPersistence` (and `Viewer.runAppWithAudioAndPersistence`) interpret
+`ViewerEffect.Persist` by calling *your* `persistenceSink` and dispatching its `PersistenceOutcome`s
+back into `update`. What the org does **not** ship is the sink itself — no file backend exists here, so
+the bytes are still yours ([If you own the backend](#if-you-own-the-backend)).
 
 ### Which host interprets each `PersistenceEffect`
 
 | `PersistenceEffect` | `Persistence.interpretRecordOnly` does | Which host runner interprets it |
 |---|---|---|
-| `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | **none** |
-| `Load` | records the request; returns **no payload** | **none** |
-| `DeleteSlot` | records the request; **deletes nothing** | **none** |
+| `Save` | records the request into `PersistenceEvidence.Requested` (clamping `Version` to `>= 0`); **writes no bytes** | `Viewer.runAppWithPersistence` / `Viewer.runAppWithAudioAndPersistence` — via **your** sink |
+| `Load` | records the request; returns **no payload** | as above; the answer returns as a `PersistenceOutcome` dispatched into `update` |
+| `DeleteSlot` | records the request; **deletes nothing** | as above |
+| *(any of them)* | — | **every other runner** (`Viewer.runApp`, `Viewer.runAppWithAudio`, the `WindowBehavior` and interactive-viewer forms) — **discarded**, reported on the diagnostics channel |
 
-The "none" column is structural, not an oversight: a host runner interprets `ViewerEffect`, and **no
-`ViewerEffect` case carries a `PersistenceEffect`**. A persistence request cannot reach a host runner
-even in principle — `Persistence.interpretRecordOnly` is the only thing that will ever see it, and all
-it does is hand the requests back to you.
+The last row is the one that bites, and it is an **allow-list of two**. A host runner interprets
+`ViewerEffect`, and `ViewerEffect.Persist` is the case that carries persistence — so the request
+reaches a host **only** under a runner that knows about it. Launch the same product under any other
+runner and every save is dropped.
 
 So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
-about durability**, because no code in the framework writes a byte.
+about durability**: no code in the *framework* writes a byte, and whether anything does depends on the
+runner you launched and the sink you supplied.
 
 ## Generated Product
 
 Map each `Msg` that should save, load, or delete to a `PersistenceEffect` in your `update`, collect
-the frame's requests, and pass them to `Persistence.interpretRecordOnly` for evidence today. The
-request surface is designed so that a real backend can interpret the same values into file I/O
-without changing it — but **no such backend exists yet**, and that is the part you own.
+the frame's requests, and pass them to `Persistence.interpretRecordOnly` for the evidence your tests
+assert on. The same values are what a real backend interprets into file I/O — the request surface does
+not change between the two.
 
-What the pinned surface now gives you is the *vocabulary for the answer*: `PersistenceOutcome` (see
-[If you own the backend](#if-you-own-the-backend)), so a backend you write reports `Loaded`/`Absent`/
-`Unreadable` in the framework's words rather than a private result type of your own. What it still
-does **not** give you is a **dispatch path**: no `ViewerEffect` case carries a `PersistenceEffect`, so
-nothing in the framework will hand a `PersistenceOutcome` back into your `update` as a `Msg`. Wiring
-that answer into your own `Msg` is yours to build too.
+The pinned surface gives you three of the four pieces: the *request* vocabulary (`PersistenceEffect`),
+the *answer* vocabulary (`PersistenceOutcome`), and the **dispatch path** between them
+(`ViewerEffect.Persist`, carried by `Viewer.runAppWithPersistence`, which maps each outcome back into
+your `update` as a `Msg` — see [Reaching a real host](#reaching-a-real-host)).
 
-Treat "the host will handle it later" as *unbuilt work*, not as a delivered guarantee. The natural
+**The fourth piece is the sink, and it is yours.** No file backend ships in this org, so "the host will
+handle it" is only true of the *plumbing*: nothing writes a byte until you write the code that does.
+Treat the backend as *unbuilt work*, not as a delivered guarantee — and remember that a product
+launched under `Viewer.runApp` has no persistence at all, however many effects it requests. The natural
 thing to snapshot is your seeded, deterministic game-core `Model`.
 
 ## Persistent problems

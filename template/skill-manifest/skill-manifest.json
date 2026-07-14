@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-persistence",
       "scope": "product",
-      "sha256": "cfb935493f856a2ce4d13bb4966fad57feaaf01c51861c38f91280eb2fcabc64",
+      "sha256": "2a4441c450db73255223bed35778bd7c567718ebbe2b93168c43b856c2214c83",
       "resolvablePath": ".agents/skills/fs-gg-persistence/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-persistence/"
