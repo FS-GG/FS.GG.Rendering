@@ -61,6 +61,11 @@
 #                                             # #448). A partial failure is reported as PARTIAL
 #                                             # (exit 4), never as success — the aliases run serially,
 #                                             # so the ones before an error have already landed.
+#   fsgg-coord landable <pr> [--repo R]       # is this PR SAFE TO MERGE? prints
+#                                             # green|pending|red|conflicted|unknown; exit 0 on green,
+#                                             # 3 on pending (the only one worth retrying), 1 otherwise.
+#                                             # Scores WORKFLOW RUNS with the supersession rule (#720) —
+#                                             # do NOT hand-roll this in a recipe (#724).
 #   fsgg-coord issues <repo> [--label L] [--state open|closed|all] [--refresh] [--jq EXPR]
 #                                             # list issues over REST with ETag revalidation
 #   fsgg-coord ready [--repo R] [--status S] [--phase P] [--all] [--json|--jq EXPR]
@@ -268,7 +273,26 @@ EX_OFFBOARD=3     # the issue is not an item on the board at all. A different fa
 # words. It is never queued: replaying a document whose failing half can never succeed would rewrite
 # the half that already did.
 EX_PARTIAL=4
-trap 'exit $(cat "$RC_FILE" 2>/dev/null || echo 1)' TERM
+# AN EMPTY RC_FILE IS NOT A ZERO (#344, reopened through the shadow).
+#
+# `exit $(cat "$RC_FILE" || echo 1)` guards only the case where `cat` FAILS — a missing file. It does
+# not guard an EMPTY one, and `soft_run` truncates RC_FILE (`: >"$RC_FILE"`) before every attempt, so
+# empty is a state this trap actually reaches. `cat` then succeeds with no output, the `|| echo 1`
+# never fires, and the trap degenerates to a BARE `exit` — which exits with `$?` of whatever command
+# ran last, not with the code the fatal die meant to report.
+#
+# That is a fail-OPEN, and the shadow makes it reachable on the hot path: when
+# `divergence_publish_throttled` fires (once per window — so, on the FIRST call in any fresh cache: a
+# new worktree, a fresh container, a CI runner), the last thing to run before the trap is the publish
+# lock's own `rm -rf`, which succeeds. A rate-limited `next` — an unreadable board, i.e. exactly what
+# #418 makes routine — then exits 0 with no verdict, and a worker reads "nothing to do" off a board it
+# never managed to read. #344 is the rule that a read which did not happen must never render as a
+# confident empty answer; this is that same fail-open, one layer down, and it defeats the surface's own
+# first rule: the observer may not change bash's answer, its exit code, or its life.
+#
+# So: unknown code => 1. Fail CLOSED. (Found by the tiered fixture — the monolith could not see it, as
+# it only ever reached the #344 assertions after hundreds of prior calls had spent the publish window.)
+trap 'rc_at_term="$(cat "$RC_FILE" 2>/dev/null)"; exit "${rc_at_term:-1}"' TERM
 
 # Scratch files this process owns, swept on ANY exit — including the TERM a fatal `die` raises, which
 # is how a rate-limited scan used to strand them in $CACHE. It tracks PATHS, not a `$CACHE/.foo.*`
@@ -1733,7 +1757,7 @@ resolve_offboard_blockers() {
 # This map is EMBEDDED, not read from registry/repos.yml at run time, because fsgg-coord is a
 # `kind: client` kit item mirrored into every receiver repo (the four skills + this script) WITHOUT
 # the roster — a worker in FS.GG.Rendering running `--repo game` has no registry/repos.yml to read.
-# So the roster short-ids are duplicated here, and tests/fsgg-coord/run.sh carries a coherence check
+# So the roster short-ids are duplicated here, and tests/fsgg-coord/ carries a coherence check
 # that reads repos.yml (present in the .github checkout where CI runs) and FAILS if this case handles
 # fewer ids than the roster rosters — turning "added a repo, forgot this map" from a silent empty
 # queue (.github#381) into a red check. Adding a repo is a data change to repos.yml PLUS a one-line
@@ -3552,7 +3576,9 @@ pr_alive() {  # $1=owner $2=repo $3=num
 #
 # Cost is the design question, exactly as it is for `pr_alive`: REST (a different budget from the
 # GraphQL one that is routinely gone, #418), and only for a claim that is ALREADY stale and ALREADY
-# has an open PR — which is rare. Two reads: the PR, and its head SHA's check-runs.
+# has an open PR — which is rare. THREE reads: the PR, its head SHA's WORKFLOW RUNS, and that SHA's
+# CHECK RUNS. The third is not redundant — each of the last two sees a failure the other cannot (see
+# the rollup below), and the runs are also what tell us which check-runs are SUPERSEDED (#720).
 #
 # TWO TRAPS. BOTH FAIL CLOSED HERE, DELIBERATELY:
 #
@@ -3574,9 +3600,24 @@ pr_alive() {  # $1=owner $2=repo $3=num
 # report as `unknown`, and the one state we most need to name would be the one we could never see.
 # `tostring` tells all three apart.
 #
+# SUPERSESSION, as one expression, because it is applied to TWO things (the runs, and the check-runs
+# of the runs it kills) and the two must never drift apart. Splits the runs on a head SHA into:
+#
+#   .live — the runs that still mean something
+#   .dead — the check_suite_id of every run a later run of its OWN concurrency group replaced
+#
+# `cgroup` is the key `cancel-in-progress` actually cancels on. See the note at the call site for why
+# matching it exactly — rather than on `.path` — is what stops the drop rule becoming a hole (#703).
+SUPERSEDE_JQ='
+  def cgroup: [.path, .event, .head_branch, ([.pull_requests[]?.number] | sort)];
+  . as $all
+  | def replaced($r): [$all[] | select(cgroup == ($r|cgroup) and .run_number > $r.run_number)] | length > 0;
+    { live: [ $all[] | . as $r | select($r.conclusion != "cancelled" or (replaced($r) | not)) ],
+      dead: [ $all[] | . as $r | select($r.conclusion == "cancelled" and replaced($r)) | .check_suite_id ] }'
+
 # Prints exactly one of: green | conflicted | red | pending | unknown
 pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknown
-  local pr m sha checks total pend bad try
+  local pr m sha runs live checks total pend bad try
   # THE RETRY HAS TO WAIT, OR IT IS NOT A RETRY. GitHub computes mergeability in a BACKGROUND JOB and
   # returns `null` until it lands; the documented remedy is to poll again *after a delay*. A second
   # read fired microseconds after the first cannot have observed a job that had not finished when the
@@ -3596,19 +3637,146 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
   sha="$(jq -r '.head.sha // ""' <<<"$pr")"
   if [ -z "$sha" ]; then echo unknown; return 0; fi
 
-  # --paginate: check-runs pages at 30 and this org runs ~30 workflows. A truncated read reports a
-  # clean page 1 while the check that would have stopped us sits on page 2 (#547).
+  # THE ROLLUP IS OVER WORKFLOW RUNS, NOT CHECK RUNS (#720). SUPERSESSION IS A PROPERTY OF THE RUN —
+  # it is what `concurrency: cancel-in-progress` replaces — and it is NOT VISIBLE ON A CHECK RUN AT
+  # ALL. The same workflow can run TWICE on one SHA (a second trigger starts a fresh run and cancels
+  # the first), and BOTH runs' check-runs stay attached to that SHA forever. Aggregating them raw —
+  # which is what this function used to do — sees `cancelled` and calls a GREEN PR red.
+  #
+  # That is not cosmetic here. `adopt` (#697) uses this verdict to tell FINISHED work from abandoned
+  # work, and its whole population is PRs whose author was iterating when their harness died — i.e.
+  # FORCE-PUSHED PRs, which are exactly the ones that carry superseded runs. The tool would point at
+  # a green, mergeable, finished PR and refuse to land it, which is #697's remedy failing precisely
+  # where #697 was aimed. Measured on .github#718: 20 check-runs, 4 `cancelled` from two superseded
+  # suites, while GitHub itself said `mergeable_state=clean`.
+  #
+  # DO NOT "FIX" THIS BY DEDUPING CHECK-RUNS BY NAME. Six workflows in this repo name their job
+  # `fixture`; collapsing by name lets one workflow's success mask another's failure. The obvious fix
+  # is the wrong one, which is why it is written down. (#703 found the same trap in the recipe.)
+  #
+  # --paginate: this org runs ~30 workflows and the endpoint pages at 30. A truncated read reports a
+  # clean page 1 while the run that would have stopped us sits on page 2 (#547).
+  runs="$(gh api "repos/$1/$2/actions/runs?head_sha=$sha&per_page=100" --paginate --slurp 2>/dev/null \
+          | jq -c '[.[].workflow_runs[]]' 2>/dev/null)" || { echo unknown; return 0; }
+  if [ -z "$runs" ]; then echo unknown; return 0; fi
+
+  # SUPERSEDED runs, and NOTHING else: a cancelled run that a LATER run of its OWN concurrency group
+  # replaced. A cancelled run nobody re-ran is still a finding, and a FAILED run is never dropped —
+  # so this cannot fail open.
+  #
+  # `cgroup` is the group `cancel-in-progress` actually keys on. Matching it EXACTLY is what stops
+  # the drop rule being a hole: keying on `.path` alone would let a run from a DIFFERENT group
+  # license the drop. A `workflow_dispatch` run on the same branch shares the SHA and the path and
+  # carries a HIGHER run_number, but it is a different `github.ref` — it supersedes nothing — and a
+  # gate job that is `if: github.event_name == 'pull_request'` SKIPS in it and still concludes
+  # `success`. Dropping the cancelled PR run in its favour would count a vacuous green (#703).
+  #
+  # This yields BOTH the live runs and the check SUITES of the dead ones, because a superseded run's
+  # check-runs stay attached to the SHA and have to be dropped with it.
+  local dead
+  live="$(jq -c "$SUPERSEDE_JQ | .live"  <<<"$runs" 2>/dev/null)" || { echo unknown; return 0; }
+  dead="$(jq -c "$SUPERSEDE_JQ | .dead"  <<<"$runs" 2>/dev/null)" || { echo unknown; return 0; }
+  if [ -z "$live" ] || [ -z "$dead" ]; then echo unknown; return 0; fi
+
+  # SCORE THE CHECK RUNS TOO — the union, not either alone. Each sees a failure the other cannot:
+  #
+  #   * A run can fail with NO CHECK RUNS AT ALL. `startup_failure` (malformed workflow YAML) concludes
+  #     the RUN as `failure` and never creates a job, so a check-runs-only rollup sees nothing and
+  #     calls it green. Same for a run still `queued`: its check-runs do not exist yet, so the checks
+  #     that DO exist can all be complete and green while a workflow has not started.
+  #   * A CHECK RUN can fail while its run SUCCEEDS. A job-level `continue-on-error: true` concludes
+  #     the job's check-run `failure` and the workflow run `success` — and branch protection scores
+  #     CHECK RUNS, so GitHub would block a merge this function had called green. (Step-level
+  #     continue-on-error does not diverge; only the job-level form does.)
+  #   * And check-runs are the ONLY place a non-Actions app appears at all. This function used to read
+  #     them, so scoring runs alone would silently drop third-party coverage — #266's signature,
+  #     introduced by the fix for it. A foreign app's suite is never in the runs list, so it is never
+  #     in `dead`, so it is never dropped: it is scored by construction, with no special case.
+  #
+  # `--paginate`, again, and for the same reason (#547).
   checks="$(gh api "repos/$1/$2/commits/$sha/check-runs" --paginate --slurp 2>/dev/null \
-            | jq -c '[.[].check_runs[]]' 2>/dev/null)" || { echo unknown; return 0; }
+            | jq -c --argjson dead "$dead" '[.[].check_runs[] | select([.check_suite.id] - $dead | length > 0)]' 2>/dev/null)" \
+    || { echo unknown; return 0; }
   if [ -z "$checks" ]; then echo unknown; return 0; fi
 
-  total="$(jq 'length' <<<"$checks")"
-  if [ "$total" -eq 0 ]; then echo red; return 0; fi        # #606: no checks is NOT a pass
-  pend="$(jq '[.[] | select(.status != "completed")] | length' <<<"$checks")"
-  if [ "$pend" -gt 0 ]; then echo pending; return 0; fi
-  bad="$(jq '[.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length' <<<"$checks")"
-  if [ "$bad" -gt 0 ]; then echo red; return 0; fi
+  # #606: an EMPTY subject is a FINDING, not a pass. "Every check passed" and "CI never started" are
+  # the same empty set, and a CONFLICTED PR is permanently in it — GitHub cannot build
+  # refs/pull/N/merge while it conflicts, so no workflow ever starts and the head SHA has zero runs
+  # forever. One jq over both lists rather than six.
+  #
+  # THE TWO LISTS GO IN ON STDIN, NOT THROUGH `--argjson`. Linux caps a SINGLE argv string at 128KB
+  # (MAX_ARG_STRLEN — a much lower ceiling than the ~2MB ARG_MAX everyone quotes), and a workflow_run
+  # carries whole `repository` / `head_repository` / `head_commit` objects, so ELEVEN real runs are
+  # already ~150KB. `--argjson` therefore died with "Argument list too long" on essentially every real
+  # PR in this repo, and returned `unknown` — while every unit test passed, because a fixture's runs
+  # are three fields long. Caught only by driving it against a live PR. stdin has no such ceiling, so
+  # this cannot come back as the payload grows.
+  local roll
+  roll="$(printf '%s\n%s\n' "$live" "$checks" | jq -rs '
+      (.[0] + .[1]) as $all
+      | [ ($all | length),
+          ([$all[] | select(.status != "completed")] | length),
+          ([$all[] | select(.status == "completed"
+                            and .conclusion != "success" and .conclusion != "skipped")] | length) ]
+      | @tsv' 2>/dev/null)" || { echo unknown; return 0; }
+  read -r total pend bad <<<"$roll"
+  [ -n "${bad:-}" ] || { echo unknown; return 0; }
+
+  if [ "$total" -eq 0 ]; then echo red;     return 0; fi
+  if [ "$pend"  -gt 0 ]; then echo pending; return 0; fi
+  if [ "$bad"   -gt 0 ]; then echo red;     return 0; fi
   echo green
+}
+
+# `landable <pr>` — pr_landable's verdict, as a COMMAND (#724).
+#
+# WHY THIS EXISTS AT ALL. This gate has now been written FOUR times, in four copies: `/pnext-item` §5
+# (fixed for pagination in #547, for zero-checks in #606, for supersession in #703), the
+# skill-registry autofix bot (#710 — it read its OWN superseded runs as RED and refused to merge the
+# PR it had just pushed), and this function (#720). Every one of those fixes edited a COPY. Nothing
+# executes a recipe, so nothing tests one — and the result was backwards: the copy that IS testable
+# was the copy still carrying the bug, while the untested prose was right.
+#
+# A recipe should NAME the command, not EMBED the logic. That is also what makes protocol staleness
+# harmless: a recipe is copied into an agent's context at session start and never refreshed, so a
+# worker can execute a gate the org fixed hours earlier (measured: .github#718 was red-lit by a
+# nine-commit-stale snapshot of §5, and the worker then re-filed the fixed bug as #719). A recipe that
+# CALLS this reads the CURRENT tool off disk at run time. The prose may drift; the behaviour cannot.
+# That is #609's "an import cannot drift by construction", applied to the protocol itself.
+#
+# The verdict goes to STDOUT and the DECISION goes to the exit code, so a poll loop can tell "keep
+# waiting" from "stop" without parsing prose:
+#
+#   0  green        — mergeable, and every live run/check passed
+#   3  pending      — checks still running. RETRY; this is the only verdict worth waiting on.
+#   1  red | conflicted | unknown — do not merge, and do not wait: none of these clear by waiting.
+landable_cmd() {
+  local repo="" pr="" v
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
+      -*)     die "landable: unknown flag '$1'" ;;
+      *)      pr="$1"; shift ;;
+    esac
+  done
+  [ -n "$pr" ] || die "landable: <pr> required (the PULL number — not the item number)"
+  case "$pr" in ''|*[!0-9]*) die "landable: '$pr' is not a pull number. This takes the PR number, not an issue ref." ;; esac
+
+  # scope_repo, not `gh repo view`: it reads the git remote — free, offline, and it cannot misreport
+  # an exhausted GraphQL budget as "you are in the wrong directory" (#430).
+  local scope O R
+  scope="$(scope_repo "$repo")"
+  [ -n "$scope" ] || die "landable: could not determine which repo PR #$pr is in — no --repo given, and no readable 'origin' remote here. Pass --repo FS-GG/<repo>."
+  if [[ "$scope" == */* ]]; then O="${scope%%/*}"; R="${scope#*/}"
+  else O="$OWNER"; R="$(resolve_repo "$scope")"; fi
+
+  v="$(pr_landable "$O" "$R" "$pr")"
+  echo "$v"
+  case "$v" in
+    green)   return 0 ;;
+    pending) return 3 ;;
+    *)       return 1 ;;
+  esac
 }
 
 # Every OPEN issue in a repo that could possibly hold a claim, with the body its touch-set is
@@ -4246,8 +4414,20 @@ reap_cmd() {
 #   auto (default)  shadow iff an engine resolves; bash otherwise. No ceremony, no env var, no opt-in.
 #   bash            never shadow. The escape hatch, for when you want the old thing exactly.
 #   shadow          always shadow; a missing engine is a LOGGED SKIP (you asked, we could not).
-#   fs              refused until the flip (ADR-0034 Phase 3).
+#   fs              THE ENGINE'S ANSWER IS THE ANSWER (ADR-0034 Phase 3b). Bash still reads the board,
+#                   assembles the snapshot and performs every write — but the DECISION is the typed
+#                   core's, and there is NO FALLBACK. An engine that cannot be resolved, is stale, or
+#                   reaches no verdict is FATAL here, where in every other mode it is a logged skip.
+#                   "The engine could not answer, so we quietly used the other one" is precisely the
+#                   substitution this port exists to make impossible — and in the ledger it would be
+#                   indistinguishable from agreement.
 ENGINE_MODE="${FSGG_COORD_ENGINE:-auto}"
+# The engine's decision document, set by `shadow_run` iff the engine actually produced one. In `fs`
+# this IS the answer. In every other mode NOTHING may read it: rule 1 of this surface is that the
+# observer may not change bash's answer, its exit code, or its life.
+ENGINE_DECISION=""
+# `fs` is the one mode with no second engine behind it.
+engine_authoritative() { [ "$ENGINE_MODE" = fs ]; }
 DIVERGENCE_LOG="${FSGG_COORD_DIVERGENCE_LOG:-$CACHE/divergence.jsonl}"
 # How often the shadow may push its evidence to the fleet ledger. The hot scheduling loop may not pay the
 # network on every call (ADR-0034 §5), so the publish is amortised: at most one REST write per window per
@@ -4539,6 +4719,11 @@ shadow_worker() {
 }
 
 shadow_skip() {  # <reason>
+  # IN `fs` A SKIP IS A FAILURE. Everywhere else "we did not compare" is a fact worth recording and
+  # bash carries on. Here there is nothing to carry on with: the caller asked the typed core to decide,
+  # and handing back bash's answer while logging a skip would be a silent engine substitution — the
+  # exact fail-open of epic #266, in the one place that would be hardest to ever notice.
+  engine_authoritative && die "--engine=fs: $1"
   jq -c -n --arg ts "$(now_iso)" --arg reason "$1" --arg mode "$ENGINE_MODE" \
     --arg worker "$(shadow_worker)" --arg engine "$(engine_version 2>/dev/null || echo none)" \
     '{ts: $ts, mode: $mode, worker: $worker, engine: $engine, ran: false, reason: $reason}' \
@@ -4652,16 +4837,21 @@ shadow_verdict() {  # <short> <verdict> [holder-kind] [paths(newline-separated)]
 # One snapshot item — the state BASH OBSERVED, handed to the engine so that both decide from the same
 # facts. Anything the engine had to fetch for itself would be a second observation of a moving board,
 # and the comparison would be measuring the clock rather than the rule.
-shadow_item() {  # <owner> <repo> <num> <status> <state> <body-file> <blockers-json> <claim-json>
+shadow_item() {  # <owner> <repo> <num> <status> <state> <body-file> <blockers-json> <claim-json> [unreadable-reason]
   shadow_collecting || return 0
   printf '%s/%s#%s\n' "$1" "$2" "$3" >>"$SHADOW_SEEN"
+  # `bodyUnreadable` IS A FACT, AND `body: ""` IS A LIE. A body we failed to fetch is ABSENT, not empty
+  # — and the engine's `TouchSet.parse ""` answers `Undeclared`, which is a confident OMISSION about an
+  # item nobody looked at. When it is set, the engine returns `Undetermined` for the item: not startable,
+  # and SAID SO, which is the one outcome an unread item may have.
   jq -c -n \
     --arg owner "$1" --arg repo "$2" --argjson number "$3" \
     --arg status "$4" --arg state "$5" --rawfile body "$6" \
-    --argjson blockers "${7:-[]}" --argjson claim "${8:-null}" '
+    --argjson blockers "${7:-[]}" --argjson claim "${8:-null}" --arg unreadable "${9:-}" '
     { owner: $owner, repo: $repo, number: $number,
       status: (if $status == "" or $status == "null" then null else $status end),
-      state: $state, body: $body, blockers: $blockers, claim: $claim }' \
+      state: $state, body: $body, blockers: $blockers, claim: $claim }
+    + (if $unreadable == "" then {} else { bodyUnreadable: $unreadable } end)' \
     2>/dev/null >>"$SHADOW_ITEMS" || true
 }
 
@@ -4682,12 +4872,25 @@ shadow_item() {  # <owner> <repo> <num> <status> <state> <body-file> <blockers-j
 SHADOW_IGNORE_BLOCKED=""
 shadow_blockers_json() {  # <item json> -> the engine's blocker array
   [ -z "$SHADOW_IGNORE_BLOCKED" ] || { printf '[]'; return 0; }
+  # `capture` YIELDS NOTHING WHEN IT DOES NOT MATCH — it does not return null, it returns EMPTY. So a
+  # blocker whose ref is prose ("Blocked by RESOLVED: shipped last week") constructed NO object at all,
+  # the array collapsed to `[]`, and the item bash had just classified as BLOCKED was handed to the
+  # engine as UNBLOCKED. In shadow that logged an outcome divergence nobody could explain. Under
+  # `--engine=fs` it is a worker being handed blocked work — the exact fail-open of #266, arriving
+  # through the one path built to prove #266 was over.
+  #
+  # `test` decides, `capture` only refines, and the RAW text always survives — because for an
+  # unparseable blocker the prose is the only thing there is to show a human.
   jq -c '[ (.blockers // [])[]
            | (.ref // "") as $r
-           | { owner: ($r | capture("^(?<o>[^/]+)/") | .o // ""),
-               repo:  ($r | capture("^[^/]+/(?<n>[^#]+)#") | .n // ""),
-               number: (($r | capture("#(?<n>[0-9]+)$") | .n | tonumber) // 0),
-               state: (.state // "UNKNOWN" | ascii_downcase) } ]' 2>/dev/null <<<"$1" || printf '[]'
+           | ($r | test("^[^/]+/[^#]+#[0-9]+$")) as $parsed
+           | { raw: $r,
+               state: (.state // "UNKNOWN" | ascii_downcase) }
+             + (if $parsed
+                then { owner:  ($r | sub("/.*$"; "")),
+                       repo:   ($r | sub("^[^/]+/"; "") | sub("#[0-9]+$"; "")),
+                       number: ($r | sub("^.*#"; "") | tonumber) }
+                else {} end) ]' 2>/dev/null <<<"$1" || printf '[]'
 }
 
 # The claim BASH saw, and — crucially — WHAT IT CHECKED. `liveness` is not a detail: a lapsed lease is
@@ -4695,9 +4898,16 @@ shadow_blockers_json() {  # <item json> -> the engine's blocker array
 # for an open `item/<n>-*` PR. `unknown` is the case that reaped live work (#581), and it has to be
 # sayable on the wire or the shadow would launder it into a confident "no PR".
 shadow_claim_json() {  # <worker> <ageSec> <liveness-kind> [pr]
-  local worker="$1" age="${2:-0}" kind="$3" pr="${4:-}"
+  # AN AGE WE DO NOT HAVE IS -1, NOT 0. `lease_window` has always read an empty/non-numeric age as
+  # "lease unknown" — a marker may be hand-written or truncated and carry no timestamp. Sending 0
+  # instead would hand the engine a claim that looks brand new, and it would answer "frees in ~120m":
+  # a fabricated window on a claim whose age is the one thing nobody knows. That is exactly the
+  # confident-but-unfounded sentence #440 and #488 were closed for, and after the flip it would be the
+  # engine saying it. The engine reads any negative age as unknown.
+  local worker="$1" age="${2:-}" kind="$3" pr="${4:-}"
+  case "$age" in ''|*[!0-9]*) age=-1 ;; esac
   [ -n "$worker" ] || { printf 'null'; return 0; }
-  jq -c -n --arg w "$worker" --argjson age "${age:-0}" --arg kind "$kind" --arg pr "${pr:-}" \
+  jq -c -n --arg w "$worker" --argjson age "$age" --arg kind "$kind" --arg pr "${pr:-}" \
     '{ worker: $w, session: null, ageSeconds: $age, prevStatus: null,
        liveness: ({kind: $kind} + (if $pr == "" then {} else {pr: ($pr | tonumber)} end)) }' \
     2>/dev/null || printf 'null'
@@ -4705,9 +4915,9 @@ shadow_claim_json() {  # <worker> <ageSec> <liveness-kind> [pr]
 
 # Record ONE candidate exactly as bash saw it: the board row, the body it read (or did not), and the
 # claim — including WHICH liveness question was actually asked.
-shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec> [pr]
+shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec> [pr] [unreadable-reason]
   shadow_collecting || return 0
-  local it="$1" body="$2" kind="$3" worker="$4" age="${5:-0}" pr="${6:-}"
+  local it="$1" body="$2" kind="$3" worker="$4" age="${5:-0}" pr="${6:-}" unreadable="${7:-}"
   local r num owner repo status state bf claim blockers
   r="$(jq -r '.repo // ""' <<<"$it")"; num="$(jq -r '.number // ""' <<<"$it")"
   { [ -n "$r" ] && [ -n "$num" ]; } || return 0
@@ -4723,7 +4933,7 @@ shadow_observe() {  # <item json> <body> <liveness-kind|""> <worker|""> <ageSec>
   claim="$(shadow_claim_json "$worker" "$age" "$kind" "$pr")"
   bf="$(mktemp "$CACHE/.snap-body.XXXXXX")"; TMPFILES+=("$bf")
   printf '%s' "$body" >"$bf"
-  shadow_item "$owner" "$repo" "$num" "$status" "$state" "$bf" "$blockers" "$claim"
+  shadow_item "$owner" "$repo" "$num" "$status" "$state" "$bf" "$blockers" "$claim" "$unreadable"
 }
 
 # Bash's verdict for every candidate a jq filter selects — the bulk pre-filters (closed, blocked),
@@ -4750,7 +4960,7 @@ shadow_verdict_bulk() {  # <cands json> <jq select expr> <verdict token>
 # the check ORDER, and it belongs in the flip decision with evidence attached rather than in a guess.
 shadow_sweep() {  # <all cands json>
   shadow_collecting || return 0
-  local n i=0 it r num id body hold holder age stale alive kind pr
+  local n i=0 it r num id body body_unreadable hold holder age stale alive kind pr
   n="$(jq 'length' <<<"$1" 2>/dev/null || echo 0)"
   while [ "$i" -lt "$n" ]; do
     it="$(jq -c ".[$i]" <<<"$1")"; i=$((i + 1))
@@ -4774,9 +4984,26 @@ shadow_sweep() {  # <all cands json>
     #
     # Failing to observe a candidate is a normal outcome here, not an error. It is counted (below) and
     # it withholds that candidate from the comparison; it never withholds the item from the worker.
-    body="$(gh api "repos/${r%%/*}/${r#*/}/issues/$num" --jq '.body // ""' 2>/dev/null)" \
-      || { SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1)); continue; }
-    SHADOW_EXTRA_READS=$((SHADOW_EXTRA_READS + 1))
+    # A BODY WE COULD NOT READ IS REPORTED, NOT WITHHELD.
+    #
+    # This used to `continue` — the candidate was counted as unobserved and simply left out of the
+    # snapshot. Under the shadow that was harmless: bash owned the answer, so a missing item cost the
+    # COMPARISON, not the run. Under `--engine=fs` it costs the ANSWER. The item vanishes from the
+    # engine's world: it cannot be offered, and — worse — it cannot be passed over WITH A REASON, so a
+    # blocked or held item silently ceases to exist and the worker is told nothing about it.
+    #
+    # So it goes in, flagged. `bodyUnreadable` makes its touch-set UNKNOWN (not absent), and the engine
+    # answers `Undetermined` — not startable, and said so. Note what the check ORDER buys here: blockers
+    # are board facts and are checked FIRST, so a blocked item still decides correctly without its body
+    # ever being read. One unreadable issue cannot starve a worker.
+    body_unreadable=""
+    if ! body="$(gh api "repos/${r%%/*}/${r#*/}/issues/$num" --jq '.body // ""' 2>/dev/null)"; then
+      body=""
+      body_unreadable="the issue body could not be fetched"
+      SHADOW_UNOBSERVED=$((SHADOW_UNOBSERVED + 1))
+    else
+      SHADOW_EXTRA_READS=$((SHADOW_EXTRA_READS + 1))
+    fi
 
     # A FAILED MARKER READ MAKES THE CANDIDATE UNOBSERVABLE — IT DOES NOT MAKE IT UNHELD.
     #
@@ -4821,8 +5048,8 @@ shadow_sweep() {  # <all cands json>
         fi
       fi
     fi
-    case "$age" in ''|*[!0-9]*) age=0 ;; esac
-    shadow_observe "$it" "$body" "$kind" "$holder" "$age" "$pr"
+    case "$age" in ''|*[!0-9]*) age=-1 ;; esac
+    shadow_observe "$it" "$body" "$kind" "$holder" "$age" "$pr" "$body_unreadable"
   done
 }
 
@@ -4856,9 +5083,13 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   snap="$(mktemp "$CACHE/.snap.XXXXXX")"; out="$(mktemp "$CACHE/.snapout.XXXXXX")"
   TMPFILES+=("$snap" "$out")
 
+  # THE LEASE TRAVELS WITH THE SNAPSHOT. It is configurable here (FSGG_CLAIM_LEASE_MIN), so the engine
+  # may not assume it: a repo that shortened its lease, plus an engine that hard-coded 120, would agree
+  # to tell every worker to wait out a window that has already closed.
   jq -n --slurpfile items "$SHADOW_ITEMS" --slurpfile inflight "$inflight" \
-    --arg schema "$SNAPSHOT_SCHEMA" --argjson allow "$allow" --argjson limit "${limit:-0}" '
-    { schema: $schema, allowBacklog: ($allow == 1), limit: $limit,
+    --arg schema "$SNAPSHOT_SCHEMA" --argjson allow "$allow" --argjson limit "${limit:-0}" \
+    --argjson lease "$CLAIM_LEASE_MIN" '
+    { schema: $schema, allowBacklog: ($allow == 1), limit: $limit, leaseMinutes: $lease,
       inFlight: $inflight, items: $items }' >"$snap" 2>/dev/null \
     || { shadow_skip "could not assemble the snapshot"; return 0; }
 
@@ -4873,6 +5104,11 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   fi
 
   shadow_compare "$SHADOW_VERDICTS" "$out" "$repo"
+
+  # THE ONE THING THE SHADOW WAS NEVER ALLOWED TO DO: hand its answer back. In every mode but `fs` this
+  # is written and never read — the containment assertions prove it, including a mutation test that
+  # removes the guard and watches the tool die. In `fs` it is the answer, and the caller takes it.
+  ENGINE_DECISION="$out"
 
   # The evidence exists now. Get it off this machine — `done` may never run for this item (#681, #685).
   # Throttled, silent, and it may never fail the caller: rule 1 of this whole surface is that the shadow
@@ -5833,16 +6069,81 @@ batch_cmd() {
     local infl; infl="$(mktemp "$CACHE/.snap-inflight.XXXXXX")"; TMPFILES+=("$infl")
     # The reservation set, as bash built it: every live claim, with the repo its tokens belong to.
     # Tokens are repo-relative (#312), and a reservation that loses its repo invents collisions.
+    # `.ageSec // -1`, NOT `// 0`: an age we do not have is UNKNOWN, and 0 would read as a claim taken
+    # seconds ago — so the engine would answer "lease frees in ~120m" about a marker carrying no
+    # timestamp at all. See shadow_claim_json.
     jq -c '.[] | select(.paths != null and (.paths | length) > 0)
            | { owner: (.repo | split("/")[0]), repo: (.repo | split("/")[1:] | join("/")),
                paths: .paths,
                holder: (if (.worker // "") == "" then {kind: "unowned"}
-                        else {kind: "live-claim", worker: .worker, ageSeconds: (.ageSec // 0)} end
+                        else {kind: "live-claim", worker: .worker, ageSeconds: (.ageSec // -1)} end
                         + { owner: (.repo | split("/")[0]),
                             repo: (.repo | split("/")[1:] | join("/")),
                             number: .number }) }' <<<"$active" >"$infl" 2>/dev/null || true
     shadow_sweep "$all_cands"
     shadow_run "$([ -n "$include_backlog" ] && echo 1 || echo 0)" "$want" "$infl" "$repo"
+  fi
+
+  # ---- THE FLIP (ADR-0034 Phase 3b) -------------------------------------------------------------
+  #
+  # In `fs`, the engine's decision REPLACES bash's. Everything above still ran: bash read the board,
+  # assembled the snapshot, computed its own answer, and the divergence log still records both — so a
+  # disagreement is still evidence, and `--engine bash` still reproduces the old behaviour byte for
+  # byte. What changes is only WHOSE ANSWER THE CALLER GETS.
+  #
+  # The reasons are RELAYED, not restated. The engine already emits `explain` per decision, in the one
+  # place a coordination rule is allowed to exist; rebuilding that prose here would re-create the very
+  # projection ADR-0034 deletes — a rule stated twice is a rule that will disagree with itself, which
+  # is #485 (one question, five implementations, agreeing in none) reopened by the fix for #485.
+  #
+  # Every failure here is FATAL. Falling back to bash after asking for the typed core would be a silent
+  # engine substitution — invisible in the ledger, and indistinguishable from agreement.
+  if engine_authoritative; then
+    [ -n "$ENGINE_DECISION" ] || die "--engine=fs: the engine reached no decision, and bash's is not on offer"
+
+    # THE UNREADABLE CANDIDATE IS THE ENGINE'S PROBLEM NOW, AND IT HAS THE VOCABULARY FOR IT.
+    #
+    # The first cut of this made an unobserved candidate FATAL here — "we did not read the board, so we
+    # do not decide". The corpus rejected it, and it was right to: `shadow_sweep` fails to read the body
+    # of every BLOCKED candidate, routinely, because bash short-circuits blocked items before it ever
+    # fetches a body and so those bodies were never fixtures to begin with. Dying on that would starve
+    # every worker on the board over one item they could never have been given anyway — the exact hazard
+    # the uncapped-batch fallback exists for.
+    #
+    # The right answer was in the type system all along: such an item now travels with `bodyUnreadable`,
+    # its touch-set is `Unreadable` (UNKNOWN, not absent), and the engine returns `Undetermined` — not
+    # startable, and SAID SO. Blockers are checked BEFORE the touch-set, so a blocked item still decides
+    # correctly without its body ever being read. Nothing is silently dropped, and nothing is invented.
+    local ev
+    ev="$(jq -r '.verdict // "-"' <"$ENGINE_DECISION" 2>/dev/null)" || ev="-"
+    case "$ev" in
+      green) ;;
+      red)
+        { echo "REFUSED — the batch cannot be scheduled:"
+          jq -r '.reasons[]? | "  " + .' <"$ENGINE_DECISION" 2>/dev/null; } >&2
+        die "--engine=fs: the engine REFUSED the batch (see the reasons above)"
+        ;;
+      no-verdict)
+        die "--engine=fs: UNDETERMINED — $(jq -r '.reason // "the engine gave no reason"' <"$ENGINE_DECISION" 2>/dev/null)"
+        ;;
+      *)
+        die "--engine=fs: the engine's decision carries no verdict this client understands ('$ev')"
+        ;;
+    esac
+
+    chosen_ids=()
+    mapfile -t chosen_ids < <(jq -r '.chosen[]?.short // empty' <"$ENGINE_DECISION" 2>/dev/null)
+
+    # `skipped` was pre-seeded with BASH's blocked candidates (#488) and grown by bash's touch-set
+    # loop. Those are bash's words about bash's answer. Replace them wholesale — printing bash's
+    # explanation beside the engine's decision is how a worker gets told a true sentence about the
+    # wrong question.
+    skipped=""
+    local xline
+    while IFS= read -r xline; do
+      [ -n "$xline" ] && skipped="$skipped  $xline"$'\n'
+    done < <(jq -r '.decisions[]? | select(.verdict != "startable") | .explain // empty' \
+               <"$ENGINE_DECISION" 2>/dev/null)
   fi
 
   if [ -n "$json" ]; then
@@ -6643,15 +6944,21 @@ fi
 # answer and calling it evidence.
 while [ $# -gt 0 ]; do
   case "${1:-}" in
-    --engine)   ENGINE_MODE="${2:?--engine needs a value (bash|shadow)}"; shift 2 ;;
+    --engine)   ENGINE_MODE="${2:?--engine needs a value (auto|bash|shadow|fs)}"; shift 2 ;;
     --engine=*) ENGINE_MODE="${1#--engine=}"; shift ;;
     *) break ;;
   esac
 done
 case "$ENGINE_MODE" in
-  auto|bash|shadow) ;;
-  fs) die "--engine fs is not available yet: the typed engine is not authoritative until its divergence log has been empty across the fleet for three consecutive days (ADR-0034 Phase 3). The default (auto) is already shadowing wherever an engine exists; run 'fsgg-coord divergence' to see how far off it is." ;;
-  *)  die "--engine: unknown mode '$ENGINE_MODE' (auto|bash|shadow)." ;;
+  # `fs` is OPEN (ADR-0034 Phase 3b). It was held shut on a three-day fleet-divergence clock, and that
+  # clock could not tick: workers run in per-item worktrees, worktree workers resolved no engine, and a
+  # worker who banks no evidence cannot be one of the "two distinct workers" the criterion needs (#728).
+  # The gate now is the DEFECT CORPUS — tests/fsgg-coord/cases/, one case per historical defect, run
+  # against BOTH engines in CI. Three days of two workers agreeing covers whatever items happened to
+  # float by; the corpus covers every path that has actually broken. It is the stronger gate, and unlike
+  # the clock it does not depend on a fleet that structurally cannot feed it.
+  auto|bash|shadow|fs) ;;
+  *)  die "--engine: unknown mode '$ENGINE_MODE' (auto|bash|shadow|fs)." ;;
 esac
 
 cmd="${1:-}"; [ $# -gt 0 ] && shift || true
@@ -6705,6 +7012,7 @@ case "$cmd" in
   heartbeat) heartbeat_cmd "$@" ;;
   release)   release_cmd "$@" ;;
   who)       who_cmd "$@" ;;
+  landable)  landable_cmd "$@" ;;
   reap)      reap_cmd "$@" ;;
   take)      take_cmd "$@" ;;
   batch)     batch_cmd "$@" ;;
