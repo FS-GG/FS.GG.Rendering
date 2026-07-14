@@ -523,34 +523,72 @@ Merge once — and only once — **every required check is green**:
 
 ```sh
 # Wait for CI over REST — every `gh pr` subcommand is GraphQL, and this is the one you run when the
-# budget is emptiest (#587). This loop must not do EITHER of the two things that make a merge gate
-# lie: read only page 1 (a failing check on page 2 is invisible, and the aggregate then reads green
-# — #547), or treat NO checks as GREEN checks (#606). Hence `--paginate`, and an assertion that the
-# subject EXISTS before it asserts the subject is clean.
-runs="repos/FS-GG/<repo>/commits/item/<n>-<slug>/check-runs"
-checks() { gh api "$runs" --paginate --slurp | jq '[.[].check_runs[]]'; }
+# budget is emptiest (#587). This gate must not do ANY of the four things that make a merge gate lie:
+# read only page 1 (a failing check on page 2 is invisible, and the aggregate then reads green —
+# #547); treat NO checks as GREEN checks (#606); treat a SUPERSEDED run as a RED one (#698); or
+# COLLAPSE two different checks that happen to share a job name (#698). Hence `--paginate`, an
+# assertion that the subject EXISTS before it asserts the subject is clean, and a supersession rule
+# keyed on the WORKFLOW — which is the thing `cancel-in-progress` actually replaces.
+SHA=$(gh api repos/FS-GG/<repo>/pulls/<pr> --jq .head.sha)
+: "${SHA:?head SHA read FAILED — refusing to gate on an empty subject}"   # <-- NOT optional. See below.
+runs="repos/FS-GG/<repo>/actions/runs?head_sha=$SHA&per_page=100"
+checks() { gh api "$runs" --paginate --slurp | jq '[.[].workflow_runs[]]'; }
 
 # 0. A CONFLICTED PR NEVER GETS CI. Look BEFORE you wait — no amount of waiting fixes this one.
 gh api repos/FS-GG/<repo>/pulls/<pr> --jq '"mergeable=\(.mergeable) state=\(.mergeable_state)"'
 
-# 1. Wait for the checks to REGISTER, and then to COMPLETE. A fresh push takes 20-60s to schedule,
-#    so "no checks yet" early is normal; "no checks still" at the end is the finding.
+# 1. Wait for the runs to REGISTER, and then to COMPLETE — and do NOT mistake a PARTIAL rollup for a
+#    finished one. GitHub schedules a PR's workflows over 20-60s, so the set GROWS: an early poll can
+#    legitimately read "2 runs, 0 pending" while six more have not been created yet, and breaking
+#    there hands the gate a partial rollup and calls it complete. A run that has not registered is
+#    indistinguishable from one that passed — #606's defect at one remove, and the reason
+#    `skill-registry-autofix.yml` guards its own wait the same way. So: break only when the count has
+#    been STABLE across two consecutive polls with nothing pending. It costs one extra 20s on the
+#    happy path, which is the cheapest insurance in this recipe.
+prev=-1
 for _ in $(seq 30); do          # ~10 min ceiling — poll, do not spin forever
   c=$(checks)
   counts=$(jq -r '"\(length) \([.[] | select(.status != "completed")] | length)"' <<<"$c")
-  [ "${counts% *}" -gt 0 ] && [ "${counts#* }" -eq 0 ] && break
+  n="${counts% *}"; pending="${counts#* }"
+  [ "$n" -gt 0 ] && [ "$pending" -eq 0 ] && [ "$n" -eq "$prev" ] && break
+  prev="$n"
   sleep 20
 done
 
-# 2. ASSERT on the state the loop just read — exits NON-ZERO on no checks, on pending checks, and
-#    on any check that is not green. NOTE the first branch is also where a FAILED API read lands
-#    (empty `$c`), which is why it names that too: it fails CLOSED either way, but the worker needs
-#    to know which one they are looking at before they go rebasing a PR that was never conflicted.
+# 2. ASSERT on the state the loop just read — exits NON-ZERO on no runs, on pending runs, and on any
+#    run that is not green. The `map(select(…))` drops SUPERSEDED runs and NOTHING else: a cancelled
+#    run that a LATER run of its own CONCURRENCY GROUP replaced. A cancelled run nobody re-ran is
+#    still a finding, and a FAILED run is never dropped — so this cannot fail open (#698).
+#
+#    `cgroup` is the group `cancel-in-progress` actually keys on — `<workflow>-${{ github.ref }}` —
+#    and matching it EXACTLY is what stops the drop rule being a hole. Keying on `.path` alone would
+#    let a run from a DIFFERENT group license the drop: a `workflow_dispatch` run on the branch shares
+#    the SHA and the path and carries a HIGHER run_number, but it is a different `github.ref`, so it
+#    supersedes nothing — and in `closing-keywords.yml` the real gate job is `if: github.event_name ==
+#    'pull_request'`, so that dispatch run SKIPS it and still concludes `success`. Dropping the
+#    cancelled PR run in its favour would count a vacuous green and merge a PR whose body was never
+#    checked.
+#
+#    NOTE the first branch is also where a FAILED API read lands (empty `$c`), which is why it names
+#    that too: it fails CLOSED either way, but the worker needs to know which one they are looking at
+#    before they go rebasing a PR that was never conflicted.
 jq -e -r '
-  if   length == 0 then error("NO CHECK RUNS — CI never started, so nothing has passed. Conflicted PR (rebase), or a failed API read. A missing subject is a FINDING, not a pass.")
-  elif ([.[] | select(.status != "completed")]                                     | length) > 0 then error("checks still PENDING — do not merge")
-  elif ([.[] | select(.conclusion != "success" and .conclusion != "skipped")]      | length) > 0 then error("checks FAILED — a red check is a finding, not an obstacle")
-  else "all \(length) checks green" end' <<<"$c"
+  def cgroup: [.path, .event, .head_branch, ([.pull_requests[]?.number] | sort)];
+  . as $all
+  | map(. as $r | select($r.conclusion != "cancelled"
+        or ([$all[] | select(cgroup == ($r | cgroup) and .run_number > $r.run_number)] | length) == 0))
+  | if   length == 0 then error("NO WORKFLOW RUNS — CI never started, so nothing has passed. Conflicted PR (rebase), or a failed API read. A missing subject is a FINDING, not a pass.")
+    elif ([.[] | select(.status != "completed")]                                | length) > 0 then error("checks still PENDING — do not merge")
+    elif ([.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length) > 0 then error("checks FAILED — a red check is a finding, not an obstacle")
+    else "all \(length) workflows green" end' <<<"$c"
+
+# 3. The gate above sees GitHub ACTIONS and nothing else. Every FS-GG check is an Actions job today,
+#    so it sees everything — ASSERT that rather than assume it, so the day a third-party check app
+#    appears on a repo this gate goes RED instead of going BLIND (#266).
+gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
+  | jq -e -r '[.[].check_runs[] | select(.app.slug != "github-actions")]
+      | if length == 0 then "checks: Actions only — the gate above covers every one of them"
+        else error("non-Actions check(s), INVISIBLE to the workflow-runs gate — verify by hand before merging: \([.[].name] | join(", "))") end'
 
 # MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
 # `<pr>` is the PULL number; `<n>` is the ITEM/issue number. They are NOT the same, and this fence
@@ -577,6 +615,55 @@ gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the bran
 > why step 0 looks: **rebase onto `main`, push, and the checks appear.** The REST merge would refuse a
 > `dirty` PR anyway — but a PR whose checks are merely *late* is indistinguishable to the old loop, and
 > **that one merges.**
+
+> **A SUPERSEDED run is not a RED one — and the recipe's own happy path manufactures them**
+> ([#698](https://github.com/FS-GG/.github/issues/698)).
+>
+> The org's workflows declare `cancel-in-progress: true`, and §5 tells you to do the two things that
+> trip it: push the branch (`synchronize`) and keep the PR body in step (`edited`). Both fire the same
+> workflows on the **same head SHA**, so the second run **cancels** the first. A `cancelled` conclusion
+> is neither `success` nor `skipped` — so the gate this replaced called **correct, green work RED** on
+> the happy path. It failed *closed*, so nothing unsafe merged; the damage was to the worker, because
+> a gate that cries wolf on the happy path teaches exactly one lesson — *"FAILED is noise, merge
+> anyway"* — and the next FAILED will be real. That is §5's own warning about `gh pr merge`, aimed
+> back at §5.
+>
+> **The fix is keyed on the WORKFLOW, not the check name — and that distinction is the whole thing.**
+> The obvious repair is *"take the latest check run per name"*, which is what branch protection does.
+> **It fails open here**, because **check-run `.name` is the JOB name, and job names collide across
+> workflows.** Measured on the very SHA that prompted this: **seven** check runs named `fixture`, from
+> **six different workflows** (`pin-coherence`, `projection-selftest`, `permission-coherence`,
+> `timeout-coherence`, …, all of which name a job `fixture`). Collapsing by name reduces those seven
+> to **one** — so a genuinely failing `fixture` job, followed by *another workflow's* successful
+> `fixture`, reports **`all 10 distinct checks green`** and merges. That is #606's signature again,
+> and this time it hides a *red* check rather than a missing one.
+>
+> `cancel-in-progress` replaces a **workflow run**, so supersession is a fact about a workflow — and
+> `.path` identifies a workflow uniquely, where `.name` identifies nothing. Hence the workflow-runs
+> API, and hence a rule that drops **only** a cancelled run that a later run of *its own concurrency
+> group* replaced. A cancelled run nobody re-ran is still a finding. A failed run is never dropped,
+> whatever it is named.
+>
+> **Two traps in the shape of that fix, both of which fail OPEN — the direction the old bug did not.**
+>
+> - **`?head_sha=` is a FILTER, and an empty filter matches EVERYTHING.** The old gate named its
+>   subject in the URL *path* (`commits/<ref>/check-runs`), where a bad ref 404s and yields an empty
+>   array — it failed *closed* by construction. A query parameter does the opposite: if `$SHA` is
+>   empty because the `.head.sha` read failed, GitHub **ignores the filter** and hands back the
+>   repo's entire run history (3,709 runs, on this repo, when measured). The gate then cheerfully
+>   asserts the greenness of *other commits* — and on a repo whose recent history happens to be green
+>   it prints `all N workflows green` and merges a PR whose CI it never looked at. Hence
+>   `: "${SHA:?…}"`, which is the whole reason that line is not decoration.
+> - **Supersession must key on the CONCURRENCY GROUP, not the workflow.** `cancel-in-progress` only
+>   cancels within `group: <workflow>-${{ github.ref }}` — same workflow *and same ref*. A
+>   `workflow_dispatch` run on the item branch has the same head SHA, the same `.path`, and a **higher
+>   `run_number`** (the counter is per-workflow, across every event), but a different `github.ref` — so
+>   it supersedes nothing. Key on `.path` alone and it licenses the drop anyway. That is not academic:
+>   `closing-keywords.yml` gates on `if: github.event_name == 'pull_request'`, so its dispatch run
+>   **skips the gate job and still concludes `success`** — dropping the cancelled PR run in its favour
+>   would count a vacuous green and merge a PR whose body was never checked. Re-triggering a cancelled
+>   workflow by hand is the obvious thing to do about a cancelled run, which is what makes this
+>   reachable.
 
 **Why not `gh pr merge <pr> --squash --delete-branch`?** Because §2 mandates a worktree, and under
 that layout `gh pr merge` **merges the PR and then exits 1**:
@@ -648,20 +735,33 @@ jq -n --arg t "<title>" --rawfile b pr-body.md \
   | gh api -X POST repos/FS-GG/<repo>/pulls --input - --jq '"PR #\(.number)  \(.html_url)"'
 
 # WATCH the checks  (gh pr checks is GraphQL)
-# --paginate, again, and it matters MOST here: check-runs pages at 30, this repo has ~30 workflows,
-# and a truncated read reports `pending=0 failed=0` while the checks that would have stopped you sit
-# on page 2. That is a merge gate that greenlights a red PR (#547).
+# --paginate, again, and it matters MOST here: this repo has ~40 workflows and the endpoint pages at
+# 30, so a truncated read reports `pending=0 failed=0` while the checks that would have stopped you
+# sit on page 2. That is a merge gate that greenlights a red PR (#547).
 # `--slurp` cannot be combined with `--jq`, so aggregate in a separate `jq`.
-# And ASSERT rather than PRINT — the same three-way assertion as the merge gate above. A line that
-# merely PRINTS `checks=0 failed=1` and exits 0 is a gate that fails open the moment an agent reads
-# the exit code instead of the number (#606, #266). Same semantics in both places, deliberately.
+# And ASSERT rather than PRINT — the SAME assertion as the merge gate above, superseded-run rule and
+# all (#698). A line that merely PRINTS `checks=0 failed=1` and exits 0 is a gate that fails open the
+# moment an agent reads the exit code instead of the number (#606, #266). Same semantics in both
+# places, deliberately — a fix to one of them only is a fix that rots.
 SHA=$(gh api repos/FS-GG/<repo>/pulls/<pr> --jq .head.sha)
-gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
-  | jq -e -r '[.[].check_runs[]]
-              | if   length == 0                                                    then error("NO CHECK RUNS — CI never started (conflicted PR? API error?). NOT a pass.")
+: "${SHA:?head SHA read FAILED — refusing to gate on an empty subject}"   # an EMPTY head_sha= matches
+                                                                          # EVERY run in the repo (#698)
+gh api "repos/FS-GG/<repo>/actions/runs?head_sha=$SHA&per_page=100" --paginate --slurp \
+  | jq -e -r 'def cgroup: [.path, .event, .head_branch, ([.pull_requests[]?.number] | sort)];
+              [.[].workflow_runs[]]
+              | . as $all
+              | map(. as $r | select($r.conclusion != "cancelled"
+                    or ([$all[] | select(cgroup == ($r | cgroup) and .run_number > $r.run_number)] | length) == 0))
+              | if   length == 0                                                    then error("NO WORKFLOW RUNS — CI never started (conflicted PR? API error?). NOT a pass.")
                 elif ([.[]|select(.status!="completed")]|length) > 0                then error("checks still PENDING — do not merge")
                 elif ([.[]|select(.conclusion!="success" and .conclusion!="skipped")]|length) > 0 then error("checks FAILED — do not merge")
-                else "all \(length) checks green" end'
+                else "all \(length) workflows green" end'
+
+# ...and the same Actions-only assertion, so this path cannot go blind either (#266).
+gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
+  | jq -e -r '[.[].check_runs[] | select(.app.slug != "github-actions")]
+      | if length == 0 then "checks: Actions only — the gate above covers every one of them"
+        else error("non-Actions check(s), INVISIBLE to the workflow-runs gate — verify by hand: \([.[].name] | join(", "))") end'
 ```
 
 `gh pr checks <pr> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
