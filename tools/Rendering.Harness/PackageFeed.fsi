@@ -164,14 +164,32 @@ module PackageFeed =
 
     val update: msg: Msg -> model: Model -> Model * Effect list
 
-    /// The packages the real feed must contain: every `src/**/*.fsproj` declaring
-    /// `<PackageId>FS.GG.UI.*` + `<IsPackable>true`, at the version MSBuild would pack it at (inline
-    /// `<Version>`, else the one inherited from the nearest `Directory.Build[.local].props`).
+    /// The bare id of the BOM / metapackage — the one package in the set whose id is NOT dotted.
+    [<Literal>]
+    val UmbrellaPackageId: string = "FS.GG.UI"
+
+    /// Does this `PackageId` belong to the FS.GG.UI package set — the umbrella (`FS.GG.UI`) or any
+    /// dotted member (`FS.GG.UI.*`)?
+    ///
+    /// #727: the umbrella is a member of the PACKABLE set (it packs, so the feed must contain it) and
+    /// NOT of the BOM's own dependency list (a BOM must not depend on itself). Discovery wants the
+    /// former; `Feature207BomMembershipTests` wants the latter. Conflating the two is what let the
+    /// umbrella ship unrestorable with every version guard blind to it.
+    val isFsGgUiPackageId: id: string -> bool
+
+    /// The packages the real feed must contain: every `src/**/*.fsproj` declaring a `<PackageId>` in
+    /// the FS.GG.UI set (`isFsGgUiPackageId` — the umbrella AND the dotted members) plus
+    /// `<IsPackable>true`, at the version MSBuild would pack it at (inline `<Version>`, else the one
+    /// inherited from the nearest `Directory.Build[.local].props`).
     ///
     /// FAILS CLOSED. Identity and version resolution are separate concerns: a project that declares
     /// itself packable and cannot be read as one raises `PackageDiscoveryError` naming the file — it
     /// is never quietly absent from the result, because absent means "not expected", and a package
     /// that is not expected is one `MissingExpectedPackage` can never fire for.
+    ///
+    /// #727: and identity is the OTHER way to leave the set silently. The id test used to be a bare
+    /// `StartsWith "FS.GG.UI."`, whose trailing dot excluded the umbrella by construction — 17 packed,
+    /// 16 discovered, and the seventeenth was the broken one.
     val discoverPackablePackages: repositoryRoot: string -> feedPath: string -> PackablePackage list
 
     /// The `FS.GG.UI.*` pins declared by the selected samples, classified against `currentPackages`.
