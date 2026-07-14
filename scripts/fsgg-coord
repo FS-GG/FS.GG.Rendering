@@ -55,6 +55,12 @@
 #                                             # auto-routing by the field's dataType. `Blocked by`
 #                                             # additionally takes ONLY issue refs (comma-separated,
 #                                             # canonicalized to owner/repo#n); prose is refused.
+#   fsgg-coord set-field --batch <issue> Field=Value [Field=Value …] [--refresh]
+#                                             # the SAME writes, aliased into ONE GraphQL document:
+#                                             # N fields cost ONE request (~6x on a placement pass,
+#                                             # #448). A partial failure is reported as PARTIAL
+#                                             # (exit 4), never as success — the aliases run serially,
+#                                             # so the ones before an error have already landed.
 #   fsgg-coord issues <repo> [--label L] [--state open|closed|all] [--refresh] [--jq EXPR]
 #                                             # list issues over REST with ETag revalidation
 #   fsgg-coord ready [--repo R] [--status S] [--phase P] [--all] [--json|--jq EXPR]
@@ -254,6 +260,14 @@ set -euo pipefail
 # so a fatal die writes the code to RC_FILE and the TERM trap exits with it.
 EX_RATE=75        # EX_TEMPFAIL: the GraphQL budget is exhausted. TRY AGAIN LATER — not a protocol error.
 EX_OFFBOARD=3     # the issue is not an item on the board at all. A different fact, and permanent.
+# A `--batch` document that applied SOME of its writes and failed others (#448). Its own fact, and the
+# one a batched write can produce that a single write cannot: GraphQL executes the aliases in a
+# mutation SERIALLY, so an error at alias 4 leaves 1-3 ALREADY WRITTEN on the server. Reporting that as
+# a plain failure would say "nothing happened" about a board that is now half-written — the #266 class
+# exactly — and reporting it as success is what the issue that asked for batching forbade in as many
+# words. It is never queued: replaying a document whose failing half can never succeed would rewrite
+# the half that already did.
+EX_PARTIAL=4
 trap 'exit $(cat "$RC_FILE" 2>/dev/null || echo 1)' TERM
 
 # Scratch files this process owns, swept on ANY exit — including the TERM a fatal `die` raises, which
@@ -1097,6 +1111,162 @@ set_field() {
   scan_cache_patch "$ref" "$field" "$value"
 }
 
+# ---- set-field --batch: N field writes, ONE GraphQL document (#448) ------------------------------
+# GitHub bills `cost = max(1, nodes/100)` — a 1-point FLOOR per request. A Projects v2 field mutation
+# returns ~1 node, so it hits the floor, and the cost of a placement pass therefore tracks the REQUEST
+# COUNT and nothing else. Six fields on one item is six requests and six points; aliased into one
+# document it is one request and ONE point. #421's session (~66 set-field calls) would have cost ~11.
+#
+# That budget is shared by every worker on the account (#418), and this write path is what a placement
+# pass and `/check-board --apply` spend it on — so this is not a micro-optimisation, it is the
+# difference between a fan-out that can afford to place its findings and one that cannot.
+#
+# `docs/coordination/graphql-budget.md` claimed the opposite ("batching does nothing for the primary
+# budget"). That is true of QUERIES, whose cost scales with the nodes they return; it is false of these
+# mutations, which are pinned to the floor. The doc is corrected separately (it is not in this item's
+# touch-set) — measurement is in #448.
+
+# A GraphQL string literal, escaped by jq rather than by hand. GraphQL string syntax is JSON string
+# syntax, so `@json` is exactly right — and it is why a value containing a quote, a newline or a
+# backslash cannot break out of the document it is interpolated into.
+gql_str() { jq -n --arg s "$1" '$s'; }
+
+# The `ProjectV2FieldValue` literal for one field, routed by the SAME dataType map the single-write
+# path routes on — one table, so the two paths cannot drift apart on what a `NUMBER` means.
+field_value_literal() {  # $1=field $2=dtype $3=value -> {text: "…"} | {number: 3} | …
+  local field="$1" dtype="$2" value="$3"
+  case "$dtype" in
+    SINGLE_SELECT)
+      # `option_id` DIES on an unknown option, and its die must be RELAYED, not interpolated. Inlined
+      # as `$(gql_str "$(option_id …)")`, that die unwinds only the INNERMOST substitution (see
+      # die_rc) — `printf` then runs anyway and emits `{singleSelectOptionId: ""}`, which is perfectly
+      # VALID GraphQL. So the guard never fires, the document is sent, and the server rejects it with
+      # "The single select option Id does not belong to the field": a point spent to be told, in the
+      # API's words, what the cached board map knew before the call. The empty string is the whole
+      # trap — a syntactically valid literal carrying a value that cannot exist.
+      local oid; oid="$(option_id "$field" "$value")" || die_relay
+      printf '{singleSelectOptionId: %s}' "$(gql_str "$oid")" ;;
+    TEXT)          printf '{text: %s}'        "$(gql_str "$value")" ;;
+    DATE)          printf '{date: %s}'        "$(gql_str "$value")" ;;
+    ITERATION)     printf '{iterationId: %s}' "$(gql_str "$value")" ;;
+    NUMBER)
+      # Unquoted in the document, so it must BE a number. And the check must be a REAL numeric parse,
+      # not a character-class filter: `1.2.3`, `e`, `+` and `--` are all built from legal characters
+      # and all emit a document GraphQL cannot parse — which fails the WHOLE batch, including the
+      # fields that were fine, and reports a syntax error instead of the reason this guard exists to
+      # give. jq decides what a number is, exactly as it decides what a string is above.
+      jq -e -n --arg v "$value" '($v | tonumber) | true' >/dev/null 2>&1 \
+        || die "field '$field': '$value' is not a NUMBER."
+      printf '{number: %s}' "$value" ;;
+    *) die "field '$field' has unsupported dataType '$dtype'." ;;
+  esac
+}
+
+# Every pair is RESOLVED AND VALIDATED before a single mutation is emitted — an unknown field, an
+# unknown option, a `Blocked by` that is not a ref, a NUMBER that is not a number. That is the same
+# invariant the single write holds ("a rejected value must cost zero GraphQL"), and here it is load
+# bearing twice over: a bad pair caught late would not merely waste a point, it would fail the
+# document AFTER its earlier aliases had already been written to the board.
+set_field_batch() {  # <ref> <refresh> <Field=Value>…
+  local ref="$1" refresh="${2:-}"; shift 2
+  [ "$#" -gt 0 ] || die "set-field --batch: at least one Field=Value pair required."
+  ensure_board "$refresh" >/dev/null
+  local pid item
+  pid="$(board_get '.id')"
+  item="$(item_id "$ref" "$refresh")" || die_relay
+  [ -n "$item" ] || die_relay
+
+  # Loop-invariant, and escaped ONCE: the project and the item are the same for every alias in the
+  # document, so re-escaping them per field would fork jq 2N times to recompute two constants.
+  local pid_s item_s
+  pid_s="$(gql_str "$pid")"; item_s="$(gql_str "$item")"
+
+  local -a al=() fl=() vl=()
+  local doc="" pair field value dtype fid fid_s lit a i=0
+  for pair in "$@"; do
+    case "$pair" in
+      *=*) ;;
+      *)   die "set-field --batch: '$pair' is not a Field=Value pair (field names may contain spaces: 'Repo Scope=sdd')." ;;
+    esac
+    field="${pair%%=*}"; value="${pair#*=}"     # FIRST '=' only: a value may contain one
+    dtype="$(board_get ".fields[\"$field\"].dataType // empty")"
+    [ -n "$dtype" ] || die "no field named '$field' on board '$TITLE' (fields: $(board_get '.fields | keys | join(", ")'))."
+    fid="$(field_id "$field")"
+    if [ "$field" = "Blocked by" ]; then
+      parse_ref "$ref"
+      canon_blocked_by "$value" "$R_OWNER" "$R_REPO" "$ref"
+      value="$CANON_BLOCKED_BY"
+    fi
+    fid_s="$(gql_str "$fid")"
+    a="f$i"
+    if [ -z "$value" ]; then
+      # An empty value CLEARS, and `update` with an empty text is a no-op, not a clear — the same trap
+      # the single path documents. There is a distinct mutation for it, so use it.
+      doc="$doc
+  $a: clearProjectV2ItemFieldValue(input:{projectId: $pid_s, itemId: $item_s, fieldId: $fid_s}){ projectV2Item{ id } }"
+    else
+      # RESOLVED INTO A VARIABLE, and its failure RELAYED — never interpolated straight into the
+      # document. `field_value_literal` dies on an unknown single-select option or a bad NUMBER, and a
+      # `die` inside a `$( )` only unwinds THE SUBSTITUTION (see die_rc): interpolated inline, that die
+      # would leave `value: ` empty, let this loop carry on, and SEND a document already known to be
+      # invalid — spending a GraphQL point to be told, in a parse error, what we knew before the call.
+      # `|| die_relay` is the idiom set_field already uses on item_id for exactly this hazard.
+      lit="$(field_value_literal "$field" "$dtype" "$value")" || die_relay
+      doc="$doc
+  $a: updateProjectV2ItemFieldValue(input:{projectId: $pid_s, itemId: $item_s, fieldId: $fid_s, value: $lit}){ projectV2Item{ id } }"
+    fi
+    al+=("$a"); fl+=("$field"); vl+=("$value"); i=$((i+1))
+  done
+  # NO `rateLimit` selection: it is a field of the QUERY root, not the Mutation root, so selecting it
+  # here is a document that does not parse. The batch is therefore the one call whose cost `gql`'s
+  # meter cannot read — which is fine, because its cost is the thing this function makes constant.
+  doc="mutation {$doc
+}"
+  dbg "set-field --batch $ref: $i field(s) -> item=$item, ONE document"
+
+  local out err rc=0 errf k
+  errf="$(mktemp "$CACHE/.gqlb.XXXXXX")"; TMPFILES+=("$errf")
+  out="$(gh api graphql -f query="$doc" 2>"$errf")" || rc=$?
+  err="$(cat "$errf" 2>/dev/null)"; rm -f "$errf"
+
+  if [ "$rc" -ne 0 ]; then
+    # An exhausted budget refuses the document OUTRIGHT — nothing was applied — so the whole batch is
+    # deferrable, and the caller queues every pair. This must be tested BEFORE the partial arm below,
+    # or a rate limit would be misreported as a half-written board.
+    is_rate_limited "$out
+$err" && die_rate
+
+    # A GraphQL error arrives as HTTP 200 with a body carrying BOTH `data` and `errors`, and
+    # `errors[].path[0]` names the failing ALIAS. So the body says exactly which writes landed — and
+    # since mutations execute serially, the ones before the failure DID land. Say so.
+    if [ -n "$out" ] && jq -e 'has("errors")' >/dev/null 2>&1 <<<"$out"; then
+      local applied=0 failed=0 why
+      for k in "${!al[@]}"; do
+        if [ "$(jq -r --arg a "${al[$k]}" '.data[$a] // "null"' <<<"$out")" != "null" ]; then
+          applied=$((applied+1))
+          scan_cache_patch "$ref" "${fl[$k]}" "${vl[$k]}"
+          echo "  APPLIED  ${fl[$k]}='${vl[$k]}'" >&2
+        else
+          failed=$((failed+1))
+          why="$(jq -r --arg a "${al[$k]}" \
+                   '[.errors[]? | select((.path // [])[0] == $a) | .message] | join("; ")' <<<"$out")"
+          echo "  FAILED   ${fl[$k]}='${vl[$k]}' — ${why:-no reason given}" >&2
+        fi
+      done
+      [ "$applied" -eq 0 ] \
+        && die "set-field --batch: the document failed and NOTHING was applied — $failed field(s) rejected (see above)."
+      die_rc "$EX_PARTIAL" "set-field --batch: PARTIALLY APPLIED — $applied of $((applied+failed)) field(s) were WRITTEN, $failed failed.
+  The board is now half-written. This is NOT queued: replaying the document would rewrite the half that
+  already landed. Re-run the failed field(s) above once you have fixed them."
+    fi
+    printf '%s\n' "$err" >&2
+    die "set-field --batch: the GraphQL document failed (see gh output above)."
+  fi
+
+  # Success. Patch the hot-read scan cache for every pair, exactly as the single write does.
+  for k in "${!al[@]}"; do scan_cache_patch "$ref" "${fl[$k]}" "${vl[$k]}"; done
+}
+
 # ---- the deferred-write queue: a board write the budget refused is QUEUED, never lost (#418) ------
 # The failure this closes: `claim` takes the lock (REST comments — a different budget, still working)
 # and then cannot write `Status: In progress` because GraphQL is exhausted. The old code swallowed
@@ -1166,6 +1336,32 @@ board_write() {  # <ref> <field> <value> [refresh]
     *)              BOARD_WRITE_NOTE="board: WRITE REFUSED (rc=$rc) — NOT queued; the value or the field was rejected, and replaying it would never succeed" ;;
   esac
   dbg "board_write $ref $field='$value' -> rc=$rc"
+  return "$rc"
+}
+
+# The batched write, through the SAME queue contract as the single one (#448). Three outcomes, and the
+# only new one is EX_PARTIAL:
+#
+#   EX_RATE      the document was refused outright, so NOTHING was applied. Every pair is queued —
+#                individually, in the existing per-(ref,field,value) queue, so `flush` replays them
+#                with the single-write path and needs to know nothing about batching.
+#   EX_PARTIAL   some aliases WROTE and some failed. Never queued (see EX_PARTIAL), and never success.
+#   EX_OFFBOARD  no board item to write to. Permanent, as before.
+board_write_batch() {  # <ref> <refresh> <Field=Value>…
+  local ref="$1" refresh="${2:-}"; shift 2
+  local rc=0 pair
+  BOARD_WRITE_ERR=""
+  BOARD_WRITE_ERR="$(soft_run set_field_batch "$ref" "$refresh" "$@" 2>&1 1>/dev/null)" || rc=$?
+  case "$rc" in
+    0)              BOARD_WRITE_NOTE="board: $# field(s) written in ONE request" ;;
+    "$EX_OFFBOARD") BOARD_WRITE_NOTE="note: not on board '$TITLE' — NOT queued (a queued write to a non-item can never land); add it, then rerun" ;;
+    "$EX_RATE")
+        for pair in "$@"; do defer_write "$ref" "${pair%%=*}" "${pair#*=}"; done
+        BOARD_WRITE_NOTE="board: DEFERRED — GraphQL budget exhausted, resets in $(rate_reset_in). All $# write(s) are QUEUED; run 'fsgg-coord flush' (or any board write auto-flushes)." ;;
+    "$EX_PARTIAL")  BOARD_WRITE_NOTE="board: PARTIALLY APPLIED — NOT queued. Some fields were written and some were not; see above." ;;
+    *)              BOARD_WRITE_NOTE="board: WRITE REFUSED (rc=$rc) — NOT queued; the value or the field was rejected, and replaying it would never succeed" ;;
+  esac
+  dbg "board_write_batch $ref ($# pairs) -> rc=$rc"
   return "$rc"
 }
 
@@ -6259,8 +6455,26 @@ case "$cmd" in
   add)       [ $# -ge 1 ] || die "add: <issue> required (URL, owner/repo#n, or repo#n)."; autoflush; add_item "$1" ;;
   # #510: this used to call set_field directly, so an exhausted budget printed die_rate's "Board
   # WRITES are queued" and queued NOTHING. It goes through the one board write now, which really does.
-  set-field) [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required."; autoflush
-             sf_rc=0; board_write "$1" "$2" "$3" "${4:-}" || sf_rc=$?
+  set-field) autoflush
+             sf_rc=0
+             if [ "${1:-}" = "--batch" ]; then
+               # set-field --batch <issue> Field=Value [Field=Value…] [--refresh]
+               shift
+               [ $# -ge 2 ] || die "set-field --batch: <issue> Field=Value [Field=Value …] required."
+               sf_ref="$1"; shift
+               sf_refresh=""; sf_pairs=()
+               for sf_a in "$@"; do
+                 case "$sf_a" in
+                   --refresh) sf_refresh=1 ;;
+                   *)         sf_pairs+=("$sf_a") ;;
+                 esac
+               done
+               [ "${#sf_pairs[@]}" -ge 1 ] || die "set-field --batch: at least one Field=Value pair required."
+               board_write_batch "$sf_ref" "$sf_refresh" "${sf_pairs[@]}" || sf_rc=$?
+             else
+               [ $# -ge 3 ] || die "set-field: <issue> <Field> <Value> required (or: set-field --batch <issue> Field=Value …)."
+               board_write "$1" "$2" "$3" "${4:-}" || sf_rc=$?
+             fi
              if [ "$sf_rc" != 0 ]; then
                # set_field's OWN message first — it is the precise one ("'none' is not a ref", "no
                # field named X"). Swallowing it and printing a generic note is how a refusal becomes
