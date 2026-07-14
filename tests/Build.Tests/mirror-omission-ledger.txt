@@ -39,7 +39,7 @@
 # `OmissionLedgerCeiling` literal in TemplateConsumesPinnedApiTests.fs is what enforces that.
 # ------------------------------------------------------------------------------------------------
 
-# FS.GG.Game.Core (38)
+# FS.GG.Game.Core (31 — was 38; #767 paid off `Physics` and the six types scoped to it)
 module FS.GG.Game.Core::FS.GG.Game.Core.Ai
 module FS.GG.Game.Core::FS.GG.Game.Core.Ballistics
 module FS.GG.Game.Core::FS.GG.Game.Core.Command
@@ -48,13 +48,10 @@ module FS.GG.Game.Core::FS.GG.Game.Core.Effects
 module FS.GG.Game.Core::FS.GG.Game.Core.Fov
 module FS.GG.Game.Core::FS.GG.Game.Core.Grids
 module FS.GG.Game.Core::FS.GG.Game.Core.Los
-module FS.GG.Game.Core::FS.GG.Game.Core.Physics
 module FS.GG.Game.Core::FS.GG.Game.Core.Visibility
 type FS.GG.Game.Core::FS.GG.Game.Core.Active`1
 type FS.GG.Game.Core::FS.GG.Game.Core.AgentId
-type FS.GG.Game.Core::FS.GG.Game.Core.BodyKind
 type FS.GG.Game.Core::FS.GG.Game.Core.Command
-type FS.GG.Game.Core::FS.GG.Game.Core.Config
 type FS.GG.Game.Core::FS.GG.Game.Core.DamageTrace
 type FS.GG.Game.Core::FS.GG.Game.Core.Damage`1
 type FS.GG.Game.Core::FS.GG.Game.Core.Difficulty
@@ -62,22 +59,18 @@ type FS.GG.Game.Core::FS.GG.Game.Core.Edge
 type FS.GG.Game.Core::FS.GG.Game.Core.EdgeOrientation
 type FS.GG.Game.Core::FS.GG.Game.Core.GridSpec
 type FS.GG.Game.Core::FS.GG.Game.Core.LineMode
-type FS.GG.Game.Core::FS.GG.Game.Core.Material
 type FS.GG.Game.Core::FS.GG.Game.Core.Policy`1
 type FS.GG.Game.Core::FS.GG.Game.Core.Projectile
 type FS.GG.Game.Core::FS.GG.Game.Core.ProjectileStep
 type FS.GG.Game.Core::FS.GG.Game.Core.Segment
 type FS.GG.Game.Core::FS.GG.Game.Core.Settings
-type FS.GG.Game.Core::FS.GG.Game.Core.Shape
 type FS.GG.Game.Core::FS.GG.Game.Core.Sighting`1
 type FS.GG.Game.Core::FS.GG.Game.Core.Source
 type FS.GG.Game.Core::FS.GG.Game.Core.StageResult
 type FS.GG.Game.Core::FS.GG.Game.Core.Stage`2
 type FS.GG.Game.Core::FS.GG.Game.Core.TeamView`1
-type FS.GG.Game.Core::FS.GG.Game.Core.Transform
 type FS.GG.Game.Core::FS.GG.Game.Core.Vertex
 type FS.GG.Game.Core::FS.GG.Game.Core.VisibilityPolygon
-type FS.GG.Game.Core::FS.GG.Game.Core.World
 
 # FS.GG.UI.Canvas (1)
 type FS.GG.UI.Canvas::FS.GG.UI.Canvas.PersistenceOutcome

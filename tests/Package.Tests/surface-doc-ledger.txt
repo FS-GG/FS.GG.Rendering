@@ -227,6 +227,28 @@ tracked     distanceField
 tracked     flowField
 vocabulary  reachableWithin
 
+# ---- Game.Core/Physics.fsi
+#
+# `tracked`, and tracked SOMEWHERE ELSE — FS-GG/FS.GG.Game#305 (#767). The 0.4.0 pin exports a whole
+# rigid-body module, and #767 mirrored it here, which is the half THIS repo owns. It cannot do the other
+# half: `fs-gg-game-core/SKILL.md` is a FROZEN MIRROR of a body FS.GG.Game owns (ADR-0022 §6), and
+# `scripts/check-frozen-mirrors.fsx` reds the gate on any edit to it. The section that teaches these six is
+# written and checked, and it is attached to #305 — it just has to land in the repo that owns the body.
+#
+# So this is a gap that is DECLARED, not blessed, and it is somebody's ticket rather than a shrug. It also
+# cannot rot: when #305 lands and the mirror is re-frozen, S-DOC's anti-rot rule declares every line below
+# stale and reds until they are deleted. The ledger takes them out itself.
+#
+# `empty` and `step` are absent BY NAME, not by oversight: the ledger keys on the name, and both are already
+# credited from other surfaces (`Scene.empty`, `Audio.Engine.step`). A line for either would be stale the day
+# it was written.
+tracked     addBodies
+tracked     addBody
+tracked     checksum
+tracked     interpolate
+tracked     manifold
+tracked     pairs
+
 # ---- Game.Core/Rng.fsi
 vocabulary  nextBool
 
