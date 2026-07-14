@@ -37,22 +37,170 @@ let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.Dire
 /// The fixtures own their world; the ambient lane of the job running them is not part of it. Scrubbed at
 /// the single choke point every subprocess here goes through, so a new guard-spawning test cannot
 /// reintroduce this by forgetting.
-let private runIn (workDir: string) (exe: string) (args: string list) =
+///
+/// THE FEED LANE IS SCRUBBED HERE TOO (#718), for the same reason and with a sharper edge.
+/// `FS_GG_RUN_VERSION_COHERENCE_FEED=1` is what makes the guard talk to a package feed, and THIS SUITE
+/// RUNS INSIDE THE REQUIRED `Deterministic gate`. A guard spawned from here that inherited that flag from
+/// an ambient job environment would put a live network dependency inside the required gate — which is the
+/// exact thing ADR-0105 forbids, and the exact thing the feed lane's own NON-required job exists to avoid.
+/// The three feed variables are removed at the choke point so no test can acquire one by accident; the
+/// feed tests below opt IN explicitly, through `env`, and always against a loopback fixture.
+let private runInWithEnv (workDir: string) (env: (string * string) list) (exe: string) (args: string list) =
     let psi = ProcessStartInfo(exe)
     psi.WorkingDirectory <- workDir
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
     psi.RedirectStandardError <- true
     psi.Environment.Remove "FS_GG_VERSION_COHERENCE_RELEASE_LANE" |> ignore
+    psi.Environment.Remove "FS_GG_RUN_VERSION_COHERENCE_FEED" |> ignore
+    psi.Environment.Remove "FS_GG_VERSION_COHERENCE_FEED_URL" |> ignore
+    psi.Environment.Remove "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN" |> ignore
+    for (k, v) in env do
+        psi.Environment.[k] <- v
     args |> List.iter psi.ArgumentList.Add
     match Process.Start psi with
     | null -> failwithf "%s could not be started" exe
     | p ->
         use p = p
-        let out = p.StandardOutput.ReadToEnd()
-        let err = p.StandardError.ReadToEnd()
+        // DRAIN BOTH PIPES AT ONCE. Reading stdout to the end and only THEN reading stderr deadlocks the
+        // moment a child writes more to stderr than the pipe buffer holds (~64 KB): the child blocks
+        // writing stderr, so it never exits, so it never closes stdout, so `ReadToEnd` on stdout never
+        // returns, so stderr is never drained. Nothing times out — the run simply hangs forever.
+        //
+        // This was latent here for as long as the helper has existed, and the feed lane is the first thing
+        // loud enough to reach it: a phantom release emits an 18-package DRIFT block (four lines each) on
+        // stderr, and the suite hung with the child parked in `anon_pipe_write` while every test reported
+        // passed. Start both reads before waiting, and neither can starve the other.
+        let out = p.StandardOutput.ReadToEndAsync()
+        let err = p.StandardError.ReadToEndAsync()
         p.WaitForExit()
-        p.ExitCode, out + err
+        p.ExitCode, out.Result + err.Result
+
+let private runIn (workDir: string) (exe: string) (args: string list) = runInWithEnv workDir [] exe args
+
+// ---- the feed lane's fixture (#718) -----------------------------------------------------------
+//
+// ONE loopback flat-container feed for the whole suite. `arm` decides what it SAYS, so every arm of the
+// guard's four-state table can be driven WITHOUT A NETWORK — which is not a convenience. These tests run
+// inside the REQUIRED `Deterministic gate`, and reaching nuget.org from there would take a hard dependency
+// on that feed's uptime for every merge in the repo: the precise failure ADR-0105 forbids, and the reason
+// the feed lane itself is a non-required job. A test for a feed check must not become the feed dependency
+// the check was designed to keep out of the required set.
+//
+// ONE LISTENER, NOT ONE PER TEST, and that is load-bearing. Standing an HttpListener up and tearing it down
+// around each test — while that same test spawns a child process that calls back INTO it — makes the suite
+// depend on bind/dispose ordering and on the OS not recycling a just-freed port into the next test. It does
+// not have to: the tests are sequenced, so a single long-lived listener with a swappable responder is
+// enough, and it deletes the whole class. (Observed with per-test listeners: each feed test passed in
+// isolation, and the second one hung forever when run after the first.)
+//
+// The serve threads are OWNED, never borrowed from the thread pool. Expecto's test threads ARE pool
+// threads, and each feed test blocks one reading the child guard's stdout until that child exits — while
+// the child waits on this fixture to answer. Serving from the pool would need a thread the blocked test is
+// holding, and the run deadlocks with every test reported as passed and the host never exiting.
+//
+// It also records every path it was asked for, which is what lets `the verdict-core does not touch the
+// network` assert ZERO requests rather than merely asserting a green exit.
+module private FakeFeed =
+    let private seen = Collections.Concurrent.ConcurrentQueue<string>()
+    let mutable private respond: string -> int * string = fun _ -> 404, ""
+
+    let private baseUrl =
+        lazy
+            (let listener = new System.Net.HttpListener()
+
+             let mutable bound = ""
+             let mutable attempt = 0
+             while bound = "" && attempt < 16 do
+                 attempt <- attempt + 1
+                 // Ask the OS for a free loopback port, then hand it to HttpListener. Retried: the port is
+                 // released before HttpListener claims it, so another process can take it in between.
+                 let probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0)
+                 probe.Start()
+                 let port = (probe.LocalEndpoint :?> System.Net.IPEndPoint).Port
+                 probe.Stop()
+                 let candidate = sprintf "http://127.0.0.1:%d/" port
+                 listener.Prefixes.Clear()
+                 listener.Prefixes.Add candidate
+                 try
+                     listener.Start()
+                     bound <- candidate
+                 with _ ->
+                     ()
+             if bound = "" then
+                 failwith "FakeFeed: could not bind a loopback port"
+
+             let serve () =
+                 while listener.IsListening do
+                     try
+                         let ctx = listener.GetContext()
+                         let path =
+                             match ctx.Request.Url with
+                             | null -> "/"
+                             | url -> url.AbsolutePath
+                         seen.Enqueue path
+                         let status, body = respond path
+                         ctx.Response.StatusCode <- status
+                         let bytes = Text.Encoding.UTF8.GetBytes body
+                         ctx.Response.ContentLength64 <- int64 bytes.Length
+                         ctx.Response.OutputStream.Write(bytes, 0, bytes.Length)
+                         ctx.Response.OutputStream.Close()
+                     with _ ->
+                         ()
+
+             // The guard probes the whole coherent set concurrently, so answer concurrently.
+             for _ in 1..4 do
+                 let t = System.Threading.Thread(serve)
+                 t.IsBackground <- true
+                 t.Start()
+
+             bound.TrimEnd '/')
+
+    /// Point the feed at a new answer and forget what was asked before. Returns the base URL to hand the
+    /// guard via FS_GG_VERSION_COHERENCE_FEED_URL. Safe because the feed tests are `testSequenced`.
+    let arm (answer: string -> int * string) =
+        let url = baseUrl.Value
+        respond <- answer
+        seen.Clear()
+        url
+
+    /// Every flat-container path the guard actually asked for since the last `arm`.
+    let requests () = seen.ToArray() |> List.ofArray
+
+/// A flat-container index carrying exactly `versions` — the shape nuget.org serves.
+let private flatContainer (versions: string list) =
+    200, sprintf """{"versions":[%s]}""" (String.Join(",", versions |> List.map (sprintf "\"%s\"")))
+
+/// The versions `main` currently names. The guard probes exactly these, so the fixture must answer about
+/// them — read from the repo rather than spelled, so a release cannot rot the test.
+let private currentPin =
+    Regex
+        .Match(File.ReadAllText(repo "template/base/Directory.Packages.props"), "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
+        .Groups.[1]
+        .Value.Trim()
+
+let private currentPkgVersion =
+    Regex
+        .Match(File.ReadAllText(repo ".template.package/FS.GG.UI.Template.fsproj"), "<Version>([^<]+)</Version>")
+        .Groups.[1]
+        .Value.Trim()
+
+/// Run the real guard against the real repo, with the feed lane pointed at `feed`.
+///
+/// `grace` is pinned by every caller rather than left to default, and that is what makes these tests
+/// DETERMINISTIC. The guard waives an absent package while its tag is younger than the grace (a publish
+/// takes ~25 minutes), so a test that inherited the 60-minute default would pass or fail on HOW LONG AGO
+/// THE LAST RELEASE HAPPENED — green on a normal day, and mysteriously red for anyone running the suite in
+/// the hour after a release. Grace 0 means "any absent package is a phantom"; a huge grace means "every
+/// tag is young". Both are the arm under test, neither is the clock.
+let private runFeedLane (feedUrl: string) (graceMin: string) =
+    runInWithEnv
+        root
+        [ "FS_GG_RUN_VERSION_COHERENCE_FEED", "1"
+          "FS_GG_VERSION_COHERENCE_FEED_URL", feedUrl
+          "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN", graceMin ]
+        "dotnet"
+        [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
 
 // ---- preview-aware SemVer comparator (mirrors the script's D7 comparator) ----------------------
 let private parse (s: string) =
@@ -684,4 +832,251 @@ let feature209VersionCoherenceTests =
                     Directory.Delete(tmp, true)
                 with _ -> ()
         }
+
+        // ---- the feed lane (#718, epic #693) --------------------------------------------------
+        //
+        // SEQUENCED, and not for tidiness. Each of these spawns a real `dotnet fsi` guard and blocks the
+        // test's thread reading its stdout, while a loopback fixture answers that child's HTTP. Expecto's
+        // test threads are THREAD-POOL threads, so running these in parallel puts several blocked-on-a-
+        // child threads and the sockets those children are waiting on into the same pool — and the pool
+        // runs out. Every test then reports PASSED and the host never exits (observed: a 27-minute hang).
+        // `FakeFeed` owns its serve threads so it can never be the starved party; sequencing these is the
+        // other half, and it is what keeps the wall clock honest rather than the run merely lucky.
+        testSequenced (
+            testList
+                "feed lane — does the release the tag promises actually exist?"
+                [
+            // ---- the feed lane (#718, epic #693) --------------------------------------------------
+            //
+            // THE BUG THESE PIN DOWN. Every other rule in this guard reads the TAG NAMESPACE, and
+            // `pin == latest tag` is EXACTLY what a release that worked looks like — and exactly what a
+            // release that was tagged and never published looks like. So the guard printed
+            //
+            //     version coherence: COHERENT (structural verdict-core). pin 0.9.1 == latest tag
+            //
+            // over a repo whose 0.9.1 packages did not exist, emitted no RELEASE-PENDING block, and therefore
+            // gave `release-tags.yml` nothing to cut and `release.yml` no reason to run. 0.9.1 was never
+            // published, no automation could reach the state, and a human unwedged it by hand (#679).
+            //
+            // The four states below are the whole check, and the two that look like bugs are the load-bearing
+            // ones: a publish IN FLIGHT and a feed that DID NOT ANSWER must both stay green. A check that
+            // reddens on either is a check that is red for reasons nobody can act on, and this file already
+            // records what that does — `pkg-lags-template-tag` "went red on every release PR (#155, #159, #163)
+            // and was merged past each time", which is how the repo learned to merge past a red version gate.
+            test "feed lane: a cut tag whose packages ARE on the feed is a real release" {
+                let feedUrl = FakeFeed.arm (fun _ -> flatContainer [ currentPin; currentPkgVersion ])
+                let ec, out = runFeedLane feedUrl "0"
+
+                Expect.equal ec 0 (sprintf "every package the cut tags promise is on the feed — that is a real release:\n%s" out)
+                Expect.isFalse (out.Contains "release-phantom")
+                    (sprintf "a published release must never be reported as a phantom — a rule that fires on everything is as useless as one that fires on nothing:\n%s" out)
+                Expect.stringContains out "feed lane: probed"
+                    "the lane must say how many packages it probed, so a run that checked nothing cannot read as a pass"
+            }
+
+            test "feed lane: a cut tag with NO package behind it is the #679 phantom, not coherence" {
+                // The feed ANSWERS, and says the package does not exist. That is the whole difference between
+                // this and an outage, and it is the only state that may be called drift.
+                let feedUrl = FakeFeed.arm (fun _ -> 404, "")
+                let ec, out = runFeedLane feedUrl "0"
+
+                Expect.equal ec 1 (sprintf "a tag with nothing behind it is DRIFT (exit 1), not coherence — this is #679:\n%s" out)
+                Expect.stringContains out "release-phantom" "the failure must name the rule"
+                Expect.stringContains out (sprintf "fs-gg-ui/v%s" currentPin)
+                    "the failure must name the TAG — it is the thing a human must either honour (re-run the release) or retract"
+
+                // The verdict-core, on this very same repo and tag set, is perfectly happy. That is the point:
+                // the offline half CANNOT see this, which is why the feed lane exists and why it may not live
+                // inside it.
+                let coreEc, _ = runIn root "dotnet" [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
+                Expect.equal coreEc 0 "the structural verdict-core is blind to a phantom release by construction — it never asks the feed"
+            }
+
+            test "feed lane: a publish still IN FLIGHT is not a phantom" {
+                // `release-tags.yml` pushes the tag triple and only THEN calls `release.yml`, whose tests +
+                // publish take ~25 min, after which nuget.org takes minutes more to index. For that window a cut
+                // tag legitimately has no package behind it. This repo merges continuously, so a check without
+                // the grace would red on every PR landing in that window — and a gate that is red whenever a
+                // release happens is a gate people learn to merge past.
+                let feedUrl = FakeFeed.arm (fun _ -> 404, "")
+                let ec, out = runFeedLane feedUrl "99999999"
+
+                Expect.equal ec 0 (sprintf "a tag younger than the grace has its publish in flight, not abandoned:\n%s" out)
+                Expect.isFalse (out.Contains "release-phantom")
+                    (sprintf "an in-flight publish must never be reported as a phantom — that is the false red that kills the gate:\n%s" out)
+                Expect.stringContains out "PUBLISH-IN-FLIGHT"
+                    "and it must still be SAID — silence and 'all published' must not share an observable"
+            }
+
+            test "feed lane: a feed that does not answer is never drift, and never a silent pass" {
+                // THE DIRECTION THAT MATTERS. If a silent feed could redden this repo, a nuget.org outage would
+                // announce that every release here is a phantom — and were this check ever required, it would
+                // wedge every merge in the repo behind someone else's uptime (ADR-0105). Exit 0 is mandatory.
+                //
+                // But exit 0 must not be a PASS either: "the feed did not answer" and "every release is real"
+                // must not produce the same observable (#216 — a check that could not run never reports a pass).
+                // `apicompat-check.sh` draws this exact line, with the exact same split.
+                let feedUrl = FakeFeed.arm (fun _ -> 503, "upstream unavailable")
+                let ec, out = runFeedLane feedUrl "0"
+
+                Expect.equal ec 0 (sprintf "a feed that did not answer says NOTHING about this repo and must not fail it:\n%s" out)
+                Expect.isFalse (out.Contains "release-phantom")
+                    (sprintf "an outage is not a phantom — collapsing the two is how a feed outage reads as 'every release is abandoned':\n%s" out)
+                Expect.stringContains out "did not answer"
+                    "the run must say it could not check, loudly — a silent exit 0 here is green-by-absence"
+                Expect.stringContains out "NOTHING was compared"
+                    "and the SUCCESS LINE must say it too: 'every cut tag has its packages' after 18 failed probes is a claim the guard never checked"
+            }
+
+            test "feed lane: a 200 that is not a flat-container index is the feed NOT answering, not a phantom" {
+                // A proxy error page, a captive portal, or a CDN interstitial answers 200 with HTML. The version
+                // regex then matches nothing, which reads as an EMPTY version list — "the package is not
+                // published" — and every package becomes a phantom. That inverts the whole safety argument at
+                // the one moment it matters: a MALFUNCTIONING feed would redden the repo, which is exactly what
+                // the Unavailable arm exists to prevent (ADR-0105).
+                //
+                // Measured before the fix: `<html>503 via proxy</html>` with status 200 reported all 18 packages
+                // as phantoms and exited 1.
+                let feedUrl = FakeFeed.arm (fun _ -> 200, "<html><body>503 Service Unavailable</body></html>")
+                let ec, out = runFeedLane feedUrl "0"
+
+                Expect.equal ec 0 (sprintf "a 200 that is not the document we asked for is the feed failing to answer, not a phantom release:\n%s" out)
+                Expect.isFalse (out.Contains "release-phantom")
+                    (sprintf "a proxy error page must NEVER be reported as an abandoned release:\n%s" out)
+                Expect.stringContains out "not a flat-container index"
+                    "and it must say WHY it could not check — 'the feed answered' and 'the feed answered with garbage' are different findings"
+            }
+
+            // THE PROMISED SET IS THE TAG'S, NOT HEAD'S.
+            //
+            // A tag promises the coherent set as it stood AT THE COMMIT IT POINTS AT. Probing today's member
+            // list against a historical tag's version means every member added SINCE that release is absent from
+            // the feed — so adding a packable member reports a `release-phantom` against a release that was
+            // perfectly fine, and keeps reporting it until the next release. And nothing makes that commit
+            // illegal: the verdict-core exits 0 on it (asserted below), because nothing in this repo requires a
+            // pin bump to land a new member.
+            //
+            // That red would be byte-identical to a genuine phantom, so it would camouflage the very defect this
+            // layer exists to catch — the #506 mistake, one gate over. The fix is `membersPromisedBy`, which
+            // reads the BOM AT THE TAG; this test is what stops it regressing to HEAD.
+            test "feed lane: a member added AFTER the release tag is not a phantom of that release" {
+                let tmp = Path.Combine(Path.GetTempPath(), "vcoh718-newmember-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+                try
+                    // A real clone, so the tags — and `git show <tag>:…` — are real.
+                    //
+                    // TWO WORKING DIRECTORIES, AND THEY ARE NOT INTERCHANGEABLE. The clone is invoked from
+                    // `root`; everything after it must run in `tmp`. Binding one `git` helper to `root` and
+                    // using it for both made the fixture's `commit -am` land IN THE REPOSITORY UNDER TEST —
+                    // it committed the developer's working tree (and, in CI, would commit the checkout)
+                    // under the fixture's own commit message. A test may not write to the repo it is
+                    // reading. The two helpers are named apart so the next reader cannot make that mistake
+                    // by reaching for the shorter one.
+                    let gitInRepo (args: string list) = runIn root "git" args
+                    let gitInClone (args: string list) = runIn tmp "git" args
+
+                    let ec, out = gitInRepo [ "clone"; "--no-hardlinks"; "--quiet"; root; tmp ]
+                    Expect.equal ec 0 (sprintf "clone the repo (with its tags) to a throwaway root:\n%s" out)
+
+                    // THE CLONE CARRIES THE COMMITTED SCRIPT, NOT THE ONE UNDER TEST. Without this copy the
+                    // fixture exercises whatever is at HEAD, so it would pass no matter what the working tree
+                    // says — a test that cannot fail, which is the exact defect (#478) this suite exists to
+                    // prevent. Copy the guard as it stands now.
+                    File.Copy(
+                        repo "scripts/validate-version-coherence.fsx",
+                        Path.Combine(tmp, "scripts", "validate-version-coherence.fsx"),
+                        true)
+
+                    // A new packable member, landed after the current pin's tag was cut. It must ALSO go in the
+                    // BOM or `bom-member-skew` fires — which is the point: this is the ONLY legal shape of the
+                    // change, and it is structurally coherent.
+                    let projDir = Path.Combine(tmp, "src", "BrandNew")
+                    Directory.CreateDirectory projDir |> ignore
+                    File.WriteAllText(
+                        Path.Combine(projDir, "FS.GG.UI.BrandNew.fsproj"),
+                        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><PackageId>FS.GG.UI.BrandNew</PackageId><IsPackable>true</IsPackable></PropertyGroup></Project>")
+
+                    let nuspecPath = Path.Combine(tmp, "src", "Meta", "FS.GG.UI.nuspec")
+                    let nuspec = File.ReadAllText nuspecPath
+                    let anchor = "<dependency id=\"FS.GG.UI.Scene\" version=\"[$version$]\" />"
+                    Expect.stringContains nuspec anchor "the BOM must carry FS.GG.UI.Scene — this test hangs its new entry off it"
+                    File.WriteAllText(
+                        nuspecPath,
+                        nuspec.Replace(anchor, anchor + "\n      <dependency id=\"FS.GG.UI.BrandNew\" version=\"[$version$]\" />"))
+
+                    // In the CLONE. `-am` stages every modified tracked file, so pointing this at `root`
+                    // commits whatever the developer happens to be working on.
+                    let ec, out =
+                        gitInClone [ "-c"; "user.email=fixture@fsgg"; "-c"; "user.name=fixture"
+                                     "commit"; "-am"; "feat: a new packable member, no pin bump" ]
+                    Expect.equal ec 0 (sprintf "commit the new member in the CLONE:\n%s" out)
+
+                    // The feed carries the release exactly as it was published: every id the TAG's BOM names, at
+                    // the pin — and a 404 for the member that did not exist when that tag was cut.
+                    let feedUrl =
+                        FakeFeed.arm (fun path ->
+                                if path.Contains "brandnew" then 404, "" else flatContainer [ currentPin; currentPkgVersion ])
+
+                    let ec, out =
+                        runInWithEnv
+                            tmp
+                            [ "FS_GG_RUN_VERSION_COHERENCE_FEED", "1"
+                              "FS_GG_VERSION_COHERENCE_FEED_URL", feedUrl
+                              "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN", "0" ]
+                            "dotnet"
+                            [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
+
+                    Expect.isFalse (out.Contains "release-phantom")
+                        (sprintf "the release at the pin published everything ITS OWN BOM named; a member added afterwards was never part of it, and calling that release abandoned is a false red that camouflages a real one:\n%s" out)
+                    Expect.equal ec 0 (sprintf "a new packable member is a coherent commit — the feed lane must stay green on it:\n%s" out)
+
+                    Expect.isFalse ((FakeFeed.requests ()) |> List.exists (fun p -> p.Contains "brandnew"))
+                        (sprintf "the lane must not even ASK the feed about a member the tag never promised — it reads the BOM AT THE TAG, not HEAD's src/**. Paths requested: %A" (FakeFeed.requests ()))
+                finally
+                    try
+                        for f in Directory.EnumerateFiles(tmp, "*", SearchOption.AllDirectories) do
+                            File.SetAttributes(f, FileAttributes.Normal)
+                        Directory.Delete(tmp, true)
+                    with _ -> ()
+            }
+
+            // ADR-0105 — a required gate's verdict must be a function of the commit alone. The verdict-core runs
+            // as a step of the REQUIRED `Deterministic gate`, so it may not read a feed: an outage would
+            // otherwise wedge every merge in the repo. That is a claim about what the code DOES NOT DO, and the
+            // only honest way to test it is to make the network observable and assert it was never touched —
+            // asserting a green exit would pass just as well if the guard were quietly calling nuget.org.
+            test "the verdict-core does not touch the network — the feed lane is strictly opt-in" {
+                let feedUrl = FakeFeed.arm (fun _ -> flatContainer [ currentPin ])
+
+                // FS_GG_VERSION_COHERENCE_FEED_URL is set; FS_GG_RUN_VERSION_COHERENCE_FEED is NOT. If the
+                // verdict-core probed the feed at all, this fixture would see the requests.
+                let ec, out =
+                    runInWithEnv
+                        root
+                        [ "FS_GG_VERSION_COHERENCE_FEED_URL", feedUrl ]
+                        "dotnet"
+                        [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
+
+                Expect.equal ec 0 (sprintf "the repo is coherent offline:\n%s" out)
+                Expect.isEmpty (FakeFeed.requests ())
+                    (sprintf
+                        "the verdict-core made %d feed request(s). It runs inside the REQUIRED gate, where a feed dependency hands the merge button to that feed's uptime (ADR-0105). The feed lane must stay opt-in, in its own non-required job. Paths requested: %A"
+                        (FakeFeed.requests ()).Length
+                        (FakeFeed.requests ()))
+            }
+
+            // #478's lesson, applied to the rule that exists because a guard reported green over a wedged repo:
+            // a rule that cannot fire looks exactly like a repo that never drifts. The guard self-checks the
+            // feed rules on EVERY invocation (all lanes, including the offline one), so a dead arm exits 2 —
+            // GUARD ERROR — rather than quietly certifying a phantom. Keep that call wired.
+            test "the feed rules are self-checked on every run, so a dead rule fails the guard rather than the repo" {
+                let src = File.ReadAllText(repo "scripts/validate-version-coherence.fsx")
+                let mainIdx = src.IndexOf("let main () =", StringComparison.Ordinal)
+                Expect.isGreaterThan mainIdx -1 "the guard must have a main"
+
+                let body = src.Substring mainIdx
+                Expect.stringContains body "feedRulesSelfCheck ()"
+                    "main must run feedRulesSelfCheck — it is the only thing proving `release-phantom` can still fire, and #478 is what a dead rule costs (four minors of silent drift under a green gate)"
+            }
+                ]
+        )
     ]

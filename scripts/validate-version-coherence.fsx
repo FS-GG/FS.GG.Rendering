@@ -17,6 +17,14 @@
 //     consumer, and asserts the COMPLETE member set resolves to exactly V (FR-008, anti-text-grep);
 //     a member off V fails loudly with [restore-partial], never a silent partial graph.
 //
+//   * Feed-grounded proof (FS_GG_RUN_VERSION_COHERENCE_FEED=1, #718): asks the PUBLIC feed whether the
+//     packages the CUT TAGS promise are actually there. Everything above reads the tag NAMESPACE, and
+//     `pin == latest tag` is what a release that worked and a release that was abandoned BOTH look
+//     like — so the guard certified 0.9.1 as COHERENT while nothing had been published and no
+//     automation could reach the state (#679). A tag with no package behind it is DRIFT, not
+//     coherence. Runs in the NON-REQUIRED `release-publish-gate` job, never in the verdict-core: its
+//     subject is the world, not the commit (ADR-0105). See `feedRules` for the four-state table.
+//
 // Exit codes (contract §1): 0 coherent · 1 drift (>=1 conjunct false) · 2 guard error (inputs
 // unreadable / tags not fetched / pack-restore tooling failed) — fails CLOSED, never green-by-absence.
 //
@@ -44,10 +52,77 @@ let live = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_SMOKE
 /// publishes another — the `workflow_dispatch` hole.
 let releaseLane = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_RELEASE_LANE" = "1"
 
+/// FEED LANE (#718) — the only layer that reads the network. Opt-in, exactly as the restore smoke is:
+/// the verdict-core must stay offline and env-free, because it runs inside the REQUIRED `Deterministic
+/// gate` and a required check that depends on a feed hands the merge button to that feed's uptime
+/// (ADR-0105, cadence-map §4b/§5).
+let feedLane = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_FEED" = "1"
+
+/// The flat-container base the feed lane probes. nuget.org is the SUBJECT because it is the feed a
+/// consumer actually restores from: `release.yml` dual-publishes to the org feed FIRST and then to
+/// nuget.org (ADR-0012 §4, gated ordering), so "present on nuget.org" is the strictly stronger claim —
+/// an org push that succeeded while the public push failed is a phantom for every consumer, and only
+/// this feed can see it. It is also unauthenticated, so fork PRs get a real answer instead of the
+/// no-token `FeedUnavailable` that `apicompat-check.sh` must live with.
+///
+/// Overridable so the tests can point the lane at a local listener and drive all four states offline —
+/// without which the only way to test this layer would be to hit the real network from inside the
+/// required gate, which is the very thing the layer exists to keep out of it.
+let feedBase =
+    match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_FEED_URL" with
+    | null | "" -> "https://api.nuget.org/v3-flatcontainer"
+    | url -> url.TrimEnd '/'
+
 /// Raised for any unreadable input / unfetched tags / tooling failure ⇒ exit 2 (fail closed).
 exception GuardError of string
 
+/// How long a freshly cut tag is allowed to have no package behind it before that becomes a phantom.
+///
+/// THE THIRD STATE, and the reason this is not a two-way test. `release-tags.yml` pushes the tag triple
+/// and only THEN calls `release.yml`, whose two test jobs + publish take ~25 minutes, after which
+/// nuget.org's flat container takes minutes more to index. For that whole window a cut tag legitimately
+/// has no package behind it — the publish is IN FLIGHT, not abandoned. This repo merges continuously, so
+/// a check without this grace would go red on every PR that lands in the window, on a job whose reds are
+/// then worth nothing: "a gate that is red whenever it matters teaches people to ignore it" is written
+/// twice already in this file, about this very rule's ancestors (#155/#159/#163, #506).
+///
+/// The grace only ever DELAYS detection; it can never suppress it. A publish that died leaves the tag
+/// there forever, so the next run past the grace reports it — and on this repo the next run is the next
+/// merge, which is minutes away.
+///
+/// A malformed value is a GUARD ERROR, not a silent fall-back to the default: this knob decides whether a
+/// missing package is a phantom or a publish in flight, so an operator who set `30m` (rather than `30`)
+/// and got 60 minutes anyway would have turned a dial that does nothing, and never be told. `lazy` because
+/// it may raise, and nothing that can raise may run before `main` is entered — see `readInputs`.
+let publishGraceMinutes =
+    lazy
+        (match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN" with
+         | null | "" -> 60.0
+         | s ->
+             match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+             | true, v when v >= 0.0 && not (Double.IsInfinity v) -> v
+             | _ ->
+                 raise (
+                     GuardError(
+                         sprintf
+                             "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN=%A is not a non-negative number of minutes — fail closed rather than silently using the 60-minute default for a knob you meant to turn"
+                             s
+                     )
+                 ))
+
 // ---- shell helper -----------------------------------------------------------------------------
+//
+// BOTH PIPES ARE DRAINED AT ONCE, and that is not a style choice. Reading stdout to the end and only THEN
+// reading stderr deadlocks as soon as a child writes more to stderr than the pipe buffer holds (~64 KB):
+// the child blocks writing stderr, so it never exits, so it never closes stdout, so `ReadToEnd` on stdout
+// never returns, so stderr is never drained. Nothing times out; the guard just hangs, and a hung guard in
+// the REQUIRED gate is a repo that cannot merge.
+//
+// The `git` calls here are quiet enough never to have reached it. `liveProof` is not — it shells out to
+// `dotnet pack` and `dotnet restore`, whose warning streams are exactly the kind of output that fills a
+// pipe — and gate.yml runs that smoke on every PR. This was a live hazard, not a hypothetical: the same
+// pattern in Package.Tests' subprocess helper hung the suite outright once the feed lane began emitting an
+// 18-package DRIFT block on stderr (the child parked in `anon_pipe_write`, every test reporting passed).
 let run (workDir: string) (exe: string) (args: string list) =
     let psi = ProcessStartInfo(exe)
     psi.WorkingDirectory <- workDir
@@ -56,10 +131,10 @@ let run (workDir: string) (exe: string) (args: string list) =
     psi.RedirectStandardError <- true
     args |> List.iter psi.ArgumentList.Add
     use proc = Process.Start psi
-    let out = proc.StandardOutput.ReadToEnd()
-    let err = proc.StandardError.ReadToEnd()
+    let out = proc.StandardOutput.ReadToEndAsync()
+    let err = proc.StandardError.ReadToEndAsync()
     proc.WaitForExit()
-    proc.ExitCode, out + err
+    proc.ExitCode, out.Result + err.Result
 
 let readFile (path: string) =
     if not (File.Exists path) then raise (GuardError(sprintf "required input missing: %s" path))
@@ -690,6 +765,403 @@ let structuralFailures (i: Inputs) =
     us1Failures i @ bomTokenFailures i @ bomMemberSkewFailures i @ templateFailures i @ invariantFailures i
     @ symbologyRecipeFailures i @ releaseLaneFailures i
 
+// ---- feed-grounded proof (#718, epic #693) ----------------------------------------------------
+//
+// THE HOLE. Every rule above reads the TAG NAMESPACE, and `pin == latest tag` is EXACTLY what a release
+// that worked looks like — and exactly what a release that was tagged and never published looks like.
+// So this guard printed
+//
+//     version coherence: COHERENT (structural verdict-core). pin 0.9.1 == latest tag
+//
+// over a repo whose 0.9.1 packages did not exist. And the expensive part is what follows from it: a
+// COHERENT verdict emits no RELEASE-PENDING block, so `release-tags.yml` cut nothing, so `release.yml`
+// was never called, so 0.9.1 was never published — EVER. The repo's own guard certified a release that
+// does not exist, no automation could reach the state, and a human unwedged it by hand (#679).
+//
+// The missing question is not about the tags. It is: DOES THE PACKAGE THE TAG PROMISES ACTUALLY EXIST?
+//
+// WHY THIS MAY NEVER BE A REQUIRED CHECK (ADR-0105). Its verdict is a function of the FEED and the TAG
+// NAMESPACE — two things no commit in this repo owns. Apply the ADR's one-sentence test: *could this
+// gate turn an already-green commit red without anyone changing this repository?* Yes — trivially, by a
+// yank, or by a release dying. So it may not be required, and that is not a limitation to route around:
+// requiring it would mean a genuine phantom release WEDGES EVERY MERGE IN THE REPO, which is #515's
+// disease (a red `main` nobody can fix by merging) bolted onto #679's. This layer must REPORT the wedge,
+// never amplify it. It lives in the non-required `release-publish-gate` job; the verdict-core stays
+// offline and env-free.
+//
+// Note the difference from `api-compatibility-gate`, which reads a feed and IS required: there the feed
+// is consulted only to FIND A BASELINE, so its silence cannot redden a green commit. Here the feed is
+// half the SUBJECT. That is the same line `template-payload-restore-gate` is drawn on (cadence-map §4b).
+
+/// What the feed said about one (id, version) that a cut tag promises.
+type FeedProbe =
+    /// The feed answered, and the package is there. The release behind the tag is real.
+    | Present
+    /// The feed ANSWERED, and this version is not on it. A tag with nothing behind it — the #679 phantom.
+    | Absent
+    /// The feed did not answer (transport error, 5xx, timeout). Says NOTHING about this repo.
+    | Unavailable of string
+
+type FeedObservation =
+    { Id: string
+      Version: string
+      /// The tag that promises this package — named in the failure, because it is the thing a human must
+      /// either honour (re-run the release) or retract (delete the tag).
+      Tag: string
+      /// Minutes since that tag was created. A publish is not instantaneous, so this is load-bearing.
+      TagAgeMin: float
+      Probe: FeedProbe }
+
+/// The observations, partitioned. ONE partition, computed once, and everything downstream — the rule, the
+/// log, the success line — reads it. They used to each re-derive their own, which is how the log and the
+/// verdict drift apart, and those two are precisely what a human reads to decide whether a green exit
+/// means "checked" or "could not check".
+type FeedTally =
+    { Published: FeedObservation list
+      /// Absent, and the tag is older than the grace. THE #679 PHANTOM — the only state that is drift.
+      Phantom: FeedObservation list
+      /// Absent, but the tag is younger than the grace: the publish it triggered is still running.
+      InFlight: FeedObservation list
+      /// The feed did not answer. Says nothing about this repo, so it is never drift — and never a pass.
+      Unreachable: (FeedObservation * string) list }
+
+/// THE FOUR STATES. Pure, so `feedRulesSelfCheck` can prove every arm still fires without touching the
+/// network — which is not ceremony: this entire layer exists because a guard reported green over a wedged
+/// repo, and #478 is this repo's own precedent for a rule that silently could not fire while the thing it
+/// watched drifted for four minors.
+///
+///   | the feed says          | the tag is           | what that means          | verdict            |
+///   |------------------------|----------------------|--------------------------|--------------------|
+///   | the package is there   | any age              | a real release           | coherent           |
+///   | the package is ABSENT  | older than the grace | the #679 PHANTOM         | DRIFT — exit 1     |
+///   | the package is ABSENT  | inside the grace     | the publish is in flight | coherent (notice)  |
+///   | nothing (5xx/garbage)  | any age              | nothing about this repo  | exit 0, ::error::  |
+///
+/// The last row is not a courtesy. The feed is read to CHECK a claim this repo makes, and its silence
+/// cannot make the repo incoherent — that is `apicompat-check.sh`'s `FeedUnavailable` split and ADR-0105's
+/// option (2), and it is the only thing standing between a nuget.org outage and a gate announcing that
+/// every release in this repo is a phantom.
+let tallyFeed (graceMin: float) (obs: FeedObservation list) : FeedTally =
+    { Published = obs |> List.filter (fun o -> o.Probe = Present)
+      Phantom = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin >= graceMin)
+      InFlight = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin < graceMin)
+      Unreachable =
+        obs
+        |> List.choose (fun o ->
+            match o.Probe with
+            | Unavailable why -> Some(o, why)
+            | _ -> None) }
+
+let feedRules (graceMin: float) (t: FeedTally) : Failure list =
+    t.Phantom
+    |> List.map (fun o ->
+        { Rule = "release-phantom"
+          Location = sprintf "tag %s" o.Tag
+          Expected = sprintf "%s %s on the feed — the tag promises a published release" o.Id o.Version
+          Actual =
+            sprintf
+                "the feed ANSWERED, and %s %s is not on it (tag cut %.0f min ago; grace is %.0f min)"
+                o.Id
+                o.Version
+                o.TagAgeMin
+                graceMin
+          Fix =
+            sprintf
+                "the release behind %s never landed. Re-run it (`gh workflow run release.yml -f version=%s`), or DELETE the tag if it was abandoned. Leaving it is the worst option: the verdict-core reads `pin == latest tag` and certifies a release that does not exist (#679)."
+                o.Tag
+                o.Version })
+
+/// Prove each arm of the table still fires (the `symbologyRulesSelfCheck` pattern, and the same #478
+/// lesson: a rule that cannot fail is a green light nobody audits). A dead rule fails the GUARD — exit 2,
+/// GUARD ERROR — instead of quietly reporting the repo coherent, which is the exact failure this whole
+/// layer was written to end.
+let feedRulesSelfCheck () =
+    let obs probe age =
+        { Id = "FS.GG.UI.Scene"
+          Version = "0.9.1"
+          Tag = "fs-gg-ui/v0.9.1"
+          TagAgeMin = age
+          Probe = probe }
+    let fired o = feedRules 60.0 (tallyFeed 60.0 [ o ]) |> List.map (fun f -> f.Rule) |> Set.ofList
+
+    if not ((fired (obs Absent 1440.0)).Contains "release-phantom") then
+        raise (GuardError "rule DEAD: release-phantom did not fire on a day-old tag with NO package behind it — that is #679 exactly, and a guard that cannot see it certifies a release that does not exist")
+    if not (fired (obs Present 1440.0)).IsEmpty then
+        raise (GuardError "rule regressed: a package that IS on the feed must not be a phantom — a rule that fires on everything is as useless as one that fires on nothing")
+    if not (fired (obs Absent 1.0)).IsEmpty then
+        raise (GuardError "rule regressed: a tag cut a minute ago has its publish IN FLIGHT, not abandoned — reporting it is the false red that teaches people to ignore the gate")
+    if not (fired (obs (Unavailable "HTTP 503") 1440.0)).IsEmpty then
+        raise (GuardError "rule regressed: an unreachable feed says nothing about this repo and must NEVER be drift (ADR-0105) — otherwise a nuget.org outage reads as 'every release here is a phantom'")
+
+/// One HttpClient for the whole lane. `lazy` so it is constructed inside `main`'s try/with, like every
+/// other input reader here — see `readInputs` for why nothing that can throw may run at module init.
+let private feedClient =
+    lazy (new Net.Http.HttpClient(Timeout = TimeSpan.FromSeconds 20.0))
+
+/// Ask the flat container whether `id@version` is on the feed.
+///
+/// THREE OUTCOMES, and the split between them is the whole safety of this layer.
+///
+///   * 404 — the feed ANSWERED: this id has never been published. Absent.
+///   * 200 with a flat-container index — the feed answered. Present iff `version` is in it.
+///   * anything else — the feed did not answer. Unavailable.
+///
+/// They must never collapse: `apicompat-check.sh`'s `latest_version` returned "" for both "not published"
+/// and "curl failed", the caller read "" as "no baseline yet", and a feed outage therefore reported every
+/// package as a happy first publish and exited 0 (#216). Same split, same reason, one layer up.
+///
+/// A 200 IS NOT ENOUGH — IT MUST ALSO BE AN INDEX. A proxy error page, a captive portal, or a CDN
+/// interstitial answers 200 with HTML, in which the version regex matches nothing — which reads as an
+/// EMPTY version list, i.e. "the package is not published", i.e. a phantom. That inverts the rule above at
+/// the one moment it matters: a malfunctioning feed would redden this repo, which is precisely what the
+/// `Unavailable` arm exists to prevent. So the body must actually be the document we asked for; anything
+/// else is the feed not answering. (Verified: a server returning `<html>503 via proxy</html>` with status
+/// 200 reported all 18 packages as phantoms before this check existed.)
+///
+/// MEMBERSHIP, never max. The phantom is one specific version missing from an id that has plenty of others
+/// — 0.9.1 is absent from a feed carrying 0.5.0 through 0.9.2 — so reading the newest version off the
+/// array would find a package, call it Present, and miss the hole completely.
+let probeFeedAsync (id: string) (version: string) : Async<FeedProbe> =
+    async {
+        let url = sprintf "%s/%s/index.json" feedBase (id.ToLowerInvariant())
+        try
+            use! resp = feedClient.Value.GetAsync url |> Async.AwaitTask
+            if resp.StatusCode = Net.HttpStatusCode.NotFound then
+                return Absent
+            elif not resp.IsSuccessStatusCode then
+                return Unavailable(sprintf "HTTP %d" (int resp.StatusCode))
+            else
+                let! body = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+                if not (body.Contains "\"versions\"") then
+                    return
+                        Unavailable(
+                            sprintf
+                                "HTTP 200 but the body is not a flat-container index (no \"versions\" key, %d bytes) — a proxy or error page, not the feed"
+                                body.Length
+                        )
+                else
+                    // {"versions":["0.5.0","0.6.0",…]} — the key does not start with a digit, so this picks
+                    // out the version strings and nothing else (apicompat-check.sh greps the same shape).
+                    let published =
+                        Regex.Matches(body, "\"([0-9][^\"]*)\"")
+                        |> Seq.map (fun m -> m.Groups.[1].Value.Trim().ToLowerInvariant())
+                        |> Set.ofSeq
+                    // NuGet normalizes and lowercases what it serves, so compare on that footing.
+                    return (if published.Contains(version.Trim().ToLowerInvariant()) then Present else Absent)
+        with ex ->
+            return Unavailable(sprintf "%s: %s" (ex.GetType().Name) (ex.Message.Replace("\n", " ")))
+    }
+
+/// CONCURRENTLY. The probes are independent, and serially they are not merely slow: a network that DROPS
+/// packets rather than refusing the connection makes each one wait out the full client timeout, so ~18
+/// probes × 20s = six minutes of a job whose whole job is to fail fast and loud. Run them together and the
+/// wall clock is one timeout, not eighteen.
+let probeAll (targets: (string * string) list) : Map<string * string, FeedProbe> =
+    targets
+    |> List.map (fun (id, v) ->
+        async {
+            let! probe = probeFeedAsync id v
+            return (id, v), probe
+        })
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> Map.ofArray
+
+/// Minutes since `tag` was created. `%(creatordate:unix)` is the tag object's date for an annotated tag
+/// and the tagged COMMIT's committer date for a lightweight one — and `release-tags.yml` cuts lightweight
+/// tags on the merge commit, so for every automated release this reads "how long ago did the release
+/// land", which is exactly the clock its publish runs against.
+let tagAgeMinutes (tag: string) : float =
+    let ec, out = run repoRoot "git" [ "for-each-ref"; "--format=%(creatordate:unix)"; sprintf "refs/tags/%s" tag ]
+    if ec <> 0 then
+        raise (GuardError(sprintf "git for-each-ref refs/tags/%s failed — cannot age the tag; fail closed" tag))
+    match Int64.TryParse(out.Trim()) with
+    | true, secs -> (DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds secs).TotalMinutes
+    | _ ->
+        raise (
+            GuardError(
+                sprintf
+                    "no creation time for tag %s (git said %A) — CI must fetch tags (fetch-depth: 0); fail closed rather than green-by-absence"
+                    tag
+                    (out.Trim())
+            )
+        )
+
+/// The packages a tag PROMISED — read from the tag's OWN COMMIT, never from HEAD.
+///
+/// THIS IS THE WHOLE CORRECTNESS OF THE LAYER, and reading HEAD instead is a false-red generator. A tag
+/// promises the coherent set as it stood AT THE COMMIT IT POINTS AT. Probe today's member list against
+/// that tag's version and every member added SINCE the release is absent from the feed — so adding a
+/// packable member (a structurally coherent commit: the verdict-core exits 0, and nothing in the repo
+/// requires a pin bump to land one) would report a `release-phantom` against a release that was perfectly
+/// fine, and keep reporting it on every run until the next release. That red is byte-identical to a
+/// genuine phantom, so it would camouflage the very defect this layer exists to catch — the #506 mistake,
+/// exactly, one gate over.
+///
+/// The BOM at the tag IS that set, and no extra bookkeeping is needed to know it: `bom-member-skew`
+/// already holds, at every commit, that the BOM's dependency ids are exactly the packable FS.GG.UI.*
+/// members. So the nuspec at the tag names both the members that release published and the meta-package
+/// that fronts them. One `git show`, grounded in an invariant this same guard enforces.
+///
+/// Fails CLOSED on an unreadable or empty BOM: "I could not find out what this release promised" is not
+/// "the release is fine", and an empty set would silently make every phantom unreportable.
+let membersPromisedBy (tag: string) : Set<string> =
+    let ec, out = run repoRoot "git" [ "show"; sprintf "%s:%s" tag nuspecRel ]
+    if ec <> 0 then
+        raise (
+            GuardError(
+                sprintf
+                    "git show %s:%s failed — cannot read the coherent set that tag promised; fail closed rather than probing HEAD's member list against a historical release"
+                    tag
+                    nuspecRel
+            )
+        )
+    let deps =
+        Regex.Matches(out, "<dependency\\s+id=\"([^\"]+)\"")
+        |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
+        |> Set.ofSeq
+    if deps.IsEmpty then
+        raise (GuardError(sprintf "the BOM at %s declares no dependencies — refusing to certify a release complete on the strength of an empty set" tag))
+    let bomId =
+        let m = Regex.Match(out, "<id>([^<]+)</id>")
+        if m.Success then m.Groups.[1].Value.Trim()
+        else raise (GuardError(sprintf "no <id> in %s at %s — cannot name the BOM package" nuspecRel tag))
+    Set.add bomId deps
+
+/// The template package's id AT ITS TAG, for the same reason: a `<PackageId>` rename after the release
+/// would otherwise have us probing a name that release never published.
+let templatePackageIdAt (tag: string) : string =
+    let ec, out = run repoRoot "git" [ "show"; sprintf "%s:%s" tag templateFsprojRel ]
+    if ec <> 0 then
+        raise (GuardError(sprintf "git show %s:%s failed — cannot name the template package that tag promised; fail closed" tag templateFsprojRel))
+    let m = Regex.Match(out, "<PackageId>([^<]+)</PackageId>")
+    if m.Success then m.Groups.[1].Value.Trim()
+    else raise (GuardError(sprintf "<PackageId> not found in %s at %s" templateFsprojRel tag))
+
+/// What the CUT tags promise, and what the feed says about each.
+///
+/// SCOPED TO THE VERSIONS `main` CURRENTLY NAMES — the pin and the template package version — and
+/// deliberately NOT to every `v*` tag ever cut. Two reasons; the second decides it:
+///
+///   * It is the state that HARMS. #679 was not "an old tag is untidy". It was "`main` is pinned to a
+///     version nobody published", and every consumer scaffolding off that pin got NU1102. The versions
+///     `main` names are the versions a consumer resolves.
+///   * A whole-namespace sweep would be PERMANENTLY RED, and a permanently red gate is one nobody reads.
+///     `v0.9.1` is a real phantom sitting in this repo's tag namespace RIGHT NOW — the abandoned #679
+///     release, absent from nuget.org on every member — and the older tags predate `publish-packages`
+///     existing at all. Reporting them on every run would bury the one tag that wedges the repo under a
+///     wall of history nobody can act on. This layer goes red when the repo is WEDGED and green when it is
+///     fixed, which is the only way its red means anything.
+///
+/// A tag that is not cut yet promises nothing, so this layer never speaks about one: `pin-no-tag` /
+/// `pkg-no-release-tag` own "the tag is missing", and RELEASE-PENDING owns "it is coming". That is why
+/// this layer needs no waiver of its own and is silent on a release PR by construction.
+let feedObservations (i: Inputs) : FeedObservation list =
+    // Every (id, version) the cut tags promise, resolved AT THE TAG (see `membersPromisedBy`), then probed
+    // in one concurrent sweep.
+    let framework =
+        if List.contains i.PinVersion i.TagVersions then
+            let tag = sprintf "fs-gg-ui/v%s" i.PinVersion
+            // ALL of them, not a sample: a publish that died partway through `dotnet nuget push` leaves a
+            // PARTIAL set, and a partial set is exactly what a consumer's restore breaks on. The live
+            // smoke's `restore-partial` proves the set is complete on a feed packed FROM SOURCE; nothing
+            // has ever proved it against the feed consumers actually use.
+            [ for id in membersPromisedBy tag -> id, i.PinVersion, tag, tagAgeMinutes tag ]
+        else
+            []
+
+    let template =
+        // `v<pkg>` promises the TEMPLATE package, on its own decoupled version axis (the two axes
+        // `release.yml` packs). It is the tag that TRIGGERS the publish, so a phantom here is #679's shape
+        // exactly: the trigger fired into a void.
+        if List.contains i.PkgVersion i.ReleaseTagVersions then
+            let tag = sprintf "v%s" i.PkgVersion
+            [ templatePackageIdAt tag, i.PkgVersion, tag, tagAgeMinutes tag ]
+        else
+            []
+
+    let targets = framework @ template
+    let probes = probeAll (targets |> List.map (fun (id, v, _, _) -> id, v))
+
+    targets
+    |> List.map (fun (id, v, tag, age) ->
+        { Id = id
+          Version = v
+          Tag = tag
+          TagAgeMin = age
+          Probe = probes.[(id, v)] })
+
+/// What was probed, what answered, and — loudly — what could not be checked.
+///
+/// `Unreachable` is announced separately and never as a pass: "the feed did not answer" and "every release
+/// is real" must not produce the same observable. That is #216's rule (a check that could not run never
+/// reports a pass), applied to the one layer here most likely to be unable to run.
+let printFeedVerdict (t: FeedTally) (graceMin: float) =
+    let total = t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+    printfn "feed lane: probed %d package(s) against %s" total feedBase
+    printfn
+        "  on the feed: %d · absent: %d · feed did not answer: %d"
+        t.Published.Length
+        (t.Phantom.Length + t.InFlight.Length)
+        t.Unreachable.Length
+
+    if not t.InFlight.IsEmpty then
+        printfn
+            "PUBLISH-IN-FLIGHT: %d package(s) are not on the feed yet, but their tag is younger than the %.0f-minute grace."
+            t.InFlight.Length
+            graceMin
+        printfn "  a release takes ~25 min to publish and minutes more to index — this is not a phantom yet."
+        for o in t.InFlight do
+            printfn "    %s %s (tag %s, cut %.0f min ago)" o.Id o.Version o.Tag o.TagAgeMin
+
+    if not t.Unreachable.IsEmpty then
+        eprintfn
+            "::error title=Feed coherence did not run::the feed did not answer for %d package(s) — NOTHING was checked for them. This is not a pass."
+            t.Unreachable.Length
+        for (o, why) in t.Unreachable do
+            eprintfn "  %s %s (tag %s): %s" o.Id o.Version o.Tag why
+        match Environment.GetEnvironmentVariable "GITHUB_STEP_SUMMARY" with
+        | null | "" -> ()
+        | summaryPath ->
+            let s = System.Text.StringBuilder()
+            s.AppendLine "### Version coherence — the feed lane could not run" |> ignore
+            s.AppendLine "" |> ignore
+            s.AppendLine(
+                sprintf
+                    "The feed did not answer for **%d** package(s). Nothing was compared for them, so this is **not a pass** — it is a check that could not run (#216)."
+                    t.Unreachable.Length
+            )
+            |> ignore
+            File.AppendAllText(summaryPath, s.ToString())
+
+/// The success LINE, and it must say what is actually true.
+///
+/// A green feed lane means one of three quite different things, and only one of them is "the releases are
+/// real": the feed may have answered for everything, or a publish may still be in flight, or THE FEED MAY
+/// NOT HAVE ANSWERED AT ALL. Exit 0 is right in all three (ADR-0105 — a silent feed cannot redden this
+/// repo), but a last line reading "every cut tag has its packages on the feed" after eighteen probes timed
+/// out is a claim the guard never checked. That is the same class of lie as a red-that-means-ok, and this
+/// file already makes exactly this correction once: see `pinNote`, where keying the success line off the
+/// wrong predicate made it misstate a fully-released pin.
+///
+/// So: the exit code carries the VERDICT; this line carries the STATE. A run that proved nothing says so.
+let feedNote (t: FeedTally) (graceMin: float) =
+    let total = t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+    if total = 0 then
+        // No cut tag names the current pin/package — a release is pending. Nothing was promised, so nothing
+        // was checked, and saying so is the honest form of a green run.
+        "no cut tag names the current pin/package — the feed lane had nothing to check"
+    elif t.Unreachable.Length = total then
+        sprintf "feed lane DID NOT RUN — the feed did not answer for any of the %d package(s). NOTHING was compared." total
+    else
+        let parts =
+            [ sprintf "%d/%d on %s" t.Published.Length total feedBase
+              if not t.InFlight.IsEmpty then
+                  sprintf "%d still publishing (inside the %.0f-min grace)" t.InFlight.Length graceMin
+              if not t.Unreachable.IsEmpty then
+                  sprintf "%d NOT CHECKED — the feed did not answer" t.Unreachable.Length ]
+        String.Join("; ", parts)
+
 // ---- restore-grounded proof (live, US3/T027) --------------------------------------------------
 type LiveResult =
     { V: string
@@ -987,9 +1459,33 @@ let printReleasePending (tags: string list) =
 let main () =
     semverSelfCheck ()
     symbologyRulesSelfCheck ()
+    feedRulesSelfCheck ()
     let i = readInputs ()
     printReleasePending (pendingTags i)
-    if live then
+    if feedLane then
+        // A SEPARATE LAYER, not a richer verdict-core. It re-runs the structural rules first — they are
+        // cheap, and a feed verdict pronounced over an already-incoherent repo would be noise — and then
+        // asks the feed about the tags that actually exist.
+        //
+        // IT DOES NOT WRITE THE REPORT, and that is deliberate. The committed artifact is byte-gated
+        // against a verdict-core render, and #514 is the whole story of what happens when external
+        // mutable state gets recorded in it: the OBSERVED tag set rotted the file on every release, the
+        // required gate reddened on `main`, and nothing in the repo could merge — three times (#435,
+        // #477, #515). Feed state is strictly worse than tag state: it moves with no commit AND no tag.
+        // The feed verdict belongs in the exit code and the job summary, which is where a non-required
+        // job's finding belongs — not in a file another gate compares byte-for-byte.
+        let grace = publishGraceMinutes.Value
+        let t = tallyFeed grace (feedObservations i)
+        let failures = structuralFailures i @ feedRules grace t
+        printFeedVerdict t grace
+        if failures.IsEmpty then
+            printfn "version coherence: COHERENT (structural verdict-core). %s" (feedNote t grace)
+            0
+        else
+            printDrift failures
+            eprintfn "version coherence: DRIFT — %d failure(s) (structural + feed)" failures.Length
+            1
+    elif live then
         let r = liveProof i
         let allFailures = structuralFailures i @ r.Partial
         writeReport i "live" allFailures (Some r)
