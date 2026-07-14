@@ -5799,8 +5799,50 @@ verify_paths_cmd() {
     issue="$io/$ir#$R_NUM"          # canonical, so the verdict names the repo it actually checked
   fi
   if [ -z "$repo" ] && [ -z "$issue" ]; then
-    repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true)"
-    [ -n "$repo" ] || die "verify-paths: --repo owner/repo required (not inside a GitHub checkout)."
+    # THE REMOTE IS ON DISK — ASK IT FIRST (#430). This used to derive the repo from `gh repo view`,
+    # a GraphQL call, and read its empty result as proof of "not inside a GitHub checkout". But an
+    # empty result does not mean that. It means the call did not succeed, and the reason had just
+    # been thrown away by `2>/dev/null || true` — so the line asserted a cause it never established.
+    #
+    # The cause it was usually hiding: an EXHAUSTED GraphQL budget. Which is not an exotic state here.
+    # It is the steady state of the N-agents-on-one-account fan-out this kit exists to serve, and it
+    # lands on `verify-paths` at the MERGE BOUNDARY — the moment a worker is most likely to shrug and
+    # skip an advisory check they cannot get to run. They were sent to debug their checkout instead.
+    #
+    # `scope_repo` reads `remote.origin.url`. It is free, offline, and cannot be rate-limited — which
+    # is exactly why it is the primary and `gh` is the fallback, rather than the other way round.
+    repo="$(scope_repo)"
+    if [ -z "$repo" ]; then
+      # No usable `origin`. `gh` may still know the repo (a checkout whose remote is named otherwise),
+      # so it stays — as the fallback it should always have been. What changes is that its failure is
+      # now EVIDENCE rather than something to discard and then diagnose around.
+      # stderr to a file, NOT `2>&1` into the same capture: this call's stdout IS the value we keep,
+      # so a `gh` notice on stderr during a SUCCESSFUL call would otherwise be spliced into the repo
+      # name. `gql` can merge the two because its stdout is JSON it parses; ours is a bare string.
+      #
+      # But on FAILURE `is_rate_limited` gets the WHOLE combined text, which is the contract it
+      # documents and the shape `gql`/`project_write` already feed it. Narrowing that (to, say, the
+      # last line of stderr) would let a rate limit that is not gh's final word fall through to the
+      # generic arm — the worker would get exit 1 instead of EX_RATE and their loop would not back
+      # off. Diagnosing from a PARTIAL error is the same mistake as diagnosing from a discarded one.
+      local errf ghout gherr rc=0; errf="$(mktemp "$CACHE/.gh-err.XXXXXX")"
+      ghout="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>"$errf")" || rc=$?
+      gherr="$(cat "$errf" 2>/dev/null)"; rm -f "$errf"
+      if [ "$rc" -ne 0 ]; then
+        # Name the rate limit AS a rate limit and exit EX_RATE (75) — the code a worker loop already
+        # backs off on. Reporting it as some generic failure would still beat the old lie, but it
+        # would leave the reader to work out that waiting is the remedy.
+        is_rate_limited "$ghout
+$gherr" && die_rate
+        printf '%s\n' "$gherr" >&2          # re-emit, so nothing is swallowed (as `gql` does)
+        die "verify-paths: could not determine which repo this PR is in — 'gh repo view' failed (exit $rc, see above), and no 'origin' remote was readable from disk either.
+  Pass it explicitly: fsgg-coord verify-paths --pr $pr --repo FS-GG/<repo>"
+      fi
+      repo="$ghout"
+      # gh SUCCEEDED and still said nothing. Now — and only now — "not a checkout" is a conclusion
+      # this code has actually established, rather than one it inferred from a discarded error.
+      [ -n "$repo" ] || die "verify-paths: --repo owner/repo required (not inside a GitHub checkout)."
+    fi
   fi
   if [ -n "$repo" ]; then
     case "$repo" in */*) o="${repo%%/*}" ;; *) o="$OWNER" ;; esac
