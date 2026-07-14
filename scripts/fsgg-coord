@@ -161,7 +161,16 @@
 #                                             # the local `git worktree list` so you never have to go
 #                                             # spelunking through worktrees to see what's running.
 #   fsgg-coord reap [--repo R] [--apply]      # find claims whose lease expired (a worker died);
-#                                             # dry-run by default, --apply releases them.
+#                                             # dry-run by default, --apply releases them. REFUSES a
+#                                             # claim whose work is still alive (an open item/<n> PR),
+#                                             # and never advises closing one that is green (#697).
+#   fsgg-coord adopt <issue>                  # take over an ORPHAN: a DEAD claim whose PR is GREEN
+#                                             # and MERGEABLE — i.e. finished work whose worker died
+#                                             # between "green" and "merge". Verifies the PR is
+#                                             # landable, transfers the claim, and hands you the merge.
+#                                             # It REFUSES a live claim (that is a steal), an item with
+#                                             # no PR (nothing to land), and any PR that is not green
+#                                             # and mergeable (that is authoring, not landing).
 #   fsgg-coord take [--repo R] [--tries N]    # pick + claim the next SCHEDULABLE item in one step,
 #                                             # retrying on a lost race so a worker never idles.
 #   fsgg-coord batch [--repo R] [-n N] [--json] [--include-backlog]
@@ -2783,6 +2792,117 @@ heartbeat_cmd() {
   printf 'renewed %s for worker %s (lease %sm)\n' "$R_REPO#$R_NUM" "$w" "$CLAIM_LEASE_MIN"
 }
 
+# ---- adopt: take over an ORPHAN — a stale claim whose PR is FINISHED — and land it (#697) --------
+# THE ROW THE PROTOCOL USED TO BIN. `reap` refuses a stale claim whose PR is open (#581, correct) and
+# then offers one exit: *close it, then reap*. For a PR that is green, reviewed and mergeable that
+# exit DESTROYS the best work on the board — and it is the path of least resistance, so a worker who
+# follows the tool's own advice literally does it. FS.GG.Rendering#681 sat done-and-green for 18
+# hours behind a dead worker; it was landed only because a human overruled the tool. It should not
+# take a human overruling the tool to keep finished work.
+#
+# So a worker MAY land another worker's orphaned PR — through ONE verified command that cannot be
+# talked into landing anything else.
+#
+# WHAT MAKES THIS SAFE IS THE GATE, NOT THE TRANSFER. Each refusal below is a state in which "adopt"
+# would mean something other than *finish somebody's finished work*:
+#   * a LIVE claim  -> not an orphan. Its worker is alive, and taking their item is a STEAL. Talk.
+#   * no open PR    -> nothing to land. The claim is merely dead: reap it and claim normally.
+#   * a PR that is not GREEN AND MERGEABLE -> not finished. Rebasing a conflicted PR or fixing a red
+#     one is AUTHORING, not landing, and it belongs to whoever claims the item the ordinary way.
+# `unknown` refuses too: adopting on a guess is how a "verified" command launders an unverified one,
+# and the act it would be laundering is the destructive one this command exists to replace.
+#
+# THE TRANSFER ITSELF IS `claim`'s, ON PURPOSE. `claim` already garbage-collects the expired marker,
+# NOTIFIES the worker it collected, carries that marker's `prev` across so a later `release` restores
+# the column the FIRST claim overwrote (#481), and posts one marker under the same comment-id CAS as
+# every other lock. Re-implementing that here would be a SECOND lock implementation, and the second
+# one is always the one with the bug. `adopt` is a GATE IN FRONT OF `claim`, not a rival to it.
+#
+# ATTRIBUTION: the original author's commits keep their author and their `FSGG-Worker:` trailer. The
+# adopter is the LANDER, and says so on the channel — so the orphan's worker is told their work was
+# adopted and merged, not collected and binned.
+adopt_cmd() {
+  local ref=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -*) die "adopt: unknown flag '$1'." ;;
+      *)  [ -z "$ref" ] && ref="$1" || die "adopt: unexpected argument '$1'."; shift ;;
+    esac
+  done
+  [ -n "$ref" ] || die "adopt: <issue> required (URL, owner/repo#n, or repo#n)."
+  parse_ref "$ref"
+  worker >/dev/null; local w="$WORKER_ID"
+
+  local claims live stale ow oage
+  claims="$(claims_of "$R_OWNER" "$R_REPO" "$R_NUM")"
+
+  # 1. A LIVE claim is not an orphan.
+  live="$(jq -c 'map(select(.stale | not)) | first // empty' <<<"$claims")"
+  if [ -n "$live" ]; then
+    die "adopt: $R_REPO#$R_NUM is held by a LIVE claim — worker '$(jq -r '.worker' <<<"$live")', renewed $(jq -r '.ageSec / 60 | floor' <<<"$live")m ago (lease ${CLAIM_LEASE_MIN}m). A worker that is alive is not an orphan, and taking their item is a steal, not an adoption.
+  Talk to them:  fsgg-coord say $ref --to $(jq -r '.worker' <<<"$live") '<message>'
+  If you genuinely mean to take it anyway, that is a steal, and the flag says so:  fsgg-coord claim $ref --force"
+  fi
+
+  # 2. There must be an EXPIRED claim to adopt.
+  stale="$(jq -c 'map(select(.stale)) | first // empty' <<<"$claims")"
+  if [ -z "$stale" ]; then
+    die "adopt: $R_REPO#$R_NUM carries no expired claim — there is no orphan here to adopt.
+  If it is simply unclaimed, take it the ordinary way:  fsgg-coord claim $ref"
+  fi
+  ow="$(jq -r '.worker' <<<"$stale")"
+  oage="$(jq -r '.ageSec / 60 | floor' <<<"$stale")"
+
+  # 3. There must be FINISHED WORK: an open PR on the item's branch. That is what `adopt` lands, and
+  #    with no PR there is nothing to land — the claim is merely dead, and `reap` is the right tool.
+  local alive pnum
+  alive="$(pr_alive "$R_OWNER" "$R_REPO" "$R_NUM")"
+  if [ -z "$alive" ]; then
+    die "adopt: worker '$ow' claim on $R_REPO#$R_NUM is expired (idle ${oage}m), but there is NO open PR on 'item/$R_NUM-*' — so there is no finished work to adopt. That claim is simply dead.
+  Collect it and take the item normally:  fsgg-coord reap --repo $R_REPO --apply && fsgg-coord claim $ref"
+  fi
+  pnum="${alive%% *}"; pnum="${pnum#\#}"
+
+  # 4. THE GATE. `adopt` lands FINISHED work and nothing else.
+  local land; land="$(pr_landable "$R_OWNER" "$R_REPO" "$pnum")"
+  case "$land" in
+    green) ;;
+    conflicted)
+      die "adopt: PR #$pnum on $R_REPO#$R_NUM is OPEN but CONFLICTED with its base — so it is not landable as it stands, and it is not finished work. Rebasing it is AUTHORING, not landing; and note GitHub gives a conflicted PR no CI at all (it cannot build refs/pull/$pnum/merge), so nothing about it has been verified since the conflict appeared.
+  Take the item the ordinary way and finish the job:  fsgg-coord reap --repo $R_REPO --apply && fsgg-coord claim $ref" ;;
+    pending)
+      die "adopt: PR #$pnum on $R_REPO#$R_NUM still has checks RUNNING — it is not finished yet, and a pending check is not a passing one. Let CI settle, then adopt." ;;
+    red)
+      die "adopt: PR #$pnum on $R_REPO#$R_NUM is NOT green — either a check failed, or it has NO check runs at all. Both are one verdict here: a missing subject is a finding, not a pass (#606), and CI that never started has proved nothing. A red PR is not finished work.
+  If it is genuinely abandoned, close the PR and reap the claim. If it is salvageable, take the item and finish it:  fsgg-coord reap --repo $R_REPO --apply && fsgg-coord claim $ref" ;;
+    *)
+      die "adopt: could NOT determine the state of PR #$pnum on $R_REPO#$R_NUM (rate limit? network? GitHub computes mergeability lazily and may not have done so yet). REFUSING to adopt on a guess — an 'adopt' that lands an unverified PR is exactly the destructive act this command exists to replace. Look at the PR, or re-run in a moment." ;;
+  esac
+
+  # A PRECONDITION REPORT, NOT A SUCCESS BANNER — and the wording has to say so, because `claim_cmd`
+  # below can still refuse: an unmatchable `Paths:`, a lost CAS race, the holder heartbeating mid-GC,
+  # or #516's one-item-per-worker guard. Announcing "ADOPTED" here and then dying would leave the
+  # operator unable to tell whether the lock was taken.
+  echo "fsgg-coord: PR #$pnum on 'item/$R_NUM-*' is GREEN and MERGEABLE — worker '$ow' FINISHED this work and died before landing it (idle ${oage}m). Taking the claim..." >&2
+
+  # 5. Take the lock. `claim` does the transfer: collects the expired marker, tells its worker,
+  #    carries the original `prev` across (#481), and posts ours under the same CAS. It DIES on a lost
+  #    race rather than returning, so nothing below runs unless the lock is really ours.
+  claim_cmd "$ref"
+
+  # 6. Tell the orphan's worker what actually happened. `claim`'s GC has already told them their
+  #    marker was collected — which, alone, reads exactly like the reaping this command exists to
+  #    prevent. And if they are in fact alive, this is their cue to stop us before the merge.
+  say_cmd "$ref" --to "$ow" "Your claim on $R_REPO#$R_NUM was ADOPTED by worker '$w', not reaped: PR #$pnum is green and mergeable, so your work is being LANDED, not discarded. Your commits keep their author and their FSGG-Worker trailer — I am only the lander. If you are alive and still working this, say so NOW, before it merges."
+
+  cat >&2 <<EOF
+fsgg-coord: ADOPTED $R_REPO#$R_NUM from worker '$ow' — the claim is now yours.
+  The work is FINISHED. Do NOT rebuild it, and do NOT close PR #$pnum. Land it:
+    gh api -X PUT repos/$R_OWNER/$R_REPO/pulls/$pnum/merge -f merge_method=squash
+    fsgg-coord done $ref --flip
+EOF
+}
+
 # ---- release: drop the lock. Delete our marker, unassign, and return the item to the pool. --------
 # Releasing a claim held by ANOTHER worker needs --force: an accidental release is how two workers end
 # up on one item, which is the failure this protocol exists to prevent.
@@ -3217,6 +3337,84 @@ pr_alive() {  # $1=owner $2=repo $3=num
     --jq ".[] | select(.head.ref | startswith(\"item/$3-\")) | \"#\(.number) \(.head.ref)\"" 2>/dev/null | head -1
 }
 
+# ---- IS THE ORPHANED WORK FINISHED? (#697) -------------------------------------------------------
+# `pr_alive` answers ONE question — *does a PR exist* — and stops. It never reads what the PR SAYS.
+# That blind spot points the tool's own remedy at the best work on the board: `reap` refuses a stale
+# claim whose PR is open (right, #581) and then offers exactly one exit — **"close it, then reap"**.
+# For a PR that is green, reviewed and mergeable, that exit DESTROYS the work and makes the next
+# worker rebuild it from nothing. It is also the path of least resistance: a worker who follows the
+# tool's own advice literally does it. FS.GG.Rendering#681 sat done-and-green for 18 hours behind a
+# dead worker and was landed only because a human overruled the tool.
+#
+# The third state below is not a corner case. It is the SUCCESS path of a worker whose harness died
+# between "the PR is green" and "merge", and that window is minutes long on every item this protocol
+# produces. The better the work, the more expensive the loss.
+#
+#   open, still being worked         -> leave it             (#581: proof of life)
+#   open, abandoned mid-flight       -> close it, then reap  (#581)
+#   open, FINISHED: green+mergeable  -> LAND IT: `adopt`     (THIS — the row the tool used to bin)
+#
+# Cost is the design question, exactly as it is for `pr_alive`: REST (a different budget from the
+# GraphQL one that is routinely gone, #418), and only for a claim that is ALREADY stale and ALREADY
+# has an open PR — which is rare. Two reads: the PR, and its head SHA's check-runs.
+#
+# TWO TRAPS. BOTH FAIL CLOSED HERE, DELIBERATELY:
+#
+#   * `mergeable` is computed LAZILY, on demand. The first read of a PR GitHub has not yet tested
+#     comes back **null**, and only a later read carries the real answer. `null` is UNKNOWN — it is
+#     not "conflicted", and it is emphatically not "mergeable". So we ask a second time, and if it is
+#     still null we say `unknown` and advise nothing. This is not hypothetical: while this very item
+#     was being worked, PR #692 read back `mergeable=null` and resolved to `dirty` a minute later. A
+#     tool that believed the first read would have called a conflicted PR landable.
+#
+#   * ZERO check runs is NOT green (#606). "Every check passed" and "CI never started" are the SAME
+#     EMPTY SET — and a conflicted PR gets no CI at all, because GitHub cannot build
+#     `refs/pull/N/merge` while it conflicts, so no workflow ever starts and the head commit has zero
+#     check runs forever. An absent subject is a FINDING, not a pass (epic #266). Hence `red`, never
+#     `green`, for a PR with no checks.
+#
+# And note what is NOT used to read `mergeable`: jq's `//`. `.mergeable // "null"` collapses **false
+# into the fallback** — `//` takes its RHS when the LHS is false OR null — so a CONFLICTED PR would
+# report as `unknown`, and the one state we most need to name would be the one we could never see.
+# `tostring` tells all three apart.
+#
+# Prints exactly one of: green | conflicted | red | pending | unknown
+pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknown
+  local pr m sha checks total pend bad try
+  # THE RETRY HAS TO WAIT, OR IT IS NOT A RETRY. GitHub computes mergeability in a BACKGROUND JOB and
+  # returns `null` until it lands; the documented remedy is to poll again *after a delay*. A second
+  # read fired microseconds after the first cannot have observed a job that had not finished when the
+  # first one asked — so a zero-delay retry is a no-op dressed as diligence, and every freshly-touched
+  # PR would collapse to `unknown`. That is the exact case this function exists for: the observed #692
+  # took ~1 minute to resolve from `null` to `dirty`. Bounded (3 tries, ~3s) — this runs on the
+  # interactive path, and `unknown` is a safe answer, so we wait a little and then say we do not know.
+  for try in 1 2 3; do
+    pr="$(gh api "repos/$1/$2/pulls/$3" 2>/dev/null)"         || { echo unknown; return 0; }
+    m="$(jq -r '.mergeable | tostring' <<<"$pr" 2>/dev/null)" || { echo unknown; return 0; }
+    [ "$m" = "null" ] || break
+    [ "$try" -eq 3 ] || sleep 1
+  done
+  if [ "$m" = "false" ]; then echo conflicted; return 0; fi
+  if [ "$m" != "true"  ]; then echo unknown;    return 0; fi
+
+  sha="$(jq -r '.head.sha // ""' <<<"$pr")"
+  if [ -z "$sha" ]; then echo unknown; return 0; fi
+
+  # --paginate: check-runs pages at 30 and this org runs ~30 workflows. A truncated read reports a
+  # clean page 1 while the check that would have stopped us sits on page 2 (#547).
+  checks="$(gh api "repos/$1/$2/commits/$sha/check-runs" --paginate --slurp 2>/dev/null \
+            | jq -c '[.[].check_runs[]]' 2>/dev/null)" || { echo unknown; return 0; }
+  if [ -z "$checks" ]; then echo unknown; return 0; fi
+
+  total="$(jq 'length' <<<"$checks")"
+  if [ "$total" -eq 0 ]; then echo red; return 0; fi        # #606: no checks is NOT a pass
+  pend="$(jq '[.[] | select(.status != "completed")] | length' <<<"$checks")"
+  if [ "$pend" -gt 0 ]; then echo pending; return 0; fi
+  bad="$(jq '[.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length' <<<"$checks")"
+  if [ "$bad" -gt 0 ]; then echo red; return 0; fi
+  echo green
+}
+
 # Every OPEN issue in a repo that could possibly hold a claim, with the body its touch-set is
 # declared in. A claim marker IS a comment, so `comments == 0` cannot hold a lock: that prune is
 # sound and free, straight off the list payload. Pull requests are excluded — a PR is neither
@@ -3592,14 +3790,24 @@ who_cmd() {
   local nstale
   nstale="$(jq '[.[] | select(.state == "stale")] | length' <<<"$claims")"
   if [ "$nstale" -gt 0 ]; then
-    local k=0 kn cwr cwn cwc cwpr enriched="[]"
+    local k=0 kn cwr cwn cwc cwpr cwl cwlp enriched="[]"
     kn="$(jq 'length' <<<"$claims")"
     while [ "$k" -lt "$kn" ]; do
       cwc="$(jq -c ".[$k]" <<<"$claims")"; k=$((k + 1))
       if [ "$(jq -r '.state' <<<"$cwc")" = "stale" ]; then
         cwr="$(jq -r '.repo' <<<"$cwc")"; cwn="$(jq -r '.number' <<<"$cwc")"
         cwpr="$(pr_alive "${cwr%%/*}" "${cwr#*/}" "$cwn")"
-        cwc="$(jq -c --arg pr "$cwpr" '. + { livePr: (if $pr == "" then null else $pr end) }' <<<"$cwc")"
+        # ...and what the PR SAYS, not merely that it exists (#697). `who` is what a human reads
+        # immediately before deciding to reap, so it is exactly where "this work is FINISHED" has to
+        # be visible — a bare `STALE (#715 OPEN)` reads as "somebody's abandoned branch".
+        cwl=""
+        if [ -n "$cwpr" ]; then
+          cwlp="${cwpr%% *}"; cwlp="${cwlp#\#}"
+          cwl="$(pr_landable "${cwr%%/*}" "${cwr#*/}" "$cwlp")"
+        fi
+        cwc="$(jq -c --arg pr "$cwpr" --arg l "$cwl" \
+                 '. + { livePr: (if $pr == "" then null else $pr end),
+                        prState: (if $l == "" then null else $l end) }' <<<"$cwc")"
       fi
       enriched="$(jq -c --argjson c "$cwc" '. + [$c]' <<<"$enriched")"
     done
@@ -3618,7 +3826,14 @@ who_cmd() {
        else "\(.ageSec / 3600 | floor)h" end) as $age
     | (if .state == "held" then "ok"
        elif .state == "stale" then
-         (if .livePr then "STALE (\(.livePr | split(" ")[0]) OPEN)" else "STALE" end)
+         (if .livePr then
+            (.livePr | split(" ")[0]) as $p
+            | (if   .prState == "green"      then "STALE (\($p) OPEN — GREEN: LAND IT)"
+               elif .prState == "conflicted" then "STALE (\($p) OPEN — conflicted)"
+               elif .prState == "pending"    then "STALE (\($p) OPEN — checks running)"
+               elif .prState == "red"        then "STALE (\($p) OPEN — not green)"
+               else "STALE (\($p) OPEN)" end)
+          else "STALE" end)
        else "UNCLAIMED" end) as $lease
     | ((.paths // []) | if length == 0 then "—" else join(" ") end) as $paths
     | [ (.worker // "—"), $item, $age, $lease ]
@@ -3627,10 +3842,24 @@ who_cmd() {
   | { if [ -n "$want_local" ]; then printf "WORKER\tITEM\tAGE\tLEASE\tWORKTREE\tPATHS\tTITLE\n"
       else printf "WORKER\tITEM\tAGE\tLEASE\tPATHS\tTITLE\n"; fi; cat; } | column -t -s $'\t'
 
-  local stale unclaimed
+  local stale unclaimed orphans
   stale="$(jq '[.[] | select(.state == "stale")] | length' <<<"$claims")"
   unclaimed="$(jq '[.[] | select(.state == "unclaimed")] | length' <<<"$claims")"
-  [ "$stale" -gt 0 ] && echo "fsgg-coord: $stale claim(s) past their ${CLAIM_LEASE_MIN}m lease — 'fsgg-coord reap --apply' to release." >&2
+  # FINISHED work behind a dead worker gets its OWN line, and it comes first (#697). Folding it into
+  # the generic "reap these" hint is how the best work on the board ends up in the bin: `reap` is a
+  # destructive verb, and pointing it at a green, mergeable PR is precisely the advice this change
+  # exists to delete.
+  orphans="$(jq -r '[.[] | select(.state == "stale") | select(.prState == "green")]
+                    | map((.repo // "" | sub("^[^/]+/"; "")) + "#" + (.number | tostring)) | join(", ")' <<<"$claims")"
+  if [ -n "$orphans" ]; then
+    echo "fsgg-coord: $orphans — the claim is DEAD but the PR is GREEN and MERGEABLE: that work is FINISHED." >&2
+    echo "fsgg-coord:   Do NOT reap or close it. Land it:" >&2
+    # NAME THE ITEM. Every other remedy in this tool interpolates the concrete ref, and friction on
+    # the remedy is exactly what pushes a worker back to the destructive default.
+    jq -r '.[] | select(.state == "stale") | select(.prState == "green")
+           | "fsgg-coord:     fsgg-coord adopt " + (.repo // "" | sub("^[^/]+/"; "")) + "#" + (.number | tostring)' <<<"$claims" >&2
+  fi
+  [ "$stale" -gt 0 ] && echo "fsgg-coord: $stale claim(s) past their ${CLAIM_LEASE_MIN}m lease — 'fsgg-coord reap --apply' to release (it REFUSES any whose work is still alive)." >&2
   [ "$unclaimed" -gt 0 ] && echo "fsgg-coord: $unclaimed item(s) In progress with NO claim marker — someone is working outside the protocol." >&2
   return 0
 }
@@ -3677,10 +3906,43 @@ reap_cmd() {
     local alive
     alive="$(pr_alive "$o" "$rp" "$num")"
     if [ -n "$alive" ]; then
-      printf 'REFUSING %s#%s  worker %s  (idle %sm) — PR %s is OPEN. The lease lapsed; the WORK did not.\n' \
-        "$rp" "$num" "$cw" "$age" "$alive"
+      # AND NOW READ WHAT THE PR SAYS (#697). Refusing on the PR's mere EXISTENCE is right, but the
+      # remedy that used to follow — "close it, then reap" — is aimed at every open PR alike, and for
+      # a green, mergeable one it is a loaded gun pointed at the best work on the board. Tell the
+      # three states apart, and only ever advise closing the one that is genuinely abandoned.
+      local apr aland
+      apr="${alive%% *}"; apr="${apr#\#}"
+      aland="$(pr_landable "$o" "$rp" "$apr")"
+      if [ "$aland" = "green" ]; then
+        printf 'REFUSING %s#%s  worker %s  (idle %sm) — PR %s is OPEN, GREEN and MERGEABLE.\n' \
+          "$rp" "$num" "$cw" "$age" "$alive"
+        printf '  This work is FINISHED. Its worker died between "green" and "merge" — the window this\n' >&2
+        printf '  protocol leaves open on every single item. Do NOT close it: closing it destroys a\n' >&2
+        printf '  reviewed, passing fix and makes the next worker rebuild it from nothing. LAND IT:\n' >&2
+        printf '      fsgg-coord adopt %s#%s\n' "$rp" "$num" >&2
+        continue
+      fi
+      printf 'REFUSING %s#%s  worker %s  (idle %sm) — PR %s is OPEN (%s). The lease lapsed; the WORK did not.\n' \
+        "$rp" "$num" "$cw" "$age" "$alive" "$aland"
       printf '  A long build outrunning a %sm lease is the systematic false positive here, and reaping\n' "$CLAIM_LEASE_MIN" >&2
-      printf '  it destroys live, uncommitted work. If the PR really is abandoned, close it, then reap.\n' >&2
+      printf '  it destroys live, uncommitted work.\n' >&2
+      case "$aland" in
+        pending)
+          # A MERGEABLE PR WHOSE CHECKS ARE STILL RUNNING IS NOT ABANDONED — it is one CI run away
+          # from being FINISHED, and telling anyone to close it is the same loaded gun this change
+          # exists to remove, fired a few minutes early. "Not green YET" is not "not green".
+          printf '  Its checks are STILL RUNNING, so it is not abandoned — it is UNFINISHED, and it may be\n' >&2
+          printf '  minutes from green. Do NOT close it. Let CI settle and look again:\n' >&2
+          printf '      fsgg-coord who --repo %s        # green? then: fsgg-coord adopt %s#%s\n' "$rp" "$rp" "$num" >&2 ;;
+        unknown)
+          # We could not read the PR. That is a fact about US, not about the work — and it is the one
+          # state in which advising a destructive act would be advising it on a guess.
+          printf '  Its state could NOT be determined (rate limit? network?). Do not close it on a guess —\n' >&2
+          printf '  look at PR %s yourself before deciding anything.\n' "$apr" >&2 ;;
+        *)
+          printf '  If the PR really is abandoned, close it, then reap. (It is %s, so there is nothing to\n' "$aland" >&2
+          printf '  land as it stands — `adopt` only lands work that is green and mergeable.)\n' >&2 ;;
+      esac
       continue
     fi
     if [ -z "$apply" ]; then
@@ -6016,6 +6278,7 @@ case "$cmd" in
   done)      autoflush; done_cmd "$@" ;;
   whoami)    whoami_cmd "$@" ;;
   claim)     autoflush; claim_cmd "$@" ;;
+  adopt)     autoflush; adopt_cmd "$@" ;;
   heartbeat) heartbeat_cmd "$@" ;;
   release)   release_cmd "$@" ;;
   who)       who_cmd "$@" ;;

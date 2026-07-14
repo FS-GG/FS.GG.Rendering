@@ -295,7 +295,26 @@ next claimant collects it (and tells you), and `reap` releases it.
 ```sh
 scripts/fsgg-coord reap --repo <r>            # dry run: whose claims outlived their lease?
 scripts/fsgg-coord reap --repo <r> --apply    # release them, and tell the reaped worker
+scripts/fsgg-coord adopt <issue>              # a DEAD claim whose PR is GREEN: LAND it, don't bin it
 ```
+
+**An orphan is not garbage** ([#697](https://github.com/FS-GG/.github/issues/697)). `reap` refuses a
+stale claim whose `item/<n>-*` PR is open — the lease lapsed, the *work* did not (#581) — but its only
+remedy used to be *"close it, then reap"*, and pointed at a green, mergeable PR that sentence destroys
+the best work on the board. There are **three** states, and the tools now tell them apart by reading
+what the PR **says**, not merely that it exists:
+
+| the PR on a stale claim | what to do |
+|---|---|
+| open, still being worked | leave it (#581) |
+| open, abandoned mid-flight | close it, then `reap` |
+| **open, green and mergeable** | **`adopt` it — this work is FINISHED** |
+
+The third row is the **success path** of a worker whose harness died between "the PR is green" and
+"merge" — a window that is minutes long on every item. `adopt` verifies the PR is green **and**
+mergeable, transfers the claim to you, and hands you the merge; the original commits keep their author,
+and you are the **lander**. It refuses a live claim (that is a steal), an item with no PR (nothing to
+land), and any PR that is not green and mergeable (that is *authoring*, not landing).
 
 Work on `item/<n>-<slug>` in its **own git worktree**. Agents: prefer the harness's built-in
 worktree isolation (`isolation: "worktree"`) — the same discipline, managed for you. Commit with the
@@ -321,6 +340,8 @@ scripts/fsgg-coord who --repo <r> --local   # ...joined to the local git worktre
 Never go spelunking through worktrees to work out what is running. `who` flags:
 
 - **`STALE`** — the holder stopped heartbeating; probably dead. `reap` it.
+- **`STALE (#<pr> OPEN — GREEN: LAND IT)`** — the claim is dead but the work is **finished**. Do NOT
+  reap it and do NOT close the PR: `adopt` it (#697).
 - **`UNCLAIMED`** — `In progress` with **no marker**: someone is working outside the protocol and
   nothing records who. Detection, not prevention — but loud instead of invisible.
 
