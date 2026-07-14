@@ -665,6 +665,71 @@ gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the bran
 >   workflow by hand is the obvious thing to do about a cancelled run, which is what makes this
 >   reachable.
 
+> **A RE-RUN does not re-resolve `@main` — it re-runs the SAME workflow code, forever**
+> ([#721](https://github.com/FS-GG/.github/issues/721)).
+>
+> The gate above tells you a check is RED. When that check is a **reusable workflow** (`uses:
+> FS-GG/.github/.github/workflows/<w>.yml@main`) and you have just watched the upstream repair merge,
+> the obvious next move is `gh run rerun --failed`. **It is a permanent no-op**, and this is the one
+> warning in this family whose remedy is not "look harder" but "the button you are reaching for
+> cannot work".
+>
+> GitHub resolves a mutable ref **once, when the run is CREATED** — and a re-run does not create a
+> run. It adds an *attempt* to the existing one, keeping its id, its `created_at`, and therefore **its
+> pinned SHA**. The repaired `@main` is never fetched. The log then looks like a legitimate fresh
+> failure, because it is one: it is the **old code**, failing again.
+>
+> Measured on FS.GG.Governance#104, whose `lockfile-sync` first ran hours before the #671 repair:
+>
+> | run | attempt | started | resolved `lockfile-sync.yml@main` | result |
+> |---|---|---|---|---|
+> | `29236481212` | **2** — `gh run rerun` | 2026-07-14 09:30 | `e2867aab` = main @ **07-13 08:18** | ❌ |
+> | `29322088160` | 1 — new event | 2026-07-14 09:32 | `21cac807` = main @ **07-14 09:28** | ✅ |
+>
+> The re-run executed a **full day** after the repair merged and still ran pre-repair code. The tell
+> is visible in the API and nowhere in the UI: `created_at` is stuck at the *original* run's creation
+> while `run_started_at` is a day later. **That gap IS the bug.**
+>
+> **So do not reason about which code ran — ASK.** The pin is a field, and the merge gate above has
+> already fetched the runs that carry it (`$c`), so the red run's id is one `jq` away:
+>
+> ```sh
+> jq -r '.[] | select(.conclusion == "failure") | .id' <<<"$c"     # the RED run(s)
+>
+> gh api repos/FS-GG/<repo>/actions/runs/<run-id> \
+>   --jq '.referenced_workflows | map("\(.path) -> \(.sha)") | join("\n")'
+> ```
+>
+> Compare that SHA against the repair you are expecting. If it predates the repair, **no number of
+> re-runs will ever move it** — go to the remedy below. (The second call reads one run OBJECT, not a
+> collection, so there is nothing to paginate; §4's rule — every `gh api` read of a LIST takes
+> `--paginate` — is untouched.)
+>
+> **The remedy is a NEW `pull_request` event — the only thing that re-resolves the ref:**
+>
+> ```sh
+> gh api -X PUT repos/FS-GG/<repo>/pulls/<pr>/update-branch   # ...when the branch is BEHIND base
+> ```
+>
+> `update-branch` is the cheap one, and it is also the one that **refuses exactly when you most need
+> it**. On a branch that is already current it does nothing and returns
+>
+> ```
+> HTTP 422 — There are no new commits on the base branch.
+> ```
+>
+> and "already current" is precisely where a stuck Renovate PR sits. That is the whole reason such a
+> PR never self-heals: Renovate will not rebase a branch it considers up to date, a re-run is a no-op
+> by the rule above, and so it sits there red — looking for all the world like a real dependency
+> failure — until a human forces an event. When `update-branch` refuses, force one another way:
+> **push a commit** (an empty one counts), or **close and reopen** the PR.
+>
+> **And do not generalise this into "re-runs are useless."** A re-run is the right tool for a flake or
+> an outage — it re-executes the same code, which is precisely what you want when the code was never
+> the problem. It is worthless for exactly one thing: picking up a change to code the run has already
+> pinned. Knowing which of those you are looking at is the whole skill, and `referenced_workflows`
+> is how you find out rather than guess.
+
 **Why not `gh pr merge <pr> --squash --delete-branch`?** Because §2 mandates a worktree, and under
 that layout `gh pr merge` **merges the PR and then exits 1**:
 

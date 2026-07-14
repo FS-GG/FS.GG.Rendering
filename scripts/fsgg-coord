@@ -4249,6 +4249,10 @@ reap_cmd() {
 #   fs              refused until the flip (ADR-0034 Phase 3).
 ENGINE_MODE="${FSGG_COORD_ENGINE:-auto}"
 DIVERGENCE_LOG="${FSGG_COORD_DIVERGENCE_LOG:-$CACHE/divergence.jsonl}"
+# How often the shadow may push its evidence to the fleet ledger. The hot scheduling loop may not pay the
+# network on every call (ADR-0034 §5), so the publish is amortised: at most one REST write per window per
+# machine, covering every worker that shares this cache. 0 disables the shadow-path publish entirely.
+PUBLISH_EVERY_MIN="${FSGG_COORD_PUBLISH_EVERY_MIN:-30}"
 SNAPSHOT_SCHEMA='fsgg.coord.snapshot/1'
 SHADOW_EXTRA_READS=0
 # Candidates the shadow could not OBSERVE (an unreadable body or marker on one of the items bash
@@ -4267,10 +4271,36 @@ SHADOW_UNOBSERVED=0
 LANES_COLLECT=""
 shadow_collecting() { [ -n "$LANES_COLLECT" ] && return 0; shadow_enabled; }
 
+# A REPO THAT DECLARED AN ENGINE AND CANNOT RUN IT IS BROKEN — AND IT MAY NOT SAY SO IN SILENCE.
+#
+# `auto` means "shadow iff an engine resolves; bash otherwise", and for a machine that never asked for an
+# engine that is right: it does not participate, and a skip line on every scheduling call would be noise
+# about a decision nobody made.
+#
+# But a receiver with `fsgg-coord-engine` in its `.config/dotnet-tools.json` DID ask. It was configured to
+# shadow, Renovate keeps its version current, and the kit distributes the file. If it then cannot run the
+# thing it declared, that is a BROKEN receiver — and under the old resolve-here-and-return-false it went
+# quiet, producing a log byte-identical to a machine that never scheduled anything. `divergence --fleet`
+# read the difference as "a day nobody looked". It could not have read it as anything else.
+#
+# "We could not compare" and "we did not try" are different facts, and the whole of #266 is the refusal to
+# let one stand in for the other. So a repo that DECLARED an engine shadows — and if the engine will not
+# run, `shadow_run` records exactly that.
+engine_declared() {  # 0 iff this repo's tool manifest asks for the engine
+  local top manifest
+  top="$(git_toplevel)" || return 1
+  [ -n "$top" ] || return 1
+  manifest="$top/.config/dotnet-tools.json"
+  [ -f "$manifest" ] || return 1
+  jq -e '.tools | to_entries[] | select(.value.commands // [] | index("fsgg-coord-engine"))' \
+     >/dev/null 2>&1 <"$manifest"
+}
+
 shadow_enabled() {
   case "$ENGINE_MODE" in
     shadow|fs) return 0 ;;
-    auto)      engine_resolve ;;
+    auto)      engine_resolve && return 0
+               engine_declared ;;
     *)         return 1 ;;
   esac
 }
@@ -4330,7 +4360,35 @@ engine_resolve() {  # 0 iff an engine was found; the command lands in ENGINE_ARG
        && jq -e '.tools | to_entries[] | select(.value.commands // [] | index("fsgg-coord-engine"))' \
             >/dev/null 2>&1 <"$manifest"; then
       ENGINE_ARGV=(dotnet tool run fsgg-coord-engine)
-      return 0
+
+      # A MANIFEST IS A DECLARATION, NOT AN INSTALLATION — and this line read one as the other.
+      #
+      # `.config/dotnet-tools.json` is a WISH: it names a tool and a version. Until `dotnet tool restore`
+      # runs, `dotnet tool run fsgg-coord-engine` prints *Run "dotnet tool restore" to make the
+      # "fsgg-coord-engine" command available* and exits 1 — on STDERR, so `engine_version`'s stdout
+      # capture came back EMPTY, became `unknown`, and `unknown` is stale by design (#655). Every
+      # scheduling call in all six receivers therefore skipped, blaming a stale engine, and telling the
+      # worker to `dotnet tool update` a tool they had never installed.
+      #
+      # Measured on 2026-07-14, against the live divergence log: 187 of 239 shadow runs skipped, and 186
+      # of those 187 skips were this exact failure — `engine unknown is STALE`. The engine version was
+      # recorded as `unknown` 187 times and `0.1.1.0` 52 times, and those 52 were all in `.github`, which
+      # resolves the from-source build below and never touches this branch. The fleet's evidence was being
+      # thrown away at the source, in every repo except the one that builds it, and the three-day clock
+      # could not start.
+      #
+      # So PROVE the engine runs before claiming it resolved — and if the only thing missing is the
+      # restore, DO the restore. Asking a worker to run it has the hit rate #656 already measured: zero.
+      engine_probe && return 0
+      engine_restore "$top" && engine_probe && return 0
+
+      # It is declared, and it will not run. Not our engine, and not a version we may guess at. Record
+      # WHICH failure this is: "there is no engine here" and "the engine is declared, restored and still
+      # broken" are different facts, and a skip that names the wrong one sent this fleet chasing a stale
+      # tool it had never installed.
+      ENGINE_ARGV=()
+      ENGINE_UNRESTORED=1
+      return 1
     fi
 
     candidate="$top/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
@@ -4389,11 +4447,57 @@ engine_is_stale() {
   version_lt "$v" "$ENGINE_MIN_VERSION"
 }
 
+# DOES THIS ENGINE ACTUALLY RUN? `--version` is the cheapest total answer — the one call the engine must
+# answer with no input, no board and no token — and the number is needed anyway, so the probe costs one
+# exec and is cached. A candidate that cannot answer it is not an engine we have; it is a path we hoped
+# about.
+engine_probe() {  # 0 iff ENGINE_ARGV runs AND names a version. Caches it in ENGINE_VERSION.
+  local v
+  v="$("${ENGINE_ARGV[@]}" --version 2>/dev/null | head -1 | tr -d '[:space:]')" || return 1
+  [ -n "$v" ] || return 1
+  ENGINE_VERSION="$v"
+  return 0
+}
+
+# THE RESTORE THE FLEET WAS ASKED TO RUN, AND DID NOT (#656 again).
+#
+# Every receiver carries the engine in `.config/dotnet-tools.json` — Renovate keeps the version current,
+# `sync-build-config.sh` distributes the file. What nothing does is RESTORE it, and a manifest nobody
+# restored is a tool nobody has. The kit's answer was a sentence in a skip message telling the worker to
+# go and run it. That sentence has the hit rate every other request in this fabric has: zero.
+#
+# So run it. Once per process, and at most once an hour per machine when it fails — a restore that CANNOT
+# work (no feed, no network, a yanked version) may not put a multi-second round-trip in the hot loop on
+# every single scheduling call. A feed comes back, so the hour expires and the next call tries again.
+ENGINE_RESTORE_TRIED=""
+engine_restore() {  # <repo top> — 0 iff a restore ran and reported success
+  [ -n "$ENGINE_RESTORE_TRIED" ] && return 1
+  ENGINE_RESTORE_TRIED=1
+
+  local top="$1" mark="$CACHE/engine-restore.failed" now last
+  now="$(date +%s)"
+  if [ -f "$mark" ]; then
+    last="$(cat "$mark" 2>/dev/null || echo 0)"
+    case "$last" in ''|*[!0-9]*) last=0 ;; esac
+    [ "$(( now - last ))" -lt 3600 ] && return 1
+  fi
+
+  mkdir -p "$CACHE" 2>/dev/null || true
+  if ( cd "$top" && dotnet tool restore ) >/dev/null 2>&1; then
+    rm -f "$mark" 2>/dev/null || true
+    return 0
+  fi
+  # Remember the failure, so the next scheduling call does not pay for it again.
+  echo "$now" >"$mark" 2>/dev/null || true
+  return 1
+}
+
 ENGINE_VERSION=""
 engine_version() {
   [ -n "$ENGINE_VERSION" ] && { printf '%s' "$ENGINE_VERSION"; return 0; }
   engine_resolve || return 1
-  ENGINE_VERSION="$("${ENGINE_ARGV[@]}" --version 2>/dev/null | head -1 | tr -d '[:space:]')"
+  # `engine_resolve` probes on its way to saying yes, so the version is normally already cached here.
+  [ -n "$ENGINE_VERSION" ] || engine_probe || true
   # An engine that cannot say what it is still gets recorded — as `unknown`, which matches only ANOTHER
   # engine that cannot say what it is. Refusing to log would lose the evidence; guessing a version would
   # forge it. Neither is available, so name the gap.
@@ -4713,7 +4817,11 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   if ! engine_resolve; then
     # Rule 2. This script is byte-copied into six repos, and a repo without the engine simply does not
     # shadow. That is a fact to RECORD, not an error to raise — it may never red a receiver's CI.
-    shadow_skip "no engine (install it: dotnet tool restore, or dotnet tool install -g FS.GG.Coord.Cli)"
+    if [ -n "${ENGINE_UNRESTORED:-}" ]; then
+      shadow_skip "the engine is DECLARED in .config/dotnet-tools.json but will not run, and 'dotnet tool restore' did not fix it — this machine contributes NO evidence"
+    else
+      shadow_skip "no engine (install it: dotnet tool restore, or dotnet tool install -g FS.GG.Coord.Cli)"
+    fi
     return 0
   fi
 
@@ -4747,6 +4855,12 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   fi
 
   shadow_compare "$SHADOW_VERDICTS" "$out" "$repo"
+
+  # The evidence exists now. Get it off this machine — `done` may never run for this item (#681, #685).
+  # Throttled, silent, and it may never fail the caller: rule 1 of this whole surface is that the shadow
+  # cannot change bash's answer, its exit code, or its life.
+  divergence_publish_throttled || true
+  return 0
 }
 
 # ---- divergence: the acceptance test for the whole port -------------------------------------------
@@ -4985,6 +5099,73 @@ divergence_skips_for() {  # $1=worker $2=day -> count
   jq -s --arg w "$1" --arg d "$2" \
     '[ .[] | select((.ran | not) and ((.worker // "unknown-worker") == $w) and (.ts[0:10] == $d)) ] | length' \
     2>/dev/null <"$DIVERGENCE_LOG" || echo 0
+}
+
+# THE EVIDENCE MUST LEAVE THE MACHINE EVEN WHEN `done` NEVER RUNS.
+#
+# #656 bolted the publish to `done` — *"the one command every worker runs when it finishes an item"*. It
+# is not. An item closed by a SQUASH-MESSAGE closing keyword (#681, #685, #693) is merged, closed and
+# board-Done without `done` ever being called, and that worker's evidence never leaves the machine.
+#
+# Be precise about what this did and did not cost, because an earlier draft of this comment was wrong and
+# a comment that lies is the bug we are here to fix. The ledger (#635) is NOT empty: it held 59 rows when
+# this was written, 11 of them dated 2026-07-14. The `done` hook works — for the workers that reach it.
+#
+# What it is not is COMPLETE, and the shape of the gap is the point. Every one of those 59 rows carries
+# `skipped=0`, because the only workers that publish are the ones whose engine RESOLVED — and that is
+# `.github`, the single repo which builds the engine from source. The five receivers, whose engine is
+# declared-but-unrestored and therefore skips every call (see `engine_restore`), have contributed
+# NOTHING, ever. So the fleet gate is not reading a fleet. It is reading one repo, and calling it the
+# fleet — and ADR-0034's cut-over criterion says *"across the LIVE FLEET"*.
+#
+# That is #634 wearing a new coat. The lesson of #656 was that ASKING is not a mechanism; the fix chose a
+# hook, and the hook sits on a path the work does not always take. A hook on ONE path is a request that
+# path be taken.
+#
+# So publish from the SHADOW — the only path that, by construction, has just produced evidence. Nothing
+# to remember, and no way to finish an item without it having run.
+#
+# THROTTLED, because the hot loop may not pay the network (ADR-0034 §5): one REST write per window per
+# machine, amortised across every worker sharing this cache. Losing the last compare of a day to the
+# window costs nothing permanent — `divergence_summaries` folds the WHOLE log, keyed on (worker, day,
+# engine) and rewritten in place, so the next publish carries the missed day up with it. Late is a
+# property of this ledger; lost is not.
+divergence_publish_throttled() {
+  [ -s "$DIVERGENCE_LOG" ] || return 0
+  [ "${PUBLISH_EVERY_MIN:-0}" -gt 0 ] 2>/dev/null || return 0
+
+  local stamp="$CACHE/divergence.published" lock="$CACHE/.divergence-publish.lock"
+  local now last at
+  now="$(date +%s)"
+  mkdir -p "$CACHE" 2>/dev/null || true
+
+  last="$(cat "$stamp" 2>/dev/null || echo 0)"
+  case "$last" in ''|*[!0-9]*) last=0 ;; esac
+  [ "$(( now - last ))" -ge "$(( PUBLISH_EVERY_MIN * 60 ))" ] || return 0
+
+  # ATOMIC, because every worker on this box shares one cache and one log, and two racers folding the
+  # same log would each find no row for worker W and each CREATE one. `mkdir` is the only atomic
+  # primitive bash has.
+  if ! mkdir "$lock" 2>/dev/null; then
+    at="$(cat "$lock/at" 2>/dev/null || echo 0)"
+    case "$at" in ''|*[!0-9]*) at=0 ;; esac
+    # Somebody is publishing right now — not our turn. Unless they died mid-publish, in which case a
+    # crashed worker's lock directory would wedge the ledger for every worker on the machine, forever.
+    [ "$(( now - at ))" -gt 600 ] || return 0
+    rm -rf "$lock" 2>/dev/null || true
+    mkdir "$lock" 2>/dev/null || return 0
+  fi
+  echo "$now" >"$lock/at" 2>/dev/null || true
+
+  # Stamp BEFORE the attempt. A publish that cannot work — no network, an exhausted REST budget, a ledger
+  # issue somebody renamed — must cost one try per window, not one per scheduling call.
+  echo "$now" >"$stamp" 2>/dev/null || true
+
+  # Never fails its caller, and never speaks. This runs inside a worker's scheduling command: a publish is
+  # bookkeeping, and bookkeeping may not fail an item or clutter the output that carries the verdict.
+  soft_run divergence_publish >/dev/null 2>&1 || true
+  rm -rf "$lock" 2>/dev/null || true
+  return 0
 }
 
 divergence_publish() {
