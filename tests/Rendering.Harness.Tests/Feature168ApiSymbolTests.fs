@@ -86,6 +86,97 @@ let tests =
                 Feature168SkillParityFixtures.deleteTempRoot root
         }
 
+        test "an API named only in a backslash-CONTINUED message does not exercise it" {
+            // The repository's dominant message idiom: an Expecto message too long for one line, continued
+            // with a trailing `\`. The literal spans lines, so a stripper that cannot span one reads its
+            // prose as code — and `unexercised-api-symbol` then reports a seam EXERCISED that nothing calls
+            // (#748). The single-line case has always stripped, which is exactly why this hid.
+            let root = Feature168SkillParityFixtures.createTempRoot "issue748-continued-message"
+
+            try
+                let testsDir = Path.Combine(root, "tests")
+                Directory.CreateDirectory testsDir |> ignore
+
+                File.WriteAllText(
+                    Path.Combine(testsDir, "SampleTests.fs"),
+                    "module SampleTests\n"
+                    + "let real = Widget.render \"x\"\n"
+                    + "Expect.isTrue real\n"
+                    + "    \"this message names Widget.hidden and must NOT count as \\\n"
+                    + "     exercising it — it is prose, and Widget.alsoHidden is prose too\"\n"
+                )
+
+                let exercised = SkillParity.loadExercisedSymbols root |> Option.get
+
+                Expect.isTrue (exercised |> Set.contains "Widget.render") "the real call still exercises the API"
+
+                for mentioned in [ "Widget.hidden"; "Widget.alsoHidden" ] do
+                    Expect.isFalse
+                        (exercised |> Set.contains mentioned)
+                        $"{mentioned} is named in a continued message, never called"
+            finally
+                Feature168SkillParityFixtures.deleteTempRoot root
+        }
+
+        test "a verbatim literal is read with ITS escape rules, not the regular literal's" {
+            // `@"…"` is a different language: `\` is an ordinary character and `""` is the only escape, so
+            // `@"C:\out\"` ends at its second quote. Reading it with the regular literal's rules breaks it
+            // in BOTH directions, and this pins both — each line below fails if the verbatim literal is not
+            // matched separately.
+            //
+            //   over-strip  `\"` looks like an escaped quote, so the match runs PAST the terminator and eats
+            //               the code after it — reporting a genuinely-called API as unexercised.
+            //   fail-open   a verbatim literal may span lines, and a pattern that cannot span one leaves its
+            //               prose standing as code — the same defect as the continued message above (#748).
+            let root = Feature168SkillParityFixtures.createTempRoot "issue748-verbatim"
+
+            try
+                let testsDir = Path.Combine(root, "tests")
+                Directory.CreateDirectory testsDir |> ignore
+
+                File.WriteAllText(
+                    Path.Combine(testsDir, "SampleTests.fs"),
+                    "module SampleTests\n"
+                    + "let over = @\"C:\\out\\\" in Widget.render \"x\"\n"
+                    + "let spanning = @\"a verbatim banner naming Widget.hidden\n"
+                    + "   and still naming Widget.alsoHidden on a second line\"\n"
+                )
+
+                let exercised = SkillParity.loadExercisedSymbols root |> Option.get
+
+                Expect.isTrue
+                    (exercised |> Set.contains "Widget.render")
+                    "the call AFTER a verbatim literal ending in `\\` is code — the literal ended at its quote"
+
+                for mentioned in [ "Widget.hidden"; "Widget.alsoHidden" ] do
+                    Expect.isFalse
+                        (exercised |> Set.contains mentioned)
+                        $"{mentioned} is prose inside a multi-line verbatim literal, never called"
+            finally
+                Feature168SkillParityFixtures.deleteTempRoot root
+        }
+
+        test "a symbol named only in a continued string inside a fence documents nothing" {
+            // `codeOnly` strips a skill's fences too, so the same hole would have let a fence's prose
+            // *document* an API it never demonstrates.
+            let entry =
+                Feature168SkillParityFixtures.entry
+                    "src/Widget/skill/SKILL.md"
+                    "fs-gg-widget"
+                    "widget guidance"
+                    ("```fsharp\n"
+                     + "let value = Widget.render \"x\"\n"
+                     + "printfn \"do not reach for Widget.missing here — it is \\\n"
+                     + "         the wrong seam\"\n"
+                     + "```\n")
+
+            let symbols =
+                SkillParity.evaluateApiSymbols surfaceMembers exercised [ entry ]
+                |> List.map (fun item -> item.Symbol)
+
+            Expect.equal symbols [ "Widget.render" ] "the continued literal's prose is not documentation"
+        }
+
         test "an unknown option is a configuration error, not a silent full check" {
             // `--list-rules` died with the guidance layer. Ignoring it would run a full check and
             // rewrite the committed report under an operator who asked only to list something.

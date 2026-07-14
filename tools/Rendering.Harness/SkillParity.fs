@@ -420,16 +420,36 @@ module SkillParity =
 
     let private tripleQuotedPattern = Regex("\"\"\".*?\"\"\"", RegexOptions.Compiled ||| RegexOptions.Singleline)
 
-    let private stringLiteralPattern = Regex("@?\"(?:\\\\.|\"\"|[^\"\\\\\\n])*\"", RegexOptions.Compiled)
+    /// A verbatim literal (`@"…"`) has its own escape rules and must not be read with the regular
+    /// string's: `\` is an ordinary character there, so `@"C:\out\"` ends at its second quote and a
+    /// pattern that treated `\"` as an escape would run past it into the code. `""` is the only
+    /// escape, and the literal may span lines.
+    let private verbatimStringPattern = Regex("@\"(?:[^\"]|\"\")*\"", RegexOptions.Compiled)
+
+    /// A regular literal, where `\` escapes the character after it — *including a newline*, which is
+    /// F#'s line continuation, and which is how this repository writes a long assertion message:
+    ///
+    ///     Expect.isTrue condition
+    ///         "names Scene.node but must NOT count as \
+    ///          exercising it — it is prose"
+    ///
+    /// `[\s\S]` rather than `.` so the escape spans that newline (`.` would need `Singleline`, which
+    /// is a property of the whole pattern rather than of this one escape). The plain branch still
+    /// excludes a bare newline, so an unbalanced quote dies at end of line instead of swallowing the
+    /// rest of the file — a continuation is opted into by the backslash, never stumbled onto.
+    let private stringLiteralPattern =
+        Regex("\"(?:\\\\[\\s\\S]|[^\"\\\\\\n])*\"", RegexOptions.Compiled)
 
     let private lineCommentPattern = Regex("//.*$", RegexOptions.Compiled ||| RegexOptions.Multiline)
 
     /// Strip everything in an F# source that is not code, so that *mentioning* an API in a comment or
     /// a string literal cannot pass for *exercising* it. Order matters: block comments and strings go
-    /// first, so a `//` inside a URL literal is gone before line comments are stripped.
+    /// first, so a `//` inside a URL literal is gone before line comments are stripped; and verbatim
+    /// literals go before regular ones, so their backslashes are never read as escapes.
     let private codeOnly (source: string) =
         let stripped = blockCommentPattern.Replace(source, " ")
         let stripped = tripleQuotedPattern.Replace(stripped, " ")
+        let stripped = verbatimStringPattern.Replace(stripped, " ")
         let stripped = stringLiteralPattern.Replace(stripped, " ")
         lineCommentPattern.Replace(stripped, " ")
 
