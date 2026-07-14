@@ -471,12 +471,24 @@ scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declar
 >                                 bare `#2` binds to nothing and is silently dropped.
 > ```
 >
-> Everywhere else, deny GitHub the binding — write it as code (`closed #422`), reword it (`does NOT
-> complete #422`), or drop the verb (`Refs #422.`).
+> Everywhere else, deny GitHub the binding — **reword the verb** (`does NOT complete`, `addresses`,
+> `supersedes`), **drop the verb** (`Refs #422.`), or **break the adjacency** (quote the number
+> without its `#`).
 >
-> The `closing-keywords` gate fails the PR on every undeclared closing reference. It was written
-> against the body of the change that introduced it — a body that argued about this bug for forty
-> lines and, in prose, would have re-closed #422.
+> **CODE IS NOT A REMEDY — and this line used to say it was** ([#683](https://github.com/FS-GG/.github/issues/683)).
+> It read *"write it as code (`closed #422`)"*, and that advice **closed an issue**. Two parsers read
+> a PR and they disagree about code: the **markdown** parser builds the PR's `closingIssuesReferences`
+> link and does skip code — but what actually **closes** the issue on a squash merge is the **commit
+> message**, and a commit message is **plain text**. Backticks are ordinary characters in it.
+> PR [#681](https://github.com/FS-GG/.github/pull/681) — the PR that shipped the gate against this
+> very bug — dutifully wrote its examples in backticks and **re-closed #422**, which is how we found
+> out. A markdown file in the repo is never parsed for keywords, so the docs may quote the bug in
+> code; **a PR body may not.**
+>
+> The `closing-keywords` gate fails the PR on every undeclared closing reference, and it now scans the
+> **raw** body — code included — because that is what the commit parser does. It was written against
+> the body of the change that introduced it, a body that argued about this bug for forty lines and, in
+> prose, would have re-closed 422. Then its own PR re-closed it anyway, in backticks.
 
 
 
