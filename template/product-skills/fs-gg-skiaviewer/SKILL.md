@@ -47,8 +47,9 @@ takes the two things the framework deliberately does not own:
   resolving it to a real path is your job. The framework owns no save location.
 - `mapOutcome` — turns each `PersistenceOutcome` the sink returns back into one of *your* messages.
 
-That return path is the point. Without it a `Load` is unanswerable: the pure interpreter records what
-your product asked for and drops it, which proves intent, never durability.
+That return path is the point. Without it a `Load` is unanswerable: `Persistence.interpretRecordOnly`
+records what you asked for and drops it, which is what its name says and what its evidence's
+`Backend` field says again.
 
 ```fsharp
 match Viewer.runAppWithPersistence viewerOptions saveToDisk PersistenceAnswered generatedHost with

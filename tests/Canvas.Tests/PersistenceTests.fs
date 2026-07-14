@@ -8,13 +8,10 @@ module Canvas.Tests.PersistenceTests
 // All real pure computation — no synthetic evidence (nothing is faked; the recorded requests ARE
 // the evidence).
 //
-// Issue #445: the interpreter is now spelled `interpretRecordOnly` — the record-only status lives in
-// the name. The deprecated `interpret` forwards to it and is pinned below.
-
-// FS0044 (obsolete member) is an ERROR in this repo (TreatWarningsAsErrors), so the one test that
-// deliberately exercises the deprecated `Persistence.interpret` forwarder cannot compile without
-// this. Scoped to this file, which is where that forwarder is meant to be called from.
-#nowarn "44"
+// Issue #445: the interpreter is spelled `interpretRecordOnly` — the record-only status lives in the
+// name, and since #537 in the type (`PersistenceEvidence.Backend`). The deprecated `interpret`
+// forwarder it replaced was removed at the 0.10.0 major, and its parity test with it: there is no
+// second spelling left to hold this one against.
 
 open Expecto
 open FsCheck
@@ -127,26 +124,18 @@ let tests =
             Expect.equal ev.Requested [ Load(SaveSlot "never-saved"); DeleteSlot(SaveSlot "empty") ] "unknown-slot load/delete records without error"
         }
 
-        // ---- Issue #445: the record-only status is in the NAME, and the old name still works ----
+        // ---- Issue #537: the record-only status is in the NAME, and now also in the TYPE ----
 
-        // The rename had to stay ADDITIVE: `interpret` is a shipped member, and removing or
-        // reshaping it would be an ApiCompat break (and a SemVer major). So it survives as a
-        // forwarder — and a forwarder that has silently drifted from the function it forwards to is
-        // worse than no forwarder. Pin them to the same answer over arbitrary batches.
-        // Every case of the DU crosses the forwarder, not just `Save` — a forwarder that dropped or
-        // reordered `Load`/`DeleteSlot` would sail through a Save-only property.
-        testCase "the deprecated interpret forwards to interpretRecordOnly, identically, for every effect case (#445, FsCheck >=500 cases)"
-        <| fun () ->
-            let prop (items: (int * int * string) list) =
-                let effects =
-                    items
-                    |> List.map (fun (tag, version, text) ->
-                        match ((tag % 3) + 3) % 3 with
-                        | 0 -> Save { Version = version; Slot = SaveSlot text; Payload = SavePayload text }
-                        | 1 -> Load(SaveSlot text)
-                        | _ -> DeleteSlot(SaveSlot text))
-                Persistence.interpret effects = Persistence.interpretRecordOnly effects
-            Check.One(Config.QuickThrowOnFailure.WithMaxTest 500, prop)
+        // #445 put the record-only status in the name and on the `[<Obsolete>]` diagnostic channel;
+        // both were readable only by someone who went looking. The type-mark is the channel a caller
+        // cannot skip — it is in every evidence value they hold. Pin it on both constructors, so an
+        // interpreter that ever starts claiming durability has to say so here first.
+        test "every evidence value the framework produces is marked RecordOnly (#537)" {
+            let ev =
+                Persistence.interpretRecordOnly [ Persistence.load (SaveSlot "s"); Persistence.deleteSlot (SaveSlot "s") ]
+            Expect.equal ev.Backend RecordOnly "interpretRecordOnly marks its evidence RecordOnly"
+            Expect.equal Persistence.emptyEvidence.Backend RecordOnly "emptyEvidence is RecordOnly too"
+        }
 
         // The whole point of #445: this surface RECORDS AND DROPS. It writes no bytes, and no host
         // in the framework will ever route a PersistenceEffect to one that does. The evidence is a

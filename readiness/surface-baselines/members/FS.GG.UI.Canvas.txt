@@ -8,7 +8,6 @@ FS.GG.UI.Canvas.Elements.sprite(System.String, System.Double, System.Double) : F
 FS.GG.UI.Canvas.Persistence.clampVersion(System.Int32) : System.Int32
 FS.GG.UI.Canvas.Persistence.deleteSlot(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.Persistence.emptyEvidence : FS.GG.UI.Canvas.PersistenceEvidence [get]
-FS.GG.UI.Canvas.Persistence.interpret(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>) : FS.GG.UI.Canvas.PersistenceEvidence
 FS.GG.UI.Canvas.Persistence.interpretRecordOnly(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>) : FS.GG.UI.Canvas.PersistenceEvidence
 FS.GG.UI.Canvas.Persistence.load(FS.GG.UI.Canvas.SaveSlot) : FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.Persistence.minVersion : System.Int32 [get]
@@ -18,8 +17,9 @@ FS.GG.UI.Canvas.Persistence.saveEnvelope(System.Int32, FS.GG.UI.Canvas.SaveSlot,
 FS.GG.UI.Canvas.PersistenceEffect+Tags.DeleteSlot : System.Int32
 FS.GG.UI.Canvas.PersistenceEffect+Tags.Load : System.Int32
 FS.GG.UI.Canvas.PersistenceEffect+Tags.Save : System.Int32
+FS.GG.UI.Canvas.PersistenceEvidence.Backend : FS.GG.UI.Canvas.PersistenceBackend [get]
 FS.GG.UI.Canvas.PersistenceEvidence.Requested : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect> [get]
-FS.GG.UI.Canvas.PersistenceEvidence.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>)
+FS.GG.UI.Canvas.PersistenceEvidence.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Canvas.PersistenceEffect>, FS.GG.UI.Canvas.PersistenceBackend)
 FS.GG.UI.Canvas.PersistenceOutcome+Tags.Absent : System.Int32
 FS.GG.UI.Canvas.PersistenceOutcome+Tags.Deleted : System.Int32
 FS.GG.UI.Canvas.PersistenceOutcome+Tags.Failed : System.Int32

@@ -185,7 +185,88 @@ let private currentPkgVersion =
         .Groups.[1]
         .Value.Trim()
 
-/// Run the real guard against the real repo, with the feed lane pointed at `feed`.
+/// THE FEED LANE'S FIXTURES OWN THEIR TAG WORLD — AND UNTIL #587 THEY BORROWED THE REPO'S.
+///
+/// The lane under test asks exactly one question: for a tag that IS cut, are that release's packages really
+/// on the feed? So every arm below — phantom, publish-in-flight, feed-down, garbage-200 — needs a cut tag
+/// naming the CURRENT pin before it has anything to probe. Run against the real repo, that holds on every
+/// commit but one: THE RELEASE COMMIT ITSELF, where the pin is bumped and its tags are not cut yet (they are
+/// cut from the merge commit, by `release-tags.yml` — merging IS the publish). There the guard is correct and
+/// says so —
+///
+///     feed lane: probed 0 package(s) ... no cut tag names the current pin/package
+///
+/// — and the fixtures were not: four asserted on arms that cannot fire, and the fifth ("a cut tag whose
+/// packages ARE on the feed") went GREEN on `probed 0`, which is the vacuous pass its own comment warns
+/// about. This suite is in the REQUIRED `Deterministic gate`, so that is not noise — it wedges the merge
+/// button on the one commit whose whole job is to be merged, exactly as the missing `RELEASE-PENDING` waiver
+/// wedged `TemplateConsumesPinnedApiTests` (#673) and the 0.9.1 cut before it. 0.10.0 is the first release
+/// since the feed lane (#718) shipped, which is why nothing caught it sooner.
+///
+/// The deferral idiom those wedges taught is the WRONG fix here: a fixture that skips on a release commit
+/// drops the lane's teeth on the only commit whose release state it exists to police. So the fixtures own
+/// their world instead — this file's own rule, four lines up from where it was not applied. A throwaway
+/// clone, with the pin's tag triple cut at HEAD IF IT IS NOT ALREADY THERE:
+///
+///   * ordinary commit — the tags exist, pointing at the real release commit. Nothing is created, and the
+///     fixtures see precisely the world they see today.
+///   * release commit  — the tags are cut at HEAD, which is the state this very commit is about to create.
+///     Every arm fires, and the lane keeps its teeth where they matter most.
+///
+/// ONE CLONE, AT A STABLE PATH, SWEPT ON THE WAY IN — NOT A FRESH GUID EACH RUN. A `Guid` name plus an
+/// `AppDomain.ProcessExit` cleanup looks tidy and leaks: **`ProcessExit` does not run under the VSTest
+/// host**, and its ~2s budget would not delete a repo-sized tree if it did. Measured, before this was
+/// changed: seven `vcoh-released-*` trees and 193 MB in `/tmp`, one per `dotnet test` run, with no path that
+/// ever removed them. The clone is a pure function of (root, HEAD, the two version files), so it does not
+/// need to be unique — it needs to be FRESH. A path derived from `root` gives exactly one per checkout, and
+/// deleting it on the way in makes a crashed run self-healing rather than sticky.
+let private releasedRoot =
+    lazy
+        (let tmp =
+            Path.Combine(
+                Path.GetTempPath(),
+                "vcoh-released-"
+                + (Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(Text.Encoding.UTF8.GetBytes root))).Substring(0, 12))
+
+         if Directory.Exists tmp then
+             Directory.Delete(tmp, true)
+
+         let ec, out = runIn root "git" [ "clone"; "--no-hardlinks"; "--quiet"; root; tmp ]
+
+         if ec <> 0 then
+             failwithf "feed-lane fixture: could not clone the repo to a throwaway root:\n%s" out
+
+         // THE CLONE CARRIES THE FILES UNDER TEST, NOT HEAD'S COPIES OF THEM (#478). `git clone` carries
+         // COMMITTED HEAD, but `currentPin`/`currentPkgVersion` above are read from the WORKING TREE — so
+         // without these copies the fixture straddles the two, and an UNCOMMITTED pin bump makes it cut a tag
+         // for a version the clone's own props do not name. The guard then reports a bogus pin/tag skew and
+         // every arm below fails for a reason that has nothing to do with the lane. CI never sees it (the
+         // checkout is clean); the developer who just edited the pin sees nothing else. The guard goes with
+         // them, for the same reason one step further on: a fixture that exercises the COMMITTED script could
+         // never fail on an edit to it.
+         for rel in
+             [ "scripts/validate-version-coherence.fsx"
+               "template/base/Directory.Packages.props"
+               ".template.package/FS.GG.UI.Template.fsproj" ] do
+             File.Copy(repo rel, Path.Combine(tmp, rel.Replace('/', Path.DirectorySeparatorChar)), true)
+
+         for tag in
+             [ $"fs-gg-ui/v{currentPin}"
+               $"fs-gg-ui-template/v{currentPkgVersion}"
+               $"v{currentPkgVersion}" ] do
+             let exists, _ = runIn tmp "git" [ "rev-parse"; "--verify"; "--quiet"; $"refs/tags/{tag}" ]
+
+             if exists <> 0 then
+                 let ec, out = runIn tmp "git" [ "tag"; tag; "HEAD" ]
+
+                 if ec <> 0 then
+                     failwithf "feed-lane fixture: could not cut %s in the throwaway clone:\n%s" tag out
+
+         tmp)
+
+/// Run the real guard against a repo whose pin IS released (see `releasedRoot`), with the feed lane pointed
+/// at `feed`.
 ///
 /// `grace` is pinned by every caller rather than left to default, and that is what makes these tests
 /// DETERMINISTIC. The guard waives an absent package while its tag is younger than the grace (a publish
@@ -195,12 +276,12 @@ let private currentPkgVersion =
 /// tag is young". Both are the arm under test, neither is the clock.
 let private runFeedLane (feedUrl: string) (graceMin: string) =
     runInWithEnv
-        root
+        releasedRoot.Value
         [ "FS_GG_RUN_VERSION_COHERENCE_FEED", "1"
           "FS_GG_VERSION_COHERENCE_FEED_URL", feedUrl
           "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN", graceMin ]
         "dotnet"
-        [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
+        [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
 
 // ---- preview-aware SemVer comparator (mirrors the script's D7 comparator) ----------------------
 let private parse (s: string) =
@@ -872,6 +953,17 @@ let feature209VersionCoherenceTests =
                     (sprintf "a published release must never be reported as a phantom — a rule that fires on everything is as useless as one that fires on nothing:\n%s" out)
                 Expect.stringContains out "feed lane: probed"
                     "the lane must say how many packages it probed, so a run that checked nothing cannot read as a pass"
+
+                // AND THE COUNT MUST BE NON-ZERO — the line above only checks that the lane SAID it. `probed 0
+                // package(s)` satisfies every other assertion in this test (exit 0, no phantom, the word
+                // "probed"), so without this the fixture goes GREEN having checked nothing. That is not
+                // hypothetical: it is what this test did on every release commit until `releasedRoot` gave these
+                // fixtures their own tags, while its four siblings went red. "Checked nothing" and "everything is
+                // published" must not share an observable (FS-GG/.github#266) — and this assertion is also what
+                // makes `releasedRoot` self-guarding: if it ever stops cutting the triple, this reds instead of
+                // quietly passing.
+                Expect.isMatch out @"feed lane: probed [1-9]\d* package\(s\)"
+                    (sprintf "the lane probed NOTHING, and still reported success — the fixture is vacuous:\n%s" out)
             }
 
             test "feed lane: a cut tag with NO package behind it is the #679 phantom, not coherence" {
@@ -962,7 +1054,10 @@ let feature209VersionCoherenceTests =
             test "feed lane: a member added AFTER the release tag is not a phantom of that release" {
                 let tmp = Path.Combine(Path.GetTempPath(), "vcoh718-newmember-" + Guid.NewGuid().ToString("N").Substring(0, 8))
                 try
-                    // A real clone, so the tags — and `git show <tag>:…` — are real.
+                    // A real clone of the RELEASED root, so the tags — and `git show <tag>:…` — are real. Cloned
+                    // from `releasedRoot` rather than `root` for the reason given there: on a release commit the
+                    // pin's tags are not cut yet, and this fixture's whole subject is "a member landed AFTER the
+                    // pin's tag was cut" — which needs that tag to exist.
                     //
                     // TWO WORKING DIRECTORIES, AND THEY ARE NOT INTERCHANGEABLE. The clone is invoked from
                     // `root`; everything after it must run in `tmp`. Binding one `git` helper to `root` and
@@ -974,8 +1069,12 @@ let feature209VersionCoherenceTests =
                     let gitInRepo (args: string list) = runIn root "git" args
                     let gitInClone (args: string list) = runIn tmp "git" args
 
-                    let ec, out = gitInRepo [ "clone"; "--no-hardlinks"; "--quiet"; root; tmp ]
-                    Expect.equal ec 0 (sprintf "clone the repo (with its tags) to a throwaway root:\n%s" out)
+                    let ec, out = gitInRepo [ "clone"; "--no-hardlinks"; "--quiet"; releasedRoot.Value; tmp ]
+
+                    Expect.equal
+                        ec
+                        0
+                        (sprintf "clone the released repo (with the pin's tag triple) to a throwaway root:\n%s" out)
 
                     // THE CLONE CARRIES THE COMMITTED SCRIPT, NOT THE ONE UNDER TEST. Without this copy the
                     // fixture exercises whatever is at HEAD, so it would pass no matter what the working tree
