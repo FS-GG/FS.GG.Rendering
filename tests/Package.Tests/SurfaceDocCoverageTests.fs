@@ -78,21 +78,90 @@ let private ledgerPath = repositoryPath ledgerRel
 /// item's whole thesis one level further down. (TemplateConsumesPinnedApiTests learned the same lesson from
 /// the other side in #598: "the member may end in a prime, and it must, or the rule invents violations".)
 let private publicValRegex =
-    Regex(@"^\s+val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
+    Regex(@"^(?<indent>\s+)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
 
-/// (name, the shipped .fsi it appears in) for every public val the product is given.
-let private shippedSurface =
+/// A `module M =` inside a signature file. THE INDENT IS LOAD-BEARING: it is the only thing that separates a
+/// module nested INSIDE another from a sibling that merely follows it, and `ControlsElmish.fsi` has both —
+/// `AdapterCmd` and `ControlsElmish` are two top-level modules of one file (#663 already found that pair),
+/// while `Live` and `Perf` are nested inside `ControlsElmish`. A reader that ignored the indent would flatten
+/// the two shapes together and could not tell `…Elmish.AdapterCmd` from `…Elmish.ControlsElmish.Perf`.
+///
+/// EVERY MODIFIER MATTERS, and here a missed one is worse than a missed binding form (#692). A `module
+/// internal Foo =` that this does not match is not merely skipped: the line falls through, the scope stack is
+/// left alone, and every `val` inside it is attributed to the module ENCLOSING it. A skill that then correctly
+/// writes `Foo.bar` finds `Foo` is a suffix of nothing, loses its credit, and S-DOC reports a surface the
+/// skill DOES document as undeclared — the gate inventing violations against correct docs (#598). And the
+/// `rootless` floor below cannot see it, because the wrong path is still namespace-qualified. The mirror is
+/// known to leak `internal` declarations already (S-INT, #585), so this is not a hypothetical shape.
+let private moduleAccess = @"(?:rec\s+|public\s+|private\s+|internal\s+)*"
+
+let private moduleRegex =
+    Regex(
+        $@"^(?<indent>\s*)module\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*=",
+        RegexOptions.Compiled
+    )
+
+/// The `namespace` a signature file opens with — everything below it is qualified by it. The file-level
+/// `module A.B.C` form (no `=`) plays exactly the same role, so it is taken here too.
+let private rootRegex =
+    Regex(
+        $@"^(?:namespace|module)\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*$",
+        RegexOptions.Compiled
+    )
+
+/// Every public val one signature file declares: `name, the .fsi, the FULLY-QUALIFIED module that declares it`.
+///
+/// The module is what #713 turns on, and the old map could not answer it: it keyed `name -> .fsi FILES`, so
+/// "which module declares `subscriptions`?" had no answer and `qualifiedCite` had to accept ANY uppercase
+/// qualifier — including a product module's. Walking the `module`/`val` indents is what recovers it.
+let private shippedValsIn (rel: string) (lines: string seq) =
+    (("", [], []), lines)
+    ||> Seq.fold (fun (root, scopes, acc) line ->
+        // Scopes are held outermost-first and their indents strictly increase, so "pop every module this line
+        // has dedented out of" is exactly "keep the ones indented less than this line".
+        let enclosing (indent: int) = scopes |> List.filter (fun (i, _) -> i < indent)
+
+        let rootMatch = rootRegex.Match line
+        let moduleMatch = moduleRegex.Match line
+        let valMatch = publicValRegex.Match line
+
+        if rootMatch.Success then
+            rootMatch.Groups.["name"].Value, [], acc
+        elif moduleMatch.Success then
+            let indent = moduleMatch.Groups.["indent"].Value.Length
+            root, enclosing indent @ [ indent, moduleMatch.Groups.["name"].Value ], acc
+        elif valMatch.Success then
+            let indent = valMatch.Groups.["indent"].Value.Length
+            let scopes = enclosing indent
+
+            let declaringModule =
+                (if root = "" then [] else [ root ]) @ (scopes |> List.map snd)
+                |> String.concat "."
+
+            root, scopes, (valMatch.Groups.["name"].Value, rel, declaringModule) :: acc
+        else
+            root, scopes, acc)
+    |> fun (_, _, acc) -> List.rev acc
+
+let private shippedVals =
     Directory.EnumerateFiles(apiSurfaceRoot, "*.fsi", SearchOption.AllDirectories)
     |> Seq.collect (fun path ->
         let rel = Path.GetRelativePath(apiSurfaceRoot, path).Replace('\\', '/')
+        shippedValsIn rel (File.ReadAllLines path))
+    |> Seq.toList
 
-        File.ReadAllLines path
-        |> Seq.choose (fun line ->
-            let m = publicValRegex.Match line
-            if m.Success then Some(m.Groups.["name"].Value, rel) else None))
-    |> Seq.groupBy fst
-    |> Seq.map (fun (name, entries) -> name, entries |> Seq.map snd |> Set.ofSeq)
-    |> Map.ofSeq
+let private byName pick =
+    shippedVals
+    |> List.groupBy (fun (name, _, _) -> name)
+    |> List.map (fun (name, entries) -> name, entries |> List.map pick |> Set.ofList)
+    |> Map.ofList
+
+/// name -> the shipped `.fsi` files that declare it.
+let private shippedSurface = byName (fun (_, file, _) -> file)
+
+/// name -> the fully-qualified module(s) that DECLARE it: `subscriptions` is
+/// `FS.GG.UI.Controls.Elmish.ControlsElmish`, and `runScriptToModel` is that module's nested `….Perf`.
+let private declaringModules = byName (fun (_, _, declaringModule) -> declaringModule)
 
 /// Everything the product is TOLD, as one body of text. Concatenated on purpose: S-DOC asks whether a
 /// surface is documented AT ALL, and which skill says it is R-REACH's question, not this one.
@@ -208,16 +277,68 @@ let private skillsWithUnclosedFence =
 let private skillsWithUntaggedFence =
     skillCode |> List.filter (fun (_, c) -> c.UntaggedFences > 0) |> List.map fst
 
-/// A skill documents a surface when it CITES it as code. Code-only, so a surface is not credited to a skill
-/// that merely uses its name as an English word (#654).
+/// An UNQUALIFIED citation: the bare name, reached through no module's dot.
 ///
 /// The boundary is `[\w']`, not `\b`, because a prime is part of the NAME and `\b` cannot see that. `\b` sits
 /// between a word char and a non-word char, so `\bchecked'\b` demands a word char after the quote and can
 /// never match `CheckBox.checked'` at all — while a bare `\bcount\b` happily matches the `count'` in some
 /// other symbol. Treating the quote as a name character settles both: `withKey` is still not credited to a
 /// skill that shows `withKeyboard`, and `count` is not credited to one that shows `count'`.
+///
+/// THE DOT IS IN THE LOOKBEHIND, and that is #713's other half. `.` is not a word character, so the plain
+/// `(?<![\w'])` happily matches the `subscriptions` inside `AppRoot.Model.subscriptions` — i.e. the bare-name
+/// matcher cannot see that the occurrence is qualified by somebody else's module, and would credit the shipped
+/// surface to it. Excluding the dot here means a QUALIFIED occurrence is judged by `qualifiedCite` (which
+/// checks WHICH module) and by nothing else.
+let private bareCite (corpus: string) (name: string) =
+    Regex.IsMatch(corpus, $@"(?<![\w'.]){Regex.Escape name}(?![\w'])")
+
+/// Every qualifier a citation of `name` is written with: `ControlsElmish.subscriptions` yields
+/// `ControlsElmish`, `AppRoot.Model.subscriptions` yields `AppRoot.Model`. The leading `(?<![\w'.])` makes the
+/// match start at the FIRST segment, so a fully-spelled `FS.GG.UI.Scene.Scene.describe` is read whole rather
+/// than clipped to its last segment.
+let private citedQualifiers (corpus: string) (name: string) =
+    Regex.Matches(corpus, $@"(?<![\w'.])(?<qualifier>(?:[A-Z][\w']*\.)+){Regex.Escape name}(?![\w'])")
+    |> Seq.map (fun m -> m.Groups.["qualifier"].Value.TrimEnd '.')
+
+/// Is `qualifier` a legal way to WRITE `modulePath`? It is exactly when it is a contiguous SUFFIX of it.
+///
+/// This is not a heuristic — it is what `open` does. `open FS.GG.UI.Controls.Elmish` makes the declaring
+/// module `FS.GG.UI.Controls.Elmish.ControlsElmish` writable as `ControlsElmish`; opening THAT makes its
+/// nested `…ControlsElmish.Perf` writable as `Perf`. Every legal spelling drops some PREFIX of the declared
+/// path and keeps the rest, so an honest citation's qualifier is always a suffix — and the check must accept
+/// every one of them, or it un-credits correct docs and "the rule INVENTS violations" (#598).
+///
+/// `AppRoot.Model` is a suffix of nothing this package ships. That is the whole of #713.
+let private isSpellingOf (modulePath: string) (qualifier: string) =
+    let segments (s: string) = s.Split '.' |> Array.filter (fun part -> part <> "")
+    let declared = segments modulePath
+    let written = segments qualifier
+
+    written.Length > 0
+    && written.Length <= declared.Length
+    && Array.forall2 (=) written declared.[declared.Length - written.Length ..]
+
+/// A citation that names the module the surface actually comes FROM. This is what reaches PAST a local binding
+/// of the same name, which is exactly what it is for.
+///
+/// IT NOW CHECKS **WHICH** MODULE (#713). It used to require only that the qualifier start uppercase, which a
+/// PRODUCT module satisfies as readily as a shipped one — so `fs-gg-elmish`, which binds the product's own
+/// `let subscriptions _ = Sub.none` and writes `AppRoot.Model.subscriptions` in its `program` example, credited
+/// the *shipped* `ControlsElmish.subscriptions` (the keyboard+controls MERGE helper). That surface was taught
+/// by no skill and declared in no ledger line, and it passed S-DOC by being documented by a homonym OF THE
+/// PRODUCT'S OWN FUNCTION — the `visible` failure of #692, one hop further out, surviving through the very
+/// hatch #692 opened.
+let private qualifiedCite (corpus: string) (name: string) =
+    let declaring = declaringModules |> Map.tryFind name |> Option.defaultValue Set.empty
+
+    citedQualifiers corpus name
+    |> Seq.exists (fun qualifier -> declaring |> Set.exists (fun declared -> isSpellingOf declared qualifier))
+
+/// A skill documents a surface when it CITES it as code — bare, or through a module that really declares it.
+/// Code-only, so a surface is not credited to a skill that merely uses its name as an English word (#654).
 let private citesName (corpus: string) (name: string) =
-    Regex.IsMatch(corpus, $@"(?<![\w']){Regex.Escape name}(?![\w'])")
+    bareCite corpus name || qualifiedCite corpus name
 
 /// The F# forms that BIND a name rather than cite one (#692). `let`/`and`/`use` with any modifier order,
 /// `member` with an optional self-identifier, and the `fun`/`for` binders — the shapes a skill's own example
@@ -229,7 +350,7 @@ let private citesName (corpus: string) (name: string) =
 ///
 /// KNOWN GAP: a function PARAMETER (`let onScreen (bounds: Rect list) = … bounds …`) is a binding this cannot
 /// see, and matching one properly means parsing F# rather than pattern-matching it. Nothing is credited that
-/// way today. Filed rather than half-done — see the qualified-module gap below, which is the same family.
+/// way today, and it is the last member of this family still standing (#713 closed the qualified-module one).
 let private bindsName (corpus: string) (name: string) =
     let n = Regex.Escape name
 
@@ -240,23 +361,6 @@ let private bindsName (corpus: string) (name: string) =
         + $@"|(?<![\w'])fun\s+{n}\s*->"
         + $@"|(?<![\w'])for\s+{n}\s+in(?![\w'])"
     )
-
-/// A citation that names the module it comes from: `Scene.describe`, `FS.GG.UI.Scene.describe`. This is what
-/// reaches PAST a local binding of the same name, which is exactly what it is for.
-///
-/// IT DOES NOT CHECK **WHICH** MODULE, and that is a known hole rather than an oversight (#713). Any
-/// uppercase-qualified name satisfies it — including a PRODUCT module's. The live instance: `fs-gg-elmish`
-/// binds `let subscriptions _ = Sub.none` (the product's own) and writes `AppRoot.Model.subscriptions` in its
-/// `program` example, which credits the shipped `ControlsElmish.subscriptions` (the keyboard+controls MERGE
-/// helper) — a surface no skill teaches and no ledger line declares. That is the same hidden-surface failure
-/// as `visible`, one hop further out, and it survives this fix through the very hatch this function opens.
-///
-/// Closing it means holding the qualifier against the module that DECLARES the surface, which `shippedSurface`
-/// does not currently record (it keys on the `.fsi` FILE, not the module), and it carries its own cascade —
-/// `Perf.runScriptToModel` is qualified by a NESTED module, so the check must accept those too. That is a
-/// change with its own blast radius, not a line in this one.
-let private qualifiedCite (corpus: string) (name: string) =
-    Regex.IsMatch(corpus, $@"(?<![\w'])(?:[A-Z][\w']*\.)+{Regex.Escape name}(?![\w'])")
 
 /// Does THIS skill cite `name` as the shipped API? (#692 — the SAME-LANGUAGE homonym.)
 ///
@@ -285,6 +389,19 @@ let private qualifiedCite (corpus: string) (name: string) =
 /// it: `fs-gg-game-core` binds `let visible : Rect` and then uses `visible` on the next line inside its
 /// culling example, so occurrences (2) exceed definitions (1) and `Attr.visible` stays credited by a local
 /// rectangle in a skill about game simulation. Counting cannot see scope. Shadowing can.
+///
+/// #713 — AND THE QUALIFIER MUST NAME THE RIGHT MODULE, on BOTH branches. The escape hatch above only asked
+/// that a qualifier exist, so `AppRoot.Model.subscriptions` — a PRODUCT module — reached the shipped
+/// `ControlsElmish.subscriptions`. `qualifiedCite` now holds the qualifier against the module that DECLARES
+/// the surface, which closes the bound branch.
+///
+/// The unbound branch needed it too, and that is the subtler half. `citesName` matched the bare name with a
+/// `[\w']` lookbehind, and `.` is not a word character — so `AppRoot.Model.subscriptions` ALSO satisfied the
+/// bare matcher. Fixing only the bound branch would therefore have left a fix that holds by COINCIDENCE:
+/// delete the unrelated `let subscriptions _ = Sub.none` from the skill and `subscriptions` stops being bound,
+/// the unbound branch takes over, and the same false credit walks straight back in. So `bareCite` excludes the
+/// dot, and every qualified occurrence — on either branch — is judged by the module it names. It cost the
+/// corpus nothing: no surface today is credited only by a foreign qualifier.
 let private skillCites (code: string) (name: string) =
     if bindsName code name then
         qualifiedCite code name
@@ -323,6 +440,24 @@ let surfaceDocCoverageTests =
                 $"the api-surface parse found {shippedSurface.Count} public vals — far fewer than the ~428 this \
                   repo ships, so the extractor has stopped seeing the surface. That is a defect in this test, \
                   not a smaller surface."
+
+            // ...and the MODULE half of that parse, which #713 turns the whole qualified-citation rule on. If
+            // the `module`/`namespace` walk ever stops seeing a declaration, the vals under it get an empty or
+            // truncated path, no qualifier can be a suffix of it, and every QUALIFIED citation silently stops
+            // crediting — reporting correct, documented surfaces as undeclared. That is the gate inventing
+            // violations (#598), and it is the direction this fix can fail in, so it is asserted by name.
+            let rootless =
+                shippedVals
+                |> List.filter (fun (_, _, declaringModule) -> not (declaringModule.Contains "."))
+                |> List.map (fun (name, file, declaringModule) -> $"{name} ({file}: '{declaringModule}')")
+                |> List.distinct
+
+            Expect.isEmpty
+                rootless
+                $"these public vals resolved to no namespace-qualified declaring module, so the `module` / \
+                  `namespace` walk has stopped seeing the shape of the signature file. Every qualified citation \
+                  of them would silently STOP crediting — which reports correct docs as undeclared, rather than \
+                  letting an undocumented surface through. Fix the walk, not the docs. Rootless: {commaSep rootless}"
 
             // The code extractor is the half that can fail SILENTLY. If `codeReferencesIn` ever stops seeing
             // fences or backticks it returns little or nothing, and then NOTHING is documented — which reds
@@ -554,17 +689,177 @@ let kinds = Scene.describe hud
         // ---- end #692 -------------------------------------------------------------------------------
 
 
+        // ---- #713: the qualified hatch did not check WHICH module. --------------------------------------
+        //
+        // #692's escape hatch asked only that a qualifier EXIST and start uppercase. A product module
+        // satisfies that as readily as a shipped one, so the homonym walked out through the hatch itself —
+        // and, as ever, in the direction that makes a surface look DOCUMENTED, which is the direction the
+        // gate stops asking about (#654: "it makes the number go UP").
+        //
+        // These are the bug and its cascade. The cascade cases are not decoration: a naive "the qualifier
+        // must EQUAL the declaring module" would red the gate against docs that are correct, which is the
+        // "rule INVENTS violations" failure (#598) and the reason this could not be a line in #692.
+
+        test "a PRODUCT module's homonym does not document the shipped surface it shadows" {
+            // The bug, exactly as it shipped. `fs-gg-elmish` binds the product's own `subscriptions` and cites
+            // the product's own module — and thereby credited the shipped `ControlsElmish.subscriptions`, the
+            // keyboard+controls MERGE helper, which no skill taught and no ledger line declared.
+            let markdown =
+                """
+```fsharp
+let subscriptions _ : AdapterSubscription<Msg> list = Sub.none
+
+let adapterProgram =
+    ControlsElmish.program AppRoot.Model.init AppRoot.Model.update view AppRoot.Model.subscriptions
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "subscriptions")
+                "`AppRoot.Model` is a PRODUCT module — it declares nothing this package ships, so it cannot \
+                 document `ControlsElmish.subscriptions`. An uppercase qualifier is not a citation of the API; \
+                 naming the module the API COMES FROM is."
+
+            // ...and the same block's honest citation is untouched, or the rule is a blunt instrument.
+            Expect.isTrue
+                (skillDocuments markdown "program")
+                "`ControlsElmish.program` names the module that really declares `program` — it still cites"
+        }
+
+        test "a NESTED module qualifies the surface it declares" {
+            // Cascade 1, and the one that would have broken first. `runScriptToModel` is declared in
+            // `FS.GG.UI.Controls.Elmish.ControlsElmish.Perf` — a module nested INSIDE `ControlsElmish` — and
+            // `fs-gg-elmish` cites it as `Perf.runScriptToModel`, which is what `open`ing the parent gives you.
+            // A rule demanding the qualifier EQUAL the declaring module would un-credit this correct doc.
+            let markdown = "Call `Perf.runScriptToModel` to fold a script to a final model."
+
+            Expect.isTrue
+                (skillDocuments markdown "runScriptToModel")
+                "`Perf` is the LAST segment of the declaring module's path, which is exactly how F# lets you \
+                 write it once its parent is opened — a suffix of the path is a spelling of the module"
+
+            Expect.isTrue
+                (skillDocuments "```fsharp\nlet m = ControlsElmish.Perf.runScriptToModel script\n```\n" "runScriptToModel")
+                "...and so is the longer spelling, which names the parent too"
+        }
+
+        test "a SIBLING module qualifies the surface it declares" {
+            // Cascade 2. `AdapterCmd` and `ControlsElmish` are two top-level modules of ONE signature file
+            // (#663 found that pair), so a reader keyed on the FILE cannot tell them apart — which is precisely
+            // why the old map, keyed `name -> .fsi files`, could not answer "which module?" at all.
+            Expect.isTrue
+                (skillDocuments "Route `AdapterCmd.diagnostics` at the host boundary." "diagnostics")
+                "`AdapterCmd` declares `diagnostics`, so it cites it — a sibling module in the same file is \
+                 still the declaring module"
+        }
+
+        test "the fully-spelled path is a spelling too, and a foreign PREFIX is not" {
+            // A qualifier is legal exactly when it is a contiguous SUFFIX of the declaring module's path,
+            // because every legal spelling drops a PREFIX (whatever you opened) and keeps the rest.
+            Expect.isTrue
+                (skillDocuments "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.ControlsElmish.program a b c d\n```\n" "program")
+                "the whole path names the declaring module — nothing is dropped, so nothing is wrong"
+
+            // The mirror. A path that shares the package's PREFIX but not its tail is a different module, and
+            // suffix-matching is what tells them apart — `Elmish.Program` is not `Elmish.ControlsElmish`.
+            Expect.isFalse
+                (skillDocuments "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.Program.program a b c d\n```\n" "program")
+                "a real-looking prefix does not make `Program` the declaring module — it declares nothing"
+        }
+
+        test "an unbound name is not credited by a foreign qualifier either" {
+            // The half that keeps the fix from holding by COINCIDENCE. Shadowing only routes a name through
+            // `qualifiedCite` when the skill BINDS it — and `AppRoot.Model.subscriptions` also satisfies the
+            // bare-name matcher, because `.` is not a word character. So a skill that cites the product module
+            // WITHOUT binding the name (delete the `let subscriptions` line above and this is the corpus) would
+            // walk the same false credit straight back in through the other branch.
+            let markdown =
+                """
+```fsharp
+let adapterProgram =
+    ControlsElmish.program AppRoot.Model.init AppRoot.Model.update view AppRoot.Model.subscriptions
+```
+"""
+
+            Expect.isFalse
+                (skillDocuments markdown "subscriptions")
+                "nothing here BINDS `subscriptions`, so the unbound branch judges it — and it must reach the \
+                 same verdict, or #713's fix would depend on an unrelated `let` staying where it is"
+
+            // ...and the bare citation the unbound branch exists for still works. Backticks are a citation.
+            Expect.isTrue
+                (skillDocuments "Call `respondsProofOf` to tell renders from responds." "respondsProofOf")
+                "an unqualified name in backticks still cites — excluding the dot narrows nothing it should not"
+        }
+
+        // The walk underneath all of the above. Everything #713 decides rests on `shippedValsIn` resolving the
+        // right declaring module, and the three shapes below are the ones it has to tell apart. The DEDENT is
+        // the one nothing else pins: `program` sits back in `ControlsElmish` after `Perf` closed, and a fold
+        // that forgot to pop would file it under `…ControlsElmish.Perf` and un-credit every honest citation.
+        test "the module walk sees siblings, nesting, and the dedent back out" {
+            let lines =
+                [ "namespace FS.GG.UI.Controls.Elmish"
+                  ""
+                  "module AdapterCmd ="
+                  "    val diagnostics: int"
+                  ""
+                  "module ControlsElmish ="
+                  "    val subscriptions: int"
+                  ""
+                  "    module Perf ="
+                  "        val runScriptToModel: int"
+                  ""
+                  "    val program: int" ]
+
+            Expect.equal
+                (shippedValsIn "ControlsElmish.fsi" lines |> List.map (fun (name, _, m) -> name, m))
+                [ "diagnostics", "FS.GG.UI.Controls.Elmish.AdapterCmd"
+                  "subscriptions", "FS.GG.UI.Controls.Elmish.ControlsElmish"
+                  "runScriptToModel", "FS.GG.UI.Controls.Elmish.ControlsElmish.Perf"
+                  "program", "FS.GG.UI.Controls.Elmish.ControlsElmish" ]
+                "two top-level modules in one file are SIBLINGS, `Perf` is NESTED, and `program` DEDENTS back \
+                 into `ControlsElmish` — the three shapes the whole qualified-citation rule is decided on"
+        }
+
+        test "an access-modified module still declares its members" {
+            // Latent: the api-surface carries no `module internal` today, so the CORPUS cannot witness this and
+            // every assertion above passes with the bug in place. It is pinned here because the failure is
+            // silent and lands in the dangerous direction — a module the walk fails to match does not vanish,
+            // it hands its vals to the module ENCLOSING it, so a skill that correctly cites `Foo.bar` finds
+            // `Foo` is a suffix of nothing, loses its credit, and S-DOC accuses a correct doc (#598). The
+            // mirror is already known to leak `internal` declarations (S-INT, #585), so the shape is real.
+            let lines =
+                [ "namespace FS.GG.UI.Controls"
+                  ""
+                  "module internal Foo ="
+                  "    val bar: int -> int" ]
+
+            Expect.equal
+                (shippedValsIn "Fake.fsi" lines)
+                [ "bar", "Fake.fsi", "FS.GG.UI.Controls.Foo" ]
+                "an access modifier does not change WHICH module a val belongs to — `bar` is `Foo`'s, and a \
+                 walk that skipped the line would silently file it under the namespace instead"
+        }
+        // ---- end #713 -------------------------------------------------------------------------------
+
+
         test "a fence indented inside a list item still opens a block" {
             // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list
             // item is legitimately indented past it. The block then never opened, every line of its code landed
             // in the PROSE buffer where it can document nothing, and a surface cited only here was reported
             // undeclared — the gate inventing a violation against a doc that is correct.
+            //
+            // The fixture says `ControlsElmish.program`, and it MUST, now that #713 checks which module a
+            // qualifier names. It used to say `Program.program` — and there is no `Program` module in the
+            // shipped api-surface, so that citation was never one. The fiction was invisible while any
+            // uppercase qualifier would do; the rule that catches `AppRoot.Model` catches this too, and the
+            // fix is to cite the module the surface actually comes from.
             let markdown =
                 """
 - To drive the program headlessly:
 
       ```fsharp
-      let p = Program.program init update view subs
+      let p = ControlsElmish.program init update view subs
       ```
 """
 

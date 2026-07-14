@@ -112,6 +112,38 @@ The names live in that dedicated sub-namespace so `Cmd`/`Sub` never shadow Fable
 `Elmish.Cmd`; a generated product does not `open Elmish`, so `Cmd.none` resolves
 unambiguously (qualify only if the product also opens Fable Elmish).
 
+### Two subscription lists, one slot — `ControlsElmish.subscriptions`
+
+`Sub.none` is the whole story only while your product subscribes to nothing. Wire up
+keyboard shortcuts and you have **two** lists — the keyboard's and the control runtime's —
+and `program` has exactly **one** slot to put them in. `ControlsElmish.subscriptions` is the
+merge:
+
+```fsharp
+open FS.GG.UI.Controls.Elmish
+open FS.GG.UI.Controls.Elmish.Authoring
+
+// An AdapterSubscription is a { Id; Subscribe } record: a name, and a thunk yielding commands.
+// `ControlsElmish.interpretKeyboardEffect` is what turns a fired KeyboardEffect into those
+// commands (see fs-gg-keyboard-input), lifting each CommandId through your own message ctor.
+let keyboardSubs : AdapterSubscription<Msg> list =
+    [ { Id = "keyboard"
+        Subscribe = fun () -> ControlsElmish.interpretKeyboardEffect Activate keyboardEffect } ]
+
+// keyboard first, controls second — one list, in that order, for `program`.
+let subscriptions _ : AdapterSubscription<Msg> list =
+    ControlsElmish.subscriptions keyboardSubs Sub.none
+```
+
+It is an ordered concatenation and nothing more: `subscriptions keyboard controls` is
+`keyboard @ controls`. So the reason to call it rather than write `@` yourself is that it
+**names which list goes first**, and the order is the contract — the two lists can carry the
+same `Id`, and a consumer that folds them in order sees the keyboard's first.
+
+The half you do not have is `Sub.none`, not a bare `[]` — the same convention as above, and
+this is the ordinary case: a product with keyboard shortcuts and no control-runtime
+subscriptions of its own.
+
 ## Drive interaction headlessly — a button that renders is not a button that dispatches
 
 A suite that only exercises `update` proves the part that was never in doubt. It
