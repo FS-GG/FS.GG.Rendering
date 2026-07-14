@@ -331,13 +331,26 @@ while (($#)); do
       echo "  --changed <ref>    link half only for skill bodies changed since <ref>"
       echo "                     ([[refs]] and bare #N are hermetic and always sweep the tree)"
       echo
+      # NO COUNTS HERE, and that is not laziness (#733). The number of published bodies belongs to
+      # the MANIFEST, which can change without touching this script — and `--help` runs BEFORE the
+      # manifest is read, so it cannot know it. It used to say "the 21 bodies" and would have gone
+      # on saying 21 forever. The summary already prints the real count ($n_skills), from the real
+      # source, after the real load. A gate that hardcodes a fact it is capable of reading is a small
+      # self-inflicted instance of the very drift it exists to prevent.
+      #
+      # The subject is described, not counted — and it is described in FULL: since #723 the repo
+      # surface includes the WRAPPERS in both skill roots, not just the library bodies and the
+      # authoring note. Naming a narrower subject than the gate actually has is the #698 shape, and
+      # help text is where a reader goes to learn what was checked.
       echo "TWO SUBJECTS, always both — there is no flag to narrow this (see § 0b):"
-      echo "  PUBLISHED  the 21 bodies the skill manifest ships into a product."
+      echo "  PUBLISHED  the bodies the skill manifest ships into a product."
       echo "             A [[ref]] resolves against the MANIFEST; a bare #N is REJECTED (it would"
       echo "             point at the reader's own tracker once materialized)."
-      echo "  REPO       src/*/skill/SKILL.md + template/product-skills/README.md — they ship"
-      echo "             nowhere, so their reader is standing HERE. A [[ref]] resolves against"
-      echo "             .claude/skills/; a bare #N is RESOLVED against this repo, not rejected."
+      echo "  REPO       the bodies that ship NOWHERE — src/*/skill/SKILL.md, the authoring note"
+      echo "             template/product-skills/README.md, and the non-kit wrappers under"
+      echo "             .claude/skills/ and .agents/skills/ (§ 0c). Their reader is standing HERE,"
+      echo "             so a [[ref]] resolves against .claude/skills/, and a bare #N is RESOLVED"
+      echo "             against this repo rather than rejected."
       exit 0 ;;
     *) echo "check-skill-refs: unknown argument '$1'" >&2; exit 2 ;;
   esac
@@ -1095,20 +1108,40 @@ ref_markers=$( { md_files | xargs -0 -r grep -HEon \
     printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mid"
   done)
 
-is_ref_prose() { # file id
-  [[ -n $ref_markers ]] &&
-    awk -F'\t' -v f="$1" -v r="$2" '$1==f && $3==r {found=1} END{exit !found}' <<<"$ref_markers"
+# ── ONE ROW LOOKUP, FOUR TABLES (#733) ──────────────────────────────────────────────────────────
+# `is_ref_prose`, `wiki_has`, `is_prose` and `is_excused` are the same question asked of four tables:
+# "does this file have a row carrying this value?" They were four near-identical awk scans, differing
+# only in delimiter and table — and the difference that MATTERED was invisible between them.
+#
+# THE SUBTLETY, AND WHY IT MAY NOT LIVE IN ONE OF THE FOUR. Three tables can field-split on `$3`.
+# `wiki_has` cannot: its ref can itself CONTAIN the delimiter, because a qualified
+# `[[fs-gg-game:fs-gg-scene]]` carries a colon. Split it and the comparison is against `fs-gg-game`,
+# which never matches — so a live `prose-ok` marker would be reported STALE while it was doing its
+# job, and the author would be told to drop the one line keeping their body green. That reasoning
+# lived in a comment on exactly ONE of the four, where it protected exactly one of them, and nothing
+# stopped the next author re-deriving it for a fifth table and getting it wrong. It is the one-flag-bug
+# class (`grep -H`, Game#241) this suite exists to catch, and a gate does not get to commit it.
+#
+# So: a row is `<file><sep><line><sep><value>`, and THE VALUE IS EVERYTHING PAST THE SECOND SEPARATOR
+# — never field 3. That is exact for the colon table, and harmless for the tab ones, whose values
+# carry no tab. One helper, one reading, and a fifth caller inherits the fix instead of the bug.
+#
+# The empty-table guard comes with it. `is_ref_prose` had one and `wiki_has` did not — a difference
+# with no reason behind it, which is its own small evidence for this consolidation.
+row_has() { # rows sep file value
+  [[ -n $1 ]] || return 1
+  awk -v sep="$2" -v f="$3" -v v="$4" '
+    {
+      i = index($0, sep);                if (!i) next
+      rest = substr($0, i + length(sep))
+      j = index(rest, sep);              if (!j) next
+      if (substr($0, 1, i - 1) == f && substr(rest, j + length(sep)) == v) found = 1
+    }
+    END { exit !found }' <<<"$1"
 }
 
-# A `file:line:ref` row's REF is everything past the second colon — NOT `$3`. A qualified
-# `[[fs-gg-game:fs-gg-scene]]` carries a colon of its own, so a field-split would compare against
-# `fs-gg-game` and silently never match: the marker would be reported stale while it was doing its job.
-wiki_has() { # file id
-  awk -v f="$1" -v r="$2" \
-    '{ ref = $0; sub(/^[^:]*:[0-9]+:/, "", ref)
-       split($0, p, ":")
-       if (p[1] == f && ref == r) found = 1 } END { exit !found }' <<<"$wikirefs"
-}
+is_ref_prose() { row_has "$ref_markers" $'\t' "$1" "$2"; }   # file id
+wiki_has()     { row_has "$wikirefs"    ':'   "$1" "$2"; }   # file id
 
 while IFS=: read -r file line ref; do
   [[ -z ${ref:-} ]] && continue
@@ -1244,22 +1277,75 @@ fi
 # gate.yml runs on every PR) the repo surface's links would be checked by NOBODY. The gate would report
 # green having examined none of them, on precisely the diffs that touched them. That is the
 # `.github#416` shape this whole change exists to close, re-created inside its own fix, and it is
-# invisible from the full sweep — where `link_md_files` falls through to `md_files` and everything
+# invisible from the full sweep — where the scope falls through to `md_files` and everything
 # looks fine. § 7 pins it with a scoped run over a repo body.
-link_md_files() {
-  if [[ $link_scope == diff ]]; then
-    git diff --name-only -z --diff-filter=ACMR "$CHANGED_BASE...HEAD" -- "${body_dirs[@]}" \
-      | while IFS= read -r -d '' f; do
-          # `if`, not an `&&` chain. The while's status is its LAST command's, so a final changed file
-          # that is NOT a body leaves this returning 1 — and under `pipefail` that reddens every
-          # pipeline this feeds, aborting an assignment downstream and killing the script with a bare
-          # `exit 1` and no output at all. The filter's verdict on the last file is not the scan's.
-          if [[ -f $f ]] && grep -qxF -- "$f" <<<"$all_body_paths"; then printf '%s\0' "$f"; fi
-        done
-  else
-    md_files
+#
+# ── MATERIALISED ONCE, AND THE LIST IS WHAT IS MATERIALISED (#733) ──────────────────────────────
+# `git diff` is a fork, and this subject has FOUR consumers: `emit_links` (§ 2), `repo_link_files`
+# (§ 3's promoted bare refs), the `closed-ok` marker scan, and `is_link_scoped` in the audit below.
+# So it is computed HERE, into a variable, and `link_md_files` merely re-emits it.
+#
+# It used to be a FUNCTION that shelled out to `git diff` on every call, with a comment down at
+# `link_files_list` claiming the diff was materialised ONCE. It was materialised once AT THAT ONE
+# CALL SITE; the other three re-ran it, so under `--changed` the diff ran FOUR TIMES. Harmless for
+# runtime — four forks — but the comment reasoned explicitly about avoiding repeated diffs, and in
+# this file the argument IS the artifact: a comment that quietly stops being true is the exact
+# failure mode the whole script is written against, and the next reader adds a fifth consumer on the
+# strength of it. Materialise the LIST, not one reading of it, and the claim becomes true again.
+#
+# ── A FAILING `git diff` IS NOT AN EMPTY DIFF, AND THE `|| true` CANNOT TELL THEM APART ─────────
+# The obvious form of this — `$( … | grep -v … || true)` over the whole `if` — is a FAIL-OPEN, and
+# it was written here and caught in review. The empty case genuinely NEEDS that `|| true` (a scope
+# of zero bodies is the NORMAL case: most diffs touch no skill body, and `grep -v` then exits 1 and
+# `pipefail` would kill the script). But the same `|| true` also swallows git's exit code — so a
+# `git diff` that DIES hands back an empty list, indistinguishable from a clean one, and the run
+# then prints "this diff touches no published skill body" and exits GREEN over a subject it never
+# examined. Measured, not theorised: with a `git diff` forced to exit 128, that is exactly what it
+# printed, while the code this replaced died with git's own `fatal:`. Losing a loud death for a
+# silent pass is the `.github#416` shape, in the gate written to close it.
+#
+# So the diff is taken on its own, its status is CHECKED, and only the FILTER gets the `|| true`.
+# It goes through a file rather than a variable because a command substitution cannot carry `-z`
+# output at all: bash discards NUL bytes, which is the very byte the `-z` is for.
+if [[ $link_scope == diff ]]; then
+  diff_out=$(mktemp)
+  if ! git diff --name-only -z --diff-filter=ACMR "$CHANGED_BASE...HEAD" -- "${body_dirs[@]}" >"$diff_out"; then
+    rm -f "$diff_out"
+    echo "check-skill-refs: FAILED — \`git diff\` against '$CHANGED_BASE' failed, so the set of skill" >&2
+    echo "  bodies this diff touches is UNKNOWN. That is NOT the same as 'it touches none', and" >&2
+    echo "  reading it that way would report green over a subject nothing examined. The base itself" >&2
+    echo "  resolved and shares history (both are checked above), so this is git failing, not the" >&2
+    echo "  ref being bad. Degrade toward MORE checking, never less (§ 4)." >&2
+    exit 1
   fi
+  link_files_list=$(
+    while IFS= read -r -d '' f; do
+      # `if`, not an `&&` chain. The while's status is its LAST command's, so a final changed file
+      # that is NOT a body leaves this returning 1 — and under `pipefail` that reddens the
+      # pipeline, aborting this assignment and killing the script with a bare `exit 1` and no
+      # output at all. The filter's verdict on the last file is not the scan's.
+      if [[ -f $f ]] && grep -qxF -- "$f" <<<"$all_body_paths"; then printf '%s\n' "$f"; fi
+    done <"$diff_out" | grep -v '^[[:space:]]*$' || true)
+  rm -f "$diff_out"
+else
+  link_files_list=$(printf '%s\n' "$all_body_paths" | grep -v '^[[:space:]]*$' || true)
+fi
+
+# `|| true` above, and `if` (not `&&`) here — the same pipefail trap, and here it is REACHABLE on the
+# happy path. An EMPTY scope is the NORMAL case under `--changed`: most diffs touch no skill body at
+# all (§ 4 says so in as many words). `<<<""` still feeds the loop one empty line, so an `&&` chain
+# would short-circuit on it, return 1, redden every pipeline this function feeds, and kill the script
+# with no findings and no banner — on precisely the diffs the scope exists to leave alone.
+link_md_files() {
+  while IFS= read -r f; do
+    if [[ -n $f ]]; then printf '%s\0' "$f"; fi
+  done <<<"$link_files_list"
 }
+is_link_scoped() { grep -qxF -- "$1" <<<"$link_files_list"; }
+
+# How many bodies the link half actually LOOKED at — reported, so a scoped run states its subject
+# rather than leaving the reader to infer it from a count of zero.
+n_link_files=$(grep -c . <<<"$link_files_list" || true)
 
 emit_links() {
   link_md_files | xargs -0 -r awk -v OFS='\t' -v def="$DEFAULT_OWNER" "$AWK_STRIP"'
@@ -1358,10 +1444,7 @@ prose_markers=$( { md_files | xargs -0 -r grep -HEon \
     printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mnum"
   done)
 
-is_prose() { # file num
-  [[ -n $prose_markers ]] &&
-    awk -F'\t' -v f="$1" -v n="$2" '$1==f && $3==n {found=1} END{exit !found}' <<<"$prose_markers"
-}
+is_prose() { row_has "$prose_markers" $'\t' "$1" "$2"; }   # file num
 
 # `sort -u` must dedupe on the WHOLE row — keying it would collapse two distinct refs sharing a line.
 # Order for display in a second, non-unique pass.
@@ -1395,17 +1478,6 @@ repo_bare_links=$(
 links=$( { emit_links; [[ -n $repo_bare_links ]] && printf '%s\n' "$repo_bare_links"; true; } \
   | sort -u | sort -t$'\t' -k1,1 -k2,2n)
 
-# The bodies the link half actually LOOKED at — materialised ONCE. `link_md_files` shells out to
-# `git diff` under `--changed`, so calling it per marker in the audit below would re-run the diff for
-# every marker in the tree. It is also the honest answer to "did we examine this file?", which is a
-# question the audits have to ask and must not guess at (§ 4).
-link_files_list=$(link_md_files | tr '\0' '\n' | grep -v '^$' || true)
-is_link_scoped() { grep -qxF -- "$1" <<<"$link_files_list"; }
-
-# How many bodies the link half actually LOOKED at — reported, so a scoped run states its subject
-# rather than leaving the reader to infer it from a count of zero.
-n_link_files=$(grep -c . <<<"$link_files_list" || true)
-
 # The closed-ok allowlist, normalised to `file<TAB>line<TAB>owner/repo#num` — one row per marker.
 #
 # SCOPED WITH § 2, because it IS § 2: auditing a marker means resolving its ref, so it is f(world)
@@ -1427,9 +1499,7 @@ markers=$( { link_md_files | xargs -0 -r grep -HEon \
     printf '%s\t%s\t%s\n' "$mfile" "$mline" "$mref"
   done)
 
-is_excused() { # file owner/repo#num
-  [[ -n $markers ]] && awk -F'\t' -v f="$1" -v r="$2" '$1==f && $3==r {found=1} END{exit !found}' <<<"$markers"
-}
+is_excused() { row_has "$markers" $'\t' "$1" "$2"; }   # file owner/repo#num
 
 # ── link resolution ─────────────────────────────────────────────────────────────────────────────
 # THREE states, and conflating the first two is a bug this gate has already made once: "there is
@@ -1519,6 +1589,11 @@ fi
 if [[ $link_mode == checked && -n $markers ]]; then
   while IFS=$'\t' read -r mfile mline mref; do
     [[ -z ${mref:-} ]] && continue
+    # NOT a `row_has` call, and deliberately: a `links` row is five fields, and the key is COMPOSED
+    # from three of them (`owner/repo#num`) rather than being a value sitting past the second
+    # separator. Forcing it through the helper would mean splitting `$mref` back apart at the call
+    # site to re-join it here — contorting both ends to share code that does not fit. `row_has`
+    # carries the four tables that ARE the same shape; this one is a different question.
     if ! awk -F'\t' -v f="$mfile" -v r="$mref" \
          '$1==f && ($3"/"$4"#"$5)==r {found=1} END{exit !found}' <<<"$links"; then
       report "$mfile" "$mline" "stale closed-ok marker — nothing in this file links to $mref; drop it"
@@ -1578,8 +1653,10 @@ if [[ -n $prose_markers ]]; then
     if [[ $link_scope == diff ]] && is_repo_body "$mfile" && ! is_link_scoped "$mfile"; then
       continue
     fi
-    if ! awk -F'\t' -v f="$mfile" -v n="$mnum" \
-         '$1==f && $3==n {found=1} END{exit !found}' <<<"$all_bares"; then
+    # The FIFTH copy of the scan `row_has` now carries — same shape as `is_prose`, a different table
+    # (the union of both surfaces' bare refs, not the markers). It is the helper's whole point that
+    # this one is a call and not a re-derivation.
+    if ! row_has "$all_bares" $'\t' "$mfile" "$mnum"; then
       report "$mfile" "$mline" "stale prose-ok marker — nothing in this file writes a bare #$mnum; drop it"
     fi
   done <<<"$prose_markers"
