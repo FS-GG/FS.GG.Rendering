@@ -373,6 +373,24 @@ jobs:
           dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -p:Version="$VER" -o artifacts/packages
           echo "Packed:"; ls -1 artifacts/packages/*.nupkg
 
+      # #752 — the coherent set must carry its SIGNATURE FILES before it is pushed anywhere.
+      #
+      # `template/base/docs/api-surface/**` is GENERATED from the pinned package (#694), so the generator's
+      # only input is whatever this release publishes. A package pushed without its `.fsi` cannot be
+      # un-pushed, and the mirror then cannot be generated from the pin until a NEW release fixes it — so
+      # this is the last moment the damage is still preventable, and it is therefore the moment to check.
+      #
+      # Deliberately NOT gated on `steps.ver.outputs.push`: a dry run that packs should prove the same thing
+      # a real one does, or the dry run is not a rehearsal of anything.
+      #
+      # Same script `packaged-consumer.yml` runs on the PR — one definition, two callers (#661). That lane is
+      # the early warning; this one is the gate. It also tolerates FS.GG.UI.Template being in the folder: it
+      # is packed from `.template.package/`, is not a packable `src/` project, and is reported as not-judged
+      # rather than silently skipped.
+      - name: "Packed set carries its .fsi (api-surface/, #752)"
+        shell: bash
+        run: dotnet fsi scripts/check-packed-api-surface.fsx --feed artifacts/packages
+
       - name: Push coherent set to nuget.pkg.github.com/FS-GG
         if: steps.ver.outputs.push == 'true'
         shell: bash

@@ -54,6 +54,14 @@ on:
       # The root build files govern what `dotnet pack` produces and how the samples resolve, so a
       # change to them can break the packaged path without touching src/ or samples/.
       - 'Directory.Build.props'
+      # ...and `Directory.Build.local.props` is the one this repo ACTUALLY EDITS (#752). The canonical
+      # `Directory.Build.props` above is DISTRIBUTED from FS-GG/.github and carries "DO NOT EDIT in a
+      # consumer repo" in its own header — every repo-specific property that governs packing (the package
+      # `<Version>` the samples pin, `PackageReadmeFile`, the `api-surface/` .fsi pack step) lives in
+      # local.props instead. So this list watched the file that cannot change and missed the file that does:
+      # the exact break the comment above describes — "a change to them can break the packaged path without
+      # touching src/ or samples/" — was the one change that could not trigger this gate.
+      - 'Directory.Build.local.props'
       - 'Directory.Packages.props'
       - 'nuget.config'
       - 'FS.GG.Rendering.slnx'
@@ -67,6 +75,8 @@ on:
       # The root build files govern what `dotnet pack` produces and how the samples resolve, so a
       # change to them can break the packaged path without touching src/ or samples/.
       - 'Directory.Build.props'
+      # See the note on the push list above — local.props is the root build file this repo edits (#752).
+      - 'Directory.Build.local.props'
       - 'Directory.Packages.props'
       - 'nuget.config'
       - 'FS.GG.Rendering.slnx'
@@ -138,6 +148,18 @@ jobs:
             echo "::error::the packaged-consumer path is broken — the out-of-solution samples do not restore+build against a feed packed from this commit. See the stale-pin / restore-failed / build-failed violations above, the build log they name, and artifacts/packaged-consumer/source-proof.md."
             exit 1
           fi
+
+      # #752 — the packed nupkgs must CARRY THEIR SIGNATURE FILES, under `api-surface/`.
+      #
+      # `template/base/docs/api-surface/**` is to be GENERATED from the pinned package (#694), so the pinned
+      # package has to contain the `.fsi`. This step proves the packages this commit produces do.
+      #
+      # The rule lives in the SCRIPT, not here, because `release.yml` — the lane that actually publishes —
+      # needs the same rule at the moment it matters, and a second copy in YAML is how the two come to
+      # disagree (#661). This lane is the cheap early warning; release.yml is the one that can still stop the
+      # damage. Both call the same file.
+      - name: "Packed packages carry their .fsi (api-surface/, #752)"
+        run: dotnet fsi scripts/check-packed-api-surface.fsx --feed "$RUNNER_TEMP/packaged-consumer/feed"
 
       # Upload on failure too: `source-proof.md` names the violations, and restore.log/build.log
       # carry the NU#### / FS#### the summary above only points at.
