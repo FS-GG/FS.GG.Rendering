@@ -49,9 +49,25 @@
 
        THE FIX. DisableImplicitLibraryPacksFolder is the SDK's own opt-out and it guards the
        injection itself, so the folder is REMOVED from the source list rather than deprioritised —
-       with it set, a restore that can reach no other source fails NU1100 instead of quietly falling
+       with it set, a restore that can reach no other source fails NU1101 instead of quietly falling
        back to the SDK copy. FSharp.Core then comes from nuget.org (also the signed copy) everywhere,
        and `contentHash` becomes a function of (id, version) alone — no longer of the SDK patch level.
+
+       THAT CLAIM IS NOW EXECUTED, not just asserted (.github#473 step 3). tests/lockfile-cold/ leg 7
+       drives real restores against an empty feed, so the SDK's folder is the only thing that could
+       serve FSharp.Core, and checks three things: in the SDK's default state the folder DOES serve it
+       (the defect is real, so the test has a subject); with the property set the folder is gone and the
+       restore fails NU1101; and a probe that INHERITS THIS FILE gets the same exclusion.
+
+       That last leg is the one guarding the line below. The property is an SDK-INTERNAL condition in
+       Microsoft.FSharp.NetSdk.targets, not a documented MSBuild contract, so the SDK may rename it —
+       and this file is distributed, so it may also be edited into something that merely LOOKS set. A
+       grep could not tell the difference: it passes on a PropertyGroup wrapped in a false Condition,
+       on one overridden after the import, and on one commented out with the element still in the
+       prose. The fixture restores under the file instead, so anything that makes the property inert —
+       however cleverly — puts library-packs back in the source list and reds the leg. Nothing else in
+       the org would notice: the sync drift check only proves this file still MATCHES its copies, never
+       that it WORKS.
 
        WHY THAT MATTERS, STATED HONESTLY (.github#536). This comment used to say it mattered "because
        global.json says rollForward: latestFeature". That was FALSE of most of the repos reading it:
