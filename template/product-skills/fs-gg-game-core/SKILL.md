@@ -29,8 +29,10 @@ The signatures you consume are bundled with this product:
 
 The rest of the simulation substrate ships in the same package, each with a skill that teaches it:
 `Resolution` ([[fs-gg-game:fs-gg-collision]]), `Grids` ([[fs-gg-game:fs-gg-grids]]), `Los` ([[fs-gg-game:fs-gg-line-drawing]]), `Visibility`
-and `Fov` ([[fs-gg-game:fs-gg-visibility]]), and `Ballistics` ([[fs-gg-game:fs-gg-ballistics]]). Reach for those before writing
-your own — they are the authoritative implementations, not starting points to copy.
+and `Fov` ([[fs-gg-game:fs-gg-visibility]]), `Ballistics` ([[fs-gg-game:fs-gg-ballistics]]), `Ai` ([[fs-gg-game:fs-gg-ai]]),
+`Effects` ([[fs-gg-game:fs-gg-effects]]), and the opt-in rigid-body `Physics` ([[fs-gg-game:fs-gg-physics]]).
+Reach for those before writing your own — they are the authoritative implementations, not starting points
+to copy.
 
 Every draw returns a `struct` tuple `(value, nextState)` — deconstruct with `let struct(v, next) = …`.
 All helpers are **total**: degenerate inputs return a documented value, they never throw.
@@ -138,6 +140,42 @@ narrow-phase (`Geometry` box/circle/polygon contacts and segment casts on the sh
 broad-phase over `SpatialGrid`, and the `Resolution` response layer — which `FS.GG.Game.Core` keeps
 deliberately separate from detection. Reach for it instead of hand-rolling AABB or a duplicate bounds
 record.
+
+## Rigid-body physics (`Physics`)
+
+The same package also ships `Physics` — an **opt-in** mini rigid-body engine: a world of bodies, a broad
+phase, a narrow phase, and a semi-implicit Euler step with a warm-started sequential-impulse contact
+solver, over bodies that fall asleep once they settle. It has a dedicated skill,
+**[[fs-gg-game:fs-gg-physics]]**, which is where it is taught; this section exists so you know the module
+is there and how it meets the loop above.
+
+**Arcade resolution stays the default.** `Resolution.pushOut`/`slide`/`push` ([[fs-gg-game:fs-gg-collision]])
+are what most games want — a platformer, a top-down shooter and a grid-sim are all better served by them.
+Reach for `Physics` only when you want *simulated* dynamics: stacking, toppling, bouncing, mass and
+friction. The two know nothing about each other; pick one per world.
+
+What earns `Physics` a mention in *this* skill is that **`Physics.step` is `Loop.advance`'s `integrate`**.
+It is a `World -> float -> World` — exactly the `('world -> float -> 'world)` that *Fixed-timestep march*
+asks you for — because `Config` is baked into the world at `Physics.empty`. So it drops into the
+double-buffered loop with no adapter, and `Physics.interpolate` is the `lerpWorld` that section leaves to
+you: `Physics.interpolate (Loop.alpha simInterval stepped) stepped.Previous stepped.Current` returns one
+`Physics.Transform` (`Position`, `Rotation`) per body, in index order. As everywhere here, `alpha` is read
+at draw time and **never** reaches `step`.
+
+The public surface is exactly eight vals: `Physics.empty`, `Physics.addBody`, `Physics.addBodies`,
+`Physics.pairs`, `Physics.manifold`, `Physics.step`, `Physics.interpolate`, and `Physics.checksum`. Three
+things about them surprise people, and the skill above covers all three:
+
+- **Mass is derived, not given.** Neither `Material` nor `addBody` carries one — a body's mass is the area
+  of its `Shape` at unit density. `Static` and `Kinematic` bodies have infinite mass and no impulse moves
+  them.
+- **A settled body sleeps.** It stops being integrated and becomes immovable until something *actually
+  moving* touches it, so a wake travels at most one body per tick.
+- **Compare worlds with `Physics.checksum`, never structurally.** The checksum hashes **body state** —
+  position, velocity, rotation, angular velocity — and nothing else. A `World` also carries sleep counters
+  and the warm-start cache, which are derived each step, so two worlds that agree on every body can still
+  differ structurally: structural equality reports a divergence that is not one. The checksum is your
+  desync tripwire.
 
 ## Culling
 
@@ -323,10 +361,13 @@ Record simulation evidence (determinism replays, collision/culling cases) under 
 
 ## Package Boundary
 
-`Geometry`, `Rng`, `FixedStep`, `Loop`, `Pathfinding`, and `SpatialGrid` (plus the sim `Point`/`Rect`/`Cell`) all
-live in `FS.GG.Game.Core` (referenced only on the `game`/`sample-pack` profiles). `FS.GG.Game.Core` is the
-BCL-only bottom layer — it depends on nothing and pulls in no viewer, layout, or widget machinery. Keep
-rendering in `fs-gg-scene` and host wiring in `fs-gg-skiaviewer`.
+The modules this skill teaches — `Geometry`, `Rng`, `FixedStep`, `Loop`, `Pathfinding`, `SpatialGrid` (plus
+the sim `Point`/`Rect`/`Cell`) — all live in `FS.GG.Game.Core`, and so does **every module the sections
+above delegate**: `Resolution`, `Grids`, `Los`, `Visibility`, `Fov`, `Ballistics`, `Ai`, `Effects`, and the
+opt-in `Physics`. One package, one `open FS.GG.Game.Core`; the split is between *skills*, not assemblies.
+It is referenced only on the `game`/`sample-pack` profiles, and it is the BCL-only bottom layer — it
+depends on nothing and pulls in no viewer, layout, or widget machinery. Keep rendering in `fs-gg-scene` and
+host wiring in `fs-gg-skiaviewer`.
 
 ## Generated Product
 
@@ -350,6 +391,8 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 - [[fs-gg-game:fs-gg-line-drawing]] — `Los`: the Bresenham/supercover cell walk and discrete grid line-of-sight.
 - [[fs-gg-game:fs-gg-visibility]] — `Visibility`'s continuous angular-sweep polygon and `Fov`'s symmetric shadowcasting.
 - [[fs-gg-game:fs-gg-ballistics]] — swept projectile advance, lead solves, and splash over the same `Geometry` casts.
+- [[fs-gg-game:fs-gg-physics]] — the opt-in rigid-body `Physics` layer: `Physics.step` as this skill's
+  `integrate`, the impulse solver's determinism rules, and when *not* to reach for it.
 - [[fs-gg-rendering:fs-gg-scene]] — build the `Scene` the simulated world renders into.
 - [[fs-gg-rendering:fs-gg-skiaviewer]] — drive the fixed-step loop from the host window.
 - [[fs-gg-rendering:fs-gg-layout]] — compute the gameplay region (the visible `Rect`) entities are culled against.
