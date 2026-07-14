@@ -84,6 +84,7 @@
     <Compile Include="Issue653SilentAppLauncherTests.fs" />
     <Compile Include="Issue456HostKeyCaptureTests.fs" />
     <Compile Include="Issue457PointerDiagnosticSinkTests.fs" />
+    <Compile Include="Issue713SubscriptionsSeamTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
