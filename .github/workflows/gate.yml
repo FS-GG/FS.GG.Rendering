@@ -269,6 +269,14 @@ jobs:
       # "first run with no baseline" edge — fails, never silently passes). The generator writes
       # directly to readiness/surface-baselines/ (the single authoritative location the live gate
       # `SurfaceAreaTests` reads), so this is the canonical regenerate-then-git-diff check.
+      #
+      # THIS STEP LOOKS REDUNDANT WITH `api-compatibility-gate` BELOW. IT IS NOT, AND #754 ASKED (#694).
+      # ApiCompat is SemVer-aware, so ADDITIVE drift never errors there, and it exits 0 having compared
+      # nothing on a fork PR or an unpublished package. This step also keeps `surface-baselines/members/**`
+      # FRESH — and those files are the API-symbol INPUT to skill-parity evidence (Feature 168), not just
+      # this gate's record. The regenerate-and-commit tax IS the acknowledgement signal, not a cost on top
+      # of it. The full argument lives ONCE, in the header of `scripts/refresh-surface-baselines.fsx`
+      # (one definition, two consumers, no drift — the #661 rule); read it before retiring this step.
       - name: Surface-baseline drift (.fsi)
         run: |
           set -euo pipefail

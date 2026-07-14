@@ -13,8 +13,18 @@
 #   org shared-build-config api-breaking-change-gate) is a Roslyn/C# source analyzer and does NOT
 #   analyze F# — so for these packables the operative detector is the language-agnostic SDK
 #   ApiCompat / Package Validation (assembly + package level). Mechanism recorded in FS-GG/.github
-#   registry coherence id `apicompat-publicapi-gate` (Governance spec 088 research D1). The
-#   source-level public-surface record stays the committed .fsi baselines in readiness/surface-baselines/.
+#   registry coherence id `apicompat-publicapi-gate` (Governance spec 088 research D1).
+#
+# THIS GATE DOES NOT SUBSUME readiness/surface-baselines/ — AND IT CANNOT (#754)
+#   This block used to end "The source-level public-surface record stays the committed .fsi baselines in
+#   readiness/surface-baselines/", which reads as though those baselines were a redundant second copy of
+#   what runs here. #694 read it exactly that way and filed #754 to retire them in favour of this gate.
+#   They answer different questions. This gate is SemVer-AWARE — it reports BREAKS, so ADDITIVE drift
+#   never errors here — and it exits 0 having compared nothing on `FeedUnavailable` (every fork PR: no
+#   token) and `NoBaselineYet`. It is not a floor. The baselines are also the API-symbol INPUT to
+#   skill-parity evidence (Feature 168), so they are load-bearing regardless of what THIS gate does.
+#   The full argument lives ONCE, in the header of `scripts/refresh-surface-baselines.fsx` — read it
+#   before believing this gate replaces anything (one definition, two consumers, no drift; the #661 rule).
 #
 # OUT-OF-BAND, BUT NOT ADVISORY (the D7 shape; the status has since changed)
 #   Per FS.GG.Governance spec 088 D7 this runs as a SEPARATE step and never reddens the normal

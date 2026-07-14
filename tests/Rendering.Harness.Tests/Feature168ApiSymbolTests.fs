@@ -212,10 +212,47 @@ let tests =
             Expect.isEmpty (SkillParity.evaluateApiSymbols surfaceMembers exercised [ wrapper ]) "only canonical and command skills document APIs"
         }
 
-        test "the repository's own surface baseline and test corpus both load" {
+        // #754 — this is the test that says `readiness/surface-baselines/members/**` is an INPUT to this
+        // layer, not a spare copy of the drift gate's record. It was `isSome`-only, and its message said
+        // "surface baseline is present" — true, and useless to the one reader who most needs it: someone
+        // deliberately DELETING the baselines. Epic #694 judged them a redundant third copy of the public
+        // surface that Microsoft ApiCompat already covered, and #754 was filed to retire them. ApiCompat
+        // covers neither question this layer asks: it is SemVer-aware, so ADDITIVE drift never errors, and
+        // it compares nothing at all on a fork PR (no feed token) or an unpublished package.
+        //
+        // A worker executing that retirement would have seen this test go red, read a message that told
+        // them only that a file they were intentionally removing had been removed, and deleted the test —
+        // reasonably, because nothing here said a whole capability hung on it. So the message now carries
+        // the reason, not just the symptom.
+        //
+        // NON-EMPTINESS is the other half, and it is the hole `isSome` left open: an EMPTY `members/`
+        // directory parses to `Some Map.empty`. The layer then "resolves", judges zero symbols, and
+        // reports a clean green — the repo's own fails-open class (#216, #266), where scanning zero inputs
+        // and scanning every clean one share a verdict. Outside the test suite the degradation is quieter
+        // still: a missing directory makes `resolveSymbols` emit a CAVEAT and the report exits 0 anyway.
+        test "the repository's own surface baseline and test corpus both load — and are NOT empty" {
             let root = FS.GG.TestSupport.RepositoryRoot.value
 
-            Expect.isSome (SkillParity.loadSurfaceMembers root) "member-granular surface baseline is present"
+            let surfaceMembers =
+                match SkillParity.loadSurfaceMembers root with
+                | Some members -> members
+                | None ->
+                    failtest
+                        "readiness/surface-baselines/members/ is MISSING, so this layer cannot run: it \
+                         degrades to a caveat and silently stops checking whether the APIs the skills \
+                         document still exist. These baselines are a load-bearing INPUT to Feature 168, not \
+                         merely the surface-drift gate's record, and ApiCompat does not replace them. \
+                         Regenerate with 'dotnet fsi scripts/refresh-surface-baselines.fsx'. If you are here \
+                         because you are RETIRING the baselines (#694/#754): this test is the capability you \
+                         would be deleting — do not delete it to go green."
+
+                    Map.empty
+
+            Expect.isNonEmpty
+                surfaceMembers
+                "readiness/surface-baselines/members/ resolves to at least one public module — an EMPTY \
+                 member set loads fine and judges NOTHING, which is the same silent green as deleting it"
+
             Expect.isSome (SkillParity.loadExercisedSymbols root) "test corpus is present"
         }
 
