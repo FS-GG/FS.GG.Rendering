@@ -1,6 +1,6 @@
 # 0105 — A required gate's verdict is a function of the commit alone
 
-**Status**: Proposed · **Date**: 2026-07-13 · **Issue**: [FS.GG.Rendering#738](https://github.com/FS-GG/FS.GG.Rendering/issues/738)
+**Status**: Accepted · **Date**: 2026-07-13 (accepted 2026-07-14) · **Issue**: [FS.GG.Rendering#738](https://github.com/FS-GG/FS.GG.Rendering/issues/738)
 
 > **Numbering.** Repo-local ADRs resume at `0100` (see [`../README.md`](../README.md)). This one
 > follows [ADR-0104](./0104-canvas-loop-is-a-simulation-primitive.md).
@@ -91,10 +91,31 @@ does not own is a gate that hands the merge button to another repo.
 
 ## Consequences
 
-**Immediately.** `check-frozen-mirrors` either pins the canonical digest in-tree (preferred — it
-converges with [ADR-0014](https://github.com/FS-GG/.github/blob/main/docs/adr/0014-skill-vendoring-one-manifest-one-materialize-verify.md),
-which already decided that skills are content-addressed with one canonical body) or leaves the required
-set. It may not stay as it is.
+**Immediately. DONE — #738 discharged this, and it took BOTH options, because the preferred one implies
+the other.** `check-frozen-mirrors.fsx` now runs in two lanes (cadence-map §4f):
+
+- **The mirror set is pinned in-tree** — option (1). `FrozenMirrorVerdict.foreignSkills` records each
+  foreign skill's `owner`, `source` and disposition, so the required lane no longer fetches
+  `FS-GG/.github`'s `main` merely to learn *which files it is guarding*. That mattered more than it
+  looked: it was not only a moved canonical that reddened the required gate, but **any new registry row**
+  (`undeclared foreign skill`, on somebody else's commit) and **any registry it could not read** (exit 2,
+  by the reasoning quoted below). The in-tree pin makes all three facts about this commit.
+- **The comparison against the live canonical left the required set** — option (3). It could not do
+  otherwise: *"is our mirror byte-identical to the body in FS.GG.Game's `main` right now?"* is a question
+  no in-tree pin can answer, because the answer is definitionally not in the tree. So it moved to the
+  non-required `Frozen mirror freshness` job, where it still reds — loudly, with the runnable re-freeze
+  command — and where its red costs an advisory job rather than the repo's merge button.
+
+The two are one design, not a compromise between two: **the mirror body *is* the pin.** A canonical that
+moves now produces exactly what this ADR asks for — a reviewable, schedulable **re-freeze PR** in this
+repo, instead of a red `main` that no PR here can clear.
+
+What did **not** move is `MIRROR EDITED` — #541's entire case, and the one verdict `git` proves from the
+commit alone. It still reds, still inside the required, admin-enforced `Deterministic gate`. The
+required lane gave up no teeth; it gave up questions that were never about this commit.
+
+(It converges with [ADR-0014](https://github.com/FS-GG/.github/blob/main/docs/adr/0014-skill-vendoring-one-manifest-one-materialize-verify.md),
+which already decided that skills are content-addressed with one canonical body.)
 
 **Standing.** Every new gate proposed for the required set must answer the one-sentence test above in
 its PR description. This is the part of the ADR that does work after today: the reason the rule is

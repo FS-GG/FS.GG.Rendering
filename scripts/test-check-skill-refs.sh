@@ -1345,9 +1345,14 @@ expect_out_has "verified against FS-GG/.github's kit roster" 'and so is the fact
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 # § 9  MIRRORED_SKILLS IS VERIFIED — the OTHER hand-written narrowing  (#722)
 #
-# Two scripts in the same required job answered "which skills are frozen mirrors?", from two places:
-# `check-frozen-mirrors.fsx` DERIVES the set from the org registry, and this gate read it off a constant
-# nothing checked. One rule, two hand-maintained readings, and only one of them could drift.
+# Two scripts answered "which skills are frozen mirrors?", from two places: the frozen-mirror guard had its
+# own reading of the set, and this gate read it off a constant nothing checked. One rule, two hand-maintained
+# readings, and only one of them could drift.
+#
+# (#738: the guard's set is now PINNED in `scripts/FrozenMirrorVerdict.fs` and cross-checked against the
+# registry in the NON-REQUIRED `frozen-mirror-freshness` job — it no longer derives from the registry, and
+# its registry-reading half no longer runs in the required job. This paragraph used to assert both. The
+# defect it describes, and everything § 9 asserts below, is unchanged.)
 #
 # AND #714 MADE THE DRIFT DANGEROUS. Being listed used to DEMOTE a § 1 finding to a note, so an omission
 # meant MORE checking and rot failed safe. #714 inverted that: a listed body hard-fails a bare `[[ref]]`,
