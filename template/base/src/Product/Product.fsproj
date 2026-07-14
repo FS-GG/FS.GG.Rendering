@@ -61,7 +61,7 @@
          FS.GG.Game.Core, the BCL-only bottom layer (moved out of FS.GG.UI.Canvas/.Scene). -->
     <PackageReference Include="FS.GG.Game.Core" />
     <!-- FS.GG.UI.Canvas stays on simulation profiles for the Persistence request surface
-         (PersistenceEffect, Persistence.interpret; Feature 244, fs-gg-persistence). Its Audio
+         (PersistenceEffect, Persistence.interpretRecordOnly; Feature 244, fs-gg-persistence). Its Audio
          request surface was RETIRED at the Canvas 0.3.0 major (ADR-0024, Rendering#158) — the
          AudioEffect vocabulary now lives in FS.GG.Audio.Core, referenced just below. -->
     <PackageReference Include="FS.GG.UI.Canvas" />

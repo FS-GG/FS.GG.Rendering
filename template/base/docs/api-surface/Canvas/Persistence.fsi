@@ -35,23 +35,35 @@ type PersistenceEffect =
     | DeleteSlot of slot: SaveSlot
 
 /// Public contract type exposed by this FS.GG.UI package.
+/// Which backend produced a `PersistenceEvidence` value. `RecordOnly` is the only case: the framework
+/// owns no save location, so no evidence value it produces was ever durable.
+type PersistenceBackend = RecordOnly
+
+/// Public contract type exposed by this FS.GG.UI package.
 /// Ordered evidence of what a product *requested*, produced by the record-only interpreter. It is
-/// evidence of intent, NOT of durability: nothing in this framework writes a byte, so `Requested`
-/// proves your `update` asked to save — never that a save happened.
+/// evidence of intent, NOT of durability: this fold writes no byte, so `Requested` proves your
+/// `update` asked to save — never that a save happened. `Backend` says so on the type itself.
 type PersistenceEvidence =
     { /// Requested effects in dispatch order, oldest first, with `Save` versions normalized and
       /// payloads carried verbatim. Recorded and dropped: no file was written, read, or deleted.
-      Requested: PersistenceEffect list }
+      Requested: PersistenceEffect list
+
+      /// Which interpreter produced this value — always `RecordOnly`. Nothing was persisted, and you
+      /// learn it from the type rather than from a doc comment.
+      Backend: PersistenceBackend }
 
 /// Public contract module exposed by this FS.GG.UI package.
 /// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`
-/// emits `PersistenceEffect` values (it never reads or writes a file); `interpret` folds a batch
-/// into `PersistenceEvidence` — it records the requests and drops them.
+/// emits `PersistenceEffect` values (it never reads or writes a file); `interpretRecordOnly` folds a
+/// batch into `PersistenceEvidence` — it records the requests and drops them.
 ///
-/// There is no file-backed backend, here or anywhere in this framework, and nothing routes these
-/// requests to one: no `ViewerEffect` case carries a `PersistenceEffect`, so no host runner will
-/// ever see one. A product that emits `PersistenceEffect` values and calls `interpret` has saved
-/// nothing. Writing the backend is your own job — see the `fs-gg-persistence` skill.
+/// `interpretRecordOnly` writes nothing, and its name and its `Backend` mark both say so. What it is
+/// NOT is a dead end: `ViewerEffect.Persist` carries a batch out to a host, and
+/// `Viewer.runAppWithPersistence` hands it to a sink that does the real I/O and reports each
+/// `PersistenceOutcome` back into `update` as a message — so a `Load` is answerable.
+///
+/// The framework still owns no save location: `SaveSlot` is an opaque, product-owned name, and the
+/// sink that resolves it to a real path is yours to write. See the `fs-gg-persistence` skill.
 [<RequireQualifiedAccess>]
 module Persistence =
 
@@ -93,26 +105,17 @@ module Persistence =
     val record: effect: PersistenceEffect -> evidence: PersistenceEvidence -> PersistenceEvidence
 
     /// Public contract function exposed by this FS.GG.UI package.
-    /// Record-only interpreter over a batch, preserving dispatch order: it RECORDS the requests
-    /// into `PersistenceEvidence.Requested` and DROPS them. No file is written, read, or deleted —
-    /// not here, and not later by a host: no `ViewerEffect` case carries a `PersistenceEffect`.
-    /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
-    /// proves what your product ASKED for, and nothing about durability.
+    /// Record-only interpreter over a batch, preserving dispatch order: it RECORDS the requests into
+    /// `PersistenceEvidence.Requested` and DROPS them. No file is written, read, or deleted by THIS
+    /// function — that is what its name says, and the `Backend` mark on what it returns says it again.
+    /// Headless-safe: no filesystem access, never blocks, never throws.
     ///
-    /// The name is a trap, and a known one — but not the trap this comment used to claim (#619). It is
-    /// NOT that `interpret*` means *perform the effect* elsewhere in this framework: no public
-    /// `interpret*` performs anything. Every one is a pure fold to a value — `Audio.interpret` calls
-    /// itself a "record-only interpreter" with "no device access", `Layout.interpretWorkflowEffect`
-    /// returns a `Msg`. Performing an effect is a HOST call, and a host call takes a backend or an
-    /// engine.
+    /// It is not the end of the line, though. To actually persist, send the batch to a host with
+    /// `ViewerEffect.Persist` and run under `Viewer.runAppWithPersistence`, supplying the sink that
+    /// does the I/O; its `PersistenceOutcome` values come back into `update` as messages. This fold is
+    /// what a headless test uses to assert what the product ASKED for, which is a different question
+    /// from whether anything was saved.
     ///
-    /// What `interpret` really promises you is a DOWNSTREAM — something that carries your requests out
-    /// — and for persistence there is none: no `ViewerEffect` case carries a `PersistenceEffect`, so
-    /// the requests are recorded and dropped, and the pipeline the name implies has no other end. If
-    /// you want durability you write the backend yourself, and this fold is what proves to a headless
-    /// test what your product ASKED for.
-    ///
-    /// A later framework release renames it to `interpretRecordOnly`, which says what it does; that
-    /// spelling is not in the `FS.GG.UI.Canvas` this product pins, so `interpret` is the one to call
-    /// today.
-    val interpret: effects: PersistenceEffect list -> PersistenceEvidence
+    /// It was called `interpret` up to FS.GG.UI 0.9.0. That name promised a downstream it did not have,
+    /// and it was removed at the 0.10.0 major — this is the same function under a name that does not lie.
+    val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence

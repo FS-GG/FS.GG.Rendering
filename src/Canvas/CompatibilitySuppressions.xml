@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+
+<!-- TRANSIENT — DELETE THIS FILE ONCE FS.GG.UI.Canvas 0.10.0 IS ON THE ORG FEED.
+
+     LIFETIME. The required ApiCompat gate baselines off the PUBLISHED feed, never off the repo's own
+     version (ADR-0101's amendment: "the green followed the publish, not the merge"). So a bump to
+     0.10.0 does not by itself let a removal merge — vs the published 0.9.0 the members below are gone,
+     that is a real CP0002 break, and with `enforce_admins` on (ADR-0103) the red wedges the merge
+     button. These two entries are what make the #537 removal executable. Once 0.10.0 publishes, the
+     baseline MOVES to it, 0.10.0 does not have these members either, and there is nothing left to
+     suppress: delete the file. Same transient, same reason, as the `0.5.0` pair ADR-0104 used to cut
+     0.6.0 — and deleted on the day it published.
+
+     NOT A PAPER-OVER. Each entry is `IsBaselineSuppression` and names ONE diagnostic and ONE target, so
+     a NEW break introduced later still reddens the gate. The forbidden move is a blanket
+     `ApiCompatGenerateSuppressionFile` left in place, which inverts the gate and ships a silent break
+     under a preview-patch — the exact failure ADR-0101 registered this gate to prevent.
+
+     WHAT IS SUPPRESSED, AND WHY IT IS DELIBERATE (#537):
+       * `Persistence.interpret` — a forwarder to `interpretRecordOnly`, `[<Obsolete>]` since #445.
+       * `PersistenceEvidence.#ctor` — the record gained a `Backend` field (#445's type-mark half,
+         deferred to the moment a major was already being paid for). Adding a field changes the
+         constructor, which is why it could not ship before now. -->
+
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:FS.GG.UI.Canvas.Persistence.interpret(Microsoft.FSharp.Collections.FSharpList{FS.GG.UI.Canvas.PersistenceEffect})</Target>
+    <Left>lib/net10.0/FS.GG.UI.Canvas.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.Canvas.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:FS.GG.UI.Canvas.PersistenceEvidence.#ctor(Microsoft.FSharp.Collections.FSharpList{FS.GG.UI.Canvas.PersistenceEffect})</Target>
+    <Left>lib/net10.0/FS.GG.UI.Canvas.dll</Left>
+    <Right>lib/net10.0/FS.GG.UI.Canvas.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

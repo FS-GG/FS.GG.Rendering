@@ -1,5 +1,6 @@
 FS.GG.UI.Canvas.Elements
 FS.GG.UI.Canvas.Persistence
+FS.GG.UI.Canvas.PersistenceBackend
 FS.GG.UI.Canvas.PersistenceEffect
 FS.GG.UI.Canvas.PersistenceEffect+DeleteSlot
 FS.GG.UI.Canvas.PersistenceEffect+Load

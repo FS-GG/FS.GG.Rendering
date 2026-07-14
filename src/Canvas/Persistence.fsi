@@ -1,7 +1,5 @@
 namespace FS.GG.UI.Canvas
 
-open System
-
 /// Public contract type exposed by this FS.GG.UI package.
 /// Opaque, product-owned identifier naming a save location (e.g. "slot-1", "autosave"). The
 /// framework does not own the slot -> path mapping (kept out of the library, like per-game stat
@@ -78,13 +76,28 @@ type PersistenceOutcome =
     | Failed of effect: PersistenceEffect * reason: string
 
 /// Public contract type exposed by this FS.GG.UI package.
+/// Which backend produced a `PersistenceEvidence` value. `RecordOnly` is the only case, and the only
+/// one that will exist until a backend that actually writes bytes does: a case nothing can produce is
+/// the inert shape this family of issues exists to stamp out (#537).
+///
+/// The framework owns no save location. `ViewerEffect.Persist` (#535) carries a batch OUT to a sink,
+/// but that sink is the product's — so no evidence value the framework itself produces was ever
+/// durable, and the type now says so.
+type PersistenceBackend = RecordOnly
+
+/// Public contract type exposed by this FS.GG.UI package.
 /// Ordered evidence of what a product *requested*, produced by the record-only interpreter. It is
 /// evidence of intent, NOT of durability: nothing in this framework writes a byte, so `Requested`
 /// proves your `update` asked to save — never that a save happened.
 type PersistenceEvidence =
     { /// Requested effects in dispatch order, oldest first, with `Save` versions normalized and
       /// payloads carried verbatim. Recorded and dropped: no file was written, read, or deleted.
-      Requested: PersistenceEffect list }
+      Requested: PersistenceEffect list
+
+      /// Which interpreter produced this value — always `RecordOnly`. Carried on the type so a
+      /// consumer holding an evidence value learns that nothing was persisted from the TYPE, not
+      /// from a doc comment it may never read (#445's type-mark half, paid for by the #537 major).
+      Backend: PersistenceBackend }
 
 /// Public contract module exposed by this FS.GG.UI package.
 /// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`
@@ -152,27 +165,3 @@ module Persistence =
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what the product ASKED for, and nothing about durability.
     val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence
-
-    /// Public contract function exposed by this FS.GG.UI package.
-    /// DEPRECATED — call `interpretRecordOnly`, which is this function under a name that does not
-    /// lie. Behaviour is identical (this forwards to it).
-    ///
-    /// WHAT THE NAME ACTUALLY LIES ABOUT. It is not that `interpret*` means *perform the effect*
-    /// elsewhere and this one is the exception — that is what this comment used to say, and it was
-    /// false twice over (#619). It cited an `interpretEffect` on the `GlHost` module, which has never
-    /// existed in any version of anything (the spelling is left un-dotted here on purpose: a doc-symbol
-    /// extractor cannot tell a phantom being CORRECTED from one being TAUGHT, and #597 is closing the
-    /// very hole that let it ship). And NO public `interpret*` in this framework performs anything. Every one
-    /// of them is a pure fold to a VALUE: `Audio.interpret` calls itself a "record-only interpreter"
-    /// with "no device access", `Layout.interpretWorkflowEffect` returns a `Msg`, the
-    /// `ControlsElmish.interpret*` family returns an `AdapterCommand`. Performing an effect is a HOST
-    /// call, and a host call takes a backend or an engine.
-    ///
-    /// The real lie is a promised DOWNSTREAM. `interpret` invites you to believe something, somewhere,
-    /// carries these requests out. For persistence nothing does: no `ViewerEffect` case carries a
-    /// `PersistenceEffect`, so the fold records into `PersistenceEvidence.Requested` and drops them,
-    /// and the pipeline the name implies has no other end. The honest version of the point is the
-    /// stronger one — `interpret*` never performs, so a reader who expects it to is misled by the
-    /// convention, not by an exception to it.
-    [<Obsolete("Persistence.interpret PERSISTS NOTHING: it records the requests into PersistenceEvidence.Requested and drops them. No file is written, read, or deleted, and no host in this framework will ever interpret a PersistenceEffect (no ViewerEffect case carries one). Call Persistence.interpretRecordOnly instead — identical behaviour, honest name. If you need durability you must write the backend yourself.")>]
-    val interpret: effects: PersistenceEffect list -> PersistenceEvidence
