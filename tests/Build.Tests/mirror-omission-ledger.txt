@@ -1,0 +1,440 @@
+# THE MIRROR-OMISSION LEDGER (#752)
+#
+# `<kind> <package>::<namespace>.<Name>`, one per line — `kind` is `type` or `module`. `#` comments and blank lines are ignored.
+#
+# WHAT AN ENTRY MEANS. "The pinned package exports this type, in a namespace `docs/api-surface/` DECLARES,
+# and the mirror does not declare it." Nothing else. It is not an excuse and it is not a decision that the
+# type SHOULD be absent — it is the record of a gap, so that the gap is countable and in the diff rather
+# than invisible.
+#
+# WHY IT EXISTS. Every other rule in `TemplateConsumesPinnedApiTests.fs` judges MIRROR ⊆ PIN — "the mirror
+# declares this; does the pin export it?". Nobody ever asked the converse. So the mirror could omit a type,
+# or a whole file, and every gate reported green: an omission declares nothing, and a rule that only judges
+# declarations has nothing to judge. At $(FsGgUiVersion)=0.9.2 the mirror was missing 285 of the 673 public
+# types the pinned packages export, with CI green and nothing ledgered. The rule that closes that hole lands
+# on a repo that already violates it 285 times, and the two honest options are to fix them all or to record
+# them. Narrowing the rule until it is green is not one of them.
+#
+# So: this file is the DEBT, and it is meant to shrink to nothing. #694's mirror generator is what pays it
+# off wholesale; until then, no NEW omission can land, which is the entire point.
+#
+# IT IS A RATCHET, NOT A DUMPING GROUND. Two rules keep it one:
+#   * an entry the mirror NOW declares      -> the gap was closed. Delete the line.   (stale)
+#   * an entry the pin NO LONGER exports    -> the type was cut.   Delete the line.   (phantom)
+#
+# ADDING A LINE IS A DECISION, AND IT NEEDS A REASON. A deliberate curation (the mirror is a curated
+# contract, not a dump) is a legitimate entry — say so, next to it. An omission you simply have not got to
+# is also a legitimate entry, for now. An omission you added BECAUSE the gate went red is not.
+#
+# NOTE the typed front door (`FS.GG.UI.Controls.Typed.*`, feature 085 FR-013) is NOT here and must not be:
+# no mirror file declares that namespace, so it is out of the rule's scope structurally. Entries here are
+# types in namespaces the mirror DOES claim.
+
+# ------------------------------------------------------------------------------------------------
+# SEEDED AT $(FsGgUiVersion)=0.9.2 — 380 omissions (253 types, 127 modules): the debt this rule found on the
+# day it landed. Every line is something the pinned package exports, in a namespace the mirror DECLARES,
+# that the mirror does not declare. None of them is a curation decision — they are simply missing, and
+# whole source files (`src/Controls/Charts2.fsi`, `src/KeyboardInput/KeymapCodec.fsi`, …) have no mirror
+# file at all. #694's generator is what pays this off; until then this list may only SHRINK, and the
+# `OmissionLedgerCeiling` literal in TemplateConsumesPinnedApiTests.fs is what enforces that.
+# ------------------------------------------------------------------------------------------------
+
+# FS.GG.Game.Core (38)
+module FS.GG.Game.Core::FS.GG.Game.Core.Ai
+module FS.GG.Game.Core::FS.GG.Game.Core.Ballistics
+module FS.GG.Game.Core::FS.GG.Game.Core.Command
+module FS.GG.Game.Core::FS.GG.Game.Core.Difficulty
+module FS.GG.Game.Core::FS.GG.Game.Core.Effects
+module FS.GG.Game.Core::FS.GG.Game.Core.Fov
+module FS.GG.Game.Core::FS.GG.Game.Core.Grids
+module FS.GG.Game.Core::FS.GG.Game.Core.Los
+module FS.GG.Game.Core::FS.GG.Game.Core.Physics
+module FS.GG.Game.Core::FS.GG.Game.Core.Visibility
+type FS.GG.Game.Core::FS.GG.Game.Core.Active`1
+type FS.GG.Game.Core::FS.GG.Game.Core.AgentId
+type FS.GG.Game.Core::FS.GG.Game.Core.BodyKind
+type FS.GG.Game.Core::FS.GG.Game.Core.Command
+type FS.GG.Game.Core::FS.GG.Game.Core.Config
+type FS.GG.Game.Core::FS.GG.Game.Core.DamageTrace
+type FS.GG.Game.Core::FS.GG.Game.Core.Damage`1
+type FS.GG.Game.Core::FS.GG.Game.Core.Difficulty
+type FS.GG.Game.Core::FS.GG.Game.Core.Edge
+type FS.GG.Game.Core::FS.GG.Game.Core.EdgeOrientation
+type FS.GG.Game.Core::FS.GG.Game.Core.GridSpec
+type FS.GG.Game.Core::FS.GG.Game.Core.LineMode
+type FS.GG.Game.Core::FS.GG.Game.Core.Material
+type FS.GG.Game.Core::FS.GG.Game.Core.Policy`1
+type FS.GG.Game.Core::FS.GG.Game.Core.Projectile
+type FS.GG.Game.Core::FS.GG.Game.Core.ProjectileStep
+type FS.GG.Game.Core::FS.GG.Game.Core.Segment
+type FS.GG.Game.Core::FS.GG.Game.Core.Settings
+type FS.GG.Game.Core::FS.GG.Game.Core.Shape
+type FS.GG.Game.Core::FS.GG.Game.Core.Sighting`1
+type FS.GG.Game.Core::FS.GG.Game.Core.Source
+type FS.GG.Game.Core::FS.GG.Game.Core.StageResult
+type FS.GG.Game.Core::FS.GG.Game.Core.Stage`2
+type FS.GG.Game.Core::FS.GG.Game.Core.TeamView`1
+type FS.GG.Game.Core::FS.GG.Game.Core.Transform
+type FS.GG.Game.Core::FS.GG.Game.Core.Vertex
+type FS.GG.Game.Core::FS.GG.Game.Core.VisibilityPolygon
+type FS.GG.Game.Core::FS.GG.Game.Core.World
+
+# FS.GG.UI.Canvas (1)
+type FS.GG.UI.Canvas::FS.GG.UI.Canvas.PersistenceOutcome
+
+# FS.GG.UI.Controls (99)
+module FS.GG.UI.Controls::FS.GG.UI.Controls.AreaChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.BoxPlot
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Canvas
+module FS.GG.UI.Controls::FS.GG.UI.Controls.ChordDiagram
+module FS.GG.UI.Controls::FS.GG.UI.Controls.ColumnChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.ControlEvent
+module FS.GG.UI.Controls::FS.GG.UI.Controls.ControlInspection
+module FS.GG.UI.Controls::FS.GG.UI.Controls.DataEntry2
+module FS.GG.UI.Controls::FS.GG.UI.Controls.DataEntry2.AutoComplete
+module FS.GG.UI.Controls::FS.GG.UI.Controls.DataEntry2.Cascader
+module FS.GG.UI.Controls::FS.GG.UI.Controls.DataEntry2.Upload
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Avatar
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Card
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Descriptions
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Empty
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.QrCode
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Skeleton
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Statistic
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Tag
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Timeline
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Display2.Watermark
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Alert
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Drawer
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.FloatButton
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Popconfirm
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Popover
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Result
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Feedback2.Tour
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Focus
+module FS.GG.UI.Controls::FS.GG.UI.Controls.FunnelChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.GaugeChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Heatmap
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Histogram
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Calendar
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Carousel
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Collapse
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Rate
+module FS.GG.UI.Controls::FS.GG.UI.Controls.KeyRebind
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Affix
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Anchor
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Breadcrumb
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Pagination
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Segmented
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Steps
+module FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayState
+module FS.GG.UI.Controls::FS.GG.UI.Controls.RadarChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.RoseChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.SankeyDiagram
+module FS.GG.UI.Controls::FS.GG.UI.Controls.ScrollState
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Sunburst
+module FS.GG.UI.Controls::FS.GG.UI.Controls.TransientWidget
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Treemap
+module FS.GG.UI.Controls::FS.GG.UI.Controls.WaterfallChart
+module FS.GG.UI.Controls::FS.GG.UI.Controls.Widget
+type FS.GG.UI.Controls::FS.GG.UI.Controls.AnchorEvidence
+type FS.GG.UI.Controls::FS.GG.UI.Controls.AnchorRemovalPolicy
+type FS.GG.UI.Controls::FS.GG.UI.Controls.ControlInspectionRequest`1
+type FS.GG.UI.Controls::FS.GG.UI.Controls.Direction
+type FS.GG.UI.Controls::FS.GG.UI.Controls.DismissalOutcome
+type FS.GG.UI.Controls::FS.GG.UI.Controls.DismissalPolicy
+type FS.GG.UI.Controls::FS.GG.UI.Controls.DismissalReason
+type FS.GG.UI.Controls::FS.GG.UI.Controls.DismissalRule
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusMove
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusRecoveryDecision
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusRecoveryTargetKind
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusScope
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusStop
+type FS.GG.UI.Controls::FS.GG.UI.Controls.FocusTransition
+type FS.GG.UI.Controls::FS.GG.UI.Controls.InteractionReplayLog
+type FS.GG.UI.Controls::FS.GG.UI.Controls.KeyRouting
+type FS.GG.UI.Controls::FS.GG.UI.Controls.NavIntent
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayActivationSource
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayEffect
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayMsg
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayRuntimeBridge
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayRuntimeDispatchRecord
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayState
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlaySurface
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlaySurfaceId
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayTransition
+type FS.GG.UI.Controls::FS.GG.UI.Controls.OverlayTrigger
+type FS.GG.UI.Controls::FS.GG.UI.Controls.PointerOverlayRoutingResult
+type FS.GG.UI.Controls::FS.GG.UI.Controls.ProductDispatch
+type FS.GG.UI.Controls::FS.GG.UI.Controls.RetainedControlInspectionRequest`1
+type FS.GG.UI.Controls::FS.GG.UI.Controls.RetainedControlTransition`1
+type FS.GG.UI.Controls::FS.GG.UI.Controls.ScrollExtentSource
+type FS.GG.UI.Controls::FS.GG.UI.Controls.ScrollViewport
+type FS.GG.UI.Controls::FS.GG.UI.Controls.SelectionCompletionPolicy
+type FS.GG.UI.Controls::FS.GG.UI.Controls.TabOrder
+type FS.GG.UI.Controls::FS.GG.UI.Controls.TopmostHitDecision
+type FS.GG.UI.Controls::FS.GG.UI.Controls.TransientSurfaceKind
+type FS.GG.UI.Controls::FS.GG.UI.Controls.TransientWidgetMetadata
+type FS.GG.UI.Controls::FS.GG.UI.Controls.TrapMode
+type FS.GG.UI.Controls::FS.GG.UI.Controls.WidgetActivationRequest
+type FS.GG.UI.Controls::FS.GG.UI.Controls.Widget`1
+
+# FS.GG.UI.DesignSystem (24)
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Alias
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Alias.Dark
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Alias.Light
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component.Button
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component.Input
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component.Menu
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component.Table
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Component.Tabs
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Density
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Elevation
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Map
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Map.Dark
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Map.Light
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Seed
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Space
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type.Body
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type.Display
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type.Section
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type.Small
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.DesignTokensExt.Type.Title
+module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.StyleResolver
+
+# FS.GG.UI.Elmish (2)
+module FS.GG.UI.Elmish::FS.GG.UI.Elmish.Animation
+type FS.GG.UI.Elmish::FS.GG.UI.Elmish.AnimationTick
+
+# FS.GG.UI.KeyboardInput (4)
+module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.Keymap
+module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodec
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.Keymap
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodecError
+
+# FS.GG.UI.Layout (16)
+type FS.GG.UI.Layout::FS.GG.UI.Layout.IntrinsicAxis
+type FS.GG.UI.Layout::FS.GG.UI.Layout.IntrinsicDependency
+type FS.GG.UI.Layout::FS.GG.UI.Layout.IntrinsicQuery
+type FS.GG.UI.Layout::FS.GG.UI.Layout.IntrinsicQuerySource
+type FS.GG.UI.Layout::FS.GG.UI.Layout.IntrinsicSizeResult
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutCacheEntry
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutCacheEntryKind
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutChildPlacement
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutConstraintBound
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutConstraintSource
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutConstraints
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutContentExtent
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutContentExtentSource
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
+type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
+type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
+
+# FS.GG.UI.Scene (64)
+module FS.GG.UI.Scene::FS.GG.UI.Scene.Animation
+module FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationState
+module FS.GG.UI.Scene::FS.GG.UI.Scene.Easing
+module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
+module FS.GG.UI.Scene::FS.GG.UI.Scene.Transform
+module FS.GG.UI.Scene::FS.GG.UI.Scene.Tween
+module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
+type FS.GG.UI.Scene::FS.GG.UI.Scene.Animation
+type FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationState`1
+type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityRequirement
+type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityVerdict
+type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageInspectionStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageLocalityFinding
+type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageNodeCounts
+type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageRegionInspection
+type FS.GG.UI.Scene::FS.GG.UI.Scene.DegradationPolicy
+type FS.GG.UI.Scene::FS.GG.UI.Scene.Easing
+type FS.GG.UI.Scene::FS.GG.UI.Scene.IntentionalDamageException
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageDiagnostic
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageDiagnosticStage
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageExportOptions
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageInspectionOptions
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageInspectionReport
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageInspectionStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.PortableScenePackage
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ProtocolVersion
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RequirementLevel
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ResourceAvailability
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ResourceAvailabilityStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ResourceEntry
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ResourceKind
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ResourceVerdict
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedFrameTransition
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspectionArtifact
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspectionStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspectionSummary
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedNodeInspection
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedNodeStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SemanticComparison
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextMetrics
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextResult
+type FS.GG.UI.Scene::FS.GG.UI.Scene.TargetCapabilityProfile
+type FS.GG.UI.Scene::FS.GG.UI.Scene.Transform
+type FS.GG.UI.Scene::FS.GG.UI.Scene.Tween`1
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualClipFact
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionArtifact
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionClipStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionCoverageStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFinding
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFitStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionMeasurementMode
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNode
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNodeKind
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionPaintRole
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionScope
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionSeverity
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionStatus
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionSummary
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionSurfaceRole
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionUnsupportedFact
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualPaintCoverage
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualRegionBoundary
+type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualTextInspection
+
+# FS.GG.UI.SkiaViewer (55)
+module FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.CompositorProof
+module FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.Fonts
+module FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRendering
+module FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.Text
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.AcceptedProofSet
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.Effect
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.FallbackReport
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.FallbackResolution
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.HostDisplayEnvironment
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.HostProfile
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.LiveProofAttempt
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.Model
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.Msg
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ObservedRegionKind
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.PresentProof
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.PresentProofFailureCause
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.PresentProofObservation
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.PresentProofVerdict
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ProofArtifactQuality
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ProofPhase
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ProofReadiness
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ProofSetReadiness
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceFailureClassification
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderVerdict
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderingEffect
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderingEvidence
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderingModel
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderingMsg
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ReferenceRenderingRequest
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ResolvedChar
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.TextShapingProviderStatus
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.TimingOverheadDisclosure
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.TimingPath
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerDamageDecision
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerDirtyState
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerFrameDrain
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerInputEnvelope
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerInputPriorityLane
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerInputQueue
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerLatencyRecord
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerPresentMode
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessEnvironmentStatus
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessFailedBudget
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessGroupSummary
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessPhaseTiming
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessReadiness
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessSlowInteraction
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessSummary
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerResponsivenessVisibleResponse
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerScriptInput
+type FS.GG.UI.SkiaViewer::FS.GG.UI.SkiaViewer.ViewerTimingPath
+
+# FS.GG.UI.Testing (77)
+module FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorDamageReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorTimingAssertions
+module FS.GG.UI.Testing::FS.GG.UI.Testing.Feature159Readiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.Feature160ThroughputReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161HostLaneReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.PackageInspectionAssertions
+module FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionMarkdown
+module FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionValidation
+module FS.GG.UI.Testing::FS.GG.UI.Testing.RuntimeDiagnosticReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCaptureMatrix
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCompleteness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionMarkdown
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionValidation
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReadiness
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReadinessMarkdown
+module FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReviewerClassifications
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorDamageReadinessCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorDamageReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorDamageReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorDamageScenarioEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorReadinessEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorReadinessReport
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorTimingScenario
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorTimingSummaryCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorTimingSummaryValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.CompositorTimingVerdict
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature159ReadinessCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature159ReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature159ReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature159ScenarioEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature160ScenarioEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature160ThroughputReadinessCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature160ThroughputReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature160ThroughputReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161ClaimScopeEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161HostFactEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161HostLaneReadinessCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161HostLaneReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.Feature161HostLaneReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutCompatibilityDelta
+type FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutReadinessEvidence
+type FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutReadinessReport
+type FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.LayoutReadinessValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.PackageInspectionAssertionCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.PackageInspectionAssertionResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionRule
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionSummarySectionUpdate
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionValidationCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RetainedInspectionValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RuntimeDiagnosticReadinessCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.RuntimeDiagnosticReadinessResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCaptureArtifact
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCaptureRecord
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCaptureStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualCaptureTarget
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualContactSheet
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionException
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionRule
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionSummarySectionUpdate
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionValidationCheck
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualInspectionValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualPage
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReadinessReport
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReadinessStatus
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReviewerClassification
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReviewerSeverity
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReviewerValidationResult
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualSize
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualSummarySectionUpdate
+type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualTheme

@@ -970,8 +970,24 @@ let private inlineMembers (rest: string) =
 /// skipped by the `///` guard, and a `val` line cannot match because `val` is lowercase.
 let private recordFieldRegex = Regex(@"^\s*[{]?\s*(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
 
-let private mirrorTypeMembers =
+/// ONE walk of the mirror, THREE projections — the same discipline `readTypeSurface` keeps on the pin's
+/// side, and for the same reason: the two halves of a gate have to agree about what a TYPE is, or the gate
+/// reports green on their difference (#648). `arityKey` and `typeDeclRegex` are the shared primitives, so a
+/// type is keyed here exactly as IL spells it there.
+let private mirrorParse =
     let acc = ResizeArray<TypeMember>()
+
+    /// (namespace, arity-keyed name) for every `type X` the mirror DECLARES — including the ones that carry
+    /// no case and no field, which `acc` cannot see. An opaque `type Keymap` has no members to record, and
+    /// it is precisely the shape the mirror was found to have dropped.
+    let declaredTypes = ResizeArray<string * string>()
+
+    /// The namespaces the mirror actually COVERS. This is what bounds the completeness rule: a namespace no
+    /// mirror file declares is one the mirror does not claim to document, so its types are out of scope
+    /// rather than missing. The `FS.GG.UI.Controls.Typed.*` carve-out (feature 085, FR-013) falls out of
+    /// this structurally — no mirror file declares that namespace — instead of being a hardcoded exception
+    /// that would rot the moment the carve-out moved.
+    let namespaces = ResizeArray<string>()
 
     for path in Directory.EnumerateFiles(mirrorRoot, "*.fsi", SearchOption.AllDirectories) do
         let rel = Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
@@ -985,6 +1001,12 @@ let private mirrorTypeMembers =
                 else
                     None)
             |> Option.defaultValue ""
+
+        // A mirror file with no `namespace` line covers nothing — recording `""` would mint an empty
+        // "covered namespace" that matches no pin type, which is harmless, and a pin type whose namespace
+        // is genuinely `""` (there is none) would then be judged, which is not. Keep the set honest.
+        if ns <> "" then
+            namespaces.Add ns
 
         // The type a `| Case` / `Field:` line belongs to is simply the last `type X =` seen. A `val` or a
         // `module` closes it: neither is a type body, and continuing to attribute lines to the last type
@@ -1001,6 +1023,12 @@ let private mirrorTypeMembers =
                 let m = typeDeclRegex.Match line
                 let typeName = arityKey m.Groups.["name"].Value m.Groups.["gen"].Value
                 current <- Some typeName
+
+                // Guarded exactly as `namespaces` is: a mirror file with no `namespace` line contributes
+                // no covered namespace, so it must contribute no declared type either. Guarding one and
+                // not the other left the two projections of this walk disagreeing about which files count.
+                if ns <> "" then
+                    declaredTypes.Add(ns, typeName)
 
                 // F3: the body may be RIGHT HERE, on this same line, and this is the only chance to read it.
                 for (memberName, kind) in inlineMembers m.Groups.["rest"].Value do
@@ -1041,7 +1069,21 @@ let private mirrorTypeMembers =
                               Member = field.Groups.["field"].Value
                               Kind = RecordField }
 
-    List.ofSeq acc
+    List.ofSeq acc, Set.ofSeq declaredTypes, Set.ofSeq namespaces
+
+let private mirrorTypeMembers =
+    let members, _, _ = mirrorParse
+    members
+
+/// (namespace, arity-keyed type) every mirror file declares.
+let private mirrorDeclaredTypes =
+    let _, types, _ = mirrorParse
+    types
+
+/// The namespaces the mirror claims to document — the completeness rule's scope (#752).
+let private mirrorNamespaces =
+    let _, _, namespaces = mirrorParse
+    namespaces
 
 let private typeMemberKey (m: TypeMember) = $"{m.Doc}::{m.Type}.{m.Member}"
 
@@ -1206,7 +1248,21 @@ let private docPackages =
         |> List.collect (fun (qualifier, s) -> admittedCandidates qualifier s.Module)
         |> List.map (fun m -> packageForNamespace m.Namespace)
 
-    fromVals @ fromTypes @ fromCandidates |> List.distinct |> List.sort
+    // #752 — and every package whose namespace the mirror COVERS, because the completeness rule judges the
+    // PIN's types against the mirror, and a package that was never restored contributes no types at all. Its
+    // omissions would be invisible and the rule would report green over a package it never opened — the same
+    // "an oracle that silently knows nothing about ONE package excuses every symbol in it" hole the header
+    // above forbids, reached from the other direction.
+    //
+    // `fromTypes` is NOT enough for this, and the reason is the same coupling #611 called out: it derives a
+    // package only from a mirrored type that carries a CASE OR A FIELD. A mirror file of pure `val`s, or one
+    // whose types are all opaque, restores nothing — so the completeness rule's coverage would depend on the
+    // case rule's subject matter, and a whole package could go unjudged because none of its mirrored types
+    // happened to be a record or a union.
+    let fromMirror =
+        mirrorNamespaces |> Set.toList |> List.map packageForNamespace
+
+    fromVals @ fromTypes @ fromCandidates @ fromMirror |> List.distinct |> List.sort
 
 // ---------------------------------------------------------------------------------------------
 // The oracle: what the PINNED packages actually export.
@@ -1228,7 +1284,16 @@ let private docPackages =
 /// `Cmd.ofEngine` — whose reader gets a hard build error. The path is what the MIRROR keys on
 /// (`FrameworkModule.Path`), so it is what the two sides can agree on, and agreeing is the whole job:
 /// a gate whose two halves disagree about what a module IS reports green on the difference (#648).
-let private readModuleSurface (dll: string) =
+/// ONE walk, TWO projections — the modules the assembly DECLARES (with their namespace), and the members
+/// each exports. The completeness rule (#752) needs the first and the doc-vs-pin rule needs the second, and
+/// a second copy of "what counts as a public module" is how the two come to disagree (#648).
+///
+/// A MODULE is as omittable as a type, and the first cut of #752 forgot it: `readTypeSurface` excludes
+/// modules by construction (`not (isModule td)`), so a completeness rule built on types alone judges only
+/// half the surface. The pin at 0.9.2 exports `module Keymap` — twelve rebind functions — and `module
+/// KeymapCodec`, and the mirror declares NEITHER. A types-only rule passes both, green, which is the very
+/// fails-open shape (#266) this rule exists to close, reproduced inside the fix for it.
+let private readModuleSurface (dll: string) : (string * string) list * (string * string) list =
     use stream = File.OpenRead dll
     use pe = new PEReader(stream)
     let md = pe.GetMetadataReader()
@@ -1274,22 +1339,40 @@ let private readModuleSurface (dll: string) =
             let pd = md.GetTypeDefinition parent
             isPublic pd && isFSharpModule pd && nameable pd
 
-    [ for handle in md.TypeDefinitions do
-        let td = md.GetTypeDefinition handle
+    // Same reason as `readTypeSurface`'s: a module nested in a module carries an EMPTY namespace in IL —
+    // the namespace lives on the outermost enclosing type. Reading `td.Namespace` directly would file every
+    // nested module under `""`, no mirror namespace would match, and the rule would quietly judge nothing.
+    let rec namespaceOf (td: TypeDefinition) =
+        let parent = td.GetDeclaringType()
 
-        if isPublic td && isFSharpModule td && nameable td then
-            let path = pathOf td
+        if parent.IsNil then
+            md.GetString td.Namespace
+        else
+            namespaceOf (md.GetTypeDefinition parent)
 
-            for methodHandle in td.GetMethods() do
-                let m = md.GetMethodDefinition methodHandle
+    let declaredModules = ResizeArray<string * string>()
 
-                if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
-                    let memberName = md.GetString m.Name
-                    yield path, memberName
+    let members =
+        [ for handle in md.TypeDefinitions do
+            let td = md.GetTypeDefinition handle
 
-                    for prefix in [ "get_"; "set_" ] do
-                        if memberName.StartsWith(prefix, StringComparison.Ordinal) then
-                            yield path, memberName.Substring prefix.Length ]
+            if isPublic td && isFSharpModule td && nameable td then
+                let path = pathOf td
+
+                declaredModules.Add(namespaceOf td, path)
+
+                for methodHandle in td.GetMethods() do
+                    let m = md.GetMethodDefinition methodHandle
+
+                    if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
+                        let memberName = md.GetString m.Name
+                        yield path, memberName
+
+                        for prefix in [ "get_"; "set_" ] do
+                            if memberName.StartsWith(prefix, StringComparison.Ordinal) then
+                                yield path, memberName.Substring prefix.Length ]
+
+    List.ofSeq declaredModules, members
 
 /// Restore the pinned packages and read their exported module surface. `Error` — never an empty map —
 /// if anything at all went wrong: an oracle that silently knows nothing would report every doc symbol
@@ -1350,7 +1433,23 @@ let private SourceConstructUnionCase = 8
 [<Literal>]
 let private SourceConstructField = 4
 
-let private readTypeSurface (dll: string) =
+/// ONE walk, TWO projections — and they must stay one walk (#752).
+///
+/// Two rules judge OPPOSITE directions of the same relation. #611 asks *the mirror declares this case; does
+/// the pin export it?* (mirror ⊆ pin). #752 asks the converse — *the pin exports this type; does the mirror
+/// declare it?* (pin ⊆ mirror) — and the converse is the direction that was never asked, which is why a
+/// mirror could omit a type entirely and stay green.
+///
+/// Both need "what counts as a public type", and a SECOND copy of that predicate is how the two directions
+/// come to disagree about what a type IS — the #648 shape, where a gate's two halves report green on their
+/// own difference. So the predicate is written once and both projections fall out of the same pass.
+///
+/// The NAMESPACE is what the completeness rule needs and what the case/field rule never did. It cannot be
+/// read off `td.Namespace`: a type nested in a MODULE (`module Foo = type Bar = …`, which
+/// `declaredAtTypeLevel` admits) carries an EMPTY namespace in IL — the namespace lives on the outermost
+/// enclosing type. Reading it directly would file every module-nested type under `""`, no mirror namespace
+/// would ever match, and the rule would quietly judge nothing. Walk to the root and take its namespace.
+let private readTypeSurface (dll: string) : (string * string) list * (string * string) list =
     use stream = File.OpenRead dll
     use pe = new PEReader(stream)
     let md = pe.GetMetadataReader()
@@ -1360,56 +1459,74 @@ let private readTypeSurface (dll: string) =
         td.Attributes.HasFlag TypeAttributes.Abstract
         && td.Attributes.HasFlag TypeAttributes.Sealed
 
-    [ for handle in md.TypeDefinitions do
-        let td = md.GetTypeDefinition handle
-        let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
+    let rec namespaceOf (td: TypeDefinition) =
+        let parent = td.GetDeclaringType()
 
-        let isPublic =
-            visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
+        if parent.IsNil then
+            md.GetString td.Namespace
+        else
+            namespaceOf (md.GetTypeDefinition parent)
 
-        // A type NESTED IN A TYPE is not something a mirror can declare — it is the compiler's own
-        // furniture: a DU's `Tags`, and one class per union case (`ViewerEffect+CaptureScreenshot`).
-        // Registering those as top-level types mints entries called `Circle`, `KeyDown`, `Custom`, each
-        // carrying `Item`/`Item1`, which then collide with REAL types of the same name in other packages.
-        // A type nested in a MODULE is different — that is what `module Foo = type Bar = …` compiles to,
-        // and a mirror can declare it — so those are kept.
-        let declaredAtTypeLevel =
-            let parent = td.GetDeclaringType()
-            parent.IsNil || isModule (md.GetTypeDefinition parent)
+    let declaredTypes = ResizeArray<string * string>()
 
-        // `readModuleSurface` owns the modules, and the two maps stay apart so a `type Scene` case can
-        // never excuse a `module Scene` member.
-        if isPublic && not (isModule td) && declaredAtTypeLevel then
-            // IL's own name, arity mangle AND ALL (`Attr`1`). NOT stripped: a type's identity is its name
-            // AND its arity, and published FS.GG.UI.SkiaViewer 0.9.0 exports BOTH `ViewerEffect` and
-            // `ViewerEffect`1` (an unrelated `ViewerEffect<'msg>` from Host/Diagnostics). Merge them and a
-            // case the generic one carries EXCUSES the same-named case on the closed one — a wider oracle,
-            // and a wider oracle excuses a real violation. #594's ledger keys on arity for this exact
-            // reason; the oracle it is checked against has to agree with it. The mirror extractor mangles
-            // its side to match, so no translation is needed between them.
-            let name = md.GetString td.Name
+    let members =
+        [ for handle in md.TypeDefinitions do
+            let td = md.GetTypeDefinition handle
+            let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
 
-            for methodHandle in td.GetMethods() do
-                let m = md.GetMethodDefinition methodHandle
-                let memberName = md.GetString m.Name
+            let isPublic =
+                visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
 
-                let flags =
-                    m.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+            // A type NESTED IN A TYPE is not something a mirror can declare — it is the compiler's own
+            // furniture: a DU's `Tags`, and one class per union case (`ViewerEffect+CaptureScreenshot`).
+            // Registering those as top-level types mints entries called `Circle`, `KeyDown`, `Custom`, each
+            // carrying `Item`/`Item1`, which then collide with REAL types of the same name in other packages.
+            // A type nested in a MODULE is different — that is what `module Foo = type Bar = …` compiles to,
+            // and a mirror can declare it — so those are kept.
+            let declaredAtTypeLevel =
+                let parent = td.GetDeclaringType()
+                parent.IsNil || isModule (md.GetTypeDefinition parent)
 
-                if flags = Some SourceConstructUnionCase then
-                    if memberName.StartsWith("New", StringComparison.Ordinal) then
-                        yield name, memberName.Substring 3
-                    elif memberName.StartsWith("get_", StringComparison.Ordinal) then
-                        yield name, memberName.Substring 4
+            // `readModuleSurface` owns the modules, and the two maps stay apart so a `type Scene` case can
+            // never excuse a `module Scene` member.
+            if isPublic && not (isModule td) && declaredAtTypeLevel then
+                // IL's own name, arity mangle AND ALL (`Attr`1`). NOT stripped: a type's identity is its name
+                // AND its arity, and published FS.GG.UI.SkiaViewer 0.9.0 exports BOTH `ViewerEffect` and
+                // `ViewerEffect`1` (an unrelated `ViewerEffect<'msg>` from Host/Diagnostics). Merge them and a
+                // case the generic one carries EXCUSES the same-named case on the closed one — a wider oracle,
+                // and a wider oracle excuses a real violation. #594's ledger keys on arity for this exact
+                // reason; the oracle it is checked against has to agree with it. The mirror extractor mangles
+                // its side to match, so no translation is needed between them.
+                let name = md.GetString td.Name
 
-            for propertyHandle in td.GetProperties() do
-                let pd = md.GetPropertyDefinition propertyHandle
+                // The pin ⊆ mirror subject (#752). Recorded for EVERY public type, not only the ones that
+                // carry a case or a field: an opaque type (`type Keymap`, whose representation the mirror
+                // cannot see) has neither, and it is exactly the kind the mirror was found to have dropped.
+                declaredTypes.Add(namespaceOf td, name)
 
-                let flags =
-                    pd.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+                for methodHandle in td.GetMethods() do
+                    let m = md.GetMethodDefinition methodHandle
+                    let memberName = md.GetString m.Name
 
-                if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
-                    yield name, md.GetString pd.Name ]
+                    let flags =
+                        m.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+
+                    if flags = Some SourceConstructUnionCase then
+                        if memberName.StartsWith("New", StringComparison.Ordinal) then
+                            yield name, memberName.Substring 3
+                        elif memberName.StartsWith("get_", StringComparison.Ordinal) then
+                            yield name, memberName.Substring 4
+
+                for propertyHandle in td.GetProperties() do
+                    let pd = md.GetPropertyDefinition propertyHandle
+
+                    let flags =
+                        pd.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+
+                    if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
+                        yield name, md.GetString pd.Name ]
+
+    List.ofSeq declaredTypes, members
 
 // ---------------------------------------------------------------------------------------------
 // THE PINNED SURFACE, AND THE ONLY DOORS TO IT (#673)
@@ -1493,7 +1610,22 @@ type PinnedSurface =
       /// (package, type) -> the union cases / record fields it exports. Keyed by PACKAGE as well as name
       /// because the pinned packages declare seventeen type names twice or more, and `Scene`'s `Fatal`
       /// case must not excuse its absence from `Layout`'s same-named type.
-      Types: Map<string * string, Set<string>> }
+      Types: Map<string * string, Set<string>>
+      /// #752 — (package, namespace, type) for EVERY public type the pin exports. The subject of the
+      /// completeness rule, and the one thing `Types` cannot be: `Types` is keyed by name alone and holds
+      /// only types that carry a case or a field, so it can neither see an opaque type nor tell
+      /// `FS.GG.UI.Controls.Typed.ButtonProps` (deliberately NOT mirrored — feature 085, FR-013) from
+      /// `FS.GG.UI.Controls.Widget` (mirrored namespace, simply missing). Without the namespace the
+      /// completeness rule would have to accuse both or neither, and accusing a documented carve-out is how
+      /// a rule gets ledgered into silence by the first person it wrongly accuses.
+      DeclaredTypes: Set<string * string * string>
+      /// #752 — (package, namespace, module path) for every public F# MODULE the pin exports. Kept APART
+      /// from `DeclaredTypes` for the reason the maps above are kept apart: a module and a type are
+      /// different things that may share a name (`module Scene` beside `type Scene`), and a merged set would
+      /// let a mirrored `type Scene` excuse an omitted `module Scene`. A module is exactly as omittable as a
+      /// type — `module Keymap` (twelve rebind functions) and `module KeymapCodec` are both absent from the
+      /// mirror at 0.9.2 — and a types-only completeness rule reports green on every one of them.
+      DeclaredModules: Set<string * string * string> }
 
 module private PinnedApi =
 
@@ -1928,7 +2060,13 @@ module private PinnedApi =
     let private readSurfaceAt
         (packages: string list)
         (versionOf: string -> string)
-        : Result<Map<string * string, Set<string>> * Map<string * string, Set<string>>, string> =
+        : Result<
+            Map<string * string, Set<string>>
+            * Map<string * string, Set<string>>
+            * Set<string * string * string>
+            * Set<string * string * string>,
+            string
+          > =
         let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
         Directory.CreateDirectory workDir |> ignore
 
@@ -2012,6 +2150,8 @@ module private PinnedApi =
                             Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
                         let types =
                             Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
+                        let declared = Collections.Generic.HashSet<string * string * string>()
+                        let declaredModules = Collections.Generic.HashSet<string * string * string>()
 
                         for packageId in packages do
                             let dir =
@@ -2050,7 +2190,12 @@ module private PinnedApi =
                                 // union, a UI doc naming `Cmd.ofEngine` resolved against the merged key and
                                 // PASSED — and its reader gets a hard build error, the #550 class this rule
                                 // exists to refuse.
-                                for (modulePath, memberName) in readModuleSurface path do
+                                let modulesInPackage, moduleMembers = readModuleSurface path
+
+                                for (ns, modulePath) in modulesInPackage do
+                                    declaredModules.Add((packageId, ns, modulePath)) |> ignore
+
+                                for (modulePath, memberName) in moduleMembers do
                                     let key = (packageId, modulePath)
 
                                     if not (surface.ContainsKey key) then
@@ -2071,7 +2216,12 @@ module private PinnedApi =
                                 // precise scenario this rule was written for — would be EXCUSED by Scene's
                                 // unrelated type, silently, with every gate green. A mirror is judged against the
                                 // package it actually belongs to, or it is not judged at all.
-                                for (typeName, memberName) in readTypeSurface path do
+                                let typesInPackage, membersInPackage = readTypeSurface path
+
+                                for (ns, typeName) in typesInPackage do
+                                    declared.Add((packageId, ns, typeName)) |> ignore
+
+                                for (typeName, memberName) in membersInPackage do
                                     let key = (packageId, typeName)
 
                                     if not (types.ContainsKey key) then
@@ -2091,7 +2241,7 @@ module private PinnedApi =
                         else
                             let modules = surface |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
                             let typeMap = types |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
-                            Ok(modules, typeMap)
+                            Ok(modules, typeMap, Set.ofSeq declared, Set.ofSeq declaredModules)
         finally
             try Directory.Delete(workDir, true) with _ -> ()
 
@@ -2143,7 +2293,12 @@ module private PinnedApi =
             skipped subject
         else
             match pinnedSurfaceResult.Value with
-            | Ok(modules, types) -> f { Modules = modules; Types = types }
+            | Ok(modules, types, declared, declaredModules) ->
+                f
+                    { Modules = modules
+                      Types = types
+                      DeclaredTypes = declared
+                      DeclaredModules = declaredModules }
             | Error why ->
                 // Defers in the release window; fails on a stale pin, in the release lane, or on a git that
                 // cannot answer. Returns only when the failure is something else entirely —
@@ -2162,7 +2317,12 @@ module private PinnedApi =
             skipped subject
         else
             match oracleSurfaceResult.Value with
-            | Ok(modules, types) -> f { Modules = modules; Types = types }
+            | Ok(modules, types, declared, declaredModules) ->
+                f
+                    { Modules = modules
+                      Types = types
+                      DeclaredTypes = declared
+                      DeclaredModules = declaredModules }
             | Error why -> skiptest why
 
     /// THE ONLY WAY TO COMPILE A `nameof` PROBE AGAINST THE PIN, and the second half of #673's fix.
@@ -2276,6 +2436,111 @@ let private docLedger =
         |> Array.map (fun l -> l.Trim())
         |> Array.filter (fun l -> l <> "" && not (l.StartsWith("#", StringComparison.Ordinal)))
         |> Set.ofArray
+
+// ---------------------------------------------------------------------------------------------
+// #752 — THE OTHER DIRECTION, AND THE ONE NOBODY ASKED.
+//
+// Every rule above judges MIRROR ⊆ PIN: *the mirror declares this; does the pin export it?* Not one judges
+// the converse, PIN ⊆ MIRROR: *the pin exports this; does the mirror declare it?* So a mirror could omit a
+// type — or a whole file — and every gate here reported green, because an omission declares nothing and a
+// rule that only judges declarations has nothing to judge.
+//
+// It is not hypothetical, and it is not small. At $(FsGgUiVersion)=0.9.2 the mirror omitted 285 of the 673
+// public types the pinned packages export — `Keymap`, `KeymapCodec`, `Widget`, `ChordDiagram`,
+// `ChartGeometry`, `CapabilityVerdict`, … — and whole SOURCE FILES had never been mirrored at all
+// (`src/Controls/Charts2.fsi` shipped in 0.9.2 and appears nowhere in `docs/api-surface/`). Nothing was
+// ledgered, nothing was skipped, and CI was green: the mirror was simply half the surface, and the half it
+// dropped was invisible BY CONSTRUCTION. That is the fails-open shape (FS-GG/.github#266) this file's own
+// header forbids, sitting in the middle of the file that forbids it.
+//
+// A product author reads the mirror to learn what the framework exposes. An omission does not mislead them
+// about a symbol — it hides the symbol, which is worse: there is nothing to reconcile, no error to hit, and
+// no reason to look. `scaffold-map.md` tells them "when they disagree, the `.fsi` wins", so a missing type
+// reads as a type that does not exist.
+//
+// THE SCOPE IS THE MIRROR'S OWN CLAIM, AND THAT IS WHAT KEEPS IT HONEST. The mirror is a CURATED contract,
+// not a complete dump — `docs/api-surface/` deliberately omits the typed front door
+// (`FS.GG.UI.Controls.Typed.*`, feature 085 FR-013), and demanding it would redden CI over a documented
+// decision. A rule that falsely accuses is a rule that gets ledgered into silence by the first person it
+// wrongly accuses. So the subject is exactly the namespaces the mirror DECLARES: cover a namespace and you
+// must cover it COMPLETELY; decline it and it is out of scope. The FR-013 carve-out then falls out of the
+// structure — no mirror file declares `FS.GG.UI.Controls.Typed` — rather than being an exception someone
+// has to remember.
+//
+// A RATCHET, like `pinned-api-doc-ledger.txt`, and for its reason: a gate landing on a repo that already
+// violates it has two honest options, and "quietly narrow the rule until it is green" is not one of them.
+// The 285 omissions are seeded into the ledger, so the hole is A DECISION SOMEBODY MADE — countable, in the
+// diff, one line each — rather than an omission nobody noticed. What the ledger buys is that no NEW omission
+// can land. What it does not buy is silence: the entries are the debt, and #694's generator is what pays it.
+//
+// Two anti-rot rules keep it a ratchet rather than a dumping ground:
+//   * a ledger entry the mirror NOW declares -> the gap was closed.   Delete the line.  (stale)
+//   * a ledger entry the pin NO LONGER exports -> the type was cut.   Delete the line.  (phantom)
+// ---------------------------------------------------------------------------------------------
+
+let private omissionLedgerRel = "tests/Build.Tests/mirror-omission-ledger.txt"
+let private omissionLedgerPath = repoPath omissionLedgerRel
+
+/// `<kind> <package>::<namespace>.<Name>` — e.g. `type FS.GG.UI.Controls::FS.GG.UI.Controls.Widget`,
+/// `module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.Keymap`.
+///
+/// The KIND is part of the key and must be: a module and a type are different things that may share a name
+/// (`module Scene` beside `type Scene`), and a kind-less key would let one excuse the other's omission —
+/// the same merge the `Modules`/`Types` maps are kept apart to prevent.
+///
+/// The name is spelled as IL spells it, arity mangle and all (``Foo`1``), because that is what both sides
+/// key on; a module's is its PATH within the namespace (`Audio.Cmd`), which is what the mirror keys on.
+let private omissionKey (kind: string) (package: string, ns: string, name: string) =
+    $"{kind} {package}::{ns}.{name}"
+
+let private omissionLedger =
+    if not (File.Exists omissionLedgerPath) then
+        Set.empty
+    else
+        File.ReadAllLines omissionLedgerPath
+        |> Array.map (fun l -> l.Trim())
+        |> Array.filter (fun l -> l <> "" && not (l.StartsWith("#", StringComparison.Ordinal)))
+        |> Set.ofArray
+
+/// The seeded size, and a CEILING. The ledger's header promises it "may only SHRINK"; this is what makes
+/// that a rule rather than a hope. Without it the ratchet is aspirational: a worker whose change reddens the
+/// completeness rule can go green by appending one line — which is exactly what the header forbids and
+/// nothing else would detect. Lower it as the debt is paid; never raise it.
+[<Literal>]
+let private OmissionLedgerCeiling = 380
+
+/// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
+///
+/// Modules are here because the first cut of this rule left them out, and leaving them out is not a partial
+/// fix but a fails-open one: `readTypeSurface` excludes modules by construction, so a types-only rule passes
+/// green over `module Keymap` (twelve rebind functions) and `module KeymapCodec`, both of which the mirror
+/// omits at 0.9.2. Half a subject reports green on the other half.
+let private pinSurfaceInMirrorScope (surface: PinnedSurface) : Set<string> =
+    let inScope (declared: Set<string * string * string>) kind =
+        declared
+        |> Set.filter (fun (_, ns, _) -> mirrorNamespaces.Contains ns)
+        |> Set.map (omissionKey kind)
+
+    Set.union (inScope surface.DeclaredTypes "type") (inScope surface.DeclaredModules "module")
+
+/// EVERYTHING the mirror declares, keyed the same way — so the three rules below compare like with like.
+///
+/// The package is derived through `packageForNamespace`, the same mapping the pin side is keyed by, rather
+/// than matched on a suffix. An `EndsWith "::{ns}.{name}"` test — the first cut — ignores the package half of
+/// the key outright, so a mirror declaration in one package would retire a ledger entry written for another.
+/// The file's own comments name four type names that span packages (`DiagnosticSeverity`, `Point`, `Rect`,
+/// `ViewerMsg`), which is precisely where that would bite.
+let private mirrorSurfaceKeys : Set<string> =
+    let types =
+        mirrorDeclaredTypes
+        |> Set.map (fun (ns, name) -> omissionKey "type" (packageForNamespace ns, ns, name))
+
+    let modules =
+        frameworkModules
+        |> List.map (fun m -> omissionKey "module" (packageForNamespace m.Namespace, m.Namespace, m.Path))
+        |> Set.ofList
+
+    Set.union types modules
 
 // ---------------------------------------------------------------------------------------------
 // Tests
@@ -3227,6 +3492,103 @@ let templateConsumesPinnedApiTests =
                       {docLedgerRel}, whose anti-rot rules retire the entry the moment the release \
                       lands.\n\n\
                       Undeclared: {rendered}"
+
+        // #752 — the converse of the rule above, and the direction that was never asked.
+        testCase "every TYPE and MODULE the PINNED package exports in a mirrored namespace is declared by the mirror" <| fun _ ->
+            PinnedApi.withPinnedSurface "the mirror-completeness rule" <| fun surface ->
+                let uiPin = readAxis uiAxis
+
+                // The oracle must actually SEE both kinds, or the rule finds no omissions of the kind it is
+                // blind to and reports green while judging half its subject — the fails-open shape (#266) it
+                // exists to close, and the bug the first cut of this very rule shipped with.
+                Expect.isNonEmpty
+                    (Set.toList surface.DeclaredTypes)
+                    "the pinned packages exported ZERO public types — the TYPE reader has stopped seeing the \
+                     surface. That is a defect in this test, not an empty framework."
+
+                Expect.isNonEmpty
+                    (Set.toList surface.DeclaredModules)
+                    "the pinned packages exported ZERO public modules — the MODULE reader has stopped seeing \
+                     the surface, and every omitted module would pass unjudged."
+
+                Expect.isNonEmpty
+                    (Set.toList mirrorNamespaces)
+                    "the shipped mirror declares NO namespace — the extractor has stopped reading them, and \
+                     the rule below would have an empty subject and pass over everything."
+
+                let inScope = pinSurfaceInMirrorScope surface
+
+                Expect.isNonEmpty
+                    (Set.toList inScope)
+                    "nothing the pin exports falls in any namespace the mirror declares. Either the mirror's \
+                     namespaces and the pin's have stopped agreeing (a spelling change on one side), or the \
+                     reader is blind — either way this rule is judging nothing."
+
+                let omitted =
+                    Set.difference (Set.difference inScope mirrorSurfaceKeys) omissionLedger
+                    |> Set.toList
+
+                let rendered = String.concat "\n  " omitted
+
+                Expect.isEmpty
+                    omitted
+                    $"these types / modules are exported by a package a scaffolded product restores at \
+                      $({uiAxis})={uiPin}, in a namespace the mirror DECLARES — and the mirror does not \
+                      declare them. A product author reading `docs/api-surface/` is not misled about them; \
+                      they are told these do not exist, which is worse, because there is nothing to \
+                      reconcile and no error to hit (`scaffold-map.md`: \"when they disagree, the `.fsi` \
+                      wins\").\n\n\
+                      Add them to the MIRROR — something whose source file has no mirror file at all needs \
+                      the file creating — or, if the omission is DELIBERATE (the mirror is a curated \
+                      contract, and the typed front door is deliberately absent per feature 085 FR-013), \
+                      declare it in {omissionLedgerRel} with the reason. Do NOT narrow this rule to make it \
+                      green.\n\n\
+                      Omitted:\n  {rendered}"
+
+        // #752 — ANTI-ROT 1 (stale). A ledger entry the mirror NOW declares has been paid off, and a ledger
+        // that outlives its subjects stops being a ratchet: the entry sits there excusing something that no
+        // longer needs excusing, so the NEXT omission of it — a real regression — walks straight back through.
+        testCase "no mirror-omission ledger entry names something the mirror NOW declares" <| fun _ ->
+            let paid = Set.intersect omissionLedger mirrorSurfaceKeys |> Set.toList
+            let renderedPaid = String.concat "; " paid
+
+            Expect.isEmpty
+                paid
+                $"these {omissionLedgerRel} entries name something the shipped mirror NOW declares — the gap \
+                  was closed and the entry is dead. A dead entry is not harmless: it goes on excusing its \
+                  subject forever, so if that subject is ever dropped from the mirror again the omission rule \
+                  waves the regression straight through. Delete the line(s): {renderedPaid}"
+
+        // #752 — ANTI-ROT 2 (phantom). An entry for something the pin no longer exports is excusing nothing,
+        // and it is load-bearing that it goes: it is the only thing between the ledger and a dumping ground
+        // nobody ever has to empty.
+        testCase "no mirror-omission ledger entry names something the PIN no longer exports" <| fun _ ->
+            PinnedApi.withPinnedSurface "the mirror-omission ledger's anti-rot rule" <| fun surface ->
+                let uiPin = readAxis uiAxis
+                let live = pinSurfaceInMirrorScope surface
+                let phantom = Set.difference omissionLedger live |> Set.toList
+                let renderedPhantom = String.concat "; " phantom
+
+                Expect.isEmpty
+                    phantom
+                    $"these {omissionLedgerRel} entries name something that NO package a scaffolded product \
+                      restores at $({uiAxis})={uiPin} exports in a mirrored namespace — it was cut, renamed, \
+                      or moved out of the mirror's scope, and the entry now excuses nothing. Delete the \
+                      line(s): {renderedPhantom}"
+
+        // #752 — ANTI-ROT 3 (the ratchet itself). The ledger's header promises it may only SHRINK. Without
+        // this the promise is prose: a worker whose change reddens the completeness rule could go green by
+        // appending a line, which is precisely what the header forbids and what nothing else here detects.
+        testCase "the mirror-omission ledger only ever SHRINKS" <| fun _ ->
+            Expect.isLessThanOrEqual
+                (Set.count omissionLedger)
+                OmissionLedgerCeiling
+                $"{omissionLedgerRel} has grown. It is a RATCHET: it records the debt that existed when the \
+                  completeness rule landed, and it may only shrink as the mirror is fixed. If you added an \
+                  entry to make a red gate green, that is the one thing it is not for — mirror the symbol \
+                  instead. If an entry is genuinely a new DELIBERATE curation, lower nothing and argue it: \
+                  raise `OmissionLedgerCeiling` in the same commit, with the reason, so the growth is a \
+                  decision somebody made rather than a line nobody noticed."
 
         // #611 — THE ORACLE, ANCHORED. The rules above are only as good as `readTypeSurface`, and every way
         // it can be wrong is SILENT:
