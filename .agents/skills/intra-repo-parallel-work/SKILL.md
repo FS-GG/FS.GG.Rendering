@@ -384,9 +384,21 @@ Closes #1, closes #2.         ← REPEAT the keyword. `Closes #1, #2` closes onl
                                 `#2` binds to nothing and is silently dropped.
 ```
 
-Everywhere else, deny the binding: write it as code (`closed #422`), reword it (`does NOT complete
-#422`), or drop the verb (`Refs #422.`). The `closing-keywords` gate fails the PR on every undeclared
-closing reference.
+Everywhere else, deny the binding: **reword the verb** (`does NOT complete`, `addresses`,
+`supersedes`), **drop the verb** (`Refs #422.`), or **break the adjacency** (quote the number without
+its `#`).
+
+**Writing it as code does NOT work, and this line used to say it did**
+([#683](https://github.com/FS-GG/.github/issues/683)). Two parsers read a PR and they disagree about
+code. The **markdown** parser builds the PR's `closingIssuesReferences` link and skips code — but what
+**closes** the issue on a squash merge is the **commit message**, and that is **plain text**, in which
+backticks and fences are ordinary characters. PR
+[#681](https://github.com/FS-GG/.github/pull/681) — the PR that shipped the gate against this bug —
+took its own advice, wrote its examples in backticks, and **re-closed #422**. The docs may quote the
+bug in code because a file in the tree is never parsed for keywords; **a PR body may not.**
+
+The `closing-keywords` gate fails the PR on every undeclared closing reference, and it now scans the
+**raw** body — code included — because that is the parse that closes the issue.
 
 ### If you filed an issue, LINK it — a mention is not a link
 
