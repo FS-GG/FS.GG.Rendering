@@ -303,11 +303,15 @@ not a hard dependency chain. Severity in brackets.
 
 ### Phase 1 — active correctness (do first)
 
-- [ ] **[HIGH] F-CTL-1** — thread `theme.ControlHeight` into `radioGroupChangedMessages`
-      (`Controls.Elmish/ControlsElmish.fs:754`), delete the `28.0` literal, and correct the false
-      "SAME `min 28`" comments at `:717`/`:737`.
+- [x] **[HIGH] F-CTL-1** — thread `theme.ControlHeight` into `radioGroupChangedMessages`
+      (`Controls.Elmish/ControlsElmish.fs`), delete the `28.0` literal, and correct the false
+      "SAME `min 28`" comments. *Done:* `theme` threaded `bindingMessagesFor` → `activationValueFor`
+      → `activationValueComputers` → `radioGroupChangedMessages`; cap now `min theme.ControlHeight`.
+      Controls.Elmish builds clean; full Elmish.Tests suite green (271 passed, no regressions).
 - [ ] **[HIGH] F-CTL-1 regression test** — add a headless click-routing test for a tall radio
-      group (rows > 28px) asserting the *payload* index, not just that a message fired.
+      group (rows > 28px) asserting the *payload* index, not just that a message fired. **Still
+      open** — the existing suite passes both before and after the fix (that is exactly the
+      success-shaped hazard the finding describes), so a dedicated payload-index test is still owed.
 - [ ] **[MED] F-DIAG-1** — block the `summarize` status ladder on `Error`/`Fatal` severity
       independent of category (`Diagnostics.fs:395-405`); reclassify fatal `Framebuffer` failures
       off `RenderingLimitation` (`Host/Diagnostics.fs:185`). Add a fixture pairing

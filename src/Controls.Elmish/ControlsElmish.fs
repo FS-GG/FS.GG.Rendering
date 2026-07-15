@@ -715,7 +715,7 @@ module ControlsElmish =
     // `Payload = None`, so `onChangedString` saw `""`: a live wrong-value dispatch shipped as a KNOWN
     // GAPS comment. `stringItemsOf`/`changedBindingsFor`/`boundsOf` factor the shared read; each kind
     // supplies only its axis→index formula, which MUST mirror its geometry (`WidgetGeometry.radioGeom`
-    // caps the row height at 28; `tabsGeom` splits the width evenly).
+    // caps the row height at `theme.ControlHeight`; `tabsGeom` splits the width evenly).
     let private stringItemsOf (control: Control<'msg>) : string list =
         control.Attributes
         |> List.tryPick (fun a ->
@@ -735,8 +735,12 @@ module ControlsElmish =
         rendered.Bounds |> List.tryFind (fun (id, _) -> id = authored) |> Option.map snd
 
     // `radio-group`: options stack vertically; the clicked option is `floor((y - top) / rowH)` with the
-    // SAME `rowH = min 28 (height / n)` `radioGeom` paints, clamped to a valid option index.
+    // SAME `rowH = min theme.ControlHeight (height / n)` `radioGeom` paints (`WidgetGeometry.fs`),
+    // clamped to a valid option index. F-CTL-1: the cap MUST read `theme.ControlHeight` — a hardcoded
+    // literal (was `28.0`) diverges from the painter (32.0 in every shipped theme), so a click on a
+    // legibly-tall group lands in the wrong band and dispatches the wrong option.
     let private radioGroupChangedMessages
+        (theme: Theme)
         (rendered: ControlRenderResult<'msg>)
         (root: Control<'msg>)
         (authored: ControlId)
@@ -751,7 +755,7 @@ module ControlsElmish =
             | _, _, None -> None
             | items, bindings, Some bounds ->
                 let n = List.length items
-                let rowH = min 28.0 (bounds.Height / float n)
+                let rowH = min theme.ControlHeight (bounds.Height / float n)
                 let index = Math.Clamp(int (floor ((y - bounds.Y) / max 1.0 rowH)), 0, n - 1)
                 let value = List.item index items
                 dispatchBindings origin authored "changed" (Some(MovedSelection(index, Some value))) bindings
@@ -832,17 +836,20 @@ module ControlsElmish =
     /// binding yet, so there is no payload to compute; `toggle-button` bakes `not IsOn` into an
     /// `onClick` at view time, so it needs no payload (the toggle-authoring split is F6). Each becomes
     /// correct by REGISTERING a computer here once it grows a `changed` binding.
-    let private activationValueComputers () : (string * ActivationValueComputer<'msg>) list =
+    // `theme` is threaded in so the geometry-mirroring computers (radio-group) can cap on the SAME
+    // `theme.ControlHeight` the painter uses (F-CTL-1); kinds with no theme-dependent geometry ignore it.
+    let private activationValueComputers (theme: Theme) : (string * ActivationValueComputer<'msg>) list =
         [ "slider", (fun rendered root authored x _ origin -> sliderChangedMessages rendered root authored x origin)
           "switch", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
           "check-box", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
-          "radio-group", (fun rendered root authored _ y origin -> radioGroupChangedMessages rendered root authored y origin)
+          "radio-group", (fun rendered root authored _ y origin -> radioGroupChangedMessages theme rendered root authored y origin)
           "tabs", (fun rendered root authored x _ origin -> tabsChangedMessages rendered root authored x origin)
           "numeric-input", (fun rendered root authored _ _ origin -> numericInputChangedMessages rendered root authored origin) ]
 
     /// Consult the activation-value registry for the authored control's kind. The registry key is
     /// authoritative: an unregistered kind returns `None` (→ generic `Payload = None` click bindings).
     let private activationValueFor
+        (theme: Theme)
         (rendered: ControlRenderResult<'msg>)
         (root: Control<'msg>)
         (authored: ControlId)
@@ -852,18 +859,18 @@ module ControlsElmish =
         : 'msg list option =
         tryFindControlById root authored
         |> Option.bind (fun control ->
-            activationValueComputers ()
+            activationValueComputers theme
             |> List.tryFind (fun (kind, _) -> kind = control.Kind)
             |> Option.bind (fun (_, compute) -> compute rendered root authored x y origin))
 
-    let bindingMessagesFor (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
+    let bindingMessagesFor (theme: Theme) (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
         match interaction with
         | Click(control, _, x, y) ->
             match Control.nearestAuthored rendered control with
             | Some authored ->
                 // F3: consult the activation-value registry (keyed by control kind) for the click's
                 // payload; fall through to the generic `Payload = None` click bindings when unregistered.
-                match activationValueFor rendered root authored x y ControlEventOrigin.Pointer with
+                match activationValueFor theme rendered root authored x y ControlEventOrigin.Pointer with
                 | Some msgs -> Some msgs
                 | None ->
                     let matched =
@@ -1083,7 +1090,7 @@ module ControlsElmish =
             let messages =
                 interactions
                 |> List.collect (fun interaction ->
-                    match bindingMessagesFor rendered current interaction with
+                    match bindingMessagesFor host.Theme rendered current interaction with
                     | Some msgs -> msgs
                     | None -> routePointerFallback host.Diagnostics host.MapPointer rendered interaction)
 
@@ -1102,6 +1109,7 @@ module ControlsElmish =
     // `retainedHitTest x y` lands on the same node `Pointer.update` hit (same cached geometry) and the
     // `authoredControlIds` lookup climbs to the same authored id `nearestAuthored` would.
     let private retainedBindingMessages
+        (theme: Theme)
         (retained: RetainedRender<'msg>)
         (render: ControlRenderResult<'msg>)
         (interaction: PointerInteraction)
@@ -1110,9 +1118,9 @@ module ControlsElmish =
         | Click(_, _, x, y) ->
             match RetainedRender.retainedHitTest x y retained with
             | None -> None, true
-            | Some _ -> bindingMessagesFor render retained.Root.Control interaction, false
+            | Some _ -> bindingMessagesFor theme render retained.Root.Control interaction, false
         | DragMove(_, PointerButton.Primary, _, _)
-        | DragEnd(_, PointerButton.Primary, _, _) -> bindingMessagesFor render retained.Root.Control interaction, false
+        | DragEnd(_, PointerButton.Primary, _, _) -> bindingMessagesFor theme render retained.Root.Control interaction, false
         | _ -> None, false
 
     // Feature 110 (FR-001/FR-002/FR-003): route ONE already-resolved interaction from the retained frame.
@@ -1128,7 +1136,7 @@ module ControlsElmish =
         (render: ControlRenderResult<'msg>)
         (interaction: PointerInteraction)
         : 'msg list * int =
-        match retainedBindingMessages retained render interaction with
+        match retainedBindingMessages host.Theme retained render interaction with
         | Some msgs, _ -> msgs, 0
         | None, false -> routePointerFallback host.Diagnostics host.MapPointer render interaction, 0
         | None, true ->
@@ -1136,7 +1144,7 @@ module ControlsElmish =
             let current = host.View size model
             let rendered = Control.renderTree host.Theme size current
 
-            match bindingMessagesFor rendered current interaction with
+            match bindingMessagesFor host.Theme rendered current interaction with
             | Some msgs -> msgs, 1
             | None -> routePointerFallback host.Diagnostics host.MapPointer rendered interaction, 1
 
