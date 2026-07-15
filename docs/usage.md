@@ -65,7 +65,7 @@ feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
 ### Package map
 
-All 17 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
+All 16 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
 for the owning source module of each):
 
 | Package | What it gives you |
