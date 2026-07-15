@@ -63,6 +63,39 @@ let tests =
             Expect.equal unmatchedSummary.Status ReadinessDiagnosticStatus.ReviewRequired "unmatched exception requires review"
         }
 
+        test "F-DIAG-2: summarizeAt evaluates ExpiresOn against the injected date, deterministically" {
+            // The exception accepts the blocker; it expires on 2026-07-15. Because `exceptionIsValid`
+            // requires `expires >= now`, it is valid ON its expiry day and the day before, and invalid
+            // the day after — evaluated purely against the injected `now`, no wall clock involved.
+            let accepting: DiagnosticException =
+                { ExceptionId = "expires-2026-07-15"
+                  Scope = "PackageRestoreFailed"
+                  Reason = "Accepts the blocker until an explicit expiry date."
+                  ExpiresOn = Some(DateOnly(2026, 7, 15))
+                  AcceptedBy = Some "feature169-test" }
+
+            let summarizeOn (now: DateOnly) =
+                RuntimeDiagnostics.summarizeAt now None [ accepting ] [] [ Feature169Fixtures.blocker ]
+
+            let dayBefore = summarizeOn (DateOnly(2026, 7, 14))
+            let onExpiry = summarizeOn (DateOnly(2026, 7, 15))
+            let dayAfter = summarizeOn (DateOnly(2026, 7, 16))
+
+            Expect.equal dayBefore.Status ReadinessDiagnosticStatus.Accepted "valid the day before expiry accepts the blocker"
+            Expect.equal onExpiry.Status ReadinessDiagnosticStatus.Accepted "valid on the expiry day (expires >= now) accepts the blocker"
+            Expect.equal dayAfter.Status ReadinessDiagnosticStatus.ReviewRequired "expired the day after -> exception invalid -> review required"
+            Expect.equal dayAfter.ExceptionCount 0 "the expired exception no longer counts as valid"
+        }
+
+        test "F-DIAG-2: summarize equals summarizeAt at today's UTC date (adapter is a faithful wrapper)" {
+            // The public adapter is exactly `summarizeAt` supplied with the current UTC date; pinning it
+            // guards against the wrapper drifting from the pure core.
+            let today = DateOnly.FromDateTime(DateTime.UtcNow)
+            let viaAdapter = RuntimeDiagnostics.summarize None [] [] [ Feature169Fixtures.blocker ]
+            let viaCore = RuntimeDiagnostics.summarizeAt today None [] [] [ Feature169Fixtures.blocker ]
+            Expect.equal viaAdapter.Status viaCore.Status "adapter status matches summarizeAt at today's date"
+        }
+
         test "Synthetic environment error becomes environment-limited when no blocker remains" {
             let summary = Feature169Fixtures.summarize [ Feature169Fixtures.environmentLimit ]
             Expect.equal summary.Status ReadinessDiagnosticStatus.EnvironmentLimitedStatus "environment-limited status"

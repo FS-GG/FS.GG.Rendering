@@ -352,8 +352,11 @@ module RuntimeDiagnostics =
         | Some Environment, Some DiagnosticSeverity.Error -> true
         | _ -> false
 
-    let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
-        let now = DateOnly.FromDateTime(DateTime.UtcNow)
+    // F-DIAG-2: the evaluation is pure over an injected `now`. `ExpiresOn` is the only date-sensitive
+    // input, so taking the clock as a parameter makes the whole verdict a total function of its inputs
+    // and the expiry boundary deterministically testable. The lone ambient-clock read lives in the
+    // `summarize` adapter below (and in `writeArtifacts`, the already-impure I/O boundary).
+    let summarizeAt (now: DateOnly) (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
         let initialGroups = aggregate diagnostics
 
         let exceptionProblems =
@@ -432,6 +435,12 @@ module RuntimeDiagnostics =
           Groups = groups
           Exceptions = validMatchedExceptions
           ArtifactWriteDiagnostics = [] }
+
+    /// Adapter over the pure `summarizeAt`: reads the wall clock once (`UtcNow` -> `DateOnly`) to
+    /// evaluate `DiagnosticException.ExpiresOn`. This is the single ambient-clock read on the verdict
+    /// path; callers that need a deterministic expiry boundary call `summarizeAt` with a fixed `now`.
+    let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
+        summarizeAt (DateOnly.FromDateTime(DateTime.UtcNow)) runId exceptions artifactPaths diagnostics
 
     let private json value = JsonSerializer.Serialize(value)
 
@@ -705,10 +714,13 @@ module RuntimeDiagnostics =
             with ex ->
                 writeDiagnostics <- writeDiagnostics @ [ artifactFailureDiagnostic path ex.Message ]
 
-        let initial = summarize runId exceptions artifactPaths diagnostics
+        // Read the clock once so the initial and final summaries evaluate `ExpiresOn` against the same
+        // instant — two `UtcNow` reads could straddle a day boundary within a single write.
+        let now = DateOnly.FromDateTime(DateTime.UtcNow)
+        let initial = summarizeAt now runId exceptions artifactPaths diagnostics
         tryWrite jsonPath (renderJson initial + Environment.NewLine)
         tryWrite markdownPath (renderMarkdown initial)
         tryWrite jsonLinesPath (renderJsonLines diagnostics)
 
-        let finalSummary = summarize runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
+        let finalSummary = summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
         { finalSummary with ArtifactWriteDiagnostics = writeDiagnostics }
