@@ -417,9 +417,10 @@ module Symbology =
             LabelLayout.motionLabelNodes kind labelPhase centerX baselineY regionWidth staticNodes
         | _ -> staticNodes ()
 
-    // The ONE source of the per-grammar line budget: the emitters below pass it to `wrapLabel`, and
-    // `Legibility.scoreIn` reads it to warn before the surplus is silently dropped. Two copies would
-    // drift, and the linter's whole job here is to be right about this number.
+    // The ONE source of the per-grammar line budget: the emitters below pass it through
+    // `LabelLayout.labelDispatch` (which caps each label at it), and `Legibility.scoreIn` reads it to warn
+    // before the surplus is silently dropped. Two copies would drift, and the linter's whole job here is
+    // to be right about this number.
     let internal labelLineBudget (grammar: Grammar) : int =
         match grammar with
         | Grammar.Token -> 3 // caption strip below the health arc
