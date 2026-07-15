@@ -473,8 +473,17 @@ not a hard dependency chain. Severity in brackets.
       `docs/reports/2026-06-21-23-57-god-module-decomposition-analysis-and-plan.md`: extract the
       rich-text engine out of `Symbology.fs`, the frame loop out of `ControlsElmish.fs`, and stop
       landing new features inside `SkiaViewer.fs`.
-- [ ] **[MED] F-CTL-2** — route DataGrid `cellFontSize` through `Style.resolve`
-      (`DataGridGeometry.fs:19,39`) so a theme can rescale grid-cell text.
+- [x] **[MED] F-CTL-2** — route DataGrid `cellFontSize` through `Style.resolve`
+      (`DataGridGeometry.fs:19,39`) so a theme can rescale grid-cell text. *Done:* `cellText` now
+      builds a `baseStyle` at `cellFontSize` and paints `mkTextW` at the RESOLVED `FontSize`/`FontWeight`
+      via `Style.resolve theme baseStyle classes state` — the last cell-family site painting a raw
+      literal is gone (mirrors the #383/#384 radio/slider/button seam). `ContentRender` threads the
+      cell's attached style classes + visual state into `cellGeom`/`headerCellGeom`, so a `StyleClass.Font`
+      (or a state overlay) now rescales grid-cell text instead of being dropped. `resolve theme base []
+      Normal = base`, so every shipped unthemed grid is byte-identical. New `FCtl2DataGridFontTests`
+      pins both halves: the 11.0 byte-identity anchor (plain body + header cell) and the newly-live seam
+      (a `Font` class reaching the body- and header-cell labels) — verified RED against the raw literal
+      (2 fail, anchors stay green) and green on the fix. Controls builds clean; Controls.Tests 1027 passed.
 - [ ] **[LOW-MED] F-CORE-4** — synchronize (or document as strictly single-threaded) the
       process-wide render statics in `Host/OpenGl.fs:507-524` and `Host/FrameCache.fs:22`.
 - [ ] **[LOW-MED] F-DIAG-2** — inject a clock into `summarize` for `ExpiresOn` evaluation

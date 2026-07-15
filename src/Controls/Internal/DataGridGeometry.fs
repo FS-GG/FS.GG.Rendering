@@ -15,7 +15,10 @@ module internal DataGridGeometry =
     open ControlPrimitives
 
     /// Body-text size, matched to `gridGeom`'s schematic so the bound grid and the unbound chrome
-    /// read as the same control.
+    /// read as the same control. Fed to the resolver as `baseStyle.FontSize` (never painted raw), so
+    /// a theme class / visual state can rescale grid-cell text — see F-CTL-2 and the #383 radio/slider
+    /// precedent (`WidgetGeometry.fs`). `resolve theme base [] Normal = base`, so unthemed output is
+    /// byte-identical to the former raw literal.
     let private cellFontSize = 11.0
 
     /// A cell owns the rule on its trailing and bottom edge; together the cells' rules draw the grid.
@@ -33,19 +36,37 @@ module internal DataGridGeometry =
               rule ]
 
     /// Clipped to the cell so a value wider than its column can never bleed into the neighbour.
-    let private cellText (theme: Theme) (box: Rect) (color: Color) (value: string) : Scene =
+    // F-CTL-2: the cell's typography flows through `Style.resolve` (like radio/slider) rather than
+    // painting `cellFontSize` raw, so a theme can rescale grid-cell text. The base reproduces the
+    // prior literal size + `color` foreground, so `resolve theme base [] Normal = base` is
+    // byte-identical today; `mkTextW … style.FontWeight` with the base `None` weight emits the same
+    // run `mkText` did.
+    let private cellText (theme: Theme) (box: Rect) (classes: StyleClass list) (state: VisualState) (color: Color) (value: string) : Scene =
+        let baseStyle: ResolvedStyle =
+            { Foreground = color
+              Fill = theme.Background
+              Stroke = theme.Foreground
+              StrokeWidth = 0.0
+              StrokeDash = []
+              FontFamily = theme.FontFamily
+              FontSize = cellFontSize
+              FontWeight = None }
+
+        let style = Style.resolve theme baseStyle classes state
+
         Scene.clipped
             (RectClip box)
-            (Scene.group [ mkText theme (box.X + 6.0) (box.Y + box.Height * 0.66) cellFontSize color value ])
+            (Scene.group
+                [ mkTextW theme (box.X + 6.0) (box.Y + box.Height * 0.66) style.FontSize style.FontWeight style.Foreground value ])
 
     /// A header cell: the muted header band carrying the column's label.
-    let headerCellGeom (theme: Theme) (box: Rect) (label: string) : Scene list =
+    let headerCellGeom (theme: Theme) (box: Rect) (classes: StyleClass list) (state: VisualState) (label: string) : Scene list =
         Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Muted
-        :: cellText theme box theme.Foreground label
+        :: cellText theme box classes state theme.Foreground label
         :: cellRules theme box
 
     /// A body cell: the grid surface carrying the cell's value.
-    let cellGeom (theme: Theme) (box: Rect) (value: string) : Scene list =
+    let cellGeom (theme: Theme) (box: Rect) (classes: StyleClass list) (state: VisualState) (value: string) : Scene list =
         Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Background
-        :: cellText theme box theme.Foreground value
+        :: cellText theme box classes state theme.Foreground value
         :: cellRules theme box
