@@ -116,5 +116,9 @@ module Fonts =
     /// font size no longer grows it without limit. Internal: read by the leak regression test.
     val internal fontCacheCount: unit -> int
 
-    /// Dispose every cached `SKFont`/`SKTypeface` and empty both caches. Internal: teardown and tests.
+    /// Live `SKShaper` cache entry count. One shaper is built per bundled typeface and reused across
+    /// shape calls (F-CORE-3) rather than `new`-ed per call. Internal: read by the reuse regression test.
+    val internal shaperCacheCount: unit -> int
+
+    /// Dispose every cached `SKFont`/`SKTypeface`/`SKShaper` and empty the caches. Internal: teardown and tests.
     val internal disposeCaches: unit -> unit

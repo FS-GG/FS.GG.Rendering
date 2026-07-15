@@ -86,6 +86,7 @@
     <Compile Include="Issue444EvidenceEffectsTests.fs" />
     <Compile Include="Issue535PersistenceSeamTests.fs" />
     <Compile Include="FCore2TextResolveTests.fs" />
+    <Compile Include="FCore3ShaperReuseTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
