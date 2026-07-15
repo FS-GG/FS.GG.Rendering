@@ -413,9 +413,24 @@ not a hard dependency chain. Severity in brackets.
       floor). `Testing.Tests` added four guards — the two vacuous cases (verified RED: 2 fail without the
       fix) and two non-over-block guards (a satisfied required region / an inspected transition keep
       `Accepted`); full Testing.Tests 113 passed, Package.Tests 436, Controls.Tests 1023 green.
-- [ ] **[LOW] F-TEST-3** — treat an empty `RequiredScenarioIds` as `ReviewRequired`
+- [x] **[LOW] F-TEST-3** — treat an empty `RequiredScenarioIds` as `ReviewRequired`
       (`TestingCompositor.fs:183-184` + Feature159/160/161 mirrors); add pixel-content check to
-      `VisualCompleteness` (`TestingVisual.fs:189-190`).
+      `VisualCompleteness` (`TestingVisual.fs:189-190`). *Done:* every scenario-gated readiness
+      validator now carries an empty-required-set floor that fails closed rather than certifying
+      vacuously — an empty `RequiredScenarioIds` is treated identically to all-scenarios-missing:
+      `CompositorTimingAssertions.validateSummary` → `Incomplete`, `CompositorDamageReadiness.validate`
+      / `Feature159`/`Feature160`/`Feature161` → their `Rejected`-equivalent, each with a disclosing
+      "must declare at least one required scenario" diagnostic. (`Feature160`/`Feature161` were truly
+      fail-open — an empty set + one accepted iteration/artifact minted `Accepted`; the compositor and
+      `Feature159` mirrors already fell to a *vacuous* `FallbackOnly`, now made an explicit fail-closed.)
+      `VisualCompleteness.validateOne` gains a conservative `isBlankCapture` pixel check: a correctly-sized,
+      decodable, but all-alpha-zero PNG now records `VisualCaptureBlocked` (`"blank screenshot …"`) instead
+      of `VisualCaptureComplete`, so it blocks readiness (waivable via the existing accepted-exception gate)
+      rather than passing as real evidence; opaque/solid-colour content still passes (Opaque short-circuit).
+      Public surface unchanged (all logic-only; no `.fsi` edits). Six new guards added across
+      `Feature156/157/159/160/161` helper tests (empty-required floor) and `Feature164` (blank PNG),
+      each verified RED against the unfixed source (stash → 6 fail). Testing.Tests 119 passed,
+      Package.Tests 436 passed, Rendering.Harness.Tests 308 passed.
 
 ### Phase 4 — performance (per-frame text path)
 

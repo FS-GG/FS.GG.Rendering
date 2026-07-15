@@ -62,6 +62,14 @@ let tests =
                 Expect.isFalse result.Accepted $"verdict {verdict} fails closed")
         }
 
+        test "empty required-scenario set cannot vacuously certify positive (F-TEST-3)" {
+            let result = CompositorTimingAssertions.validateSummary { check [] with RequiredScenarioIds = [] }
+
+            Expect.isFalse result.Accepted "an empty required set certifies nothing"
+            Expect.equal result.Verdict CompositorTimingIncomplete "incomplete, not vacuously positive"
+            Expect.exists result.Diagnostics (fun item -> item.Contains("at least one required scenario")) "disclosing diagnostic"
+        }
+
         test "cross-profile missing scenario and overclaiming shipped status are rejected" {
             let invalid =
                 { check [ scenario "timing/localized-update" CompositorTimingPositive ] with
