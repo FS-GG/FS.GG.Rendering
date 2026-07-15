@@ -145,4 +145,27 @@ let tests =
 
               Expect.exists result.Findings (fun f -> f.RuleId = "identity-stable") "identity finding"
               Expect.exists result.Findings (fun f -> f.RuleId = "visual-order-stable") "order finding"
+          }
+
+          // F-TEST-2: an artifact that declares nothing `Required` and whose rules produce no finding
+          // did no real inspection work — honouring its self-declared `Accepted` would mint a proof
+          // over nothing. It must fall to `Incomplete` with a disclosing diagnostic.
+          test "self-declared accepted with no required fact and no findings falls to incomplete" {
+              let art = artifact [ region "content" (rect 0.0 0.0 100.0 100.0) false ] [] [] [ node "content" 0 (rect 0.0 0.0 100.0 100.0) ]
+              let result = validate [ "required-region-present"; "required-region-painted"; "ordinary-regions-disjoint" ] art
+
+              Expect.isEmpty result.Findings "no rule fired, so there is no substantive inspection evidence"
+              Expect.equal result.ReadinessStatus VisualInspectionStatus.Incomplete "a vacuous inspection cannot certify accepted"
+              Expect.exists result.Diagnostics (fun d -> d.Contains "vacuous") "the floor discloses why acceptance was withheld"
+          }
+
+          // The floor must not over-block: a satisfied required region is real evidence and keeps the
+          // self-declared `Accepted` (a required region present with finite bounds and complete paint
+          // coverage produces no findings).
+          test "a satisfied required region keeps self-declared accepted" {
+              let art = artifact [ region "root" (rect 0.0 0.0 100.0 100.0) true ] [] [] [ node "root" 0 (rect 0.0 0.0 100.0 100.0) ]
+              let result = validate [ "required-region-present"; "required-region-painted" ] art
+
+              Expect.isEmpty result.Findings "a satisfied required region produces no findings"
+              Expect.equal result.ReadinessStatus VisualInspectionStatus.Accepted "a required fact certifies accepted"
           } ]

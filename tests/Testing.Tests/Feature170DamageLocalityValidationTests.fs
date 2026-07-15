@@ -114,6 +114,32 @@ let tests =
               Expect.exists result.Findings (fun finding -> finding.RuleId = "unsupported-damage-explicit") "unsupported finding"
           }
 
+          // F-TEST-2: a retained artifact that carries no inspected damage transition (no `Transition`
+          // and no `Damage`) and whose rules produce no finding did no real work — honouring its
+          // self-declared `Accepted` would mint a proof over nothing. It must fall to `ReviewRequired`
+          // with a disclosing diagnostic. (Rules are empty here to isolate the floor from the
+          // default rules, which would otherwise flag the absent damage as unsupported.)
+          test "self-declared accepted with no inspected transition and no findings falls to review-required" {
+              let damage = RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 0 } None (Some 20.0)
+              let vacuous = { artifact "fixture" damage [] with Transition = None; Damage = None }
+              let result = RetainedInspectionValidation.validate vacuous [] []
+
+              Expect.isEmpty result.Findings "no rule fired, so there is no substantive inspection evidence"
+              Expect.equal result.ReadinessStatus RetainedInspectionStatus.ReviewRequired "a vacuous inspection cannot certify accepted"
+              Expect.exists result.Diagnostics (fun d -> d.Contains "vacuous") "the floor discloses why acceptance was withheld"
+          }
+
+          // The floor must not over-block: an inspected damage transition (both `Transition` and
+          // `Damage` present) is real evidence and keeps the self-declared `Accepted` even when no
+          // rule fires.
+          test "an inspected damage transition keeps self-declared accepted" {
+              let damage = RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 0 } None (Some 20.0)
+              let result = RetainedInspectionValidation.validate (artifact "fixture" damage []) [] []
+
+              Expect.isEmpty result.Findings "no rule fired"
+              Expect.equal result.ReadinessStatus RetainedInspectionStatus.Accepted "an inspected transition certifies accepted"
+          }
+
           test "summary markdown json and managed section expose reviewer fields" {
               let damage =
                   RetainedInspection.damageRegion "hover" frame [ rect 0.0 0.0 10.0 10.0 ] [ "button" ] [ "button" ] { Repainted = 1; Shifted = 0; Unaffected = 1 } None (Some 20.0)

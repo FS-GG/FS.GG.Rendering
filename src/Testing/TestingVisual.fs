@@ -1070,13 +1070,31 @@ module VisualInspectionValidation =
             |> List.filter (exceptionValid >> not)
             |> List.map _.ExceptionId
 
+        let ruleFindings = check.Rules |> List.collect (findingsForRule check)
+
         let initialFindings =
-            check.Rules
-            |> List.collect (findingsForRule check)
+            ruleFindings
             |> List.append check.Artifact.Findings
             |> List.sortBy _.FindingId
 
         let validExceptions = check.Exceptions |> List.filter exceptionValid
+
+        // F-TEST-2: an inspection that declares no required region/coverage/text fact AND whose rules
+        // produced no finding did no real work — accepting its self-declared `Accepted` would mint a
+        // proof over nothing (the success-shaped vacuity this repo guards against). Require at least one
+        // required fact, or one rule-produced finding (a real overlap/overlay finding accepted by
+        // exception is genuine evidence), before the self-declared `Accepted` is honoured.
+        let hasInspectionEvidence =
+            not check.RequiredRegionIds.IsEmpty
+            || check.Artifact.Regions |> List.exists _.Required
+            || check.Artifact.TextRuns |> List.exists _.Required
+            || not ruleFindings.IsEmpty
+
+        let floorDiagnostics =
+            if not hasInspectionEvidence && check.Artifact.ReadinessStatus = VisualInspectionStatus.Accepted then
+                [ "visual inspection resolved to incomplete: the artifact declares no required region, paint-coverage, or text fact and produced no findings, so an accepted status would be vacuous" ]
+            else
+                []
 
         // Feature 186 (US3): delegate to the one shared algorithm with the VISUAL knobs — accept
         // `Blocking` only (line 1014 of the former copy), and a status policy that neither accepts nor
@@ -1114,7 +1132,11 @@ module VisualInspectionValidation =
                         | VisualInspectionStatus.Blocked -> VisualInspectionStatus.Blocked
                         | VisualInspectionStatus.Unsupported -> VisualInspectionStatus.Unsupported
                         | VisualInspectionStatus.EnvironmentLimited -> VisualInspectionStatus.EnvironmentLimited
-                        | VisualInspectionStatus.Accepted -> VisualInspectionStatus.Accepted
+                        | VisualInspectionStatus.Accepted ->
+                            if hasInspectionEvidence then
+                                VisualInspectionStatus.Accepted
+                            else
+                                VisualInspectionStatus.Incomplete
               MkResult =
                 fun status findings appliedIds invalidIds unused diagnostics ->
                     { ArtifactId = check.Artifact.ArtifactId
@@ -1127,7 +1149,7 @@ module VisualInspectionValidation =
 
         SharedTesting.validateCheck
             knobs
-            (VisualInspection.artifactDiagnostics check.Artifact)
+            (VisualInspection.artifactDiagnostics check.Artifact @ floorDiagnostics)
             initialFindings
             validExceptions
             invalidExceptions

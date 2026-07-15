@@ -398,9 +398,21 @@ not a hard dependency chain. Severity in brackets.
       `Testing.Tests` added two guards (the unit case flips non-authoritative; the contract case
       asserts the `generated-tests-ran=false` emission) — verified RED on the pre-fix fall-through;
       full Testing.Tests suite 109 passed.
-- [ ] **[MED] F-TEST-2** — require at least one `Required` region/coverage/text fact before an
+- [x] **[MED] F-TEST-2** — require at least one `Required` region/coverage/text fact before an
       inspection can resolve to `Accepted` (`TestingVisual.fs:1109-1117`,
-      `TestingRetainedInspection.fs:421-422`).
+      `TestingRetainedInspection.fs:421-422`). *Done:* both `validateCheck` bodies now compute a
+      `hasInspectionEvidence` floor and downgrade a self-declared `Accepted` that clears it. Visual
+      requires a required region/text fact (`RequiredRegionIds` non-empty, or a `Required` region or
+      text run) **or** a rule-produced finding — an artifact that declares nothing `Required` and
+      whose rules fire nothing falls to `Incomplete`. Retained requires an inspected damage transition
+      (both `Transition` and `Damage` present) **or** a rule-produced finding, else falls to
+      `ReviewRequired`. The floor is deliberately met by a real rule-produced finding so the
+      exception-accepted overlay/broad-damage cases (a genuine reviewed finding) stay `Accepted`; both
+      downgrades emit a disclosing "…would be vacuous" diagnostic. Public surface unchanged (logic-only;
+      rule-findings split out from `check.Artifact.Findings` so a self-declared finding cannot spoof the
+      floor). `Testing.Tests` added four guards — the two vacuous cases (verified RED: 2 fail without the
+      fix) and two non-over-block guards (a satisfied required region / an inspected transition keep
+      `Accepted`); full Testing.Tests 113 passed, Package.Tests 436, Controls.Tests 1023 green.
 - [ ] **[LOW] F-TEST-3** — treat an empty `RequiredScenarioIds` as `ReviewRequired`
       (`TestingCompositor.fs:183-184` + Feature159/160/161 mirrors); add pixel-content check to
       `VisualCompleteness` (`TestingVisual.fs:189-190`).

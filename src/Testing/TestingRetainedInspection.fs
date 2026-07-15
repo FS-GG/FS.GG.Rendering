@@ -376,13 +376,29 @@ module RetainedInspectionValidation =
             |> List.filter (exceptionValid >> not)
             |> List.map _.ExceptionId
 
+        let ruleFindings = check.Rules |> List.collect (findingsForRule check)
+
         let initialFindings =
-            check.Rules
-            |> List.collect (findingsForRule check)
+            ruleFindings
             |> List.append check.Artifact.Findings
             |> List.sortBy _.FindingId
 
         let validExceptions = check.Exceptions |> List.filter exceptionValid
+
+        // F-TEST-2: a retained inspection with no inspected damage transition AND no rule-produced
+        // finding did no real work — honouring its self-declared `Accepted` would mint a proof over
+        // nothing. Require an inspected transition (both the declared `Transition` contract and the
+        // observed `Damage`), or one rule-produced finding (a real finding accepted by exception is
+        // genuine evidence), before the self-declared `Accepted` is honoured.
+        let hasInspectionEvidence =
+            (check.Artifact.Transition.IsSome && check.Artifact.Damage.IsSome)
+            || not ruleFindings.IsEmpty
+
+        let floorDiagnostics =
+            if not hasInspectionEvidence && check.Artifact.ReadinessStatus = RetainedInspectionStatus.Accepted then
+                [ "retained inspection resolved to review-required: the artifact carries no inspected damage transition and produced no findings, so an accepted status would be vacuous" ]
+            else
+                []
 
         // Feature 186 (US3): delegate to the one shared algorithm with the RETAINED knobs — accept
         // `Blocking || Warning` (line 392 of the former copy) and derive `ReviewRequired` when a
@@ -419,7 +435,9 @@ module RetainedInspectionValidation =
                     elif has VisualInspectionSeverity.Warning then
                         RetainedInspectionStatus.ReviewRequired
                     else
-                        check.Artifact.ReadinessStatus
+                        match check.Artifact.ReadinessStatus with
+                        | RetainedInspectionStatus.Accepted when not hasInspectionEvidence -> RetainedInspectionStatus.ReviewRequired
+                        | other -> other
               MkResult =
                 fun status findings appliedIds invalidIds unused diagnostics ->
                     { ArtifactId = check.Artifact.ArtifactId
@@ -432,7 +450,7 @@ module RetainedInspectionValidation =
 
         SharedTesting.validateCheck
             knobs
-            (RetainedInspection.artifactDiagnostics check.Artifact)
+            (RetainedInspection.artifactDiagnostics check.Artifact @ floorDiagnostics)
             initialFindings
             validExceptions
             invalidExceptions
