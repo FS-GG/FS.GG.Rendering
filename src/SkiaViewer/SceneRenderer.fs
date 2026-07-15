@@ -276,11 +276,11 @@ module internal SceneRenderer =
             penX <- penX + float32 (Fonts.charAdvance size rc)
 
     let drawText (canvas: SKCanvas) x y (text: string) (font: FontSpec) (color: SKColor) antialias =
-        let shaped = Fonts.buildShapedGlyphRunData text font
+        // Shape once and reuse the resolution the shaper already computed for fallback-event disclosure,
+        // rather than re-resolving the whole string here every frame (F-CORE-2).
+        let shaped, resolved = Fonts.buildShapedGlyphRunDataResolved text font
 
         if shaped.Provider.Availability = ProviderInstalled then
-            let resolved = Fonts.resolveText font text
-
             for rc in resolved do
                 match rc.Resolution with
                 | Fonts.FallbackResolution.Authored _ -> ()

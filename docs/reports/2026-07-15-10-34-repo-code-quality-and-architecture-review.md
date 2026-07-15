@@ -434,8 +434,20 @@ not a hard dependency chain. Severity in brackets.
 
 ### Phase 4 — performance (per-frame text path)
 
-- [ ] **[MED] F-CORE-2** — resolve each string once in `buildShapedGlyphRunData` and reuse; drop
-      the third `resolveText` in `drawText` (`SceneRenderer.fs:278-289`).
+- [x] **[MED] F-CORE-2** — resolve each string once in `buildShapedGlyphRunData` and reuse; drop
+      the third `resolveText` in `drawText` (`SceneRenderer.fs:278-289`). *Done:* the shaping path now
+      surfaces the resolution it already computes — `shapeTextWithResolution` (installed path resolves
+      once; fallback paths return `[]`), `buildShapedGlyphRunDataResolved` returns `GlyphRunData *
+      ResolvedChar list`, and `shapeText`/`buildShapedGlyphRunData` are thin wrappers over them (public
+      surface additive, `.fsi` updated). `drawText` now calls the resolved builder and reuses the returned
+      list for fallback-event disclosure instead of calling `Fonts.resolveText` a second time — the
+      per-frame resolve in the paint path drops from two to one, with byte-identical disclosure (the
+      reused list is the exact value the shaper resolved). New `FCore2TextResolveTests` pins that the
+      reused resolution equals a standalone `resolveText` (non-vacuous: fixture carries substituted/tofu
+      disclosure), that the resolved builder returns the same glyph run as the plain builder, and that the
+      non-installed path resolves nothing. Existing Feature136 render-path disclosure tests (tofu counts,
+      per-frame scoping) stay green through the rerouted `drawText`. SkiaViewer.Tests 357 passed,
+      Rendering.Harness.Tests 308 passed.
 - [ ] **[MED] F-CORE-3** — keep `codepoints`/`clusters`/`points` as arrays for O(1) indexing in
       `shapeText` (`Fonts.fs:479-509`); cache/reuse the `SKShaper` instead of `new` per call.
 
