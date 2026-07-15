@@ -390,12 +390,29 @@ module RuntimeDiagnostics =
             |> List.filter (fun group -> developerActionRequiresReview group && not (excepted group))
             |> List.sumBy _.OccurrenceCount
 
+        // Review F-DIAG-1: the status ladder below keys on CATEGORY, so an `Error` in a category with no
+        // severity-based rule — `RenderingLimitation` or `BackendCost` — fell through to `Accepted`. That
+        // is reachable: a fatal framebuffer-wrap startup failure classifies as `RenderingLimitation`/`Error`
+        // (SkiaViewer/Host/Diagnostics.fs), so `summarize` reported an unrunnable product as accepted. Block
+        // on an un-excepted `Error` in these two soft categories. The categories that INTEND to soften an
+        // error keep their own rules: `Environment`/`Error` stays `EnvironmentLimitedStatus` (a visible
+        // caveat) and `DeveloperAction`/`Error` stays `ReviewRequired`; `ReadinessBlocker` already blocks at
+        // any severity. `Fatal` is not in this domain's `DiagnosticSeverity` — the host boundary folds it to
+        // `Error` (Host/Diagnostics.runtimeSeverity) — so keying on `Error` covers both.
+        let severeErrorCount =
+            groups
+            |> List.filter (fun group ->
+                group.Severity = Some DiagnosticSeverity.Error
+                && (group.Category = Some RenderingLimitation || group.Category = Some BackendCost)
+                && not (excepted group))
+            |> List.sumBy _.OccurrenceCount
+
         let reviewRequiredCount = unclassifiedCount + developerReviewCount
 
         let status =
             if unclassifiedCount > 0 || not exceptionProblems.IsEmpty then
                 ReviewRequired
-            elif blockerCount > 0 then
+            elif blockerCount > 0 || severeErrorCount > 0 then
                 Blocked
             elif developerReviewCount > 0 then
                 ReviewRequired

@@ -182,7 +182,16 @@ module Diagnostics =
             match diagnostic.Severity with
             | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
             | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
-        | DiagnosticStage.Framebuffer -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+        // Review F-DIAG-1: a `Framebuffer` fault is only a soft `RenderingLimitation` when it is a
+        // Warning (a per-frame degrade). A non-warning framebuffer fault is the fatal FBO-0 wrap
+        // failure `OpenGl.fs` raises — the product cannot present at all — so it must be a
+        // `ReadinessBlocker`, exactly as `FrameRender` escalates. Without this it landed on
+        // `RenderingLimitation`/`Error`, which `summarize` reported as accepted (the reachable half of
+        // F-DIAG-1). The damage-decision cost note is handled above as `BackendCost` before we get here.
+        | DiagnosticStage.Framebuffer ->
+            match diagnostic.Severity with
+            | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+            | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
 
     let private codeFor diagnostic =
         if diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) then

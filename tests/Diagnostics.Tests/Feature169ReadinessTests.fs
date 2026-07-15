@@ -67,4 +67,41 @@ let tests =
             let summary = Feature169Fixtures.summarize [ Feature169Fixtures.environmentLimit ]
             Expect.equal summary.Status ReadinessDiagnosticStatus.EnvironmentLimitedStatus "environment-limited status"
         }
+
+        // Review F-DIAG-1: an Error in a category with no severity rule (RenderingLimitation / BackendCost)
+        // must BLOCK — it used to fall through to Accepted. A Warning in the same category stays accepted, so
+        // the escalation is keyed on severity, not on the category alone. This is the exact reachable path a
+        // fatal framebuffer-wrap failure takes through `summarize`.
+        test "Synthetic Error in a soft category blocks readiness (F-DIAG-1)" {
+            let renderErr = Feature169Fixtures.summarize [ Feature169Fixtures.renderingLimitationError ]
+            let backendErr = Feature169Fixtures.summarize [ Feature169Fixtures.backendCostError ]
+
+            Expect.equal renderErr.Status ReadinessDiagnosticStatus.Blocked "RenderingLimitation/Error blocks"
+            Expect.equal backendErr.Status ReadinessDiagnosticStatus.Blocked "BackendCost/Error blocks"
+
+            // The Warning-severity sibling must remain accepted — proves the block keys on severity, not category.
+            let renderWarn = Feature169Fixtures.summarize [ Feature169Fixtures.renderingLimitation ]
+            Expect.equal renderWarn.Status ReadinessDiagnosticStatus.Accepted "RenderingLimitation/Warning stays accepted"
+        }
+
+        // Review F-DIAG-1: the block is honestly waivable through the same exception path as any other, so a
+        // deliberately-accepted rendering error can still ship with a visible caveat rather than a hidden pass.
+        test "Synthetic Error in a soft category is waivable by exception (F-DIAG-1)" {
+            let waiver: DiagnosticException =
+                { ExceptionId = "accepted-framebuffer-wrap"
+                  Scope = "FramebufferWrapFailed"
+                  Reason = "Synthetic test accepts the framebuffer limitation by code."
+                  ExpiresOn = None
+                  AcceptedBy = Some "feature169-test" }
+
+            let summary =
+                RuntimeDiagnostics.summarize
+                    (Some Feature169Fixtures.runId)
+                    [ waiver ]
+                    []
+                    [ Feature169Fixtures.renderingLimitationError ]
+
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Accepted "valid exception accepts the rendering error"
+            Expect.equal summary.ExceptionCount 1 "exception remains counted"
+        }
     ]

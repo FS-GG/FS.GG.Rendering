@@ -315,10 +315,18 @@ not a hard dependency chain. Severity in brackets.
       `theme.ControlHeight`, guards against going vacuous, and probes the lower "green" band where the
       old `28.0` cap overshot into "blue". Verified it REDS on the reintroduced literal and greens on
       the fix; full Elmish.Tests suite 272 passed.
-- [ ] **[MED] F-DIAG-1** — block the `summarize` status ladder on `Error`/`Fatal` severity
+- [x] **[MED] F-DIAG-1** — block the `summarize` status ladder on `Error`/`Fatal` severity
       independent of category (`Diagnostics.fs:395-405`); reclassify fatal `Framebuffer` failures
       off `RenderingLimitation` (`Host/Diagnostics.fs:185`). Add a fixture pairing
-      `RenderingLimitation`/`BackendCost` with `Error`.
+      `RenderingLimitation`/`BackendCost` with `Error`. *Done:* `summarize` now blocks on an
+      un-excepted `Error` in the soft categories (`RenderingLimitation`/`BackendCost`), leaving the
+      intended `Environment+Error → EnvironmentLimited` and `DeveloperAction+Error → ReviewRequired`
+      paths untouched and still waivable by exception; `Host/Diagnostics.runtimeCategory` now escalates
+      a non-warning `Framebuffer` fault to `ReadinessBlocker` (mirroring `FrameRender`), keeping the
+      damage-decision `BackendCost` note. New fixtures + `Feature169ReadinessTests` (Error blocks,
+      Warning still accepted, waiver still accepts) and `Feature169HostDiagnosticMappingTests` (fatal
+      framebuffer → blocker). Verified the ladder test REDS without the fix; Diagnostics.Tests and the
+      host-mapping tests green.
 
 ### Phase 2 — make guards derive from source (retire the "constant-checking gate" class)
 

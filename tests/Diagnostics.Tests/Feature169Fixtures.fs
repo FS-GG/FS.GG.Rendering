@@ -52,6 +52,30 @@ let renderingLimitation =
         (Some "Review only if text evidence requires that exact platform font.")
         (contextWith [ "stream", "stdout" ])
 
+let renderingLimitationError =
+    // Review F-DIAG-1: a RENDERING limitation at Error severity — the shape a fatal framebuffer-wrap
+    // startup failure takes after `Host/Diagnostics.runtimeCategory` (before the reclassification) folds
+    // it to `RenderingLimitation`/`Error`. Must BLOCK readiness, not be accepted as a soft limitation.
+    RuntimeDiagnostics.create
+        (source "renderer")
+        (Some "FramebufferWrapFailed")
+        (Some DiagnosticSeverity.Error)
+        (Some DiagnosticCategory.RenderingLimitation)
+        "SkiaSharp could not wrap the window's default framebuffer (FBO 0)."
+        (Some "Rerun on a working GL driver; the product cannot present until the framebuffer wraps.")
+        (contextWith [ "stream", "stderr" ])
+
+let backendCostError =
+    // Review F-DIAG-1: an Error in the other soft category (`BackendCost`) must block too.
+    RuntimeDiagnostics.create
+        (source "opengl-host")
+        (Some "DamageScopedDecision")
+        (Some DiagnosticSeverity.Error)
+        (Some DiagnosticCategory.BackendCost)
+        "Damage-scoped redraw failed irrecoverably."
+        (Some "Investigate the backend before accepting readiness.")
+        (contextWith [ "stream", "runtime" ])
+
 let developerAction =
     // SYNTHETIC: developer-action warning fixture for fail-closed review behavior.
     RuntimeDiagnostics.create
