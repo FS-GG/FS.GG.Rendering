@@ -99,6 +99,26 @@ module internal StyleCatalog =
           "warning", StyleVariant.Warning
           "ghost", StyleVariant.Ghost ]
 
+    /// The semantic-intent vocabulary a theme's `IntentPolicy` recognises — the Ant control types
+    /// (Features 132/173). `""` is the identity/no-intent base (already covered by the `neutral`
+    /// variant), so only the non-empty entries are scenarios; they are enumerated here so the
+    /// neutral chrome the policy paints reaches the catalog rather than being masked behind a pinned
+    /// `intent = ""`. Hand-maintained like `variants`: `IntentPolicy` carries its vocabulary as a
+    /// function, not introspectable data, so a new Ant intent must be listed here to be measured
+    /// (`AntIntentPolicy.fs`). A theme whose policy is `IntentPolicy.neutral` (the Default themes)
+    /// ignores every intent, so these scenarios dedup back onto its structural base — no effect.
+    let intents = [ "primary"; "default"; "dashed"; "text"; "link"; "danger" ]
+
+    /// The style requests the resolver is asked for. A control reaches the screen one of two ways —
+    /// as a `StyleVariant`-classed control under the identity intent, or as an intent-typed control
+    /// over the bare structural base (no competing class, so the intent's own chrome survives) — and
+    /// both families are measured. The middle segment of a row label is the scenario name; intent
+    /// scenarios are prefixed `@` so a row's provenance stays legible and the two families never
+    /// collide on a name.
+    let scenarios: (string * StyleClass list * string) list =
+        [ for name, variant in variants -> name, [ Variant variant ], ""
+          for intent in intents -> "@" + intent, [], intent ]
+
     /// Every `VisualState` case. The `Invalid`/`Pending` payloads are messages, not colours, so an
     /// empty string is representative.
     let states =
@@ -147,23 +167,27 @@ module internal StyleCatalog =
         pairing (label + "#text") style.Foreground surface textRole :: boundary
 
     /// Every distinct contrast pairing `StyleResolver.resolve` can emit for `theme` over the closed
-    /// (kind × variant × visual-state) domain — the styles the renderer paints, derived by calling
+    /// (kind × scenario × visual-state) domain — the styles the renderer paints, derived by calling
     /// the resolver, never by restating its literals.
     ///
-    /// The intent is `""` because the intent seam belongs to the theme's own `IntentPolicy`; the
-    /// structural base it perturbs is what this catalog measures.
+    /// Each scenario is either a `StyleVariant` class (under the identity intent) or a theme
+    /// `IntentPolicy` intent over the bare base, so the neutral chrome the policy paints
+    /// (`default`/`dashed`/`text`/`link`, the point of Features 132/173) is measured, not masked
+    /// behind a pinned `intent = ""`.
     ///
     /// Rows are deduplicated by `(Foreground, Background, Role)` — the same three colours contrast
-    /// identically however they were reached, and 264 combinations collapse to ~25 distinct
-    /// pairings. The surviving `Name` is the first combination (in the `kinds × variants × states`
-    /// declaration order above) that emits it, so the row is a stable, reproducible witness.
+    /// identically however they were reached, so the 264 (kind × scenario × state) combinations
+    /// collapse to a few dozen distinct pairings (fewest for the intent-agnostic Default themes,
+    /// most — ~40 — for the Ant themes, whose `IntentPolicy` chrome is genuinely distinct). The
+    /// surviving `Name` is the first combination (in the `kinds × scenarios × states` declaration
+    /// order above) that emits it, so the row is a stable, reproducible witness.
     let emittedPairings (theme: Theme) : ColorPolicy.Pairing list =
         let all =
             [ for kind in kinds do
-                  for variantName, variant in variants do
+                  for scenarioName, classes, intent in scenarios do
                       for stateName, state in states do
-                          let style = StyleResolver.resolve theme kind "" [ Variant variant ] state
-                          let label = sprintf "%s/%s/%s" kind variantName stateName
+                          let style = StyleResolver.resolve theme kind intent classes state
+                          let label = sprintf "%s/%s/%s" kind scenarioName stateName
                           yield! pairingsOfStyle theme.Background label (state = Disabled) style ]
 
         let seen = HashSet<Color * Color * Role>()

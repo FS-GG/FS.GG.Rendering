@@ -340,9 +340,23 @@ not a hard dependency chain. Severity in brackets.
       (backtick "framework version `X`" prose + `--version X` commands) equals the pin, with a
       non-vacuous floor; the frozen `0.1.0-preview.1` ban is gone. README/usage.md updated to `0.10.0`.
       Verified the gate REDS on a drifted version and greens on the pin; Feature 242 list 7/7 passed.
-- [ ] **[MED] F-DS-1** — enumerate the theme's intent vocabulary in `StyleCatalog.emittedPairings`
+- [x] **[MED] F-DS-1** — enumerate the theme's intent vocabulary in `StyleCatalog.emittedPairings`
       (`ColorPolicy/StyleCatalog.fs:165`) instead of pinning `intent = ""`; fix (or explicitly
-      waive with evidence) the two Ant `default`-border pairings that fall below 3.0.
+      waive with evidence) the two Ant `default`-border pairings that fall below 3.0. *Done:*
+      `StyleCatalog` now enumerates an `intents` vocabulary (`primary`/`default`/`dashed`/`text`/
+      `link`/`danger`) as a `scenarios` axis beside `variants`, so `emittedPairings` drives the
+      resolver through each theme's `IntentPolicy` chrome (domain 132 → 264 combos, matching the
+      long-standing "264 collapse to ~25" comment) — the Ant neutral `default`/`dashed`/`text`/`link`
+      chrome now reaches the catalog rather than dedup-collapsing onto the base. The two sub-3.0
+      borders (`#d9d9d9` on `#f5f5f5` = 1.29 light; `#424242` on `#000` = 2.09 dark) are the only
+      GraphicOrUi failures surfaced; they are **waived with evidence** — Ant's neutral border is
+      intentionally subtle (control identified by label + surface + elevation, which this renderer
+      does not model; recolouring Ant's canonical token would break Ant fidelity). A new blocking
+      boundary gate (companion to the Text gate) asserts every emitted GraphicOrUi pairing passes
+      `wcag` except the enumerated `antNeutralBorderWaiver`, checked both ways so the waiver can
+      neither grow silently nor go stale (verified RED when either entry is dropped). Emitted
+      ant-light/ant-dark drift reports regenerated; Controls.Tests 1023 passed, Package.Tests 436
+      passed.
 
 ### Phase 3 — add a "required floor" to fail-open-on-empty seams
 
