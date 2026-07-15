@@ -50,6 +50,16 @@ let private writePng (path: string) (width: int) (height: int) =
     use stream = File.Open(path, FileMode.Create, FileAccess.Write)
     data.SaveTo(stream)
 
+let private writeBlankPng (path: string) (width: int) (height: int) =
+    // SYNTHETIC: a correctly-sized but fully-transparent PNG stands in for an uninitialised/blank capture.
+    ensureParentDirectory path
+    use bitmap = new SKBitmap(width, height)
+    bitmap.Erase(SKColors.Transparent)
+    use image = SKImage.FromBitmap(bitmap)
+    use data = image.Encode(SKEncodedImageFormat.Png, 90)
+    use stream = File.Open(path, FileMode.Create, FileAccess.Write)
+    data.SaveTo(stream)
+
 let private writeText (path: string) (text: string) =
     ensureParentDirectory path
     File.WriteAllText(path, text)
@@ -98,6 +108,20 @@ let feature164VisualReadinessTests =
                   Expect.equal records[2].Status VisualCaptureWrongSize "wrong-size PNG"
                   Expect.equal records[3].Status VisualCaptureUndecodable "corrupt PNG"
                   Expect.equal records[4].Status VisualCaptureUndecodable "zero-byte PNG"
+              finally
+                  if Directory.Exists root then Directory.Delete(root, true)
+          }
+
+          test "correctly-sized fully-transparent PNG is not minted as complete (F-TEST-3)" {
+              let root = tempDir ()
+              try
+                  let target = matrix () |> List.head
+                  writeBlankPng (Path.Combine(root, target.RelativePath)) target.Size.Width target.Size.Height
+
+                  let records, _ = VisualCompleteness.validate root [ target ]
+                  Expect.equal records[0].Status VisualCaptureBlocked "blank capture blocks rather than passing complete"
+                  Expect.exists records[0].Diagnostics (fun d -> d.Contains("blank screenshot")) "disclosing blank diagnostic"
+                  Expect.isSome records[0].Artifact "artifact identity retained for the blank capture"
               finally
                   if Directory.Exists root then Directory.Delete(root, true)
           }

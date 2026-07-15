@@ -152,6 +152,8 @@ module CompositorTimingAssertions =
                   "warmup count must not be negative"
               if check.MeasuredRepetitions < 5 then
                   "at least five measured repetitions are required"
+              if List.isEmpty check.RequiredScenarioIds then
+                  "timing summary must declare at least one required scenario"
               for scenario in missingScenarios do
                   $"missing required timing scenario: {scenario}"
               for scenario in rejectedScenarios do
@@ -166,7 +168,10 @@ module CompositorTimingAssertions =
                   yield! scenario.RejectionReasons |> List.map (fun reason -> $"{scenario.ScenarioId}: {reason}") ]
 
         let verdict =
-            if not missingScenarios.IsEmpty || not incompleteSamples.IsEmpty || not missingArtifacts.IsEmpty then
+            // An empty required-set is the ultimate incomplete package: it can certify nothing, so it
+            // must not fall through to Positive (F-TEST-3). Treated exactly like all-scenarios-missing.
+            if List.isEmpty check.RequiredScenarioIds
+               || not missingScenarios.IsEmpty || not incompleteSamples.IsEmpty || not missingArtifacts.IsEmpty then
                 CompositorTimingIncomplete
             elif diagnostics |> List.exists (fun item -> item.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase)) then
                 CompositorTimingRejected
@@ -250,6 +255,8 @@ module CompositorDamageReadiness =
         let diagnostics =
             [ if String.IsNullOrWhiteSpace check.Feature then
                   "damage readiness check must name the feature"
+              if List.isEmpty check.RequiredScenarioIds then
+                  "damage readiness check must declare at least one required scenario"
               for scenario in missingScenarios do
                   $"missing required damage scenario: {scenario}"
               for scenario in missingArtifacts do
@@ -275,7 +282,9 @@ module CompositorDamageReadiness =
         let status =
             if environmentLimited || unsupportedArtifactViolation then
                 CompositorDamageEnvironmentLimited
-            elif not missingScenarios.IsEmpty || not missingArtifacts.IsEmpty then
+            // Fail closed on an empty required-set (F-TEST-3): it can certify nothing, so it must not
+            // reach the vacuous fallback/accepted branches below.
+            elif List.isEmpty check.RequiredScenarioIds || not missingScenarios.IsEmpty || not missingArtifacts.IsEmpty then
                 CompositorDamageRejected
             elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = CompositorDamageRejected) then
                 CompositorDamageRejected

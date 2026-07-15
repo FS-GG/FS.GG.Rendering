@@ -139,6 +139,24 @@ module VisualCompleteness =
         else
             record target VisualCaptureDegraded None (Some reason) [ $"degraded capture: {reason}" ]
 
+    // A correctly-sized, decodable PNG whose every pixel is fully transparent carries no visual
+    // evidence, yet passed as VisualCaptureComplete before (F-TEST-3). Conservative by construction:
+    // only an all-alpha-zero buffer counts as blank, so opaque or solid-colour content still passes;
+    // an Opaque bitmap can never be transparent, so short-circuit it.
+    let private isBlankCapture (bitmap: SKBitmap) =
+        if bitmap.AlphaType = SKAlphaType.Opaque || bitmap.Width <= 0 || bitmap.Height <= 0 then
+            false
+        else
+            let mutable blank = true
+            let mutable y = 0
+            while blank && y < bitmap.Height do
+                let mutable x = 0
+                while blank && x < bitmap.Width do
+                    if bitmap.GetPixel(x, y).Alpha <> 0uy then blank <- false
+                    x <- x + 1
+                y <- y + 1
+            blank
+
     let private validateOne evidenceRoot (target: VisualCaptureTarget) =
         let path = absolutePath evidenceRoot target.RelativePath
 
@@ -187,7 +205,11 @@ module VisualCompleteness =
                               DecodeError = None }
 
                         if bitmap.Width = target.Size.Width && bitmap.Height = target.Size.Height then
-                            record target VisualCaptureComplete (Some artifact) None []
+                            if isBlankCapture bitmap then
+                                record target VisualCaptureBlocked (Some artifact) (Some "blank artifact")
+                                    [ $"blank screenshot: {target.RelativePath} (all pixels fully transparent)" ]
+                            else
+                                record target VisualCaptureComplete (Some artifact) None []
                         else
                             let diagnostic =
                                 $"wrong-size screenshot: {target.RelativePath} expected {target.Size.Width}x{target.Size.Height} observed {bitmap.Width}x{bitmap.Height}"
