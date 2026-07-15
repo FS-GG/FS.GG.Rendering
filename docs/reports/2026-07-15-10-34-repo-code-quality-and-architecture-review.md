@@ -448,8 +448,24 @@ not a hard dependency chain. Severity in brackets.
       non-installed path resolves nothing. Existing Feature136 render-path disclosure tests (tofu counts,
       per-frame scoping) stay green through the rerouted `drawText`. SkiaViewer.Tests 357 passed,
       Rendering.Harness.Tests 308 passed.
-- [ ] **[MED] F-CORE-3** — keep `codepoints`/`clusters`/`points` as arrays for O(1) indexing in
-      `shapeText` (`Fonts.fs:479-509`); cache/reuse the `SKShaper` instead of `new` per call.
+- [x] **[MED] F-CORE-3** — keep `codepoints`/`clusters`/`points` as arrays for O(1) indexing in
+      `shapeText` (`Fonts.fs:479-509`); cache/reuse the `SKShaper` instead of `new` per call. *Done:*
+      the installed-provider shaping body (`shapeTextWithResolution`) now indexes the shaper's
+      `Codepoints`/`Clusters`/`Points` (and the per-char resolution) as arrays — the per-glyph
+      `List.tryItem` positional lookups inside the `List.mapi` (O(n²) glyph assembly) are gone, replaced
+      by an `Array.mapi` with bounds-checked O(1) indexing; the string-clamping (`sourceAt`/`resolvedFace`
+      guarding cluster ranges) is preserved because shaper clusters are UTF-8 byte offsets that can exceed
+      `String.Length`. A new module-level `shaperCache` (`Dictionary<SKTypeface, SKShaper>`, reference
+      identity, bounded by `typefaceCache`) is consulted via `cachedShaper` instead of `new SKShaper(...)`
+      per call; `Shape` mutates the shaper's HarfBuzz buffer so callers serialize on the instance
+      (`lock shaper`). `disposeCaches` now disposes cached shapers too, and an internal `shaperCacheCount`
+      (added to `.fsi`) surfaces the bound. New `FCore3ShaperReuseTests`: the reuse guard shapes a long
+      string 50× per font and asserts exactly one shaper is cached (two for two typefaces, zero after
+      teardown) — verified RED against the pre-fix per-call `new SKShaper` (count stuck at 0); the
+      assembly guard shapes a long ASCII string and asserts every glyph cluster indexes into the source,
+      clusters are non-decreasing (LTR), advances are non-negative, and the run reaches its total advance
+      at the final glyph (the array width-boundary case). SkiaViewer.Tests 359 passed,
+      Rendering.Harness.Tests 308 passed.
 
 ### Phase 5 — structural debt
 
