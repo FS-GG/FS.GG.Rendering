@@ -3621,8 +3621,26 @@ SUPERSEDE_JQ='
       dead: [ $all[] | . as $r | select($r.conclusion == "cancelled" and replaced($r)) | .check_suite_id ] }'
 
 # Prints exactly one of: green | conflicted | red | pending | unknown
+# `pr_landable` keeps its one-word contract for its three callers (`adopt`, `who`, `reap`). The PROBE
+# underneath also publishes PR_LAND_N — the number of SUBJECTS it actually scored (live runs + live
+# check-runs) — because `landable --wait` cannot do its job without it. `green` and `red` both mean
+# something DIFFERENT at N=0: not "clean" and not "failed", but "CI has not started yet", which is the
+# normal state for the first 20-60s after a push. A waiter that cannot see N cannot tell a PR whose
+# workflows have not registered from one that has none at all (#606), and would either merge a partial
+# rollup or reject a perfectly good PR for being early.
+#
+# It publishes through a GLOBAL rather than stdout because `$(pr_landable …)` is a SUBSHELL: anything
+# the function sets there is lost. `landable --wait` therefore calls the probe DIRECTLY, in the current
+# shell, and reads both values back.
 pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknown
+  pr_landable_probe "$@"
+  printf '%s\n' "$PR_LAND_V"
+}
+
+PR_LAND_V=""; PR_LAND_N=0
+pr_landable_probe() {  # $1=owner $2=repo $3=pr -> sets PR_LAND_V (verdict) and PR_LAND_N (subjects scored)
   local pr m sha runs live checks total pend bad try
+  PR_LAND_V="unknown"; PR_LAND_N=0
   # THE RETRY HAS TO WAIT, OR IT IS NOT A RETRY. GitHub computes mergeability in a BACKGROUND JOB and
   # returns `null` until it lands; the documented remedy is to poll again *after a delay*. A second
   # read fired microseconds after the first cannot have observed a job that had not finished when the
@@ -3631,16 +3649,16 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
   # took ~1 minute to resolve from `null` to `dirty`. Bounded (3 tries, ~3s) — this runs on the
   # interactive path, and `unknown` is a safe answer, so we wait a little and then say we do not know.
   for try in 1 2 3; do
-    pr="$(gh api "repos/$1/$2/pulls/$3" 2>/dev/null)"         || { echo unknown; return 0; }
-    m="$(jq -r '.mergeable | tostring' <<<"$pr" 2>/dev/null)" || { echo unknown; return 0; }
+    pr="$(gh api "repos/$1/$2/pulls/$3" 2>/dev/null)"         || { PR_LAND_V=unknown; return 0; }
+    m="$(jq -r '.mergeable | tostring' <<<"$pr" 2>/dev/null)" || { PR_LAND_V=unknown; return 0; }
     [ "$m" = "null" ] || break
     [ "$try" -eq 3 ] || sleep 1
   done
-  if [ "$m" = "false" ]; then echo conflicted; return 0; fi
-  if [ "$m" != "true"  ]; then echo unknown;    return 0; fi
+  if [ "$m" = "false" ]; then PR_LAND_V=conflicted; return 0; fi
+  if [ "$m" != "true"  ]; then PR_LAND_V=unknown;    return 0; fi
 
   sha="$(jq -r '.head.sha // ""' <<<"$pr")"
-  if [ -z "$sha" ]; then echo unknown; return 0; fi
+  if [ -z "$sha" ]; then PR_LAND_V=unknown; return 0; fi
 
   # THE ROLLUP IS OVER WORKFLOW RUNS, NOT CHECK RUNS (#720). SUPERSESSION IS A PROPERTY OF THE RUN —
   # it is what `concurrency: cancel-in-progress` replaces — and it is NOT VISIBLE ON A CHECK RUN AT
@@ -3662,8 +3680,8 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
   # --paginate: this org runs ~30 workflows and the endpoint pages at 30. A truncated read reports a
   # clean page 1 while the run that would have stopped us sits on page 2 (#547).
   runs="$(gh api "repos/$1/$2/actions/runs?head_sha=$sha&per_page=100" --paginate --slurp 2>/dev/null \
-          | jq -c '[.[].workflow_runs[]]' 2>/dev/null)" || { echo unknown; return 0; }
-  if [ -z "$runs" ]; then echo unknown; return 0; fi
+          | jq -c '[.[].workflow_runs[]]' 2>/dev/null)" || { PR_LAND_V=unknown; return 0; }
+  if [ -z "$runs" ]; then PR_LAND_V=unknown; return 0; fi
 
   # SUPERSEDED runs, and NOTHING else: a cancelled run that a LATER run of its OWN concurrency group
   # replaced. A cancelled run nobody re-ran is still a finding, and a FAILED run is never dropped —
@@ -3679,9 +3697,9 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
   # This yields BOTH the live runs and the check SUITES of the dead ones, because a superseded run's
   # check-runs stay attached to the SHA and have to be dropped with it.
   local dead
-  live="$(jq -c "$SUPERSEDE_JQ | .live"  <<<"$runs" 2>/dev/null)" || { echo unknown; return 0; }
-  dead="$(jq -c "$SUPERSEDE_JQ | .dead"  <<<"$runs" 2>/dev/null)" || { echo unknown; return 0; }
-  if [ -z "$live" ] || [ -z "$dead" ]; then echo unknown; return 0; fi
+  live="$(jq -c "$SUPERSEDE_JQ | .live"  <<<"$runs" 2>/dev/null)" || { PR_LAND_V=unknown; return 0; }
+  dead="$(jq -c "$SUPERSEDE_JQ | .dead"  <<<"$runs" 2>/dev/null)" || { PR_LAND_V=unknown; return 0; }
+  if [ -z "$live" ] || [ -z "$dead" ]; then PR_LAND_V=unknown; return 0; fi
 
   # SCORE THE CHECK RUNS TOO — the union, not either alone. Each sees a failure the other cannot:
   #
@@ -3701,8 +3719,8 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
   # `--paginate`, again, and for the same reason (#547).
   checks="$(gh api "repos/$1/$2/commits/$sha/check-runs" --paginate --slurp 2>/dev/null \
             | jq -c --argjson dead "$dead" '[.[].check_runs[] | select([.check_suite.id] - $dead | length > 0)]' 2>/dev/null)" \
-    || { echo unknown; return 0; }
-  if [ -z "$checks" ]; then echo unknown; return 0; fi
+    || { PR_LAND_V=unknown; return 0; }
+  if [ -z "$checks" ]; then PR_LAND_V=unknown; return 0; fi
 
   # #606: an EMPTY subject is a FINDING, not a pass. "Every check passed" and "CI never started" are
   # the same empty set, and a CONFLICTED PR is permanently in it — GitHub cannot build
@@ -3723,14 +3741,19 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
           ([$all[] | select(.status != "completed")] | length),
           ([$all[] | select(.status == "completed"
                             and .conclusion != "success" and .conclusion != "skipped")] | length) ]
-      | @tsv' 2>/dev/null)" || { echo unknown; return 0; }
+      | @tsv' 2>/dev/null)" || { PR_LAND_V=unknown; return 0; }
   read -r total pend bad <<<"$roll"
-  [ -n "${bad:-}" ] || { echo unknown; return 0; }
+  [ -n "${bad:-}" ] || { PR_LAND_V=unknown; return 0; }
 
-  if [ "$total" -eq 0 ]; then echo red;     return 0; fi
-  if [ "$pend"  -gt 0 ]; then echo pending; return 0; fi
-  if [ "$bad"   -gt 0 ]; then echo red;     return 0; fi
-  echo green
+  # Publish the subject count. `--wait` needs it to tell "CI has not started YET" (normal for 20-60s
+  # after a push) from "this PR has no checks at all" (#606's finding) — the two are the same empty
+  # set, and only TIME tells them apart.
+  PR_LAND_N="$total"
+
+  if [ "$total" -eq 0 ]; then PR_LAND_V=red;     return 0; fi
+  if [ "$pend"  -gt 0 ]; then PR_LAND_V=pending; return 0; fi
+  if [ "$bad"   -gt 0 ]; then PR_LAND_V=red;     return 0; fi
+  PR_LAND_V=green
 }
 
 # `landable <pr>` — pr_landable's verdict, as a COMMAND (#724).
@@ -3756,12 +3779,15 @@ pr_landable() {  # $1=owner $2=repo $3=pr -> green|conflicted|red|pending|unknow
 #   3  pending      — checks still running. RETRY; this is the only verdict worth waiting on.
 #   1  red | conflicted | unknown — do not merge, and do not wait: none of these clear by waiting.
 landable_cmd() {
-  local repo="" pr="" v
+  local repo="" pr="" v wait="" tries=30 interval=20
   while [ $# -gt 0 ]; do
     case "$1" in
-      --repo) repo="${2:?--repo needs a value}"; shift 2 ;;
-      -*)     die "landable: unknown flag '$1'" ;;
-      *)      pr="$1"; shift ;;
+      --repo)  repo="${2:?--repo needs a value}"; shift 2 ;;
+      --wait)  wait=1; shift ;;
+      --tries) tries="${2:?--tries needs a value}"; shift 2 ;;
+      --interval) interval="${2:?--interval needs a value}"; shift 2 ;;
+      -*)      die "landable: unknown flag '$1'" ;;
+      *)       pr="$1"; shift ;;
     esac
   done
   [ -n "$pr" ] || die "landable: <pr> required (the PULL number — not the item number)"
@@ -3775,7 +3801,47 @@ landable_cmd() {
   if [[ "$scope" == */* ]]; then O="${scope%%/*}"; R="${scope#*/}"
   else O="$OWNER"; R="$(resolve_repo "$scope")"; fi
 
-  v="$(pr_landable "$O" "$R" "$pr")"
+  if [ -z "$wait" ]; then
+    v="$(pr_landable "$O" "$R" "$pr")"
+  else
+    # --wait: poll until the verdict SETTLES. Two things must be true before a `green` can be believed,
+    # and a naive "poll until not pending" gets BOTH of them wrong:
+    #
+    #  1. THE SUBJECT MUST EXIST. For the first 20-60s after a push there are ZERO runs, which scores
+    #     as `red` (#606 — an empty subject is a finding). Reporting that would reject every PR for the
+    #     crime of being new. So while N==0 we WAIT; only if it never registers does the red stand, and
+    #     then it is the honest #606 finding: CI never started (a conflicted PR is the usual cause, and
+    #     it short-circuits to `conflicted` above before ever reaching here).
+    #
+    #  2. THE SUBJECT MUST STOP GROWING. GitHub schedules a PR's workflows over 20-60s, so the set
+    #     GROWS: an early poll can legitimately see "2 runs, both green" while six more have not been
+    #     CREATED yet. Breaking there hands the gate a PARTIAL rollup and calls it complete — #606's
+    #     defect at one remove, and it merges a PR most of whose checks never ran. So a `green` is only
+    #     believed once the COUNT HAS BEEN STABLE across two consecutive polls. It costs one extra
+    #     interval on the happy path, which is the cheapest insurance in this tool.
+    #
+    # `red` (with subjects), `conflicted` and `unknown` are returned IMMEDIATELY: none of them clear by
+    # waiting, and spinning on them just delays the bad news.
+    local prev=-1 i
+    v="unknown"
+    for i in $(seq "$tries"); do
+      pr_landable_probe "$O" "$R" "$pr"          # direct call: a subshell would lose PR_LAND_N
+      v="$PR_LAND_V"
+      # `|| :` on every arm, because this file runs under `set -e`: a bare `[ … ] && break` whose test
+      # is FALSE returns non-zero as the arm's last command, and would kill the whole tool mid-poll
+      # instead of looping. The trailing `:` makes "keep waiting" an explicit success.
+      case "$v" in
+        conflicted) break ;;
+        unknown)    break ;;
+        # red at N=0 is "CI has not started YET", not "CI failed" — keep waiting for it to register.
+        red)   { [ "$PR_LAND_N" -eq 0 ] || break; } || : ;;
+        green) { [ "$PR_LAND_N" -gt 0 ] && [ "$PR_LAND_N" -eq "$prev" ] && break; } || : ;;
+      esac
+      prev="$PR_LAND_N"
+      [ "$i" -lt "$tries" ] && sleep "$interval" || :
+    done
+  fi
+
   echo "$v"
   case "$v" in
     green)   return 0 ;;

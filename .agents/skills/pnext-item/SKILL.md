@@ -275,8 +275,9 @@ is: you are looking at it, you can change it, and you are choosing to write abou
 **Check whether it is already filed. Two REST reads, zero GraphQL, and they cost you nothing:**
 
 ```sh
-# 1. Is there already an issue for this?
-scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) \(.title)"'
+# 1. Is there already an issue for this?  --state all IS NOT OPTIONAL: see below.
+scripts/fsgg-coord issues <target> --state all \
+  --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) [\(.state)] \(.title)"'
 
 # 2. If you are filing a CHILD of an item you hold — look at what it ALREADY has. This is the
 #    highest-signal place to look, and the one people skip.
@@ -285,6 +286,23 @@ scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>";
 #    the rest (#547).
 gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --paginate --jq '.[] | "#\(.number) \(.title)"'
 ```
+
+**`--state all`, and this is the part that bites.** `issues` defaults to `state=open`, and this step
+used to take that default — so it could not see a **closed** issue at all. But *"somebody already fixed
+it"* is the **most likely reason a finding is a duplicate**, and it is the *only* reason available to a
+worker whose recipe is stale: a recipe is copied into your context at session start and never
+refreshed, so you can hit a bug the org repaired an hour ago, in the very file you are reading.
+
+Those two compose into a trap with no exit. The mechanism that makes you rediscover a bug is the same
+one that guarantees its issue is **closed** — so the dedupe step was structurally blind to exactly the
+duplicates it exists to catch, and answered a confident *"no hit"*. That is [#266](https://github.com/FS-GG/.github/issues/266)'s
+signature again: a check that runs, reports success, and cannot see its subject. It is how
+[#719](https://github.com/FS-GG/.github/issues/719) was filed against a bug that had been fixed and
+merged hours earlier.
+
+**A closed hit is the BEST possible outcome.** It means the fix already exists: go read it, confirm
+your case is covered, and if it is not, say so *on that issue* — do not open a rival.
+
 
 **Every `gh api` read of a LIST needs `--paginate`.** A truncated read does not look truncated — it
 looks like an answer, and here it is the answer to "has someone already filed this?", so the failure
@@ -522,73 +540,9 @@ the one worth a second look.
 Merge once — and only once — **every required check is green**:
 
 ```sh
-# Wait for CI over REST — every `gh pr` subcommand is GraphQL, and this is the one you run when the
-# budget is emptiest (#587). This gate must not do ANY of the four things that make a merge gate lie:
-# read only page 1 (a failing check on page 2 is invisible, and the aggregate then reads green —
-# #547); treat NO checks as GREEN checks (#606); treat a SUPERSEDED run as a RED one (#698); or
-# COLLAPSE two different checks that happen to share a job name (#698). Hence `--paginate`, an
-# assertion that the subject EXISTS before it asserts the subject is clean, and a supersession rule
-# keyed on the WORKFLOW — which is the thing `cancel-in-progress` actually replaces.
-SHA=$(gh api repos/FS-GG/<repo>/pulls/<pr> --jq .head.sha)
-: "${SHA:?head SHA read FAILED — refusing to gate on an empty subject}"   # <-- NOT optional. See below.
-runs="repos/FS-GG/<repo>/actions/runs?head_sha=$SHA&per_page=100"
-checks() { gh api "$runs" --paginate --slurp | jq '[.[].workflow_runs[]]'; }
-
-# 0. A CONFLICTED PR NEVER GETS CI. Look BEFORE you wait — no amount of waiting fixes this one.
-gh api repos/FS-GG/<repo>/pulls/<pr> --jq '"mergeable=\(.mergeable) state=\(.mergeable_state)"'
-
-# 1. Wait for the runs to REGISTER, and then to COMPLETE — and do NOT mistake a PARTIAL rollup for a
-#    finished one. GitHub schedules a PR's workflows over 20-60s, so the set GROWS: an early poll can
-#    legitimately read "2 runs, 0 pending" while six more have not been created yet, and breaking
-#    there hands the gate a partial rollup and calls it complete. A run that has not registered is
-#    indistinguishable from one that passed — #606's defect at one remove, and the reason
-#    `skill-registry-autofix.yml` guards its own wait the same way. So: break only when the count has
-#    been STABLE across two consecutive polls with nothing pending. It costs one extra 20s on the
-#    happy path, which is the cheapest insurance in this recipe.
-prev=-1
-for _ in $(seq 30); do          # ~10 min ceiling — poll, do not spin forever
-  c=$(checks)
-  counts=$(jq -r '"\(length) \([.[] | select(.status != "completed")] | length)"' <<<"$c")
-  n="${counts% *}"; pending="${counts#* }"
-  [ "$n" -gt 0 ] && [ "$pending" -eq 0 ] && [ "$n" -eq "$prev" ] && break
-  prev="$n"
-  sleep 20
-done
-
-# 2. ASSERT on the state the loop just read — exits NON-ZERO on no runs, on pending runs, and on any
-#    run that is not green. The `map(select(…))` drops SUPERSEDED runs and NOTHING else: a cancelled
-#    run that a LATER run of its own CONCURRENCY GROUP replaced. A cancelled run nobody re-ran is
-#    still a finding, and a FAILED run is never dropped — so this cannot fail open (#698).
-#
-#    `cgroup` is the group `cancel-in-progress` actually keys on — `<workflow>-${{ github.ref }}` —
-#    and matching it EXACTLY is what stops the drop rule being a hole. Keying on `.path` alone would
-#    let a run from a DIFFERENT group license the drop: a `workflow_dispatch` run on the branch shares
-#    the SHA and the path and carries a HIGHER run_number, but it is a different `github.ref`, so it
-#    supersedes nothing — and in `closing-keywords.yml` the real gate job is `if: github.event_name ==
-#    'pull_request'`, so that dispatch run SKIPS it and still concludes `success`. Dropping the
-#    cancelled PR run in its favour would count a vacuous green and merge a PR whose body was never
-#    checked.
-#
-#    NOTE the first branch is also where a FAILED API read lands (empty `$c`), which is why it names
-#    that too: it fails CLOSED either way, but the worker needs to know which one they are looking at
-#    before they go rebasing a PR that was never conflicted.
-jq -e -r '
-  def cgroup: [.path, .event, .head_branch, ([.pull_requests[]?.number] | sort)];
-  . as $all
-  | map(. as $r | select($r.conclusion != "cancelled"
-        or ([$all[] | select(cgroup == ($r | cgroup) and .run_number > $r.run_number)] | length) == 0))
-  | if   length == 0 then error("NO WORKFLOW RUNS — CI never started, so nothing has passed. Conflicted PR (rebase), or a failed API read. A missing subject is a FINDING, not a pass.")
-    elif ([.[] | select(.status != "completed")]                                | length) > 0 then error("checks still PENDING — do not merge")
-    elif ([.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length) > 0 then error("checks FAILED — a red check is a finding, not an obstacle")
-    else "all \(length) workflows green" end' <<<"$c"
-
-# 3. The gate above sees GitHub ACTIONS and nothing else. Every FS-GG check is an Actions job today,
-#    so it sees everything — ASSERT that rather than assume it, so the day a third-party check app
-#    appears on a repo this gate goes RED instead of going BLIND (#266).
-gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
-  | jq -e -r '[.[].check_runs[] | select(.app.slug != "github-actions")]
-      | if length == 0 then "checks: Actions only — the gate above covers every one of them"
-        else error("non-Actions check(s), INVISIBLE to the workflow-runs gate — verify by hand before merging: \([.[].name] | join(", "))") end'
+# ONE COMMAND. Do NOT hand-roll this gate — see the box below for why that instruction is the whole
+# point. It polls until the verdict SETTLES and exits 0 ONLY on green.
+scripts/fsgg-coord landable <pr> --wait || exit 1
 
 # MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
 # `<pr>` is the PULL number; `<n>` is the ITEM/issue number. They are NOT the same, and this fence
@@ -598,6 +552,46 @@ gh api -X PUT repos/FS-GG/<repo>/pulls/<pr>/merge \
 
 gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the branch, explicitly
 ```
+
+`landable` prints one word and puts the decision in the exit code — `green` (0), `pending` (3),
+`red` / `conflicted` / `unknown` (1). Without `--wait` it answers once and returns; that is the form
+`adopt`, `who` and `reap` use.
+
+> **THIS USED TO BE FORTY LINES OF `jq` IN THIS FENCE, AND IT WAS WRONG FOUR TIMES**
+> ([#724](https://github.com/FS-GG/.github/issues/724)). Each fix edited a **copy**:
+>
+> | | it merged a PR that | fixed in |
+> |---|---|---|
+> | [#547](https://github.com/FS-GG/.github/issues/547) | had a **failing check on page 2** — the read was unpaginated | the recipe |
+> | [#606](https://github.com/FS-GG/.github/issues/606) | had **no checks at all** — "all passed" and "CI never started" are the same empty set | the recipe |
+> | [#698](https://github.com/FS-GG/.github/issues/698) | was **green** — a `cancelled` SUPERSEDED run was read as a failure | the recipe |
+> | [#710](https://github.com/FS-GG/.github/issues/710) | — the **autofix bot** read its OWN superseded runs as red and refused to merge the PR it had just pushed | the bot |
+> | [#720](https://github.com/FS-GG/.github/issues/720) | — `adopt` refused to land **finished, green, force-pushed** work, the only kind it exists to land | the tool |
+>
+> **Nothing executes a recipe, so nothing tests one.** The result was backwards: the copy that *was*
+> testable (`pr_landable`) was the one still carrying the bug, while the untested prose was right. So
+> the logic now lives in **one tested place** — eleven legs in `tests/fsgg-coord/run.sh`, each a state
+> a real PR reaches — and `scripts/check-recipe-landable.py` **fails any recipe that hand-rolls it
+> again**. A fifth copy is not discouraged; it is unwritable.
+>
+> **And it is what makes a STALE recipe harmless.** This file is copied into an agent's context at
+> session start and never refreshed, while N workers merge protocol fixes all day — so a worker can
+> run a gate the org fixed hours ago. That is not hypothetical: [#718](https://github.com/FS-GG/.github/pull/718)
+> was red-lit by a **nine-commit-stale** snapshot of this very section, and its worker then re-filed the
+> already-fixed bug as [#719](https://github.com/FS-GG/.github/issues/719). A recipe that **calls** the
+> tool reads the CURRENT one off disk at run time. The prose may drift; the behaviour cannot. That is
+> [#609](https://github.com/FS-GG/.github/issues/609)'s *"an import cannot drift by construction"*,
+> applied to the protocol itself.
+>
+> What `--wait` does, so you do not have to: it waits for the runs to **register** (for the first
+> 20-60s after a push there are none, and zero runs scores as a #606 red — rejecting every PR for being
+> new); it waits for the run set to **stop growing**, because GitHub schedules workflows over that same
+> window and an early poll can see "2 runs, both green" while six more have not been *created* —
+> merging a partial rollup; it drops a `cancelled` run **only** when a later run of its own concurrency
+> group replaced it; it scores workflow runs **and** check-runs, because each sees a failure the other
+> cannot (a `startup_failure` run makes no check-run; a job-level `continue-on-error` fails a check-run
+> while its run succeeds); and it returns `conflicted` **immediately**, because a conflicted PR never
+> gets CI at all and no amount of waiting fixes it.
 
 > **ZERO check runs is a FINDING, not a pass** ([#606](https://github.com/FS-GG/.github/issues/606)).
 > The loop this replaced waited `until [ -z "$(pending)" ]` — and `pending` is *also* empty when **no
@@ -800,33 +794,10 @@ jq -n --arg t "<title>" --rawfile b pr-body.md \
   | gh api -X POST repos/FS-GG/<repo>/pulls --input - --jq '"PR #\(.number)  \(.html_url)"'
 
 # WATCH the checks  (gh pr checks is GraphQL)
-# --paginate, again, and it matters MOST here: this repo has ~40 workflows and the endpoint pages at
-# 30, so a truncated read reports `pending=0 failed=0` while the checks that would have stopped you
-# sit on page 2. That is a merge gate that greenlights a red PR (#547).
-# `--slurp` cannot be combined with `--jq`, so aggregate in a separate `jq`.
-# And ASSERT rather than PRINT — the SAME assertion as the merge gate above, superseded-run rule and
-# all (#698). A line that merely PRINTS `checks=0 failed=1` and exits 0 is a gate that fails open the
-# moment an agent reads the exit code instead of the number (#606, #266). Same semantics in both
-# places, deliberately — a fix to one of them only is a fix that rots.
-SHA=$(gh api repos/FS-GG/<repo>/pulls/<pr> --jq .head.sha)
-: "${SHA:?head SHA read FAILED — refusing to gate on an empty subject}"   # an EMPTY head_sha= matches
-                                                                          # EVERY run in the repo (#698)
-gh api "repos/FS-GG/<repo>/actions/runs?head_sha=$SHA&per_page=100" --paginate --slurp \
-  | jq -e -r 'def cgroup: [.path, .event, .head_branch, ([.pull_requests[]?.number] | sort)];
-              [.[].workflow_runs[]]
-              | . as $all
-              | map(. as $r | select($r.conclusion != "cancelled"
-                    or ([$all[] | select(cgroup == ($r | cgroup) and .run_number > $r.run_number)] | length) == 0))
-              | if   length == 0                                                    then error("NO WORKFLOW RUNS — CI never started (conflicted PR? API error?). NOT a pass.")
-                elif ([.[]|select(.status!="completed")]|length) > 0                then error("checks still PENDING — do not merge")
-                elif ([.[]|select(.conclusion!="success" and .conclusion!="skipped")]|length) > 0 then error("checks FAILED — do not merge")
-                else "all \(length) workflows green" end'
-
-# ...and the same Actions-only assertion, so this path cannot go blind either (#266).
-gh api "repos/FS-GG/<repo>/commits/$SHA/check-runs" --paginate --slurp \
-  | jq -e -r '[.[].check_runs[] | select(.app.slug != "github-actions")]
-      | if length == 0 then "checks: Actions only — the gate above covers every one of them"
-        else error("non-Actions check(s), INVISIBLE to the workflow-runs gate — verify by hand: \([.[].name] | join(", "))") end'
+# Nothing changes here on an exhausted budget: `landable` is REST all the way down, so it is the same
+# one command as §5. This section used to carry a SECOND, hand-copied transcription of the gate — the
+# structural reason it kept rotting (#724). There is now nothing to keep in step.
+scripts/fsgg-coord landable <pr> --wait
 ```
 
 `gh pr checks <pr> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
