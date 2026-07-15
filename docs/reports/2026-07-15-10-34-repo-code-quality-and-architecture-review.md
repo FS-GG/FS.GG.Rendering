@@ -360,8 +360,20 @@ not a hard dependency chain. Severity in brackets.
 
 ### Phase 3 — add a "required floor" to fail-open-on-empty seams
 
-- [ ] **[MED] F-BUILD-1** — make `Audit.evaluate` fail when a required artifact is absent, not only
+- [x] **[MED] F-BUILD-1** — make `Audit.evaluate` fail when a required artifact is absent, not only
       `PresentInvalid` (`Build/Evidence.fs:150-160`); mark which `recognized` kinds are required.
+      *Done:* `Sensing.recognized` now carries a per-artifact `required` flag; the required set is the
+      contract-backed headless baseline (`layout-evidence.txt` + `headless-scene-evidence.txt`,
+      evidence-output-contract.md §EvidenceGraph "required-for-profile"). A new `Sensing.missingRequired`
+      reports required artifacts with no present node (a malformed baseline is caught by its token
+      contract, not double-counted). `Audit.evaluate` folds absent-required into the verdict as a
+      product-evidence defect, and `GeneratedRunner.run "EvidenceGraph"` exits non-0 on it too; both
+      reports disclose the missing baseline. An empty `readiness/` now audits **FAIL**, not a vacuous
+      PASS. Public surface unchanged (all new logic private to the assembly). `EvidenceTests` flipped the
+      old "empty surface passes" case to assert the floor (verified it FAILs the evidence-less surface,
+      names both baselines, classes it product-evidence-defect) and added a partial-baseline guard;
+      the honest-fail malformed test now writes a complete baseline so it isolates the present-invalid
+      path. Build.Tests 71 passed, Package.Tests 436 passed (public-surface baseline unaffected).
 - [ ] **[MED] F-BUILD-2** — require a non-empty/structured payload for token-less `recognized`
       kinds (`Build/Evidence.fs:73-79`).
 - [ ] **[MED] F-TEST-1** — emit `generated-tests-ran=false` (or `ReviewRequired`) when
