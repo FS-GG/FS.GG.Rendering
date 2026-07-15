@@ -53,6 +53,24 @@ let private mentions (relDoc: string) (token: string) =
 
 let private frontDoorDocs = [ "README.md"; "docs/usage.md" ]
 
+// The authoritative FS.GG.UI version — the pin the release actually publishes, read from the same
+// source of truth the template hands a scaffolded product. The front-door docs must quote THIS, so
+// the version prose cannot drift from what the repo ships (F-DOCS-1).
+let private fsGgUiVersion =
+    let props = File.ReadAllText(repoPath "template/base/Directory.Packages.props")
+    let m = Regex.Match(props, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
+    if m.Success then m.Groups.[1].Value.Trim()
+    else failwith "<FsGgUiVersion> not found in template/base/Directory.Packages.props"
+
+// Every FS.GG.UI version string the front-door docs state, in the two forms they use: the
+// backtick-quoted "framework version `X`" prose and the copy-paste "dotnet add package
+// FS.GG.UI.… --version X" command. Scoped to FS.GG.UI so an Audio/Game install example (a
+// different release axis) is not wrongly held to $(FsGgUiVersion).
+let private docVersionMentions (relDoc: string) =
+    let text = File.ReadAllText(repoPath relDoc)
+    [ for m in Regex.Matches(text, "framework version `([^`]+)`") -> m.Groups.[1].Value
+      for m in Regex.Matches(text, "dotnet add package FS\\.GG\\.UI\\.\\S+\\s+--version\\s+(\\S+)") -> m.Groups.[1].Value ]
+
 [<Tests>]
 let docsCurrencyTests =
     testList "Feature 242 — front-door docs currency" [
@@ -79,13 +97,27 @@ let docsCurrencyTests =
                     Expect.isFalse (text.Contains id) (sprintf "%s references retired package %s" doc id)
         }
 
-        test "README/usage.md reflect the shipped release pipeline (nuget.org, no stale feed/version)" {
+        test "README/usage.md reflect the shipped release pipeline (nuget.org, no stale feed)" {
             for doc in frontDoorDocs do
                 let f = flat doc
                 Expect.stringContains f "nuget.org" (sprintf "%s must disclose the public nuget.org feed" doc)
-                Expect.isFalse (f.Contains "0.1.0-preview.1") (sprintf "%s pins the stale 0.1.0-preview.1 version" doc)
                 Expect.isFalse (f.Contains "not on a public feed yet") (sprintf "%s still says not on a public feed" doc)
                 Expect.isFalse (f.Contains "not yet on a public nuget feed") (sprintf "%s still says not yet on a public feed" doc)
+        }
+
+        // F-DOCS-1: the version prose must be DERIVED from the pin, not checked against a frozen
+        // known-bad literal. The old gate banned exactly `0.1.0-preview.1`; the docs drifted to a
+        // different stale string (`0.1.58-preview.1`) and sailed through green. Per the review's
+        // meta-observation — assert `doc == source`, never `doc != known-bad-literal`.
+        test "README/usage.md quote the shipped FS.GG.UI version, not a frozen literal" {
+            for doc in frontDoorDocs do
+                let mentions = docVersionMentions doc
+                // Non-vacuous PER DOC: each front-door doc must actually state a version, so a doc
+                // that silently drops its version literal cannot pass this gate by leaning on the other.
+                Expect.isNonEmpty mentions (sprintf "%s states no FS.GG.UI version for the currency gate to check" doc)
+                for v in mentions do
+                    Expect.equal v fsGgUiVersion
+                        (sprintf "%s states version %s but the pin is $(FsGgUiVersion)=%s" doc v fsGgUiVersion)
         }
 
         test "the Ant Design theme is disclosed on the front door (README + usage + module map)" {
