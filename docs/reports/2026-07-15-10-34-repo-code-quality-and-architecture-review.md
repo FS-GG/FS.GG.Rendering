@@ -484,8 +484,20 @@ not a hard dependency chain. Severity in brackets.
       api-surface mirror (`docs/api-surface/Symbology/LabelLayout.fsi`, types-only after the internal
       module strips) keeps a generated product's shipped label surface complete. Verified byte-identical:
       Symbology.Render golden PNGs 20/20 and SymbologyBoard 28/28 unchanged, surface baseline unchanged;
-      Symbology.Tests 486, Package.Tests 436, full solution builds. *Remaining:* `ControlsElmish.fs`
-      frame loop, `SkiaViewer.fs` (both hot-path — need the §7 golden-image/perf gates first).
+      Symbology.Tests 486, Package.Tests 436, full solution builds.
+      *Update (2026-07-15, follow-through):* the §7 **golden-image gate now exists** — `Rendering.Harness.GoldenImage`
+      + `GoldenImageGateTests` (#816), a fail-closed per-pixel corpus comparison behind the in-process CPU
+      raster, byte-identical in-repo and proven non-vacuous by an injected-regression test. Behind it,
+      **`SkiaViewer.fs` split 3,126 → 2,612** (#817) via two gate-verified cuts, zero public-surface change:
+      three self-contained modules (`DiagnosticsFiltering`/`WindowBehaviorValidation`/`HostCapability`) and
+      the 16-member evidence-writer cluster (→ `ViewerEvidence.fs`). The `ControlsElmish.fs` frame-loop state
+      extraction was already landed (Feature 186 `FrameScriptState`; `Perf.runScriptCore` down to 3 structural
+      mutables). *Remaining:* `SkiaViewer.fs`'s strongly-connected core — the three big hot-path loops
+      (`runPresentedPersistentWindow`/`runGeneratedApp`/`runInteractiveViewerWithWindowBehaviorCore`) + the
+      public `runApp*` entry points, bidirectionally coupled to the shared launch/window helpers
+      (public `failureFromDiagnostic`/`classifyWindowObservation` ↔ private `makeFailure`/`presentedFor`/
+      `tryObserved`). No clean topological cut remains; further reduction is incremental threaded work, each
+      cut verified against the golden-image gate.
       Note: the plan doc's Phase 1 (harness `Compositor`/`Cli`/`ValidationLanes` data-table refactor) and
       Phases 4–5 (`Scene.fs` → 490, `Control.fs` → 987) already landed piecemeal across earlier features.
 - [x] **[MED] F-CTL-2** — route DataGrid `cellFontSize` through `Style.resolve`
