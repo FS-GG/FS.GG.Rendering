@@ -23,6 +23,10 @@ open FS.GG.TestSupport
 /// `docs/api-surface/<mirror>` <- `<source>`. One entry per public signature the pure/render packages ship.
 let private mirrorPairs =
     [ "Symbology/Symbology.fsi", "src/Symbology/Symbology.fsi"
+      // The pure label / rich-text LAYOUT engine was extracted out of `Symbology.fs` (F-CORE-1). Its
+      // `.fsi` carries the PUBLIC label text types (`LabelRun`/`LabelText`/…) a product needs to author a
+      // `Token.Label`; the `module internal LabelLayout` seam strips out, so the mirror ships types only.
+      "Symbology/LabelLayout.fsi", "src/Symbology/LabelLayout.fsi"
       "Symbology/Legibility.fsi", "src/Symbology/Legibility.fsi"
       "Symbology.Render/Render.fsi", "src/Symbology.Render/Render.fsi" ]
 
@@ -53,7 +57,7 @@ let apiSurfaceMirrorTests =
           }
 
           // The mirror is what a product reads, so a signature the skill names must actually be there.
-          test "the mirror ships all three public modules" {
+          test "the mirror ships every public symbology surface file" {
               for mirror, _ in mirrorPairs do
                   let mirrorPath =
                       Path.Combine(RepositoryRoot.value, "template", "base", "docs", "api-surface", mirror)

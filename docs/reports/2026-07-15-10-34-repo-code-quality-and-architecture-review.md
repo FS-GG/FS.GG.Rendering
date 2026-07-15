@@ -473,6 +473,21 @@ not a hard dependency chain. Severity in brackets.
       `docs/reports/2026-06-21-23-57-god-module-decomposition-analysis-and-plan.md`: extract the
       rich-text engine out of `Symbology.fs`, the frame loop out of `ControlsElmish.fs`, and stop
       landing new features inside `SkiaViewer.fs`.
+      *Partial (F-SYM done):* the ~540-line label / rich-text LAYOUT engine (weight-aware fit, whitespace
+      word-wrap, inline styled runs, laid-out paragraphs, and the per-phase label-motion transforms) is
+      extracted out of `Symbology.fs` into a new dependency `module internal LabelLayout`
+      (`src/Symbology/LabelLayout.fs`), and the public label text types (`LabelRun`/`LabelAlign`/
+      `LabelParagraph`/`LabelText`/`LabelMotion`) moved with it — same namespace, so the public surface
+      baseline is byte-identical and the four call sites reroute through `LabelLayout.{labelDispatch,
+      motionLabelNodes,lineHeightOf,restPhase}`. `Symbology.fs` drops 1508 → 835 lines (under the plan's
+      ~1,500 exit floor); `Token`, auto-label projection, and the three grammars stay behind. A new
+      api-surface mirror (`docs/api-surface/Symbology/LabelLayout.fsi`, types-only after the internal
+      module strips) keeps a generated product's shipped label surface complete. Verified byte-identical:
+      Symbology.Render golden PNGs 20/20 and SymbologyBoard 28/28 unchanged, surface baseline unchanged;
+      Symbology.Tests 486, Package.Tests 436, full solution builds. *Remaining:* `ControlsElmish.fs`
+      frame loop, `SkiaViewer.fs` (both hot-path — need the §7 golden-image/perf gates first).
+      Note: the plan doc's Phase 1 (harness `Compositor`/`Cli`/`ValidationLanes` data-table refactor) and
+      Phases 4–5 (`Scene.fs` → 490, `Control.fs` → 987) already landed piecemeal across earlier features.
 - [x] **[MED] F-CTL-2** — route DataGrid `cellFontSize` through `Style.resolve`
       (`DataGridGeometry.fs:19,39`) so a theme can rescale grid-cell text. *Done:* `cellText` now
       builds a `baseStyle` at `cellFontSize` and paints `mkTextW` at the RESOLVED `FontSize`/`FontWeight`

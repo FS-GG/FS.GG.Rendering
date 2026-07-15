@@ -20,6 +20,8 @@
   <!-- Pure symbol vocabulary. Scene-only dependency (plan Structure Decision / FR-001/FR-011):
        keeps game-symbol vocabulary off the core control surface and headlessly testable. -->
   <ItemGroup>
+    <Compile Include="LabelLayout.fsi" />
+    <Compile Include="LabelLayout.fs" />
     <Compile Include="Symbology.fsi" />
     <Compile Include="Symbology.fs" />
     <Compile Include="Legibility.fsi" />
