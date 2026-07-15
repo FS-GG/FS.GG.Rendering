@@ -315,10 +315,21 @@ not a hard dependency chain. Severity in brackets.
       `theme.ControlHeight`, guards against going vacuous, and probes the lower "green" band where the
       old `28.0` cap overshot into "blue". Verified it REDS on the reintroduced literal and greens on
       the fix; full Elmish.Tests suite 272 passed.
-- [ ] **[MED] F-DIAG-1** — block the `summarize` status ladder on `Error`/`Fatal` severity
+- [x] **[MED] F-DIAG-1** — block the `summarize` status ladder on `Error`/`Fatal` severity
       independent of category (`Diagnostics.fs:395-405`); reclassify fatal `Framebuffer` failures
       off `RenderingLimitation` (`Host/Diagnostics.fs:185`). Add a fixture pairing
-      `RenderingLimitation`/`BackendCost` with `Error`.
+      `RenderingLimitation`/`BackendCost` with `Error`. *Done:* `summarize` now derives an
+      `unresolvedErrorCount` — non-excepted `Error`-severity groups NOT already routed off `Accepted`
+      by an existing rung (`ReadinessBlocker`→Blocked, `DeveloperAction`→ReviewRequired,
+      `Environment`→EnvironmentLimited) — and the ladder blocks on it, so a classified Error can never
+      fall through to `Accepted`; the floor honors accepted exceptions. `Host/Diagnostics.fs`
+      Framebuffer now mirrors `FrameRender`: Info/Warning→`RenderingLimitation`,
+      Error/Fatal→`ReadinessBlocker` (the fatal `startupFailed Framebuffer` FBO-0 wrap failure now
+      blocks). Fixtures `renderingLimitationError`/`backendCostError` added; readiness tests assert
+      Blocked (verified RED without the fix: 2 fail), benign warnings still Accepted, exception clears
+      the floor; host-mapping tests assert the fatal→`ReadinessBlocker` reclass and that the benign
+      informational present-mode note stays `RenderingLimitation`. Diagnostics.Tests 18/18,
+      SkiaViewer.Tests 354 passed, Controls/Testing/Elmish suites green.
 
 ### Phase 2 — make guards derive from source (retire the "constant-checking gate" class)
 

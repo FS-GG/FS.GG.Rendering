@@ -28,4 +28,20 @@ let tests =
             Expect.equal runtime.Category (Some DiagnosticCategory.ReadinessBlocker) "category"
             Expect.stringContains runtime.Message "draw command failed" "cause preserved"
         }
+
+        test "F-DIAG-1: a fatal framebuffer startup failure maps to readiness blocker, not rendering limitation" {
+            let host = Diagnostics.startupFailed DiagnosticStage.Framebuffer "SkiaSharp could not wrap the window's default framebuffer (FBO 0)."
+            let runtime = Diagnostics.toRuntimeDiagnostic context host
+
+            Expect.equal runtime.Severity (Some FS.GG.UI.Diagnostics.DiagnosticSeverity.Error) "fatal collapses to Error severity"
+            Expect.equal runtime.Category (Some DiagnosticCategory.ReadinessBlocker) "fatal framebuffer failure blocks readiness"
+        }
+
+        test "F-DIAG-1: a benign informational framebuffer diagnostic stays a rendering limitation" {
+            // The present-mode announce (Info/Framebuffer, not a damage decision) must not be escalated.
+            let host = Diagnostics.create DiagnosticSeverity.Info DiagnosticStage.Framebuffer "present-mode=DirectToSwapchain readback=false." None
+            let runtime = Diagnostics.toRuntimeDiagnostic context host
+
+            Expect.equal runtime.Category (Some DiagnosticCategory.RenderingLimitation) "informational framebuffer note is not a blocker"
+        }
     ]

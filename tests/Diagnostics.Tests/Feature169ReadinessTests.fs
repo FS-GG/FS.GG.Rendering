@@ -67,4 +67,42 @@ let tests =
             let summary = Feature169Fixtures.summarize [ Feature169Fixtures.environmentLimit ]
             Expect.equal summary.Status ReadinessDiagnosticStatus.EnvironmentLimitedStatus "environment-limited status"
         }
+
+        test "F-DIAG-1: an Error-severity rendering limitation blocks, it does not fall through to accepted" {
+            // A fatal framebuffer-wrap failure surfaces as Error/RenderingLimitation. Before the floor
+            // it read as Accepted because the ladder only blocked on the ReadinessBlocker *category*.
+            let summary = Feature169Fixtures.summarize [ Feature169Fixtures.renderingLimitationError ]
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Blocked "Error-severity rendering limitation blocks"
+        }
+
+        test "F-DIAG-1: an Error-severity backend-cost diagnostic blocks, independent of category" {
+            let summary = Feature169Fixtures.summarize [ Feature169Fixtures.backendCostError ]
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Blocked "Error-severity backend cost blocks"
+        }
+
+        test "F-DIAG-1: a benign warning-severity rendering limitation is still accepted" {
+            // Guard against over-blocking: the floor keys on Error severity only, so Info/Warning
+            // classified non-blocking diagnostics remain Accepted (mirrors the non-blocking case above).
+            let summary = Feature169Fixtures.summarize [ Feature169Fixtures.renderingLimitation; Feature169Fixtures.backendCostAt 1 ]
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Accepted "warning-severity limitation stays accepted"
+        }
+
+        test "F-DIAG-1: a valid exception clears the Error-severity floor to accepted" {
+            // The floor honors accepted exceptions exactly like the ReadinessBlocker rung.
+            let exceptionRecord: DiagnosticException =
+                { ExceptionId = "accepted-framebuffer-limitation"
+                  Scope = "Framebuffer"
+                  Reason = "Synthetic test accepts the framebuffer rendering limitation by code."
+                  ExpiresOn = None
+                  AcceptedBy = Some "feature169-test" }
+
+            let summary =
+                RuntimeDiagnostics.summarize
+                    (Some Feature169Fixtures.runId)
+                    [ exceptionRecord ]
+                    []
+                    [ Feature169Fixtures.renderingLimitationError ]
+
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Accepted "excepted Error-severity limitation no longer blocks"
+        }
     ]
