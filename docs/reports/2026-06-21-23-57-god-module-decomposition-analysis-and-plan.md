@@ -221,6 +221,22 @@ No `.fsi` surface; relaxed #3 covers any incidental artifact wording change.
 
 ## 7. Replacement gates (mandatory once #2 is relaxed)
 
+> **Status (2026-07-15):** gate **#1 now exists** as `Rendering.Harness.GoldenImage`
+> (`tools/Rendering.Harness/GoldenImage.{fsi,fs}`), gated by
+> `tests/Rendering.Harness.Tests/GoldenImageGateTests.fs`. It renders each `RenderAnywhere` corpus
+> scene through the in-process CPU raster (`ReferenceRendering.renderScenePngResult`, no GL/GPU/display)
+> and compares it PER-PIXEL against the committed reference PNG under an explicit perceptual budget
+> (`ChannelTolerance`/`MaxDiffPixels`), fail-closed on drift / dimension-mismatch / undecodable /
+> render-failure, with an injected-regression proof that the budget cannot swallow a structural change.
+> The corpus renders byte-identically to the committed references in-repo, so it also passes under the
+> `exact` (zero-tolerance) budget. Gate **#2** (golden-HASH) already exists scoped to `RetainedRender.step`
+> (`Feature190GateTests.fs`); gate **#4** (semantic artifact diff) exists piecemeal (structural
+> JSON/parse comparisons). Gate **#3** (per-frame alloc/time CEILING) is intentionally NOT a hard gate —
+> `Feature109BaselineReportTests` records that timing/allocation "must NEVER gate" (environment-dependent);
+> the SecondAntShowcase responsiveness lane exposes declared latency budgets instead. Most of Phases 1–6
+> below have since landed piecemeal (Features 183/186/190 + the harness data-table refactor); the
+> genuinely-remaining hot-path target is the `SkiaViewer.fs` module split (Phase 3).
+
 Relaxing byte-stability removes the cheap regression check 182 relied on. Before Phases 5–6 (and ideally before any rendering-path change) stand up:
 
 1. **Golden-image equivalence harness** — render the showcase/gallery scene corpus and compare against committed PNGs with a perceptual tolerance (e.g. per-pixel ΔE threshold + max-diff-pixel count), not byte-equality. Failing diffs surface as artifacts.

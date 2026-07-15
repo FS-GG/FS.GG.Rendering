@@ -19,6 +19,8 @@
     <Compile Include="RunPlan.fs" />
     <Compile Include="RenderAnywhere.fsi" />
     <Compile Include="RenderAnywhere.fs" />
+    <Compile Include="GoldenImage.fsi" />
+    <Compile Include="GoldenImage.fs" />
     <Compile Include="Evidence.fsi" />
     <Compile Include="Evidence.fs" />
     <Compile Include="Perf.fsi" />
