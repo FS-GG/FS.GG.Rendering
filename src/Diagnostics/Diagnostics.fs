@@ -19,6 +19,12 @@ type DiagnosticCategory =
     | ReadinessBlocker
     | DeveloperAction
 
+type DiagnosticReadinessImpact =
+    | NonBlocking
+    | BlocksReadiness
+    | RequiresReview
+    | EnvironmentLimited
+
 type ReadinessDiagnosticStatus =
     | Accepted
     | Blocked

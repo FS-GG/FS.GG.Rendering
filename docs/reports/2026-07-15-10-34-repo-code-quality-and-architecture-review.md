@@ -600,29 +600,39 @@ not a hard dependency chain. Severity in brackets.
       be >1 and spellable, and each marker phrase must be present). Verified RED against the reintroduced
       "eight" in each of the three files (each names actual-vs-expected) and green on the fix. Both
       `.fsi` changes are comment-only (public surface unchanged). Controls.Tests 1032 passed.
-- [x] **[LOW] F-DIAG-3..6** — persisted-vs-returned status divergence, `.jsonl` synthesized-record
-      omission, dead `DiagnosticReadinessImpact`, `AnimationTick.SubId` excluding `interval`. *Done:*
+- [x] **[LOW] F-DIAG-3, F-DIAG-4, F-DIAG-6** — persisted-vs-returned status divergence, `.jsonl`
+      synthesized-record omission, `AnimationTick.SubId` excluding `interval`. *Done:*
       **F-DIAG-3** — `writeArtifacts` now writes the per-record `.jsonl` FIRST, then persists the summary
       `.md` and (last) the machine-read `.json`, each re-rendered against the write failures known so far.
       A summary write failure is a `DeveloperAction` that flips the verdict to `ReviewRequired`; the old
       order rendered the on-disk summaries from the pre-failure `initial`, so a `.jsonl` write failure that
-      the caller was *returned* as `ReviewRequired` was persisted on disk as `accepted`. The sole residue is
-      inherent (a summary artifact cannot record its own write failure) and is documented in-code; `.json`
-      is written last so it discloses the most. **F-DIAG-4** — the invalid/unmatched-exception synthesis is
-      factored into a private `synthesizeExceptionProblems` shared by `summarizeAt` and `writeArtifacts`, so
-      the `.jsonl` carries the exact verdict-bearing records the summary folds in (an unmatched exception that
-      drove `ReviewRequired` is no longer absent from the records artifact). **F-DIAG-5** — the dead public
-      `DiagnosticReadinessImpact` DU (referenced nowhere: grep-confirmed) removed from `Diagnostics.fs`/`.fsi`;
-      surface baselines refreshed via `scripts/refresh-surface-baselines.fsx` (2 type + 4 member lines gone,
-      diff isolated to that type). The Feature-169 contract spec still lists it as a frozen planning record
-      (no gate compares it to source; surface baselines are the gated artifact). **F-DIAG-6** — the
-      `AnimationTick` SubId is now keyed on `interval.Ticks`, so a changed interval reads as a new
-      subscription (old timer disposed, new period started) instead of Elmish keeping the stale timer under a
-      fixed id; an unchanged interval keeps the same id so a steady tick is not churned. New guards:
-      `Feature169ArtifactTests` gains the F-DIAG-3 persisted-vs-returned and F-DIAG-4 `.jsonl`-synthesis cases;
-      `AnimationTickTests` asserts the interval-keyed id and same-interval/changed-interval behavior. Verified
-      RED against the stashed pre-fix source (Diagnostics 2 fail, Elmish 1 fail) and green on the fix.
-      Diagnostics.Tests 22, Elmish.Tests 272, Package.Tests 436 (surface gate), Rendering.Harness.Tests 308.
+      the caller was *returned* as `ReviewRequired` was persisted on disk as `accepted`. Each persisted
+      summary is now built exactly like the returned one (`persistedSummary ()`), so the on-disk
+      `artifactWriteDiagnostics` array / `.md` "Artifact Write Warnings" section agree too — not just the
+      status. The sole residue is inherent (a summary artifact cannot record its own write failure) and is
+      documented in-code; `.json` is written last so it discloses the most. **F-DIAG-4** — the
+      invalid/unmatched-exception synthesis is factored into a private `synthesizeExceptionProblems` shared by
+      `summarizeAt` and `writeArtifacts`, so the `.jsonl` carries the exact verdict-bearing records the summary
+      folds in (an unmatched exception that drove `ReviewRequired` is no longer absent from the records
+      artifact). **F-DIAG-6** — the `AnimationTick` SubId is now keyed on `interval.Ticks`, so a changed
+      interval reads as a new subscription (old timer disposed, new period started) instead of Elmish keeping
+      the stale timer under a fixed id; an unchanged interval keeps the same id so a steady tick is not
+      churned. New guards: `Feature169ArtifactTests` gains the F-DIAG-3 persisted-vs-returned (status + the
+      dedicated write-diagnostics disclosure) and F-DIAG-4 `.jsonl`-synthesis cases; `AnimationTickTests`
+      asserts the interval-keyed id and same-interval/changed-interval behavior. Verified RED against the
+      stashed pre-fix source (Diagnostics 2 fail, Elmish 1 fail) and green on the fix. Diagnostics.Tests 22,
+      Elmish.Tests 272, Package.Tests 436.
+- [ ] **[LOW] F-DIAG-5** — dead public `DiagnosticReadinessImpact` type. *Deferred — the fix trips a
+      required breaking-change gate.* The DU is genuinely dead (grep-confirmed: referenced nowhere but its
+      own declaration + the frozen Feature-169 contract spec), so removing it is correct hygiene. But
+      `FS.GG.UI.Diagnostics` is a published package (`Diagnostics.fsproj` `<Version>0.4.0-preview.1</Version>`)
+      and deleting a public type is a CP0002 break: the **required** `api-compatibility-gate` (ADR-0101/0103,
+      `enforce_admins` on, so not `--admin`-bypassable) reddens and its documented remedy is to cut a SemVer
+      major for the package. Forcing a coordinated package-major cut to delete six lines of dead code is the
+      wrong trade to bundle into a LOW narrative-sweep and merge autonomously — the removal belongs in the
+      package's next planned major (or a dedicated, coordinated version bump), not here. Confirmed the gate
+      blocks it: the removal red the `api-compatibility-gate` on PR #814; reverting the removal cleared it.
+      **F-DIAG-3..4..6** landed in the same PR (they are internal, non-breaking, public-surface unchanged).
 
 ---
 
