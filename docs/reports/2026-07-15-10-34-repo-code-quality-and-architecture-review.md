@@ -499,8 +499,24 @@ not a hard dependency chain. Severity in brackets.
       pins both halves: the 11.0 byte-identity anchor (plain body + header cell) and the newly-live seam
       (a `Font` class reaching the body- and header-cell labels) — verified RED against the raw literal
       (2 fail, anchors stay green) and green on the fix. Controls builds clean; Controls.Tests 1027 passed.
-- [ ] **[LOW-MED] F-CORE-4** — synchronize (or document as strictly single-threaded) the
+- [x] **[LOW-MED] F-CORE-4** — synchronize (or document as strictly single-threaded) the
       process-wide render statics in `Host/OpenGl.fs:507-524` and `Host/FrameCache.fs:22`.
+      *Done:* the statics are strictly single-threaded (Issue #180: Silk drives the window from one
+      thread and the run mutates them without a lock), so rather than lock the per-frame hot path this
+      turns the unstated single-thread assumption into an ENFORCED invariant. A new
+      `module internal RenderThread` (`Host/RenderThread.fs`, compiled before `FrameCache.fs`) records
+      the loop thread on `GlHost.run` entry (`claim`) and clears it in the teardown `finally` (`release`);
+      the accessors an off-thread caller could actually reach — `GlHost.lastPresentTiming`,
+      `GlHost.setLiveAuthoringSizeOverride`, and `FrameCache.{current,replace,release,beginRun}` — call
+      `RenderThread.verify` first, which `invalidOp`s (naming the offending seam) when touched off the
+      owning thread. The private per-frame carriers are lexically inside the loop callback and have no
+      external accessor, so guarding the boundary accessors covers the whole off-thread reach surface
+      with no hot-path cost. The guard is inert between runs (no owner claimed), so the Issue #177
+      direct-call `FrameCache` lifetime tests and any pre-run accessor read are unaffected. Public
+      surface unchanged (all internal). New `FCore4RenderThreadTests` drives the guard directly — the
+      owning thread reads normally, an off-thread `verify`/`FrameCache.current` fails loudly naming the
+      seam, `ownerThreadId` tracks claim/release, and the unowned case stays inert — verified RED against
+      a no-op guard (2 fail). SkiaViewer.Tests 362 passed, Package.Tests 436, Rendering.Harness.Tests 308.
 - [ ] **[LOW-MED] F-DIAG-2** — inject a clock into `summarize` for `ExpiresOn` evaluation
       (`Diagnostics.fs:356`) so the expiry boundary is testable and the purity claim holds.
 

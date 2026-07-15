@@ -22,17 +22,21 @@ module internal FrameCache =
     let mutable private cached: SKImage option = None
 
     /// The cached frame, if one has been painted this run.
-    let current () = cached
+    let current () =
+        RenderThread.verify "FrameCache.current"
+        cached
 
     /// Supersede the cached frame with a fresh snapshot, disposing the frame it replaces. Called on
     /// the paint path, where the owning GRContext is live.
     let replace (image: SKImage) =
+        RenderThread.verify "FrameCache.replace"
         cached |> Option.iter (fun previous -> previous.Dispose())
         cached <- Some image
 
     /// Release the cached frame. Called from the run's teardown BEFORE the GRContext is disposed,
     /// so the image's backing context outlives it. Idempotent.
     let release () =
+        RenderThread.verify "FrameCache.release"
         cached |> Option.iter (fun image -> image.Dispose())
         cached <- None
 
@@ -41,4 +45,6 @@ module internal FrameCache =
     /// run whose teardown did not complete — its GRContext is gone, and disposing a GPU-backed
     /// SKImage after its context is undefined — so drop the reference and leave the stale native
     /// handle to finalization rather than reach through it.
-    let beginRun () = cached <- None
+    let beginRun () =
+        RenderThread.verify "FrameCache.beginRun"
+        cached <- None

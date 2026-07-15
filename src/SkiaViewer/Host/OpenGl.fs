@@ -488,7 +488,9 @@ module GlHost =
     /// Issue #400: the size-aware interactive host publishes the coordinate space it authored the live
     /// scene in (the physical framebuffer, for native resolution) so the present-time fit does not
     /// scale an already-native scene a second time. `None` restores the #364 window-authored default.
-    let internal setLiveAuthoringSizeOverride (size: Size option) = liveAuthoringSizeOverride <- size
+    let internal setLiveAuthoringSizeOverride (size: Size option) =
+        RenderThread.verify "GlHost.setLiveAuthoringSizeOverride"
+        liveAuthoringSizeOverride <- size
 
     /// Issue #364/#400: the (authoring, physical) size pair for the current live present. Physical is
     /// always the framebuffer the surface was just sized to. Authoring is the space the scene was drawn
@@ -506,7 +508,9 @@ module GlHost =
     // Live-only, non-golden; surfaced to `FrameMetrics.PaintDuration`/`ComposeDuration`.
     let mutable lastPaintDuration = System.TimeSpan.Zero
     let mutable lastComposeDuration = System.TimeSpan.Zero
-    let lastPresentTiming () : System.TimeSpan * System.TimeSpan = lastPaintDuration, lastComposeDuration
+    let lastPresentTiming () : System.TimeSpan * System.TimeSpan =
+        RenderThread.verify "GlHost.lastPresentTiming"
+        lastPaintDuration, lastComposeDuration
 
     // Feature 120 (US2, FR-004/005/006): the last presented scene (for the idle-skip decision). A
     // present is skipped only when the scene is structurally unchanged AND the framebuffer size is
@@ -1464,6 +1468,10 @@ module GlHost =
         let mutable lastScene: Scene option = None
         let mutable lastFrame: FrameSnapshot option = None
         let mutable shutdownRequested = false
+        // F-CORE-4 / Issue #180: claim this (loop) thread as the owner of the process-wide render
+        // statics reset just below, BEFORE the first reset. `verify` in their accessors then trips
+        // loudly on any off-thread touch; `RenderThread.release` in the teardown `finally` clears it.
+        RenderThread.claim ()
         // Feature 120 (US3): the backend replay cache for this run; set as the active painter cache so
         // `CachedSubtree` boundaries record/replay. Reset the idle-skip carrier so a new run repaints.
         let replayCache = PictureReplayCache.create true
@@ -1909,3 +1917,8 @@ module GlHost =
 
                 w.Dispose()
             | None -> ()
+
+            // F-CORE-4 / Issue #180: this run no longer owns the render statics. Release the affinity
+            // claim LAST, after every static-touching teardown step above ran verified-owned, so the
+            // guard goes inert only once the statics are quiescent between runs.
+            RenderThread.release ()
