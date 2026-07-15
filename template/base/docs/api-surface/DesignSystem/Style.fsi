@@ -39,7 +39,7 @@ module Style =
     /// `resolve theme baseStyle [] Normal = baseStyle` exactly (parity, FR-005, SC-003).
     /// Total over every `(Theme, ResolvedStyle, StyleClass list, VisualState)`: every
     /// `StyleVariant`, any `Custom` string (unknown ⇒ identity delta, never an exception or
-    /// silent drop), and all eight `VisualState` cases (FR-002, FR-004).
+    /// silent drop), and all nine `VisualState` cases (FR-002, FR-004).
     val resolve:
         theme: Theme ->
         baseStyle: ResolvedStyle ->
