@@ -585,7 +585,21 @@ not a hard dependency chain. Severity in brackets.
       / comparable (dark) against the 4.5 declared floor; verified RED when the token is raised above the
       achievable ratio (the message surfaces the real 14.03 measured). Public surface unchanged
       (test-only). Controls.Tests Feature127 21 passed.
-- [ ] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine.
+- [x] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine. *Done:* the DU
+      (`Types.DesignSystem.fs`) carries nine cases (`FocusedHover`/`Validation` landed after the prose
+      was written). THREE hand-maintained copies stated the stale "eight" and were corrected to nine:
+      `src/DesignSystem/Style.fsi:41`, the real skill body `src/DesignSystem/skill/SKILL.md:104` (the
+      `.claude/skills/fs-gg-design-system/SKILL.md` is a 12-line pointer stub, not this body), and the
+      product-facing api-surface MIRROR `template/base/docs/api-surface/DesignSystem/Style.fsi:42` — the
+      last of which no gate would have caught, since the M-MIR mirror gate strips `//` comments before
+      comparing and this `.fsi` is not in `inRepoExactCopies` (an ungated third copy, F-DS-3's exact
+      failure class). Rather than pin a literal, a new reflection-derived gate
+      (`tests/Controls.Tests/FDs3VisualStateCountTests.fs`) DERIVES the count from
+      `FSharpType.GetUnionCases(typeof<VisualState>)` and asserts all three prose spots spell that
+      cardinal, so adding/retiring a case forces the prose to move with it (non-vacuous: the count must
+      be >1 and spellable, and each marker phrase must be present). Verified RED against the reintroduced
+      "eight" in each of the three files (each names actual-vs-expected) and green on the fix. Both
+      `.fsi` changes are comment-only (public surface unchanged). Controls.Tests 1032 passed.
 - [ ] **[LOW] F-DIAG-3..6** — persisted-vs-returned status divergence, `.jsonl` synthesized-record
       omission, dead `DiagnosticReadinessImpact`, `AnimationTick.SubId` excluding `interval`.
 
