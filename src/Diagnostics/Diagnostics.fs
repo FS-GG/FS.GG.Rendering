@@ -392,10 +392,26 @@ module RuntimeDiagnostics =
 
         let reviewRequiredCount = unclassifiedCount + developerReviewCount
 
+        // F-DIAG-1: an `Error`-severity diagnostic must never fall through to `Accepted`. The ladder
+        // below only blocks on *category* (`ReadinessBlocker`), so a fully-classified Error carrying
+        // any other category — `RenderingLimitation`/`BackendCost` — otherwise reads as `Accepted`.
+        // This counts the Errors that are NOT already routed off `Accepted` by an existing rung
+        // (ReadinessBlocker→Blocked, DeveloperAction→ReviewRequired, Environment→EnvironmentLimited),
+        // so it is a floor keyed on severity independent of category without disturbing those rungs.
+        let unresolvedErrorCount =
+            groups
+            |> List.filter (fun group ->
+                group.Severity = Some DiagnosticSeverity.Error
+                && not (excepted group)
+                && group.Category <> Some ReadinessBlocker
+                && not (developerActionRequiresReview group)
+                && not (environmentLimits group))
+            |> List.sumBy _.OccurrenceCount
+
         let status =
             if unclassifiedCount > 0 || not exceptionProblems.IsEmpty then
                 ReviewRequired
-            elif blockerCount > 0 then
+            elif blockerCount > 0 || unresolvedErrorCount > 0 then
                 Blocked
             elif developerReviewCount > 0 then
                 ReviewRequired
