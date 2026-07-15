@@ -109,16 +109,21 @@
 # THE SHADOW (ADR-0034 Phase 2). The coordination domain is moving to a typed F# core, and this tool
 # schedules the work that rewrites this tool — so nothing is cut over on faith. BOTH engines decide
 # every `batch`/`next`/`take`, BASH'S ANSWER IS THE ONE RETURNED, and every disagreement is logged.
-# Bash stays authoritative until the log has been empty for three consecutive days across the live
-# fleet — which is what `--engine fs` is waiting for, and why it is still refused.
+# `--engine fs` is now OPEN (ADR-0038): the flip is gated on the DEFECT CORPUS, not on a fleet clock
+# that could never tick (#728). THE DEFAULT DOES NOT MOVE — it is `auto`, and `auto` returns BASH'S
+# ANSWER. You get the typed core's answer only by asking for it.
 #
 # IT IS ON BY DEFAULT WHEREVER AN ENGINE EXISTS (`--engine auto`), and off wherever one does not — so
 # a repo without the engine on its coordination path is byte-for-byte unaffected, and a repo with it
 # starts contributing evidence without anybody remembering to opt in. A shadow nobody switches on is
-# not a cautious shadow; it is a decoration, and the three-day clock never starts.
+# not a cautious shadow; it is a decoration — and now that the shadow is TELEMETRY rather than the
+# gate, an observer that cannot move an answer costs its caller nothing.
 #
 #   fsgg-coord --engine bash next             # the escape hatch: never shadow
 #   fsgg-coord --engine shadow next           # insist on it; a missing engine is a logged skip
+#   fsgg-coord --engine fs next               # THE ENGINE'S ANSWER IS THE ANSWER (ADR-0038). No
+#                                             # fallback: every failure here is FATAL, where in every
+#                                             # other mode it is a logged skip
 #   fsgg-coord divergence [--json] [--since T] [--clear]
 #                                             # the acceptance test for the port. Reports OUTCOME
 #                                             # divergences (the engines disagree about what may be
@@ -4404,6 +4409,10 @@ reap_cmd() {
 # across the live fleet for three consecutive days — can never be met, because the clock never starts.
 # An observer nobody switches on is not a cautious observer. It is a decoration.
 #
+# (That reasoning held, and then went further than it knew: ADR-0038 found the clock could not tick even
+# with the shadow ON, because a worker in a per-item worktree resolves no engine at all — #728. The
+# criterion is retired; `auto` remains right, for the reason given here.)
+#
 # So the default is AUTO: shadow WHEREVER AN ENGINE ACTUALLY EXISTS, and plain bash everywhere else.
 # That is safe because "exists" is the honest gate — the six receivers have no engine on the
 # coordination path until it is published, so they are byte-for-byte unaffected and cannot be broken
@@ -5117,10 +5126,16 @@ shadow_run() {  # <allowBacklog 0|1> <limit> <inflight-ndjson-file> <repo>
   return 0
 }
 
-# ---- divergence: the acceptance test for the whole port -------------------------------------------
-# ADR-0034's exit criterion is ZERO DIVERGENCE across the live fleet for three consecutive days. This
-# is the surface that says whether that has happened — and, just as importantly, whether the question
-# was ever actually ASKED.
+# ---- divergence: the shadow's telemetry, and no longer the gate -----------------------------------
+# ADR-0034 §5 gated the cut-over on ZERO DIVERGENCE across the live fleet for three consecutive days.
+# ADR-0038 RETIRED that criterion: the clock could not tick (a worker in a per-item worktree resolves no
+# engine and banks no evidence — #728), and its own taxonomy filed as "not a bug, and expected" the three
+# real defects the flip would otherwise have shipped. The gate is now the DEFECT CORPUS — one case per
+# historical defect, run against BOTH engines in CI.
+#
+# This surface still matters, and is still the right instrument for a LIVE fleet: it says whether the two
+# engines agree out there, and — just as importantly — whether the question was ever actually ASKED. It
+# is telemetry now. It is not what the flip waits on.
 #
 # The two classes are reported apart, because they are not the same news:
 #
@@ -5282,6 +5297,10 @@ divergence_cmd() {
 # the whole of the evidence, and ADR-0034 §5 gates the cut-over on a sentence it cannot support:
 #
 #     "zero divergence across the LIVE FLEET for three consecutive days"
+#
+# (ADR-0038 has since retired that criterion outright — see `divergence` below. The ledger survives it,
+# because "is a local cache a fleet?" was always the right question to ask of the evidence, whatever the
+# evidence was FOR.)
 #
 # A local log is not a fleet. Nothing collected it, nothing aggregated it, the rows did not say WHO
 # wrote them, and no code computed the criterion — so the flip would have been decided by a human
@@ -6934,11 +6953,13 @@ if [ "${1:-}" = "--worker" ]; then
   WORKER_OVERRIDE="${2:?--worker needs a value}"; shift 2
 fi
 
-# ...and a global `--engine`, for the same reason (ADR-0034 Phase 2). DEFAULTS TO `bash`: the typed
-# engine is not authoritative and will not be until its divergence log has been empty for three days.
+# ...and a global `--engine`, for the same reason (ADR-0034 Phase 2). DEFAULTS TO `auto` — see the
+# ENGINE_MODE default above: shadow wherever an engine resolves, plain bash everywhere else, and in
+# BOTH cases BASH'S ANSWER IS THE ONE RETURNED. The flip opened `fs`; it did not move the default.
 #
-# `shadow` is the mode that earns the flip — both engines decide, BASH'S ANSWER IS RETURNED, and the
-# disagreement is logged. `fs` is reserved for the flip itself and is refused here rather than quietly
+# `shadow` is the mode that fed the flip — both engines decide, BASH'S ANSWER IS RETURNED, and the
+# disagreement is logged. `fs` IS the flip, and it is accepted here (ADR-0038): the engine's answer is
+# the answer, and there is no fallback. What is refused is an UNKNOWN mode, rather than quietly
 # accepted, because an option that is accepted and ignored is indistinguishable from one that was
 # honoured — and a worker who believed they were running the typed engine would be reading bash's
 # answer and calling it evidence.
