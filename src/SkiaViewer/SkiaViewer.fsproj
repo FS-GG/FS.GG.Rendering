@@ -46,6 +46,7 @@
     <Compile Include="ViewerDiagnosticsFilter.fs" />
     <Compile Include="ViewerWindowBehavior.fs" />
     <Compile Include="ViewerHostCapability.fs" />
+    <Compile Include="ViewerEvidence.fs" />
     <Compile Include="SkiaViewer.fsi" />
     <Compile Include="SkiaViewer.fs" />
   </ItemGroup>
