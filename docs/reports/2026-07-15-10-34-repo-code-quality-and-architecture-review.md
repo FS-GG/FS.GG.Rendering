@@ -542,8 +542,16 @@ not a hard dependency chain. Severity in brackets.
       minus the BOM) and asserts each front-door doc's "N libraries plus/+ the … BOM" prose equals it,
       non-vacuously per doc — so adding or retiring a library forces the count prose to move with it.
       Verified the gate REDS on a drifted `17` and greens on `16`; Build.Tests 75 passed.
-- [ ] **[LOW] F-DOCS-3** — point `CLAUDE.md` at the active spec (or gate the pointer against the
-      latest feature).
+- [x] **[LOW] F-DOCS-3** — point `CLAUDE.md` at the active spec (or gate the pointer against the
+      latest feature). *Done:* CLAUDE.md's SPECKIT-managed "current plan" pointer, stale at spec 251
+      while 253 had landed, updated to `specs/253-audio-host-seam/plan.md` (the highest-numbered spec
+      with a `plan.md`; 252/254 have none). Rather than pin a literal, `Feature242DocsCurrencyTests.fs`
+      now DERIVES the expected pointer from source — the highest-numbered `specs/<id>/` that actually
+      has a `plan.md` (monotonic speckit numbering ⇒ latest planned) — and asserts CLAUDE.md's pointer
+      equals it and resolves to a real file, so the pointer can neither rot to an older spec nor dangle
+      at a plan-less one. Non-vacuous (fails closed if CLAUDE.md states no pointer). Verified the gate
+      REDS on the drifted `251` pointer (naming actual vs. expected) and greens on `253`; Build.Tests
+      76 passed.
 - [ ] **[LOW] F-DOCS-4** — correct the org-synced `global.json` claim in `Directory.Build.props`.
 - [ ] **[LOW] F-CTL-3** — update `Controls/skill/SKILL.md:244` from `Key ?? Kind` to `Key ?? path`.
 - [ ] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
