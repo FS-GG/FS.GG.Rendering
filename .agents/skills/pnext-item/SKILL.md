@@ -71,6 +71,27 @@ scripts/fsgg-coord take --repo <r>     # pick + claim the next SCHEDULABLE item,
 `take` asks `batch` what is startable *right now* — `Ready`, unblocked, and touch-set-disjoint from
 every in-flight claim — then claims it. On a lost race it re-schedules automatically.
 
+**CHECK THE EXIT CODE BEFORE YOU WORK — `take` exits `0` ONLY when it actually claimed you an item
+([#585](https://github.com/FS-GG/.github/issues/585)).** It is the one command in your loop, and its
+code tells "you hold it" from the four ways it can hand you nothing:
+
+| exit | meaning | what to do |
+|---|---|---|
+| **0** | an item was **claimed** | go work it — and only here |
+| **5** (`EX_NONE`) | looked; **nothing startable** (empty or all-blocked queue) | nothing to do — stop, or wait for the board to free up |
+| **≠0, ≠2** (`EX_PARTIAL`/fatal) | **could not read** the board — a no-verdict, not an empty queue | retry; investigate if it persists |
+| **6** (`EX_CONTENDED`) | lost every race — the board is **contended** | back off briefly and retry |
+| **75** (`EX_RATE`) | the GraphQL **budget** is exhausted | back off until the reset it names |
+
+So **never** write `take && work_it` — that fires on nothing (it did, live: a poller printed "CLAIMED"
+over the words "nothing schedulable" and started editing with no claim and no touch-set reservation).
+Gate on the code:
+
+```sh
+scripts/fsgg-coord take --repo <r> || { rc=$?; echo "no item (exit $rc)"; exit "$rc"; }
+# only here do you hold a claim — read what it printed for the item id and worktree command.
+```
+
 **If `take` exits 75, the GraphQL budget is exhausted — back off until the reset it names; do not
 loop.** You and every other worker share ONE 5,000-pt/hr budget (one account), and this loop is what
 drains it ([#418](https://github.com/FS-GG/.github/issues/418)): board reads are GraphQL-only, so N
