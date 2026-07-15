@@ -573,8 +573,18 @@ not a hard dependency chain. Severity in brackets.
       wrappers, which point at the bodies by relative path) nor byte-mirrored; skill-parity passed
       (critical=0/high=0/warning=0), skill-refs ok (21 published skills, 109 internal bodies all resolve).
       Docs-only; no code or public-surface change.
-- [ ] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
-      dead published token (`DesignTokens.fs:24,45`, `.fsi:46,87`).
+- [x] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
+      dead published token (`DesignTokens.fs:24,45`, `.fsi:46,87`). *Done (wired into a gate):* the
+      published token — "the minimum foreground/background contrast ratio the theme MUST satisfy"
+      (`DesignTokens.fsi:45,86`) — was inert prose no runtime code read (the WCAG gates hardcode the
+      fixed 7.0/4.5/3.0 role tiers, `Contrast.fs`). Rather than delete a real, satisfiable constraint,
+      `Feature127ColorPolicyTests.fs` now ENFORCES it: for each default theme it asserts the shipped
+      foreground-on-background contrast (`Contrast.ratio`) clears the theme's own declared
+      `contrastRequiredRatio`, with a non-vacuous floor (`required > 1.0`) and a guard that the token
+      primitives are exactly what the built theme paints (`Theme.fs:14-15,34-35`). Measured 14.03 (light)
+      / comparable (dark) against the 4.5 declared floor; verified RED when the token is raised above the
+      achievable ratio (the message surfaces the real 14.03 measured). Public surface unchanged
+      (test-only). Controls.Tests Feature127 21 passed.
 - [ ] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine.
 - [ ] **[LOW] F-DIAG-3..6** — persisted-vs-returned status divergence, `.jsonl` synthesized-record
       omission, dead `DiagnosticReadinessImpact`, `AnimationTick.SubId` excluding `interval`.
