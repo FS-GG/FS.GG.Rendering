@@ -322,9 +322,13 @@ not a hard dependency chain. Severity in brackets.
 
 ### Phase 2 — make guards derive from source (retire the "constant-checking gate" class)
 
-- [ ] **[HIGH] F-DOCS-1** — change `Feature242DocsCurrencyTests.fs:86` to assert the doc version
+- [x] **[HIGH] F-DOCS-1** — change `Feature242DocsCurrencyTests.fs:86` to assert the doc version
       equals `$(FsGgUiVersion)` instead of banning a hardcoded literal; update `README.md:41` and
-      `docs/usage.md:37,44-45` to `0.10.0`.
+      `docs/usage.md:37,44-45` to `0.10.0`. *Done:* the currency gate now reads `<FsGgUiVersion>` from
+      `template/base/Directory.Packages.props` and asserts every version the front-door docs state
+      (backtick "framework version `X`" prose + `--version X` commands) equals the pin, with a
+      non-vacuous floor; the frozen `0.1.0-preview.1` ban is gone. README/usage.md updated to `0.10.0`.
+      Verified the gate REDS on a drifted version and greens on the pin; Feature 242 list 7/7 passed.
 - [ ] **[MED] F-DS-1** — enumerate the theme's intent vocabulary in `StyleCatalog.emittedPairings`
       (`ColorPolicy/StyleCatalog.fs:165`) instead of pinning `intent = ""`; fix (or explicitly
       waive with evidence) the two Ant `default`-border pairings that fall below 3.0.
