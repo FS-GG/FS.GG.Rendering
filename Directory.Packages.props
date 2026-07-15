@@ -21,7 +21,7 @@
        centralising it here keeps the F# core in lockstep across the org. Adopting repos
        remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
   <ItemGroup Label="org-baseline">
-    <PackageVersion Include="FSharp.Core" Version="10.1.301" />
+    <PackageVersion Include="FSharp.Core" Version="10.1.302" />
   </ItemGroup>
 
   <!-- api-breaking-change-gate (H3 / .github#20, epic #16 Pillar 5). Centrally pins the public-API
