@@ -517,8 +517,19 @@ not a hard dependency chain. Severity in brackets.
       owning thread reads normally, an off-thread `verify`/`FrameCache.current` fails loudly naming the
       seam, `ownerThreadId` tracks claim/release, and the unowned case stays inert — verified RED against
       a no-op guard (2 fail). SkiaViewer.Tests 362 passed, Package.Tests 436, Rendering.Harness.Tests 308.
-- [ ] **[LOW-MED] F-DIAG-2** — inject a clock into `summarize` for `ExpiresOn` evaluation
+- [x] **[LOW-MED] F-DIAG-2** — inject a clock into `summarize` for `ExpiresOn` evaluation
       (`Diagnostics.fs:356`) so the expiry boundary is testable and the purity claim holds.
+      *Done:* the verdict logic moved into a pure `summarizeAt (now: DateOnly) …` core (a total function
+      of its inputs — `ExpiresOn` is the only date-sensitive input); `summarize` is now a thin adapter
+      that supplies `DateOnly.FromDateTime(DateTime.UtcNow)`, the single ambient-clock read on the verdict
+      path (public surface additive — `summarizeAt` added to `Diagnostics.fsi`, `summarize` unchanged so
+      every existing caller is untouched). `writeArtifacts` now reads the clock ONCE and threads the same
+      `now` into both its `summarizeAt` calls, closing a latent inconsistency where its two `summarize`
+      calls each read `UtcNow` separately and could straddle a day boundary within one write. New
+      `Feature169ReadinessTests` guards drive `summarizeAt` across an exception's expiry boundary
+      deterministically — valid the day before and ON expiry (`expires >= now`), expired (ReviewRequired,
+      count 0) the day after — and pin the adapter equal to `summarizeAt` at today's date. Diagnostics.Tests
+      20/20 (was 18), full solution builds, Testing.Tests 119, SkiaViewer.Tests 362, Package.Tests 436 green.
 
 ### Phase 6 — ungated-narrative sweep (low individual stakes)
 
