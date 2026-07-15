@@ -23,14 +23,36 @@ let private writeReadiness (dir: string) (relName: string) (content: string) =
 let private readReport (dir: string) (relName: string) =
     File.ReadAllText(Path.Combine(dir, "readiness", relName))
 
+// Realistic baseline evidence matching the real writers' shape (template/base/src/Product/
+// EvidenceCommands.fs): the engine now requires structural tokens on every kind (F-BUILD-2), so a
+// fixture must carry them or it is (correctly) a malformed-artifact defect rather than a valid
+// baseline. `layoutEvidenceCommand` emits the key/value block below; `sceneEvidence` writes the
+// `size=…;capabilities=…;hash=…` metadata value.
+let private validLayoutEvidence =
+    String.Join(
+        "\n",
+        [ "status=ok"
+          "command=--layout-evidence"
+          "profile=headless-governed"
+          "scene=AppRoot.Program.view"
+          "output-size=640x480"
+          "proof-level=structural"
+          "text-bounds=3"
+          "gameplay-bounds=1"
+          "overlap-status=none"
+          "measurement-mode=deterministic" ]
+    )
+
+let private validSceneEvidence = "size=320x200;capabilities=3;hash=deadbeef"
+
 [<Tests>]
 let evidenceTests =
     testList "FS.GG.UI.Build evidence engine" [
 
         test "EvidenceGraph over a healthy headless readiness surface synthesizes a real graph and passes" {
             let dir = freshFixtureDir ()
-            writeReadiness dir "layout-evidence.txt" "root 800x600; nodes=12; deterministic-layout"
-            writeReadiness dir "headless-scene-evidence.txt" "RendererMode = deterministic-scene; nodes=12"
+            writeReadiness dir "layout-evidence.txt" validLayoutEvidence
+            writeReadiness dir "headless-scene-evidence.txt" validSceneEvidence
 
             let code = GeneratedRunner.run "EvidenceGraph" dir
 
@@ -44,8 +66,8 @@ let evidenceTests =
 
         test "EvidenceAudit over a healthy surface emits verdict=PASS and returns 0" {
             let dir = freshFixtureDir ()
-            writeReadiness dir "layout-evidence.txt" "root 800x600; nodes=12"
-            writeReadiness dir "headless-scene-evidence.txt" "RendererMode = deterministic-scene"
+            writeReadiness dir "layout-evidence.txt" validLayoutEvidence
+            writeReadiness dir "headless-scene-evidence.txt" validSceneEvidence
 
             let code = GeneratedRunner.run "EvidenceAudit" dir
 
@@ -84,7 +106,7 @@ let evidenceTests =
             // Guards the floor precisely: a product that produced the layout baseline but not the scene
             // baseline is still a defect. Verifies the floor is per-artifact, not "any evidence present".
             let dir = freshFixtureDir ()
-            writeReadiness dir "layout-evidence.txt" "root 800x600; nodes=12"
+            writeReadiness dir "layout-evidence.txt" validLayoutEvidence
 
             let nodes = Graph.sense dir
 
@@ -99,8 +121,8 @@ let evidenceTests =
             let dir = freshFixtureDir ()
             // Baseline complete (layout + scene) so the ONLY defect is the malformed artifact — this
             // isolates the present-invalid path from the F-BUILD-1 absent-required floor.
-            writeReadiness dir "layout-evidence.txt" "root 800x600; nodes=12"
-            writeReadiness dir "headless-scene-evidence.txt" "RendererMode = deterministic-scene"
+            writeReadiness dir "layout-evidence.txt" validLayoutEvidence
+            writeReadiness dir "headless-scene-evidence.txt" validSceneEvidence
             // window-options.md/.txt requires an `option=` token per evidence-formats.md; present but
             // malformed (no required token) is a defect in the product's OWN evidence.
             writeReadiness dir "window-options.txt" "this file is present but carries no required token"
@@ -122,13 +144,40 @@ let evidenceTests =
             let dir = freshFixtureDir ()
             // A complete headless baseline (layout + scene) so the surface is valid AND satisfies the
             // required floor — Audit.evaluate over it is Pass.
-            writeReadiness dir "layout-evidence.txt" "root 800x600"
-            writeReadiness dir "headless-scene-evidence.txt" "RendererMode = deterministic-scene"
+            writeReadiness dir "layout-evidence.txt" validLayoutEvidence
+            writeReadiness dir "headless-scene-evidence.txt" validSceneEvidence
 
             let nodes = Graph.sense dir
             Expect.equal (List.length nodes) 2 "both recognized baseline artifacts sensed"
             Expect.isTrue (nodes |> List.exists (fun n -> n.Kind = "layout")) "the layout node kind is classified"
             Expect.equal (Audit.evaluate nodes) Verdict.Pass "a valid, baseline-complete surface evaluates to Pass"
+        }
+
+        test "near-vacuous present baseline (non-whitespace, no structural tokens) FAILS the token contract (F-BUILD-2)" {
+            // F-BUILD-2: token-less recognized kinds fell through to "any non-whitespace byte is valid",
+            // so a one-byte `layout-evidence.txt` (and ~6 other kinds) audited present-valid. Every kind
+            // now carries structural tokens, so a present-but-contentless baseline is a malformed
+            // artifact, not a vacuous pass. The scene baseline is complete so the ONLY defect is the
+            // stubbed layout artifact — isolating the F-BUILD-2 token floor from the F-BUILD-1 absent floor.
+            let dir = freshFixtureDir ()
+            writeReadiness dir "layout-evidence.txt" "x"
+            writeReadiness dir "headless-scene-evidence.txt" validSceneEvidence
+
+            let nodes = Graph.sense dir
+
+            match nodes |> List.tryFind (fun n -> n.Kind = "layout") with
+            | Some { State = EvidenceState.PresentInvalid reason } ->
+                Expect.stringContains reason "command=--layout-evidence" "the missing structural token is named"
+            | Some { State = EvidenceState.PresentValid } ->
+                failtest "a contentless layout baseline must not sense present-valid (F-BUILD-2)"
+            | None -> failtest "the layout baseline is present and must be sensed"
+
+            let auditCode = GeneratedRunner.run "EvidenceAudit" dir
+            Expect.notEqual auditCode 0 "a present-but-vacuous baseline fails the audit"
+            let audit = readReport dir "evidence-audit.md"
+            Expect.stringContains audit "verdict=FAIL" "a vacuous present baseline audits FAIL"
+            Expect.stringContains audit "layout-evidence.txt" "audit names the vacuous artifact"
+            Expect.isFalse (audit.Contains "required baseline evidence absent") "the artifact is present, so it is malformed not absent"
         }
 
         test "unknown target returns a non-zero diagnostic code" {

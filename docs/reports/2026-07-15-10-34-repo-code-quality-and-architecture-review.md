@@ -374,8 +374,20 @@ not a hard dependency chain. Severity in brackets.
       names both baselines, classes it product-evidence-defect) and added a partial-baseline guard;
       the honest-fail malformed test now writes a complete baseline so it isolates the present-invalid
       path. Build.Tests 71 passed, Package.Tests 436 passed (public-surface baseline unaffected).
-- [ ] **[MED] F-BUILD-2** — require a non-empty/structured payload for token-less `recognized`
-      kinds (`Build/Evidence.fs:73-79`).
+- [x] **[MED] F-BUILD-2** — require a non-empty/structured payload for token-less `recognized`
+      kinds (`Build/Evidence.fs:73-79`). *Done:* every previously token-less kind now carries the
+      stable structural key/value tokens its real writer (`template/base/src/Product/EvidenceCommands.fs`)
+      emits on **every** code path (ok/failure/unsupported), so a present-but-vacuous artifact is caught
+      as malformed instead of falling through `stateOf`'s "any non-whitespace byte is valid" branch:
+      `layout` → `command=--layout-evidence`/`overlap-status=`/`measurement-mode=`; `scene` →
+      `size=`/`capabilities=`/`hash=` (the `SceneEvidence` metadata value); `launch` →
+      `command=--launch-evidence`/`mode=`; `screenshot`/`pixel-readback` →
+      `command=--…-evidence`/`evidence-kind=`; both `bounded-smoke` files → `smoke=bounded-viewer`/
+      `diagnostic-mode=`. No entry uses the empty-token fallback any more. Public surface unchanged
+      (all logic private to the assembly). `EvidenceTests` fixtures switched to realistic writer-shaped
+      baselines, and a new F-BUILD-2 guard asserts a one-byte `layout-evidence.txt` now senses
+      `PresentInvalid` (naming the missing token) and audits `verdict=FAIL` as malformed-not-absent
+      (verified RED against the pre-fix token-less list). Build.Tests 72 passed, Package.Tests 436 passed.
 - [ ] **[MED] F-TEST-1** — emit `generated-tests-ran=false` (or `ReviewRequired`) when
       `TestsExist = false` (`Testing/TestingEvidence.fs:170-187,327`).
 - [ ] **[MED] F-TEST-2** — require at least one `Required` region/coverage/text fact before an

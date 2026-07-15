@@ -30,21 +30,29 @@ module Sensing =
 
     // Recognized readiness artifacts: relative path under readiness/, evidence kind, the tokens the
     // artifact must contain to be well-formed (per template/base/docs/evidence-formats.md and
-    // contracts/evidence-output-contract.md; an empty token list means "present and non-empty"), and
-    // whether the artifact is a REQUIRED baseline — its absence is a product-evidence defect, not an
-    // absent-optional. The required set is the headless baseline every profile produces
-    // (evidence-output-contract.md §EvidenceGraph "required-for-profile"): the deterministic layout
-    // and scene evidence. All richer artifacts (launch/image/screenshot/window/…) remain optional —
-    // presence is profile-dependent and the gate graphs what exists. Without a required floor the
-    // audit is fail-open on absent: an empty readiness/ audits PASS (F-BUILD-1).
+    // contracts/evidence-output-contract.md), and whether the artifact is a REQUIRED baseline — its
+    // absence is a product-evidence defect, not an absent-optional. The required set is the headless
+    // baseline every profile produces (evidence-output-contract.md §EvidenceGraph "required-for-
+    // profile"): the deterministic layout and scene evidence. All richer artifacts (launch/image/
+    // screenshot/window/…) remain optional — presence is profile-dependent and the gate graphs what
+    // exists. Without a required floor the audit is fail-open on absent: an empty readiness/ audits
+    // PASS (F-BUILD-1).
+    //
+    // Every kind carries at least one STRUCTURAL token it must contain (F-BUILD-2): a token-less entry
+    // fell through to "any non-whitespace byte is valid" in `stateOf`, so ~7 of 12 kinds were near-
+    // vacuous even when present — a one-byte `layout-evidence.txt` audited present-valid. The tokens
+    // below are the stable key/value markers the real writers (`template/base/src/Product/
+    // EvidenceCommands.fs`) emit on EVERY code path (ok/failure/unsupported), so a genuine artifact
+    // still passes while a stub/truncated one is caught. An empty token list (`stateOf`'s "present and
+    // non-empty" fallback) is intentionally no longer used by any entry.
     let recognized: (string * string * string list * bool) list =
-        [ "layout-evidence.txt", "layout", [], true
-          "headless-scene-evidence.txt", "scene", [], true
-          "evidence-launch-mode.txt", "launch", [], false
-          "game-screenshot-evidence.txt", "screenshot", [], false
-          "game-pixel-readback-evidence.txt", "pixel-readback", [], false
-          "bounded-viewer-smoke.txt", "bounded-smoke", [], false
-          "bounded-viewer-frame-diagnostics.txt", "bounded-smoke", [], false
+        [ "layout-evidence.txt", "layout", [ "command=--layout-evidence"; "overlap-status="; "measurement-mode=" ], true
+          "headless-scene-evidence.txt", "scene", [ "size="; "capabilities="; "hash=" ], true
+          "evidence-launch-mode.txt", "launch", [ "command=--launch-evidence"; "mode=" ], false
+          "game-screenshot-evidence.txt", "screenshot", [ "command=--screenshot-evidence"; "evidence-kind=" ], false
+          "game-pixel-readback-evidence.txt", "pixel-readback", [ "command=--pixel-readback-evidence"; "evidence-kind=" ], false
+          "bounded-viewer-smoke.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
+          "bounded-viewer-frame-diagnostics.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
           "window-diagnostics.txt", "window-diagnostics", [ "diagnostic-class=" ], false
           "window-options.txt", "window-options", [ "option=" ], false
           "interactive-visible-window.md",
