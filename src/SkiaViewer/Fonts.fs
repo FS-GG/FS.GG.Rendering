@@ -438,7 +438,11 @@ module Fonts =
 
         { result with Fingerprint = Scene.shapedTextFingerprint result }
 
-    let shapeText (text: string) (font: FontSpec) : ShapedTextResult =
+    /// Shape text and also surface the per-character resolution it computed, so a caller that needs
+    /// both the shaped result and the fallback events (the draw path) resolves the string once here
+    /// rather than once here and again at the use site (F-CORE-2). The resolution list is empty on the
+    /// non-installed fallback paths, which do not resolve.
+    let shapeTextWithResolution (text: string) (font: FontSpec) : ShapedTextResult * ResolvedChar list =
         let evidence = (shapingProviderStatus ()).Evidence
 
         match evidence.Availability with
@@ -542,15 +546,19 @@ module Fonts =
                       Fingerprint = ""
                       FallbackMode = Shaped }
 
-                { result with Fingerprint = Scene.shapedTextFingerprint result }
+                { result with Fingerprint = Scene.shapedTextFingerprint result }, resolved
             with ex ->
                 let failed = failedEvidence ex.Message
                 lock providerGate (fun () -> providerEvidence <- failed)
                 Scene.setTextMeasurementVersionBucket failed.VersionBucket
-                fallbackResultWith failed ShapingFailedFallback [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ] text font
-        | ProviderCleared -> fallbackResultWith evidence ProviderUnavailableFallback [] text font
-        | ProviderUnavailable -> fallbackResultWith evidence ProviderUnavailableFallback [] text font
-        | ProviderFailed -> fallbackResultWith evidence ShapingFailedFallback [] text font
+                fallbackResultWith failed ShapingFailedFallback [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ] text font, []
+        | ProviderCleared -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
+        | ProviderUnavailable -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
+        | ProviderFailed -> fallbackResultWith evidence ShapingFailedFallback [] text font, []
+
+    /// Shape text when the provider is installed, otherwise return explicit fallback evidence.
+    let shapeText (text: string) (font: FontSpec) : ShapedTextResult =
+        shapeTextWithResolution text font |> fst
 
     let private shapedMeasure text font =
         let shaped = shapeText text font
@@ -586,6 +594,13 @@ module Fonts =
 
         { Evidence = evidence
           Diagnostics = providerDiagnostics evidence }
+
+    /// Build drawable glyph-run data and return the per-character resolution alongside it, computing the
+    /// resolution once (F-CORE-2). The draw path reuses this list for fallback-event disclosure instead
+    /// of re-resolving the same string.
+    let buildShapedGlyphRunDataResolved (text: string) (font: FontSpec) : GlyphRunData * ResolvedChar list =
+        let shaped, resolved = shapeTextWithResolution text font
+        Scene.glyphRunDataFromShapedText shaped, resolved
 
     let buildShapedGlyphRunData text font =
         shapeText text font |> Scene.glyphRunDataFromShapedText
