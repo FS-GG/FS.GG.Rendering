@@ -731,9 +731,17 @@ module RuntimeDiagnostics =
         // Now the `.md` discloses the `.jsonl` write failure and the machine-read `.json` — written last
         // — discloses both. The sole residue is inherent: a summary artifact cannot record its *own*
         // write failure, since recording it would require the write that just failed.
-        tryWrite jsonLinesPath (renderJsonLines recordDiagnostics)
-        tryWrite markdownPath (renderMarkdown (summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)))
-        tryWrite jsonPath (renderJson (summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)) + Environment.NewLine)
+        //
+        // Each persisted summary is built exactly like the returned `finalSummary` — the accumulated
+        // write failures both fold into the verdict and populate `ArtifactWriteDiagnostics`, so the
+        // on-disk `.json` array / `.md` "Artifact Write Warnings" section agree with what the caller is
+        // returned (`summarizeAt` itself leaves that field empty, so it must be set here).
+        let persistedSummary () =
+            let summary = summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
+            { summary with ArtifactWriteDiagnostics = writeDiagnostics }
 
-        let finalSummary = summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
-        { finalSummary with ArtifactWriteDiagnostics = writeDiagnostics }
+        tryWrite jsonLinesPath (renderJsonLines recordDiagnostics)
+        tryWrite markdownPath (renderMarkdown (persistedSummary ()))
+        tryWrite jsonPath (renderJson (persistedSummary ()) + Environment.NewLine)
+
+        persistedSummary ()

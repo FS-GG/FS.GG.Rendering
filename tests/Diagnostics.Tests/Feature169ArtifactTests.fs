@@ -87,8 +87,13 @@ let tests =
                 // .jsonl failure is known, so it discloses it (before the F-DIAG-3 reorder it read 'accepted').
                 let json = File.ReadAllText(Path.Combine(dir, "diagnostics-summary.json"))
                 Expect.stringContains json "\"status\":\"review-required\"" "the persisted .json discloses the .jsonl write failure"
+                // The dedicated write-diagnostics disclosure must also agree with the returned summary,
+                // not just the status: the persisted .json array and .md section carry the failure record.
+                Expect.stringContains json "\"code\":\"ArtifactWriteFailed\"" "the persisted .json artifactWriteDiagnostics array is populated"
                 let md = File.ReadAllText(Path.Combine(dir, "diagnostics-summary.md"))
                 Expect.stringContains md "status: `review-required`" "the persisted .md discloses the .jsonl write failure"
+                Expect.stringContains md "## Artifact Write Warnings" "the persisted .md carries the write-warnings section"
+                Expect.isNonEmpty summary.ArtifactWriteDiagnostics "the returned summary lists the write diagnostic"
             finally
                 if Directory.Exists dir then
                     Directory.Delete(dir, true)
