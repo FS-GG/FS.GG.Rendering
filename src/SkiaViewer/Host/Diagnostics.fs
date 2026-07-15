@@ -182,16 +182,20 @@ module Diagnostics =
             match diagnostic.Severity with
             | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
             | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
-        // Review F-DIAG-1: a `Framebuffer` fault is only a soft `RenderingLimitation` when it is a
-        // Warning (a per-frame degrade). A non-warning framebuffer fault is the fatal FBO-0 wrap
-        // failure `OpenGl.fs` raises — the product cannot present at all — so it must be a
-        // `ReadinessBlocker`, exactly as `FrameRender` escalates. Without this it landed on
-        // `RenderingLimitation`/`Error`, which `summarize` reported as accepted (the reachable half of
-        // F-DIAG-1). The damage-decision cost note is handled above as `BackendCost` before we get here.
+        // Review F-DIAG-1: only an Error/Fatal `Framebuffer` fault blocks. A non-warning framebuffer
+        // fault is the fatal FBO-0 wrap failure `OpenGl.fs` raises — the product cannot present at all —
+        // so it must be a `ReadinessBlocker`; previously it landed on `RenderingLimitation`/`Error`,
+        // which `summarize` reported as accepted (the reachable half of F-DIAG-1). `Info`/`Warning`
+        // framebuffer diagnostics stay the soft `RenderingLimitation` they always were — this stage also
+        // carries the benign Info present-mode note (`OpenGl.fs`), which must NOT block. (The
+        // damage-decision cost note is handled above as `BackendCost` before we reach here.) Unlike
+        // `FrameRender`, this cannot collapse Info into the blocking arm, because Framebuffer has a
+        // legitimate Info producer.
         | DiagnosticStage.Framebuffer ->
             match diagnostic.Severity with
-            | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
-            | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
+            | DiagnosticSeverity.Error
+            | DiagnosticSeverity.Fatal -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
+            | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
 
     let private codeFor diagnostic =
         if diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) then

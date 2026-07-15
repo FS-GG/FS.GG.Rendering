@@ -48,4 +48,17 @@ let tests =
 
             Expect.equal runtime.Category (Some DiagnosticCategory.BackendCost) "damage decision stays a backend-cost note"
         }
+
+        // Regression guard for F-DIAG-1: the Framebuffer stage also carries a benign Info present-mode note
+        // (OpenGl.fs). Escalating it to a blocker would make every DirectToSwapchain run block readiness, so
+        // an Info framebuffer diagnostic must remain the soft, non-blocking RenderingLimitation it always was.
+        test "Synthetic Info framebuffer note stays a soft rendering limitation (F-DIAG-1 guard)" {
+            let host = Diagnostics.create DiagnosticSeverity.Info DiagnosticStage.Framebuffer "present-mode=DirectToSwapchain readback=false." None
+            let runtime = Diagnostics.toRuntimeDiagnostic context host
+
+            Expect.equal runtime.Category (Some DiagnosticCategory.RenderingLimitation) "info framebuffer note is a soft limitation, not a blocker"
+            // And it must not block a readiness summary.
+            let summary = RuntimeDiagnostics.summarize None [] [] [ runtime ]
+            Expect.equal summary.Status ReadinessDiagnosticStatus.Accepted "an info present-mode note does not block readiness"
+        }
     ]
