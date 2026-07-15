@@ -553,7 +553,26 @@ not a hard dependency chain. Severity in brackets.
       REDS on the drifted `251` pointer (naming actual vs. expected) and greens on `253`; Build.Tests
       76 passed.
 - [ ] **[LOW] F-DOCS-4** — correct the org-synced `global.json` claim in `Directory.Build.props`.
-- [ ] **[LOW] F-CTL-3** — update `Controls/skill/SKILL.md:244` from `Key ?? Kind` to `Key ?? path`.
+      *Deferred — not fixable in this repo.* `Directory.Build.props` is DISTRIBUTED from FS-GG/.github
+      (`dist/dotnet/Directory.Build.props`; header lines 5-7: "DO NOT EDIT in a consumer repo — edits are
+      overwritten on the next sync and fail the drift check"). The stale claim at `:74` ("… Rendering … have
+      NO `global.json` at all") went false when this repo adopted the org SDK pin (`global.json`, SDK
+      `10.0.301`, commit 9c59d862 / .github#557). A local edit would red the sync drift check and be
+      overwritten on the next sync. The fix belongs upstream in the org canonical, then synced down → file
+      against FS-GG/.github (see `cross-repo-coordination`).
+- [x] **[LOW] F-CTL-3** — update `Controls/skill/SKILL.md:244` from `Key ?? Kind` to `Key ?? path`.
+      *Done:* the shipped skill prose no longer states the superseded collision-prone model. Feature 232
+      unified every seam onto `Key ?? path` (`src/Controls/Diagnostics.fs:196,221`), so
+      `src/Controls/skill/SKILL.md:244` is corrected to `Key ?? path` AND its now-false "collapse to one
+      stamp id / marks them ALL" claim is rewritten to the real hazard — unkeyed same-kind siblings resolve
+      by positional path, so a structural insert/remove shifts their ids and their focus/hover/press identity
+      is unstable across that change (mirrors the in-code `unkeyedInteractiveSiblings` diagnostic wording).
+      The identical stale prose in the sibling shipped skill `src/Diagnostics/skill/SKILL.md:181-188` (same
+      superseded model, "share one stamp id" symptom) is corrected the same way in the same PR so the finding
+      cannot reopen next door. Neither body is manifest-hashed (the skill manifest hashes the `.agents/`
+      wrappers, which point at the bodies by relative path) nor byte-mirrored; skill-parity passed
+      (critical=0/high=0/warning=0), skill-refs ok (21 published skills, 109 internal bodies all resolve).
+      Docs-only; no code or public-surface change.
 - [ ] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
       dead published token (`DesignTokens.fs:24,45`, `.fsi:46,87`).
 - [ ] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine.
