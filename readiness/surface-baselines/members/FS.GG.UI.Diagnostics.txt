@@ -26,10 +26,6 @@ FS.GG.UI.Diagnostics.DiagnosticException.ExpiresOn : Microsoft.FSharp.Core.FShar
 FS.GG.UI.Diagnostics.DiagnosticException.Reason : System.String [get]
 FS.GG.UI.Diagnostics.DiagnosticException.Scope : System.String [get]
 FS.GG.UI.Diagnostics.DiagnosticException.new(System.String, System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.DateOnly>, Microsoft.FSharp.Core.FSharpOption<System.String>)
-FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.BlocksReadiness : System.Int32
-FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.EnvironmentLimited : System.Int32
-FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.NonBlocking : System.Int32
-FS.GG.UI.Diagnostics.DiagnosticReadinessImpact+Tags.RequiresReview : System.Int32
 FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Error : System.Int32
 FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Informational : System.Int32
 FS.GG.UI.Diagnostics.DiagnosticSeverity+Tags.Warning : System.Int32
