@@ -535,4 +535,51 @@ let feature127ColorPolicyTests =
                           ColorPolicy.Failed
                           (sprintf "%s: waived boundary (%A on %A) now PASSES wcag — remove the stale waiver" slug fg bg)
           }
+
+          // F-DS-2 (Phase 6): `DesignTokens.{Light,Dark}.contrastRequiredRatio` (DTCG source
+          // `design-tokens.tokens.json`) is published as "the minimum foreground/background contrast
+          // ratio the theme MUST satisfy" (DesignTokens.fsi:45,86) — but NO runtime code read it. The
+          // WCAG gates hardcode the fixed 7.0/4.5/3.0 role tiers (Contrast.fs), deliberately distinct
+          // from any per-theme token, so the published token was inert documentation of a constraint
+          // nothing enforced. This is the gate that makes the published constraint TRUE. The token
+          // primitives feed the built theme unchanged (Theme.fs:14-15,34-35), so the assertion is over
+          // the ACTUAL shipped theme: a token retint (or a slackened floor) that drops the default
+          // theme's own foreground-on-background below its declared ratio now reds here instead of
+          // passing silently.
+          test "each default theme satisfies its own declared contrastRequiredRatio token (F-DS-2)" {
+              let declared =
+                  [ "default-light",
+                    FS.GG.UI.Themes.Default.Theme.light,
+                    DesignTokens.Light.contrastRequiredRatio,
+                    DesignTokens.Light.foreground,
+                    DesignTokens.Light.background
+                    "default-dark",
+                    FS.GG.UI.Themes.Default.Theme.dark,
+                    DesignTokens.Dark.contrastRequiredRatio,
+                    DesignTokens.Dark.foreground,
+                    DesignTokens.Dark.background ]
+
+              for slug, theme, required, tokenFg, tokenBg in declared do
+                  // Non-vacuous: a ratio of 1.0 is met by any colour pair, so a token slackened to 1.0
+                  // would make this gate certify nothing. The shipped floor is a real AA-class bar.
+                  Expect.isGreaterThan required 1.0 (sprintf "%s: contrastRequiredRatio must be a real floor, not vacuous" slug)
+
+                  // The token primitives ARE what the built theme paints with, so the ratio measured
+                  // below is the ratio the shipped theme actually presents (guards against the token
+                  // constraining primitives the theme has since diverged from).
+                  Expect.equal theme.Foreground tokenFg (sprintf "%s: theme foreground is the DTCG token primitive" slug)
+                  Expect.equal theme.Background tokenBg (sprintf "%s: theme background is the DTCG token primitive" slug)
+
+                  // The constraint the token DOCUMENTS is now ENFORCED: the theme clears its own ratio.
+                  let measured = Contrast.ratio theme.Foreground theme.Background
+
+                  Expect.isGreaterThanOrEqual
+                      measured
+                      required
+                      (sprintf
+                          "%s: foreground-on-background contrast (%.2f) must satisfy the declared contrastRequiredRatio (%.2f)"
+                          slug
+                          measured
+                          required)
+          }
         ]
