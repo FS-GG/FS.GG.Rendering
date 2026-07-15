@@ -388,8 +388,16 @@ not a hard dependency chain. Severity in brackets.
       baselines, and a new F-BUILD-2 guard asserts a one-byte `layout-evidence.txt` now senses
       `PresentInvalid` (naming the missing token) and audits `verdict=FAIL` as malformed-not-absent
       (verified RED against the pre-fix token-less list). Build.Tests 72 passed, Package.Tests 436 passed.
-- [ ] **[MED] F-TEST-1** — emit `generated-tests-ran=false` (or `ReviewRequired`) when
-      `TestsExist = false` (`Testing/TestingEvidence.fs:170-187,327`).
+- [x] **[MED] F-TEST-1** — emit `generated-tests-ran=false` (or `ReviewRequired`) when
+      `TestsExist = false` (`Testing/TestingEvidence.fs:170-187,327`). *Done:* `verifyGeneratedTests`
+      now adds a leading `not check.TestsExist` branch — the absent case yields a
+      `no-generated-tests` failure class, a "no generated tests exist to establish authority"
+      diagnostic, and `Authoritative = false`, so `buildValidationContractOutput` emits
+      `generated-tests-ran=false` / `authoritative=false` / `failure-class=no-generated-tests`
+      instead of minting a "tests ran" proof over zero tests. Public surface unchanged (logic-only).
+      `Testing.Tests` added two guards (the unit case flips non-authoritative; the contract case
+      asserts the `generated-tests-ran=false` emission) — verified RED on the pre-fix fall-through;
+      full Testing.Tests suite 109 passed.
 - [ ] **[MED] F-TEST-2** — require at least one `Required` region/coverage/text fact before an
       inspection can resolve to `Accepted` (`TestingVisual.fs:1109-1117`,
       `TestingRetainedInspection.fs:421-422`).
