@@ -533,8 +533,15 @@ not a hard dependency chain. Severity in brackets.
 
 ### Phase 6 — ungated-narrative sweep (low individual stakes)
 
-- [ ] **[LOW] F-DOCS-2** — fix the "17 libraries + BOM" count (16 + BOM = 17) in `README.md:40`,
-      `usage.md:68`, `module-map.md:29`.
+- [x] **[LOW] F-DOCS-2** — fix the "17 libraries + BOM" count (16 + BOM = 17) in `README.md:40`,
+      `usage.md:68`, `module-map.md:29`. *Done:* verified against source — the `.slnx` ships 17
+      packable `FS.GG.UI.*` products, one of which is the `FS.GG.UI`/`Meta` BOM (`ColorPolicy` is
+      `IsPackable=false`), so the library count is 16. All three docs corrected `17 → 16`. Rather than
+      leave the count ungated (the exact "unguarded prose rots" class), `Feature242DocsCurrencyTests.fs`
+      now DERIVES the expected count from the same slnx-parsed `packableIds` it already uses (packable
+      minus the BOM) and asserts each front-door doc's "N libraries plus/+ the … BOM" prose equals it,
+      non-vacuously per doc — so adding or retiring a library forces the count prose to move with it.
+      Verified the gate REDS on a drifted `17` and greens on `16`; Build.Tests 75 passed.
 - [ ] **[LOW] F-DOCS-3** — point `CLAUDE.md` at the active spec (or gate the pointer against the
       latest feature).
 - [ ] **[LOW] F-DOCS-4** — correct the org-synced `global.json` claim in `Directory.Build.props`.

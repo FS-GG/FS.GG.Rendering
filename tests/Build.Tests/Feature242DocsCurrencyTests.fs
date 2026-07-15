@@ -53,6 +53,20 @@ let private mentions (relDoc: string) (token: string) =
 
 let private frontDoorDocs = [ "README.md"; "docs/usage.md" ]
 
+// The BOM metapackage (`FS.GG.UI`, source module `Meta`) is a packable product but not a library —
+// the docs phrase it as "N libraries plus the BOM metapackage". So the library count the front-door
+// prose must state is every packable id EXCEPT the BOM, derived from the slnx (not a frozen literal).
+let private bomPackageId = "FS.GG.UI"
+let private libraryCount = packableIds |> Set.remove bomPackageId |> Set.count
+
+// The library count each front-door doc states in its "N libraries plus/+ the … BOM (meta)package"
+// prose, tolerant of both phrasings (README/usage "N libraries plus the `FS.GG.UI` BOM"; module-map
+// "N libraries + the BOM metapackage") and of a backtick-quoted BOM id between the two.
+let private docLibraryCounts (relDoc: string) =
+    let text = File.ReadAllText(repoPath relDoc)
+    [ for m in Regex.Matches(text, "(\\d+)\\s+librar\\w+\\s+(?:plus|\\+)\\s+the\\b[^\\n]{0,40}?\\bBOM") ->
+        int m.Groups.[1].Value ]
+
 // The authoritative FS.GG.UI version — the pin the release actually publishes, read from the same
 // source of truth the template hands a scaffolded product. The front-door docs must quote THIS, so
 // the version prose cannot drift from what the repo ships (F-DOCS-1).
@@ -119,6 +133,21 @@ let docsCurrencyTests =
                     Expect.equal v fsGgUiVersion
                         (sprintf "%s states version %s but the pin is $(FsGgUiVersion)=%s" doc v fsGgUiVersion)
         }
+
+        // F-DOCS-2: the "N libraries plus the BOM" count must be DERIVED from the slnx's packable
+        // set, not a frozen literal — the prose had drifted to `17 libraries` while the repo ships 16
+        // (17 packable products, one of which is the BOM). Per the meta-observation: assert
+        // `doc == source`, so adding or retiring a library forces the count prose to move with it.
+        for doc in [ "README.md"; "docs/usage.md"; "docs/product/module-map.md" ] do
+            test (sprintf "%s states the shipped library count (derived from the slnx)" doc) {
+                let counts = docLibraryCounts doc
+                Expect.isNonEmpty counts
+                    (sprintf "%s states no 'N libraries plus the BOM' count for the currency gate to check" doc)
+                for n in counts do
+                    Expect.equal n libraryCount
+                        (sprintf "%s states %d libraries but the slnx ships %d (packable minus the %s BOM)"
+                            doc n libraryCount bomPackageId)
+            }
 
         test "the Ant Design theme is disclosed on the front door (README + usage + module map)" {
             for doc in [ "README.md"; "docs/usage.md"; "docs/product/module-map.md" ] do
