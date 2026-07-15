@@ -79,10 +79,15 @@ let private latestPlannedSpecPointer =
     |> Option.map (fun (_, name) -> sprintf "specs/%s/plan.md" name)
 
 // The "specs/<id>/plan.md" path CLAUDE.md's SPECKIT block currently points at (forward slashes as
-// written in the doc), or None if the pointer prose is absent.
+// written in the doc), or None if the pointer prose is absent. Scoped to the machine-managed
+// <!-- SPECKIT START -->..<!-- SPECKIT END --> block so an unrelated specs/*/plan.md reference
+// elsewhere in the doc cannot be mistaken for the current-plan pointer.
 let private claudeMdPlanPointer =
     let text = File.ReadAllText(repoPath "CLAUDE.md")
-    let m = Regex.Match(text, "(specs/\\S+?/plan\\.md)")
+    let block =
+        let b = Regex.Match(text, "<!--\\s*SPECKIT START\\s*-->(.*?)<!--\\s*SPECKIT END\\s*-->", RegexOptions.Singleline)
+        if b.Success then b.Groups.[1].Value else text
+    let m = Regex.Match(block, "(specs/\\S+?/plan\\.md)")
     if m.Success then Some(m.Groups.[1].Value) else None
 
 // The BOM metapackage (`FS.GG.UI`, source module `Meta`) is a packable product but not a library —
