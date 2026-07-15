@@ -151,6 +151,11 @@
 # exhausted — TRY AGAIN LATER. A worker loop must treat 75 as "back off until the reset", never as a
 # protocol failure, and never by retrying immediately.
 #
+# `take` HAS ITS OWN CONTRACT (#585): it exits 0 ONLY when it claimed you an item, so `take && work_it`
+# never fires on nothing. 0 claimed · 5 (EX_NONE) looked, nothing startable · 6 (EX_CONTENDED) lost every
+# race, back off and retry · 75 (EX_RATE) budget exhausted · any other non-zero, could not read the board
+# (a no-verdict, never confused with an empty queue). Gate your loop on the code, not on the prose.
+#
 # Parallel intra-repo work (ADR-0021, revised by ADR-0027). N workers share ONE GitHub account, so
 # the LOCK, the IDENTITY, and the CHANNEL are all keyed on a WORKER ID, never on the login:
 #
@@ -270,6 +275,13 @@ set -euo pipefail
 # so a fatal die writes the code to RC_FILE and the TERM trap exits with it.
 EX_RATE=75        # EX_TEMPFAIL: the GraphQL budget is exhausted. TRY AGAIN LATER — not a protocol error.
 EX_OFFBOARD=3     # the issue is not an item on the board at all. A different fact, and permanent.
+# `take`'s exit code must tell "I claimed you an item" (0) apart from the ways it claims NOTHING, so a
+# worker loop (`take && work_it`) never proceeds on nothing (#585). It reverses #480's "the empty queue
+# exits cleanly (0)", by decision on #585. Kept byte-for-byte in step with the typed engine (`Client.fs`).
+EX_NONE=5         # looked, and NOTHING is startable — an empty or an all-blocked queue. Not a claim.
+EX_CONTENDED=6    # lost every race after --tries; the board is contended. Back off and retry (like EX_RATE).
+                  # 5/6 dodge the reserved codes (1 error, 3 offboard, 4 partial). "could not read the
+                  # board" is EX_PARTIAL (4) — a NO-VERDICT, never confused with EX_NONE.
 # A `--batch` document that applied SOME of its writes and failed others (#448). Its own fact, and the
 # one a batched write can produce that a single write cannot: GraphQL executes the aliases in a
 # mutation SERIALLY, so an error at alias 4 leaves 1-3 ALREADY WRITTEN on the server. Reporting that as
@@ -6411,6 +6423,9 @@ take_cmd() {
       # finding: on the board that produced #440, all four clauses were false and the real reason —
       # the item was in Backlog — was not among them. A worker that believes such a message stops.
       echo "fsgg-coord: nothing schedulable${repo:+ for repo '$repo'} — no Ready or Backlog item is startable." >&2
+      # #585: nothing was CLAIMED. Default to EX_NONE ("looked, nothing startable"); the couldn't-read
+      # sub-case below promotes it to EX_PARTIAL (a no-verdict — distinct from an empty queue, #266).
+      local nrc="$EX_NONE"
       # `batch`'s stderr carries the per-item skip REASONS — and also anything else it writes there,
       # `dbg` included. The old branch asked `[ -s "$berr" ]`: "did batch write ANY byte to stderr?"
       # That is not the question, and it is wrong in both directions. With FSGG_COORD_DEBUG=1 a single
@@ -6444,7 +6459,8 @@ take_cmd() {
         case "${n_open:-}" in
           '' | *[!0-9]*)
             # A failed count is NOT an empty queue. "I could not look" and "I looked, and it is empty"
-            # must not produce the same sentence (#266's ratified rule).
+            # must not produce the same sentence (#266's ratified rule) — nor the same CODE (#585).
+            nrc="$EX_PARTIAL"
             echo "  (could not read the board to say WHY — so this is 'no verdict', not 'an empty queue'. Retry, or run: fsgg-coord ready --repo '${repo:-<repo>}' --all)" >&2
             ;;
           0)
@@ -6463,7 +6479,7 @@ take_cmd() {
         esac
       fi
       rm -f "$berr"
-      return 0
+      return "$nrc"
     fi
     rm -f "$berr"
     [ -n "$from_backlog" ] && \
@@ -6503,7 +6519,7 @@ take_cmd() {
   done
   unset FRESH
   echo "fsgg-coord: worker $w gave up after $tries attempt(s); the board is contended. Retry, or widen --repo." >&2
-  return 0
+  return "$EX_CONTENDED"   # #585: lost every race — a back-off signal, never a silent success.
 }
 
 # ---- say / inbox: the channel between workers whose work touches -----------------------------------
