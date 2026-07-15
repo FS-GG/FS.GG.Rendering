@@ -53,6 +53,43 @@ let private mentions (relDoc: string) (token: string) =
 
 let private frontDoorDocs = [ "README.md"; "docs/usage.md" ]
 
+// F-DOCS-3: CLAUDE.md's SPECKIT-managed pointer ("read the current plan at specs/<id>/plan.md")
+// is a narrative snapshot with no gate — it drifted to 251 while 253 had landed. Rather than pin a
+// literal spec id, DERIVE the expected pointer from source: the highest-numbered spec directory that
+// actually has a plan.md (specs are numbered monotonically by speckit-git-feature, so the highest is
+// the most recently planned). This keeps the pointer both current AND non-dangling — a spec dir with
+// no plan.md (e.g. 254) can never be the target.
+let private specsDir = Path.Combine(repoRoot, "specs")
+
+let private leadingNumber (dirName: string) =
+    match Regex.Match(dirName, "^(\\d+)-") with
+    | m when m.Success -> Some(int m.Groups.[1].Value, dirName)
+    | _ -> None
+
+// The relative "specs/<id>/plan.md" pointer the current plan lives behind, from source of truth.
+let private latestPlannedSpecPointer =
+    Directory.GetDirectories(specsDir)
+    |> Array.choose (fun d ->
+        match Path.GetFileName(d) with
+        | null | "" -> None
+        | name -> leadingNumber name)
+    |> Array.filter (fun (_, name) -> File.Exists(Path.Combine(specsDir, name, "plan.md")))
+    |> Array.sortByDescending fst
+    |> Array.tryHead
+    |> Option.map (fun (_, name) -> sprintf "specs/%s/plan.md" name)
+
+// The "specs/<id>/plan.md" path CLAUDE.md's SPECKIT block currently points at (forward slashes as
+// written in the doc), or None if the pointer prose is absent. Scoped to the machine-managed
+// <!-- SPECKIT START -->..<!-- SPECKIT END --> block so an unrelated specs/*/plan.md reference
+// elsewhere in the doc cannot be mistaken for the current-plan pointer.
+let private claudeMdPlanPointer =
+    let text = File.ReadAllText(repoPath "CLAUDE.md")
+    let block =
+        let b = Regex.Match(text, "<!--\\s*SPECKIT START\\s*-->(.*?)<!--\\s*SPECKIT END\\s*-->", RegexOptions.Singleline)
+        if b.Success then b.Groups.[1].Value else text
+    let m = Regex.Match(block, "(specs/\\S+?/plan\\.md)")
+    if m.Success then Some(m.Groups.[1].Value) else None
+
 // The BOM metapackage (`FS.GG.UI`, source module `Meta`) is a packable product but not a library —
 // the docs phrase it as "N libraries plus the BOM metapackage". So the library count the front-door
 // prose must state is every packable id EXCEPT the BOM, derived from the slnx (not a frozen literal).
@@ -148,6 +185,25 @@ let docsCurrencyTests =
                         (sprintf "%s states %d libraries but the slnx ships %d (packable minus the %s BOM)"
                             doc n libraryCount bomPackageId)
             }
+
+        // F-DOCS-3: CLAUDE.md points every agent at "the current plan"; the pointer must name the
+        // latest-planned spec (highest-numbered spec dir with a plan.md), derived from source — not a
+        // frozen id that rots as new features land. Per the meta-observation: assert `doc == source`.
+        test "CLAUDE.md points at the latest planned spec's plan.md (derived from specs/)" {
+            let expected =
+                match latestPlannedSpecPointer with
+                | Some p -> p
+                | None -> failwith "no specs/<id>/plan.md found to derive the current-plan pointer from"
+            // Non-vacuous: CLAUDE.md must actually state a plan pointer for the gate to check.
+            let actual =
+                match claudeMdPlanPointer with
+                | Some p -> p
+                | None -> failwith "CLAUDE.md states no 'specs/<id>/plan.md' pointer for the currency gate to check"
+            Expect.isTrue (File.Exists(repoPath actual))
+                (sprintf "CLAUDE.md points at %s, which does not exist" actual)
+            Expect.equal actual expected
+                (sprintf "CLAUDE.md points at %s but the latest planned spec is %s" actual expected)
+        }
 
         test "the Ant Design theme is disclosed on the front door (README + usage + module map)" {
             for doc in [ "README.md"; "docs/usage.md"; "docs/product/module-map.md" ] do
