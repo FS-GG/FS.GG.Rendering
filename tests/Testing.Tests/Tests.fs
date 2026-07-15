@@ -609,6 +609,56 @@ let tests =
             Expect.exists result.Diagnostics (fun item -> item.Contains "outside generated Verify") "diagnostic names Verify bypass"
         }
 
+        // F-TEST-1: a product shipping zero generated tests must not mint a "tests ran" proof.
+        // With TestsExist=false the old logic fell through to Authoritative=true and emitted
+        // generated-tests-ran=true; the absent case is now a required-floor failure.
+        test "generated verification is non-authoritative when no generated tests exist" {
+            let result =
+                GeneratedConsumerValidation.verifyGeneratedTests
+                    { TestsExist = false
+                      TestsRan = false
+                      VerifyRan = false }
+
+            Expect.isFalse result.Authoritative "zero generated tests cannot establish authority"
+            Expect.equal result.NonAuthoritativeReason (Some "no-generated-tests") "absent generated tests have their own failure class"
+            Expect.exists result.Diagnostics (fun item -> item.Contains "no generated tests exist") "diagnostic names the absent tests"
+        }
+
+        test "generated validation contract emits generated-tests-ran=false when no tests exist" {
+            let generatedTests =
+                GeneratedConsumerValidation.verifyGeneratedTests
+                    { TestsExist = false
+                      TestsRan = false
+                      VerifyRan = false }
+
+            let result =
+                GeneratedConsumerValidation.buildValidationContractOutput
+                    { PackageResolution =
+                        { ExactMatch = true
+                          FailureReason = None
+                          Diagnostics = [] }
+                      GeneratedTests = generatedTests
+                      DefaultInteractiveLaunch =
+                        { InteractiveLaunchRequired = true
+                          Diagnostics = [] }
+                      BoundedEvidenceValidated = true
+                      CloseReasonValidated = true
+                      WindowDiagnostics =
+                        { DiagnosticsComplete = true
+                          Diagnostics = [] }
+                      WindowOptionsValidated = true
+                      ImageEvidence =
+                        { Accepted = true
+                          EvidenceKind = Some "image"
+                          FailureReason = None
+                          Diagnostics = [] } }
+
+            Expect.isFalse result.Authoritative "absent generated tests make the contract non-authoritative"
+            Expect.equal result.FailureClass "no-generated-tests" "absent generated tests surface as the failure class"
+            Expect.stringContains result.Output "generated-tests-ran=false" "absent tests must not claim tests ran"
+            Expect.stringContains result.Output "authoritative=false" "non-authoritative output is explicit"
+        }
+
         test "generated product validation requires interactive default launch and rejects bounded-only substitutes" {
             let validSource =
                 """

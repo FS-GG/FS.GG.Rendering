@@ -169,13 +169,17 @@ module GeneratedConsumerValidation =
 
     let verifyGeneratedTests check =
         let diagnostics =
-            [ if check.TestsExist && not check.TestsRan then
+            [ if not check.TestsExist then
+                  "no generated tests exist to establish authority"
+              if check.TestsExist && not check.TestsRan then
                   "generated tests exist but did not run"
               if check.TestsRan && not check.VerifyRan then
                   "generated tests ran outside generated Verify" ]
 
         let reason =
-            if check.TestsExist && not check.TestsRan then
+            if not check.TestsExist then
+                Some "no-generated-tests"
+            elif check.TestsExist && not check.TestsRan then
                 Some "missing-generated-test-execution"
             elif check.TestsRan && not check.VerifyRan then
                 Some "verify-target-not-authoritative"
