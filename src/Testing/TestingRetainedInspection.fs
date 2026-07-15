@@ -396,7 +396,7 @@ module RetainedInspectionValidation =
 
         let floorDiagnostics =
             if not hasInspectionEvidence && check.Artifact.ReadinessStatus = RetainedInspectionStatus.Accepted then
-                [ "retained inspection resolved to review-required: the artifact carries no inspected damage transition and produced no findings, so an accepted status would be vacuous" ]
+                [ "retained inspection carries no inspected damage transition and produced no findings; a self-declared accepted status is withheld as vacuous" ]
             else
                 []
 

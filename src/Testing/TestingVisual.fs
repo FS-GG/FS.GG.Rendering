@@ -1092,7 +1092,7 @@ module VisualInspectionValidation =
 
         let floorDiagnostics =
             if not hasInspectionEvidence && check.Artifact.ReadinessStatus = VisualInspectionStatus.Accepted then
-                [ "visual inspection resolved to incomplete: the artifact declares no required region, paint-coverage, or text fact and produced no findings, so an accepted status would be vacuous" ]
+                [ "visual inspection declares no required region, paint-coverage, or text fact and produced no findings; a self-declared accepted status is withheld as vacuous" ]
             else
                 []
 
