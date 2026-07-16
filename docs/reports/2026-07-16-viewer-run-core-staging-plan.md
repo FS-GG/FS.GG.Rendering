@@ -57,3 +57,30 @@ live loop timing/ordering. These need their own assertions before the stage that
 **Guardrails for every stage:** golden-image gate (render output), `SkiaViewer.Tests` (note the
 ~1/15 pre-existing timing flake — re-run, don't chase), and the SecondAntShowcase live-responsiveness
 lane (input→visible latency). C/D additionally require the danger-zone-specific tests above.
+
+## Coverage revision (2026-07-16 — after auditing existing tests)
+
+The initial "danger zones not covered by gates" framing was too pessimistic. Several danger zones
+already have **direct seam tests** (the relevant functions are `internal` *specifically* so a test can
+reach the wiring the windowed launch cannot exercise headlessly):
+
+- **Danger zone 4 / Stage C persistence wiring** — `tests/SkiaViewer.Tests/Issue535PersistenceSeamTests.fs`
+  drives `Viewer.interpretViewerEffects` and `Viewer.dispatchPersistenceBatch` directly: Persist-batch
+  dispatch *order*, fold routing (only Persist reaches the sink), outcome→product-message dispatch,
+  drop-not-invent, and close-propagation. Plus `runAppWithPersistence` public-entry behaviour on a
+  windowless host. ⇒ The persistence **seams** are well-gated. What is NOT gated is the `let rec … and …`
+  **assembly** inside `runGeneratedApp` (a windowed path) — so Stage C's residual risk is the *mutual
+  recursion wiring*, not the individual seams.
+- **Stage B size divergence** — `Issue246LogicalSizeTests.fs` pins the logical/surface fit arithmetic
+  and `captureScreenshotEvidence` at explicit sizes; `Issue396FirstFrameFaultTests.fs` covers the
+  `tryFirstProductView` first-view guard. ⇒ Stage B is **better gated than first assessed**; its
+  `evidenceSink`-size and first-view concerns have real coverage.
+
+**Revised sequencing:** Stage B is now reasonable to attempt against Issue246/Issue396 + golden gate +
+Deterministic — but note it is *not* a byte-identical extraction like A/E: the two front-ends carry
+**divergent state models** (generated-app 1 size vs interactive 3 sizes) plus per-loop `firstView`/
+`evidenceSize` closures, so it is a genuine unification (parameterize the divergences; do not collapse
+them). Stage C stays gated on a test that exercises the **assembly** (not just the seams) — e.g. a
+scripted `runAppWithPersistence` round-trip on a host that DOES open (the live lane), asserting an
+outcome-driven message both dispatches and can close. Stage D (repaint placement) still needs its
+focus-latency assertion.
