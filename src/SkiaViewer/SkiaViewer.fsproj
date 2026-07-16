@@ -49,6 +49,7 @@
     <Compile Include="ViewerEvidence.fs" />
     <Compile Include="ViewerLaunchSupport.fs" />
     <Compile Include="ViewerWindowClassify.fs" />
+    <Compile Include="ViewerResponsivenessReport.fs" />
     <Compile Include="RenderLagTrace.fs" />
     <Compile Include="ViewerRuntime.fs" />
     <Compile Include="SkiaViewer.fsi" />
