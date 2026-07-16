@@ -129,7 +129,9 @@ module Feature159Readiness =
           MissingScenarioMessage = fun scenario -> $"missing required promotion scenario: {scenario}"
           MiddleDiagnostics =
             fun check inter ->
-                [ for scenario in inter.MissingArtifacts do
+                [ if List.isEmpty check.RequiredScenarioIds then
+                      "Feature 159 readiness requires at least one required scenario"
+                  for scenario in inter.MissingArtifacts do
                       $"missing promotion artifact path: {scenario}"
                   for failure in inter.ScenarioFailures do
                       $"non-accepted promotion scenario: {failure}"
@@ -154,7 +156,9 @@ module Feature159Readiness =
                 // Per-domain override (C-VC-3): Feature 159 treats EnvironmentLimited as blocking.
                 if inter.EnvironmentLimited || inter.UnsupportedArtifactViolation then
                     Feature159EnvironmentLimited
-                elif not inter.MissingScenarios.IsEmpty || not inter.MissingArtifacts.IsEmpty then
+                // An empty required-set can certify nothing; fail closed rather than fall through the
+                // vacuous FallbackOnly/Accepted branches below (F-TEST-3).
+                elif List.isEmpty check.RequiredScenarioIds || not inter.MissingScenarios.IsEmpty || not inter.MissingArtifacts.IsEmpty then
                     Feature159Rejected
                 elif inter.RequiredScenarioResults |> List.exists (fun scenario -> scenario.Status = Feature159Rejected) then
                     Feature159Rejected
@@ -247,7 +251,9 @@ module Feature160ThroughputReadiness =
           MissingScenarioMessage = fun scenario -> $"missing required throughput scenario: {scenario}"
           MiddleDiagnostics =
             fun check inter ->
-                [ for scenario in inter.MissingArtifacts do
+                [ if List.isEmpty check.RequiredScenarioIds then
+                      "Feature 160 throughput readiness requires at least one required scenario"
+                  for scenario in inter.MissingArtifacts do
                       $"missing throughput artifact path: {scenario}"
                   for scenario in inter.InvalidWarmup do
                       $"scenario warmup must be 3: {scenario}"
@@ -274,7 +280,8 @@ module Feature160ThroughputReadiness =
             fun check inter diagnostics ->
                 if check.UnsupportedHostStatus = Feature160EnvironmentLimited && check.AcceptedIterationCount = 0 then
                     Feature160EnvironmentLimited
-                elif inter.UnsupportedArtifactViolation
+                elif List.isEmpty check.RequiredScenarioIds
+                     || inter.UnsupportedArtifactViolation
                      || not inter.MissingScenarios.IsEmpty
                      || not inter.MissingArtifacts.IsEmpty
                      || not inter.InvalidWarmup.IsEmpty
@@ -387,7 +394,9 @@ module Feature161HostLaneReadiness =
           MissingScenarioMessage = fun scenario -> $"missing required host-lane scenario: {scenario}"
           MiddleDiagnostics =
             fun check inter ->
-                [ for fact in inter.MissingFacts do
+                [ if List.isEmpty check.RequiredScenarioIds then
+                      "Feature 161 host-lane readiness requires at least one required scenario"
+                  for fact in inter.MissingFacts do
                       $"missing host lane fact: {fact}"
                   for item in inter.Unsupported do
                       $"unsupported host lane fact: {item}"
@@ -420,7 +429,8 @@ module Feature161HostLaneReadiness =
                     Feature161EnvironmentLimited
                 elif not inter.MissingFacts.IsEmpty then
                     Feature161MissingEvidence
-                elif inter.UnsupportedArtifactViolation
+                elif List.isEmpty check.RequiredScenarioIds
+                     || inter.UnsupportedArtifactViolation
                      || not inter.MissingScenarios.IsEmpty
                      || not inter.Unsupported.IsEmpty
                      || check.ClaimScope.AcceptedLaneId.IsNone

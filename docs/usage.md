@@ -34,15 +34,15 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 The libraries are published as `FS.GG.UI.*` packages targeting **`net10.0`** (current
-framework version `0.1.58-preview.1`). Every release **dual-publishes** the byte-identical
+framework version `0.10.0`). Every release **dual-publishes** the byte-identical
 coherent set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI) (via GitHub
 OIDC Trusted Publishing) and the org [GitHub Packages](https://github.com/orgs/FS-GG/packages)
 feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
 1. **Public feed** — restore straight from nuget.org (no source configuration needed):
    ```sh
-   dotnet add package FS.GG.UI.SkiaViewer --version 0.1.58-preview.1
-   dotnet add package FS.GG.UI.Controls   --version 0.1.58-preview.1
+   dotnet add package FS.GG.UI.SkiaViewer --version 0.10.0
+   dotnet add package FS.GG.UI.Controls   --version 0.10.0
    ```
 
 2. **Project reference** — clone this repo and reference the `src/*/*.fsproj` you need
@@ -65,7 +65,7 @@ feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
 ### Package map
 
-All 17 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
+All 16 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
 for the owning source module of each):
 
 | Package | What it gives you |

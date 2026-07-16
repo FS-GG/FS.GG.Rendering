@@ -967,7 +967,6 @@ FS.GG.UI.Controls.TextBox.validation<msg>(FS.GG.UI.DesignSystem.ValidationState)
 FS.GG.UI.Controls.TextBox.value<msg>(System.String) : Attr<msg>
 FS.GG.UI.Controls.TextInput.diagnostics(FS.GG.UI.Controls.TextInputModel) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ControlDiagnostic>
 FS.GG.UI.Controls.TextInput.init(System.String, FS.GG.UI.Controls.TextInputMode, System.String) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
-FS.GG.UI.Controls.TextInput.interpretEffect(FS.GG.UI.Controls.TextInputEffect) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Controls.TextInputMsg>
 FS.GG.UI.Controls.TextInput.update(FS.GG.UI.Controls.TextInputMsg, FS.GG.UI.Controls.TextInputModel) : System.Tuple<FS.GG.UI.Controls.TextInputModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.TextInputEffect>>
 FS.GG.UI.Controls.TextInputEffect+Tags.CommitText : System.Int32
 FS.GG.UI.Controls.TextInputEffect+Tags.ReportTextInputDiagnostic : System.Int32

@@ -55,6 +55,14 @@ let tests =
                 Expect.isFalse result.Accepted $"status {status} is not accepted")
         }
 
+        test "empty required-scenario set fails closed rather than vacuously accepting (F-TEST-3)" {
+            let result = Feature159Readiness.validate { check Feature159Accepted with RequiredScenarioIds = []; Scenarios = [] }
+
+            Expect.isFalse result.Accepted "an empty required set certifies nothing"
+            Expect.equal result.Status Feature159Rejected "rejected, not vacuous fallback"
+            Expect.exists result.Diagnostics (fun item -> item.Contains("at least one required scenario")) "disclosing diagnostic"
+        }
+
         test "Synthetic helper fixture: missing scenarios and performance overclaim are rejected" {
             let invalid =
                 { check Feature159Accepted with

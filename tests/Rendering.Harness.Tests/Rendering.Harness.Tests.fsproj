@@ -88,6 +88,7 @@
     <Compile Include="Feature151RenderAnywhereRegressionTests.fs" />
     <Compile Include="Feature151TextShapingRegressionTests.fs" />
     <Compile Include="Feature151CompositorReadinessRegressionTests.fs" />
+    <Compile Include="GoldenImageGateTests.fs" />
     <Compile Include="FeatureCatalogTests.fs" />
     <Compile Include="PackageTestsGateMembershipTests.fs" />
     <Compile Include="GeneratedProductGateCoverageTests.fs" />

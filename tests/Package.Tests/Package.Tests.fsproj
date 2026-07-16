@@ -108,6 +108,7 @@
          a pin bump; both are EMPTY, which is their goal state, so a bump reds nothing and the paragraph
          crediting the release rots in silence (#690). This guards the half that no parser read: the
          entries were machine-checked, the sentence explaining them was not. -->
+    <Compile Include="Issue776StaleSuppressionTests.fs" />
     <Compile Include="LedgerNarrativeTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />

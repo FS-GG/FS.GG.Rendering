@@ -77,9 +77,9 @@
 # EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
 #
 # The one entry this file was filed for — `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #594` — is RETIRED.
-# `$(FsGgUiVersion)` is 0.9.2, published FS.GG.UI.SkiaViewer 0.9.2 exports the case, and so M-MIR/TYPE takes
-# its member back: the shipped SkiaViewer mirror now DECLARES `Persist`, which is the whole point — the
-# omission was a debt against an unpublished member, and the release paid it.
+# Published FS.GG.UI.SkiaViewer 0.9.2 exports the case and `$(FsGgUiVersion)` is now 0.10.0, which carries
+# it still, and so M-MIR/TYPE takes its member back: the shipped SkiaViewer mirror now DECLARES `Persist`,
+# which is the whole point — the omission was a debt against an unpublished member, and the release paid it.
 #
 # Its creditor on the other side of the same debt — `pinned-api-doc-ledger.txt`'s
 # `SkiaViewer.fsi::Viewer.runAppWithPersistence` — was deleted in the same change, as that file said it

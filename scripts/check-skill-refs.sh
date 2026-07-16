@@ -875,13 +875,29 @@ report() {
 # supplied was the ARGUMENT: a constant this gate narrows its own behaviour by, whose rot fails OPEN,
 # gets verified against canonical. That is this list, since #714.
 #
-# TWO READINGS OF ONE RULE WAS THE ACTUAL DEFECT. `scripts/check-frozen-mirrors.fsx` DERIVES the mirror
-# set from the registry; this gate read it off a constant nothing checked. Both run in the same required
-# job, so a fifth mirror already reds that job — the `.fsx` hard-fails on a foreign registry row it has
-# no `Disposition` for. But the fix it names is "declare a disposition in check-frozen-mirrors.fsx", and
-# doing exactly that clears its red while THIS list is still stale and still fail-open. The hole was
-# never a missing red; it was that the two readings could be repaired independently. Now they cannot:
-# the reading that narrows THIS gate is checked against the same registry the other one derives from.
+# TWO READINGS OF ONE RULE WAS THE ACTUAL DEFECT. The frozen-mirror guard has its own reading of "which
+# skills are foreign mirrors"; this gate read it off a constant nothing checked. A fifth mirror already
+# reds SOMEWHERE — the guard hard-fails on a foreign registry row it has no `Disposition` for. But the fix
+# it names is "declare a disposition", and doing exactly that clears its red while THIS list is still stale
+# and still fail-open. The hole was never a missing red; it was that the two readings could be repaired
+# independently. Now they cannot: the reading that narrows THIS gate is checked against the same registry
+# the other one is checked against.
+#
+# #738 MOVED WHERE THAT OTHER RED LANDS, and this paragraph used to assert the old shape ("both run in the
+# same required job", "the .fsx DERIVES the set from the registry"). Both claims are now false, and a stale
+# cross-reference in a gate's header is exactly the kind of lie that gets believed:
+#
+#   * The foreign-skill set is PINNED IN-TREE, in `scripts/FrozenMirrorVerdict.fs` (`foreignSkills`) —
+#     that is where a `Disposition` is declared now, NOT in `check-frozen-mirrors.fsx`.
+#   * The registry-reading half of that guard is `check-frozen-mirrors.fsx --freshness`, in the
+#     NON-REQUIRED `frozen-mirror-freshness` job. It had to leave the required gate: a new `.github`
+#     registry row is another repo's commit, and a required gate whose verdict turns on one hands this
+#     repo's merge button to that repo (ADR-0105; it wedged every merge here in #714).
+#
+# NONE OF WHICH WEAKENS THE ARGUMENT ABOVE — it only relocates its second half. Both readings of "which
+# skills are mirrors" are still checked against the registry, and still red; what changed is that neither
+# red can now freeze the repo. That is the correct place for a check whose subject is another repo's `main`,
+# and it is the same line THIS gate's own `verify_mirrors` sits on: fail-open while stale, never a wedge.
 #
 # WHAT THE REGISTRY CAN SETTLE, AND WHAT IT CANNOT. It names the OWNER — and that is all it can name.
 # The eight `owner: fs-gg-game` product rows are indistinguishable from one another there (same scope,
@@ -994,12 +1010,20 @@ verify_mirrors() {
 # YES, THIS CAN RED A DIFF THAT TOUCHED NO SKILL — § 4's objection, and it is answered rather than
 # ignored. The registry moving under us is f(world), so a fifth mirror reds whoever next opens a PR, and
 # the fix (one line, here) is not in their diff. Three things make that the right trade, and the first is
-# decisive: `check-frozen-mirrors.fsx` ALREADY reds that PR, in this same required job, because a foreign
-# registry row with no `Disposition` is a hard fail there. The red is not new — only its second half is,
-# and the second half is the one that says WHICH list is now lying. Then: `owner:` changes at a migration,
-# not continuously as § 2's link state does (it has moved once, at ADR-0022 P4, and moves once more when
-# #696 retires the mirror); and while it is stale this gate is fail-OPEN, so merging past it is the thing
-# § 4 would actually be protecting.
+# decisive: `check-frozen-mirrors.fsx --freshness` ALREADY reds that PR, because a foreign registry row with
+# no `Disposition` is a hard fail there. The red is not new — only its second half is, and the second half
+# is the one that says WHICH list is now lying. Then: `owner:` changes at a migration, not continuously as
+# § 2's link state does (it has moved once, at ADR-0022 P4, and moves once more when #696 retires the
+# mirror); and while it is stale this gate is fail-OPEN, so merging past it is the thing § 4 would actually
+# be protecting.
+#
+# THIS USED TO SAY "in this same required job", AND #738 MADE THAT FALSE — in the direction that matters,
+# because the sentence was doing real work: it is the reason reding a no-skill diff was judged acceptable.
+# The frozen-mirror guard's registry-reading half is now the NON-REQUIRED `frozen-mirror-freshness` job
+# (ADR-0105 — a required gate may not take its verdict from another repo's `main`; that is what wedged
+# every merge here in #714). The argument survives the move intact, and is arguably stronger: BOTH readings
+# of "which skills are mirrors" now red in lanes that CANNOT freeze the repo, which is exactly what a check
+# whose subject is f(world) should do. What neither may do is go quiet.
 mirror_mode=checked
 mirror_skip_reason=""
 if ((!gh_ready)); then

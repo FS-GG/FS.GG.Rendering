@@ -174,8 +174,9 @@
     <Compile Include="Feature362RenderParityTests.fs" />
     <Compile Include="Issue383TypographyResolverTests.fs" />
     <Compile Include="Issue384TypographyClassTests.fs" />
+    <Compile Include="FCtl2DataGridFontTests.fs" />
+    <Compile Include="FDs3VisualStateCountTests.fs" />
     <Compile Include="Issue386IconGlyphsTests.fs" />
-    <Compile Include="Issue445InertInterpretEffectTests.fs" />
     <Compile Include="Issue663DocumentedSeamTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

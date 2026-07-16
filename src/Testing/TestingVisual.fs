@@ -139,6 +139,24 @@ module VisualCompleteness =
         else
             record target VisualCaptureDegraded None (Some reason) [ $"degraded capture: {reason}" ]
 
+    // A correctly-sized, decodable PNG whose every pixel is fully transparent carries no visual
+    // evidence, yet passed as VisualCaptureComplete before (F-TEST-3). Conservative by construction:
+    // only an all-alpha-zero buffer counts as blank, so opaque or solid-colour content still passes;
+    // an Opaque bitmap can never be transparent, so short-circuit it.
+    let private isBlankCapture (bitmap: SKBitmap) =
+        if bitmap.AlphaType = SKAlphaType.Opaque || bitmap.Width <= 0 || bitmap.Height <= 0 then
+            false
+        else
+            let mutable blank = true
+            let mutable y = 0
+            while blank && y < bitmap.Height do
+                let mutable x = 0
+                while blank && x < bitmap.Width do
+                    if bitmap.GetPixel(x, y).Alpha <> 0uy then blank <- false
+                    x <- x + 1
+                y <- y + 1
+            blank
+
     let private validateOne evidenceRoot (target: VisualCaptureTarget) =
         let path = absolutePath evidenceRoot target.RelativePath
 
@@ -187,7 +205,11 @@ module VisualCompleteness =
                               DecodeError = None }
 
                         if bitmap.Width = target.Size.Width && bitmap.Height = target.Size.Height then
-                            record target VisualCaptureComplete (Some artifact) None []
+                            if isBlankCapture bitmap then
+                                record target VisualCaptureBlocked (Some artifact) (Some "blank artifact")
+                                    [ $"blank screenshot: {target.RelativePath} (all pixels fully transparent)" ]
+                            else
+                                record target VisualCaptureComplete (Some artifact) None []
                         else
                             let diagnostic =
                                 $"wrong-size screenshot: {target.RelativePath} expected {target.Size.Width}x{target.Size.Height} observed {bitmap.Width}x{bitmap.Height}"
@@ -1070,13 +1092,31 @@ module VisualInspectionValidation =
             |> List.filter (exceptionValid >> not)
             |> List.map _.ExceptionId
 
+        let ruleFindings = check.Rules |> List.collect (findingsForRule check)
+
         let initialFindings =
-            check.Rules
-            |> List.collect (findingsForRule check)
+            ruleFindings
             |> List.append check.Artifact.Findings
             |> List.sortBy _.FindingId
 
         let validExceptions = check.Exceptions |> List.filter exceptionValid
+
+        // F-TEST-2: an inspection that declares no required region/coverage/text fact AND whose rules
+        // produced no finding did no real work — accepting its self-declared `Accepted` would mint a
+        // proof over nothing (the success-shaped vacuity this repo guards against). Require at least one
+        // required fact, or one rule-produced finding (a real overlap/overlay finding accepted by
+        // exception is genuine evidence), before the self-declared `Accepted` is honoured.
+        let hasInspectionEvidence =
+            not check.RequiredRegionIds.IsEmpty
+            || check.Artifact.Regions |> List.exists _.Required
+            || check.Artifact.TextRuns |> List.exists _.Required
+            || not ruleFindings.IsEmpty
+
+        let floorDiagnostics =
+            if not hasInspectionEvidence && check.Artifact.ReadinessStatus = VisualInspectionStatus.Accepted then
+                [ "visual inspection declares no required region, paint-coverage, or text fact and produced no findings; a self-declared accepted status is withheld as vacuous" ]
+            else
+                []
 
         // Feature 186 (US3): delegate to the one shared algorithm with the VISUAL knobs — accept
         // `Blocking` only (line 1014 of the former copy), and a status policy that neither accepts nor
@@ -1114,7 +1154,11 @@ module VisualInspectionValidation =
                         | VisualInspectionStatus.Blocked -> VisualInspectionStatus.Blocked
                         | VisualInspectionStatus.Unsupported -> VisualInspectionStatus.Unsupported
                         | VisualInspectionStatus.EnvironmentLimited -> VisualInspectionStatus.EnvironmentLimited
-                        | VisualInspectionStatus.Accepted -> VisualInspectionStatus.Accepted
+                        | VisualInspectionStatus.Accepted ->
+                            if hasInspectionEvidence then
+                                VisualInspectionStatus.Accepted
+                            else
+                                VisualInspectionStatus.Incomplete
               MkResult =
                 fun status findings appliedIds invalidIds unused diagnostics ->
                     { ArtifactId = check.Artifact.ArtifactId
@@ -1127,7 +1171,7 @@ module VisualInspectionValidation =
 
         SharedTesting.validateCheck
             knobs
-            (VisualInspection.artifactDiagnostics check.Artifact)
+            (VisualInspection.artifactDiagnostics check.Artifact @ floorDiagnostics)
             initialFindings
             validExceptions
             invalidExceptions

@@ -88,12 +88,16 @@ let private driftedShaAssignments =
 let private declaresDriftedShaField =
     Regex.IsMatch(script, @"type\s+Waiver\s*=(.|\n)*?DriftedSha\s*:\s*string")
 
-/// The skills the script declares this repo MIRRORS (as opposed to `NoCounterpart`).
+/// The skills this repo MIRRORS (as opposed to `NoCounterpart`).
+///
+/// Read from the VALUE, not scraped out of the script's source with a regex (#738). It used to be the
+/// latter, because the table lived in the `.fsx` and a test cannot `#load` one — but the table is now
+/// pinned in `FrozenMirrorVerdict.fs`, which this project compiles in, so the test can assert the thing
+/// the guard actually runs on instead of a regex's opinion of it. One less parser to rot.
 let private mirrored =
-    Regex.Matches(script, @"""(?<id>fs-gg-[a-z-]+)"",\s*Mirrored")
-    |> Seq.cast<Match>
-    |> Seq.map (fun m -> m.Groups.["id"].Value)
-    |> List.ofSeq
+    foreignSkills
+    |> List.filter (fun skill -> skill.Disposition = Mirrored)
+    |> List.map (fun skill -> skill.Id)
 
 // ---- #720: driving the real verdict, against real git ------------------------------------------
 
@@ -332,14 +336,67 @@ let issue720FrozenMirrorVerdictTests =
                   "reading (b): somebody edited it here, and re-freezing would destroy that work — the reader must check before choosing"
           }
 
-          // A verdict that does not red the gate is a verdict nobody acts on, and this guard exists because
-          // "a warning in that stream is a warning nobody reads". Pinned so that MOVING `CanonicalMoved` to
-          // a non-required lane has to be a deliberate change, made here, with this comment in front of it.
-          test "every drift verdict reds the gate; only IN SYNC is green" {
-              Expect.isFalse (fails InSync) "a mirror that matches its canonical is not a finding"
+          // THE DELIBERATE CHANGE THE OLD TEST DEMANDED (#738).
+          //
+          // This used to be `every drift verdict reds the gate; only IN SYNC is green`, pinned so that
+          // moving `CanonicalMoved` out of the required lane "has to be a deliberate change, made here,
+          // with this comment in front of it." This is that change, and it is deliberate. The old test's
+          // REASON — "a verdict that does not red the gate is a verdict nobody acts on" — is preserved
+          // exactly: every drift verdict still reds a gate. What changed is WHICH gate, and the reason is
+          // that a verdict about ANOTHER REPO'S `main` may not decide whether THIS commit merges
+          // (ADR-0105). Nothing became a warning; nothing stopped failing.
+          test "the REQUIRED lane reds on what THIS change did, and on nothing else" {
+              Expect.isFalse (failsIn Required InSync) "a mirror that matches its canonical is not a finding"
+
+              // #541's case, and the only verdict `git` can prove from the commit alone. It keeps every
+              // tooth it had: still red, still in the required, admin-enforced gate.
+              Expect.isTrue
+                  (failsIn Required MirrorEdited)
+                  "MIRROR EDITED is a fact about THIS change's diff (git, against the merge base). It is deterministic, it is #541's entire subject, and demoting it would be the fail-open this whole guard exists to prevent."
+
+              // Both of these are the SAME STALE MIRROR, at two moments in time — see `failsIn`. A commit
+              // that is green today would go red tomorrow because FS.GG.Game merged something, which is
+              // exactly what wedged the repo in #714.
+              for verdict in [ CanonicalMoved; DriftUnattributed ] do
+                  Expect.isFalse
+                      (failsIn Required verdict)
+                      $"{verdict}'s subject is ANOTHER repo's `main`. In the required, enforce_admins gate it makes a green commit red with no change here and no way for a PR here to prevent it — nine 'main is RED, nothing can merge' incidents in three days (#696). ADR-0105 forbids it."
+          }
+
+          // ...AND IT IS STILL A RED SOMEWHERE. This is the half that makes the demotion a LANE SPLIT and
+          // not a fail-open, and it is the assertion to break if somebody ever "simplifies" the freshness
+          // lane into a warning. A stale mirror ships a `--profile game` scaffold a skill FS.GG.Game has
+          // already moved on from; it must never merge quietly.
+          test "the FRESHNESS lane reds on every drift, so nothing was demoted into silence" {
+              Expect.isFalse (failsIn Freshness InSync) "a mirror that matches its canonical is not a finding"
 
               for verdict in [ MirrorEdited; CanonicalMoved; DriftUnattributed ] do
-                  Expect.isTrue (fails verdict) $"{verdict} is drift, and drift that does not red the gate is drift nobody fixes"
+                  Expect.isTrue
+                      (failsIn Freshness verdict)
+                      $"{verdict} is drift, and drift that reds NO lane is drift nobody fixes. The point of #738 is that this red cannot take the merge button away — not that it stops being a red."
+          }
+
+          // THE TRAP #738 NAMED IN ADVANCE: "`describe` emits a literal `::error` for every drift verdict,
+          // and an `::error` annotation on a verdict that no longer reds the gate is the same class of lie
+          // #720 removed — the ANNOTATION LEVEL has to move with the exit code."
+          //
+          // It does, and BY CONSTRUCTION rather than by a matching rule that could drift: `describe` is
+          // reachable only from the freshness lane, which reds on every verdict it can produce. So every
+          // `::error` it prints is backed by a non-zero exit in the lane that printed it. The required lane
+          // cannot reach `describe` at all — it has no `canonical` to pass it — and prints its own message
+          // for the only verdict it can produce.
+          test "every ::error a lane prints is one that lane actually fails on" {
+              for verdict in [ MirrorEdited; CanonicalMoved; DriftUnattributed ] do
+                  let message = describeDrift verdict (UnchangedHere localSha)
+
+                  Expect.stringContains
+                      message
+                      "::error"
+                      $"{verdict} is annotated as an error by `describe`..."
+
+                  Expect.isTrue
+                      (failsIn Freshness verdict)
+                      $"...so the lane that prints it MUST fail on it. An ::error over a green exit is a gate that cries wolf, and it teaches exactly one lesson: that red is noise."
           }
 
           // ---- the git probe, against real trees ----
@@ -428,6 +485,67 @@ let issue720FrozenMirrorVerdictTests =
                   Directory.Delete(notARepo, true)
           }
 
+          // The REQUIRED lane's own message (#738). It runs offline, so it has no canonical digest to name —
+          // and every one of #541's "do NOT"s has to survive that. The strictness was never what made the
+          // gate wedge; the external input was.
+          test "the required lane's MIRROR EDITED keeps every bit of #541's strictness" {
+              let message =
+                  describeEditedHere
+                      "fs-gg-audio"
+                      "fs-gg-game"
+                      "FS.GG.Game/template/product-skills/fs-gg-audio/SKILL.md"
+                      "template/product-skills/fs-gg-audio/SKILL.md"
+                      (EditedHere baseSha)
+                      localSha
+
+              Expect.stringContains message "FROZEN MIRROR EDITED" "the #541 case is still named exactly as it was"
+
+              Expect.stringContains
+                  message
+                  "DO NOT REVERT YOUR WORK"
+                  "correct-but-unowned work must not be thrown away — three authors' edits were nearly lost this way (#541)"
+
+              Expect.stringContains
+                  message
+                  "do NOT re-freeze"
+                  "re-freezing over a genuine local edit SILENTLY DELETES it (FS.GG.Game#163 would have lost 25 lines)"
+
+              Expect.stringContains
+                  message
+                  "DO NOT ADD A WAIVER FOR YOURSELF"
+                  "a waiver records drift that predates the guard; it is not a way to land new drift"
+
+              Expect.stringContains
+                  message
+                  (baseSha.Substring(0, 12))
+                  "name the merge-base digest the body diverged FROM — that is the evidence git gave us, and it is all this lane needs"
+          }
+
+          // THE LAST PLACE #541's TEETH COULD HAVE BEEN LOST QUIETLY (#738).
+          //
+          // The required lane convicts on `git` and nothing else. So if `git` cannot answer, it has NO
+          // other signal to fall back on — the registry and the canonical are gone from this lane on
+          // purpose. Passing there would mean a mirror edit sails through the required gate whenever the
+          // checkout is shallow: a silent fail-open, in the exact family (#266) this repo keeps closing.
+          //
+          // It fails CLOSED, and it is allowed to: its subject is THIS checkout's configuration, not
+          // another repo's `main`, so ADR-0105's test still answers NO.
+          test "the required lane fails CLOSED when git cannot tell it whether you edited the mirror" {
+              let message = describeProbeFailed "fs-gg-audio" "template/product-skills/fs-gg-audio/SKILL.md" "shallow clone"
+
+              Expect.stringContains message "::error" "a probe that did not run has proved nothing, and it must not prove it quietly"
+
+              Expect.stringContains
+                  message
+                  "NOT a pass"
+                  "say plainly that this is the check failing to RUN, not the check passing — the distinction #266 is entirely about"
+
+              Expect.stringContains
+                  message
+                  "fetch-depth: 0"
+                  "name the remedy: this is a fault in the CHECKOUT, and it is fixable here, unlike everything else this lane stopped reding on"
+          }
+
           // ONE DEFINITION, TWO CONSUMERS (#661's rule). If the script stops calling the shared verdict and
           // grows its own copy, every test above goes on passing while the guard does whatever it likes —
           // which is precisely how the renderer bug in #657 hid behind a green gate.
@@ -439,12 +557,19 @@ let issue720FrozenMirrorVerdictTests =
 
               Expect.stringContains
                   scriptCode
-                  "decide baseline local row.Sha256 canonical"
+                  "decide baseline local registrySha canonical"
                   "the script must reach its verdict through `decide`. If this line moved, make sure the guard still consults BOTH signals (git and the registry) — the tests above assert the module, not the script, and a script that stopped calling it would keep them all green."
+
+              // The lane policy is the module's to decide, not the script's (#738). A script that grew its
+              // own `if verdict = CanonicalMoved then ...` would put the demotion somewhere no test looks.
+              Expect.stringContains
+                  scriptCode
+                  "failsIn Freshness drift"
+                  "the script must ask `failsIn` which verdicts red ITS lane, rather than re-deciding. The whole of #738 is that this policy lives in one place."
 
               Expect.isFalse
                   (scriptCode.Contains "FROZEN MIRROR EDITED")
-                  "the error TEXT belongs in FrozenMirrorVerdict.describe, next to the verdict that selects it. A copy in the script is one that can be printed for the wrong verdict — which is #720."
+                  "the error TEXT belongs in FrozenMirrorVerdict, next to the verdict that selects it. A copy in the script is one that can be printed for the wrong verdict — which is #720."
           }
         ]
 
@@ -506,15 +631,12 @@ let feature541FrozenMirrorGuardTests =
           // The step is the gate. A guard the workflow does not call is a guard that reports green — which
           // is the whole shape of #541, and of the .github#266 fail-open family.
           //
-          // Asserted against the REQUIRED job, not just the file: moving the step into an advisory workflow
-          // would keep a "does gate.yml mention it" grep green while the check stopped blocking anything.
-          test "the REQUIRED Deterministic gate job runs it — a check nobody invokes is a check that passes" {
+          // #738 SPLIT THIS INTO TWO ASSERTIONS, AND BOTH HALVES MATTER. It used to assert only that the
+          // required job ran the guard, which the lane split would satisfy vacuously — a required job
+          // running `--freshness` would still "run the guard" while handing the merge button back to
+          // FS.GG.Game. So the lane each job runs is now pinned, in BOTH directions.
+          test "the REQUIRED Deterministic gate runs the guard — and runs the lane that is a function of THIS commit" {
               let gate = File.ReadAllText(repositoryPath ".github/workflows/gate.yml")
-
-              Expect.stringContains
-                  gate
-                  "dotnet fsi scripts/check-frozen-mirrors.fsx"
-                  "gate.yml must invoke the frozen-mirror guard"
 
               // The Deterministic gate is the required job; everything from its `name:` to the next job's
               // 2-space `key:` is its body.
@@ -527,7 +649,60 @@ let feature541FrozenMirrorGuardTests =
 
               Expect.stringContains
                   deterministic
-                  "dotnet fsi scripts/check-frozen-mirrors.fsx"
-                  "the guard must run in the REQUIRED Deterministic gate job. In an advisory workflow it would still be 'mentioned in gate.yml' and would block nothing — and every previous mirror break already merged under a full set of green checks (#541)."
+                  "dotnet fsi scripts/check-frozen-mirrors.fsx --required"
+                  "the guard must run in the REQUIRED Deterministic gate job (a check nobody invokes is a check that passes — #541), and it must run the `--required` LANE, whose verdict is a function of this commit alone."
+
+              Expect.isFalse
+                  (deterministic.Contains "check-frozen-mirrors.fsx --freshness")
+                  "the freshness lane reads FS.GG.Game's `main`. In the required, enforce_admins gate that hands another repo this repo's merge button — #714, and the whole of #738. It may not run here."
+
+              // THE ADR-0105 PROPERTY, ASSERTED WHERE IT CAN ACTUALLY REGRESS. The required lane needs no
+              // token because it reads no network — and the single easiest way to undo all of #738 is for
+              // somebody to "fix" a future step by pasting a GH_TOKEN back onto this job, at which point
+              // the guard could quietly start reading another repo again. The absence of a token IS the
+              // invariant, so it is the thing that gets a test.
+              //
+              // Asserted against the job's CODE, with `#` comment lines stripped — the same treatment
+              // `scriptCode` gets above, and for the same reason. The first draft of this test matched the
+              // prose two paragraphs up in gate.yml, which *explains* that the token used to be here: a
+              // test that a file may not DISCUSS its own history is a test that punishes the comment doing
+              // the most good. What must not come back is the `env:` key, not the word.
+              let deterministicCode =
+                  deterministic.Split '\n'
+                  |> Array.filter (fun line -> not (line.TrimStart().StartsWith "#"))
+                  |> String.concat "\n"
+
+              Expect.isFalse
+                  (deterministicCode.Contains "GH_TOKEN")
+                  "the REQUIRED Deterministic gate must not be given a GitHub token. Its verdict has to be a function of THIS commit (ADR-0105), and a token is how an external input creeps back in — it is exactly what let the frozen-mirror guard read FS.GG.Game's `main` and wedge this repo on a pristine tree (#714)."
+          }
+
+          // ...and the demoted half must still RUN somewhere, or #738 traded a wedge for a blind spot.
+          // A stale mirror ships a `--profile game` scaffold a skill FS.GG.Game has already moved on from.
+          test "the NON-REQUIRED freshness job runs the lane the required gate gave up" {
+              let gate = File.ReadAllText(repositoryPath ".github/workflows/gate.yml")
+
+              let freshness =
+                  let start = gate.IndexOf "  frozen-mirror-freshness:"
+
+                  Expect.isGreaterThan
+                      start
+                      0
+                      "gate.yml must declare a `frozen-mirror-freshness` job. Without it, demoting CANONICAL MOVED out of the required gate is not a lane split — it is a deletion, and a stale mirror merges in silence (#738)."
+
+                  let rest = gate.Substring start
+                  let next = Regex.Match(rest.Substring 1, @"\n  [a-z][a-z0-9-]*:\n")
+                  if next.Success then rest.Substring(0, next.Index + 1) else rest
+
+              Expect.stringContains
+                  freshness
+                  "dotnet fsi scripts/check-frozen-mirrors.fsx --freshness"
+                  "the freshness job must actually run the freshness lane"
+
+              // NOT-REQUIRED IS NOT `continue-on-error` (#216). The job may not wedge the repo; that is not
+              // the same as the job being allowed to pass while it finds drift. A stale mirror is a RED.
+              Expect.isFalse
+                  (freshness.Contains "continue-on-error")
+                  "`frozen-mirror-freshness` is NON-REQUIRED, which means branch protection does not block on it — it does NOT mean the job may go green on a stale mirror. `continue-on-error` would turn the one red that still reports this class of break into decoration (#216)."
           }
         ]

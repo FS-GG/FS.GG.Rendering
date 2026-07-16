@@ -28,31 +28,55 @@ type Verdict =
 // Hidden from Evidence.fsi → private to the assembly. Shared sensing/IO used by Graph and Audit.
 module Sensing =
 
-    // Recognized readiness artifacts: relative path under readiness/, evidence kind, and the
-    // tokens the artifact must contain to be well-formed (per template/base/docs/evidence-formats.md
-    // and contracts/evidence-output-contract.md). An empty token list means "present and non-empty".
-    let recognized: (string * string * string list) list =
-        [ "layout-evidence.txt", "layout", []
-          "headless-scene-evidence.txt", "scene", []
-          "evidence-launch-mode.txt", "launch", []
-          "game-screenshot-evidence.txt", "screenshot", []
-          "game-pixel-readback-evidence.txt", "pixel-readback", []
-          "bounded-viewer-smoke.txt", "bounded-smoke", []
-          "bounded-viewer-frame-diagnostics.txt", "bounded-smoke", []
-          "window-diagnostics.txt", "window-diagnostics", [ "diagnostic-class=" ]
-          "window-options.txt", "window-options", [ "option=" ]
+    // Recognized readiness artifacts: relative path under readiness/, evidence kind, the tokens the
+    // artifact must contain to be well-formed (per template/base/docs/evidence-formats.md and
+    // contracts/evidence-output-contract.md), and whether the artifact is a REQUIRED baseline — its
+    // absence is a product-evidence defect, not an absent-optional. The required set is the headless
+    // baseline every profile produces (evidence-output-contract.md §EvidenceGraph "required-for-
+    // profile"): the deterministic layout and scene evidence. All richer artifacts (launch/image/
+    // screenshot/window/…) remain optional — presence is profile-dependent and the gate graphs what
+    // exists. Without a required floor the audit is fail-open on absent: an empty readiness/ audits
+    // PASS (F-BUILD-1).
+    //
+    // Every kind carries at least one STRUCTURAL token it must contain (F-BUILD-2): a token-less entry
+    // fell through to "any non-whitespace byte is valid" in `stateOf`, so ~7 of 12 kinds were near-
+    // vacuous even when present — a one-byte `layout-evidence.txt` audited present-valid. The tokens
+    // below are the stable key/value markers the real writers (`template/base/src/Product/
+    // EvidenceCommands.fs`) emit on EVERY code path (ok/failure/unsupported), so a genuine artifact
+    // still passes while a stub/truncated one is caught. An empty token list (`stateOf`'s "present and
+    // non-empty" fallback) is intentionally no longer used by any entry.
+    let recognized: (string * string * string list * bool) list =
+        [ "layout-evidence.txt", "layout", [ "command=--layout-evidence"; "overlap-status="; "measurement-mode=" ], true
+          "headless-scene-evidence.txt", "scene", [ "size="; "capabilities="; "hash=" ], true
+          "evidence-launch-mode.txt", "launch", [ "command=--launch-evidence"; "mode=" ], false
+          "game-screenshot-evidence.txt", "screenshot", [ "command=--screenshot-evidence"; "evidence-kind=" ], false
+          "game-pixel-readback-evidence.txt", "pixel-readback", [ "command=--pixel-readback-evidence"; "evidence-kind=" ], false
+          "bounded-viewer-smoke.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
+          "bounded-viewer-frame-diagnostics.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
+          "window-diagnostics.txt", "window-diagnostics", [ "diagnostic-class=" ], false
+          "window-options.txt", "window-options", [ "option=" ], false
           "interactive-visible-window.md",
           "window-visibility",
-          [ "status"; "mode"; "window-visible"; "accessible-window"; "first-frame-presented"; "self-closed-for-evidence" ]
+          [ "status"; "mode"; "window-visible"; "accessible-window"; "first-frame-presented"; "self-closed-for-evidence" ],
+          false
           "window-state-diagnostics.md",
           "window-diagnostics",
-          [ "native-handle"; "visible"; "focusable"; "renderable-surface"; "input-devices" ]
+          [ "native-handle"; "visible"; "focusable"; "renderable-surface"; "input-devices" ],
+          false
           "real-image-evidence.md",
           "image",
-          [ "evidence-kind"; "status"; "artifact-decodable"; "proves-scene-rendering"; "proves-desktop-visibility" ]
+          [ "evidence-kind"; "status"; "artifact-decodable"; "proves-scene-rendering"; "proves-desktop-visibility" ],
+          false
           "generated-validation.md",
           "generated-validation",
-          [ "exact-package-match"; "generated-tests-ran"; "authoritative"; "failure-class" ] ]
+          [ "exact-package-match"; "generated-tests-ran"; "authoritative"; "failure-class" ],
+          false ]
+
+    // The required baseline artifacts (relative path under readiness/), derived from `recognized`.
+    // The audit and graph both fail when one of these is absent (evidence-output-contract.md).
+    let requiredArtifacts: string list =
+        recognized
+        |> List.choose (fun (rel, _, _, required) -> if required then Some rel else None)
 
     let readinessDir (dir: string) = Path.Combine(dir, "readiness")
 
@@ -78,6 +102,17 @@ module Sensing =
             | [] -> EvidenceState.PresentValid
             | missing -> EvidenceState.PresentInvalid(sprintf "missing required token(s): %s" (String.concat ", " missing))
 
+    // Required baseline artifacts (`readiness/`-relative) that no sensed node covers. A required
+    // artifact that is present-but-malformed is NOT reported here — its `PresentInvalid` node is
+    // already a failure via the token contract; this reports only genuine absence, so a malformed
+    // baseline is not double-counted.
+    let missingRequired (nodes: EvidenceNode list) : string list =
+        let presentPaths = nodes |> List.map (fun n -> n.ArtifactPath) |> Set.ofList
+
+        requiredArtifacts
+        |> List.map (fun rel -> "readiness/" + rel)
+        |> List.filter (fun path -> not (presentPaths.Contains path))
+
     let writeReport (dir: string) (relName: string) (body: string) =
         let target = Path.Combine(readinessDir dir, relName)
 
@@ -91,7 +126,7 @@ module Graph =
 
     let sense (dir: string) : EvidenceNode list =
         Sensing.recognized
-        |> List.choose (fun (rel, kind, tokens) ->
+        |> List.choose (fun (rel, kind, tokens, _) ->
             let full = Path.Combine(Sensing.readinessDir dir, rel)
 
             if File.Exists full then
@@ -110,8 +145,10 @@ module Graph =
         line "# Evidence graph"
         line ""
         line "Synthesized in-process by the FS.GG.UI.Build engine (EvidenceGraph) over the generated"
-        line "product's readiness surface. The graph reflects the artifacts that exist at gate time;"
-        line "absent optional artifacts are not failures (the Verify gate does not pre-produce evidence)."
+        line "product's readiness surface. The graph reflects the artifacts that exist at gate time."
+        line "Absent OPTIONAL artifacts (interactive launch/image/window/…, profile-dependent) are not"
+        line "failures. The required headless baseline (layout + scene evidence) MUST be present, however —"
+        line "its absence is a product-evidence defect (evidence-output-contract.md §EvidenceGraph)."
         line ""
         line (sprintf "- readiness files present: %d" (List.length files))
         line (sprintf "- recognized evidence nodes: %d" (List.length nodes))
@@ -143,19 +180,34 @@ module Graph =
 
                 line (sprintf "| `%s` | %s | %s |" n.ArtifactPath n.Kind state))
 
+        line ""
+        line "## Required baseline"
+        line ""
+
+        match Sensing.missingRequired nodes with
+        | [] -> line "_required headless baseline present (layout + scene evidence)_"
+        | missing -> missing |> List.iter (fun p -> line (sprintf "- MISSING (required): `%s`" p))
+
         sb.ToString()
 
 module Audit =
 
     let evaluate (nodes: EvidenceNode list) : Verdict =
-        let failures =
+        let malformed =
             nodes
             |> List.choose (fun n ->
                 match n.State with
                 | EvidenceState.PresentInvalid reason -> Some(sprintf "%s (%s)" n.ArtifactPath reason)
                 | EvidenceState.PresentValid -> None)
 
-        match failures with
+        // Required-floor (F-BUILD-1): an absent baseline artifact is a product-evidence defect, not an
+        // absent-optional. Without this the audit is fail-open — an empty readiness/ yields no failures
+        // and audits PASS, so a product emitting zero evidence passes the gate named Audit green.
+        let absentRequired =
+            Sensing.missingRequired nodes
+            |> List.map (fun path -> sprintf "%s (required baseline evidence absent)" path)
+
+        match malformed @ absentRequired with
         | [] -> Verdict.Pass
         | reasons -> Verdict.Fail(sprintf "product-evidence defect: %s" (String.concat "; " reasons))
 
@@ -185,7 +237,8 @@ module Audit =
             line (sprintf "reason: %s" reason)
             line ""
             line "This verdict concerns the generated product's own evidence integrity (a present"
-            line "artifact is malformed). It is NOT a framework/feed engine-resolution condition —"
+            line "artifact is malformed, or a required baseline artifact is absent). It is NOT a"
+            line "framework/feed engine-resolution condition —"
             line "those are reported by build.fsx (naming FS.GG.UI.Build <version> and the feed/path"
             line "searched) before the engine is invoked."
 
@@ -207,7 +260,11 @@ module GeneratedRunner =
                     | EvidenceState.PresentInvalid _ -> true
                     | EvidenceState.PresentValid -> false)
 
-            if hasInvalid then 1 else 0
+            // Non-0 also when a required baseline artifact is absent, matching the audit's floor and
+            // the contract ("non-0 when a required-for-profile artifact is missing/malformed").
+            let hasMissingRequired = not (List.isEmpty (Sensing.missingRequired nodes))
+
+            if hasInvalid || hasMissingRequired then 1 else 0
         | "EvidenceAudit" ->
             let verdict = Audit.evaluate nodes
             Sensing.writeReport dir "evidence-audit.md" (Audit.render verdict nodes)

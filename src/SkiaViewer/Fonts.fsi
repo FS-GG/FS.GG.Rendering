@@ -82,8 +82,17 @@ module Fonts =
     /// Shape text when the provider is installed, otherwise return explicit fallback evidence.
     val shapeText: text: string -> font: FontSpec -> ShapedTextResult
 
+    /// Like `shapeText` but also returns the per-character resolution computed on the installed path, so
+    /// the draw path resolves the string once instead of once here and again for fallback events
+    /// (F-CORE-2). The resolution list is empty on the non-installed fallback paths.
+    val shapeTextWithResolution: text: string -> font: FontSpec -> ShapedTextResult * ResolvedChar list
+
     /// Build drawable glyph-run data from `shapeText`.
     val buildShapedGlyphRunData: text: string -> font: FontSpec -> GlyphRunData
+
+    /// Build drawable glyph-run data and return the per-character resolution alongside it, resolving the
+    /// string once (F-CORE-2). The draw path reuses the resolution for fallback-event disclosure.
+    val buildShapedGlyphRunDataResolved: text: string -> font: FontSpec -> GlyphRunData * ResolvedChar list
 
     /// Build Feature 140 glyph-run proof data using the same bundled-font fallback and advances that
     /// the renderer uses to draw text. This is a proof helper, not full shaping.
@@ -107,5 +116,9 @@ module Fonts =
     /// font size no longer grows it without limit. Internal: read by the leak regression test.
     val internal fontCacheCount: unit -> int
 
-    /// Dispose every cached `SKFont`/`SKTypeface` and empty both caches. Internal: teardown and tests.
+    /// Live `SKShaper` cache entry count. One shaper is built per bundled typeface and reused across
+    /// shape calls (F-CORE-3) rather than `new`-ed per call. Internal: read by the reuse regression test.
+    val internal shaperCacheCount: unit -> int
+
+    /// Dispose every cached `SKFont`/`SKTypeface`/`SKShaper` and empty the caches. Internal: teardown and tests.
     val internal disposeCaches: unit -> unit

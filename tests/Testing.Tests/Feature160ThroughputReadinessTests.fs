@@ -69,6 +69,14 @@ let tests =
             Expect.exists result.Diagnostics (fun item -> item.Contains("performance claim")) "claim boundary"
         }
 
+        test "empty required-scenario set fails closed rather than vacuously accepting (F-TEST-3)" {
+            let result = Feature160ThroughputReadiness.validate { check "passed" with RequiredScenarioIds = []; Scenarios = [] }
+
+            Expect.isFalse result.Accepted "an empty required set certifies nothing"
+            Expect.equal result.Status Feature160Rejected "rejected, not vacuously accepted"
+            Expect.exists result.Diagnostics (fun item -> item.Contains("at least one required scenario")) "disclosing diagnostic"
+        }
+
         test "environment-limited package preserves zero accepted unsupported-host artifacts" {
             let environmentLimited =
                 { check "missing" with

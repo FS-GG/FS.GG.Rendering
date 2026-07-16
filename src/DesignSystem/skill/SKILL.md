@@ -101,7 +101,7 @@ no access modifiers.
 
 Guarantees to preserve when editing the resolver:
 
-- **Total + deterministic** over every `(Theme, ResolvedStyle, StyleClass list, VisualState)` — all eight
+- **Total + deterministic** over every `(Theme, ResolvedStyle, StyleClass list, VisualState)` — all nine
   visual states, every variant, any custom string.
 - **Identity at the default path**: `Style.resolve theme baseStyle [] Normal = baseStyle` **exactly**
   (the parity proof). Under a theme carrying `IntentPolicy.neutral`, `StyleResolver.resolve` is

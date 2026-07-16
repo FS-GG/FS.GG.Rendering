@@ -84,51 +84,23 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 
 ## The loop
 
-**In a receiver, nothing.** The engine is already declared in `.config/dotnet-tools.json`, and `fsgg-coord`
-**restores it for you** the first time it needs it. A manifest is a *declaration*, not an *installation* —
-until something runs the restore, `dotnet tool run` fails, the version reads as `unknown`, `unknown` is
-stale by design, and the run SKIPS. Measured on 2026-07-14: **187 of 239 shadow runs skipped, 186 of them
-for exactly this** — in every receiver at once. The kit used to ask the worker to run the restore; asking
-is not a mechanism.
+**In a receiver, nothing.** `scripts/fsgg-coord` is the ADR-0034 §4.4 shim now (ADR-0040 Phase D): it
+resolves the compiled `fsgg-coord-engine` and `exec`s it — there is no bash implementation left, and no
+shadow. The engine is already declared in `.config/dotnet-tools.json`, and the shim **restores it for you**
+the first time it needs it. A manifest is a *declaration*, not an *installation*; the kit used to ask the
+worker to run the restore, and asking is not a mechanism (measured hit rate: zero), so the shim does it
+(#655).
 
-**Outside a receiver (or to be sure):** `dotnet tool install -g FS.GG.Coord.Cli`
-**And keep it current:** `dotnet tool update -g FS.GG.Coord.Cli` — a global tool does NOT self-update, and
-**a stale engine is worse than no engine** (#655). `fsgg-coord` carries a floor and REFUSES to shadow
-below it (a recorded skip, never an error), because engines before `0.1.1` mis-parse every dotfile path
-and will call a HELD item startable (#649).
-
-Optional, and safe to skip — `fsgg-coord` works exactly as before without it. What it buys is the
-**shadow** (ADR-0034): with an engine present, every `take`/`next`/`batch` is decided by *both* the
-bash client and the typed F# engine, **bash's answer is still the one you get**, and any disagreement
-is logged (`fsgg-coord divergence`). Your run does not change — not the answer, not the exit code.
-
-It is worth the one command because the shadow is how the port earns its cutover: bash stays
-authoritative until that log has been clean across the live fleet for three consecutive days, and the
-log only fills where an engine exists. A worker without one contributes no evidence, and the clock
-does not move.
-
-**Your evidence is published for you.** The **shadow** pushes it to the fleet ledger from the scheduling
-call that produced it (throttled: at most one REST write per 30 min per machine), and `done --flip`
-publishes immediately too. No extra step, nothing to remember (#656).
-
-It hung on `done` alone until 2026-07-14. An item closed by a **squash-message closing keyword** is merged,
-closed and board-Done without `done` ever running, and that worker's evidence never leaves the machine. The
-ledger was not empty — 59 rows, 11 of them that day — so the hook worked for the workers that reached it.
-But every one of those rows carries `skipped=0`: the only workers that publish are the ones whose engine
-**resolved**, i.e. `.github`, which builds from source. The five receivers had contributed nothing, ever, so
-the gate was reading one repo and calling it the fleet. A hook on one path is a request that the path be
-taken.
-
-Run it by hand only if you stop without finishing an item:
+**Outside a receiver:** install it globally, and keep it current —
 
 ```sh
-fsgg-coord divergence --publish                # your local log is not evidence until it is published
-fsgg-coord divergence --fleet                  # where the FLEET stands: 0 green · 1 red · 3 no verdict
+dotnet tool install -g FS.GG.Coord.Cli         # provides `fsgg-coord-engine`
+dotnet tool update  -g FS.GG.Coord.Cli         # a global tool does NOT self-update
 ```
 
-The log lives in a *cache dir* that dies with your container. The criterion is about the **live fleet**,
-and a worker who shadows but never publishes has moved the clock exactly as far as one who never
-shadowed at all (#634).
+The engine **is** the scheduler now, so a stale one mis-schedules — there is no bash answer behind it any
+more: engines before `0.1.1` mis-parse every dotfile path and will call a HELD item startable (#649). If
+the shim resolves no engine it fails loudly with what to do — never a silent no-op (#266).
 
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
@@ -159,11 +131,9 @@ the absence **deliberate and machine-readable**. `fsgg-coord lint` errors (`NO-T
 and an omission rendered identically, nine items of real work went invisible to every worker who
 asked for work, and the one surface whose job is board health reported `0 error(s)` over a dead queue.
 
-**Not globs** (ADR-0021, `.github#273`). A token matches by exact equality or subtree containment;
-the only wildcard is a **trailing** `/**` or `/*`. A leading `**/` — or a `*` in the middle —
-matches nothing, and a token that matches nothing would conflict with nothing, i.e. read as
-`DISJOINT` against everything. So the tool **refuses** it: `claim`, `widen`, `batch`, `overlap`,
-and `verify-paths` all reject an unmatchable token and name it. Want every lockfile? List them.
+**Not globs.** See [The rules](#the-rules) below — that section is GENERATED from the engine that
+enforces it, so it cannot drift from what `claim`, `widen`, `batch`, `overlap` and `verify-paths`
+actually do. Want every lockfile? List them.
 
 **Editing a kit source obliges `registry/repos.lock` — and you must NOT reserve it** (`.github#469`,
 `#527`, ADR-0019). The coordination kit is **content-addressed**: `registry/repos.lock` pins a `sha256`
@@ -481,6 +451,83 @@ scripts/fsgg-coord verify-paths --pr <n>   # files changed outside the issue's `
 ```
 
 The touch-set is a **declaration, not an enforced boundary** — CI reports drift, it does not block.
+
+## The rules
+
+<!-- BEGIN GENERATED: fsgg-protocol -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  This region exists because a rule stated in six documents is a rule that will disagree with
+  itself — #485 (startability computed in five places, agreeing in none) and the #502/#531/#551
+  family. Edit Protocol.fs and regenerate; a collision here is a rebase, not a decision (#309).
+-->
+
+### The rules the scheduler actually enforces
+
+*Generated from the typed core. The engine that decides your item is the engine that wrote this.*
+
+#### `Paths:` is a declaration, and a fenced one is a QUOTATION
+
+Declare the touch-set as a `Paths:` line at up to three leading spaces. A `Paths:` line INSIDE a fenced code block is a quotation of the grammar, not a use of it — the protocol docs quote it constantly. `Paths: none` is a SENTINEL meaning "this item deliberately has no touch-set", and it is not the same fact as having forgotten one.
+
+> **Why:** #277 (a fenced line read as a declaration would let a doc reserve files) and #496 (an epic and a forgotten touch-set rendered identically, so no gate could be written at all — nine items of real work went invisible, and the surface whose job is board health reported `0 error(s)` over a dead queue).
+
+#### The touch-set grammar — it is NOT a glob language
+
+supported: an exact path ('src/Foo.fs'), or a directory prefix ('src/Foo', 'src/Foo/*', 'src/Foo/**'). There is no glob matcher: a leading '**/' or an interior '*' matches nothing — spell the paths out.
+
+> **Why:** #273. Four hand-copied forms of the unmatchable-token predicate existed across two engines. A token that matches no file conflicts with nothing — so an item declaring only such tokens reserves NOTHING, clears every overlap check, and the lock succeeds under exactly the conditions it exists to prevent.
+
+#### Blockers are checked BEFORE the touch-set
+
+The scheduler asks, in order: is the issue closed? is its Status one we hand out? is it BLOCKED? is its touch-set usable? is it HELD? does it overlap work in flight? The first answer that is not "no" is the verdict, and it is the one sentence the worker reads.
+
+> **Why:** ADR-0038. A blocked item cannot be started whatever its touch-set says, so reporting "no `Paths:` declared" sends a worker to fix something that leaves them exactly where they were. And blockers are FREE — they are board facts already in the scan — where a touch-set costs a body READ per item, on the budget that dies first (#418). That is why bash never fetched a blocked item's body, and how an unreadable one could silently cease to exist.
+
+#### A MERGED blocker is RESOLVED; an unreadable one BLOCKS
+
+`Blocked by` clears on CLOSED **or MERGED**. It does not clear on OPEN, on a blocker whose state could not be read (unverifiable), or on prose that is not an issue ref at all (unparseable) — all three BLOCK.
+
+> **Why:** #476: `Blocked by` may name a PULL REQUEST, whose state is OPEN | CLOSED | MERGED. A rule clearing only on CLOSED unblocks when the blocking work is ABANDONED and blocks forever once it is FINISHED — the gate opened precisely when the work was thrown away and shut precisely when it was done. And #266/#421: "I could not look" is not "I looked and it is fine"; prose in a dependency field is not permission.
+
+#### The claim lock is a comment-order CAS, and the ASSIGNEE cannot hold it
+
+A claim is an `fsgg:claim` marker COMMENT, and the lowest live marker id wins. GitHub issues comment ids from one server-side sequence, so "lowest live marker" is a total order every racer observes identically. The GitHub ASSIGNEE cannot be the lock, because N agents share one account.
+
+> **Why:** ADR-0027. The lock lives on REST deliberately: GraphQL is the first budget to die under fan-out (#418), and a lock may never live on the budget that dies first.
+
+#### The lease is a WINDOW, and an unknown age says so
+
+A claim's lease is 120 minutes by default (`FSGG_CLAIM_LEASE_MIN`). Past it the claim is REAPABLE — not free: only `reap` may break a lock, and an item's touch-set stays reserved until it does. A claim whose age cannot be read reports `lease unknown`, never a window.
+
+> **Why:** #428 ("nothing schedulable" and "queued behind a claim held by <w>, lease frees in ~96m" are the same fact and two completely different operator instructions — the first reads as an empty queue and sends a worker home) and #440/#488 (inventing "frees in ~120m" from a missing timestamp is a confident-but-unfounded sentence, which is the class both were closed for).
+
+#### A read that did not happen may never render as a confident answer
+
+An error, an empty result, and a legitimate "no" are three different facts. A failed board scan is not an empty board; a failed marker read is not an unheld item; an unread issue body is not an undeclared touch-set. Every one of them fails CLOSED and says which it was.
+
+> **Why:** Epic #266, which has 51 children. #461: a failed claim scan read as "nothing is claimed", so `take` handed a held item to a second worker. #344: a rate-limited scan exited 0 with no verdict, and a worker read "nothing to do" off a board it never managed to read.
+
+### What the scheduler can tell you, and nothing else
+
+One total function returns one of these. There is no other answer, and there is no silent no —
+an unreachable answer is not a negative one.
+
+- **`startable`** — Nothing holds it. It can be claimed now.
+- **`issue-closed`** — The issue is CLOSED while the board still shows it open. The issue's state is the WORK; the board column is a PROJECTION of it. When they disagree, the issue wins — run /check-board.
+- **`wrong-status`** — Its board Status is not one a scheduler hands out (or it has none at all, which makes it invisible to every scheduler and is a bug, not a decision).
+- **`blocked-by`** — A `Blocked by` entry is unresolved. CLOSED and MERGED resolve; OPEN, unverifiable and unparseable all BLOCK.
+- **`no-touch-set`** — No `Paths:` line at all — an OMISSION. The item is real work and it is invisible to every worker who asks for work. Declare one, or `Paths: none` if it truly has no touch-set.
+- **`deliberately-no-touch-set`** — `Paths: none` — a decision somebody made. An epic, a decision item, an investigation whose scope IS the question. Unschedulable BY DESIGN, and correct.
+- **`unusable-touch-set`** — The declaration contains token(s) that can match no file, so they reserve NOTHING — and files nobody reserved are invisible to every other worker's overlap check.
+- **`held`** — A live claim marker holds it. Wait out the lease, or talk to the worker.
+- **`held-by-live-work`** — The lease EXPIRED but the work did not: an open `item/<n>-*` PR is the worktree protocol's own artifact, and it outranks a timer. Not offered; its touch-set stays reserved.
+- **`overlaps-in-flight`** — Its files collide with work already in flight. The holder and its lease window are named, because "nothing schedulable" and "queued behind a claim that frees in ~96m" are the same fact and two completely different instructions.
+- **`undetermined`** — WE COULD NOT DECIDE — and that is never a silent no. An unreachable answer is not a negative one. This is the case whose absence made every other case a lie waiting to happen.
+
+<!-- END GENERATED: fsgg-protocol -->
 
 ## Setup
 

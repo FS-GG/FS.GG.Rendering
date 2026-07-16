@@ -81,9 +81,13 @@ cd "$repo_root"
 FEED_URL="https://nuget.pkg.github.com/FS-GG/index.json"
 FEED_DL="https://nuget.pkg.github.com/FS-GG/download"
 FORCE_BASELINE=""
+SELF_TEST=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --baseline) FORCE_BASELINE="${2:-}"; shift 2 ;;
+    # Classify captured SDK output and exit. No feed, no pack, no network — so the required tier can run
+    # it (ADR-0105) and the classifier below cannot rot unnoticed.
+    --self-test) SELF_TEST=1; shift ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -94,6 +98,71 @@ summarize() {
   [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
   printf '%s\n' "$@" >> "$GITHUB_STEP_SUMMARY"
 }
+
+# ---- how a failed pack is classified (#776) ----------------------------------------------------
+#
+# ONE DEFINITION, TWO CONSUMERS — the pack loop below, and `--self-test`. The signatures are the part
+# that can rot (a future SDK could reword them), and a rot here is silent: the stale branch stops
+# matching and a dead suppression goes back to being reported as "pack failed, never compared". So the
+# patterns live in ONE place and are asserted against captured SDK output, rather than being written
+# twice and trusted.
+#
+# Both strings below are VERBATIM from .NET SDK 10.0.301 (Microsoft.NET.ApiCompat.ValidatePackage.targets),
+# captured by planting a suppression for a member that was never removed and packing against a real feed
+# baseline:
+#
+#   error : Unnecessary suppressions found. The APICompat suppression file can be updated by rebuilding
+#           with '/p:ApiCompatGenerateSuppressionFile=true' [/…/Canvas.Lib.fsproj]
+#   error : [Baseline] CP0002 (Target: 'M:FS.GG.UI.Canvas.Persistence.thisMemberNeverExisted(System.Int32)')
+#
+# NOTE the second line: `error : [Baseline] CP0002`, not `error CP0002`. `is_break` deliberately cannot
+# match it — that line is a suppression that fired, not an unsuppressed break — and that near-miss is
+# exactly why a dead suppression used to land in the Indeterminate bucket.
+is_stale_suppression() { grep -q 'Unnecessary suppressions found' "$1"; }
+is_break()             { grep -qE 'error CP[0-9]' "$1"; }
+
+# Deliberately NOT feed-dependent: this suite runs where the network may not, and a classifier test that
+# needed a live pack could not be a gate (ADR-0105). Fixtures are the captured shapes above.
+if [ -n "$SELF_TEST" ]; then
+  t="$(mktemp -d)"; trap 'rm -rf "$t"' EXIT; fails=0
+  assert() { # <name> <expected: stale|break|other> <log-content>
+    printf '%s\n' "$3" > "$t/log"
+    # SAME ORDER AS THE PACK LOOP, deliberately: break BEFORE stale. If this helper and the loop ever
+    # disagree, the test is grading a classifier nobody runs.
+    got=other
+    if   is_break             "$t/log"; then got=break
+    elif is_stale_suppression "$t/log"; then got=stale
+    fi
+    if [ "$got" = "$2" ]; then echo "  ok    $1 -> $got"
+    else echo "  FAIL  $1 -> $got (expected $2)"; fails=$((fails+1)); fi
+  }
+
+  assert "a dead suppression is STALE, not Indeterminate" stale \
+"/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.ApiCompat.ValidatePackage.targets(39,5): error : Unnecessary suppressions found. The APICompat suppression file can be updated by rebuilding with '/p:ApiCompatGenerateSuppressionFile=true' [/x/Canvas.Lib.fsproj]
+/usr/share/dotnet/sdk/10.0.301/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.ApiCompat.ValidatePackage.targets(39,5): error : [Baseline] CP0002 (Target: 'M:FS.GG.UI.Canvas.Persistence.gone(System.Int32)') [/x/Canvas.Lib.fsproj]"
+
+  assert "an unsuppressed break is still BREAK" break \
+"/x/Canvas.Lib.fsproj : error CP0002: Member 'M:FS.GG.UI.Canvas.Persistence.interpret' exists on the left but not on the right"
+
+  # THE ONE THAT MUST NOT COLLAPSE. A real break and a dead suppression CAN co-occur — one file's entry
+  # goes dead on the publish while a different member is newly removed — and BREAK is the stronger signal:
+  # the gate ran and found something a human must decide about (a SemVer major), where a stale entry is a
+  # chore. Classify this as `stale` and a GENUINE API BREAK is reported as tidy-up and merged. The pack
+  # loop tests `is_break` first for exactly this reason; this fixture is what stops someone "simplifying"
+  # that order back.
+  assert "a break alongside a dead suppression is still a BREAK" break \
+"/x/a.fsproj : error CP0002: Member 'M:Some.Real.Break' exists on the left but not on the right
+/x/a.fsproj : error : Unnecessary suppressions found. The APICompat suppression file can be updated by rebuilding with '/p:ApiCompatGenerateSuppressionFile=true'"
+
+  assert "an ordinary pack failure is neither" other \
+"/x/a.fsproj : error FS0039: The value or constructor 'foo' is not defined."
+
+  assert "an empty log is neither — silence is not a finding" other ""
+
+  if [ "$fails" -gt 0 ]; then echo "apicompat-check --self-test: $fails FAILED"; exit 1; fi
+  echo "apicompat-check --self-test: all classifier signatures hold"
+  exit 0
+fi
 
 token="${NUGET_FEED_TOKEN:-${GH_TOKEN:-${GITHUB_TOKEN:-}}}"
 if [ -z "$token" ]; then
@@ -203,8 +272,8 @@ echo "apicompat-check — ApiCompat/Package Validation vs the org feed baseline 
 echo "feed: $FEED_URL   packables: ${#projects[@]}"
 echo
 
-ok=0; broke=0; nobaseline=0; indeterminate=0; feedunavailable=0
-declare -a break_lines indeterminate_lines feed_lines
+ok=0; broke=0; nobaseline=0; indeterminate=0; feedunavailable=0; stale=0
+declare -a break_lines indeterminate_lines feed_lines stale_lines
 
 for proj in "${projects[@]}"; do
   pkgid="$(grep -oE '<PackageId>[^<]+</PackageId>' "$proj" | sed -E 's/<\/?PackageId>//g' | head -1)"
@@ -235,12 +304,49 @@ for proj in "${projects[@]}"; do
     printf '  %-28s OK            (compatible with %s)\n' "$pkgid" "$baseline"
     ok=$((ok+1))
   else
-    if grep -qE 'error CP[0-9]' "$log"; then
+    # A STALE SUPPRESSION IS NOT A PACK FAILURE, AND CALLING IT ONE COSTS AN HOUR (#776).
+    #
+    # A release that removes public API needs a TRANSIENT CompatibilitySuppressions.xml: the baseline is
+    # the PUBLISHED package, which still has the member, so ApiCompat reports a real CP0002 and the merge
+    # cannot happen without the suppression. The moment that release publishes, the baseline moves to the
+    # version that just shipped — which does not have the member either — and the same entry now suppresses
+    # NOTHING. .NET fails the pack with
+    #
+    #     error : Unnecessary suppressions found. ...
+    #     error : [Baseline] CP0002 (Target: 'M:Some.Removed.Member')
+    #
+    # Note the shape: the target line reads `error : [Baseline] CP0002`, NOT `error CP0002`. The BREAK grep
+    # below cannot match it, so before this branch existed a dead suppression fell through to Indeterminate
+    # and announced "pack failed, so this package was never compared" — a MISDIAGNOSIS. The tool ran fine;
+    # it found a suppression with nothing to suppress. #443's author went looking for a build failure.
+    #
+    # It matters because this gate is REQUIRED on `main` with enforce_admins: the transition happens ON THE
+    # FEED, not in a commit, so the first PR after a publish reds with no diff having caused it, and every
+    # PR in the repo is unmergeable until someone deletes the file. That has happened three times
+    # (1159d906, 67d39e68, 855e75f2), each time because the only thing saying "delete me after the release"
+    # was a COMMENT INSIDE THE FILE, and comments are not a gate. This branch is the gate.
+    # A stale entry is RECORDED even when a break also fired, so the deletion is not lost — but it never
+    # decides the status line. `is_break` is tested first: see the co-occurrence fixture in --self-test.
+    if is_stale_suppression "$log"; then
+      sup="$(dirname "$proj")/CompatibilitySuppressions.xml"
+      stale=$((stale+1))
+      stale_lines+=("    $pkgid: ${sup#"$repo_root/"} — these entries suppress nothing against baseline $baseline:")
+      # The dead entries name themselves. Report them, so the fix is a deletion somebody can SEE, not a
+      # regeneration they have to trust.
+      while IFS= read -r t; do stale_lines+=("      $t"); done \
+        < <(grep -oE "\[Baseline\] CP[0-9]+ \(Target: '[^']*'\)" "$log" | sort -u)
+      echo "::error title=Stale ApiCompat suppression in $pkgid::$pkgid's CompatibilitySuppressions.xml suppresses nothing against the published baseline $baseline — the release it was written for is on the feed. DELETE the listed entries (and the file, if that empties it). Do NOT regenerate with ApiCompatGenerateSuppressionFile: that re-adds whatever is breaking TODAY and hides it."
+    fi
+
+    if is_break "$log"; then
       printf '  %-28s BREAK         (vs %s)\n' "$pkgid" "$baseline"
       broke=$((broke+1))
       while IFS= read -r l; do break_lines+=("    $pkgid: $l"); done \
         < <(grep -oE 'error CP[0-9]+: .*' "$log" | sed -E 's/ \[.*//' | sort -u)
       echo "::warning title=ApiCompat break in $pkgid::public-API break vs baseline $baseline (see job log)"
+    elif is_stale_suppression "$log"; then
+      printf '  %-28s STALE SUPPRESSION (vs %s — the release it was written for is PUBLISHED; delete it)\n' \
+        "$pkgid" "$baseline"
     else
       printf '  %-28s Indeterminate (pack/tool failure — NOT compared; see log)\n' "$pkgid"
       indeterminate=$((indeterminate+1))
@@ -254,12 +360,23 @@ done
 
 compared=$((ok + broke))
 echo
-echo "summary: OK=$ok  BREAK=$broke  NoBaselineYet=$nobaseline  Indeterminate=$indeterminate  FeedUnavailable=$feedunavailable  (total ${#projects[@]}, compared $compared)"
+echo "summary: OK=$ok  BREAK=$broke  StaleSuppression=$stale  NoBaselineYet=$nobaseline  Indeterminate=$indeterminate  FeedUnavailable=$feedunavailable  (total ${#projects[@]}, compared $compared)"
 
 if [ "$broke" -gt 0 ]; then
   echo
   echo "breaking changes (force a SemVer major, or suppress deliberately with ApiCompatGenerateSuppressionFile):"
   printf '%s\n' "${break_lines[@]}"
+fi
+if [ "$stale" -gt 0 ]; then
+  echo
+  echo "STALE SUPPRESSION — the release these were written for is PUBLISHED, so they suppress nothing:"
+  printf '%s\n' "${stale_lines[@]}"
+  echo "  Fix: DELETE the entries above. If that empties the file, delete the file."
+  echo "  Do NOT run ApiCompatGenerateSuppressionFile — it would re-add whatever is breaking TODAY and hide it."
+  summarize "### API compatibility gate — $stale packable(s) carry a STALE suppression" "" \
+            "A transient \`CompatibilitySuppressions.xml\` outlived the release it was written for. The baseline moved to the version that just published, which no longer has the member either — so the entry suppresses nothing and .NET fails the pack." "" \
+            "This is a **deletion**, not a regeneration. It is the chore #776 exists to stop losing." "" \
+            '```' "${stale_lines[@]}" '```'
 fi
 if [ "$indeterminate" -gt 0 ]; then
   echo
@@ -283,5 +400,9 @@ fi
 # A break is the stronger signal: it means the gate RAN and found something. Report it as 1 even if
 # some other packable also failed to pack.
 [ "$broke" -gt 0 ] && exit 1
+# 4 = a suppression outlived its release. Distinct from 3 (could not compare) ON PURPOSE: the gate RAN
+# here, and the fix is a one-line deletion rather than an investigation. Conflating the two is the whole
+# of #776.
+[ "$stale" -gt 0 ] && exit 4
 [ "$indeterminate" -gt 0 ] && exit 3
 exit 0

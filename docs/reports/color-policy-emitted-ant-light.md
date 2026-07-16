@@ -40,7 +40,10 @@
 | button/warning/selected#text | #f5f5f5 | #823c06 | Text | 7.41 | 4.50 | Aaa |  |
 | button/warning/selected#surface | #823c06 | #f5f5f5 | GraphicOrUi | 7.41 | 3.00 | Aa |  |
 | button/ghost/normal#text | #1f2937 | #f5f5f5 | Text | 13.46 | 4.50 | Aaa |  |
-| icon-button/neutral/normal#text | #0958d9 | #f5f5f5 | Text | 5.65 | 4.50 | Aa |  |
+| button/@default/normal#text | #1f2937 | #ffffff | Text | 14.68 | 4.50 | Aaa |  |
+| button/@default/normal#border | #d9d9d9 | #f5f5f5 | GraphicOrUi | 1.29 | 3.00 | Fail |  |
+| button/@link/normal#text | #0958d9 | #f5f5f5 | Text | 5.65 | 4.50 | Aa |  |
 | icon-button/ghost/normal#border | #1f2937 | #f5f5f5 | GraphicOrUi | 13.46 | 3.00 | Aa |  |
+| icon-button/@danger/normal#text | #b91c1c | #f5f5f5 | Text | 5.93 | 4.50 | Aa |  |
 
-**Overall: PASS** (0 failing of 37 validated; 0 out-of-scope; 0 indeterminate)
+**Overall: FAIL** (1 failing of 40 validated; 0 out-of-scope; 0 indeterminate)

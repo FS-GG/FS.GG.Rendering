@@ -178,14 +178,16 @@ Worked, runnable examples (the templates to copy):
 - `tests/Elmish.Tests/Feature175InteractionReproTests.fs` — the `InteractionRepro` harness reproducing
   the toggle flip-both-ways bug in a few lines (generalises `Feature175NavFocusTests`/`Feature175ToggleTests`).
 
-## Unkeyed-sibling visual-state bleed (silent)
+## Unkeyed-sibling visual-state instability (silent)
 
-If hover/focus/press appears on the WRONG control or on ALL same-kind siblings at once, suspect the
-unkeyed-sibling collapse: visual state stamps by `Key ?? Kind`, so unkeyed interactive siblings of the
-same kind share one stamp id (routing uses the stable `RetainedId` and still works, so the bug is
-silent). Run the analyzer `FS.GG.UI.Controls.Diagnostics.unkeyedInteractiveSiblings root` over the
-control tree — it returns one `MissingStableKey` warning per colliding (parent, kind) group. Fix:
-give each sibling a distinct `Control.withKey`.
+If hover/focus/press lands on the WRONG same-kind sibling after a structural insert/remove, suspect
+unkeyed positional identity: since Feature 232, visual state stamps by `Key ?? path`, so unkeyed
+interactive siblings of the same kind resolve by positional path — inserting or removing a sibling
+shifts their ids, so their hover/focus/press identity is unstable across such a change (routing uses
+the stable `RetainedId` and still works, so the bug is silent). Run the analyzer
+`FS.GG.UI.Controls.Diagnostics.unkeyedInteractiveSiblings root` over the control tree — it returns one
+`MissingStableKey` warning per colliding (parent, kind) group. Fix: give each sibling a distinct
+`Control.withKey`.
 
 ## Triage workflow
 

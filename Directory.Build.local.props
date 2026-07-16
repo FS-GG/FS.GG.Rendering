@@ -93,8 +93,66 @@
     <PackageReference Include="FSharp.Core" />
   </ItemGroup>
 
+  <!-- ══ PACKAGE CONTENT — what goes INTO the nupkg, beyond lib/. Keep these together. ══ -->
+
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
     <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- #752 — every packable project SHIPS ITS OWN SIGNATURE FILES, under `api-surface/` in the nupkg.
+       This is the input the mirror generator (#694's epic) restores and reads.
+
+       WHY THE PACKAGE AND NOT `src/`. The scaffold's `template/base/docs/api-surface/**` mirrors what a
+       scaffolded product actually RESTORES — the pin — and `src/` is AHEAD of the pin for the whole window
+       between a feature landing on `main` and the release that publishes it. That window is the entire
+       reason `tests/Package.Tests/mirror-pending-release-ledger.txt` exists. Generate from the pin and the
+       window closes by construction: the mirror cannot name a symbol the pin does not export.
+
+       WHY THE .fsi AND NOT THE METADATA. A PE/metadata walk was the plan, and it cannot work. An `.fsi`
+       needs SIGNATURES, and the walk yields NAMES. F# type ABBREVIATIONS (`type CommandId = string`) compile
+       to literally nothing in IL, so no metadata reader can ever recover them — and the mirror declares five.
+       Shipping the `.fsi` is faithful BY CONSTRUCTION: it IS the signature file, as the compiler checked it,
+       and it needs no FSharp.Compiler.Service (excluded by FR-008/FR-012).
+
+       `api-surface/` is an INERT folder: NuGet auto-consumes `lib/`, `build/`, `contentFiles/`, `tools/` and
+       friends, so a custom top-level folder is carried in the nupkg and never fed to a consumer's compiler.
+       Nothing a restoring product builds changes because of this.
+
+       NOT sufficient on its own, and deliberately so: the mirror is CURATED — 96 `src/*.fsi` are merged into
+       62 mirror files (`src/Scene/` is 7 files merged into 1), and 61 of the 62 carry a `// See skill:`
+       pointer the M-PTR gate REQUIRES that no `src/*.fsi` has. The package can carry the signatures; it can
+       never carry the curation. The generator therefore takes these files PLUS a checked-in merge/pointer
+       manifest, and this half is the prerequisite for that half.
+
+       `scripts/check-packed-api-surface.fsx` proves the nupkg matches the source exactly; `release.yml` runs
+       it immediately before `dotnet nuget push`, which is the last moment a missing `.fsi` is still fixable. -->
+  <ItemGroup Label="api-surface (#752)"
+             Condition="'$(IsPackable)' != 'false' And '$(PackageId)' != ''">
+    <!-- CONDITIONED ON `!= 'false'`, NOT ON `== 'true'`. `IsPackable` DEFAULTS to true, and the SDK applies
+         that default in its .targets — i.e. AFTER item evaluation — so at this point the property is simply
+         EMPTY for any project that does not set it by hand. A `== 'true'` test therefore silently skips a
+         project that is packable by default: it would ship a package with no `.fsi` in it, and the guard
+         script would not judge it either, because the script reads this same rule. Both halves would agree,
+         and both would be wrong — the #661 shape. Matching the SDK's real default (`!= 'false'`) removes the
+         disagreement; requiring a `<PackageId>` keeps the item off the tests/tools/samples that never pack.
+         (`$(PackageId)` is likewise only set here if the project body sets it explicitly — which every one of
+         the 17 packables does; the SDK's AssemblyName fallback also lands in .targets, too late to see.)
+
+         This ItemGroup is evaluated in the ITEM pass, which runs after every property in the import graph is
+         set, so it correctly observes the `<IsPackable>`/`<PackageId>` the project body declares BELOW this
+         file's import. The canonical Directory.Build.props documents that same property-vs-item asymmetry on
+         its api-gate block, where it is a hazard; here it is what makes the condition work at all. -->
+
+    <!-- The PackagePath is the file's FULL target path, spelled out — NOT a folder.
+         `PackagePath="api-surface/%(RecursiveDir)"` (with the trailing slash) reads to NuGet as a DIRECTORY,
+         so it appends the file's own recursive path a second time and `Widgets/Buttons.fsi` packs to
+         `api-surface/Widgets/Widgets/Buttons.fsi` — the subdirectory doubled. Silent, and wrong in exactly
+         the 17 nested cases (`Controls/Widgets/`, `SkiaViewer/Host/`) the generator most needs to map back to
+         a mirror file. Naming `%(Filename)%(Extension)` explicitly leaves NuGet nothing to append. -->
+    <None Include="$(MSBuildProjectDirectory)/**/*.fsi"
+          Exclude="$(MSBuildProjectDirectory)/bin/**;$(MSBuildProjectDirectory)/obj/**"
+          Pack="true"
+          PackagePath="api-surface/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

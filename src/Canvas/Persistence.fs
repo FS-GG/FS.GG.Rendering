@@ -5,10 +5,11 @@ namespace FS.GG.UI.Canvas
 // batch into ordered evidence. Scene-only, dependency-light. The payload is opaque: the product
 // serializes its own Model and this surface carries the bytes verbatim, never parsing them.
 //
-// Issue #445 (epic .github#416, the silent no-op family): the record-only status now lives in the
-// NAME (`interpretRecordOnly`) and on the compiler's diagnostic channel (`[<Obsolete>]` on the old
-// `interpret`), not only in this comment. Candor in a comment is not a mechanism — it does not
-// survive being called from another file.
+// Issue #445 (epic .github#416, the silent no-op family): the record-only status lives in the NAME
+// (`interpretRecordOnly`) and, since #537, in the TYPE (`PersistenceEvidence.Backend`), not only in
+// this comment. Candor in a comment is not a mechanism — it does not survive being called from
+// another file. The deprecated `interpret` forwarder that carried the third channel (an `[<Obsolete>]`
+// diagnostic) was removed at the 0.10.0 major; the name and the type-mark outlive it.
 //
 // Issue #535: the requests now have somewhere to go. `ViewerEffect.Persist` carries a batch to a host and
 // `Viewer.runAppWithPersistence` hands it to a caller-supplied sink, whose `PersistenceOutcome` values are
@@ -42,7 +43,11 @@ type PersistenceOutcome =
     | Deleted of slot: SaveSlot
     | Failed of effect: PersistenceEffect * reason: string
 
-type PersistenceEvidence = { Requested: PersistenceEffect list }
+type PersistenceBackend = RecordOnly
+
+type PersistenceEvidence =
+    { Requested: PersistenceEffect list
+      Backend: PersistenceBackend }
 
 [<RequireQualifiedAccess>]
 module Persistence =
@@ -74,7 +79,9 @@ module Persistence =
         | Load _
         | DeleteSlot _ -> effect
 
-    let emptyEvidence: PersistenceEvidence = { Requested = [] }
+    let emptyEvidence: PersistenceEvidence =
+        { Requested = []
+          Backend = RecordOnly }
 
     // Append to the tail so Requested stays oldest-first without a reverse per call. Requested is a
     // small per-frame batch, so the O(n) append is not a hot path.
@@ -82,9 +89,5 @@ module Persistence =
         { evidence with Requested = evidence.Requested @ [ normalize effect ] }
 
     let interpretRecordOnly (effects: PersistenceEffect list) : PersistenceEvidence =
-        { Requested = List.map normalize effects }
-
-    // A forwarder kept at its exact published signature: removing or reshaping it is an ApiCompat
-    // break, so it retires with the next framework major (#537), not before. The `[<Obsolete>]` sits
-    // on the val in the .fsi (Principle II), where it is a hard build error at every call site.
-    let interpret (effects: PersistenceEffect list) : PersistenceEvidence = interpretRecordOnly effects
+        { Requested = List.map normalize effects
+          Backend = RecordOnly }

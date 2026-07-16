@@ -352,20 +352,30 @@ module RuntimeDiagnostics =
         | Some Environment, Some DiagnosticSeverity.Error -> true
         | _ -> false
 
-    let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
-        let now = DateOnly.FromDateTime(DateTime.UtcNow)
+    // F-DIAG-4: the synthesized records for invalid/unmatched exceptions. `summarizeAt` folds these
+    // into its verdict, so the persisted `.jsonl` records must carry them too or an exception that
+    // *drove* the status (ReviewRequired) is absent from the per-record artifact. Shared by
+    // `summarizeAt` and `writeArtifacts` so both derive the identical set from the same inputs.
+    let private synthesizeExceptionProblems (now: DateOnly) (exceptions: DiagnosticException list) (diagnostics: RuntimeDiagnostic list) =
+        let groups = aggregate diagnostics
+
+        exceptions
+        |> List.choose (fun ex ->
+            if not (exceptionIsValid now ex) then
+                Some(exceptionProblemDiagnostic "InvalidDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` is invalid or expired." ex.ExceptionId)
+            elif groups |> List.exists (exceptionMatchesGroup ex) |> not then
+                Some(exceptionProblemDiagnostic "UnmatchedDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` did not match any runtime diagnostic." ex.ExceptionId)
+            else
+                None)
+
+    // F-DIAG-2: the evaluation is pure over an injected `now`. `ExpiresOn` is the only date-sensitive
+    // input, so taking the clock as a parameter makes the whole verdict a total function of its inputs
+    // and the expiry boundary deterministically testable. The lone ambient-clock read lives in the
+    // `summarize` adapter below (and in `writeArtifacts`, the already-impure I/O boundary).
+    let summarizeAt (now: DateOnly) (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
         let initialGroups = aggregate diagnostics
 
-        let exceptionProblems =
-            exceptions
-            |> List.choose (fun ex ->
-                if not (exceptionIsValid now ex) then
-                    Some(exceptionProblemDiagnostic "InvalidDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` is invalid or expired." ex.ExceptionId)
-                elif initialGroups |> List.exists (exceptionMatchesGroup ex) |> not then
-                    Some(exceptionProblemDiagnostic "UnmatchedDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` did not match any runtime diagnostic." ex.ExceptionId)
-                else
-                    None)
-
+        let exceptionProblems = synthesizeExceptionProblems now exceptions diagnostics
         let diagnostics = diagnostics @ exceptionProblems
         let groups = aggregate diagnostics
         let validMatchedExceptions =
@@ -392,10 +402,26 @@ module RuntimeDiagnostics =
 
         let reviewRequiredCount = unclassifiedCount + developerReviewCount
 
+        // F-DIAG-1: an `Error`-severity diagnostic must never fall through to `Accepted`. The ladder
+        // below only blocks on *category* (`ReadinessBlocker`), so a fully-classified Error carrying
+        // any other category — `RenderingLimitation`/`BackendCost` — otherwise reads as `Accepted`.
+        // This counts the Errors that are NOT already routed off `Accepted` by an existing rung
+        // (ReadinessBlocker→Blocked, DeveloperAction→ReviewRequired, Environment→EnvironmentLimited),
+        // so it is a floor keyed on severity independent of category without disturbing those rungs.
+        let unresolvedErrorCount =
+            groups
+            |> List.filter (fun group ->
+                group.Severity = Some DiagnosticSeverity.Error
+                && not (excepted group)
+                && group.Category <> Some ReadinessBlocker
+                && not (developerActionRequiresReview group)
+                && not (environmentLimits group))
+            |> List.sumBy _.OccurrenceCount
+
         let status =
             if unclassifiedCount > 0 || not exceptionProblems.IsEmpty then
                 ReviewRequired
-            elif blockerCount > 0 then
+            elif blockerCount > 0 || unresolvedErrorCount > 0 then
                 Blocked
             elif developerReviewCount > 0 then
                 ReviewRequired
@@ -416,6 +442,12 @@ module RuntimeDiagnostics =
           Groups = groups
           Exceptions = validMatchedExceptions
           ArtifactWriteDiagnostics = [] }
+
+    /// Adapter over the pure `summarizeAt`: reads the wall clock once (`UtcNow` -> `DateOnly`) to
+    /// evaluate `DiagnosticException.ExpiresOn`. This is the single ambient-clock read on the verdict
+    /// path; callers that need a deterministic expiry boundary call `summarizeAt` with a fixed `now`.
+    let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
+        summarizeAt (DateOnly.FromDateTime(DateTime.UtcNow)) runId exceptions artifactPaths diagnostics
 
     let private json value = JsonSerializer.Serialize(value)
 
@@ -689,10 +721,33 @@ module RuntimeDiagnostics =
             with ex ->
                 writeDiagnostics <- writeDiagnostics @ [ artifactFailureDiagnostic path ex.Message ]
 
-        let initial = summarize runId exceptions artifactPaths diagnostics
-        tryWrite jsonPath (renderJson initial + Environment.NewLine)
-        tryWrite markdownPath (renderMarkdown initial)
-        tryWrite jsonLinesPath (renderJsonLines diagnostics)
+        // Read the clock once so every summary render evaluates `ExpiresOn` against the same instant —
+        // separate `UtcNow` reads could straddle a day boundary within a single write.
+        let now = DateOnly.FromDateTime(DateTime.UtcNow)
 
-        let finalSummary = summarize runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
-        { finalSummary with ArtifactWriteDiagnostics = writeDiagnostics }
+        // F-DIAG-4: the per-record `.jsonl` carries the same synthesized invalid/unmatched-exception
+        // records the summary folds into its verdict, so an exception that *drove* the status is not
+        // silently absent from the records artifact.
+        let recordDiagnostics = diagnostics @ synthesizeExceptionProblems now exceptions diagnostics
+
+        // F-DIAG-3: write the records file first, then persist the summary artifacts LAST, re-rendering
+        // each against the write failures known so far. A summary write failure is `DeveloperAction`, so
+        // it flips the status to `ReviewRequired`; persisting the summary before that failure is known
+        // (the old order) let the on-disk `.json`/`.md` understate the status the caller is returned.
+        // Now the `.md` discloses the `.jsonl` write failure and the machine-read `.json` — written last
+        // — discloses both. The sole residue is inherent: a summary artifact cannot record its *own*
+        // write failure, since recording it would require the write that just failed.
+        //
+        // Each persisted summary is built exactly like the returned `finalSummary` — the accumulated
+        // write failures both fold into the verdict and populate `ArtifactWriteDiagnostics`, so the
+        // on-disk `.json` array / `.md` "Artifact Write Warnings" section agree with what the caller is
+        // returned (`summarizeAt` itself leaves that field empty, so it must be set here).
+        let persistedSummary () =
+            let summary = summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
+            { summary with ArtifactWriteDiagnostics = writeDiagnostics }
+
+        tryWrite jsonLinesPath (renderJsonLines recordDiagnostics)
+        tryWrite markdownPath (renderMarkdown (persistedSummary ()))
+        tryWrite jsonPath (renderJson (persistedSummary ()) + Environment.NewLine)
+
+        persistedSummary ()

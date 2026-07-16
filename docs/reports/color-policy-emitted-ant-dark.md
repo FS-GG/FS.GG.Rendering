@@ -40,7 +40,13 @@
 | button/warning/selected#text | #000000 | #e3b356 | Text | 10.85 | 4.50 | Aaa |  |
 | button/warning/selected#surface | #e3b356 | #000000 | GraphicOrUi | 10.85 | 3.00 | Aa |  |
 | button/ghost/normal#text | #f1f5f9 | #000000 | Text | 19.17 | 4.50 | Aaa |  |
-| icon-button/neutral/normal#text | #1677ff | #000000 | Text | 5.12 | 4.50 | Aa |  |
+| button/@default/normal#text | #f1f5f9 | #1f1f1f | Text | 15.05 | 4.50 | Aaa |  |
+| button/@default/normal#border | #424242 | #000000 | GraphicOrUi | 2.09 | 3.00 | Fail |  |
+| button/@default/hover#text | #f1f5f9 | #1c1c1c | Text | 15.56 | 4.50 | Aaa |  |
+| button/@default/pressed#text | #f1f5f9 | #191919 | Text | 16.05 | 4.50 | Aaa |  |
+| button/@default/selected#text | #f1f5f9 | #161616 | Text | 16.52 | 4.50 | Aaa |  |
+| button/@link/normal#text | #1677ff | #000000 | Text | 5.12 | 4.50 | Aa |  |
 | icon-button/ghost/normal#border | #f1f5f9 | #000000 | GraphicOrUi | 19.17 | 3.00 | Aa |  |
+| icon-button/@danger/normal#text | #dc4446 | #000000 | Text | 4.96 | 4.50 | Aa |  |
 
-**Overall: PASS** (0 failing of 37 validated; 0 out-of-scope; 0 indeterminate)
+**Overall: FAIL** (1 failing of 43 validated; 0 out-of-scope; 0 indeterminate)

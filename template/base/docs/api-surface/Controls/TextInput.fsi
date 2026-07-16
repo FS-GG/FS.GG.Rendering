@@ -54,8 +54,9 @@ module TextInput =
     /// asks for the clipboard, `CommitText` and `ReportTextInputDiagnostic` notify. When your host
     /// fulfils a `RequestClipboardText`, feed the text back in yourself as the
     /// `TextInputMsg.ClipboardTextReceived` message — there is no framework function that turns a
-    /// raised effect back into a `Msg` (the package carries a deprecated `interpretEffect` that
-    /// only ever returns `None`; it is being removed, and it is not the seam you want).
+    /// raised effect back into a `Msg`, and there cannot be one: no `TextInputEffect` case carries a
+    /// host result to map. (0.9.0 shipped an `interpretEffect` that only ever returned `None` for
+    /// exactly that reason. It was removed at the 0.10.0 major.)
     val update: msg: TextInputMsg -> model: TextInputModel -> TextInputModel * TextInputEffect list
     /// Returns the `ControlDiagnostic` list implied by the current `model` state.
     val diagnostics: model: TextInputModel -> ControlDiagnostic list

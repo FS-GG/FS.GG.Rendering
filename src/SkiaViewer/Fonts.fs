@@ -100,6 +100,13 @@ module Fonts =
     let private gate = obj ()
     let private typefaceCache = Dictionary<struct (string * bool), SKTypeface>()
 
+    // Issue F-CORE-3: `SKShaper` wraps a per-typeface HarfBuzz font; constructing one allocates native
+    // resources, and the draw path used to `new` a fresh shaper on every shape call (once per animated
+    // `Text`/`TextRun` node per frame). Cache one shaper per bundled typeface instead. The cache is keyed
+    // on the *cached* `SKTypeface` instance (reference identity), so it is bounded by `typefaceCache`.
+    // `Shape` mutates the shaper's internal HarfBuzz buffer, so shape callers serialize on the instance.
+    let private shaperCache = Dictionary<SKTypeface, SKShaper>(HashIdentity.Reference)
+
     // Issue #178: `typefaceCache` is keyed on (family, bold) and both are bounded by the bundled
     // `faceAssets` set, so it cannot grow without limit. `fontCache` is keyed on a *continuous* size,
     // so a product animating font size used to grow it forever, each entry an undisposed native
@@ -119,6 +126,10 @@ module Fonts =
     /// Live `fontCache` entry count — the bound a leak regression test asserts against.
     let internal fontCacheCount () = lock gate (fun () -> fontCache.Count)
 
+    /// Live `shaperCache` entry count — one shaper per bundled typeface, reused across shape calls
+    /// (F-CORE-3). Read by the reuse regression test to prove shaping does not `new` a shaper per call.
+    let internal shaperCacheCount () = lock gate (fun () -> shaperCache.Count)
+
     /// Dispose every cached `SKFont`/`SKTypeface` and empty both caches.
     let internal disposeCaches () =
         lock gate (fun () ->
@@ -126,6 +137,11 @@ module Fonts =
                 kv.Value.Font.Dispose()
 
             fontCache.Clear()
+
+            for kv in shaperCache do
+                kv.Value.Dispose()
+
+            shaperCache.Clear()
 
             for kv in typefaceCache do
                 kv.Value.Dispose()
@@ -209,6 +225,28 @@ module Fonts =
                 fontCache.[key] <- { Font = font; Stamp = fontClock }
                 evictFontsOverCap ()
                 font)
+
+    /// A shaper for the given (already-cached) typeface, built once and reused. `Shape` is not
+    /// reentrant on a single instance, so callers must serialize with `lock` on the returned shaper.
+    let private cachedShaper (typeface: SKTypeface) : SKShaper =
+        lock gate (fun () ->
+            match shaperCache.TryGetValue typeface with
+            | true, shaper -> shaper
+            | _ ->
+                let shaper = new SKShaper(typeface)
+                shaperCache.[typeface] <- shaper
+                shaper)
+
+    /// Drop and dispose a cached shaper. Used when `Shape` throws, so a shaper left in an inconsistent
+    /// native state is never handed back on a later re-install — preserving the old `use`-on-throw
+    /// disposal now that shapers are pooled.
+    let private evictShaper (typeface: SKTypeface) : unit =
+        lock gate (fun () ->
+            match shaperCache.TryGetValue typeface with
+            | true, shaper ->
+                shaper.Dispose()
+                shaperCache.Remove typeface |> ignore
+            | _ -> ())
 
     // Map a logical family-name request (possibly a CSS-ish list like "Inter, sans-serif") to one of
     // the bundled canonical families, longest specific names first so "Noto Sans Mono" wins over
@@ -438,27 +476,42 @@ module Fonts =
 
         { result with Fingerprint = Scene.shapedTextFingerprint result }
 
-    let shapeText (text: string) (font: FontSpec) : ShapedTextResult =
+    /// Shape text and also surface the per-character resolution it computed, so a caller that needs
+    /// both the shaped result and the fallback events (the draw path) resolves the string once here
+    /// rather than once here and again at the use site (F-CORE-2). The resolution list is empty on the
+    /// non-installed fallback paths, which do not resolve.
+    let shapeTextWithResolution (text: string) (font: FontSpec) : ShapedTextResult * ResolvedChar list =
         let evidence = (shapingProviderStatus ()).Evidence
 
         match evidence.Availability with
         | ProviderInstalled ->
+            // Captured so the `with` handler (which cannot see `skFont`) can evict a shaper that threw
+            // inside `Shape`; stays `None` if we failed before pooling one.
+            let mutable pooledTypeface: SKTypeface option = None
+
             try
                 let skFont = resolveFont font
-                use shaper = new SKShaper(skFont.Typeface)
-                let shaped = shaper.Shape(text, skFont)
+                let shaper = cachedShaper skFont.Typeface
+                pooledTypeface <- Some skFont.Typeface
+                let shaped = lock shaper (fun () -> shaper.Shape(text, skFont))
                 let resolved = resolveText font text
                 let fallbackDiagnostics = diagnostics resolved
                 let extraDiagnostics = unsupportedDiagnostics text
-                let codepoints = shaped.Codepoints |> Array.toList
-                let clusters = shaped.Clusters |> Array.toList
-                let points = shaped.Points |> Array.toList
+                // Keep the shaper outputs (and the per-char resolution) as arrays and index them O(1):
+                // the glyph assembly below runs once per glyph, so `List.tryItem` positional lookups made
+                // it O(n^2) per shape call (F-CORE-3).
+                let codepoints = shaped.Codepoints
+                let clusters = shaped.Clusters
+                let points = shaped.Points
+                let resolvedArr = List.toArray resolved
+                let resolvedLast = resolvedArr.Length - 1
                 let width = float shaped.Width
                 let size = max 1.0 font.Size
                 let pointAt index =
-                    points
-                    |> List.tryItem index
-                    |> Option.defaultValue (SKPoint(0.0f, 0.0f))
+                    if index >= 0 && index < points.Length then
+                        points.[index]
+                    else
+                        SKPoint(0.0f, 0.0f)
 
                 let sourceAt cluster =
                     if String.IsNullOrEmpty text then
@@ -469,21 +522,20 @@ module Fonts =
 
                 let isMissing cluster glyphId =
                     glyphId = 0
-                    || (resolved
-                        |> List.tryItem cluster
-                        |> Option.exists (fun rc ->
-                            match rc.Resolution with
+                    || (cluster >= 0
+                        && cluster <= resolvedLast
+                        && (match resolvedArr.[cluster].Resolution with
                             | FallbackResolution.Tofu _ -> true
                             | _ -> false))
 
                 let glyphs =
                     codepoints
-                    |> List.mapi (fun index glyphId ->
+                    |> Array.mapi (fun index glyphId ->
                         let cluster =
-                            clusters
-                            |> List.tryItem index
-                            |> Option.map int
-                            |> Option.defaultValue index
+                            if index < clusters.Length then
+                                int clusters.[index]
+                            else
+                                index
 
                         let point = pointAt index
                         let nextX =
@@ -494,10 +546,12 @@ module Fonts =
 
                         let x = float point.X
                         let resolvedFace =
-                            resolved
-                            |> List.tryItem (max 0 (min (max 0 (resolved.Length - 1)) cluster))
-                            |> Option.bind resolvedFamily
-                            |> Option.orElse font.Family
+                            if resolvedLast >= 0 then
+                                resolvedArr.[max 0 (min resolvedLast cluster)]
+                                |> resolvedFamily
+                                |> Option.orElse font.Family
+                            else
+                                font.Family
 
                         { GlyphId = int glyphId
                           SourceCluster = cluster
@@ -507,6 +561,7 @@ module Fonts =
                           Offset = { X = 0.0; Y = float point.Y }
                           Position = { X = x; Y = 0.0 }
                           Missing = isMissing cluster (int glyphId) })
+                    |> Array.toList
 
                 let metrics =
                     { Advance = width
@@ -542,15 +597,20 @@ module Fonts =
                       Fingerprint = ""
                       FallbackMode = Shaped }
 
-                { result with Fingerprint = Scene.shapedTextFingerprint result }
+                { result with Fingerprint = Scene.shapedTextFingerprint result }, resolved
             with ex ->
+                pooledTypeface |> Option.iter evictShaper
                 let failed = failedEvidence ex.Message
                 lock providerGate (fun () -> providerEvidence <- failed)
                 Scene.setTextMeasurementVersionBucket failed.VersionBucket
-                fallbackResultWith failed ShapingFailedFallback [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ] text font
-        | ProviderCleared -> fallbackResultWith evidence ProviderUnavailableFallback [] text font
-        | ProviderUnavailable -> fallbackResultWith evidence ProviderUnavailableFallback [] text font
-        | ProviderFailed -> fallbackResultWith evidence ShapingFailedFallback [] text font
+                fallbackResultWith failed ShapingFailedFallback [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ] text font, []
+        | ProviderCleared -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
+        | ProviderUnavailable -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
+        | ProviderFailed -> fallbackResultWith evidence ShapingFailedFallback [] text font, []
+
+    /// Shape text when the provider is installed, otherwise return explicit fallback evidence.
+    let shapeText (text: string) (font: FontSpec) : ShapedTextResult =
+        shapeTextWithResolution text font |> fst
 
     let private shapedMeasure text font =
         let shaped = shapeText text font
@@ -586,6 +646,13 @@ module Fonts =
 
         { Evidence = evidence
           Diagnostics = providerDiagnostics evidence }
+
+    /// Build drawable glyph-run data and return the per-character resolution alongside it, computing the
+    /// resolution once (F-CORE-2). The draw path reuses this list for fallback-event disclosure instead
+    /// of re-resolving the same string.
+    let buildShapedGlyphRunDataResolved (text: string) (font: FontSpec) : GlyphRunData * ResolvedChar list =
+        let shaped, resolved = shapeTextWithResolution text font
+        Scene.glyphRunDataFromShapedText shaped, resolved
 
     let buildShapedGlyphRunData text font =
         shapeText text font |> Scene.glyphRunDataFromShapedText

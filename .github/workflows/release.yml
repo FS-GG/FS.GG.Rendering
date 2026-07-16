@@ -94,7 +94,7 @@ jobs:
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       # 559 — the RELEASE lane restores COLD, exactly as the gate does since #482. `dotnet build` below
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       # #680: the pin + pack + user-level NuGet.Config + feed assertion used to live inline here, and
@@ -261,7 +261,7 @@ jobs:
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
@@ -372,6 +372,24 @@ jobs:
           dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$pin" -o artifacts/packages
           dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -p:Version="$VER" -o artifacts/packages
           echo "Packed:"; ls -1 artifacts/packages/*.nupkg
+
+      # #752 — the coherent set must carry its SIGNATURE FILES before it is pushed anywhere.
+      #
+      # `template/base/docs/api-surface/**` is GENERATED from the pinned package (#694), so the generator's
+      # only input is whatever this release publishes. A package pushed without its `.fsi` cannot be
+      # un-pushed, and the mirror then cannot be generated from the pin until a NEW release fixes it — so
+      # this is the last moment the damage is still preventable, and it is therefore the moment to check.
+      #
+      # Deliberately NOT gated on `steps.ver.outputs.push`: a dry run that packs should prove the same thing
+      # a real one does, or the dry run is not a rehearsal of anything.
+      #
+      # Same script `packaged-consumer.yml` runs on the PR — one definition, two callers (#661). That lane is
+      # the early warning; this one is the gate. It also tolerates FS.GG.UI.Template being in the folder: it
+      # is packed from `.template.package/`, is not a packable `src/` project, and is reported as not-judged
+      # rather than silently skipped.
+      - name: "Packed set carries its .fsi (api-surface/, #752)"
+        shell: bash
+        run: dotnet fsi scripts/check-packed-api-surface.fsx --feed artifacts/packages
 
       - name: Push coherent set to nuget.pkg.github.com/FS-GG
         if: steps.ver.outputs.push == 'true'

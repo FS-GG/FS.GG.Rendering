@@ -61,6 +61,15 @@ let tests =
               Expect.exists result.Diagnostics (fun item -> item.Contains("performance claim")) "performance boundary"
           }
 
+          test "empty required-scenario set fails closed rather than vacuously accepting (F-TEST-3)" {
+              let result =
+                  CompositorDamageReadiness.validate { check CompositorDamageAccepted with RequiredScenarioIds = []; Scenarios = [] }
+
+              Expect.isFalse result.Accepted "an empty required set certifies nothing"
+              Expect.equal result.Status CompositorDamageRejected "rejected, not vacuous fallback/accepted"
+              Expect.exists result.Diagnostics (fun item -> item.Contains("at least one required scenario")) "disclosing diagnostic"
+          }
+
           test "Synthetic helper fixture: environment-limited unsupported host requires zero accepted partial-redraw artifacts" {
               let limited =
                   { check CompositorDamageAccepted with
