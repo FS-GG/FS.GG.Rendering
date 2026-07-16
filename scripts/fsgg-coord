@@ -8,12 +8,11 @@
 # watched by Renovate) and `exec`s it. The kit row, its digest, and its exec bit are unchanged; the shim
 # stops churning, so the kit stops re-drifting on every protocol edit.
 #
-# THIS IS THE SWAP (ADR-0040 Phase D.2). This file WAS ~7,000 lines of bash; it is now the ~40-line
-# resolver, proven transparent by `tests/coord-engine-parity/shim.sh` — the D.1 corpus is green THROUGH
-# it. The old bash monolith is preserved verbatim at `scripts/fsgg-coord-bash`, where the shadow and
-# differential gates (`50-shadow-engine`/`51-fs-flip`) still drive it against the engine until D.4 deletes
-# it (the one-way door). Nothing that calls `scripts/fsgg-coord` had to change: this PATH still answers,
-# and now it answers with the engine.
+# THIS IS THE SWAP (ADR-0040 Phase D.2), NOW FINAL (D.4). This file WAS ~7,000 lines of bash; it is now
+# the ~40-line resolver, proven transparent by `tests/coord-engine-parity/shim.sh` — the D.1 corpus is
+# green THROUGH it. D.4 (the one-way door) deleted the old bash monolith and the shadow/differential gates
+# that drove it; the engine is the one and only implementation now. Nothing that calls `scripts/fsgg-coord`
+# had to change: this PATH still answers, and it answers with the engine.
 #
 # WHAT IT DOES. It resolves ONE engine and execs it, passing argv through unchanged and returning its exit
 # code unchanged. It is a transparent pipe — it adds no output of its own on the happy path, decides
