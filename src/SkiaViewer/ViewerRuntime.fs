@@ -1359,18 +1359,6 @@ module internal ViewerRuntime =
 
                 let initialCloseRequested = interpretEffects initEffects
 
-                let _, _ =
-                    update
-                        Start
-                        { Options = options
-                          WindowBehavior = behavior
-                          IsRunning = false
-                          LifecycleState = NotStarted
-                          FirstFramePresented = false
-                          UserCloseObserved = false
-                          InputDispatch = NotRequired
-                          LastScene = None }
-
                 let handleTick elapsed =
                     match host.Tick elapsed with
                     | Some msg -> dispatchHostMsg msg
