@@ -1204,6 +1204,18 @@ module internal ViewerRuntime =
     // dispatch order; the viewer itself owns no audio device, so realizing a batch is entirely the
     // caller's business (the template hands in `FS.GG.Audio.Host.Audio.play backend`). `runApp` and
     // `runAppWithWindowBehavior` pass `ignore`, which is why they keep behaving exactly as before.
+    let private assembleLaunchOutcome options behavior inputDispatch initialCloseRequested message result =
+        match result with
+        | Result.Ok outcome ->
+            Result.Ok(
+                { outcome with
+                    InputDispatch = inputDispatch
+                    OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
+                    ExitPath = initialCloseRequested || outcome.ExitPath
+                    Message = message }
+            )
+        | Result.Error failure -> Result.Error failure
+
     let private validateLaunch options behavior =
         match validateOptions options with
         | Result.Error failure -> Result.Error failure
@@ -1347,18 +1359,6 @@ module internal ViewerRuntime =
 
                 let initialCloseRequested = interpretEffects initEffects
 
-                let _, _ =
-                    update
-                        Start
-                        { Options = options
-                          WindowBehavior = behavior
-                          IsRunning = false
-                          LifecycleState = NotStarted
-                          FirstFramePresented = false
-                          UserCloseObserved = false
-                          InputDispatch = NotRequired
-                          LastScene = None }
-
                 let handleTick elapsed =
                     match host.Tick elapsed with
                     | Some msg -> dispatchHostMsg msg
@@ -1389,16 +1389,8 @@ module internal ViewerRuntime =
                 let inputVerified () =
                     not (requireInputDispatchVerification ()) || inputDispatch = "true"
 
-                match runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None with
-                | Result.Ok outcome ->
-                    Result.Ok(
-                        { outcome with
-                            InputDispatch = inputDispatch
-                            OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
-                            ExitPath = initialCloseRequested || outcome.ExitPath
-                            Message = "Persistent generated app host launch completed after intentional close." }
-                    )
-                | Result.Error failure -> Result.Error failure
+                runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None
+                |> assembleLaunchOutcome options behavior inputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
         runGeneratedApp options behavior ignore None (fun (_: PersistenceOutcome) -> None) host
@@ -1668,30 +1660,8 @@ module internal ViewerRuntime =
                 let inputVerified () =
                     not (requireInputDispatchVerification ()) || inputDispatch = "true"
 
-                match
-                    runPresentedPersistentWindow
-                        options
-                        behavior
-                        host.Diagnostics
-                        inputDispatch
-                        presentScene
-                        handleTick
-                        (Some handleKey)
-                        (Some handlePointer)
-                        (Some handleResize)
-                        (Some handleFramebufferResize)
-                        inputVerified
-                        script
-                with
-                | Result.Ok outcome ->
-                    Result.Ok(
-                        { outcome with
-                            InputDispatch = inputDispatch
-                            OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
-                            ExitPath = initialCloseRequested || outcome.ExitPath
-                            Message = "Persistent interactive viewer launch completed after intentional close." }
-                    )
-                | Result.Error failure -> Result.Error failure
+                runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) inputVerified script
+                |> assembleLaunchOutcome options behavior inputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
         runInteractiveViewerWithWindowBehaviorCore options behavior None ignore host
