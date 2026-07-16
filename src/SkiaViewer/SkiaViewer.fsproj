@@ -48,6 +48,8 @@
     <Compile Include="ViewerHostCapability.fs" />
     <Compile Include="ViewerEvidence.fs" />
     <Compile Include="ViewerLaunchSupport.fs" />
+    <Compile Include="RenderLagTrace.fs" />
+    <Compile Include="ViewerRuntime.fs" />
     <Compile Include="SkiaViewer.fsi" />
     <Compile Include="SkiaViewer.fs" />
   </ItemGroup>
