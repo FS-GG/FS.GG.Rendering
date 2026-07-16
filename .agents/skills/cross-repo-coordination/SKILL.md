@@ -54,9 +54,23 @@ by two workers who could not see each other's filing —
 [#464](https://github.com/FS-GG/.github/issues/464)):
 
 ```sh
-scripts/fsgg-coord issues <target> --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) \(.title)"'
+# --state all IS NOT OPTIONAL — a CLOSED hit is the one you most need to see (see below).
+scripts/fsgg-coord issues <target> --state all \
+  --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) [\(.state)] \(.title)"'
 gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --paginate --jq '.[] | "#\(.number) \(.title)"'   # filing a child? look here
 ```
+
+**`--state all`, and this is the part that bites.** `issues` defaults to `state=open`, and this step
+used to take that default — so it could not see a **closed** issue at all. But *"somebody already fixed
+it"* is the **most likely reason a finding is a duplicate**. Worse, these skills are copied into an
+agent's context at session start and never refreshed, so a worker can hit a bug the org repaired an
+hour ago — and the mechanism that makes them rediscover it is the same one that guarantees its issue is
+**closed**. The dedupe step was therefore blind to exactly the duplicates it exists to catch, and
+answered a confident *"no hit"*: [#266](https://github.com/FS-GG/.github/issues/266)'s signature, and
+how [#719](https://github.com/FS-GG/.github/issues/719) came to be filed against an already-merged fix.
+
+**A closed hit is the BEST possible outcome** — the fix exists. Go read it, and if your case is not
+covered, say so *on that issue* rather than opening a rival.
 
 **`--paginate` is load-bearing, not tidiness.** `sub_issues` pages at 30, and the parents worth
 checking are precisely the big, active epics where several workers are splitting one parent at once —

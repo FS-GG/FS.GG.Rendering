@@ -32,6 +32,7 @@
     <Compile Include="..\Shared\Numeric.fs">
       <Link>Shared/Numeric.fs</Link>
     </Compile>
+    <Compile Include="Host/RenderThread.fs" />
     <Compile Include="Host/FrameCache.fs" />
     <Compile Include="Host/KeyChord.fs" />
     <Compile Include="Host/OpenGl.fsi" />
@@ -42,6 +43,15 @@
     <Compile Include="Viewer.Types.fs" />
     <Compile Include="ViewerInputQueue.fs" />
     <Compile Include="ViewerResponsiveness.fs" />
+    <Compile Include="ViewerDiagnosticsFilter.fs" />
+    <Compile Include="ViewerWindowBehavior.fs" />
+    <Compile Include="ViewerHostCapability.fs" />
+    <Compile Include="ViewerEvidence.fs" />
+    <Compile Include="ViewerLaunchSupport.fs" />
+    <Compile Include="ViewerWindowClassify.fs" />
+    <Compile Include="ViewerResponsivenessReport.fs" />
+    <Compile Include="RenderLagTrace.fs" />
+    <Compile Include="ViewerRuntime.fs" />
     <Compile Include="SkiaViewer.fsi" />
     <Compile Include="SkiaViewer.fs" />
   </ItemGroup>

@@ -27,8 +27,9 @@ The signatures you consume are bundled with this product:
 
 - `docs/api-surface/Canvas/Persistence.fsi` — the `PersistenceEffect` request DU
   (`Save`/`Load`/`DeleteSlot`), the `SaveSlot`/`SavePayload` identifiers, the `SaveEnvelope` record,
-  the `PersistenceEvidence` record, and the `Persistence` module (smart constructors + the
-  record-only `interpretRecordOnly`/`record`). Shipped in `FS.GG.UI.Canvas`, referenced on the
+  the `PersistenceEvidence` record and the `PersistenceBackend` it carries, and the `Persistence`
+  module (smart constructors + the record-only `interpretRecordOnly`/`record`). Shipped in
+  `FS.GG.UI.Canvas`, referenced on the
   `game` and `sample-pack` profiles. That package carries **only** the pure elements, the render loop,
   and this persistence request surface — the pinned Canvas api-surface is exactly `Elements.fsi` and
   `Persistence.fsi`. It carries **no audio** (that vocabulary was retired at the Canvas `0.3.0` major;
@@ -167,6 +168,9 @@ effects in dispatch order, with `Save` versions normalized and payloads carried 
 record-only interpreter: it never blocks, never touches the filesystem, and is the evidence you
 assert on in tests. `Persistence.record` appends a single effect if you accumulate frame by frame.
 
+`PersistenceEvidence` has two members. `Requested` is the ordered effects; **`Backend` is the type's own
+statement about durability** — a `PersistenceBackend`, whose only case is `RecordOnly`.
+
 ```fsharp
 open FS.GG.UI.Canvas
 
@@ -179,7 +183,31 @@ let evidence =
 // evidence.Requested =
 //   [ Save { Version = 1; Slot = SaveSlot "slot-1"; Payload = SavePayload "{score:42}" }
 //     Load (SaveSlot "slot-1"); DeleteSlot (SaveSlot "old") ]
+
+// ...and the evidence says, ON THE TYPE, that none of it was written:
+let wasPersisted : bool =
+    match evidence.Backend with
+    | RecordOnly -> false
 ```
+
+<!-- skill-refs: closed-ok FS-GG/FS.GG.Rendering#445 — cited as the ORIGIN of the type-mark, not as open
+     work. It is the issue this member answers, so its closure is what success looked like; the citation
+     is history and stays correct closed. -->
+<!-- skill-refs: closed-ok FS-GG/FS.GG.Rendering#537 — cited as the MAJOR that paid for the type-mark
+     (it retired the inert members and cut FS.GG.UI 0.10.0). History, and correct closed. -->
+> **`Backend` exists so you learn this from the TYPE, not from this page.** Every warning in this skill
+> — that `interpretRecordOnly` writes no bytes, that a recorded `Save` is evidence of *intent* and never
+> of durability — is prose a reader can skip. `Backend` is the same fact where it cannot be skipped: a
+> consumer holding an evidence value can ask what produced it, and the answer is a type with exactly one
+> case, `RecordOnly`. Nothing in this framework can hand you evidence that says anything else, because
+> nothing in this framework writes a byte (`FS.GG.UI` 0.10.0 — the type-mark half of
+> FS-GG/FS.GG.Rendering#445, paid for by the FS-GG/FS.GG.Rendering#537 major).
+>
+> A single-case union looks pointless, and that is the point: **it is inert on purpose, and it will stop
+> being inert loudly.** The `match` above is exhaustive today. The day a backend that actually writes
+> bytes ships a second case, that `match` stops compiling — so a product that asserted "nothing was
+> persisted" is made to revisit the claim at the compiler, rather than silently keeping an answer that
+> has become wrong. Match on it; do not ignore it with `_`.
 
 ## Common pitfalls
 
@@ -354,6 +382,11 @@ runner and every save is dropped.
 So `PersistenceEvidence.Requested` proves that your `update` **asked** to save. It proves **nothing
 about durability**: no code in the *framework* writes a byte, and whether anything does depends on the
 runner you launched and the sink you supplied.
+
+The evidence value says so itself. `PersistenceEvidence.Backend` is `RecordOnly` — the only case
+`PersistenceBackend` has — so the durability claim this section spends its length making in prose is
+also readable off the type, by a consumer who never read this page
+([Recording what was requested](#recording-what-was-requested-headless-safe-evidence)).
 
 ## Generated Product
 

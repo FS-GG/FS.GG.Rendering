@@ -86,8 +86,8 @@ module internal ContentRender =
         | "data-grid" -> nestedOrSchematic (fun () -> gridGeom theme box items)
         // The child tree's leaves. `data-grid-header`/`data-grid-row` are containers and never reach
         // here — see `DataGridGeometry`.
-        | "data-grid-header-cell" -> headerCellGeom theme box label
-        | "data-grid-cell" -> cellGeom theme box label
+        | "data-grid-header-cell" -> headerCellGeom theme box classes state label
+        | "data-grid-cell" -> cellGeom theme box classes state label
         | "radio-group" -> radioGeom theme box classes state (stringListOf "items" control) (textValueOf "value" control)
         | "tabs" -> tabsGeom theme box (stringListOf "items" control) (textValueOf "value" control)
         | "slider" -> sliderGeom theme box classes state (floatValue "value" 0.5 control.Attributes)

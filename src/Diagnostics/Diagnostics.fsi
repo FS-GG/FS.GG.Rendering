@@ -145,6 +145,17 @@ module RuntimeDiagnostics =
 
     val aggregate: diagnostics: RuntimeDiagnostic list -> AggregatedDiagnostic list
 
+    /// Pure verdict over an injected `now` (evaluated against each `DiagnosticException.ExpiresOn`).
+    /// A total function of its inputs — use this when the expiry boundary must be deterministic.
+    val summarizeAt:
+        now: System.DateOnly ->
+        runId: string option ->
+        exceptions: DiagnosticException list ->
+        artifactPaths: string list ->
+        diagnostics: RuntimeDiagnostic list ->
+            DiagnosticSummary
+
+    /// `summarizeAt` with the current UTC date; the single ambient-clock read on the verdict path.
     val summarize:
         runId: string option ->
         exceptions: DiagnosticException list ->

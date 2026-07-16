@@ -17,7 +17,12 @@ module Animation =
         (model: 'model)
         : Sub<'msg> =
         if isAnimating model then
-            let subId: SubId = [ "fs-gg-ui"; subKey ]
+            // F-DIAG-6: key the SubId on the interval too. Elmish diffs subscriptions by SubId, so a
+            // fixed `["fs-gg-ui"; "animation-tick"]` id would keep the *old* timer running when the
+            // interval changes between models — the new period would never take effect. Including the
+            // interval means a changed interval reads as a new subscription (old timer disposed, new
+            // one started); an unchanged interval keeps the same id, so a steady tick is not churned.
+            let subId: SubId = [ "fs-gg-ui"; subKey; string interval.Ticks ]
 
             let start (dispatch: Dispatch<'msg>) : IDisposable =
                 // Emit an immediate frame so the first advance happens without

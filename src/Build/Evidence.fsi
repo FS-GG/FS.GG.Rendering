@@ -46,13 +46,18 @@ module Graph =
 
     /// Render a real synthesized markdown graph over the sensed nodes (and the raw set of files
     /// found under `readiness/`), suitable for `readiness/evidence-graph.md`. Never a log-only stub.
+    /// Includes a required-baseline section: absent OPTIONAL artifacts are not failures, but the
+    /// required headless baseline (layout + scene evidence) is reported as MISSING when absent.
     val render: dir: string -> nodes: EvidenceNode list -> string
 
 /// EvidenceAudit: judge the sensed graph and render the governance verdict.
 module Audit =
 
-    /// Derive the audit verdict from the sensed nodes: PASS when no present artifact is malformed,
-    /// FAIL (naming the malformed artifacts as a product-evidence defect) otherwise.
+    /// Derive the audit verdict from the sensed nodes: PASS when no present artifact is malformed AND
+    /// the required headless baseline (layout + scene evidence) is present; FAIL otherwise, naming
+    /// both malformed present artifacts and absent required baseline artifacts as a product-evidence
+    /// defect. The required floor closes the fail-open-on-absent hole — an empty `readiness/` no longer
+    /// audits PASS (evidence-output-contract.md §EvidenceGraph "required-for-profile").
     val evaluate: nodes: EvidenceNode list -> Verdict
 
     /// Render the `readiness/evidence-audit.md` body: always carries the required `verdict` token,

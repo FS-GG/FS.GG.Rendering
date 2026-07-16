@@ -163,6 +163,7 @@ FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus.Evidence : FS.GG.UI.Scene.Sh
 FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus.new(FS.GG.UI.Scene.ShapingProviderEvidence, Microsoft.FSharp.Collections.FSharpList<System.String>)
 FS.GG.UI.SkiaViewer.Fonts.buildGlyphRunData(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.GlyphRunData
 FS.GG.UI.SkiaViewer.Fonts.buildShapedGlyphRunData(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.GlyphRunData
+FS.GG.UI.SkiaViewer.Fonts.buildShapedGlyphRunDataResolved(System.String, FS.GG.UI.Scene.FontSpec) : System.Tuple<FS.GG.UI.Scene.GlyphRunData, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>>
 FS.GG.UI.SkiaViewer.Fonts.clearShapingProvider() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
 FS.GG.UI.SkiaViewer.Fonts.defaultMonoFamily : System.String [get]
 FS.GG.UI.SkiaViewer.Fonts.defaultSansFamily : System.String [get]
@@ -175,6 +176,7 @@ FS.GG.UI.SkiaViewer.Fonts.report(Microsoft.FSharp.Collections.FSharpList<FS.GG.U
 FS.GG.UI.SkiaViewer.Fonts.resolveFont(FS.GG.UI.Scene.FontSpec) : SkiaSharp.SKFont
 FS.GG.UI.SkiaViewer.Fonts.resolveText(FS.GG.UI.Scene.FontSpec, System.String) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>
 FS.GG.UI.SkiaViewer.Fonts.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
+FS.GG.UI.SkiaViewer.Fonts.shapeTextWithResolution(System.String, FS.GG.UI.Scene.FontSpec) : System.Tuple<FS.GG.UI.Scene.ShapedTextResult, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>>
 FS.GG.UI.SkiaViewer.Fonts.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
 FS.GG.UI.SkiaViewer.GeneratedAppHost.audioRequests(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.dispatchKey<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.KeyboardInput.ViewerKeyEvent, model) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>

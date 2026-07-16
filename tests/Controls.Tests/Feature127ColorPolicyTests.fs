@@ -46,6 +46,20 @@ let private gatedThemes: (string * Theme) list =
       "ant-light", FS.GG.UI.Themes.AntDesign.AntTheme.antLight
       "ant-dark", FS.GG.UI.Themes.AntDesign.AntTheme.antDark ]
 
+/// F-DS-1 waiver. The Ant neutral `default`/`dashed` control border sits BELOW WCAG 1.4.11's 3.0
+/// non-text floor by Ant's own design: #d9d9d9 on the light canvas (≈1.29) and #424242 on the
+/// black canvas (≈2.09). Ant identifies a `default` button by its label, its surface fill and its
+/// drop shadow (elevation), not by a high-contrast edge; this renderer models no elevation, so the
+/// bare border measures low. Recolouring Ant's canonical border token would break Ant fidelity
+/// (Ant is the design source of truth, per CLAUDE.md), so the boundary gate below waives these two
+/// pairings by EVIDENCE rather than repairing them — and only these two: the gate asserts the
+/// waived set is exactly this list, so a new sub-3.0 boundary still reds and a later Ant repair
+/// forces the stale entry out. Keyed `(slug, border colour, canvas)`; the border tokens are the
+/// same the Ant `IntentPolicy` paints from (`AntIntentPolicy.policyFor`).
+let private antNeutralBorderWaiver: (string * Color * Color) list =
+    [ "ant-light", DesignTokensExt.Component.Button.defaultBorder, FS.GG.UI.Themes.AntDesign.AntTheme.antLight.Background
+      "ant-dark", DesignTokensExt.Map.Dark.colorBorder, FS.GG.UI.Themes.AntDesign.AntTheme.antDark.Background ]
+
 let private reportPath name =
     Path.Combine(repositoryRoot, "docs", "reports", sprintf "color-policy-%s.md" name)
 
@@ -342,10 +356,14 @@ let feature127ColorPolicyTests =
                   "the emitted catalog contains the style the resolver produced"
           }
 
-          // The domain is closed and every combination is reached: 2 kinds x 6 variants x 11 states.
+          // The domain is closed and every combination is reached: 2 kinds x 12 scenarios x 11
+          // states (6 variants under the identity intent + 6 intent scenarios over the bare base).
           // Dedup by (fg, bg, role) collapses them, but nothing may be silently dropped.
-          test "the emitted catalog covers the closed kind x variant x state domain (issue #174)" {
-              Expect.equal (StyleCatalog.kinds.Length * StyleCatalog.variants.Length * StyleCatalog.states.Length) 132 "closed domain size"
+          test "the emitted catalog covers the closed kind x scenario x state domain (issue #174 / F-DS-1)" {
+              Expect.equal StyleCatalog.scenarios.Length (StyleCatalog.variants.Length + StyleCatalog.intents.Length) "scenarios = variants + intents"
+              Expect.equal (StyleCatalog.kinds.Length * StyleCatalog.scenarios.Length * StyleCatalog.states.Length) 264 "closed domain size"
+
+              let scenarioNames = StyleCatalog.scenarios |> List.map (fun (name, _, _) -> name)
 
               for slug, theme in gatedThemes do
                   let emitted = StyleCatalog.emittedPairings theme
@@ -358,9 +376,9 @@ let feature127ColorPolicyTests =
                   for p in emitted do
                       let combination = p.Name.Split('#').[0]
                       let parts = combination.Split('/')
-                      Expect.equal parts.Length 3 (sprintf "%s: %s names kind/variant/state" slug p.Name)
+                      Expect.equal parts.Length 3 (sprintf "%s: %s names kind/scenario/state" slug p.Name)
                       Expect.contains StyleCatalog.kinds parts.[0] (sprintf "%s: %s names a real kind" slug p.Name)
-                      Expect.contains (StyleCatalog.variants |> List.map fst) parts.[1] (sprintf "%s: %s names a real variant" slug p.Name)
+                      Expect.contains scenarioNames parts.[1] (sprintf "%s: %s names a real scenario" slug p.Name)
                       Expect.contains (StyleCatalog.states |> List.map fst) parts.[2] (sprintf "%s: %s names a real state" slug p.Name)
           }
 
@@ -467,5 +485,101 @@ let feature127ColorPolicyTests =
                           (ColorPolicy.evaluatePairing ColorPolicy.wcag p).Outcome
                           ColorPolicy.Failed
                           (sprintf "%s: %s is a readable label — it must not fail wcag" slug p.Name)
+          }
+
+          // F-DS-1 companion to the Text gate, one role out. Enumerating the intent vocabulary
+          // (`StyleCatalog.scenarios`) makes the theme's `IntentPolicy` chrome reach the catalog, so
+          // the boundary a control is identified by — its stroke, or its fill when unstroked; WCAG
+          // 1.4.11 rates it GraphicOrUi at the 3.0 non-text floor — is now measurable. This is the
+          // gate with teeth: every emitted boundary of every built-in theme must PASS wcag, except
+          // the two intentionally-subtle Ant neutral borders carried in `antNeutralBorderWaiver`
+          // (evidence there). The waiver is enumerated, not a blanket skip, and checked BOTH ways so
+          // it can neither grow silently nor go stale.
+          test "every emitted boundary passes wcag except the evidenced Ant neutral-border waiver (F-DS-1)" {
+              let boundaryFails theme =
+                  StyleCatalog.emittedPairings theme
+                  |> List.filter (fun p -> p.Role = Role.GraphicOrUi)
+                  |> List.filter (fun p -> (ColorPolicy.evaluatePairing ColorPolicy.wcag p).Outcome = ColorPolicy.Failed)
+
+              // (1) every sub-floor boundary that IS emitted must be explicitly waived — an unwaived
+              //     one is a real, reachable defect the intent-blind `intent = ""` catalog hid.
+              for slug, theme in gatedThemes do
+                  for p in boundaryFails theme do
+                      let waived =
+                          antNeutralBorderWaiver
+                          |> List.exists (fun (s, fg, bg) -> s = slug && fg = p.Foreground && bg = p.Background)
+
+                      Expect.isTrue
+                          waived
+                          (sprintf
+                              "%s: boundary %s (%A on %A) falls below the 3.0 floor and is not in the evidenced waiver — fix it or waive with evidence"
+                              slug
+                              p.Name
+                              p.Foreground
+                              p.Background)
+
+              // (2) the waiver may not go stale: each waived pairing must still be emitted AND still
+              //     fail. A later Ant repair (or a token retint) makes it pass or disappear, reds
+              //     this, and forces the dead entry out — no silent over-waiving.
+              for slug, fg, bg in antNeutralBorderWaiver do
+                  let theme = gatedThemes |> List.find (fun (s, _) -> s = slug) |> snd
+
+                  match
+                      StyleCatalog.emittedPairings theme
+                      |> List.tryFind (fun p -> p.Role = Role.GraphicOrUi && p.Foreground = fg && p.Background = bg)
+                  with
+                  | None -> failtestf "%s: waived boundary (%A on %A) is no longer emitted — remove the stale waiver" slug fg bg
+                  | Some p ->
+                      Expect.equal
+                          (ColorPolicy.evaluatePairing ColorPolicy.wcag p).Outcome
+                          ColorPolicy.Failed
+                          (sprintf "%s: waived boundary (%A on %A) now PASSES wcag — remove the stale waiver" slug fg bg)
+          }
+
+          // F-DS-2 (Phase 6): `DesignTokens.{Light,Dark}.contrastRequiredRatio` (DTCG source
+          // `design-tokens.tokens.json`) is published as "the minimum foreground/background contrast
+          // ratio the theme MUST satisfy" (DesignTokens.fsi:45,86) — but NO runtime code read it. The
+          // WCAG gates hardcode the fixed 7.0/4.5/3.0 role tiers (Contrast.fs), deliberately distinct
+          // from any per-theme token, so the published token was inert documentation of a constraint
+          // nothing enforced. This is the gate that makes the published constraint TRUE. The token
+          // primitives feed the built theme unchanged (Theme.fs:14-15,34-35), so the assertion is over
+          // the ACTUAL shipped theme: a token retint (or a slackened floor) that drops the default
+          // theme's own foreground-on-background below its declared ratio now reds here instead of
+          // passing silently.
+          test "each default theme satisfies its own declared contrastRequiredRatio token (F-DS-2)" {
+              let declared =
+                  [ "default-light",
+                    FS.GG.UI.Themes.Default.Theme.light,
+                    DesignTokens.Light.contrastRequiredRatio,
+                    DesignTokens.Light.foreground,
+                    DesignTokens.Light.background
+                    "default-dark",
+                    FS.GG.UI.Themes.Default.Theme.dark,
+                    DesignTokens.Dark.contrastRequiredRatio,
+                    DesignTokens.Dark.foreground,
+                    DesignTokens.Dark.background ]
+
+              for slug, theme, required, tokenFg, tokenBg in declared do
+                  // Non-vacuous: a ratio of 1.0 is met by any colour pair, so a token slackened to 1.0
+                  // would make this gate certify nothing. The shipped floor is a real AA-class bar.
+                  Expect.isGreaterThan required 1.0 (sprintf "%s: contrastRequiredRatio must be a real floor, not vacuous" slug)
+
+                  // The token primitives ARE what the built theme paints with, so the ratio measured
+                  // below is the ratio the shipped theme actually presents (guards against the token
+                  // constraining primitives the theme has since diverged from).
+                  Expect.equal theme.Foreground tokenFg (sprintf "%s: theme foreground is the DTCG token primitive" slug)
+                  Expect.equal theme.Background tokenBg (sprintf "%s: theme background is the DTCG token primitive" slug)
+
+                  // The constraint the token DOCUMENTS is now ENFORCED: the theme clears its own ratio.
+                  let measured = Contrast.ratio theme.Foreground theme.Background
+
+                  Expect.isGreaterThanOrEqual
+                      measured
+                      required
+                      (sprintf
+                          "%s: foreground-on-background contrast (%.2f) must satisfy the declared contrastRequiredRatio (%.2f)"
+                          slug
+                          measured
+                          required)
           }
         ]

@@ -26,7 +26,7 @@ verify against the projects' `.fsproj` references.
 
 ## Modules
 
-Every packable product (17 libraries + the BOM metapackage) has a row. The scene, layout,
+Every packable product (16 libraries + the BOM metapackage) has a row. The scene, layout,
 input, viewer, and Elmish assemblies form **Rendering.Core**; the rest layer on top.
 
 | Area | Source module | Package | Structural area | Responsibility |

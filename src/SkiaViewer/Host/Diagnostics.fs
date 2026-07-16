@@ -182,7 +182,17 @@ module Diagnostics =
             match diagnostic.Severity with
             | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
             | _ -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
-        | DiagnosticStage.Framebuffer -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+        // F-DIAG-1: a non-warning Framebuffer failure (e.g. `startupFailed Framebuffer`, a *fatal*
+        // "could not wrap the default framebuffer (FBO 0)") is a hard render-init failure, not a
+        // benign rendering limitation — escalate to ReadinessBlocker exactly as FrameRender does.
+        // Info/Warning framebuffer diagnostics (present-mode announce, damage decisions) stay
+        // RenderingLimitation; the `when` arm above already routes damage decisions to BackendCost.
+        | DiagnosticStage.Framebuffer ->
+            match diagnostic.Severity with
+            | DiagnosticSeverity.Info
+            | DiagnosticSeverity.Warning -> FS.GG.UI.Diagnostics.DiagnosticCategory.RenderingLimitation
+            | DiagnosticSeverity.Error
+            | DiagnosticSeverity.Fatal -> FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker
 
     let private codeFor diagnostic =
         if diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) then

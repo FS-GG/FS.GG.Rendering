@@ -52,6 +52,31 @@ let renderingLimitation =
         (Some "Review only if text evidence requires that exact platform font.")
         (contextWith [ "stream", "stdout" ])
 
+let renderingLimitationError =
+    // SYNTHETIC (F-DIAG-1): a *fatal* framebuffer-wrap failure surfaces as an Error-severity
+    // RenderingLimitation. It must never fall through to Accepted purely because its category
+    // is not ReadinessBlocker.
+    RuntimeDiagnostics.create
+        (source "opengl-host")
+        (Some "Framebuffer")
+        (Some DiagnosticSeverity.Error)
+        (Some DiagnosticCategory.RenderingLimitation)
+        "SkiaSharp could not wrap the window's default framebuffer (FBO 0) as an SKSurface."
+        (Some "Review the rendering limitation and fallback behavior.")
+        (contextWith [ "stream", "stderr" ])
+
+let backendCostError =
+    // SYNTHETIC (F-DIAG-1): an Error-severity BackendCost diagnostic — same fail-open class as the
+    // framebuffer case; a benign-category Error must not read as Accepted.
+    RuntimeDiagnostics.create
+        (source "opengl-host")
+        (Some "BackendCost")
+        (Some DiagnosticSeverity.Error)
+        (Some DiagnosticCategory.BackendCost)
+        "Backend cost accounting raised a fatal accounting error."
+        (Some "No action required unless this appears in a performance-blocked lane.")
+        (contextWith [ "stream", "runtime" ])
+
 let developerAction =
     // SYNTHETIC: developer-action warning fixture for fail-closed review behavior.
     RuntimeDiagnostics.create

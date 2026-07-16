@@ -241,9 +241,10 @@ because the fill lands in the control's `Children`, not a parallel channel.
   today `slider` (value from x) and `switch`/`check-box` (flip `selected`). Value-bearing kinds NOT yet
   registered (radio-group, tabs, numeric-input, segmented, rate) fall through to the `onChanged`
   default — register a computer rather than special-casing the router.
-- **Key interactive same-kind siblings.** Visual state stamps by `Key ?? Kind`; unkeyed interactive
-  same-kind siblings collapse to one stamp id so focus/hover/press marks them ALL (silent — routing
-  still distinguishes them). `Diagnostics.unkeyedInteractiveSiblings root` warns; fix with a distinct
+- **Key interactive same-kind siblings.** Visual state stamps by `Key ?? path` (Feature 232); unkeyed
+  interactive same-kind siblings resolve by positional path, so a structural insert/remove shifts their
+  ids and their focus/hover/press identity is unstable across such a change (silent — routing still
+  distinguishes them). `Diagnostics.unkeyedInteractiveSiblings root` warns; fix with a distinct
   `Control.withKey` on each.
 - **Drive a script to a final model.** `ControlsElmish.Perf.runScriptToModel host size script` returns
   the FINAL folded model (same byte-stable fold as `Perf.runScript`), so you can render/capture the

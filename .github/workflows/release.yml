@@ -94,7 +94,7 @@ jobs:
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       # 559 — the RELEASE lane restores COLD, exactly as the gate does since #482. `dotnet build` below
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       # #680: the pin + pack + user-level NuGet.Config + feed assertion used to live inline here, and
@@ -261,7 +261,7 @@ jobs:
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
