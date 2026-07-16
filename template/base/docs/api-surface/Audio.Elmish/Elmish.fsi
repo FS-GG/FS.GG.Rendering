@@ -1,5 +1,5 @@
 // See skill: fs-gg-audio
-// Mirrored from FS-GG/FS.GG.Audio @ 0.2.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
+// Mirrored from FS-GG/FS.GG.Audio @ 0.3.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
 namespace FS.GG.Audio.Elmish
 
 open FS.GG.Audio.Core
