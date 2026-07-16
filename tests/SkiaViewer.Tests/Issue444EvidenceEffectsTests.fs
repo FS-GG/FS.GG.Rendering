@@ -54,6 +54,25 @@ let private sinkInto (effect: ViewerEffect) =
     Viewer.productEvidenceSink diagnostics.Add (fun () -> size) (fun () -> scene) effect
     List.ofSeq diagnostics
 
+/// Drive the sink with a specific rasterization size — the parameter each live loop supplies to
+/// `productEvidenceSink` (Stage B `initProductState`: generated-app hands it `InitialSize`, interactive
+/// hands it the live `CurrentSize`). Returns whatever it reported.
+let private sinkIntoAt (rasterSize: Size) (effect: ViewerEffect) =
+    let diagnostics = ResizeArray<ViewerDiagnosticEvent>()
+    Viewer.productEvidenceSink diagnostics.Add (fun () -> rasterSize) (fun () -> scene) effect
+    List.ofSeq diagnostics
+
+/// PNG IHDR carries width then height as big-endian uint32 at byte offsets 16 and 20 — enough to
+/// prove the sink rasterized at the size it was handed, without pulling in an image decoder.
+let private pngDimensions (path: string) =
+    let bytes = File.ReadAllBytes path
+    let readBe offset =
+        (int bytes.[offset] <<< 24)
+        ||| (int bytes.[offset + 1] <<< 16)
+        ||| (int bytes.[offset + 2] <<< 8)
+        ||| int bytes.[offset + 3]
+    { Width = readBe 16; Height = readBe 20 }
+
 /// A fresh directory per case, so one test's artifact can never satisfy another's assertion.
 let private scratch (name: string) =
     let dir = Path.Combine(Path.GetTempPath(), $"fsgg-444-{name}-{Guid.NewGuid():N}")
@@ -184,6 +203,47 @@ let tests =
                     (Array.truncate 4 bytes)
                     pngMagic
                     $"{name}: the bytes are a real PNG, not a placeholder"
+          }
+
+          // Stage B (F-CORE-1) collapsed the two live loops' identical product-state bootstrap into one
+          // `initProductState`, but the evidence rasterization size is a REAL divergence that stays
+          // parameterized: the generated-app loop hands the sink `InitialSize` (#444 — the space its
+          // size-less `View` authors in), the interactive loop hands it the live `CurrentSize`. A refactor
+          // that fed both the same size would compile, pass every other case here, and silently change the
+          // dimensions of one loop's evidence. This pins it at the sink boundary the loops share: the image
+          // depicts exactly the size its loop supplied, and the two sizes differ.
+          test "evidence rasterizes at the size each loop supplies — generated-app InitialSize vs interactive CurrentSize" {
+            let generatedAppInitialSize: Size = { Width = 64; Height = 32 }
+            // A LogicalSize product: interactive's CurrentSize is its own coordinate space, not the window.
+            let interactiveCurrentSize: Size = { Width = 200; Height = 150 }
+
+            Expect.notEqual
+                generatedAppInitialSize
+                interactiveCurrentSize
+                "the premise: the two loops rasterize evidence at genuinely different sizes"
+
+            let genDir = scratch "gen-size"
+            let genPath = Path.Combine(genDir, "gen.png")
+            Expect.isEmpty (sinkIntoAt generatedAppInitialSize (CaptureImageEvidence genPath)) "generated-app write succeeded"
+
+            let interactiveDir = scratch "interactive-size"
+            let interactivePath = Path.Combine(interactiveDir, "interactive.png")
+            Expect.isEmpty (sinkIntoAt interactiveCurrentSize (CaptureImageEvidence interactivePath)) "interactive write succeeded"
+
+            Expect.equal
+                (pngDimensions genPath)
+                generatedAppInitialSize
+                "generated-app evidence is rasterized at InitialSize, verbatim — a size swap would red here"
+
+            Expect.equal
+                (pngDimensions interactivePath)
+                interactiveCurrentSize
+                "interactive evidence is rasterized at the live CurrentSize, verbatim"
+
+            Expect.notEqual
+                (pngDimensions genPath)
+                (pngDimensions interactivePath)
+                "and the two loops' evidence dimensions differ, exactly as they do today"
           }
 
           // ---- THE FAILURE LEG (#266). A fix whose failure path is untested is how this class lives on.

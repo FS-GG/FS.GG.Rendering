@@ -484,8 +484,20 @@ not a hard dependency chain. Severity in brackets.
       api-surface mirror (`docs/api-surface/Symbology/LabelLayout.fsi`, types-only after the internal
       module strips) keeps a generated product's shipped label surface complete. Verified byte-identical:
       Symbology.Render golden PNGs 20/20 and SymbologyBoard 28/28 unchanged, surface baseline unchanged;
-      Symbology.Tests 486, Package.Tests 436, full solution builds. *Remaining:* `ControlsElmish.fs`
-      frame loop, `SkiaViewer.fs` (both hot-path — need the §7 golden-image/perf gates first).
+      Symbology.Tests 486, Package.Tests 436, full solution builds.
+      *Update (2026-07-15, follow-through):* the §7 **golden-image gate now exists** — `Rendering.Harness.GoldenImage`
+      + `GoldenImageGateTests` (#816), a fail-closed per-pixel corpus comparison behind the in-process CPU
+      raster, byte-identical in-repo and proven non-vacuous by an injected-regression test. Behind it,
+      **`SkiaViewer.fs` split 3,126 → 2,612** (#817) via two gate-verified cuts, zero public-surface change:
+      three self-contained modules (`DiagnosticsFiltering`/`WindowBehaviorValidation`/`HostCapability`) and
+      the 16-member evidence-writer cluster (→ `ViewerEvidence.fs`). The `ControlsElmish.fs` frame-loop state
+      extraction was already landed (Feature 186 `FrameScriptState`; `Perf.runScriptCore` down to 3 structural
+      mutables). *Remaining:* `SkiaViewer.fs`'s strongly-connected core — the three big hot-path loops
+      (`runPresentedPersistentWindow`/`runGeneratedApp`/`runInteractiveViewerWithWindowBehaviorCore`) + the
+      public `runApp*` entry points, bidirectionally coupled to the shared launch/window helpers
+      (public `failureFromDiagnostic`/`classifyWindowObservation` ↔ private `makeFailure`/`presentedFor`/
+      `tryObserved`). No clean topological cut remains; further reduction is incremental threaded work, each
+      cut verified against the golden-image gate.
       Note: the plan doc's Phase 1 (harness `Compositor`/`Cli`/`ValidationLanes` data-table refactor) and
       Phases 4–5 (`Scene.fs` → 490, `Control.fs` → 987) already landed piecemeal across earlier features.
 - [x] **[MED] F-CTL-2** — route DataGrid `cellFontSize` through `Style.resolve`
@@ -573,11 +585,66 @@ not a hard dependency chain. Severity in brackets.
       wrappers, which point at the bodies by relative path) nor byte-mirrored; skill-parity passed
       (critical=0/high=0/warning=0), skill-refs ok (21 published skills, 109 internal bodies all resolve).
       Docs-only; no code or public-surface change.
-- [ ] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
-      dead published token (`DesignTokens.fs:24,45`, `.fsi:46,87`).
-- [ ] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine.
-- [ ] **[LOW] F-DIAG-3..6** — persisted-vs-returned status divergence, `.jsonl` synthesized-record
-      omission, dead `DiagnosticReadinessImpact`, `AnimationTick.SubId` excluding `interval`.
+- [x] **[LOW] F-DS-2** — either wire `contrastRequiredRatio` into the resolver/gate or remove the
+      dead published token (`DesignTokens.fs:24,45`, `.fsi:46,87`). *Done (wired into a gate):* the
+      published token — "the minimum foreground/background contrast ratio the theme MUST satisfy"
+      (`DesignTokens.fsi:45,86`) — was inert prose no runtime code read (the WCAG gates hardcode the
+      fixed 7.0/4.5/3.0 role tiers, `Contrast.fs`). Rather than delete a real, satisfiable constraint,
+      `Feature127ColorPolicyTests.fs` now ENFORCES it: for each default theme it asserts the shipped
+      foreground-on-background contrast (`Contrast.ratio`) clears the theme's own declared
+      `contrastRequiredRatio`, with a non-vacuous floor (`required > 1.0`) and a guard that the token
+      primitives are exactly what the built theme paints (`Theme.fs:14-15,34-35`). Measured 14.03 (light)
+      / comparable (dark) against the 4.5 declared floor; verified RED when the token is raised above the
+      achievable ratio (the message surfaces the real 14.03 measured). Public surface unchanged
+      (test-only). Controls.Tests Feature127 21 passed.
+- [x] **[LOW] F-DS-3** — fix `Style.fsi:41` "eight `VisualState` cases" → nine. *Done:* the DU
+      (`Types.DesignSystem.fs`) carries nine cases (`FocusedHover`/`Validation` landed after the prose
+      was written). THREE hand-maintained copies stated the stale "eight" and were corrected to nine:
+      `src/DesignSystem/Style.fsi:41`, the real skill body `src/DesignSystem/skill/SKILL.md:104` (the
+      `.claude/skills/fs-gg-design-system/SKILL.md` is a 12-line pointer stub, not this body), and the
+      product-facing api-surface MIRROR `template/base/docs/api-surface/DesignSystem/Style.fsi:42` — the
+      last of which no gate would have caught, since the M-MIR mirror gate strips `//` comments before
+      comparing and this `.fsi` is not in `inRepoExactCopies` (an ungated third copy, F-DS-3's exact
+      failure class). Rather than pin a literal, a new reflection-derived gate
+      (`tests/Controls.Tests/FDs3VisualStateCountTests.fs`) DERIVES the count from
+      `FSharpType.GetUnionCases(typeof<VisualState>)` and asserts all three prose spots spell that
+      cardinal, so adding/retiring a case forces the prose to move with it (non-vacuous: the count must
+      be >1 and spellable, and each marker phrase must be present). Verified RED against the reintroduced
+      "eight" in each of the three files (each names actual-vs-expected) and green on the fix. Both
+      `.fsi` changes are comment-only (public surface unchanged). Controls.Tests 1032 passed.
+- [x] **[LOW] F-DIAG-3, F-DIAG-4, F-DIAG-6** — persisted-vs-returned status divergence, `.jsonl`
+      synthesized-record omission, `AnimationTick.SubId` excluding `interval`. *Done:*
+      **F-DIAG-3** — `writeArtifacts` now writes the per-record `.jsonl` FIRST, then persists the summary
+      `.md` and (last) the machine-read `.json`, each re-rendered against the write failures known so far.
+      A summary write failure is a `DeveloperAction` that flips the verdict to `ReviewRequired`; the old
+      order rendered the on-disk summaries from the pre-failure `initial`, so a `.jsonl` write failure that
+      the caller was *returned* as `ReviewRequired` was persisted on disk as `accepted`. Each persisted
+      summary is now built exactly like the returned one (`persistedSummary ()`), so the on-disk
+      `artifactWriteDiagnostics` array / `.md` "Artifact Write Warnings" section agree too — not just the
+      status. The sole residue is inherent (a summary artifact cannot record its own write failure) and is
+      documented in-code; `.json` is written last so it discloses the most. **F-DIAG-4** — the
+      invalid/unmatched-exception synthesis is factored into a private `synthesizeExceptionProblems` shared by
+      `summarizeAt` and `writeArtifacts`, so the `.jsonl` carries the exact verdict-bearing records the summary
+      folds in (an unmatched exception that drove `ReviewRequired` is no longer absent from the records
+      artifact). **F-DIAG-6** — the `AnimationTick` SubId is now keyed on `interval.Ticks`, so a changed
+      interval reads as a new subscription (old timer disposed, new period started) instead of Elmish keeping
+      the stale timer under a fixed id; an unchanged interval keeps the same id so a steady tick is not
+      churned. New guards: `Feature169ArtifactTests` gains the F-DIAG-3 persisted-vs-returned (status + the
+      dedicated write-diagnostics disclosure) and F-DIAG-4 `.jsonl`-synthesis cases; `AnimationTickTests`
+      asserts the interval-keyed id and same-interval/changed-interval behavior. Verified RED against the
+      stashed pre-fix source (Diagnostics 2 fail, Elmish 1 fail) and green on the fix. Diagnostics.Tests 22,
+      Elmish.Tests 272, Package.Tests 436.
+- [ ] **[LOW] F-DIAG-5** — dead public `DiagnosticReadinessImpact` type. *Deferred — the fix trips a
+      required breaking-change gate.* The DU is genuinely dead (grep-confirmed: referenced nowhere but its
+      own declaration + the frozen Feature-169 contract spec), so removing it is correct hygiene. But
+      `FS.GG.UI.Diagnostics` is a published package (`Diagnostics.fsproj` `<Version>0.4.0-preview.1</Version>`)
+      and deleting a public type is a CP0002 break: the **required** `api-compatibility-gate` (ADR-0101/0103,
+      `enforce_admins` on, so not `--admin`-bypassable) reddens and its documented remedy is to cut a SemVer
+      major for the package. Forcing a coordinated package-major cut to delete six lines of dead code is the
+      wrong trade to bundle into a LOW narrative-sweep and merge autonomously — the removal belongs in the
+      package's next planned major (or a dedicated, coordinated version bump), not here. Confirmed the gate
+      blocks it: the removal red the `api-compatibility-gate` on PR #814; reverting the removal cleared it.
+      **F-DIAG-3..4..6** landed in the same PR (they are internal, non-breaking, public-surface unchanged).
 
 ---
 

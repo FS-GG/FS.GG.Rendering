@@ -43,10 +43,19 @@ let animationTickTests =
             Expect.isEmpty (runSub sub) "a settled subscription dispatches nothing"
         }
 
-        test "the subscription id is stably scoped" {
+        test "the subscription id is stably scoped and keyed on the interval (F-DIAG-6)" {
             let sub = Animation.tickSubscription isAnimating AnimationTick interval { Running = true }
             let ids = sub |> List.map fst
-            Expect.equal ids [ [ "fs-gg-ui"; "animation-tick" ] ] "stable, scoped SubId"
+            Expect.equal ids [ [ "fs-gg-ui"; "animation-tick"; string interval.Ticks ] ] "stable, scoped, interval-keyed SubId"
+
+            // Same interval → same id (a steady tick is not churned across model changes)...
+            let sameInterval = Animation.tickSubscription isAnimating AnimationTick interval { Running = true }
+            Expect.equal (sameInterval |> List.map fst) ids "an unchanged interval keeps the same SubId"
+
+            // ...but a changed interval → a *different* id, so Elmish restarts the timer at the new period
+            // (a fixed id would silently keep the old period — the F-DIAG-6 hazard).
+            let faster = Animation.tickSubscription isAnimating AnimationTick (TimeSpan.FromSeconds 5.0) { Running = true }
+            Expect.notEqual (faster |> List.map fst) ids "a changed interval yields a new SubId so the tick restarts"
         }
 
         test "dropping the animating state stops further ticks cleanly (removed widget edge)" {
