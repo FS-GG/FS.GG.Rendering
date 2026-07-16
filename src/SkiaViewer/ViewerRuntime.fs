@@ -1334,6 +1334,91 @@ module internal ViewerRuntime =
                   OnDiagnostic = onDiagnostic
                   EvidenceSink = evidenceSink }
 
+    // Stage C — the generated-app persistence-dispatch ASSEMBLY, lifted out of `runGeneratedApp` as a
+    // named unit. This is the one place a `Load` outcome can re-enter `update`, and getting the shape
+    // wrong has shipped real bugs; isolating it here keeps the launch readable and pins the invariants
+    // in one spot. Its live round-trip is gated by `FCore1DispatchAssemblyTests`.
+    //
+    // Only the generated-app host owns a persistence seam, so only it needs this knot; the interactive
+    // runner keeps its own linear (render-lag-traced) dispatch, whose `persistenceBatchSink` never
+    // re-enters. Folding that path in here would parameterize ~30 lines of divergent tracing to
+    // de-duplicate ~4 lines of shared core — a bad trade the staging plan's "do NOT bulk-unify" rule
+    // warns against — so the two dispatchers stay separate on purpose.
+    //
+    // #535 — a `Load` must be ANSWERED, and the answer is a `'msg`, so the persistence sink has to
+    // re-enter `dispatchHostMsg`, which itself interprets effects. That knot is tied with
+    // `let rec … and …`, NOT with a forward-declared mutable.
+    //
+    // The mutable version shipped a bug and it is worth naming: `dispatchOutcome` started as `ignore`
+    // and was assigned AFTER `interpretEffects initEffects`, so a product that loaded its save on `Init`
+    // — the single most common persistence pattern — had the save read off the disk and the outcome
+    // dropped on the floor. Mutual recursion makes that unrepresentable: there is no window in which the
+    // dispatcher is not yet itself.
+    //
+    // RE-ENTRANCY IS SYNCHRONOUS RECURSION, and it is NOT the benign Elmish self-feed:
+    // dispatchOutcome -> dispatchHostMsg -> interpretEffects -> persistenceBatchSink is ONE STACK. A
+    // product that emits a `Persist` in response to its own save outcome recurses until
+    // StackOverflowException — which .NET cannot catch, so `tryProductStep` will NOT save it and the
+    // process dies with no diagnostic. Do not emit a persistence effect from the handler for a
+    // persistence outcome.
+    //
+    // Returns `dispatchHostMsg` (the input handlers route ticks/keys through it) and the
+    // `initialCloseRequested` computed by interpreting `Init`'s effects through the same knot.
+    let private buildDispatchCore
+        (state: ProductRunState<'model>)
+        (update: 'msg -> 'model -> 'model * ViewerEffect list)
+        (reportProductDefect: ViewerDiagnosticEvent -> unit)
+        (safeView: 'model -> SceneNode)
+        (audioSink: AudioEffect list -> unit)
+        (onScene: SceneNode -> unit)
+        (onInputDispatch: unit -> unit)
+        (onDiagnostic: ViewerDiagnosticEvent -> unit)
+        (evidenceSink: ViewerEffect -> unit)
+        (persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) option)
+        (mapOutcome: PersistenceOutcome -> 'msg option)
+        (initEffects: ViewerEffect list)
+        : ('msg -> bool) * bool =
+        let mutable outcomeCloseRequested = false
+
+        let rec interpretEffects effects =
+            let closeRequested =
+                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
+
+            // Sticky: a close is terminal, so an outcome-driven message that asked to close must
+            // not be forgotten by the next batch that did not.
+            closeRequested || outcomeCloseRequested
+
+        and persistenceBatchSink batch =
+            match persistenceSink with
+            | Some sink ->
+                if dispatchPersistenceBatch sink mapOutcome dispatchHostMsg batch then
+                    outcomeCloseRequested <- true
+            | None ->
+                // #416 — A DROPPED REQUEST MUST SAY SO. This launch was given no sink, so it
+                // owns no save location and cannot perform the batch. Dropping it is the honest
+                // behaviour; dropping it SILENTLY is the silent-no-op this epic exists to kill,
+                // and `Persistence.fs` says so itself: "candor in a comment is not a mechanism —
+                // it does not survive being called from another file."
+                onDiagnostic
+                    { Level = ViewerDiagnosticLevel.Warning
+                      Category = Frame
+                      Message =
+                        $"A product emitted {List.length batch} PersistenceEffect(s), but this launch has no persistence sink — the requests were DROPPED and nothing was saved, loaded or deleted. Launch with Viewer.runAppWithPersistence (or runAppWithAudioAndPersistence) and supply a sink that performs the I/O."
+                      FrameIndex = None
+                      Stage = None
+                      Elapsed = None }
+
+        and dispatchHostMsg msg =
+            match tryProductStep reportProductDefect "Update" (fun () -> update msg state.CurrentModel) with
+            | None -> false // product Update threw; drop the message, keep window + last-good scene
+            | Some(next, effects) ->
+                state.CurrentModel <- next
+                state.CurrentScene <- safeView state.CurrentModel
+                interpretEffects effects
+
+        let initialCloseRequested = interpretEffects initEffects
+        dispatchHostMsg, initialCloseRequested
+
     let private runGeneratedApp
         options
         behavior
@@ -1377,68 +1462,24 @@ module internal ViewerRuntime =
 
                 let handleResize (size: Size) = state.CurrentSurfaceSize <- size
 
-                // #535 — a `Load` must be ANSWERED, and the answer is a `'msg`. That means the
-                // persistence sink has to re-enter `dispatchHostMsg`, which is defined below (it
-                // needs `currentModel`, which the fold deliberately does not have). A forward
-                // reference through a mutable is what ties that knot; the alternative is a second
-                // copy of the update path, and a second copy of the update path is exactly how
-                // #429's two effect folds drifted until one of them silently dropped audio.
-                //
-                // #535 — a `Load` must be ANSWERED, and the answer is a `'msg`, so the persistence
-                // sink has to re-enter `dispatchHostMsg`, which itself interprets effects. That knot
-                // is tied with `let rec … and …`, NOT with a forward-declared mutable.
-                //
-                // The mutable version shipped a bug and it is worth naming: `dispatchOutcome` started
-                // as `ignore` and was assigned AFTER `interpretEffects initEffects`, so a product that
-                // loaded its save on `Init` — the single most common persistence pattern — had the save
-                // read off the disk and the outcome dropped on the floor. Mutual recursion makes that
-                // unrepresentable: there is no window in which the dispatcher is not yet itself.
-                //
-                // RE-ENTRANCY IS SYNCHRONOUS RECURSION, and it is NOT the benign Elmish self-feed:
-                // dispatchOutcome -> dispatchHostMsg -> interpretEffects -> persistenceBatchSink is ONE
-                // STACK. A product that emits a `Persist` in response to its own save outcome recurses
-                // until StackOverflowException — which .NET cannot catch, so `tryProductStep` will NOT
-                // save it and the process dies with no diagnostic. Do not emit a persistence effect
-                // from the handler for a persistence outcome.
-                let mutable outcomeCloseRequested = false
-
-                let rec interpretEffects effects =
-                    let closeRequested =
-                        interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
-
-                    // Sticky: a close is terminal, so an outcome-driven message that asked to close must
-                    // not be forgotten by the next batch that did not.
-                    closeRequested || outcomeCloseRequested
-
-                and persistenceBatchSink batch =
-                    match persistenceSink with
-                    | Some sink ->
-                        if dispatchPersistenceBatch sink mapOutcome dispatchHostMsg batch then
-                            outcomeCloseRequested <- true
-                    | None ->
-                        // #416 — A DROPPED REQUEST MUST SAY SO. This launch was given no sink, so it
-                        // owns no save location and cannot perform the batch. Dropping it is the honest
-                        // behaviour; dropping it SILENTLY is the silent-no-op this epic exists to kill,
-                        // and `Persistence.fs` says so itself: "candor in a comment is not a mechanism —
-                        // it does not survive being called from another file."
+                // Stage C: the persistence-dispatch knot (`let rec interpretEffects … and
+                // persistenceBatchSink … and dispatchHostMsg` + sticky `outcomeCloseRequested`) lives in
+                // `buildDispatchCore`. `dispatchHostMsg` is what the input handlers route through;
+                // `initialCloseRequested` is `Init`'s effects interpreted through the same knot.
+                let dispatchHostMsg, initialCloseRequested =
+                    buildDispatchCore
+                        state
+                        host.Update
+                        reportProductDefect
+                        safeView
+                        audioSink
+                        onScene
+                        onInputDispatch
                         onDiagnostic
-                            { Level = ViewerDiagnosticLevel.Warning
-                              Category = Frame
-                              Message =
-                                $"A product emitted {List.length batch} PersistenceEffect(s), but this launch has no persistence sink — the requests were DROPPED and nothing was saved, loaded or deleted. Launch with Viewer.runAppWithPersistence (or runAppWithAudioAndPersistence) and supply a sink that performs the I/O."
-                              FrameIndex = None
-                              Stage = None
-                              Elapsed = None }
-
-                and dispatchHostMsg msg =
-                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg state.CurrentModel) with
-                    | None -> false // product Update threw; drop the message, keep window + last-good scene
-                    | Some(next, effects) ->
-                        state.CurrentModel <- next
-                        state.CurrentScene <- safeView state.CurrentModel
-                        interpretEffects effects
-
-                let initialCloseRequested = interpretEffects initEffects
+                        evidenceSink
+                        persistenceSink
+                        mapOutcome
+                        initEffects
 
                 let handleTick elapsed =
                     match host.Tick elapsed with

@@ -88,6 +88,7 @@
     <Compile Include="FCore2TextResolveTests.fs" />
     <Compile Include="FCore3ShaperReuseTests.fs" />
     <Compile Include="FCore4RenderThreadTests.fs" />
+    <Compile Include="FCore1DispatchAssemblyTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
