@@ -1,5 +1,5 @@
 // See skill: fs-gg-collision
-// Mirrored from FS-GG/FS.GG.Game @ 0.4.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
