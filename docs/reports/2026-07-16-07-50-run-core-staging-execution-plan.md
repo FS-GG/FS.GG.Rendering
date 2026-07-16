@@ -26,8 +26,12 @@ in `module internal ViewerRuntime` (2,029 lines) plus focused sibling modules.
 | #824 | run-core **Stage A** (`validateLaunch`) + this plan's companion analysis |
 | #825 | run-core **Stage E** (`assembleLaunchOutcome`) + delete dead `update Start` call |
 | #826 | coverage revision (existing seam-tests gate the danger zones better than first assessed) |
+| #828 | run-core **Stage B** (`initProductState`) — shared per-loop product-state bootstrap (mutable record + closures); the size/`viewFor`/`evidenceSize` divergences stay parameterized. New `Issue444` per-loop evidence-dimension assertion |
+| #829 | run-core **Stage C** (`buildDispatchCore`) — the generated-app persistence `let rec` knot + sticky `outcomeCloseRequested`, isolated + named. New `FCore1DispatchAssemblyTests` (live-window assembly gate). Interactive dispatch left inline (no persistence recursion; unifying its tracing is the bad "bulk-unify" trade) |
+| #830 | run-core **Stage D** — `makeHandleTick`/`makeInputVerified` shared (the two true clones); divergent `handleKey`/`handlePointer` stay inline. New `FCore1FocusRepaintTests` (live-window `runtimeStateRepaint`-placement gate, mutation-checked) |
 
-Verified on every axis: SkiaViewer.Tests 362, golden-image gate 314 (byte-identical each cut), full CI
+**Run-core staging is complete (B, C, D landed).** Verified on every axis: SkiaViewer.Tests 363 headless
+(366 with the two new live-window gates on a display), golden-image gate 314 (byte-identical each cut), full CI
 green (API-compat, Deterministic, Generated-product, Packaged-consumer, Lifecycle) on every PR, and the
 live run path exercised end-to-end (`offscreen` → `runBounded` → `update`/`updateRun` → `SceneRenderer`,
 status `passed`, real non-blank frames).
@@ -42,7 +46,15 @@ into shared, risk-classified stages — not restaging `update`.
 
 ---
 
-## 2. Remaining work — Stages B, C, D
+## 2. Stages B, C, D — ✅ COMPLETED (#828 / #829 / #830)
+
+> **Done.** B, C and D are merged; the summaries below are what was authored, kept as the record. Two
+> deliberate deviations, both flagged in their PRs and justified by §4's "do NOT bulk-unify" rule: C
+> isolated **only** the generated-app persistence knot (the interactive dispatcher has no persistence
+> recursion), and D shared **only** the two byte-identical handlers (`handleTick`, `inputVerified`) —
+> `handleKey`/`handlePointer` genuinely diverge and stayed inline. Each stage's gate was authored first;
+> the live-window gates run on a display (X11 — Wayland+libdecor crashes GLFW in some sandboxes) and skip
+> headlessly, exactly as #365/#396/#429/#535's live legs do.
 
 Line numbers below are approximate (they drift as stages land) — **re-locate by name before editing**.
 Both front-ends already share the bookends (A `validateLaunch`, E `assembleLaunchOutcome`); B/C/D are the
@@ -122,8 +134,8 @@ frame, per branch). Then extract, keeping the asymmetric repaint explicit.
 | 1 | `updateLegacy` close-decision order | `~405–414` | scripted-run tests (partial); keep the `||` order + `pumpScript → drain → scriptWantsClose → onTick` |
 | 2 | `drainQueuedInputs` order (discrete ++ coalesced-pointer ++ deferred) | `~353–362` | responsiveness/lag-trace lane |
 | 3 | `scriptedCompletionFrames`/`framePresented` counters | `~241, 303–321, 415–424` | script-run frame-count tests |
-| 4 | persistence `let rec` + sticky `outcomeCloseRequested` | `~1304–1340` | **seams** gated (Issue535); **assembly** NOT — needs the Stage-C test above |
-| 5 | `runtimeStateRepaint` placement | `~1380, 1601, 1652` | needs the Stage-D focus-latency test |
+| 4 | persistence `let rec` + sticky `outcomeCloseRequested` (now in `buildDispatchCore`) | `buildDispatchCore` | ✅ seams (Issue535) **+ assembly** (`FCore1DispatchAssemblyTests`, live window, #829) |
+| 5 | `runtimeStateRepaint` placement | `handleKey`/`handlePointer` | ✅ policy (Feature175RepaintSignal) **+ live placement** (`FCore1FocusRepaintTests`, mutation-checked, #830) |
 | 6 | `handleFramebufferResize` conditional re-derive + `setLiveAuthoringSizeOverride` | `~1673–1677` | Issue246 (size) partial; interactive-only |
 | 7 | `FrameRateCap`/`TargetFrameRate` default `Option.orElse (Some 60)` | `~247` | Feature118 present-mode tests (partial) |
 
