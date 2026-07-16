@@ -18,6 +18,11 @@
       "enabled": false
     },
     {
+      "description": "Do NOT propose bumps to the DISTRIBUTED build-config files. Directory.Packages.props, Directory.Build.props and .config/dotnet-tools.json are the FS-GG org-shared baseline, synced from FS-GG/.github by scripts/sync-build-config.sh and marked 'DO NOT EDIT in a consumer repo'. Any local edit reds the REQUIRED Build-config drift gate by design, so a Renovate PR touching them — e.g. the FSharp.Core / dotnet baseline — can NEVER merge; it just churns every cycle and burns a review (see closed #790). Those bumps flow through the build-config sync, not here. Repo-owned pins (SkiaSharp, Expecto, the test SDK, etc.) live in Directory.Packages.local.props and stay managed.",
+      "matchFileNames": ["Directory.Packages.props", "Directory.Build.props", ".config/dotnet-tools.json"],
+      "enabled": false
+    },
+    {
       "description": "Expecto is capped to the 10.x line because the only test-SDK adapter that runs Expecto under `dotnet test`, YoloDev.Expecto.TestSdk (latest 0.15.6, 2026-04-14), constrains Expecto to `< 11.0.0`. Renovate cannot see that transitive constraint on its own, so an Expecto 11.x bump resolves to an unmergeable graph (NU1608) and churns every cycle (see #24). ACTION WHEN YoloDev.Expecto.TestSdk ships a release supporting Expecto ≥ 11: delete this allowedVersions cap — the group rule below then bumps both in one PR.",
       "matchDatasources": ["nuget"],
       "matchPackageNames": ["Expecto"],
