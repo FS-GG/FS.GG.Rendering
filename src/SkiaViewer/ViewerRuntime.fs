@@ -1239,6 +1239,101 @@ module internal ViewerRuntime =
                 else
                     Result.Ok()
 
+    // Stage B — the per-loop product-state both durable front-ends bootstrap identically. It is a
+    // heap-allocated mutable RECORD, not a bag of `let mutable` locals, precisely so the run closures
+    // built downstream (`onScene`, the persistence sink, the input handlers) can capture and mutate the
+    // SAME storage the factory seeds — a `let mutable` captured by an escaping closure is a compile error.
+    //
+    // The #246/#400 size trio is modelled once here; each front-end threads only the fields it owns.
+    // Generated-app updates CurrentSurfaceSize alone (its `View` is handed no size on purpose, #246);
+    // interactive threads all three (CurrentSurfaceSize physical, CurrentWindowSize logical, CurrentSize
+    // the space `View`/pointer speak). Do not collapse the trio onto one field: the divergence is real.
+    [<NoEquality; NoComparison>]
+    type private ProductRunState<'model> =
+        { mutable CurrentModel: 'model
+          mutable CurrentScene: SceneNode
+          mutable InputDispatch: string
+          mutable CurrentSurfaceSize: Size
+          mutable CurrentWindowSize: Size
+          mutable CurrentSize: Size }
+
+    // The seeded state plus the shared runtime closures. Both front-ends destructure this back into the
+    // short local names their downstream code already uses, so extracting the bootstrap leaves the
+    // dispatch/input code (Stages C/D) reading `state.CurrentX` but otherwise byte-for-byte unchanged.
+    [<NoEquality; NoComparison>]
+    type private ProductRuntime<'model> =
+        { State: ProductRunState<'model>
+          ReportProductDefect: ViewerDiagnosticEvent -> unit
+          SafeView: 'model -> SceneNode
+          OnScene: SceneNode -> unit
+          OnInputDispatch: unit -> unit
+          OnDiagnostic: ViewerDiagnosticEvent -> unit
+          EvidenceSink: ViewerEffect -> unit }
+
+    // Bootstraps `ProductRunState` shared by both durable runners: guards the FIRST product `View`
+    // (#396 — there is no last-good scene to fall back to as the steady-state `safeView` has, so a
+    // first-frame throw fails the run as a startup App-stage ProductDefect, never an uncaught escape),
+    // then builds the shared closures. Two divergences stay parameterized because both are
+    // behaviour-observable:
+    //  - `viewFor size model` is `host.View model` (generated-app — size withheld, #246) vs
+    //    `host.View size model` (interactive — size-aware). The first view and `safeView` route through it.
+    //  - `evidenceSize state` rasterizes at `InitialSize` (generated-app, #444 — the space its `View`
+    //    authors in) vs `state.CurrentSize` (interactive). This drives the evidence image dimensions, so a
+    //    misparameterized size is visible in the artifact, not just the code.
+    let private initProductState
+        (diagnostics: ViewerDiagnosticsOptions)
+        (initialSize: Size)
+        (logicalSize: Size option)
+        (viewFor: Size -> 'model -> SceneNode)
+        (evidenceSize: ProductRunState<'model> -> Size)
+        (initialModel: 'model)
+        : Result<ProductRuntime<'model>, ViewerRunFailure> =
+        // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through the host's
+        // diagnostics, never a window teardown.
+        let reportProductDefect ev = captureDiagnostic diagnostics ev |> ignore
+        // The space this host's first `View` authors in: the fixed `LogicalSize` when set, else the
+        // initial surface. At init all three tracked sizes coincide, so this equals interactive's
+        // `viewSize ()` and generated-app never reads it.
+        let initialViewSize = logicalSize |> Option.defaultValue initialSize
+
+        match tryFirstProductView reportProductDefect "View" (fun () -> viewFor initialViewSize initialModel) with
+        | Result.Error failure -> Result.Error failure
+        | Result.Ok initialScene ->
+            let state =
+                { CurrentModel = initialModel
+                  CurrentScene = initialScene
+                  InputDispatch = "false"
+                  CurrentSurfaceSize = initialSize
+                  CurrentWindowSize = initialSize
+                  CurrentSize = initialViewSize }
+
+            // Issue #365: guard the product `Update`/`View` so one throwing step drops that input and
+            // keeps the persistent window on its last-good scene, rather than escaping to a teardown
+            // mislabeled `frameRenderFailed`. Both front-ends always view at the live `CurrentSize`.
+            let safeView model =
+                tryProductStep reportProductDefect "View" (fun () -> viewFor state.CurrentSize model)
+                |> Option.defaultValue state.CurrentScene
+
+            // Bound once per launch, not per call: `interpretEffects` runs on every dispatched message,
+            // tick and pointer sample, so building these closures inline would allocate per frame.
+            let onScene scene = state.CurrentScene <- scene
+            let onInputDispatch () = state.InputDispatch <- "true"
+            let onDiagnostic diagnostic = captureDiagnostic diagnostics diagnostic |> ignore
+
+            // Issue #444: evidence rasterizes at the size this host's `View` authors in — pass it in, do
+            // not assume it (generated-app's InitialSize vs interactive's live CurrentSize differ).
+            let evidenceSink =
+                productEvidenceSink onDiagnostic (fun () -> evidenceSize state) (fun () -> state.CurrentScene)
+
+            Result.Ok
+                { State = state
+                  ReportProductDefect = reportProductDefect
+                  SafeView = safeView
+                  OnScene = onScene
+                  OnInputDispatch = onInputDispatch
+                  OnDiagnostic = onDiagnostic
+                  EvidenceSink = evidenceSink }
+
     let private runGeneratedApp
         options
         behavior
@@ -1254,47 +1349,33 @@ module internal ViewerRuntime =
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
             let model, initEffects = host.Init()
-            let mutable currentModel = model
-            // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through
-            // the host's diagnostics, never a window teardown.
-            let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
-            // Issue #396: guard the FIRST product View — there is no last-good scene to fall
-            // back to as the runtime `safeView` does, so a first-frame throw fails the run as a
-            // startup App-stage ProductDefect instead of escaping as an uncaught exception.
-            match tryFirstProductView reportProductDefect "View" (fun () -> host.View currentModel) with
+
+            // Stage B: the per-loop product-state bootstrap is shared. Generated-app's two divergences
+            // from the interactive runner are the parameters: its `View` is handed NO size (#246 — it
+            // draws in its own coordinate space, the host owns the fit), and its evidence rasterizes at
+            // `InitialSize` (#444 — the space that `View` authors in, the same size `runBounded` uses).
+            match
+                initProductState
+                    host.Diagnostics
+                    options.InitialSize
+                    options.LogicalSize
+                    (fun _size m -> host.View m)
+                    (fun _state -> options.InitialSize)
+                    model
+            with
             | Result.Error failure -> Result.Error failure
-            | Result.Ok initialScene ->
-                let mutable currentScene = initialScene
-                let mutable inputDispatch = "false"
-                // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
-                // and keeps the persistent window on its last-good scene, rather than escaping to a
-                // teardown mislabeled `frameRenderFailed`.
-                let safeView model =
-                    tryProductStep reportProductDefect "View" (fun () -> host.View model)
-                    |> Option.defaultValue currentScene
-                // Issue #246: `GeneratedAppHost.View` withholds the window size on purpose, so the
-                // product always draws in its own coordinate space. Track the live surface so a
-                // `LogicalSize` product can be fitted to it; without one this stays inert and the
-                // presented scene is the view output verbatim.
-                let mutable currentSurfaceSize = options.InitialSize
+            | Result.Ok runtime ->
+                let state = runtime.State
+                let reportProductDefect = runtime.ReportProductDefect
+                let safeView = runtime.SafeView
+                let onScene = runtime.OnScene
+                let onInputDispatch = runtime.OnInputDispatch
+                let onDiagnostic = runtime.OnDiagnostic
+                let evidenceSink = runtime.EvidenceSink
 
-                let presentScene () = presentedFor options currentSurfaceSize currentScene
+                let presentScene () = presentedFor options state.CurrentSurfaceSize state.CurrentScene
 
-                let handleResize (size: Size) = currentSurfaceSize <- size
-
-                // Bound once per launch, not per call: `interpretEffects` runs on every dispatched
-                // message and every tick, so building these closures inline would allocate three
-                // per frame.
-                let onScene scene = currentScene <- scene
-                let onInputDispatch () = inputDispatch <- "true"
-                let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
-
-                // Issue #444: evidence rasterizes at `InitialSize`, the space `GeneratedAppHost.View`
-                // authors in — it is handed no window size on purpose (#246), so the live surface is
-                // a present-time fit and not the scene's own coordinate space. This is the size
-                // `runBounded` rasterizes evidence at too.
-                let evidenceSink =
-                    productEvidenceSink onDiagnostic (fun () -> options.InitialSize) (fun () -> currentScene)
+                let handleResize (size: Size) = state.CurrentSurfaceSize <- size
 
                 // #535 — a `Load` must be ANSWERED, and the answer is a `'msg`. That means the
                 // persistence sink has to re-enter `dispatchHostMsg`, which is defined below (it
@@ -1350,11 +1431,11 @@ module internal ViewerRuntime =
                               Elapsed = None }
 
                 and dispatchHostMsg msg =
-                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg state.CurrentModel) with
                     | None -> false // product Update threw; drop the message, keep window + last-good scene
                     | Some(next, effects) ->
-                        currentModel <- next
-                        currentScene <- safeView currentModel
+                        state.CurrentModel <- next
+                        state.CurrentScene <- safeView state.CurrentModel
                         interpretEffects effects
 
                 let initialCloseRequested = interpretEffects initEffects
@@ -1376,21 +1457,21 @@ module internal ViewerRuntime =
 
                     match host.MapKey key normalizedDown with
                     | Some msg ->
-                        inputDispatch <- "true"
+                        state.InputDispatch <- "true"
                         dispatchHostMsg msg
                     | None ->
-                        inputDispatch <- "false"
+                        state.InputDispatch <- "false"
                         // F1: a key that maps to no product message may still have changed
                         // host-internal runtime state (focus traversal, scroll keys); re-derive so
                         // it renders on THIS key. (Previously only the full-interactive loop did this.)
-                        currentScene <- runtimeStateRepaint false currentScene (fun () -> safeView currentModel)
+                        state.CurrentScene <- runtimeStateRepaint false state.CurrentScene (fun () -> safeView state.CurrentModel)
                         false
 
                 let inputVerified () =
-                    not (requireInputDispatchVerification ()) || inputDispatch = "true"
+                    not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
 
-                runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None
-                |> assembleLaunchOutcome options behavior inputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None
+                |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
         runGeneratedApp options behavior ignore None (fun (_: PersistenceOutcome) -> None) host
@@ -1439,51 +1520,43 @@ module internal ViewerRuntime =
         | Result.Error failure -> Result.Error failure
         | Result.Ok() ->
             let model, initEffects = host.Init()
-            let mutable currentModel = model
-            // Issue #246/#400: `currentSurfaceSize` is the PHYSICAL framebuffer the product
-            // renders onto at native resolution; `currentWindowSize` is the LOGICAL window Silk
-            // reports pointer input in. `currentSize` is the space the product's `View`/pointer
-            // map speak — the fixed `LogicalSize` when set, otherwise the physical framebuffer.
-            // At scale 1 all three coincide and every seam behaves exactly as before #400; on a
-            // scaled display the product draws at full framebuffer resolution and the host owns
-            // the fit. Both start at `InitialSize`; the load-time `FramebufferResized` seed
-            // (issue #400) supplies the true physical size before the first steady-state frame.
-            let mutable currentSurfaceSize = options.InitialSize
-            let mutable currentWindowSize = options.InitialSize
-            let viewSize () = options.LogicalSize |> Option.defaultValue currentSurfaceSize
-            let mutable currentSize = viewSize ()
-            // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through
-            // the host's diagnostics, never a window teardown.
-            let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
-            // Issue #396: guard the FIRST product View — as in the generated-app runner, a
-            // first-frame throw has no last-good scene to fall back to, so it fails the run as a
-            // startup App-stage ProductDefect rather than escaping as an uncaught exception.
-            match tryFirstProductView reportProductDefect "View" (fun () -> host.View currentSize currentModel) with
+
+            // Stage B: the per-loop product-state bootstrap is shared. Interactive's divergences from
+            // the generated-app runner are the parameters: its `View` is size-aware — it authors in
+            // `state.CurrentSize`, the space the product's `View`/pointer map speak (#246/#400: the
+            // fixed `LogicalSize` when set, else the physical framebuffer) — and its evidence rasterizes
+            // at that same live size, so the image depicts what the product actually drew (#444).
+            //
+            // The #246/#400 size trio lives in `state`: `CurrentSurfaceSize` is the PHYSICAL framebuffer
+            // the product renders onto at native resolution; `CurrentWindowSize` is the LOGICAL window
+            // Silk reports pointer input in; `CurrentSize` is the space `View`/pointer speak. At scale 1
+            // all three coincide; on a scaled display the product draws at full framebuffer resolution
+            // and the host owns the fit. All start at `InitialSize`; the load-time `FramebufferResized`
+            // seed (#400) supplies the true physical size before the first steady-state frame.
+            match
+                initProductState
+                    host.Diagnostics
+                    options.InitialSize
+                    options.LogicalSize
+                    (fun size m -> host.View size m)
+                    (fun state -> state.CurrentSize)
+                    model
+            with
             | Result.Error failure -> Result.Error failure
-            | Result.Ok initialScene ->
-                let mutable currentScene = initialScene
-                let mutable inputDispatch = "false"
-                // Issue #365: guard the product `Update`/`View` so one throwing step drops that input
-                // and keeps the persistent window on its last-good scene, rather than escaping to a
-                // teardown mislabeled `frameRenderFailed`.
-                let safeView size model =
-                    tryProductStep reportProductDefect "View" (fun () -> host.View size model)
-                    |> Option.defaultValue currentScene
+            | Result.Ok runtime ->
+                let state = runtime.State
+                let reportProductDefect = runtime.ReportProductDefect
+                let safeView = runtime.SafeView
+                let onScene = runtime.OnScene
+                let onInputDispatch = runtime.OnInputDispatch
+                let onDiagnostic = runtime.OnDiagnostic
+                let evidenceSink = runtime.EvidenceSink
 
-                let presentScene () = presentedFor options currentSurfaceSize currentScene
+                let presentScene () = presentedFor options state.CurrentSurfaceSize state.CurrentScene
 
-                // Bound once per launch, not per call: `interpretEffects` runs on every dispatched
-                // message, tick and pointer sample, so building these closures inline would
-                // allocate three per frame.
-                let onScene scene = currentScene <- scene
-                let onInputDispatch () = inputDispatch <- "true"
-                let onDiagnostic diagnostic = captureDiagnostic host.Diagnostics diagnostic |> ignore
-
-                // Issue #444: evidence rasterizes at `currentSize` — the space this host's `View`
-                // actually authors in (the fixed `LogicalSize` when set, else the physical
-                // framebuffer), so the image depicts what the product drew.
-                let evidenceSink =
-                    productEvidenceSink onDiagnostic (fun () -> currentSize) (fun () -> currentScene)
+                // The space this host's `View` speaks: the fixed `LogicalSize` when set, else the live
+                // physical framebuffer. `handleFramebufferResize` re-derives `CurrentSize` from it.
+                let viewSize () = options.LogicalSize |> Option.defaultValue state.CurrentSurfaceSize
 
                 // #535 — the interactive (Controls) host family owns no persistence seam yet, and
                 // `InteractiveViewerHost.Update` returns `ViewerEffect list`, so a product on THIS host
@@ -1513,7 +1586,7 @@ module internal ViewerRuntime =
                     let updateSw = Stopwatch.StartNew()
                     RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
 
-                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg currentModel) with
+                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg state.CurrentModel) with
                     | None ->
                         // Issue #365: a throwing product Update drops this input and keeps the window
                         // alive on its last-good model/scene, rather than tearing it down.
@@ -1531,10 +1604,10 @@ module internal ViewerRuntime =
                             "model-update-end"
                             [ "msg", msgText
                               "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                        currentModel <- next
+                        state.CurrentModel <- next
                         let viewSw = Stopwatch.StartNew()
                         RenderLagTrace.emit "view-start" [ "msg", msgText ]
-                        currentScene <- safeView currentSize currentModel
+                        state.CurrentScene <- safeView state.CurrentModel
                         viewSw.Stop()
                         RenderLagTrace.emit
                             "view-end"
@@ -1573,13 +1646,13 @@ module internal ViewerRuntime =
                             [ "key", rawKey
                               "isDown", string normalizedDown
                               "messageCount", string msgs.Length ]
-                        inputDispatch <- "true"
+                        state.InputDispatch <- "true"
                     let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
                     // F1 general repaint signal: if the key produced no product message it may still
                     // have changed runtime state (focus traversal, scroll keys); re-derive so it
                     // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
                     // re-derived, so this is a no-op.)
-                    currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
+                    state.CurrentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () -> safeView state.CurrentModel)
                     closeRequested
 
                 let handlePointer (input: ViewerPointerInput) =
@@ -1598,7 +1671,7 @@ module internal ViewerRuntime =
                     // framebuffer space (native resolution). Scale into physical FIRST, so every
                     // downstream mapping speaks the surface the scene was drawn onto.
                     let physicalX, physicalY =
-                        LogicalCanvas.toPhysicalPoint currentWindowSize currentSurfaceSize input.X input.Y
+                        LogicalCanvas.toPhysicalPoint state.CurrentWindowSize state.CurrentSurfaceSize input.X input.Y
 
                     // Issue #246: a `LogicalSize` product draws through the letterbox scale+offset,
                     // so route the inverse (now from the physical surface) or every hit test is wrong
@@ -1607,11 +1680,11 @@ module internal ViewerRuntime =
                     let routed =
                         match options.LogicalSize with
                         | Some logical ->
-                            let x, y = LogicalCanvas.toLogicalPoint logical currentSurfaceSize physicalX physicalY
+                            let x, y = LogicalCanvas.toLogicalPoint logical state.CurrentSurfaceSize physicalX physicalY
                             { input with X = x; Y = y }
                         | None -> { input with X = physicalX; Y = physicalY }
 
-                    let msgs = host.MapPointer routed currentSize currentModel
+                    let msgs = host.MapPointer routed state.CurrentSize state.CurrentModel
                     pointerSw.Stop()
                     RenderLagTrace.emit
                         "pointer-route-end"
@@ -1620,7 +1693,7 @@ module internal ViewerRuntime =
                           "durationMs", pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
 
                     if not (List.isEmpty msgs) then
-                        inputDispatch <- "true"
+                        state.InputDispatch <- "true"
 
                     let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
 
@@ -1630,7 +1703,7 @@ module internal ViewerRuntime =
                     // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
                     // `host.View` (the single source reflecting model + every runtime ref) on the
                     // no-message path, and is a no-op when messages already drove a re-derive.
-                    currentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) currentScene (fun () -> safeView currentSize currentModel)
+                    state.CurrentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () -> safeView state.CurrentModel)
 
                     closeRequested
 
@@ -1640,10 +1713,10 @@ module internal ViewerRuntime =
                     // framebuffer size (owned by `handleFramebufferResize`), so a logical resize only
                     // updates the pointer-scaling reference; the paired `FramebufferResized` owns the
                     // surface change and any re-derive.
-                    currentWindowSize <- size
+                    state.CurrentWindowSize <- size
 
                 let handleFramebufferResize (size: Size) =
-                    currentSurfaceSize <- size
+                    state.CurrentSurfaceSize <- size
                     // Issue #400: the live scene is authored at this physical size, so the present
                     // path must NOT upscale it a second time — publish it as the fit's authoring size
                     // (identity fit). `GlHost.run` clears the override per run.
@@ -1653,15 +1726,15 @@ module internal ViewerRuntime =
                     // fixed-resolution game does not re-render once per framebuffer-resize tick.
                     let nextViewSize = viewSize ()
 
-                    if nextViewSize <> currentSize then
-                        currentSize <- nextViewSize
-                        currentScene <- safeView currentSize currentModel
+                    if nextViewSize <> state.CurrentSize then
+                        state.CurrentSize <- nextViewSize
+                        state.CurrentScene <- safeView state.CurrentModel
 
                 let inputVerified () =
-                    not (requireInputDispatchVerification ()) || inputDispatch = "true"
+                    not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
 
-                runPresentedPersistentWindow options behavior host.Diagnostics inputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) inputVerified script
-                |> assembleLaunchOutcome options behavior inputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) inputVerified script
+                |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
         runInteractiveViewerWithWindowBehaviorCore options behavior None ignore host
