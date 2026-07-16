@@ -14,14 +14,14 @@
          0.3.0 (ADR-0104, Rendering#269): adds `Loop`, the double step buffer that supersedes the
          deprecated FS.GG.UI.Canvas.Loop. A scaffold cannot reach it below this version. -->
 
-    <FsGgGameVersion>0.4.0</FsGgGameVersion>
+    <FsGgGameVersion>0.5.0</FsGgGameVersion>
     <!-- The standalone FS.GG.Audio component (own repo FS-GG/FS.GG.Audio, released on its OWN
          axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). App/game/sample-pack scaffolds pin it here
          to get the REAL host-side audio realization (named buses, fades/ducking, 3D, device backend)
          behind the pure AudioEffect edge — the piece the fs-gg-audio skill calls "a real playback
          backend is deferred". Every profile that opens a viewer window (issue #436), not the
          simulation profiles only. See ADR-0024. -->
-    <FsGgAudioVersion>0.2.0</FsGgAudioVersion>
+    <FsGgAudioVersion>0.3.0</FsGgAudioVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
