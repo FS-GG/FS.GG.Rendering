@@ -95,7 +95,7 @@ jobs:
       tags:          ${{ steps.plan.outputs.tags }}
       has-pending:   ${{ steps.plan.outputs.has-pending }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The guard reads `git diff HEAD~1 HEAD` (`bumpedInCommitUnderTest`) and `git tag --list`;
           # both fail closed on a shallow clone.
@@ -323,7 +323,7 @@ jobs:
     permissions:
       contents: write   # push the tag triple
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # `persist-credentials` (default true) leaves the GITHUB_TOKEN on `origin`, so the pushes below
           # authenticate with no extra wiring. Full history so the tag objects resolve.
@@ -415,7 +415,7 @@ jobs:
     permissions:
       contents: write   # delete the tag triple it is taking back
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

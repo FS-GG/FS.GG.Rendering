@@ -66,7 +66,7 @@ jobs:
       GL_TEST_PROJECTS: "SkiaViewer Smoke"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         # T015/T029 (Feature 209, D2) — the version-coherence guard reads `git tag --list
         # 'fs-gg-ui/v*'`; without full history/tags `git tag` is empty and the guard fails
         # closed (exit 2). fetch-depth: 0 makes the snapshot tags visible.
@@ -598,7 +598,7 @@ jobs:
       packages: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
@@ -680,7 +680,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         # The verdict consults `git merge-base` to attribute any drift it finds ("was this THIS change, or
         # was it already on main?"). Without full history that probe answers `Unknown` and the attribution
         # decays — the drift is still reported, just less precisely. Cheap; keep it exact.
@@ -708,7 +708,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         # The RELEASE-PENDING waiver asks `git diff HEAD~1 HEAD -- template/base/Directory.Packages.props`
         # ("did THIS commit bump the pin?"). The default shallow checkout has no `HEAD~1`, and the guard
         # fails CLOSED (exit 2) rather than silently reverting to the always-red gate #506 removed.
@@ -764,7 +764,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         # The lane reads `git tag --list` and ages each tag with `git for-each-ref`, and the structural
         # rules it re-runs read `git diff HEAD~1 HEAD`. All three fail CLOSED (exit 2) on a shallow clone,
         # which is right — but the fix is to fetch, not to waive.
@@ -806,7 +806,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
@@ -879,7 +879,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
@@ -958,7 +958,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
