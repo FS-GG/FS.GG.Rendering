@@ -4,42 +4,42 @@
     "net10.0": {
       "FSharp.Core": {
         "type": "Direct",
-        "requested": "[10.1.301, )",
-        "resolved": "10.1.301",
-        "contentHash": "excLf2zM/qUB3WhRUfI0xvOOaPwcRAEdYT/BXe9eiTKySnWVuIKMQTf5+6ETy5nsb1dpLp1s2j2yAM/XcRgFMg=="
+        "requested": "[10.1.302, )",
+        "resolved": "10.1.302",
+        "contentHash": "bN7XMQrAQg1dyHScJ7FcsznERBkvm74LtIo1O6C5mUzgbDqSwNbDpb3+nBGaJAjDmtC/suK5Vx5pFysKY6Hm+Q=="
       },
       "FS.GG.UI.DesignSystem": {
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Diagnostics": {
         "type": "Project",
         "dependencies": {
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.KeyboardInput": {
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Layout": {
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "Yoga.Net": "[3.2.3, )"
         }
       },
       "FS.GG.UI.Scene": {
         "type": "Project",
         "dependencies": {
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "Yoga.Net": {

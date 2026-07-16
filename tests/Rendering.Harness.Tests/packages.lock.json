@@ -14,9 +14,9 @@
       },
       "FSharp.Core": {
         "type": "Direct",
-        "requested": "[10.1.301, )",
-        "resolved": "10.1.301",
-        "contentHash": "excLf2zM/qUB3WhRUfI0xvOOaPwcRAEdYT/BXe9eiTKySnWVuIKMQTf5+6ETy5nsb1dpLp1s2j2yAM/XcRgFMg=="
+        "requested": "[10.1.302, )",
+        "resolved": "10.1.302",
+        "contentHash": "bN7XMQrAQg1dyHScJ7FcsznERBkvm74LtIo1O6C5mUzgbDqSwNbDpb3+nBGaJAjDmtC/suK5Vx5pFysKY6Hm+Q=="
       },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
@@ -208,7 +208,7 @@
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Controls": {
@@ -219,7 +219,7 @@
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
           "FS.GG.UI.Layout": "[0.4.0-preview.1, )",
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Controls.Elmish": {
@@ -229,7 +229,7 @@
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
           "FS.GG.UI.SkiaViewer": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "Fable.Elmish": "[5.0.2, )"
         }
       },
@@ -237,34 +237,34 @@
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Diagnostics": {
         "type": "Project",
         "dependencies": {
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.KeyboardInput": {
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.Layout": {
         "type": "Project",
         "dependencies": {
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "Yoga.Net": "[3.2.3, )"
         }
       },
       "FS.GG.UI.Scene": {
         "type": "Project",
         "dependencies": {
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "FS.GG.UI.SkiaViewer": {
@@ -275,7 +275,7 @@
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "Fable.Elmish": "[5.0.2, )",
           "HarfBuzzSharp.NativeAssets.Linux": "[14.2.1, )",
           "HarfBuzzSharp.NativeAssets.Win32": "[14.2.1, )",
@@ -294,7 +294,7 @@
         "dependencies": {
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "SkiaSharp": "[4.150.0, )"
         }
       },
@@ -307,7 +307,7 @@
           "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
           "FS.GG.UI.SkiaViewer": "[0.4.0-preview.1, )",
           "FS.GG.UI.Testing": "[0.4.0-preview.1, )",
-          "FSharp.Core": "[10.1.301, )",
+          "FSharp.Core": "[10.1.302, )",
           "Silk.NET.GLFW": "[2.23.0, )",
           "Silk.NET.OpenGL": "[2.23.0, )",
           "Silk.NET.Windowing": "[2.23.0, )",
@@ -318,7 +318,7 @@
       "testsupport": {
         "type": "Project",
         "dependencies": {
-          "FSharp.Core": "[10.1.301, )"
+          "FSharp.Core": "[10.1.302, )"
         }
       },
       "Fable.Elmish": {

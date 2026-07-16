@@ -42,7 +42,7 @@
        RestoreAdditionalProjectSources, NOT as a configured NuGet source, so none of the usual
        hermeticity levers touch it: `<clear/>` in nuget.config does not remove it, a fresh
        NUGET_PACKAGES does not bypass it, and clearing the NuGet http-cache does not either. A
-       perfectly COLD restore still resolves the SDK's copy — cold is not hermetic (ADR-0031 §1 still
+       perfectly COLD restore still resolves the SDK's copy — cold is not hermetic (ADR-0032 §5 still
        stands on its own merits; it just never closed this hole).
        (Note for editors: XML comments cannot contain a double hyphen, so CLI flags are named without
        their leading dashes throughout this comment.)
