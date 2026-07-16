@@ -1419,6 +1419,24 @@ module internal ViewerRuntime =
         let initialCloseRequested = interpretEffects initEffects
         dispatchHostMsg, initialCloseRequested
 
+    // Stage D — the two input-handler closures that are byte-identical across both durable front-ends.
+    // `handleKey`/`handlePointer`/`handleFramebufferResize` genuinely diverge (option-vs-list shape, the
+    // interactive-only render-lag trace, the `InputDispatch<-"false"`-on-empty asymmetry) and stay inline
+    // per the plan's "do NOT bulk-unify" rule; only these two are true clones, so only these are shared.
+
+    /// A tick routes through `dispatchHostMsg` when the host produces a message, else it is a no-op.
+    let private makeHandleTick (tick: TimeSpan -> 'msg option) (dispatchHostMsg: 'msg -> bool) =
+        fun (elapsed: TimeSpan) ->
+            match tick elapsed with
+            | Some msg -> dispatchHostMsg msg
+            | None -> false
+
+    /// The close-time input-dispatch check: satisfied unless verification is required and no input was
+    /// ever observed (`FS_SKIA_REQUIRE_INPUT_DISPATCH`, so an unresponsive launch fails rather than
+    /// passing silently).
+    let private makeInputVerified (state: ProductRunState<'model>) =
+        fun () -> not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
+
     let private runGeneratedApp
         options
         behavior
@@ -1481,10 +1499,7 @@ module internal ViewerRuntime =
                         mapOutcome
                         initEffects
 
-                let handleTick elapsed =
-                    match host.Tick elapsed with
-                    | Some msg -> dispatchHostMsg msg
-                    | None -> false
+                let handleTick = makeHandleTick host.Tick dispatchHostMsg
 
                 let handleKey rawKey isDown =
                     let key, normalizedDown =
@@ -1508,8 +1523,7 @@ module internal ViewerRuntime =
                         state.CurrentScene <- runtimeStateRepaint false state.CurrentScene (fun () -> safeView state.CurrentModel)
                         false
 
-                let inputVerified () =
-                    not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
+                let inputVerified = makeInputVerified state
 
                 runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
@@ -1665,10 +1679,7 @@ module internal ViewerRuntime =
                                   "closeRequested", string closeRequested ]
                             closeRequested
 
-                let handleTick elapsed =
-                    match host.Tick elapsed with
-                    | Some msg -> dispatchHostMsg msg
-                    | None -> false
+                let handleTick = makeHandleTick host.Tick dispatchHostMsg
 
                 let handleKey rawKey isDown =
                     let key, normalizedDown =
@@ -1771,8 +1782,7 @@ module internal ViewerRuntime =
                         state.CurrentSize <- nextViewSize
                         state.CurrentScene <- safeView state.CurrentModel
 
-                let inputVerified () =
-                    not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
+                let inputVerified = makeInputVerified state
 
                 runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) inputVerified script
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
