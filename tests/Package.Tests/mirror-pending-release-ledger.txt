@@ -77,7 +77,7 @@
 # EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
 #
 # The one entry this file was filed for — `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #594` — is RETIRED.
-# Published FS.GG.UI.SkiaViewer 0.9.2 exports the case and `$(FsGgUiVersion)` is now 0.10.0, which carries
+# Published FS.GG.UI.SkiaViewer 0.9.2 exports the case and `$(FsGgUiVersion)` is now 0.11.0, which carries
 # it still, and so M-MIR/TYPE takes its member back: the shipped SkiaViewer mirror now DECLARES `Persist`,
 # which is the whole point — the omission was a debt against an unpublished member, and the release paid it.
 #
