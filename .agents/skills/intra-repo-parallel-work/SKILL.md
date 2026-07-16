@@ -84,56 +84,23 @@ If the work is cross-repo (needs a change/release from *another* FS-GG repo), us
 
 ## The loop
 
-**In a receiver, nothing.** The engine is already declared in `.config/dotnet-tools.json`, and `fsgg-coord`
-**restores it for you** the first time it needs it. A manifest is a *declaration*, not an *installation* —
-until something runs the restore, `dotnet tool run` fails, the version reads as `unknown`, `unknown` is
-stale by design, and the run SKIPS. Measured on 2026-07-14: **187 of 239 shadow runs skipped, 186 of them
-for exactly this** — in every receiver at once. The kit used to ask the worker to run the restore; asking
-is not a mechanism.
+**In a receiver, nothing.** `scripts/fsgg-coord` is the ADR-0034 §4.4 shim now (ADR-0040 Phase D): it
+resolves the compiled `fsgg-coord-engine` and `exec`s it — there is no bash implementation left, and no
+shadow. The engine is already declared in `.config/dotnet-tools.json`, and the shim **restores it for you**
+the first time it needs it. A manifest is a *declaration*, not an *installation*; the kit used to ask the
+worker to run the restore, and asking is not a mechanism (measured hit rate: zero), so the shim does it
+(#655).
 
-**Outside a receiver (or to be sure):** `dotnet tool install -g FS.GG.Coord.Cli`
-**And keep it current:** `dotnet tool update -g FS.GG.Coord.Cli` — a global tool does NOT self-update, and
-**a stale engine is worse than no engine** (#655). `fsgg-coord` carries a floor and REFUSES to shadow
-below it (a recorded skip, never an error), because engines before `0.1.1` mis-parse every dotfile path
-and will call a HELD item startable (#649).
-
-Optional, and safe to skip — `fsgg-coord` works exactly as before without it. What it buys is the
-**shadow** (ADR-0034): with an engine present, every `take`/`next`/`batch` is decided by *both* the
-bash client and the typed F# engine, **bash's answer is still the one you get**, and any disagreement
-is logged (`fsgg-coord divergence`). Your run does not change — not the answer, not the exit code.
-
-It is worth the one command because an engine you have is an engine you can ASK. `--engine=fs` is
-**open** (ADR-0038) — there, the typed core's answer *is* the answer, and every failure is fatal rather
-than a quiet fall back to bash. The **default does not move**: with no flag it is `auto`, and `auto`
-still hands you bash's answer.
-
-The cut-over gate is the **defect corpus** — `tests/fsgg-coord/cases/`, one case per historical defect,
-run against **both** engines in CI. It is not a fleet clock: that clock could never tick, because a
-worker in a per-item worktree resolves no engine and so banks no evidence (#728). The shadow is now
-**telemetry** — it is how a live fleet is watched, not what the flip waits on.
-
-**Your evidence is published for you.** The **shadow** pushes it to the fleet ledger from the scheduling
-call that produced it (throttled: at most one REST write per 30 min per machine), and `done --flip`
-publishes immediately too. No extra step, nothing to remember (#656).
-
-It hung on `done` alone until 2026-07-14. An item closed by a **squash-message closing keyword** is merged,
-closed and board-Done without `done` ever running, and that worker's evidence never leaves the machine. The
-ledger was not empty — 59 rows, 11 of them that day — so the hook worked for the workers that reached it.
-But every one of those rows carries `skipped=0`: the only workers that publish are the ones whose engine
-**resolved**, i.e. `.github`, which builds from source. The five receivers had contributed nothing, ever, so
-the gate was reading one repo and calling it the fleet. A hook on one path is a request that the path be
-taken.
-
-Run it by hand only if you stop without finishing an item:
+**Outside a receiver:** install it globally, and keep it current —
 
 ```sh
-fsgg-coord divergence --publish                # your local log is not evidence until it is published
-fsgg-coord divergence --fleet                  # where the FLEET stands: 0 green · 1 red · 3 no verdict
+dotnet tool install -g FS.GG.Coord.Cli         # provides `fsgg-coord-engine`
+dotnet tool update  -g FS.GG.Coord.Cli         # a global tool does NOT self-update
 ```
 
-The log lives in a *cache dir* that dies with your container. The criterion is about the **live fleet**,
-and a worker who shadows but never publishes has moved the clock exactly as far as one who never
-shadowed at all (#634).
+The engine **is** the scheduler now, so a stale one mis-schedules — there is no bash answer behind it any
+more: engines before `0.1.1` mis-parse every dotfile path and will call a HELD item startable (#649). If
+the shim resolves no engine it fails loudly with what to do — never a silent no-op (#266).
 
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
