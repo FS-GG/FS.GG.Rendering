@@ -54,7 +54,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # `derive-template-version.sh` stays the SINGLE validator of a released template version, on
       # every entry path. A `workflow_call` run has no template tag in `github.ref` (it inherits the
       # caller's ref, `refs/heads/main`), so rather than teaching the job a second, unvalidated way to

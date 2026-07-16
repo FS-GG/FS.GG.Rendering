@@ -88,7 +88,7 @@ jobs:
       # flag is set here, so deleting it fails the build rather than silently un-testing the packages.
       FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The Feature 209 coherence mirror in Package.Tests re-derives the verdict from the
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-dotnet@v6
@@ -260,7 +260,7 @@ jobs:
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
