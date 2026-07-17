@@ -16,6 +16,7 @@ type ControlKind = string
 
 /// Feature 175 (FR-001/FR-002): the scroll model owned per `scroll-viewer` ControlId. Pure value;
 /// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
+/// Carried by `ControlRuntimeModel.ScrollOffsets`.
 type ScrollState =
     { Offset: float
       ContentHeight: float
