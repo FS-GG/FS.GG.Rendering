@@ -29,6 +29,14 @@ module Issue776StaleSuppressionTests
 // A classifier nobody exercises is a classifier that rots silently: the SDK rewords its message, the stale
 // branch stops matching, and a dead suppression goes quietly back to being "pack failed, never compared" —
 // the exact defect, restored, under a green gate.
+//
+// THAT ARGUMENT HAD A HOLE IN IT FOR AS LONG AS IT EXISTED, AND #871 IS THE HOLE. It was made for the two
+// classifier predicates and applied to only those two, while the `grep` that turns a stale log into the
+// LIST OF ENTRIES TO DELETE sat twelve lines below them, written against one remembered message shape and
+// exercised by nothing. It was wrong: a removed TYPE carries `Left:`/`Right:` after the target, so the
+// pattern matched a removed MEMBER and missed a type — and a type is what a major removes. The gate did its
+// loud, correct, fail-closed thing and then printed `DELETE the entries above` above an empty list (#869).
+// So `--self-test` now grades the extractor too, on the SDK's real messages for both shapes.
 
 open System
 open System.Diagnostics
@@ -67,13 +75,18 @@ let staleSuppressionTests =
           // failing pack — including the one that must NOT collapse: a genuine API break alongside a dead
           // suppression is still a BREAK. Classify that as `stale` and a SemVer-major break gets reported as
           // a tidy-up chore and merged.
-          test "the pack-log classifier still recognises every state it must" {
+          //
+          // AND the EXTRACTOR (#871), which used to be graded by nothing. Classifying the log `stale` is
+          // only half the job: the gate must also NAME the entries to delete, and `stale_entries` had been
+          // written against the one captured shape where `Target` is the message's last field. A removed
+          // TYPE is not that shape, so the gate printed "DELETE the entries above" over an empty list.
+          test "the pack-log classifier and extractor still recognise every SDK shape they must" {
               let ec, out = runSelfTest ()
 
               Expect.equal
                   ec
                   0
-                  $"`scripts/apicompat-check.sh --self-test` failed — the classifier no longer recognises the SDK output it keys on. A dead suppression will go back to being reported as `Indeterminate (pack/tool failure — NOT compared)`, which is what sent #443 hunting a build failure that did not exist. Re-capture the real messages from a failing pack and fix the patterns; do NOT delete the fixtures.\n\n{out}"
+                  $"`scripts/apicompat-check.sh --self-test` failed — the classifier or the extractor no longer recognises the SDK output it keys on. A dead suppression will go back to being reported as `Indeterminate (pack/tool failure — NOT compared)`, which is what sent #443 hunting a build failure that did not exist, or to being reported with none of its entries named (#871). Re-capture the real messages from a failing pack and fix the patterns; do NOT delete the fixtures.\n\n{out}"
 
               Expect.stringContains
                   out
@@ -91,11 +104,21 @@ let staleSuppressionTests =
 
               Expect.isGreaterThanOrEqual
                   oks
-                  5
-                  $"--self-test asserted only {oks} signature(s). It is the sole check on the classifier, so a shrinking fixture set is the gate going quietly blind.\n\n{out}"
+                  8
+                  $"--self-test asserted only {oks} signature(s). It is the sole check on the classifier AND on the extractor, so a shrinking fixture set is the gate going quietly blind.\n\n{out}"
 
               Expect.stringContains
                   out
                   "a break alongside a dead suppression is still a BREAK"
                   $"the co-occurrence fixture is gone. It is the one that stops `is_stale_suppression` being tested BEFORE `is_break` — an ordering under which a genuine, unsuppressed API break is reported as a stale-suppression chore and merged.\n\n{out}"
+
+              // #871's fixture, pinned by name for the same reason the co-occurrence one is: its absence
+              // is invisible. The extractor was written against the CP0002 shape, where `Target` is the
+              // message's last field, and a removed TYPE puts `Left:`/`Right:` after it — so the gate
+              // reported a stale suppression and named NONE of its entries, printing "DELETE the entries
+              // above" over an empty list. That is what #869 met on the live 0.12.0 transition.
+              Expect.stringContains
+                  out
+                  "a dead TYPE suppression is named (Target is NOT the last field)"
+                  $"the #871 fixture is gone. It is the one that stops `stale_entries` regressing to a pattern that only matches a removed MEMBER — under which a removed TYPE (what a SemVer major actually does) reds the required gate and tells the next worker to delete entries it has not named.\n\n{out}"
           } ]

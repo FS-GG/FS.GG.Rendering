@@ -121,6 +121,32 @@ summarize() {
 is_stale_suppression() { grep -q 'Unnecessary suppressions found' "$1"; }
 is_break()             { grep -qE 'error CP[0-9]' "$1"; }
 
+# The dead entries name themselves, so REPORT them: the fix is then a deletion somebody can SEE rather
+# than a regeneration they have to trust (#776). Same rule as the two predicates above — one definition,
+# two consumers (the pack loop and `--self-test`) — and for the same reason: this pattern rots exactly as
+# silently as they do, and until #871 it was the one pattern here that NOTHING exercised.
+#
+# `Target` IS NOT ALWAYS THE MESSAGE'S LAST FIELD, and assuming it was is the whole of #871. The previous
+# pattern ended `'\)`, demanding the target's closing quote be followed straight by the paren. Both lines
+# below are verbatim from SDK 10.0.302 (captured from real failing packs of Diagnostics and Canvas):
+#
+#   error : [Baseline] CP0002 (Target: 'M:FS.GG.UI.Canvas.Persistence.gone(System.Int32)')
+#   error : [Baseline] CP0001 (Target: 'T:FS.GG.UI.Diagnostics.DiagnosticReadinessImpact', Left: 'lib/net10.0/FS.GG.UI.Diagnostics.dll', Right: 'lib/net10.0/FS.GG.UI.Diagnostics.dll')
+#
+# A removed MEMBER ends at the target; a removed TYPE carries Left/Right after it, because the suppression
+# this repo writes for one has `<Left>`/`<Right>` elements and the SDK echoes them back. So the old pattern
+# matched the member and missed the type — and a type is what a major removes. The gate printed
+# `DELETE the entries above` above an EMPTY LIST, which is what #869 hit on the live 0.12.0 transition.
+#
+# Emit `<DiagnosticId>  <Target>`: those are the two fields that identify the `<Suppression>` element to
+# delete, so the reader maps the line onto the XML instead of onto SDK prose. `[Baseline]` is required, so
+# an UNSUPPRESSED break (`error CP0002: ...`) is never listed here as a dead entry.
+stale_entries() {
+  grep -oE "\[Baseline\] CP[0-9]+ \(Target: '[^']*'" "$1" \
+    | sed -E "s/\[Baseline\] (CP[0-9]+) \(Target: '(.*)'/\1  \2/" \
+    | sort -u
+}
+
 # Deliberately NOT feed-dependent: this suite runs where the network may not, and a classifier test that
 # needed a live pack could not be a gate (ADR-0105). Fixtures are the captured shapes above.
 if [ -n "$SELF_TEST" ]; then
@@ -158,6 +184,45 @@ if [ -n "$SELF_TEST" ]; then
 "/x/a.fsproj : error FS0039: The value or constructor 'foo' is not defined."
 
   assert "an empty log is neither — silence is not a finding" other ""
+
+  # ---- the EXTRACTOR (#871) ----------------------------------------------------------------------
+  #
+  # Classifying a log `stale` is half the job; the other half is naming the entries to delete, and until
+  # #871 nothing here graded that. The regex had been written against the CP0002 fixture above — the one
+  # shape where `Target` is the last field — so it silently reported NOTHING for a removed TYPE, and the
+  # gate printed "DELETE the entries above" over an empty list on the live 0.12.0 transition (#869).
+  #
+  # These fixtures are the SDK's real messages. If a future SDK rewords them, this fails LOUDLY here
+  # instead of quietly handing the next worker a heading with nothing under it.
+  assert_entries() { # <name> <expected> <log-content>
+    printf '%s\n' "$3" > "$t/log"
+    got="$(stale_entries "$t/log")"
+    if [ "$got" = "$2" ]; then echo "  ok    $1"
+    else
+      echo "  FAIL  $1"
+      echo "          expected: ${2:-<nothing>}"
+      echo "          got:      ${got:-<nothing>}"
+      fails=$((fails+1))
+    fi
+  }
+
+  # THE #871 REGRESSION. A removed TYPE carries Left/Right after the target; the old pattern demanded the
+  # target be last and matched nothing at all here. This is the fixture that was missing.
+  assert_entries "a dead TYPE suppression is named (Target is NOT the last field)" \
+"CP0001  T:FS.GG.UI.Diagnostics.DiagnosticReadinessImpact" \
+"/x.targets(39,5): error : Unnecessary suppressions found. The APICompat suppression file can be updated by rebuilding with '/p:ApiCompatGenerateSuppressionFile=true' [/x/Diagnostics.fsproj]
+/x.targets(39,5): error : [Baseline] CP0001 (Target: 'T:FS.GG.UI.Diagnostics.DiagnosticReadinessImpact', Left: 'lib/net10.0/FS.GG.UI.Diagnostics.dll', Right: 'lib/net10.0/FS.GG.UI.Diagnostics.dll') [/x/Diagnostics.fsproj]"
+
+  # The shape that already worked, kept so the fix for the type cannot regress the member. Note the target
+  # itself contains parens — `gone(System.Int32)` — so the pattern may not stop at the first `)`.
+  assert_entries "a dead MEMBER suppression is still named (parens inside the target)" \
+"CP0002  M:FS.GG.UI.Canvas.Persistence.gone(System.Int32)" \
+"/x.targets(39,5): error : [Baseline] CP0002 (Target: 'M:FS.GG.UI.Canvas.Persistence.gone(System.Int32)') [/x/Canvas.Lib.fsproj]"
+
+  # An UNSUPPRESSED break is not a dead entry. Listing it here would tell a worker to delete a suppression
+  # that does not exist, for a break they must instead cut a major for.
+  assert_entries "an unsuppressed break is NOT listed as a dead entry" "" \
+"/x/a.fsproj : error CP0002: Member 'M:Some.Real.Break' exists on the left but not on the right"
 
   if [ "$fails" -gt 0 ]; then echo "apicompat-check --self-test: $fails FAILED"; exit 1; fi
   echo "apicompat-check --self-test: all classifier signatures hold"
@@ -332,9 +397,24 @@ for proj in "${projects[@]}"; do
       stale=$((stale+1))
       stale_lines+=("    $pkgid: ${sup#"$repo_root/"} — these entries suppress nothing against baseline $baseline:")
       # The dead entries name themselves. Report them, so the fix is a deletion somebody can SEE, not a
-      # regeneration they have to trust.
-      while IFS= read -r t; do stale_lines+=("      $t"); done \
-        < <(grep -oE "\[Baseline\] CP[0-9]+ \(Target: '[^']*'\)" "$log" | sort -u)
+      # regeneration they have to trust. `stale_entries` is the ONE definition `--self-test` grades (#871).
+      named=0
+      while IFS= read -r t; do stale_lines+=("      $t"); named=1; done < <(stale_entries "$log")
+      # NAMED NOTHING is not NOTHING TO NAME (FS-GG/.github#266), and this is the branch #871 needed and
+      # did not have. The log says there ARE unnecessary suppressions; if we could not name one of them,
+      # the extractor — not the file — is what failed, and printing `DELETE the entries above` over silence
+      # sends the reader looking for entries the gate is simply not showing them.
+      #
+      # A FIXTURE CANNOT COVER THIS, which is why it is a runtime branch and not a sixth assert. The
+      # fixtures below are frozen SDK text: reword the `[Baseline]` line in a future SDK and they keep
+      # passing while the real log stops matching — the identical rot, one level up. This branch keys on
+      # the disagreement itself, so it fires whatever the SDK decides to say.
+      if [ "$named" -eq 0 ]; then
+        stale_lines+=("      (the pack log says this file has unnecessary suppressions, but NONE could be parsed out of it —")
+        stale_lines+=("       the SDK's '[Baseline] CP#### (Target: ...)' line has probably been reworded. Fix \`stale_entries\`")
+        stale_lines+=("       in scripts/apicompat-check.sh and its --self-test fixtures. Read the file and the job log; do NOT")
+        stale_lines+=("       read this as 'the file is already empty'.)")
+      fi
       echo "::error title=Stale ApiCompat suppression in $pkgid::$pkgid's CompatibilitySuppressions.xml suppresses nothing against the published baseline $baseline — the release it was written for is on the feed. DELETE the listed entries (and the file, if that empties it). Do NOT regenerate with ApiCompatGenerateSuppressionFile: that re-adds whatever is breaking TODAY and hides it."
     fi
 
