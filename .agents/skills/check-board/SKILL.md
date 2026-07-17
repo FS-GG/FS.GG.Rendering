@@ -1,6 +1,6 @@
 ---
 name: check-board
-description: Reconcile the org-level FS-GG "Coordination" Projects v2 board against the repos' real issue state, and re-verify that every recorded blocker still holds. Use when the board looks wrong or stale, before a planning pass, before fanning workers out with intra-repo-parallel-work, or when `next`/`take` says "nothing to do" and you doubt it. Reports every discrepancy; with --apply it fixes the board-side ones. Never edits an issue. Canonical protocol lives in FS-GG/.github.
+description: Reconcile the org-level FS-GG "Coordination" Projects v2 board against the repos' real issue state, re-verify that every recorded blocker still holds, and find the epics that are sitting open with all their work finished. Use when the board looks wrong or stale, before a planning pass, before fanning workers out with intra-repo-parallel-work, or when `next`/`take` says "nothing to do" and you doubt it. Reports every discrepancy; with --apply it fixes the board-side ones. Gathers the judgements it cannot make — should this epic close, was this flip premature — puts them to a human in one batch, and writes the answers back. Never edits an issue unprompted. Canonical protocol lives in FS-GG/.github.
 ---
 
 # check-board (FS-GG)
@@ -18,10 +18,12 @@ one that rots quietly: **nothing re-checks a `Blocked by` edge when its blocker 
 drifted board hands out work that is already done, hides work that is startable, and keeps items
 "blocked" behind issues that closed weeks ago.
 
-This skill is the **reconcile pass** over that drift. It answers two questions:
+This skill is the **reconcile pass** over that drift. It answers three questions:
 
 1. **Is the board in sync with the issues?** (and if not, fix the board — never the issue)
 2. **Do the recorded blockers still hold?** (a `Blocked by` edge is a claim about the *present*)
+3. **Are there epics whose work is all finished, still sitting open?** (§4 — same rot, one graph over:
+   nothing re-asks an epic whether it can close, exactly as nothing re-checks a cleared blocker)
 
 Related: [cross-repo-coordination](../cross-repo-coordination/SKILL.md) owns the protocol the board
 implements; [intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md) owns claims and
@@ -31,24 +33,54 @@ touch-sets. This skill only *reconciles*. Decisions: ADR-0001 (the board), ADR-0
 
 **Fixes only ever write to the board.** Auto-remediation may set `Status`, add a missing item to
 the board, or release an expired claim. It may **never** close or reopen an issue, delete a
-`Blocked by` edge, merge a PR, or touch a working tree. Those need judgement, so they are
-**reported and left for a human**. When ground truth and the projection disagree, the projection
-is what changes.
+`Blocked by` edge, merge a PR, or touch a working tree. When ground truth and the projection
+disagree, the projection is what changes.
 
 Corollary: an issue is not "done" because the board says `Done`. `fsgg-coord done` exists precisely
 to make the stamp *earned* (PR merged **and** `Status: Done`), and this skill never fakes it.
+
+### The one exception, and its exact shape: an ANSWER licenses a write
+
+The rule above is about what this pass may decide **on its own**, and that is what it still says: this
+pass never writes to an issue **unprompted**. What §5 adds is a human in the loop — a specific
+question, carrying its evidence, answered in the session by a person who can be wrong and knows it.
+**That answer, and nothing else, licenses the write it names.** A `yes` on "close FS.GG.Game#211?"
+closes FS.GG.Game#211 and authorises nothing else.
+
+Four constraints keep that from becoming a hole big enough to drive #561 through:
+
+- **The pass may only ask for the judgement the tooling genuinely cannot reach.** Where a rule exists,
+  the rule decides. A question that re-opens a settled rule is a way of voting the rule down, and the
+  answer is not a licence — it is a bypass with extra steps. #1003 states this in its own terms: the
+  remedy for un-checkable acceptance "is a declaration, never an escape sentinel — one that let an
+  author assert *it is all delegated* would be a loophole that PAYS its user, and #889 would have
+  taken it." A chat `yes` is that sentinel unless it is fenced this narrowly.
+- **Every question carries its evidence** — the children and how each one closed, the acceptance
+  lines, the offending token. A question a human answers by trusting the asker is a rubber stamp, and
+  the guards here exist because people rubber-stamp.
+- **Silence is never consent.** Unanswered, skipped, ambiguous, or answered with a question back → the
+  finding stays report-only and the pass says so in the summary. "I could not look" is not "I looked
+  and it is fine" (#266), and that applies to looking at a human.
+- **The answer gets recorded on the issue**, not just acted on (§5). An unrecorded decision is how the
+  roll-up's own refusals evaporate.
 
 ## Run it
 
 ```sh
 scripts/fsgg-coord budget                      # free; are we near the GraphQL cap?
-/check-board                                   # DRY RUN — report every finding, write nothing
-/check-board --apply                           # ...and fix the board-side ones
+/check-board                                   # DRY RUN — report every finding, ask nothing, write nothing
+/check-board --apply                           # ...fix the board-side ones, and ASK the §5 questions
 /check-board --repo rendering                  # scope to one repo (registry short-id)
+/check-board --apply --no-ask                  # apply the mechanical fixes; leave every judgement report-only
 ```
 
 Dry run is the default, as it is for `reap` and `coordination-sync --check`. Read the findings
 before you let anything write.
+
+**A dry run never asks.** The questions in §5 exist to license writes, so asking them in a mode that
+cannot write would train a human to answer questions that do nothing — and the next batch, the one
+that *does* close issues, gets the same reflex. If you want to see what would be asked without
+answering it, a dry run lists the questions; it just does not put them.
 
 ## The rules this pass enforces
 
@@ -106,7 +138,8 @@ read, and the whole point of `fsgg-coord` is that it costs ~3 points instead of 
 
 ```sh
 scripts/fsgg-coord scan --fresh --include-backlog > /tmp/scan.json  # EVERY item, incl. Done — AND its blockers
-scripts/fsgg-coord lint --json            > /tmp/lint.json   # epic invariants + the Done/open note
+scripts/fsgg-coord lint --json            > /tmp/lint.json   # touch-sets, epic invariants, the Done/open
+                                                            #   note, and the §4 roll-up candidates
 scripts/fsgg-coord who  --repo <r> --json > /tmp/who.json    # live claims, per repo
 ```
 
@@ -194,17 +227,18 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | Code | Condition | Fix (`--apply`) |
 |---|---|---|
 | `CLOSED-ISSUE-NOT-DONE` | **no live claim**, `state == CLOSED`, and `status != Done` | `set-field --batch <i> Status=Done` |
-| `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **report only** — is the work done, or was the flip premature? |
+| `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **ask** (§5) — is the work done, or was the flip premature? |
 | `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `fsgg-coord add <i>` — idempotent; see the note below |
 | `BLOCKER-CLEARED` | **no live claim**, every blocker `closed` **or `merged`**, but `status == Blocked` | `set-field --batch <i> Status=Ready` |
 | `BLOCKER-UNKNOWN` | a blocker ref `scan` could not resolve | resolve over REST (§3), then board the blocker if it is open |
-| `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **report only** — hand-fix the field |
+| `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **ask** (§5) — what did the prose mean? `Blocked by` is text, so the answer can be written |
 | `STATUS-NOT-BLOCKED` | **no live claim**, an open blocker, but `status` is `Ready`/`Backlog` | `set-field --batch <i> Status=Blocked` |
 | `STALE-CLAIM` | `who` says `state == "stale"` | `reap --repo <r> --apply` |
-| `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **report only** — someone is working outside the protocol |
+| `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **ask** (§5) — someone is working outside the protocol; only a human knows who, and whether to park it |
 | `CLAIM-STATUS-LAG` | held claim, and board `status` is one of `Ready`/`Backlog`/*(no status)* — the columns a claim SHOULD have overwritten. A held `Blocked`/`In review` is the holder's own decision and is **deferred, not reconciled** (#331) | `set-field --batch <i> "Status=In progress"` |
-| `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **report only** — the fix is an *issue* edit, and this skill never writes to an issue |
-| `EPIC-*` | from `lint --json` (severity `error`) | **report only** — a broken epic needs a human |
+| `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **ask** (§5) — the fix is an *issue* edit, so it takes an answer |
+| `EPIC-*` (`error`) | from `lint --json` — an epic that **cannot** roll up | **report only** — a mechanical remedy, and no answer substitutes for it (§4) |
+| `EPIC-ROLLUP-READY` | from `lint --json` (`note`) — every precondition to roll up holds, epic still open | **ask** (§4/§5) — the close needs a `Discharge` judgement, and only a human has it |
 
 **AN ITEM YIELDS AT MOST ONE FINDING THAT WRITES ITS COLUMN, and the claim is what splits them.**
 That is `Chore.fs`'s structure, not a style note: it matches on the claim first, and the two halves
@@ -224,9 +258,32 @@ last. `ChoreTests` asserts the invariant over every (status × claim × blocker 
 combination with no kind excluded; this table has no such test, which is exactly why the claim check
 is written into each row above rather than left to be remembered.
 
-The report-only classes (`UNCLAIMED-IN-PROGRESS`, `DONE-STATUS-OPEN-ISSUE`, `BLOCKER-UNKNOWN`,
-`BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`, `EPIC-*`, `OFF-BOARD-ISSUE`) are outside this rule: they
-write no column, so they cannot contradict anything. They are also this skill's own, not `Chore`'s.
+The remaining classes (`UNCLAIMED-IN-PROGRESS`, `DONE-STATUS-OPEN-ISSUE`, `BLOCKER-UNKNOWN`,
+`BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`, `EPIC-*`, `EPIC-ROLLUP-READY`, `OFF-BOARD-ISSUE`) are
+outside this rule, and they are this skill's own rather than `Chore`'s. **They used to be outside it
+because they wrote no column. That is no longer the reason, and the difference matters:** an *answered*
+question writes (§5) — `DONE-STATUS-OPEN-ISSUE` judged premature puts `Status` back, and
+`EPIC-ROLLUP-READY` answered `yes` writes `Status=Done`. So they must earn their place in the
+invariant rather than sit outside it by definition.
+
+Most earn it **on status**, which is the same fact the rows above already turn on: the three
+column-writers need `Closed` / `Blocked` / `Ready`-`Backlog`, while `DONE-STATUS-OPEN-ISSUE` needs
+`Done` and `UNCLAIMED-IN-PROGRESS` needs `In progress`. Pairwise disjoint, so at most one.
+`UNDECLARED-PATHS` and `BLOCKER-UNPARSEABLE` write an issue body and a text field; neither touches a
+column.
+
+**`EPIC-ROLLUP-READY` is the exception, and it is a real overlap.** It is gated on the sub-issue graph,
+not on status — so a `Blocked` epic whose blocker has cleared and whose children are all resolved
+yields **both** `BLOCKER-CLEARED` (*"set Ready"*) and `EPIC-ROLLUP-READY` (*"set Done, and close"*).
+Two writes of one column, which is precisely what this rule forbids.
+
+It is resolved **by order, not by disjointness**: §6 applies the answers last (step 4), so `Status=Done`
+and the close land over the `Status=Ready` from step 3, and the item settles in the right state either
+way. This is the one place in this skill where *"whichever ran last"* is the design rather than the bug
+above — because here the last writer is a **human's adjudication** and the first is a mechanical
+inference, and which of those two outranks the other is the whole of §4. Do not "fix" it by gating
+`EPIC-ROLLUP-READY` on status: an epic's board column is a projection, and its children being finished
+is a fact about the world.
 
 **Always write with `set-field --batch`, never the single-field form.** On the engine the fleet is
 **pinned** to, `set-field <ref> <field> <value>` **cannot write any single-select**: it declares its
@@ -329,9 +386,12 @@ proven disjoint from another worker's — so it sits on the board *looking* star
 worker who asks for work is told there is none. `.github` reached **twelve** such items at once, all
 filed through the org's own recipe, and `/pnext-item` reported a dead queue over a full one
 ([#442](https://github.com/FS-GG/.github/issues/442)). The board is not wrong here — the *issue* is —
-which is exactly why this is report-only: the remedy is an issue-body edit, and **this skill never
-writes to an issue** (§*The one rule*). Report it, and let the claimant `claim` then `widen`, which
-is the ordering ADR-0021 requires anyway (the marker is the CAS; the body is not).
+so the remedy is an issue-body edit, which is why this class **asks** (§5) rather than fixing itself:
+what the touch-set should be is a fact about work nobody has done yet, and the pass has no way to
+derive it. Ask for the paths; an answer writes them. Unanswered, report it and let the claimant
+`claim` then `widen`, which is the ordering ADR-0021 requires anyway (the marker is the CAS; the body
+is not) — and that ordering is why an unanswered question here is cheap: the claimant fixes it for
+free on the way in.
 
 The touch-set lives in the issue body, which the REST issue list already carries — so this costs
 **no extra call**:
@@ -350,13 +410,16 @@ scripts/fsgg-coord lint --repo <r> --json \
 
 `NO-TOUCH-SET` = nothing was declared. `BAD-TOUCH-SET` = something was, and **every token of it is
 unmatchable** — a token that matches no file conflicts with nothing, so `batch` refuses the item and
-no worker can ever pick it up. Both are the same death; only the diagnosis differs. Both are
-**report-only** here: the fix is an *issue* edit, and this skill never edits an issue.
+no worker can ever pick it up. Both are the same death; only the diagnosis differs. Both **ask** (§5),
+and they are the clearest case for asking: the pass can prove the item is unschedulable and cannot
+guess the paths that would fix it, because that is a fact about work nobody has started.
 
-`DONE-STATUS-OPEN-ISSUE` is deliberately **not** auto-fixed, in either direction. `lint` calls it a
-*note* rather than an error for the same reason: `Done` over an open issue is how a premature flip
-looks, **and** how "merged, issue left open for the release note" looks. Closing the issue and
-reverting the status are both destructive, and only a human knows which happened.
+`DONE-STATUS-OPEN-ISSUE` is never auto-fixed in either direction, and `lint` calls it a *note* rather
+than an error for the reason: `Done` over an open issue is how a premature flip looks, **and** how
+"merged, issue left open for the release note" looks. Closing the issue and reverting the status are
+both destructive, and only a human knows which happened — so this is a **question**, and one of the
+best-shaped in the pass. Both branches are one write, the evidence fits on a line, and the answer is
+something the person who flipped it knows instantly.
 
 ## 3. Re-verify the blockers (this is the half people skip)
 
@@ -381,7 +444,7 @@ Then, per blocker state (lower case — see §1):
   board is lying to a human reading the column (`next` skips it correctly either way).
 - **`unknown`** — *the scan could not resolve the blocker.* Do not trust it. Resolve it over
   **REST** — `gh issue view` is GraphQL, and spending the budget here is spending the budget this
-  pass needs to write its own fixes in §4:
+  pass needs to write its own fixes in §6:
 
   A blocker ref reads `owner/repo#n`; REST wants the parts, so split it. Keep `html_url` — it is the
   field that tells an issue from a PR, which is exactly what `blocker-resolution` above turns on.
@@ -418,7 +481,166 @@ Then, per blocker state (lower case — see §1):
   by` is a **text** field, so the single-field form is the one that works here:
   `fsgg-coord set-field <i> 'Blocked by' ''`.
 
-## 4. Apply, in this order
+## 4. The epics: is this one finished?
+
+An epic closes when its children discharge it. `done --flip` does that climb — and **it only climbs
+when a worker stamps a child.** So the epic whose last child was closed by hand, or whose stamping
+worker walked away, or whose child was closed as a duplicate, is never asked the question at all. It
+sits open with every child resolved, advertising work that does not exist, and `next` offers it to
+nobody. This is §3's rot one graph over: nothing re-asks an epic whether it can close, exactly as
+nothing re-checks a `Blocked by` when its blocker closes.
+
+**You cannot read why an epic is open.** The roll-up's refusals are `ParentLeftOpen` values — they
+render to the terminal of the worker who ran `done --flip`, and are **never recorded on the issue**.
+So an epic sitting open with all children closed is telling you nothing: it may have been refused for
+a named reason five weeks ago, or never asked. Do not go looking for that reason in the comments;
+recompute it.
+
+### Ask the tool, not the graph
+
+The verdict is `lint`'s, because that is where the sub-issue graph already is. No verb hands you an
+epic's children — `scan` rows carry a title and a status, not a graph — so there is nothing to write
+the jq against, and that is the good outcome. A hand-rolled version would be a second spelling of a
+rule carrying a guard per incident (#614, #613, #325, #965, #1003), and a copy drifts toward
+optimism, which is the direction that closes things (#485, #864).
+
+```sh
+scripts/fsgg-coord lint --repo <r> --json \
+  | jq -r '.[] | select(.code | startswith("EPIC-"))
+           | "\(.severity)  \(.code)  \(.id)  \(.detail)"'
+```
+
+Two kinds come back, and the split is the whole section:
+
+- **`error` — the epic CANNOT roll up.** `EPIC-NO-CHILDREN`, `EPIC-CHILDREN-TRUNCATED`,
+  `EPIC-UNLINKED-CHILD`, `EPIC-UNDELEGATED-ACCEPTANCE`, `EPIC-NO-STATED-ACCEPTANCE`. Each names a
+  mechanical defect with a mechanical remedy — link the child, state the acceptance, re-read the
+  truncated page. **These are report-only, and they are not close questions.** No answer changes them:
+  an unlinked child is still unlinked after a human says "close it", and the acceptance nobody stated
+  is still unread. Asking a human to close over one is asking them to be the escape sentinel #1003
+  refused to build.
+- **`note` — `EPIC-ROLLUP-READY`.** Every mechanical precondition holds: the graph is whole, every
+  child is resolved, the acceptance is stated and fully delegated, no declared child is missing. This
+  is a **candidate**, and it goes to §5 as a question.
+
+### Why a clean epic is a question and not a close
+
+This is the one place the instinct to just close it has to be resisted, and the reason is specific.
+
+`EPIC-ROLLUP-READY` says every *mechanical* precondition holds. It does not say the epic is done,
+because "do these children discharge this parent?" is not a mechanical question — the engine's own
+types say so. `Discharge` (#614) is an **argument**, with no default, that a caller must supply:
+
+> It is an ARGUMENT because it is a fact only the child's author knows, and no amount of reading the
+> board can recover it.
+
+FS.GG.SDD#350 needed an ADR *and* a code change. A worker split the disclosure-only half out as #398,
+whose body said **in bold** that it did *not* complete #350, and linked it as a sub-issue exactly as
+the recipe instructs. When #398 merged, the roll-up saw "all children complete", closed #350, and
+climbed a hop further to stamp an epic `Done` over it. **None of the parent's actual work existed.**
+Children do not partition their parent.
+
+Nothing in `EPIC-ROLLUP-READY` can see what #398's body said in bold. The finding reads the graph and
+the acceptance lines; #398 was a linked, closed child like any other, and the one fact that mattered
+was prose in a *child*. So:
+
+**A `ROLLUP-READY` epic and an epic the roll-up deliberately refused are indistinguishable from
+here.** The guard against #614 is `done --flip --partial "<why>"`, where the *worker* declares that
+their child does not complete its parent — and that refusal is a `ParentLeftOpen` that was never
+written down. An auto-close on `ROLLUP-READY` would therefore close, in silence, precisely the epics a
+worker took the trouble to protect. It re-creates #614 while reading green.
+
+So every candidate becomes a question. **Bias the recommendation toward closing** — an epic with every
+child resolved and its acceptance delegated is usually finished, that is what the finding means, and a
+human who has to argue *for* closing will leave the board rotting. Recommend the close, make `yes` the
+cheap answer, and put the evidence next to it. But take the answer, and take a `no` at face value: the
+`no` is the only thing standing between this pass and #350.
+
+### The climb is not yours to make
+
+`done --flip` climbs after it closes: the parent it just closed is a resolved child of *its* parent,
+so it asks the next hop up. **A close made here does not climb** — it goes through REST, and nothing
+is watching.
+
+Do not simulate the climb. The grandparent will surface as `EPIC-ROLLUP-READY` on the next pass, with
+its own evidence and its own question, and a human will adjudicate that hop too. One hop per pass, one
+judgement per hop, is the correct rate: #614's damage was done by a climb that took *two* hops on one
+inference. A pass that closes a chain of four epics from a single `yes` has re-invented exactly that.
+
+## 5. The decisions: gather, ask once, write the answers down
+
+The classes marked **ask** are the ones where the pass can prove something is wrong and cannot know
+what to do about it. Left as report-only they accumulate: a summary naming five of them is a summary
+nobody acts on, which is how they survive to the next pass, and the pass after that.
+
+### Gather first. Ask nothing mid-scan.
+
+Collect every question during §§1–4 and **put none of them until the read is finished**. Two reasons,
+and both have teeth:
+
+- **A pass that blocks mid-scan strands the board between two consistent states.** §6 exists because
+  order matters; a human who wanders off at question 3 of 11 leaves half of it applied. Gather, ask,
+  then apply as one movement.
+- **The batch is itself evidence.** "Close these six epics?" is a different question from six separate
+  "close this epic?" — the shape of the batch is what tells a human that a release closed a wave of
+  children, or that one worker's items all rotted at once. Asking serially hides the pattern that
+  makes the answers obvious.
+
+### What a question has to carry
+
+Never ask a question the tooling can answer — that is a rule being voted on, not a judgement being
+made (§*The one exception*). Every question states the finding, **the evidence**, the recommendation,
+and exactly what gets written on each answer:
+
+| Class | Ask | Evidence it must carry | `yes` writes |
+|---|---|---|---|
+| `EPIC-ROLLUP-READY` | "Close this epic?" | every child, and **how each closed** — merged PR, duplicate, `ResolvedWithoutPr` — plus the acceptance lines | board `Status=Done`, then close the issue, then record (§5, “Write the decision down”) |
+| `DONE-STATUS-OPEN-ISSUE` | "Done, or premature flip?" | the closing PR if any; who flipped it | *done* → close the issue; *premature* → `Status` back to the real one |
+| `NO-TOUCH-SET` / `BAD-TOUCH-SET` / `UNDECLARED-PATHS` | "What does this item touch?" | the title, and for `BAD-TOUCH-SET` the tokens that match nothing | the `Paths:` line into the issue body |
+| `BLOCKER-UNPARSEABLE` | "What did this prose mean?" | the offending token, verbatim | refs into `Blocked by`, or clear it |
+| `UNCLAIMED-IN-PROGRESS` | "Who is on this?" | the item, and that no `fsgg:claim` marker exists | park it, or leave it and note the worker |
+
+A child that closed as a **duplicate** or with `ResolvedWithoutPr` is the evidence that most changes
+an answer, so it is never summarised away. "All four children merged PRs" and "two merged, one was a
+duplicate, one was closed by nobody" are different epics, and only the second is a real question.
+`ClosedByNobody` — closed, with nothing recording why — is the strongest reason to answer `no` that
+this pass can hand anybody.
+
+### Write the decision down, or it evaporates
+
+An answer that is only *acted on* leaves the next reader exactly where §4 left you: an issue whose
+state has no recorded reason. **The roll-up's refusals evaporate for precisely this reason** — do not
+reproduce the defect in the fix for it.
+
+So every applied answer gets a comment on the issue, naming what was decided, by whom, on what
+evidence, and that `/check-board` was the instrument:
+
+```sh
+# 1. board first, then the issue — #613: a parent stamped Done on the board with the issue left OPEN
+#    makes the next hop up read an OPEN child, and the board and the issue disagree about one thing.
+scripts/fsgg-coord set-field --batch FS.GG.Game#211 Status=Done
+
+# 2. record the judgement BEFORE the close — a comment on a closed issue is easy to miss, and if the
+#    close fails you have still written down what was decided.
+gh api -X POST repos/FS-GG/FS.GG.Game/issues/211/comments -f body='…'
+
+# 3. close over REST. `gh issue close` is GraphQL against the budget the fleet shares; this is 0 pts,
+#    and it is the spelling `check-graphql-monopoly` prescribes for every issue write.
+gh api -X PATCH repos/FS-GG/FS.GG.Game/issues/211 -f state=closed
+```
+
+The comment says what was judged, not that a tool ran:
+
+> **Closed by `/check-board`** — epic roll-up adjudicated by @ehotwagner on 2026-07-17.
+> All 3 children resolved: #204 (merged PR #219), #205 (merged PR #221), #206 (closed as duplicate of
+> #205). Acceptance in the body is fully delegated to those three; no un-delegated criterion.
+> Judged: these children **discharge** this epic (#614). Roll-up never ran because #206 was closed by
+> hand, so nothing climbed.
+
+**An unanswered question is report-only, and the summary says so** (§7). Silence is not a `yes`; a
+human who skipped question 4 did not decide question 4.
+
+## 6. Apply, in this order
 
 Order matters — later steps read state the earlier ones changed.
 
@@ -429,7 +651,9 @@ scripts/fsgg-coord reap --repo <r>                    # 1. dry run: whose lease 
 scripts/fsgg-coord reap --repo <r> --apply            #    release them (tells the reaped worker)
 scripts/fsgg-coord add <i>                            # 2. off-board issues + off-board blockers
 scripts/fsgg-coord set-field --batch <i> Status=<V>   # 3. the status flips (--batch, always — #848)
-scripts/fsgg-coord scan --fresh --include-backlog      # 4. RE-READ — --fresh, or you re-read the
+                                                      # 4. the §5 answers — board write, comment, then
+                                                      #    the REST close (§5 has the spelling)
+scripts/fsgg-coord scan --fresh --include-backlog     # 5. RE-READ — --fresh, or you re-read the
                                                       #    90s cache you already have (§1)
 ```
 
@@ -440,27 +664,61 @@ the board, and a non-empty queue means some of the drift below is already owed r
 can still bite you is running *out* of budget partway through, which strands the board between two
 consistent states — so look before you start, and if `budget` is thin, do step 1 and stop.
 
-Step 4 is not optional, and `--fresh` is what makes it a re-read rather than a replay of the
+Step 4 is where the answers land, and it is **last among the writes** for the reason step 0 exists: the
+mechanical fixes are replayable and an issue close is not. If the budget dies during step 3, you re-run
+and the board converges; if it dies halfway through a batch of closes, some epics are closed, some are
+not, and nothing records which were adjudicated. Get the cheap, reversible, board-side writes done
+first, then spend the answers.
+
+Step 5 is not optional, and `--fresh` is what makes it a re-read rather than a replay of the
 snapshot you already hold (§1). Boarding a blocker in step 2 re-resolves it from `unknown` to
 `open`/`closed`, which can create or clear a `BLOCKER-CLEARED` finding that did not exist in your
 snapshot. Reclassify from the fresh scan, then apply any newly-earned status flips.
 
-## 5. Confirm, and report what you did not touch
+Do **not** re-run `lint` after step 4 hunting for epics that became `ROLLUP-READY` because you just
+closed their children. That is the climb, and §4 says why it is not yours to make: the next hop is a
+new judgement, on evidence a human has not seen, and taking it inside the same pass is how one `yes`
+becomes four closes. Those epics surface on the next `/check-board`, which is the correct rate.
+
+## 7. Confirm, and report what you did not touch
 
 ```sh
-scripts/fsgg-coord lint --repo <r>       # exit 0
+scripts/fsgg-coord lint --repo <r>       # NOT necessarily exit 0 — see below
 scripts/fsgg-coord ready --repo <r>      # the board a human will now read
 scripts/fsgg-coord budget                # what the pass cost
 ```
 
-Finish with a summary that separates **fixed** from **left alone**. The report-only classes
-(`DONE-STATUS-OPEN-ISSUE`, `UNCLAIMED-IN-PROGRESS`, `BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`,
-`EPIC-*`) are the ones a human must act on, and a pass that quietly "succeeded" while leaving five
-of them standing is how they survive to the next pass. Name them, with their issue refs.
+**A red `lint` here is not a failed pass, and this line used to imply it was.** `lint` exits non-zero
+on any `error`-severity finding, and the `EPIC-*` errors are **report-only by design** (§4) — their
+remedy is an issue-body edit this skill will not make. So a pass that ran perfectly, over a board with
+one epic whose acceptance is prose, ends with `lint` exiting 1. Measured, not hypothetical:
+`lint --repo .github` exits 1 today on `.github#729`, whose body states no task-line acceptance while
+two of its six children are still open.
+
+Read the findings, not the exit code. What must be true at the end is that **every error still standing
+is one you named in the summary** — a red you can account for, line by line. A red you cannot is the
+thing to chase.
+
+Finish with a summary in **four** parts, and the fourth is the one that rots if you drop it:
+
+1. **Fixed** — the board-side writes, by class.
+2. **Decided** — each §5 question, the answer, and the write it licensed. A human who answered eleven
+   questions gets to see what their answers did, in one place, without reading eleven issues.
+3. **Left alone** — the report-only classes (`EPIC-*` errors, and any `UNCLAIMED-IN-PROGRESS` parked).
+   A pass that quietly "succeeded" while leaving five of them standing is how they survive to the next
+   pass. Name them, with their issue refs.
+4. **Asked and unanswered** — every question that got no decision, named as such. This is not the same
+   list as *left alone*, and collapsing the two is what makes the pass dishonest: "nobody has ruled on
+   this yet" and "this needs a mechanical fix nobody has done" are different facts, and only the first
+   one is waiting on the person reading your summary. An unanswered close question means **the epic is
+   still open** — say it in those words, because "asked about 6 epics" reads as though something
+   happened to them.
 
 **Never report a silent cap.** If you scoped to one repo, or stopped after N fixes, say so — a
 partial reconcile that reads as a full one is worse than no reconcile, because it buys false
-confidence in the projection.
+confidence in the projection. The same applies to the questions: if you asked about four epics because
+the batch was getting long, the other two are **not** findings you reported, and a summary implying
+otherwise is the false clean of §1 wearing a different hat.
 
 ## Setup
 
