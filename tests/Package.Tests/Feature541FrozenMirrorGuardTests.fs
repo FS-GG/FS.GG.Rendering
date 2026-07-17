@@ -96,8 +96,16 @@ let private declaresDriftedShaField =
 /// the guard actually runs on instead of a regex's opinion of it. One less parser to rot.
 let private mirrored =
     foreignSkills
-    |> List.filter (fun skill -> skill.Disposition = Mirrored)
+    |> List.filter (fun skill -> isMirrored skill.Disposition)
     |> List.map (fun skill -> skill.Id)
+
+/// Every mirrored skill paired with the canonical digest this tree DECLARES it is frozen to (#833).
+let private declarations =
+    foreignSkills
+    |> List.choose (fun skill ->
+        match skill.Disposition with
+        | Mirrored frozenAt -> Some(skill.Id, frozenAt)
+        | NoCounterpart -> None)
 
 // ---- #720: driving the real verdict, against real git ------------------------------------------
 
@@ -485,18 +493,80 @@ let issue720FrozenMirrorVerdictTests =
                   Directory.Delete(notARepo, true)
           }
 
-          // The REQUIRED lane's own message (#738). It runs offline, so it has no canonical digest to name —
-          // and every one of #541's "do NOT"s has to survive that. The strictness was never what made the
-          // gate wedge; the external input was.
+          // ---- #833: the sanction ----
+          //
+          // THE WHOLE OF #833 IS THIS TRUTH TABLE. `sanctionOf` is the required lane's entire verdict, so
+          // these four cases are the gate: which edits merge, and which do not.
+          test "the required lane sanctions a DECLARED re-freeze, and nothing else" {
+              // #833's case. The canonical moved, somebody copied the new bytes down and said so in the same
+              // commit. Before this, `git` saw `EditedHere` and the required, enforce_admins lane red — so
+              // the one edit this repo is OBLIGED to make could not be merged by anyone, and PR #832 needed a
+              // protection lift to land. It is now the whole point of the lane that it passes.
+              Expect.equal
+                  (sanctionOf canonicalSha canonicalSha)
+                  Declared
+                  "the body hashes exactly what this tree declares it froze: a re-freeze that declared itself, which is the one edit #833 exists to let through"
+
+              // #541's case, unchanged and unchangeable. An author editing content in a body they did not
+              // know was a mirror does not write a declaration — that is the entire reason the sanction is
+              // safe — so they land here and red, exactly as they did before #833.
+              Expect.equal
+                  (sanctionOf canonicalSha localSha)
+                  Undeclared
+                  "the body does not hash its declared canonical. This is #541's break and it must still red the required gate: the sanction is a way to DECLARE a re-freeze, never a way to launder an edit."
+
+              // THE TWO-STEP BYPASS, and the reason the sanction is not merely checked on edited bodies.
+              // Move the declaration ALONE and `git` reports `UnchangedHere` for the body — so a lane that
+              // only questioned EDITED bodies would wave it through, and the pin would then sanction the
+              // next edit to that body. The verdict does not consult `git` at all, so there is no arm for
+              // the two-step to walk through: body and declaration must agree, always.
+              Expect.equal
+                  (sanctionOf localSha canonicalSha)
+                  Undeclared
+                  "a declaration moved on its own does not match its body, so it reds immediately rather than lying in wait to sanction the next edit"
+          }
+
+          // ADR-0105's PROPERTY, ASSERTED ON THE VERDICT ITSELF. The required lane may not read an input this
+          // repo does not own — and after #833 it reads no `git` either, so the ONLY inputs `sanctionOf` has
+          // are two digests off the working tree. This is what makes the lane's determinism structural rather
+          // than argued: there is nothing in scope for FS.GG.Game to move.
+          test "the required lane's verdict is a function of the working tree alone" {
+              for frozenAt in [ localSha; canonicalSha; registrySha ] do
+                  for local in [ localSha; canonicalSha; registrySha ] do
+                      Expect.equal
+                          (sanctionOf frozenAt local)
+                          (if frozenAt = local then Declared else Undeclared)
+                          "`sanctionOf` compares two digests and consults nothing else — no registry, no canonical, no network, and no `git`. ADR-0105's test (could this turn an already-green commit red without anyone changing this repository?) answers NO by construction."
+          }
+
+          // THE DECLARATION IS ONLY AS GOOD AS ITS HONESTY ABOUT WHAT IT COSTS. `Mirrored` carries the
+          // digest, so a `NoCounterpart` row CANNOT carry one — there is no body to declare, and .github#486
+          // is explicit that growing one is itself the break. Illegal states unrepresentable, rather than a
+          // convention a later edit can quietly break.
+          test "only a mirrored skill can declare a frozen digest" {
+              for skill in foreignSkills do
+                  match skill.Disposition with
+                  | Mirrored frozenAt ->
+                      Expect.stringHasLength
+                          frozenAt
+                          64
+                          $"`{skill.Id}` is Mirrored, so it must declare the sha256 it is frozen to (#833). A short or empty digest would make `sanctionOf` red on a body that is perfectly correct."
+                  | NoCounterpart -> ()
+          }
+
+          // The REQUIRED lane's own message (#738, #833). It runs offline, so it has no canonical digest to
+          // name — and every one of #541's "do NOT"s has to survive that. The strictness was never what made
+          // the gate wedge; the external input was.
           test "the required lane's MIRROR EDITED keeps every bit of #541's strictness" {
               let message =
-                  describeEditedHere
+                  describeUndeclared
                       "fs-gg-audio"
                       "fs-gg-game"
                       "FS.GG.Game/template/product-skills/fs-gg-audio/SKILL.md"
                       "template/product-skills/fs-gg-audio/SKILL.md"
                       (EditedHere baseSha)
                       localSha
+                      canonicalSha
 
               Expect.stringContains message "FROZEN MIRROR EDITED" "the #541 case is still named exactly as it was"
 
@@ -521,29 +591,89 @@ let issue720FrozenMirrorVerdictTests =
                   "name the merge-base digest the body diverged FROM — that is the evidence git gave us, and it is all this lane needs"
           }
 
-          // THE LAST PLACE #541's TEETH COULD HAVE BEEN LOST QUIETLY (#738).
+          // WHERE #738's FAIL-CLOSED WENT (#833), and why its absence is not the fail-open it looks like.
           //
-          // The required lane convicts on `git` and nothing else. So if `git` cannot answer, it has NO
-          // other signal to fall back on — the registry and the canonical are gone from this lane on
-          // purpose. Passing there would mean a mirror edit sails through the required gate whenever the
-          // checkout is shallow: a silent fail-open, in the exact family (#266) this repo keeps closing.
+          // #738's required lane convicted on `git` and NOTHING else, so a `git` that could not answer had
+          // to red (`describeProbeFailed`): passing would have let a mirror edit through the required gate on
+          // any shallow checkout — a silent fail-open of the #266 family. That reasoning was correct, and its
+          // PREMISE is what #833 removed. The declaration, not `git`, is now the lane's oracle, and it is in
+          // the working tree — which a shallow clone has in full.
           //
-          // It fails CLOSED, and it is allowed to: its subject is THIS checkout's configuration, not
-          // another repo's `main`, so ADR-0105's test still answers NO.
-          test "the required lane fails CLOSED when git cannot tell it whether you edited the mirror" {
-              let message = describeProbeFailed "fs-gg-audio" "template/product-skills/fs-gg-audio/SKILL.md" "shallow clone"
+          // So the property that fail-closed arm protected is asserted DIRECTLY here: a blind `git` must not
+          // let an undeclared edit through. If someone ever reintroduces a `git`-shaped decision into this
+          // lane, this is the test that should stop them.
+          test "a blind git cannot let an undeclared edit through the required lane" {
+              // `Unknown` is the state #738 had to red on. It is now simply irrelevant to the verdict: the
+              // sanction never asked `git` anything, so there is nothing for `git`'s blindness to withhold.
+              Expect.equal
+                  (sanctionOf canonicalSha localSha)
+                  Undeclared
+                  "the body does not match its declaration. `git`'s answer — including 'I cannot tell' — cannot change that, which is why the required lane no longer needs a probe to fail closed on."
 
-              Expect.stringContains message "::error" "a probe that did not run has proved nothing, and it must not prove it quietly"
+              // ...and the message says so rather than blaming the checkout, which is what the deleted arm
+              // did. A reader on a fork must not be sent to fix `fetch-depth` for a verdict that never
+              // depended on it.
+              let message =
+                  describeUndeclared
+                      "fs-gg-audio"
+                      "fs-gg-game"
+                      "FS.GG.Game/template/product-skills/fs-gg-audio/SKILL.md"
+                      "template/product-skills/fs-gg-audio/SKILL.md"
+                      (Unknown "shallow clone")
+                      localSha
+                      canonicalSha
+
+              Expect.stringContains message "::error" "an undeclared edit is a red whatever git could see"
 
               Expect.stringContains
                   message
-                  "NOT a pass"
-                  "say plainly that this is the check failing to RUN, not the check passing — the distinction #266 is entirely about"
+                  "does not change this verdict"
+                  "say plainly that git's blindness is not what convicted them — the verdict is the body against its declaration, and both are in this tree"
+          }
+
+          // THE SANCTION MUST NOT READ AS "EDIT THE PIN TO GO GREEN" (#833).
+          //
+          // This message is the ONLY place the sanction is ever explained, and its reader is almost always
+          // #541's author — someone who just got told off for editing a file they did not know was a mirror.
+          // If the first thing they see is a one-line trick to silence the gate, the guard is a rubber stamp
+          // and #541 comes back wearing a declaration. The escape has to be there (it is #833's entire
+          // point), and it has to be LAST, CONDITIONAL, and priced.
+          test "the re-freeze escape is offered only to a re-freeze, and states what forging it costs" {
+              let message =
+                  describeUndeclared
+                      "fs-gg-audio"
+                      "fs-gg-game"
+                      "FS.GG.Game/template/product-skills/fs-gg-audio/SKILL.md"
+                      "template/product-skills/fs-gg-audio/SKILL.md"
+                      (EditedHere baseSha)
+                      localSha
+                      canonicalSha
 
               Expect.stringContains
                   message
-                  "fetch-depth: 0"
-                  "name the remedy: this is a fault in the CHECKOUT, and it is fixable here, unlike everything else this lane stopped reding on"
+                  "ONLY IF YOU ARE RE-FREEZING"
+                  "the escape must be gated on a precondition the reader can check, not offered as a way out of the error"
+
+              Expect.stringContains
+                  message
+                  "authoring nothing"
+                  "name the precondition in terms of what the reader is DOING, since that is the thing only they can know"
+
+              Expect.stringContains
+                  message
+                  "NOT a way to land your own content"
+                  "say outright that the declaration is not a laundering device — the one sentence that keeps this from being a rubber stamp"
+
+              Expect.stringContains
+                  message
+                  "frozen-mirror-freshness"
+                  "price it: name the lane that compares the declaration against the LIVE canonical and reds on a forged one"
+
+              // ORDER IS THE POINT. #541's prohibitions have to be read BEFORE the escape, or the escape is
+              // the whole message for a skimming reader.
+              Expect.isTrue
+                  (message.IndexOf "DO NOT REVERT YOUR WORK" < message.IndexOf "ONLY IF YOU ARE RE-FREEZING")
+                  "#541's 'do NOT's must come first. A reader who skims and finds the escape at the top has been handed a way to silence the gate before being told why it fired."
           }
 
           // ONE DEFINITION, TWO CONSUMERS (#661's rule). If the script stops calling the shared verdict and
@@ -566,6 +696,15 @@ let issue720FrozenMirrorVerdictTests =
                   scriptCode
                   "failsIn Freshness drift"
                   "the script must ask `failsIn` which verdicts red ITS lane, rather than re-deciding. The whole of #738 is that this policy lives in one place."
+
+              // ...and the same rule for the sanction (#833). `sanctionOf` is a two-line function, which is
+              // exactly what makes inlining it tempting — and an inlined `if local = frozenAt` would put the
+              // required gate's ENTIRE verdict in the one file this project cannot compile in and test.
+              // Every assertion in this list would stay green while the gate did whatever the script liked.
+              Expect.stringContains
+                  scriptCode
+                  "sanctionOf frozenAt local"
+                  "the required lane must reach its verdict through `sanctionOf`. It is the whole of #833, it is two lines, and a copy in the script is a copy no test can see."
 
               Expect.isFalse
                   (scriptCode.Contains "FROZEN MIRROR EDITED")
@@ -615,6 +754,33 @@ let feature541FrozenMirrorGuardTests =
                       (sha256Of body)
                       pinned
                       $"the waiver for `{id}` pins a digest that is NOT the current body's. A wrong pin is not a small error: the waiver stops matching and the gate reds for a reason nobody can see — or, if the digest was copy-pasted from the CANONICAL instead of the drifted body, it never fires and silently un-waives the drift it exists for."
+          }
+
+          // EVERY DECLARATION IS THE DIGEST OF THE BODY IT DECLARES (#833).
+          //
+          // The same shape as the waiver-pin test above, and it earns its place for the same reason: this is
+          // the single most likely thing to go stale, it is free offline, and a wrong pin is not a small
+          // error. A declaration that drifts from its body reds the REQUIRED, enforce_admins gate for every
+          // worker in the repo — the ADR-0103 "cost of a red here is the whole repo" case — and the person
+          // who broke it is not the person who finds out.
+          //
+          // It also catches the one mistake that would quietly gut the sanction: a declaration seeded from
+          // the CANONICAL while the body is drifted. `sanctionOf` would then red a correct tree and, worse,
+          // pre-sanction the exact bytes of the drift.
+          test "every declared frozen digest is the digest of the mirror it declares" {
+              Expect.isNonEmpty
+                  declarations
+                  "the pin declares which foreign skills this repo mirrors, and each must carry the canonical digest it is frozen to (#833). An empty list here means the parse found nothing to assert and every check below is vacuous."
+
+              for id, frozenAt in declarations do
+                  let body = repositoryPath $"template/product-skills/{id}/SKILL.md"
+
+                  Expect.isTrue (File.Exists body) $"`{id}` is declared `Mirrored`, so this repo must ship that body"
+
+                  Expect.equal
+                      (sha256Of body)
+                      frozenAt
+                      $"the declaration for `{id}` in scripts/FrozenMirrorVerdict.fs is not the digest of the body this repo ships. The REQUIRED gate compares exactly these two (#833), so this reds `main` for every worker until it is fixed — and if the digest was taken from the CANONICAL rather than the shipped body, it silently pre-sanctions the drift. Re-freeze the body and declare that same digest, in one commit."
           }
 
           // A DELETED mirror is as much a break as an edited one — a `--profile game` scaffold just loses
