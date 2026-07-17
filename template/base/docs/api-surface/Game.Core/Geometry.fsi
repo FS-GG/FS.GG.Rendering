@@ -51,7 +51,12 @@ module Geometry =
     /// `Depth = (a.Radius + b.Radius) − centreDistance`. The overlap test uses squared distance; the
     /// sole `sqrt` (a correctly-rounded, cross-platform-deterministic IEEE op) builds the manifold on
     /// a hit. Pure and total: a NaN or non-positive radius yields `None`. Coincident centres are the
-    /// documented degenerate — `Normal = (1, 0)`, `Depth = a.Radius + b.Radius`.
+    /// documented degenerate — `Normal = (1, 0)`, `Depth = a.Radius + b.Radius`. NB the sibling producer
+    /// `Physics.circleCircleManifold` makes the OPPOSITE call on coincident centres (returns no manifold
+    /// rather than an invented normal): this primitive guarantees a total `Contact` on every overlap,
+    /// picking a deterministic fallback direction so a caller always gets separation guidance, whereas the
+    /// solver refuses to feed a physically-absent normal (and its zero-length warm-start key) into the
+    /// impulse pass. Two deliberate, documented answers to the same degenerate — not a discrepancy.
     val circleContact: a: Circle -> b: Circle -> Contact option
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
@@ -97,9 +102,12 @@ module Geometry =
     /// touch (zero overlap), matching the strict-edge convention of `aabbContact`. The candidate axes
     /// are the outward edge normals of both polygons (a's in vertex order, then b's), deduplicated so
     /// antiparallel/duplicate directions collapse to one. `Contact.Depth` is the minimum projection
-    /// overlap (the minimum translation vector magnitude) and `Contact.Normal` is that axis re-oriented
-    /// from `a` toward `b` by the centroid delta, so translating `a` by `−Normal × Depth` separates the
-    /// pair. An equal-minimum overlap on more than one axis resolves to the first in the a-then-b
+    /// overlap (the minimum translation vector magnitude) and `Contact.Normal` is that axis oriented
+    /// along the nearer exit: on the MTV axis the pair can separate by pushing `a` either way, and the
+    /// normal points along whichever of the two signed exit distances is shorter, so translating `a` by
+    /// `−Normal × Depth` is the least-penetration separation (equivalently, the a→b direction — the
+    /// shorter exit always moves `a` away from `b`). No centroid is computed. An equal-minimum overlap
+    /// on more than one axis resolves to the first in the a-then-b
     /// generation order (byte-deterministic). Pure and total: a polygon with fewer than 3 vertices, a
     /// zero-area polygon, or any NaN coordinate yields `None` without throwing.
     val polygonContact: a: ConvexPolygon -> b: ConvexPolygon -> Contact option
@@ -139,6 +147,19 @@ module Geometry =
     /// one of `b` (parallel faces — two axis-aligned boxes, say) makes `a`'s the reference; within one
     /// polygon, an exact tie between faces resolves to the first in vertex order; and the incident face
     /// is tie-broken the same way.
+    ///
+    /// Winding: `ConvexPolygon`'s CCW convention (an input assumption, not runtime-enforced) is
+    /// load-bearing HERE in a way it is not for `polygonContact`. `Normal` and `Depth` come from the
+    /// SAT scan, which orients the MTV by the projection exit and is winding-agnostic — a CW-wound
+    /// polygon still yields the correct `Normal`/`Depth` (and so still agrees with `polygonContact`).
+    /// The contact *points* do NOT survive the same abuse: reference- and incident-face selection
+    /// argmax over each face's OUTWARD normal, which is outward only for a CCW ring — a CW ring flips
+    /// every edge normal inward, so a CW polygon selects the wrong reference/incident faces and its
+    /// `Points`, `PointCount`, and `FeatureId` (the warm-start key) are unreliable. This is a
+    /// wrong-answer limitation, not a totality violation: a CW input still returns without throwing.
+    /// The trap is that `Physics` tolerates either winding for mass and circle-vs-poly contacts, so a
+    /// CW body is accepted with correct mass yet corrupted poly-vs-poly points — feed CCW rings (as
+    /// `obbPolygon` does by construction) if you consume `Points`/`FeatureId`.
     ///
     /// Pure and total: a polygon with fewer than 3 vertices, a zero-area polygon, or any NaN
     /// coordinate yields `ValueNone` without throwing, exactly as `polygonContact` yields `None`.

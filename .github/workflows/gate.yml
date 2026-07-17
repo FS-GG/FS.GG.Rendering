@@ -294,6 +294,29 @@ jobs:
           fi
           echo "no .fsi surface drift across $(ls readiness/surface-baselines/*.txt | wc -l) committed baselines"
 
+      # #752 / #694 — THE SCAFFOLD'S API MIRROR IS A BUILD OUTPUT, AND THIS IS WHAT MAKES IT ONE.
+      #
+      # `template/base/docs/api-surface/**` is emitted by the generator from the .fsi the PINNED packages
+      # carry, plus `scripts/api-surface-manifest.txt` (the curation: which of the pin's 2,575 members are
+      # taught, merged into which of the 62 files, under which `// See skill:` pointer, with the ~200 doc
+      # lines that are mirror-only). Every mirrored .fsi used to carry a header saying "regenerate when
+      # $(FsGgUiVersion) moves" and no regenerator existed — this is that regenerator's gate.
+      #
+      # NOT redundant with the surface-baseline step above, which asks a different question of a different
+      # subject: that one records THIS REPO'S `src/` surface, this one asserts the SCAFFOLD'S DOCS match
+      # the PACKAGE A PRODUCT RESTORES. `src/` is ahead of the pin for the whole window between a feature
+      # landing and the release that publishes it — which is what `mirror-pending-release-ledger.txt`
+      # exists to hold — so the two can disagree legitimately and the mirror has to track the pin.
+      #
+      # `--check` never writes, so a red here is a REPORT, not a mutation the next step trips over.
+      - name: API-surface mirror drift (generated from the pin)
+        run: |
+          set -euo pipefail
+          if ! dotnet fsi scripts/refresh-api-surface-mirror.fsx --check; then
+            echo "::error::template/base/docs/api-surface/** no longer matches what the pinned packages + scripts/api-surface-manifest.txt generate. It is a BUILD OUTPUT: do not hand-edit it. Run 'dotnet fsi scripts/refresh-api-surface-mirror.fsx' and commit, or fix the manifest if the curation is what changed."
+            exit 1
+          fi
+
       # Feature 209 (T015/T029/T031, FR-001..009) — version-staleness / coherence guard. Mirrors the
       # surface-baseline "regenerate-and-fail-on-drift" pattern above. Runs BOTH layers merge-blocking:
       #   * structural verdict-core (env-free): pin matches an existing fs-gg-ui/v* tag and does not lag

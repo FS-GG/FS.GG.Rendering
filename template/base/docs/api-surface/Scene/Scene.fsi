@@ -160,7 +160,8 @@ type PathOperation =
     | Difference
     | Xor
 
-/// Skia's boolean-path ops can fail on degenerate or self-intersecting input, and the Scene IR has no
+/// Public contract type exposed by this FS.GG.UI package.
+/// Why `Path.combine` could not honestly produce a result: the Skia-free `Scene` layer has no
 /// boolean-geometry kernel, so `Intersect`/`Difference` fail loud with this rather than returning
 /// wrong-but-success-shaped geometry (P6 / R2).
 type PathCombineError = { Operation: PathOperation; Message: string }
@@ -309,8 +310,8 @@ type LayoutUnsupportedReason =
 /// Public contract type exposed by this FS.GG.UI package.
 ///
 /// Qualified access is mandatory: the bare `Error` case would otherwise shadow `FSharp.Core`'s
-/// `Result.Error` for every consumer that opens this namespace — and your `Model.fs` opens it.
-/// Write `DiagnosticSeverity.Error`; a bare `Error "..."` in your code means `Result.Error`.
+/// `Result.Error` for every consumer that opens this namespace — and every generated product's
+/// `Model.fs` opens it.
 [<RequireQualifiedAccess>]
 type DiagnosticSeverity =
     | Info
@@ -431,7 +432,7 @@ type GlyphRunData =
       FallbackMode: ShapedTextFallbackMode
       FallbackDiagnostics: string list }
 
-/// Drawable glyph-run proof node payload — the payload of `SceneNode.GlyphRun`.
+/// Drawable glyph-run proof node payload.
 type GlyphRun =
     { Data: GlyphRunData
       Position: Point
@@ -528,6 +529,7 @@ module Colors =
     val transparent: Color
 
 /// Public contract module exposed by this FS.GG.UI package.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Paint =
     /// Public contract function exposed by this FS.GG.UI package.
     val fill: color: Color -> Paint
@@ -573,13 +575,26 @@ module Path =
     /// Public contract function exposed by this FS.GG.UI package.
     val bounds: path: PathSpec -> Rect option
     /// Public contract function exposed by this FS.GG.UI package.
+    /// `Length` is the chord length over the vertex-bearing commands (MoveTo/LineTo and curve
+    /// endpoints) — the exact polyline `segment` extracts along. `ArcTo` carries no vertex in that
+    /// flattening and contributes no length, so `measure` and `segment` always share one metric.
     val measure: path: PathSpec -> PathMeasure
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Extracts the sub-path between two arc-length distances. The path is flattened to the polyline
+    /// of its vertex-bearing commands (MoveTo/LineTo and curve endpoints — the same points `measure`
+    /// accumulates chord length over), so distances share `measure`'s metric; this is a disclosed
+    /// polyline approximation, not a Skia arc-length reparameterisation of curves. Returns an
+    /// empty-command path when the window is empty or the path has fewer than two vertices.
     val segment: startDistance: float -> endDistance: float -> path: PathSpec -> PathSpec
     /// Public contract function exposed by this FS.GG.UI package.
+    /// `Union`/`Xor` compose overlapping subpaths under the nonzero-winding resp. even-odd fill rule
+    /// and return `Ok`; `Intersect`/`Difference` require boolean path clipping, absent from the
+    /// Skia-free Scene layer, and fail loud with `PathCombineError` rather than returning silently
+    /// wrong geometry (P6 / R2).
     val combine: operation: PathOperation -> left: PathSpec -> right: PathSpec -> Result<PathSpec, PathCombineError>
 
 /// Public contract module exposed by this FS.GG.UI package.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =
     /// Public contract function exposed by this FS.GG.UI package.
     val empty: Scene
@@ -615,7 +630,8 @@ module Scene =
     val textAt: position: Point -> text: string -> color: Color -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
     val textRun: run: TextRun -> Scene
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// The pure, host-independent text-measure heuristic (calibrated to the bundled default family;
+    /// deliberately conservative so a box sized by it is never narrower than the renderer draws).
     val measureText: text: string -> font: FontSpec -> TextMetrics
     /// Public contract function exposed by this FS.GG.UI package.
     val image: bounds: float * float * float * float -> source: string -> Scene
