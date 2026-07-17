@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Spec 255 (#695): the doc-fence-compile harness. Extracts every F# fence from the two fence-bearing
+       shipped corpora (skill SKILL.md, scaffold-source ///) via the ONE fence engine (TestSupport.
+       MarkdownFences), and (US1) compiles each against the PUBLISHED pin restored from nuget.org — so a doc
+       naming an unreleased symbol fails to build. The generated api-surface mirror is NOT a fence corpus
+       (it stays a metadata check behind the retained oracle). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Corpus.fs" />
+    <Compile Include="CorpusTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- #669: the ONE markdown-fence reader, and the repository-root finder. -->
+    <ProjectReference Include="..\TestSupport\TestSupport.fsproj" />
+    <PackageReference Include="Expecto" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" />
+  </ItemGroup>
+
+</Project>

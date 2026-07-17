@@ -70,6 +70,7 @@ R5 source label `infra (R5)` and are not validation-set members.
 | `Canvas.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Controls.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Diagnostics.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `DocFences.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Elmish.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `KeyboardInput.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Layout.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
