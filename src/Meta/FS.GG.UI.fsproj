@@ -22,19 +22,30 @@
 
     #727: that coherent pack is the RELEASE path, and it is not the only path. `dotnet pack
     FS.GG.Rendering.slnx` with no `-p:Version` is what CI, `packaged-consumer.yml` and
-    `PackageFeed.runPackIfRequested` actually run, and this project used to declare no `<Version>`
-    of its own — so `$(Version)` fell back to the repo default in Directory.Build.local.props
-    (0.1.0-preview.1) while the 16 members pin themselves inline at 0.4.0-preview.1. `$version$`
+    `PackageFeed.runPackIfRequested` actually run. This project once declared no `<Version>` of its
+    own — so `$(Version)` fell back to the repo default in Directory.Build.local.props
+    (0.1.0-preview.1) while the 16 members pinned themselves inline at 0.4.0-preview.1. `$version$`
     then stamped BOTH the BOM's own version AND its 16 `[$version$]` EXACT pins at a version no
     member has ever published: `PackageReference Include="FS.GG.UI"` could not restore at all
     (NU1102, sixteen times). The front door was the one package that did not open.
 
-    So the version is declared inline here, exactly as the 16 members declare theirs — the BOM is
-    coherent with them under the plain `dotnet pack` that CI actually runs. A command-line
-    `-p:Version=V` is a GLOBAL property and still overrides this one, so the coherent release pack
-    above is unchanged; this is its fallback, not its replacement.
+    #866 removed the CAUSE rather than re-arming the trap. That failure needed TWO definitions of
+    the version — a repo-wide default the BOM inherited, and inline literals the members declared —
+    and it was the GAP between them that packed the unrestorable graph. #727 closed the gap by
+    giving the BOM an inline literal too and testing for drift; the 17th copy of a value is not a
+    source of truth, it is one more thing to forget (which is what #815 then read as a published
+    version). So there is now exactly ONE definition, in Directory.Build.local.props, and this
+    project inherits it exactly as the 16 members do. Nothing can drift from it, because there is
+    no second value to drift from: bump it and the BOM and all 16 members move together, which is
+    precisely what the EXACT `[$version$]` pins require.
 
-    Keep this in lockstep with the members. `Issue727UmbrellaVersionTests` reds if it drifts.
+    A command-line `-p:Version=V` is a GLOBAL property and still overrides the inherited value, so
+    the coherent release pack above is unchanged; the inherited default is its fallback, not its
+    replacement — as it was when the literal lived here.
+
+    `Issue727UmbrellaVersionTests` still reds if the BOM and its members ever resolve different
+    versions; it now also reds if anything re-declares a version inline under src/, which is the
+    only way the second definition could come back.
   -->
 
   <PropertyGroup>
@@ -42,7 +53,6 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI</PackageId>
     <AssemblyName>FS.GG.UI.Meta</AssemblyName>
-    <Version>0.4.0-preview.1</Version>
 
     <!-- Dependencies-only metapackage: no assembly, no doc xml, no symbols shipped. -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
