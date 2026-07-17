@@ -11,12 +11,13 @@ name: template-dispatch
 #   - FS-GG/.github         — `feed-autofix.yml` flips the `registry/dependencies.yml` row
 #                             (FS.GG.Rendering#847). Latency only: it also runs on a daily schedule.
 #
-# Three jobs (research R4): `derive` owns what is uniquely Rendering's (canonical-repo guard + version
-# derivation/validation from the tag); each `dispatch*` job `uses:` the org reusable workflow, which
-# mints a run-time GitHub App installation token scoped to ITS target and POSTs the
-# repository_dispatch. No long-lived cross-repo secret remains on Rendering (US2). A `uses:` job
-# cannot also run `steps:`, so derivation must be its own preceding job (research R4) — and it runs
-# ONCE, with both senders reading its output, so the two targets cannot be told different versions.
+# `derive` owns what is uniquely Rendering's (canonical-repo guard + version derivation/validation
+# from the tag); one `dispatch*` job per consumer `uses:` the org reusable workflow, which mints a
+# run-time GitHub App installation token scoped to ITS target and POSTs the repository_dispatch. No
+# long-lived cross-repo secret remains on Rendering (US2). A `uses:` job cannot also run `steps:`, so
+# derivation must be its own preceding job (research R4). It runs ONCE and every sender reads its
+# output, so the targets cannot be told different versions; a new consumer is one more `dispatch*`
+# job, and the canonical-repo guard on `derive` keeps forks from reaching any of them.
 #
 # Disjoint from release.yml: that workflow triggers on `v*`; this one triggers ONLY on
 # `fs-gg-ui-template/v*`. The slash makes the globs unable to match the same tag, so release.yml is
@@ -124,8 +125,17 @@ jobs:
       event-type: fs-gg-ui-template-released
       version: ${{ needs.derive.outputs.version }}
     # Same explicit mapping, and for the same reason as `dispatch` above: `secrets: inherit` cannot
-    # bind the hyphenated callee ports. The App must be installed on FS-GG/.github for the token mint
-    # to succeed; it is an org-level App (FS-GG/.github#22) and `.github` is in the same org.
+    # bind the hyphenated callee ports.
+    #
+    # PRECONDITION, and the only way this job fails: the `fs-gg-cross-repo-dispatch` App (installation
+    # 143110413, FS-GG/.github#22) is installed with `repository_selection: selected` — an explicit
+    # repo list, NOT org-wide — so FS-GG/.github must be ON that list or `create-github-app-token`
+    # fails and this job reds. Its `contents: write` is already the right permission (that is what
+    # POST /repos/{o}/{r}/dispatches requires), so the list is the whole question. Being in the same
+    # org buys nothing here. An org-admin can read the list; the account this repo's CI authenticates
+    # as cannot (`GET /user/installations/143110413/repositories` → 403), which is why this is a note
+    # rather than a check. If it reds, add the repo to the installation — do not delete this job: the
+    # flip still lands within a day via `feed-autofix`'s schedule, so the red costs latency only.
     secrets:
       app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
       app-private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}

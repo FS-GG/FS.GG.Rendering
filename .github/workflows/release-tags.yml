@@ -476,6 +476,6 @@ jobs:
       version: ${{ needs.plan.outputs.pkg-version }}
     # The org App-token secrets (`FSGG_DISPATCH_APP_ID` / `FSGG_DISPATCH_APP_PRIVATE_KEY`) are read by
     # template-dispatch.yml's own `dispatch*` jobs, which forward them to the org reusable sender.
-    # There are TWO of them now — FS.GG.Templates and FS-GG/.github (FS.GG.Rendering#847) — so this
-    # one call fans out to every consumer of the release; the job id is kept for continuity.
+    # One call fans out to every consumer of the release — FS.GG.Templates and FS-GG/.github — so a
+    # new consumer is a job added there, not a second call here.
     secrets: inherit
