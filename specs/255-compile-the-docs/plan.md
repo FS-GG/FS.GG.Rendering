@@ -7,14 +7,18 @@
 ## Summary
 
 Replace the hand-rolled regex compiler front-end that guards doc-vs-pin with the real F# compiler. A new
-test project generates, for every F# fence in every shipped doc corpus, a compilation unit in a project
-that `PackageReference`s the pinned packages (`$(FsGgUiVersion)`), restores against the local nupkg feed,
-and builds it in CI on every PR. A fence naming a symbol the pin does not export then fails to compile —
+test project generates, for every F# fence in the two fence-bearing corpora (skill `SKILL.md` and
+scaffold-source `///`), a compilation unit in a project that `PackageReference`s the pinned packages
+(`$(FsGgUiVersion)`), restores the **published** packages from **nuget.org** (cleared sources, isolated dir —
+the `runNameofProbe` approach), and builds it in CI on every PR. A fence naming a symbol the pin does not
+export then fails to compile —
 the compiler models `member`/`abstract`/nested modules/DU cases/primed identifiers/`internal` correctly and
 for free, and additionally proves the copied code *works*. Once that harness holds the line, the machinery
 it subsumes is deleted down to one fence engine (`MarkdownFences`), one `.fsi` reader (`SurfaceSignature`),
-one symbol oracle (the PE/metadata walk, kept only for prose), an empty ledger, and an S-DOC coverage check
-rebased on compiled-fence membership.
+one symbol oracle (the PE/metadata walk, kept for prose symbols AND the generated mirror's `val`/prose
+check), an empty ledger, and an S-DOC coverage check rebased on compiled-fence membership. Only the two
+fence-reading extractors (`skillFenceSymbols`, `scaffoldSourceDocCommentSymbols`) are retired; the mirror
+extractors stay because the generated mirror has no fence to compile.
 
 > **Standing assumption — root-cause hypotheses are unverified until exercised.** The claim that the
 > compiler subsumes each extractor is provisional. `/speckit-tasks` MUST schedule an **early live proof** in
@@ -25,16 +29,17 @@ rebased on compiled-fence membership.
 
 ## Technical Context
 
-**Language/Version**: F# on .NET `net10.0` (`templateTfm = "net10.0"`); tests are xUnit `.fsproj` under `tests/`.
+**Language/Version**: F# on .NET `net10.0` (`templateTfm = "net10.0"`); tests are **Expecto** `.fsproj`
+under `tests/` (`YoloDev.Expecto.TestSdk`, `Tests.runTestsInAssemblyWithCLIArgs`), matching the repo.
 
 **Primary Dependencies**: The F# compiler (`dotnet build`) as the oracle; `FS.GG.TestSupport.MarkdownFences`
 (the single fence scanner, #669); `SurfaceSignature` (`.fsi` reader); the pinned `FS.GG.UI.*` packages at
-`$(FsGgUiVersion)` restored from the local nupkg feed.
+`$(FsGgUiVersion)`, restored **published** from nuget.org (cleared sources, isolated `RestorePackagesPath`).
 
 **Storage**: Filesystem only — generated fence projects in a temp/obj dir; the doc corpora in-tree; the
 ledger file `tests/Build.Tests/pinned-api-doc-ledger.txt` (to be emptied).
 
-**Testing**: xUnit via `dotnet test`; the gate runs every `tests/*.Tests.fsproj` the slnx lists (gate.yml
+**Testing**: Expecto via `dotnet test`; the gate runs every `tests/*.Tests.fsproj` the slnx lists (gate.yml
 "Default local tier" loop), so a new test project is picked up automatically — no gate.yml edit needed to
 run it, only to name it if it must run in a distinct step.
 
@@ -107,7 +112,8 @@ tests/
 │   ├── MarkdownFences.fs             # the ONE fence engine (exists, #669) — reused, not re-added
 │   └── SurfaceSignature.fs           # the ONE .fsi reader — the five duplicate val-regexes fold onto this (P2)
 ├── Build.Tests/
-│   ├── TemplateConsumesPinnedApiTests.fs   # DELETE the 4 fence-side extractors + compile probe + oracleVersion (P2)
+│   ├── TemplateConsumesPinnedApiTests.fs   # DELETE 2 fence-reading extractors + compile probe + oracleVersion (P2);
+│   │                                       # KEEP mirrorValSymbols/mirrorDocCommentSymbols (generated fence-less mirror)
 │   │                                       # KEEP the one PE/metadata oracle (readSurfaceAt) behind one API for prose
 │   └── pinned-api-doc-ledger.txt           # EMPTY on completion (P3)
 └── Package.Tests/

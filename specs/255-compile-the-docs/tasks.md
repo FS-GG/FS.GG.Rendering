@@ -47,7 +47,7 @@ actually replaces the extractors — BEFORE any machinery is deleted.
 > the right doc+line, before anyone trusts the assumption that P1 subsumes the extractors. Treat "the
 > compiler catches what the regex caught" as an UNVERIFIED assumption until this passes.
 
-- [ ] T004 Build the corpus/fence map: enumerate the three corpora (`template/product-skills/**/*.md`, `template/base/docs/api-surface/**/*.fsi` `///`, scaffold sources under `template/base/src` + `template/fragments` `///`) and extract F# fences via `FS.GG.TestSupport.MarkdownFences` only; assert no corpus silently yields zero fences (FR-001)
+- [ ] T004 Build the corpus/fence map: enumerate the two fence-bearing corpora (`template/product-skills/**/*.md`, and scaffold sources under `template/base/src` + `template/fragments` — F# fences inside `///` comments) and extract F# fences via `FS.GG.TestSupport.MarkdownFences` only; assert no corpus silently yields zero fences (FR-001). The generated mirror `.fsi` is excluded (no fences — stays a metadata check)
 - [ ] T005 **Early live proof**: minimal end-to-end run in `tests/DocFences.Tests/DocFencesCompileTests.fs` — generate a pinned project from ~5 real fences, one restore + `dotnet build`, assert GREEN on a known-good fence and RED (with doc+line) on an injected unreleased symbol. Record evidence under `specs/255-compile-the-docs/readiness/` before proceeding
 - [ ] T006 [P] Define the per-corpus preamble format + in-fence `open`-directive (research.md D2) as reviewed config in the repo; document the default `open` set per corpus. **Lock the format against the real fences proven in T005 before generalizing** — this is the plan's highest-risk decision (the "which opens are in scope" that only the compiler answers); do not widen it beyond what a real fence needs
 - [ ] T007 [P] Define the per-fence `SkipWithReason` opt-out directive (research.md D3) that replaces the ledger — local, greppable, reason-carrying (FR-005)
@@ -78,6 +78,7 @@ unreleased symbol; a legitimate partial snippet still compiles; the historical c
 
 ### Implementation for User Story 1
 
+- [ ] T014b [US1] Author compilable F# fences into the scaffold-source `///` comments that teach a `Module.member` (currently prose-only), so the harness — not `scaffoldSourceDocCommentSymbols` — verifies them (FR-013), in `template/base/src/**` + `template/fragments/**`
 - [ ] T015 [US1] Implement fence → `CompilationUnit` assembly (corpus preamble + fence `ExtraOpens`, unique module name encoding doc+line) in `tests/DocFences.Tests/` (data-model.md CompilationUnit)
 - [ ] T016 [US1] Implement `FenceProject` generation + single pinned restore + `dotnet build` (reuse the `runNameofProbe` approach: PackageReference the pin, `<clear/>` sources to nuget.org, isolated `RestorePackagesPath`, `NU1603;NU1101;NU1102;NU1608` as errors; ONE restore amortized over all fences); **honor the release-pending (`PinPending`) waiver** — when the pin is not yet published to nuget.org, soft-pass rather than fail the gate (FR-012, satisfies the T009 assertion) in `tests/DocFences.Tests/`
 - [ ] T017 [US1] Map compiler diagnostics back through `Origin` to `{Doc, Line, Diagnostic}` so a failure is clickable (FR-003, constitution VI) in `tests/DocFences.Tests/`
@@ -100,9 +101,9 @@ are green; `MarkdownFences` / `SurfaceSignature` / the PE-metadata walk are the 
 
 - [ ] T021 [P] [US2] Fold the third fence reader in `scripts/check-symbology-skill-parity.fsx` onto `MarkdownFences` (FR-007)
 - [ ] T022 [P] [US2] Fold the five duplicate `val` regexes onto `SurfaceSignature` — callers at `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs:144`, `tests/Package.Tests/SurfaceDocCoverageTests.fs:81`, `tests/**/ApiSurfaceMirrorTests.fs:238`, `tests/**/Issue496FSharpCoreShadowingTests.fs:132` (FR-007)
-- [ ] T023 [US2] Delete the four fence-side extractors (`skillFenceSymbols`, `mirrorValSymbols`, `mirrorDocCommentSymbols`, `scaffoldSourceDocCommentSymbols`) from `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — gated on SC-006 still green (FR-006)
+- [ ] T023 [US2] Delete the TWO fence-reading extractors (`skillFenceSymbols`, `scaffoldSourceDocCommentSymbols`) from `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — gated on SC-006 still green (FR-006). **Keep** `mirrorValSymbols` / `mirrorDocCommentSymbols`: the generated, fence-less mirror stays a metadata check
 - [ ] T024 [US2] Delete the compile-probe oracle (`runProbeBuild` / `runNameofProbe`) and the `oracleVersion = "0.9.0"` hardcode; the harness reads the live pin (FR-006, FR-009) in `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs`
-- [ ] T025 [US2] Expose the retained PE/metadata oracle (`readSurfaceAt`) behind ONE API, serving only the prose residue (`skillProseSymbols`), and confirm it is the only symbol oracle left (FR-008) in `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs`
+- [ ] T025 [US2] Expose the retained PE/metadata oracle (`readSurfaceAt`) behind ONE API, serving the prose residue (`skillProseSymbols`) AND the surviving mirror `val`/prose check (`mirrorValSymbols` / `mirrorDocCommentSymbols`); confirm it is the only symbol oracle left (FR-008) in `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs`
 - [ ] T026 [US2] Re-run the full baseline (`scripts/baseline-tests.fsx`) and diff against T002 — assert no net coverage loss (SC-006), in `specs/255-compile-the-docs/readiness/`
 
 **Checkpoint**: Exactly one fence engine, one `.fsi` reader, one symbol oracle (SC-003); all suites green.

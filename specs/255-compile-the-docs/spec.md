@@ -64,16 +64,18 @@ old machinery is removed.
 
 The duplicated machinery the compiler subsumes is deleted. Exactly one fence engine (`MarkdownFences`), one
 `.fsi` reader (`SurfaceSignature`), and one symbol oracle (the PE/metadata walk) remain in the tree. The
-compile probe and the `oracleVersion` hardcode are gone; the four fence-side extractors are gone.
+compile probe and the `oracleVersion` hardcode are gone; the **two fence-reading** extractors
+(`skillFenceSymbols`, `scaffoldSourceDocCommentSymbols`) are gone. The mirror extractors stay behind the one
+oracle API (the generated mirror has no fence to compile).
 
 **Why this priority**: The convergence the epic promises is only real if the redundant readers actually
 leave the tree — otherwise the next hole still lands in whichever copy nobody looked at. Depends on P1
 holding the line first.
 
-**Independent Test**: `grep` the tree for the retired symbols (`skillFenceSymbols`, `mirrorValSymbols`,
-`mirrorDocCommentSymbols`, `scaffoldSourceDocCommentSymbols`, `runProbeBuild`, `runNameofProbe`,
-`oracleVersion`) and the third fence reader in `check-symbology-skill-parity.fsx`; confirm none remain and
-the suites are still green.
+**Independent Test**: `grep` the tree for the retired symbols (`skillFenceSymbols`,
+`scaffoldSourceDocCommentSymbols`, `runProbeBuild`, `runNameofProbe`, `oracleVersion`) and the third fence
+reader in `check-symbology-skill-parity.fsx`; confirm none remain, that `mirrorValSymbols` /
+`mirrorDocCommentSymbols` DO remain behind the one oracle API, and the suites are still green.
 
 **Acceptance Scenarios**:
 
@@ -129,9 +131,10 @@ credit the surface as taught.
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST extract every F# code fence from every shipped doc corpus — product skills
-  (`SKILL.md`), the api-surface mirror `.fsi` `///` comments, and scaffold-source `///` comments — using the
-  single shared fence engine (`MarkdownFences`).
+- **FR-001**: The system MUST extract every F# code fence from the two **fence-bearing** shipped corpora —
+  product skills (`SKILL.md`) and scaffold-source `///` comments — using the single shared fence engine
+  (`MarkdownFences`). (The api-surface mirror `.fsi` is **generated** and carries no fences; it is a
+  metadata check, not a fence corpus — see FR-006/FR-008.)
 - **FR-002**: The system MUST assemble the extracted fences into one or more generated F# projects that
   `PackageReference` the pinned packages at `$(FsGgUiVersion)` and restore the **published** packages from
   **nuget.org** — with package sources cleared to nuget.org and restored into an isolated packages folder
@@ -146,15 +149,21 @@ credit the surface as taught.
 - **FR-005**: The system MUST provide an explicit, auditable way to mark an intentionally non-compiling
   fence (illustrative error, pseudo-code) as excluded from the compile set — distinct from, and replacing,
   the blanket ledger.
-- **FR-006**: The system MUST retire the four fence-side extractors (`skillFenceSymbols`, `mirrorValSymbols`,
-  `mirrorDocCommentSymbols`, `scaffoldSourceDocCommentSymbols`) and the compile-probe oracle
-  (`runProbeBuild` / `runNameofProbe`) once the fence-compile harness holds the doc-vs-pin line.
+- **FR-006**: The system MUST retire the **two fence-reading** extractors (`skillFenceSymbols`,
+  `scaffoldSourceDocCommentSymbols`) and the compile-probe oracle (`runProbeBuild` / `runNameofProbe`) once
+  the fence-compile harness holds the doc-vs-pin line. The **mirror** extractors (`mirrorValSymbols`,
+  `mirrorDocCommentSymbols`) MUST stay: the generated, fence-less mirror remains a `val`/prose metadata
+  check served by the one retained oracle, not something the compiler can subsume.
+- **FR-013**: The scaffold-source `///` comments MUST carry compilable F# fences (authored where absent), so
+  the fence-compile harness — not `scaffoldSourceDocCommentSymbols` — is what verifies the symbols they
+  teach resolve against the pin.
 - **FR-007**: The system MUST leave exactly one fence engine (`MarkdownFences`), one `.fsi` reader
   (`SurfaceSignature`), and one symbol oracle (the PE/metadata walk) in the tree; the third fence reader in
   `check-symbology-skill-parity.fsx` and the five duplicate `.fsi` `val` regexes MUST be folded onto the
   survivors.
-- **FR-008**: The retained symbol oracle MUST be exposed behind one API and MUST serve only the residue the
-  compiler cannot see — prose symbols named in sentences rather than fences.
+- **FR-008**: The retained symbol oracle MUST be exposed behind one API and MUST serve the residue the
+  compiler cannot see: prose symbols named in sentences rather than fences, **and** the generated mirror's
+  `val`/prose declarations (which have no fence to compile).
 - **FR-009**: The system MUST read the pinned version from the live pin (`$(FsGgUiVersion)`) and MUST NOT
   carry a second hardcoded oracle version.
 - **FR-010**: `pinned-api-doc-ledger.txt` MUST be empty on completion; any line that cannot simply be
@@ -167,8 +176,8 @@ credit the surface as taught.
 
 ### Key Entities
 
-- **Doc corpus**: the set of shipped docs that carry F# fences — product skills, api-surface mirror `.fsi`
-  `///` comments, and scaffold sources.
+- **Doc corpus**: the two shipped corpora that carry F# fences — product skills (`SKILL.md`) and scaffold
+  sources (`///` comments). The api-surface mirror is generated and fence-less, so it is NOT a fence corpus.
 - **Fence**: a single F# code block in a doc, classified by `MarkdownFences`; the unit that is compiled.
 - **Fence-compile harness**: the component that turns fences into a generated, pinned-referencing project
   and compiles it.
@@ -187,8 +196,9 @@ credit the surface as taught.
 - **SC-002**: A doc introducing a symbol absent from the pinned package fails the gate 100% of the time,
   with a diagnostic that names the offending doc.
 - **SC-003**: Exactly one fence engine, one `.fsi` reader, and one symbol oracle remain in the tree
-  (verifiable by count); the four fence-side extractors, the compile probe, the third fence reader, the five
-  duplicate `.fsi` regexes, and the hardcoded oracle version are all absent.
+  (verifiable by count); the two fence-reading extractors, the compile probe, the third fence reader, the
+  five duplicate `.fsi` regexes, and the hardcoded oracle version are all absent. (`mirrorValSymbols` /
+  `mirrorDocCommentSymbols` remain by design, behind the one oracle API — FR-006/FR-008.)
 - **SC-004**: `pinned-api-doc-ledger.txt` contains zero suppression lines.
 - **SC-005**: The same-language-homonym failure (a local binding crediting a public surface by name) can no
   longer occur in S-DOC coverage, demonstrated by a regression test.
@@ -198,8 +208,10 @@ credit the surface as taught.
 
 ## Assumptions
 
-- The mirror-generator epic (#694) is closed, so the api-surface mirror is generated from the pin and is a
-  trustworthy corpus to compile.
+- The mirror-generator epic (#694) is closed, so the api-surface mirror is **generated** from the pin
+  (`scripts/refresh-api-surface-mirror.fsx`). Because it is generated and carries no fences, hand-adding
+  fences to it would be clobbered; it stays a `val`/prose metadata check behind the one oracle, and the
+  fence-compile corpus is skills + scaffold sources only.
 - `MarkdownFences` (from #669) is the accepted single fence scanner and its classification of what an F#
   block is stands.
 - The pinned packages are available on the local nupkg feed at `$(FsGgUiVersion)` during a normal PR run;

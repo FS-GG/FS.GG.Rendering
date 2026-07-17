@@ -10,8 +10,8 @@ The set of shipped docs carrying F# fences.
 
 | Field | Meaning |
 |-------|---------|
-| `Kind` | `ProductSkill` \| `ApiSurfaceMirror` \| `ScaffoldSource` |
-| `Root` | `template/product-skills/**/*.md` \| `template/base/docs/api-surface/**/*.fsi` \| `template/base/src` + `template/fragments` (`*.fs`) |
+| `Kind` | `ProductSkill` \| `ScaffoldSource` (the two fence-bearing corpora; the generated mirror is NOT one) |
+| `Root` | `template/product-skills/**/*.md` \| `template/base/src` + `template/fragments` (`*.fs` `///` fences) |
 | `Preamble` | the declared default `open` set for this corpus (D2) |
 
 Rule: every corpus is enumerated; a corpus that yields zero fences is reported, never silently absent
@@ -52,7 +52,7 @@ The single generated project all `CompilationUnit`s compile in.
 |-------|---------|
 | `Tfm` | `net10.0` (`templateTfm`) |
 | `PackageRefs` | the pinned `FS.GG.UI.*` packages at the live `$(FsGgUiVersion)` |
-| `RestoreSource` | the local nupkg feed |
+| `RestoreSource` | nuget.org (published), sources `<clear/>`ed, isolated `RestorePackagesPath` — the `runNameofProbe` approach; NOT the local feed |
 | `Units` | all in-scope `CompilationUnit`s |
 
 Behavior: one restore, one build; a build failure is mapped through `Origin` to `{Doc, Line, Diagnostic}`.
@@ -63,8 +63,8 @@ What the pinned packages export — read two ways, now consolidated:
 
 | Consumer | Reader | Kept? |
 |----------|--------|-------|
-| Fence check | the F# compiler (via `FenceProject` build) | primary oracle |
-| Prose residue | the PE/`MetadataReader` walk (`readSurfaceAt`) behind one API | the ONE retained symbol oracle |
+| Fence check (skills + scaffold) | the F# compiler (via `FenceProject` build) | primary oracle |
+| Prose residue + generated mirror `val`/prose | the PE/`MetadataReader` walk (`readSurfaceAt`) behind one API | the ONE retained symbol oracle |
 | ~~Fence check (old)~~ | ~~`runProbeBuild`/`runNameofProbe` compile probe~~ | **deleted** (P2) |
 
 ## SymbolManifest
@@ -89,10 +89,10 @@ illustrative cases.
 
 | Symbol / artifact | File | Fate |
 |-------------------|------|------|
-| `skillFenceSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete (compiler subsumes) |
-| `mirrorValSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete |
-| `mirrorDocCommentSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete |
-| `scaffoldSourceDocCommentSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete |
+| `skillFenceSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete (compiler subsumes skill fences) |
+| `scaffoldSourceDocCommentSymbols` | `TemplateConsumesPinnedApiTests.fs` | delete (compiler subsumes scaffold fences, once authored — FR-013) |
+| `mirrorValSymbols` | `TemplateConsumesPinnedApiTests.fs` | **KEEP** — generated fence-less mirror; stays a `val` metadata check behind the one oracle |
+| `mirrorDocCommentSymbols` | `TemplateConsumesPinnedApiTests.fs` | **KEEP** — mirror `///` prose check behind the one oracle |
 | `runProbeBuild` / `runNameofProbe` | `TemplateConsumesPinnedApiTests.fs` | delete (probe oracle) |
 | `oracleVersion = "0.9.0"` | `TemplateConsumesPinnedApiTests.fs` | delete (read live pin) |
 | third fence reader | `scripts/check-symbology-skill-parity.fsx` | fold onto `MarkdownFences` |
