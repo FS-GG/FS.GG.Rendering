@@ -58,17 +58,56 @@ eval "$(scripts/fsgg-coord whoami --mint)"
 This is the **one** mint idiom across the tool, the protocol doc, and both skill roots. It is the line
 `whoami`'s own warning prints, so the thing the tool tells you to run is the thing written here.
 
-Inventing one *feels* safe and is not. Agents asked to pick an id converge on the same corner of the
-name space, and an id two workers share is an id the lock cannot separate — `release` would drop the
-other's claim mid-flight, `heartbeat` would renew a marker that is not yours, and `say`/`inbox` would
-cross-deliver. This board has carried **four `finch-*` workers at once**, all of them pattern-matched
-off the single example id that used to sit on this line, while `whoami`'s own minted ids spread
-cleanly across the word list (#419). The attractor is the *word*, not the suffix: re-rolling the hex
-does not help if you still reach for the bird you just read — which is why **no literal id appears
-anywhere in these docs for you to copy**, and why minting is the tool's job, not yours (#551).
+**Why minted and not chosen** is the first of the four rules you are driving — stated below (the
+*claim-lock* rule) with the lease you hold and the `Paths:` line you author, because all four are the
+engine's, and this recipe restated them by hand for five repairs before it stopped (#1059). **No
+literal id appears anywhere in these docs for you to copy** (#551) — the attractor is the word, not
+the suffix, which is why the id is the tool's to mint and not yours to pick.
 
 Until `claim` refuses a marker whose `worker=` duplicates a live one (the tool half of #419), **the id
 scheme is advisory** — a mint you skip is a lock you do not have.
+
+### The rules you are driving
+
+<!-- BEGIN GENERATED: fsgg-protocol:driver-rules -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  This recipe restated these rules by hand for its whole life, and #1059 counted the cost: five
+  repairs to four sentences, every one of them the PROSE moving to where the engine already was.
+  The two that were closed by generating a table have never drifted again. Two hand-written
+  copies also disagreed OUT LOUD — §3 said an expired lease cannot be renewed and §6 said
+  `heartbeat` renews it — and nothing could see it, because neither was the engine's answer.
+  Edit Protocol.fs and regenerate.
+-->
+
+*Generated from the typed core. The engine that takes your claim, holds your lease and refuses
+your `Paths:` line is the engine that wrote this. The full rule set, with the incident behind
+each one, is in [intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md).*
+
+**`Paths:` is a declaration, and a fenced one is a QUOTATION**
+
+Declare the touch-set as a `Paths:` line at up to three leading spaces. A `Paths:` line INSIDE a fenced code block is a quotation of the grammar, not a use of it — the protocol docs quote it constantly. `Paths: none` is a SENTINEL meaning "this item deliberately has no touch-set", and it is not the same fact as having forgotten one.
+
+**The touch-set grammar — it is NOT a glob language**
+
+supported: an exact path ('src/Foo.fs'), or a directory prefix ('src/Foo', 'src/Foo/*', 'src/Foo/**'). There is no glob matcher: a leading '**/' or an interior '*' matches nothing — spell the paths out.
+
+**The claim lock is a comment-order CAS, and the ASSIGNEE cannot hold it**
+
+A claim is an `fsgg:claim` marker COMMENT, and the lowest live marker id wins. GitHub issues comment ids from one server-side sequence, so "lowest live marker" is a total order every racer observes identically. The GitHub ASSIGNEE cannot be the lock, because N agents share one account. That total order is over MARKERS, and it separates WORKERS only while their ids are DISTINCT: an id two workers share is an id this lock cannot separate, and `release`, `heartbeat`, `say` and `inbox` then act on one another's claims. So a worker id is MINTED, never chosen — a worker asked to pick one is not a random source.
+
+**The lease is a WINDOW, and an unknown age says so**
+
+A claim's lease is 120 minutes by default (`FSGG_CLAIM_LEASE_MIN`), and `heartbeat` renews it only while it is LIVE. Past it the claim is REAPABLE — not free: only `reap` may break a lock, and an item's touch-set stays reserved until it does. An EXPIRED lease cannot be renewed in place; the holder must re-claim. Evidence that the work is alive — an open `item/<n>-*` PR — withholds the item from `take` and REFUSES a `reap`, but it does not revive the lease. A claim whose age cannot be read reports `lease unknown`, never a window.
+
+<!-- END GENERATED: fsgg-protocol:driver-rules -->
+
+These four are the protocol a driver *acts on*, and nothing above or below this block should restate
+what they SAY — a hand-copy is what #921/#907/#1030 kept getting wrong while the engine was already
+right. The procedure that USES them — the mint command above, the `widen` and `heartbeat` invocations
+in §3 — stays here; the rules themselves are read off the engine.
 
 Then read your mail — another worker may have left you a message on an item you are about to touch:
 
@@ -366,7 +405,8 @@ discipline, managed for you. Fetch anyway: whatever cuts the worktree can only c
   file you just touched is one a checked-in generator emits and a CI regeneration gate guards, you
   regenerated it — you did not author it. Declaring it now reserves a file nobody owns and
   serialises every other item that regenerates it, which is the exact failure §1 keeps you out of.
-  Leave it undeclared, and name it as expected drift in the PR (§5).
+  Leave it undeclared: `verify-paths` asks the generators what they emit and reports it under
+  `regenerated (expected):`, apart from the drift you are being asked to act on (ADR-0044, #498).
 - **And the mirror of that rule: if the work turns out NARROWER than declared, re-declare it
   narrower — the moment you know.** `widen` sets the touch-set rather than extending it, so the same
   command gives paths back:
@@ -395,17 +435,18 @@ discipline, managed for you. Fetch anyway: whatever cuts the worktree can only c
   source tree reserved, colliding on **one `.fsi` file** — and #618's holder had `widen` in hand the
   whole time with no reason to think of it
   ([#601](https://github.com/FS-GG/.github/issues/601)).
-- **Heartbeat long work.** A claim goes stale after `FSGG_CLAIM_LEASE_MIN` (default 120m) without
-  one, and the next claimant collects it.
+- **Heartbeat long work.** The lease is the *claim-lease* rule in the block above (§0) — a live claim
+  goes stale after `FSGG_CLAIM_LEASE_MIN` without a heartbeat, and once it has EXPIRED it cannot be
+  renewed in place:
 
   ```sh
   scripts/fsgg-coord heartbeat <issue>
   ```
 
-  **An expired lease cannot be renewed.** `heartbeat` refuses, names whoever holds the item now, and
-  tells you to stop working it. Believe it. Re-take with `claim`, or walk away — renewing a dead
-  marker would put two workers on one item, which is the entire failure this protocol exists to
-  prevent.
+  On a lapsed lease `heartbeat` refuses, names whoever holds the item now, and tells you to stop —
+  believe it and re-`claim` (or walk away). Renewing a dead marker would put two workers on one item.
+  An open `item/<n>-*` PR withholds your item from `take` and refuses a `reap` (§6), but it does **not**
+  revive the lease; it buys you the chance to re-claim without racing, not a renewal.
 - **Commit with the trailer, so attribution survives into history.** No id is written here to copy
   (#551) — expand the one §0 minted you:
 
@@ -892,12 +933,31 @@ scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declar
 > exactly as GraphQL does. See [REST when the budget is gone](#rest-when-the-budget-is-gone).
 
 `verify-paths` is **advisory** — the touch-set is a declaration, not an enforced boundary, and CI
-reports drift rather than blocking it. Drift means one of three things, and each needs an answer
-before merge: you should have `widen`ed; you edited a file that is not this item's work; or you
-**regenerated an artifact §1 told you not to declare** — which is correct behaviour, and the one
-case where the right answer is to say so and merge. `verify-paths` cannot yet tell the third from
-the first ([#498](https://github.com/FS-GG/.github/issues/498)), so **name which one it is in the
-PR**: an advisory that fires on correct behaviour, unexplained, is one the next worker skips past.
+reports drift rather than blocking it. It reports under two headings, and they ask different things
+of you:
+
+- **`undeclared (review):`** — the finding. Either you should have `widen`ed, or you edited a file
+  that is not this item's work. Answer it before merge.
+- **`regenerated (expected):`** — **not** a finding, and nothing to explain. A generated, CI-gated
+  artifact §1 told you not to declare, which `verify-paths` subtracted by asking the generators
+  themselves what they emit ([ADR-0044](../../../docs/adr/0044-generated-artifacts-are-derived-from-their-generators.md),
+  [#498](https://github.com/FS-GG/.github/issues/498)).
+
+> **This used to be one undifferentiated list, and the recipe's answer was to make the WORKER sort
+> it** — *"name which one it is in the PR"*. That was the best available advice while the tool could
+> not tell a regenerated artifact from a real overrun, and it aged into the thing it was warning
+> about: the advisory fired on the behaviour §1 **mandates**, on every kit change, forever. A signal
+> that fires on correct behaviour is one workers learn to skip past — and the one time it means a real
+> overrun, nobody reads it. The sorting is the tool's job, because the generator already holds the
+> fact; asking the worker to re-state it per PR was the hand-copied list ADR-0044 declined.
+
+**The subtraction FAILS CLOSED, so a `regenerated` heading you do NOT see is not a claim that
+nothing was regenerated.** An absent, failing, or silent `generated-paths` — and a
+`verify-paths --pr N --repo <other>`, where the local generators say nothing about another repo's
+artifacts — all subtract **nothing** and leave the file under `undeclared`. That is deliberate:
+"I could not ask what is generated" and "nothing is generated" are opposite facts, and only one of
+them is safe to act on (#266). So an artifact you expected to be subtracted showing up as
+`undeclared` means **go look at the generator**, not "widen the touch-set".
 
 Then review before you merge. Run `/code-review` on the diff and fix what it finds; if the change
 has a runtime surface, drive it with `/verify` rather than trusting tests.
@@ -1402,10 +1462,13 @@ decision to carry, and `take` is exactly right.
 
 **And an expired lease is not proof that you stopped** ([#581](https://github.com/FS-GG/.github/issues/581)).
 If a long build outruns the lease, an **open PR on `item/<n>-*` is proof of life**: `batch` will not
-offer your item to anyone else, `reap` refuses to collect it, `who` shows `STALE (#433 OPEN)` rather
-than a bare `STALE`, and `heartbeat` will let you **renew your own lapsed lease** rather than making
-you re-`claim` and race a `take` that is already offering your work to a stranger. You still should
-heartbeat. You are no longer punished for the one case where you predictably won't.
+offer your item to anyone else, `reap` refuses to collect it, and `who` shows `STALE (#433 OPEN)`
+rather than a bare `STALE`. What that proof of life buys you is that the item is **not being handed to
+a stranger** while you finish — so you can re-`claim` it without racing a `take`. It does **not** revive
+the lease: an EXPIRED lease cannot be renewed in place (the *claim-lease* rule in §0), so `heartbeat`
+refuses it and re-`claim` is the path back. Heartbeat *before* the lease lapses so it never comes to
+that; the open PR is the safety net for the one case where a build predictably outruns the window, not
+a substitute for the heartbeat.
 
 ## Abandoning an item
 

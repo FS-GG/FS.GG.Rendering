@@ -183,17 +183,56 @@ the projection instead of correcting it. It is not hypothetical: it hid three cl
 each issue's `body` (which §2's touch-set note needs). It emits an **envelope**, not a bare array,
 so every jq starts at `.items`:
 
+<!-- BEGIN GENERATED: fsgg-protocol:snapshot-shape -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  The hand-written literal this replaced was ILLUSTRATIVE and read as NORMATIVE — the ambiguity
+  was the defect, not any one of its errors. It had the key order wrong in two places and a
+  leaseMinutes that matched no default.
+
+  TWO sources, as blocker-states has. The schema string and the key list are Protocol.fs
+  (snapshotSchema, snapshotKeys); the document they describe is written by Scan.snapshot and
+  read by Snapshot.parse, and ScanRoundTripTests PINS Protocol against both — Core states a
+  shape it does not render, which is #1058's ownership call and the test is its price.
+-->
+
+*Generated from the typed core. The keys are in the order `Scan.snapshot` WRITES them, and
+`ScanRoundTripTests` drives the real writer to assert it — so this table cannot disagree with the
+document `scan --json` actually emits. `reconciled` is the column that matters: it says which
+keys a reconciler may select on.*
+
 ```json
-{ "schema": "fsgg.coord.snapshot/1", "allowBacklog": true, "leaseMinutes": 90, "limit": null,
-  "inFlight": [ ... ],
-  "items": [
-    { "owner": "FS-GG", "repo": "FS.GG.Rendering", "number": 752, "status": "Blocked",
-      "state": "OPEN", "body": "…Paths: …",
-      "blockers": [ { "owner": "FS-GG", "repo": "FS.GG.Game",  "number": 321,
-                      "raw": "FS.GG.Game#321",  "state": "closed" },
-                    { "owner": "FS-GG", "repo": "FS.GG.Audio", "number": 106,
-                      "raw": "FS.GG.Audio#106", "state": "closed" } ] } ] }
+{ "schema": "fsgg.coord.snapshot/1", "allowBacklog": …, "limit": …, "leaseMinutes": …, "items": [ … ], "inFlight": [ … ] }
 ```
+
+| key | reconciled? | what it carries |
+|---|---|---|
+| `schema` | no | The document's contract, `fsgg.coord.snapshot/1`. `Snapshot.parse` REFUSES a document without it rather than defaulting — a malformed snapshot is an error, never a default. |
+| `allowBacklog` | no | Whether the scan was asked to include `Backlog`. The scan's own parameter, echoed back: `lanes` reads it from HERE rather than taking its own flag (#991), which is why it is on the document at all. |
+| `limit` | no | The `-n` cap the scan was asked for, or `null` for uncapped. The scan's parameter, not a board fact. |
+| `leaseMinutes` | no | The lease window the scan resolved staleness against (`FSGG_CLAIM_LEASE_MIN`, default 120). The scan's parameter. The prose this replaced hardcoded `90`, which was neither the default nor a fact — the clearest evidence a reader cannot tell an example from a contract when both are hand-typed. |
+| `items` | **YES** | The board rows — THE reconcilable key, and the only one. Each carries `owner`, `repo`, `number`, `status`, `state`, `body` and `blockers`. Named `items` on the wire, not `candidates`: that is what the parser reads. |
+| `inFlight` | no | What live claims already reserve, each naming its HOLDER. A scheduler's input, not a column to reconcile: `check-board` acts on the MARKER through `who`, which carries the lease state this does not. |
+<!-- END GENERATED: fsgg-protocol:snapshot-shape -->
+
+An `items` row, which is the key above that a reconciler acts on — and the one the rest of this skill's
+`jq` starts at:
+
+```json
+{ "owner": "FS-GG", "repo": "FS.GG.Rendering", "number": 752, "status": "Blocked",
+  "state": "OPEN", "body": "…Paths: …",
+  "blockers": [ { "owner": "FS-GG", "repo": "FS.GG.Game",  "number": 321,
+                  "raw": "FS.GG.Game#321",  "state": "closed" },
+                { "owner": "FS-GG", "repo": "FS.GG.Audio", "number": 106,
+                  "raw": "FS.GG.Audio#106", "state": "closed" } ] }
+```
+
+That row is ILLUSTRATIVE and says so — it is an example of a row's contents, not a statement of the
+document's shape. The table above is the shape, and it is generated. Telling the two apart is exactly
+what the literal this replaced could not do for a reader: it stated both at once, in one hand-typed
+blob, and was wrong about the shape half in two places while looking equally authoritative about both.
 
 Two shape details that will bite you if you skim:
 
