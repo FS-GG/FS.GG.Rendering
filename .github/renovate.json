@@ -23,13 +23,7 @@
       "enabled": false
     },
     {
-      "description": "Expecto is capped to the 10.x line because the only test-SDK adapter that runs Expecto under `dotnet test`, YoloDev.Expecto.TestSdk (latest 0.15.6, 2026-04-14), constrains Expecto to `< 11.0.0`. Renovate cannot see that transitive constraint on its own, so an Expecto 11.x bump resolves to an unmergeable graph (NU1608) and churns every cycle (see #24). ACTION WHEN YoloDev.Expecto.TestSdk ships a release supporting Expecto ≥ 11: delete this allowedVersions cap — the group rule below then bumps both in one PR.",
-      "matchDatasources": ["nuget"],
-      "matchPackageNames": ["Expecto"],
-      "allowedVersions": "<11.0.0"
-    },
-    {
-      "description": "Move Expecto and its test-SDK adapter as one unit — they must stay version-compatible, so once the cap above is lifted they should bump together in a single PR rather than as two PRs that momentarily conflict.",
+      "description": "Move Expecto and its test-SDK adapter as one unit — they must stay version-compatible, so they bump together in a single PR rather than as two that momentarily conflict. This is what makes the Expecto 11 move land as one coherent PR now that the cap is gone (#845). The cap this rule used to wait on ('Expecto is capped to the 10.x line…, ACTION WHEN YoloDev.Expecto.TestSdk ships a release supporting Expecto >= 11: delete this allowedVersions cap') was RETIRED by its own stated trigger: adapter 0.16.0 depends on Expecto 10.2.3 as a MINIMUM with no upper bound (verified against the nuspec on api.nuget.org, not inferred from the version number), and this repo has been on 0.16.0 for some time — so the adapter had stopped constraining Expecto and the cap was the only thing holding it at 10.x. What still needs saying is the part the cap did NOT: the adapter's own latest, 1.0.0, is a DOWNGRADE — it depends on Expecto [9.0.0, 10.0.0), a HIGHER number on an OLDER lineage, and 0.16.0 in the middle is the only version that admits Expecto 11. Renovate reads versions, not lineages. That fact is now enforced for every repo by `allowedVersions: <1.0.0` on YoloDev.Expecto.TestSdk in the SHARED preset (FS-GG/.github default.json, .github#850) rather than six times over, which is what makes deleting the cap here safe — deleting it while the adapter was uncapped would have let Renovate propose 1.0.0 and force Expecto back to 9.x (NU1608, warning-as-error).",
       "matchDatasources": ["nuget"],
       "matchPackageNames": ["Expecto", "YoloDev.Expecto.TestSdk"],
       "groupName": "Expecto + test-SDK adapter"
