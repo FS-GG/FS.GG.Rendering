@@ -14,11 +14,11 @@
       },
       "FS.GG.Contracts": {
         "type": "Direct",
-        "requested": "[1.4.0, 1.4.0]",
-        "resolved": "1.4.0",
-        "contentHash": "iq1uWFlkADsM7F6L34HIekJHhI2mHeO77k1lm97KcJlZGi5/JJPO05HodY0jLoOk17v9hxaZuy3hvNgoEdzCnA==",
+        "requested": "[3.0.0, 3.0.0]",
+        "resolved": "3.0.0",
+        "contentHash": "QCx67ht7LhuVJ5f+PEeAL4oshcstTbGGKcCG/K1zkw1yb7fWUwD/ErPCWkhc7CiPpbPwdJlvH5kNdOT/O5AsVw==",
         "dependencies": {
-          "FSharp.Core": "10.1.301"
+          "FSharp.Core": "10.1.302"
         }
       },
       "FSharp.Core": {
