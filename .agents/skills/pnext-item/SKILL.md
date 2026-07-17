@@ -564,14 +564,52 @@ gh api -X POST repos/FS-GG/<target>/issues \
 Paths: src/Scene/ tests/Scene/" --jq .html_url
 
 # 2. Put it on the board, so it is sequenced rather than merely filed.
+#    QUALIFY EVERY REF HERE. A bare `<new>` resolves against the repo you are STANDING IN — which in
+#    this block is never the target repo — so it would silently address `.github#<new>`: a real,
+#    unrelated, usually-closed item. See "A bare ref is not a short ref" below.
 scripts/fsgg-coord add FS-GG/<target>#<new>
-scripts/fsgg-coord set-field <new> 'Repo Scope' <target-short-id>
-scripts/fsgg-coord set-field <new> Phase '<the target repo's phase>'
-scripts/fsgg-coord set-field <new> Status Backlog
+scripts/fsgg-coord set-field FS-GG/<target>#<new> 'Repo Scope' <target-short-id>
+scripts/fsgg-coord set-field FS-GG/<target>#<new> Phase '<the target repo's phase>'
+scripts/fsgg-coord set-field FS-GG/<target>#<new> Status Backlog
 
 # 3. If the finding belongs under an epic, LINK it as a sub-issue — NOW, not at close-out.
 scripts/fsgg-coord child FS-GG/<repo>#<parent> FS-GG/<target>#<new>
 ```
+
+**A bare ref is not a short ref — it resolves against the repo you are STANDING IN, and this block
+is the one place that is always wrong.** `<n>`, `repo#n` and `owner/repo#n` are three different
+refs, not three spellings of one. A bare `<n>` is resolved against `--repo` if you passed one, and
+otherwise against **your checkout's own remote** — so in a cross-repo filing block, where every ref
+names an issue in *another* repo, a bare `<new>` addresses `.github#<new>` instead. Measured:
+
+```
+$ scripts/fsgg-coord item-id 12                    # bare, from a .github checkout
+PVTI_lADOEYAWY84Bb08WzgxC5-4                       # ...is .github#12 — a CLOSED P0 decision row
+$ scripts/fsgg-coord item-id FS-GG/FS.GG.Audio#12
+fsgg-coord-engine: GraphQL refused the query: Could not resolve to an Issue with the number of 12.
+```
+
+**This is not a corner case — it is every case.** Measured 2026-07-17, every target repo's numbering
+sits *entirely inside* `.github`'s: the highest issue in any of them is FS.GG.Rendering#855, and
+`.github` is past #1020. So the number you just filed in a target repo **always exists here too**,
+and the write does not fail — it **succeeds, on the wrong item**: `Status: Backlog` stamped over a
+closed row, exit 0, no diagnostic. Meanwhile the issue you actually filed is never sequenced, which
+is [#442](https://github.com/FS-GG/.github/issues/442)'s invisible-work shape again.
+
+**This used to fail LOUDLY, and the repair is what quieted it.** [#611](https://github.com/FS-GG/.github/issues/611)
+named this very line and fixed the *error label*, correctly leaving a spelling that still errored.
+Then [#548](https://github.com/FS-GG/.github/issues/548) taught the parser to resolve a bare `<n>`
+against your checkout — right for the in-repo case it was about, and it turned this block's error
+into a silent mis-write. Nothing re-read the cross-repo block in that light, and the
+`documented-invocation` gate ([#919](https://github.com/FS-GG/.github/issues/919)) cannot: it
+normalises `<new>` to `1` and asks whether `set-field 1 …` **parses**, which it does. That gate
+checks the *shape* of an invocation — it has no referent to check, so a metavariable's repo is
+outside its subject by construction.
+
+**So the rule is not "always qualify".** It is: **qualify when the ref's repo is not your
+checkout's.** The bare form below is correct precisely because it is not cross-repo —
+`set-field <this-issue> …` names an item in the repo you are standing in, which is the case a bare
+ref is *for*.
 
 **A finding filed without `Paths:` is a finding nobody can pick up.** `take`/`batch` refuse an item
 with no declared touch-set — correctly, since an undeclared one cannot be proven disjoint from

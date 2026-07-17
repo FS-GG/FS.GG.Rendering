@@ -252,10 +252,18 @@ caches the item id (so the `set-field` that always follows pays nothing), and it
 principal on a budget the whole fleet shares (#587).
 
 ```sh
-scripts/fsgg-coord add FS-GG/<repo>#<n>              # put it on the board
-scripts/fsgg-coord set-field <n> Status Backlog      # ...then sequence it
+scripts/fsgg-coord add FS-GG/<repo>#<n>                        # put it on the board
+scripts/fsgg-coord set-field FS-GG/<repo>#<n> Status Backlog   # ...then sequence it
 # `ready` / `next` read the board. NEVER `gh project item-list` — 6 pts to read FIVE items.
 ```
+
+**Qualify the ref — `set-field` does not inherit the repo from the `add` above it.** A bare `<n>`
+resolves against `--repo` if given, else **the checkout you are standing in**, so on a cross-repo
+item it silently addresses `.github#<n>` — a real, unrelated, usually-closed row. The write
+*succeeds* (exit 0, no diagnostic) and the issue you meant is never sequenced. It failed loudly
+until [#548](https://github.com/FS-GG/.github/issues/548) taught the bare form to resolve; the
+`documented-invocation` gate normalises `<n>` to `1` and can only ask whether it **parses**, which
+it does. Bare is right when the item is in *your* repo, wrong here. See `pnext-item` §4.
 
 **One-time board PROVISIONING** is the genuine exception: a human runs it once, with admin rights, and
 no worker ever executes it. View layout/grouping, sub-issue links, issue-type assignment, and built-in
