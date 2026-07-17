@@ -4,14 +4,19 @@ name: template-dispatch
 # App-token dispatch-sender, superseding the Feature 214 bespoke stored-PAT send).
 #
 # When Rendering publishes a FS.GG.UI.Template coherent-set release — the template-scoped tag
-# `fs-gg-ui-template/v<version>` (Feature 206) — notify FS-GG/FS.GG.Templates so its upstream-bump.yml
-# opens a pin-bump PR for that version. No manual step (US1).
+# `fs-gg-ui-template/v<version>` (Feature 206) — notify the repos that consume that release, so each
+# opens its own bump/flip PR for that version. No manual step (US1). Two consumers today, both keyed
+# on the same `fs-gg-ui-template-released` event:
+#   - FS-GG/FS.GG.Templates — `upstream-bump.yml` opens a pin-bump PR (Feature 216, the original US1).
+#   - FS-GG/.github         — `feed-autofix.yml` flips the `registry/dependencies.yml` row
+#                             (FS.GG.Rendering#847). Latency only: it also runs on a daily schedule.
 #
-# Two jobs (research R4): `derive` owns what is uniquely Rendering's (canonical-repo guard + version
-# derivation/validation from the tag); `dispatch` `uses:` the org reusable workflow, which mints a
-# run-time GitHub App installation token scoped to the target and POSTs the repository_dispatch. No
-# long-lived cross-repo secret remains on Rendering (US2). A `uses:` job cannot also run `steps:`, so
-# derivation must be its own preceding job (research R4).
+# Three jobs (research R4): `derive` owns what is uniquely Rendering's (canonical-repo guard + version
+# derivation/validation from the tag); each `dispatch*` job `uses:` the org reusable workflow, which
+# mints a run-time GitHub App installation token scoped to ITS target and POSTs the
+# repository_dispatch. No long-lived cross-repo secret remains on Rendering (US2). A `uses:` job
+# cannot also run `steps:`, so derivation must be its own preceding job (research R4) — and it runs
+# ONCE, with both senders reading its output, so the two targets cannot be told different versions.
 #
 # Disjoint from release.yml: that workflow triggers on `v*`; this one triggers ONLY on
 # `fs-gg-ui-template/v*`. The slash makes the globs unable to match the same tag, so release.yml is
@@ -87,6 +92,40 @@ jobs:
     # org-admin 2026-06-28 (FS-GG/.github#22; the earlier `APP_ID`/`APP_PRIVATE_KEY` assumption was
     # wrong — proven by the live run on tag fs-gg-ui-template/v0.1.52-preview.1 which read them empty).
     # Both repos are public, so org secrets are consumable on the free org plan.
+    secrets:
+      app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+      app-private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
+
+  dispatch-github:
+    name: Notify FS-GG/.github of template release
+    needs: derive
+    # The SECOND consumer of the same event (FS.GG.Rendering#847). `.github`'s `feed-autofix.yml`
+    # already listens for `fs-gg-ui-template-released` and, on it, re-derives the coherent set from
+    # the live org feed and opens the PR that flips `registry/dependencies.yml` — the last consumer
+    # of a template release still flipped by hand (FS-GG/.github#748).
+    #
+    # LATENCY ONLY, and deliberately not load-bearing — do not make it so. `feed-autofix`'s PRIMARY
+    # trigger is a daily schedule that works with no change here; this only moves the flip from
+    # "within a day" to "within minutes". That is worth having because `.github`'s `feed-coherence`
+    # gates on TIME, not on diff, so every branch cut from `.github@main` inherits the red while the
+    # row is stale — FS-GG/.github#744, touching no registry content, was blocked by exactly that.
+    #
+    # So this job failing costs latency, not correctness: the receiver ignores `client_payload`
+    # entirely and re-derives from the feed, leaving no dispatch-only path to rot. Keep it that way.
+    # This fabric has twice failed to fire (the manual `release.yml` path sends nothing; the 0.4.0
+    # send was wrong via `env: GITHUB_REF:`, #232) — a receiver keyed only on it inherits both.
+    #
+    # A separate job, not a second target on `dispatch`: the reusable sender takes ONE `target-repo`
+    # and mints a token scoped to it, so one job per target is the contract. It also keeps the two
+    # notifications independent — Templates is still notified when this one fails, and vice versa.
+    uses: FS-GG/.github/.github/workflows/dispatch-sender.yml@5fed2838f9ed085ffca09f4cc18b4f7bc59c1294  # main as of 2026-06-28
+    with:
+      target-repo: FS-GG/.github
+      event-type: fs-gg-ui-template-released
+      version: ${{ needs.derive.outputs.version }}
+    # Same explicit mapping, and for the same reason as `dispatch` above: `secrets: inherit` cannot
+    # bind the hyphenated callee ports. The App must be installed on FS-GG/.github for the token mint
+    # to succeed; it is an org-level App (FS-GG/.github#22) and `.github` is in the same org.
     secrets:
       app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
       app-private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
