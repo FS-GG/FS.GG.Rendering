@@ -136,17 +136,45 @@ so every jq starts at `.items`:
 
 Two shape details that will bite you if you skim:
 
-- **`blockers[].state` is lower case** — `open | closed | merged | unknown | unparseable`, the five
-  cases of the engine's `BlockerState`. Compare against `"CLOSED"` and it never matches, so every
-  blocker classifies as still-holding and every finding vanishes. (`ascii_upcase` in §3 is for
-  **REST**, which is a different read with the opposite convention. Do not "unify" them.)
+- **`blockers[].state` is lower case** — its values are the table below, generated from the
+  engine that writes them. Compare against `"CLOSED"` and it never matches, so every blocker
+  classifies as still-holding and every finding vanishes. (`ascii_upcase` in §3 is for **REST**,
+  which is a different read with the opposite convention. Do not "unify" them.)
 - **The ref field is `raw`, not `ref`** — `.blockers[].raw` is `"FS.GG.Game#321"`. `.ref` yields
   `null`, which prints as a finding you cannot act on.
 
+<!-- BEGIN GENERATED: fsgg-protocol:blocker-states -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  The hand-written copy NAMED its own source — "the five cases of the engine's `BlockerState`"
+  — and was still a copy. Naming a source is not reading it. Generatable only since #1012 gave
+  the vocabulary an owner in Core; before that it was two private INVERSE copies outside it, and
+  typing the cases into Protocol.fs would have been a THIRD (#865).
+
+  TWO sources, because this region states two different facts. The `.state` strings and the case
+  list come from Types.fs (`BlockerState`, `blockerStateWireName`) — that is where a NEW state or
+  a renamed one belongs. The `holds?` bit and the prose are Protocol.fs. Regenerate either way.
+-->
+
+*Generated from the typed core: `Types.blockerStateWireName` writes these strings, so the engine
+that emits `.state` is the engine that wrote this table. Lower case, deliberately — an issue's own
+`state` is UPPER case on the wire and a blocker's is not, and the two conventions are not to be
+"unified" (§3).*
+
+| `.state` | holds? | what it means |
+|---|---|---|
+| `open` | **YES** | The blocker is open. It HOLDS. |
+| `closed` | no | The blocker issue is closed. It does not hold — the work it named is finished or abandoned. |
+| `merged` | no | The blocker is a MERGED pull request. It does not hold. A rule that cleared only on CLOSED would unblock when the PR was ABANDONED and block forever once it was FINISHED — the gate opening precisely when the work is thrown away (#476). |
+| `unknown` | **YES** | The ref parsed and its state could not be read. It HOLDS: "I could not look" is not "I looked and it is fine" (#266). Usually an off-board ref the scan could not resolve — board it, and it becomes `open` or clears. |
+| `unparseable` | **YES** | The `Blocked by` text is not an issue ref at all. It HOLDS: prose in a dependency field is a question nobody answered, and a field this pass cannot read is not a field it may declare empty. |
+<!-- END GENERATED: fsgg-protocol:blocker-states -->
+
 `scan` resolves an off-board ref **over REST itself**, in the scan, and says how many on stderr
 (`scan: 1059 candidate(s); 0 off-board blocker(s) resolved`) — you no longer have to. What it
-cannot resolve stays `unknown`, and both `unknown` and `unparseable` **block**, per `fail-closed`
-above.
+cannot resolve stays `unknown`, which **holds** — see the table.
 
 ## 2. The findings
 
