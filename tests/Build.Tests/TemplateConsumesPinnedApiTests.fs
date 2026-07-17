@@ -2505,9 +2505,23 @@ let private omissionLedger =
 /// The seeded size, and a CEILING. The ledger's header promises it "may only SHRINK"; this is what makes
 /// that a rule rather than a hope. Without it the ratchet is aspirational: a worker whose change reddens the
 /// completeness rule can go green by appending one line — which is exactly what the header forbids and
-/// nothing else would detect. Lower it as the debt is paid; never raise it.
+/// nothing else would detect. Lower it as the debt is paid.
+///
+/// RAISING IT IS NOT FORBIDDEN — IT IS EXPENSIVE, AND THAT IS THE POINT. This line used to end "never raise
+/// it", which contradicted the rule it documents: the failure message this ceiling produces says, in as many
+/// words, "if an entry is genuinely a new DELIBERATE curation, lower nothing and argue it: raise
+/// `OmissionLedgerCeiling` in the same commit, with the reason". Both cannot be true, and the absolute
+/// reading is the one that fails: a pinned dependency can ADD public surface the scaffold has no business
+/// teaching (Audio 0.3.0 did — a whole device/diagnostics lane), and under "never raise" the only ways to a
+/// green gate are to mirror a lane the product cannot reach or to narrow the rule. Both are worse than an
+/// argued entry, and the second is what the completeness rule explicitly forbids.
+///
+/// So: a raise is a DECISION, and it must read like one — the ledger carries the argument, this number moves
+/// in the same commit, and a reviewer sees both in one diff. What the ratchet actually buys is that the debt
+/// cannot grow SILENTLY. Raised 373 -> 382 for the FS.GG.Audio.Host device lane; see the ledger's own entry
+/// for why those nine are deliberate (#752).
 [<Literal>]
-let private OmissionLedgerCeiling = 373
+let private OmissionLedgerCeiling = 382
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
@@ -2546,96 +2560,6 @@ let private mirrorSurfaceKeys : Set<string> =
 // Tests
 // ---------------------------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------------------------
-// #611 / #594 — THE PENDING-RELEASE LEDGER'S CLAIM, ASKED OF THE ACTUAL PACKAGE.
-//
-// #594 gave a mirrored TYPE a way to wait for its release: `tests/Package.Tests/
-// mirror-pending-release-ledger.txt` declares "src has this member, the pin does not, so the mirror omits
-// it", and M-MIR/TYPE honours the omission. Three rules keep it honest — P-PEND/SRC (src really declares
-// it), P-PEND/OMIT (the mirror really omits it), P-PEND/PIN (the entry's version stamp equals the pin).
-//
-// NOTHING ASKS THE PACKAGE. P-PEND/PIN is a string comparison: it proves the entry was WRITTEN against
-// this pin, not that this pin LACKS the member. Every P-PEND rule resolves against `src/`, which is where
-// the member always exists; the published package is never opened. So the ledger's load-bearing claim —
-// the one that buys the omission — is the only one taken on trust.
-//
-// This file already restores and reads that package, so asking costs nothing.
-// ---------------------------------------------------------------------------------------------------
-
-let private pendingLedgerRel = "tests/Package.Tests/mirror-pending-release-ledger.txt"
-let private pendingLedgerPath = repoPath pendingLedgerRel
-
-/// `SkiaViewer::ViewerEffect.Persist @ 0.9.0 #587`, and its generic form `Foo::Bar<1>.Baz @ …`. The arity
-/// is carried through into IL's spelling (``Bar`1``) so it keys the same map the mirror does.
-let private pendingEntryRegex =
-    Regex(
-        @"^(?<dir>[\w.]+)::(?<type>[A-Z]\w*)(?:<(?<arity>\d+)>)?\.(?<member>\w+)\s*@\s*(?<pin>[^\s#]+)",
-        RegexOptions.Compiled
-    )
-
-type PendingMember =
-    { Line: int
-      Dir: string
-      /// EVERY namespace the mirror directory declares. A directory can declare more than one
-      /// (`Controls/` declares `FS.GG.UI.Controls` and `FS.GG.UI.Controls.Typed`), and the probe must
-      /// `open` all of them or the ledgered type may simply not be in scope — which would fail the probe
-      /// for a reason that has nothing to do with the claim it is testing.
-      Namespaces: string list
-      Type: string
-      Member: string }
-
-/// The namespace a mirror DIRECTORY declares — which, per this file's header, IS its package id.
-let private namespaceOfMirrorDir (dir: string) =
-    let full = Path.Combine(mirrorRoot, dir)
-
-    if not (Directory.Exists full) then
-        None
-    else
-        Directory.EnumerateFiles(full, "*.fsi", SearchOption.AllDirectories)
-        |> Seq.collect File.ReadAllLines
-        |> Seq.choose (fun line ->
-            if line.StartsWith("namespace ", StringComparison.Ordinal) then
-                Some(line.Substring(10).Trim())
-            else
-                None)
-        |> Seq.distinct
-        |> List.ofSeq
-        |> function
-            | [] -> None
-            | namespaces -> Some namespaces
-
-let private pendingMembers =
-    if not (File.Exists pendingLedgerPath) then
-        []
-    else
-        File.ReadAllLines pendingLedgerPath
-        |> Array.mapi (fun i line -> i + 1, line.Trim())
-        |> Array.filter (fun (_, line) ->
-            line.Length > 0 && not (line.StartsWith("#", StringComparison.Ordinal)))
-        |> Array.choose (fun (lineNo, line) ->
-            let m = pendingEntryRegex.Match line
-
-            if not m.Success then
-                None
-            else
-                let dir = m.Groups.["dir"].Value
-                let arity = m.Groups.["arity"].Value
-                let bare = m.Groups.["type"].Value
-
-                let typeName =
-                    if String.IsNullOrEmpty arity || arity = "0" then
-                        bare
-                    else
-                        $"{bare}`{arity}"
-
-                namespaceOfMirrorDir dir
-                |> Option.map (fun namespaces ->
-                    { Line = lineNo
-                      Dir = dir
-                      Namespaces = namespaces
-                      Type = typeName
-                      Member = m.Groups.["member"].Value }))
-        |> List.ofArray
 
 
 [<Tests>]
@@ -3651,136 +3575,6 @@ let templateConsumesPinnedApiTests =
                          oracle is reading something other than {PinnedApi.oracleVersion} (a locally-packed \
                          package leaking into the probe folder is the classic cause), and the ledger entry it \
                          justifies is void."
-
-        // #611 / #594 — THE PENDING-RELEASE LEDGER'S CLAIM, PROVED. TWICE.
-        //
-        // An entry in #594's ledger BUYS an omission from the shipped mirror: M-MIR/TYPE stops demanding
-        // the member, and the reader is never told the case exists. What it buys it with is the claim "the
-        // pinned package does not carry this member" — and P-PEND/PIN, the rule that supposedly guards
-        // that claim, only checks the entry's version STAMP equals the current pin. It never opens the
-        // package. If the claim is false, the ledger suppresses a member a product could have used, and
-        // every gate in the repo is green.
-        //
-        // So it is asked of the package, and asked twice, because the two witnesses fail differently:
-        //
-        //   * the METADATA oracle (`readTypeSurface`) — cheap, reads every entry, and is code I wrote;
-        //   * the F# COMPILER (`nameof Type.Case` against the restored pin) — the ground truth, and the
-        //     only witness that cannot share a bug with the oracle it is checking.
-        //
-        // Only arity-0 types are compile-probed: `nameof` on a generic type needs its type arguments, and
-        // a probe that fails for a reason other than the one claimed proves nothing. The metadata oracle
-        // judges every entry regardless, so a generic entry is checked, just not twice.
-        //
-        // BOTH witnesses now go through `PinnedApi` (#673), and this rule is where the waiver had drifted
-        // FURTHEST — in two different directions, one of them shadowing the other:
-        //
-        //   * the compile witness carried its OWN, WEAKENED copy of the RELEASE-PENDING bounds ("an
-        //     unresolved UI pin ⇒ skip", with no `releaseLane` conjunct and no bumped-in-this-commit one);
-        //
-        //   * and it never fired, because the metadata witness above it ran FIRST and skipped on ANY error
-        //     from the restore. That is the more serious half. A merely STALE pin — one nobody bumped, which
-        //     the other three rules correctly redden — failed that restore, and this rule went quietly
-        //     IGNORED instead of red, leaving #594's ledger claim unverified on exactly the commit that
-        //     should have been judging it.
-        //
-        // Neither is written here any more. `withPinnedSurface` defers ONLY in the release window and FAILS
-        // on every other unavailability, and `probe` applies the same bounds to the compiler — so the two
-        // witnesses cannot disagree about what a missing pin means, which is how they came to.
-        testCase "every PENDING-RELEASE entry really is absent from the pinned package (#594's claim)"
-        <| fun _ ->
-            // Asked FIRST, and unconditionally — it is an offline fact, and it is the one that must survive
-            // even the env opt-out. Empty is a legitimate state (every pending member has been released); the
-            // FILE going missing is not, because this rule would then check nothing and report green, and
-            // #594's ledger would have been deleted with nobody noticing. "Nothing to check" and "checked,
-            // and it's fine" must not share a verdict (#266).
-            Expect.isTrue
-                (File.Exists pendingLedgerPath)
-                $"{pendingLedgerRel} does not exist. #594's pending-release ledger is the file this \
-                  rule verifies, and without it the rule is a silent no-op — it would report green \
-                  forever while checking nothing."
-
-            match pendingMembers with
-            | [] -> skiptest "#594's pending-release ledger is empty — every pending member has been released."
-
-            | entries ->
-                PinnedApi.withPinnedSurface "the pending-release claim" <| fun surface ->
-                    // Witness 1: the metadata oracle, on every entry.
-                    let released =
-                        entries
-                        |> List.filter (fun e ->
-                            e.Namespaces
-                            |> List.exists (fun ns ->
-                                match Map.tryFind (packageForNamespace ns, e.Type) surface.Types with
-                                | Some members -> members.Contains e.Member
-                                | None -> false))
-                        |> List.map (fun e -> $"{e.Type}.{e.Member} ({pendingLedgerRel}:{e.Line})")
-
-                    let renderedReleased = String.concat "; " released
-
-                    Expect.isEmpty
-                        released
-                        $"these are declared in {pendingLedgerRel} as members the pin does NOT carry — and \
-                          the pinned package EXPORTS them. The claim is false, so the entry is buying an \
-                          omission it has not paid for: the shipped mirror is HIDING a member a product on \
-                          the pin could use, and M-MIR/TYPE has been told not to mind. Either the release \
-                          landed (delete the entry and grow the mirror) or the entry was never \
-                          true.\n\nReleased: {renderedReleased}"
-
-                    // Witness 2: the compiler. Ground truth, and it cannot share a bug with witness 1.
-                    let probeable =
-                        entries |> List.filter (fun e -> not (e.Type.Contains "`"))
-
-                    match probeable with
-                    | [] -> ()
-                    | probeable ->
-                        let namespaces =
-                            probeable |> List.collect (fun e -> e.Namespaces) |> List.distinct |> List.sort
-
-                        let lines = probeable |> List.map (fun e -> $"{e.Type}.{e.Member}")
-
-                        // The release window never comes back from here — `probe` defers it, on the same
-                        // bounds as every other rule. A failure that DOES come back is about the SYMBOLS,
-                        // which is the only question this rule asked.
-                        let exitCode, output =
-                            PinnedApi.probe "the pending-release claim's compile witness" namespaces lines
-
-                        if exitCode = 0 then
-                            let rendered =
-                                probeable |> List.map (fun e -> $"{e.Type}.{e.Member}") |> String.concat "; "
-
-                            failtest
-                                $"the pending-release ledger says the pin does not carry these, and they \
-                                  COMPILE against it. The omission they buy from the shipped mirror is \
-                                  unpaid for.\n\nCompiled fine: {rendered}"
-                        else
-                            // The build failed — but it must have failed for THE REASON CLAIMED. An FS0039
-                            // that never names the member would let ANY broken probe "prove" ANY entry,
-                            // which is the fails-open shape this whole file is written against.
-                            let unresolved =
-                                output.Replace("\r\n", "\n").Split('\n')
-                                |> Array.filter (fun l -> l.Contains "FS0039")
-
-                            // F5 — the member is matched QUOTED, as F# writes it ("...member named
-                            // 'Persist'"). A bare substring test would let an FS0039 about
-                            // `PersistRunEvidence` — a real case of this very DU — "prove" that `Persist`
-                            // is absent. Two entries, one diagnostic, and the shorter name rides in free.
-                            let unproven =
-                                probeable
-                                |> List.filter (fun e ->
-                                    let quoted = $"'{e.Member}'"
-                                    unresolved |> Array.exists (fun l -> l.Contains quoted) |> not)
-                                |> List.map (fun e -> $"{e.Type}.{e.Member}")
-
-                            let renderedUnproven = String.concat "; " unproven
-
-                            Expect.isEmpty
-                                unproven
-                                $"the probe failed to build, but NOT with an FS0039 naming these pending \
-                                  members — so their absence from the pin is UNPROVEN, and the failure is \
-                                  something else (a malformed probe, a feed error, a package that no longer \
-                                  restores). A probe that fails for the wrong reason proves \
-                                  nothing.\n\nUnproven: {renderedUnproven}\n\nProbe \
-                                  output:\n{output}"
 
         // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
         // its reason. This is the rule that retires a ledger entry at exactly the right moment.

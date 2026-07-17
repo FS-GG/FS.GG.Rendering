@@ -468,12 +468,14 @@ jobs:
   # `template-tag` implies `release-tag` (both waivers key on `pkgBumpedHere` with `v<pkg>` uncut), so
   # this job is never stranded by a skipped `release`.
   notify-templates:
-    name: Notify FS.GG.Templates
+    name: Notify template-release consumers
     needs: [plan, cut, release]
     if: needs.plan.outputs.template-tag == 'true'
     uses: ./.github/workflows/template-dispatch.yml
     with:
       version: ${{ needs.plan.outputs.pkg-version }}
     # The org App-token secrets (`FSGG_DISPATCH_APP_ID` / `FSGG_DISPATCH_APP_PRIVATE_KEY`) are read by
-    # template-dispatch.yml's own `dispatch` job, which forwards them to the org reusable sender.
+    # template-dispatch.yml's own `dispatch*` jobs, which forward them to the org reusable sender.
+    # One call fans out to every consumer of the release — FS.GG.Templates and FS-GG/.github — so a
+    # new consumer is a job added there, not a second call here.
     secrets: inherit

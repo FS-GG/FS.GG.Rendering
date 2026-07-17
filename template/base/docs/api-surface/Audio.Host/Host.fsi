@@ -7,7 +7,12 @@ open FS.GG.Audio.Core
 
 /// Public contract type. Caller-supplied resolution of product-owned ids to PCM (WAV) bytes.
 /// The host does NOT own the id -> asset mapping (FR-005); a product supplies these functions.
-/// `None` => unresolved: the host treats it as a recorded no-op, never a throw.
+///
+/// `None` => unresolved: the host treats it as a no-op, never a throw — the id plays as SILENCE.
+/// That is a real failure mode and the one a game developer actually hits (a typo'd id, an asset
+/// that was never shipped), so the device backend does not swallow it: it names the id and the
+/// reason once, on stderr (#28). See `AssetDiagnostics`. The Null backend records the request
+/// regardless — it resolves nothing, so its evidence says "requested", never "audible".
 type AssetResolver =
     { ResolveSound: SoundId -> byte[] option
       ResolveTrack: TrackId -> byte[] option }
@@ -19,6 +24,16 @@ type IAudioBackend =
     inherit IDisposable
     /// Realize one requested effect. Volumes arrive already clamped by Core. Never throws; a
     /// backend that cannot act degrades to a no-op.
+    ///
+    /// NOT THREAD-SAFE, and implementations are not required to be: drive a backend from ONE thread.
+    /// That is a deliberate contract rather than an oversight — a game mixes on one thread, and
+    /// locking a per-effect call to serve a case nobody has would cost every caller for nothing. It
+    /// is written down because the surface does not imply it: nothing about `Play` looks
+    /// thread-affine, and `FS.GG.Audio.Elmish`'s `Audio.Cmd` hands the drive to the Elmish runtime,
+    /// which runs effects on whatever thread it likes.
+    ///
+    /// The bundled OpenAL backend is thread-affine for a second, harder reason: OpenAL's context
+    /// currency is process-wide, so no lock on this type could make it safe. See `OpenAlBackend.create`.
     abstract member Play: effect: AudioEffect -> unit
 
 /// Public contract type (004-audio-engine). Optional mixing/spatial control a backend MAY
@@ -39,15 +54,30 @@ type IMixingBackend =
 [<RequireQualifiedAccess>]
 module Wav =
 
-    /// Decoded PCM payload of a WAV file.
+    /// Decoded payload of a WAV file.
     type PcmData =
-        { Channels: int
+        { /// The `wFormatTag` from the `fmt ` chunk: which codec `Data` is actually in.
+          /// `FormatPcm` (1) is the only one this component can play — see `tryParse`.
+          ///
+          /// Already resolved through `WAVE_FORMAT_EXTENSIBLE` (0xFFFE): a PCM file written in the
+          /// extensible form — routine for multichannel exports — reports `FormatPcm` here, not
+          /// 0xFFFE. It stays 0xFFFE only when the subformat GUID could not be read at all, which is
+          /// not a claim that the file is PCM.
+          FormatTag: int
+          Channels: int
           BitsPerSample: int
           SampleRate: int
           Data: byte[] }
 
-    /// Parse a minimal PCM WAV (RIFF/WAVE, fmt + data chunks). Total; returns None on anything
-    /// it does not understand rather than throwing.
+    /// Parse a minimal WAV (RIFF/WAVE, fmt + data chunks). Total; returns None on anything it does
+    /// not understand rather than throwing, and terminates on any input — including a corrupt chunk
+    /// size, which once made the walk spin forever.
+    ///
+    /// A STRUCTURAL parse: it reports what the header says and decides nothing about playability. A
+    /// `Some` therefore does NOT mean the file can be played — a 5-channel 32-bit WAV parses here,
+    /// and so does an IEEE-float one. Check `FormatTag` against `FormatPcm` before trusting `Data`
+    /// to be PCM; the bundled OpenAL backend does, and reports `AssetDiagnostics.UnsupportedCodec`
+    /// when it is not.
     val tryParse: bytes: byte[] -> PcmData option
 
 /// Public contract module. The pure pan -> source-position mapping the OpenAL backend spatializes
@@ -125,8 +155,20 @@ module VoicePool =
 [<RequireQualifiedAccess>]
 module Audio =
 
-    /// Fold a per-frame batch of requests through the backend in dispatch order. The product's
-    /// `update` is unchanged: it emits AudioEffect values; this plays them.
+    /// RAW drive. Fold a per-frame batch of requests through the backend in dispatch order. The
+    /// product's `update` is unchanged: it emits AudioEffect values; this plays them.
+    ///
+    /// There is NO mixing here: an effect satisfying `requiresEngine` is discarded or degraded rather
+    /// than realized (#27), so a volume slider built on this sink does nothing. The first batch that
+    /// carries such an effect logs one diagnostic to stderr naming the surface that does realize it —
+    /// `FS.GG.Audio.Engine`'s `Engine.createSink`, an `AudioEffect list -> unit` of this exact shape.
+    /// Keep `play` for deliberate fire-and-forget playback.
+    ///
+    /// This is THE raw drive, not merely one of them: `FS.GG.Audio.Elmish`'s `Audio.Cmd.ofEffects`
+    /// delegates here (#29), so the dispatch-order guarantee and the diagnostic are the same on both
+    /// surfaces. The warn-once latch is therefore shared and process-wide, and the message names the
+    /// engine-backed destination for each surface (`Engine.createSink` here, `Audio.Cmd.ofEngine` in
+    /// Elmish) rather than assuming which one dropped the effect.
     val play: backend: IAudioBackend -> effects: AudioEffect list -> unit
 
 /// Public contract module. The deterministic, headless record-only backend — the default and
@@ -135,13 +177,38 @@ module Audio =
 module NullBackend =
 
     /// A record-only backend: opens no device, never throws.
+    ///
+    /// Like every backend here it is NOT thread-safe and should be driven from one thread. It makes
+    /// exactly one concurrency guarantee, and only because it used to be free and would otherwise
+    /// have been lost: reading `Evidence` while another thread is in `Play` will not throw. Two
+    /// threads in `Play` interleave as they always did.
     [<Sealed>]
     type T =
         interface IAudioBackend
         /// Accumulated evidence — equal to `FS.GG.Audio.Core.Audio.interpret` of the same batch.
+        ///
+        /// Every effect played through this backend is retained until `Clear`, for the life of the
+        /// instance. That is deliberate — the retained requests ARE the evidence a headless test
+        /// asserts on — but it is also UNBOUNDED, and worth knowing about for anything long-lived:
+        /// a soak test, or a shipped game that reached this backend through the `OpenAlBackend.create`
+        /// degrade (FR-004) and will never read `Evidence` at all. Such a caller should `Clear`
+        /// periodically, or hold a backend of its own that records nothing.
+        ///
+        /// Materialized on each read, so read it once and bind it rather than re-reading it in a loop.
         member Evidence: AudioEvidence
+        /// Effects recorded since construction or the last `Clear`. `Evidence.Requested.Length`
+        /// without materializing the list.
+        member RecordedCount: int
+        /// Why this backend is silent (#34): `Requested` when the product built it on purpose,
+        /// `DeviceUnavailable` when `OpenAlBackend.create` substituted it. Prefer `Backend.kindOf`,
+        /// which answers the same question for ANY `IAudioBackend` without a type test.
+        member Silence: Silence
+        /// Drop everything recorded so far, so a long-lived holder can bound what is otherwise kept
+        /// for the life of the instance. `Evidence` is then empty until the next `Play`.
+        member Clear: unit -> unit
 
-    /// Create a fresh Null backend.
+    /// Create a fresh Null backend. Its `Silence` is `Requested` — this is the deliberate,
+    /// record-only backend, never a substitution.
     val create: unit -> T
 
 /// Public contract module. The real OpenAL device backend (Silk.NET.OpenAL) (FR-003, FR-004).
@@ -153,10 +220,29 @@ module OpenAlBackend =
     /// instead (degrade-to-zero, FR-004) — the returned IAudioBackend is always usable, never null,
     /// and never throws into game code.
     ///
+    /// **That substitution is silent unless you ask (#34).** The returned value is an `IAudioBackend`
+    /// either way, so a caller who does not check cannot tell a device from a tape recorder: a shipped
+    /// game runs record-only, and a headless test suite asserts playback against a recorder and passes
+    /// *because* nothing played. Ask `Backend.isDeviceBacked` (or `Backend.kindOf`, which also carries
+    /// the device's reason) — in a product, to surface "no audio device" in its own UI rather than
+    /// trusting stderr; in a test, to SKIP loudly rather than assert vacuously.
+    ///
     /// The device backend also implements `IMixingBackend` (#11), so driven by `FS.GG.Audio.Engine`
-    /// it spatializes: pan reaches the hardware, and bus fades/ducks reach the music voice. Test it
-    /// with `:? IMixingBackend` rather than assuming — the Null fallback does not, which is exactly
-    /// what makes the Engine take its non-positional degrade path on a machine with no device.
+    /// it spatializes: pan reaches the hardware, and bus fades/ducks reach the music voice. The Null
+    /// fallback does not, which is exactly what makes the Engine take its non-positional degrade path
+    /// on a machine with no device.
     /// Spatialization is per-source, so a positional sound must be a **mono** asset; OpenAL plays a
     /// stereo buffer centred, whatever position it is given.
+    ///
+    /// An id `resolver` cannot resolve — or resolves to bytes this backend cannot decode — plays as
+    /// SILENCE (there is nothing to play), but not silently: the id and the reason are named once on
+    /// stderr (#28, see `AssetDiagnostics`). Playback is otherwise untouched, and a missing track in
+    /// particular does not stop the music already playing.
+    ///
+    /// ONE THREAD PER BACKEND — and in practice, one backend. OpenAL's context currency
+    /// (`alcMakeContextCurrent`) is process-wide rather than per-object. Each backend re-asserts its
+    /// own context before every device call, so two backends **on one thread** coexist correctly
+    /// (they did not before 2026-07-16: the second silently broke the first, and every call on it
+    /// came back `AL_INVALID_NAME`). But two backends driven from two threads race for that currency
+    /// by construction, and no lock inside this library can fix it. A game wants one device backend.
     val create: resolver: AssetResolver -> IAudioBackend

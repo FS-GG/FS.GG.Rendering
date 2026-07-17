@@ -104,9 +104,10 @@
 
        WHY THE PACKAGE AND NOT `src/`. The scaffold's `template/base/docs/api-surface/**` mirrors what a
        scaffolded product actually RESTORES — the pin — and `src/` is AHEAD of the pin for the whole window
-       between a feature landing on `main` and the release that publishes it. That window is the entire
-       reason `tests/Package.Tests/mirror-pending-release-ledger.txt` exists. Generate from the pin and the
-       window closes by construction: the mirror cannot name a symbol the pin does not export.
+       between a feature landing on `main` and the release that publishes it. That window was the entire
+       reason `tests/Package.Tests/mirror-pending-release-ledger.txt` existed. Generating from the pin
+       closes it by construction — the mirror cannot name a symbol the pin does not export — so #753
+       deleted the ledger, and M-MIR/TYPE, the rule it existed to hold open.
 
        WHY THE .fsi AND NOT THE METADATA. A PE/metadata walk was the plan, and it cannot work. An `.fsi`
        needs SIGNATURES, and the walk yields NAMES. F# type ABBREVIATIONS (`type CommandId = string`) compile

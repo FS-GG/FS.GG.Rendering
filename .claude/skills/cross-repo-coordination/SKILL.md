@@ -55,8 +55,15 @@ by two workers who could not see each other's filing —
 
 ```sh
 # --state all IS NOT OPTIONAL — a CLOSED hit is the one you most need to see (see below).
-scripts/fsgg-coord issues <target> --state all \
-  --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) [\(.state)] \(.title)"'
+# `issues` emits raw JSON and has NO --jq flag (the one below is `gh api`'s). CAPTURE, don't pipe:
+# piping hands you jq's exit code, so a FAILED read prints nothing and exits 0 — identical to
+# "nothing filed", which is the answer that decides whether you file a duplicate (#874).
+hits="$(scripts/fsgg-coord issues <target> --state all)" \
+  || { echo "dedupe read FAILED ($?) — do NOT read this as 'nothing filed'"; exit 1; }
+# contains(), not test(): the keyword is a literal; test("C++") matches any title with "c".
+jq -r --arg k "<keyword>" '.[]
+  | select(.title | ascii_downcase | contains($k | ascii_downcase))
+  | "#\(.number) [\(.state)] \(.title)"' <<<"$hits"
 gh api repos/FS-GG/<repo>/issues/<parent>/sub_issues --paginate --jq '.[] | "#\(.number) \(.title)"'   # filing a child? look here
 ```
 
@@ -82,12 +89,11 @@ On a hit, **comment on the existing issue** rather than opening a rival — the 
 context, and a comment carries that just as well.
 
 **End the body with a `Paths:` line.** An issue with no declared touch-set **cannot be
-scheduled** — `take`/`batch` refuse it, correctly, because an undeclared touch-set cannot be
-proven disjoint from another worker's. A request filed without one lands on the board looking
-like work and is invisible to every worker who asks for work
+scheduled**, and a request filed without one lands on the board looking like work while being
+invisible to every worker who asks for work
 ([#442](https://github.com/FS-GG/.github/issues/442): twelve items, filed by the book, none
 schedulable). You are the one holding the context — you can usually name the files better than
-the eventual claimant can.
+the eventual claimant can. The rules the engine will hold you to are below, generated from it.
 
 ```sh
 # REST: `gh issue create` is GraphQL, and the budget is shared by the whole fleet (#587).
@@ -99,18 +105,38 @@ gh api -X POST repos/FS-GG/<target>/issues \
 Paths: src/Scene/ tests/Scene/" --jq .html_url
 ```
 
-`Paths:` is not a glob language — exact paths, directory prefixes, and a *trailing* `/**` or
-`/*`; a leading `**/` matches nothing and is refused, and so is a backticked one
-([#435](https://github.com/FS-GG/.github/issues/435)).
+### The rules your filing must satisfy
 
-If you genuinely cannot name the touch-set (a decision item, an epic, an investigation whose
-scope *is* the question), declare **`Paths: none`** — the sentinel, not a comment
-([#496](https://github.com/FS-GG/.github/issues/496)). It does not make the item schedulable;
-it makes the absence **deliberate and machine-readable**, and `fsgg-coord lint` goes **red** on a
-`Ready`/`Backlog` item that declares neither paths nor the sentinel. Prose here was the old
-instruction, and **nothing read prose** — so an epic and a forgotten touch-set looked identical,
-and real work went invisible to every worker who asked for work. **A finding filed without either
-is a finding nobody can pick up.**
+<!-- BEGIN GENERATED: fsgg-protocol:filing-rules -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  These rules were restated by hand here, and #916 measured why that is not survivable: the
+  hand-written copies AGREED with each other for as long as they existed and were wrong the
+  whole time. Edit Protocol.fs and regenerate.
+-->
+
+*Generated from the typed core. The engine that refuses your `Paths:` line is the engine that
+wrote this. The full rule set, with the incident behind each one, is in
+[intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md).*
+
+**`Paths:` is a declaration, and a fenced one is a QUOTATION**
+
+Declare the touch-set as a `Paths:` line at up to three leading spaces. A `Paths:` line INSIDE a fenced code block is a quotation of the grammar, not a use of it — the protocol docs quote it constantly. `Paths: none` is a SENTINEL meaning "this item deliberately has no touch-set", and it is not the same fact as having forgotten one.
+
+**The touch-set grammar — it is NOT a glob language**
+
+supported: an exact path ('src/Foo.fs'), or a directory prefix ('src/Foo', 'src/Foo/*', 'src/Foo/**'). There is no glob matcher: a leading '**/' or an interior '*' matches nothing — spell the paths out.
+
+**A MERGED blocker is RESOLVED; an unreadable one BLOCKS**
+
+`Blocked by` clears on CLOSED **or MERGED**. It does not clear on OPEN, on a blocker whose state could not be read (unverifiable), or on prose that is not an issue ref at all (unparseable) — all three BLOCK.
+
+<!-- END GENERATED: fsgg-protocol:filing-rules -->
+
+`fsgg-coord lint` goes **red** on a `Ready`/`Backlog` item that declares neither paths nor the
+sentinel — so an omission is caught rather than sitting on the board looking like work.
 
 ## Respond / resolve
 
@@ -157,9 +183,10 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
   comma-separated list of issue refs (`owner/repo#n`, `repo#n`, `#n`, or an issue URL) and
   canonicalizes each to `owner/repo#n`; anything else is refused before the write. It is not a
   delivery log and not the inverse (`blocks X`) edge — narrative goes in an issue comment, "this
-  item is blocked" goes in `Status`. Clear it (`''`) when the blocker resolves.
-  `fsgg-coord next` reads it: an item whose blockers are still open — or whose blocker it cannot
-  see on the board — is skipped, with the reason on stderr (`--ignore-blocked` overrides).
+  item is blocked" goes in `Status`. Clear it (`''`) when the blocker resolves. `fsgg-coord next`
+  reads it and skips a blocked item with the reason on stderr (`--ignore-blocked` overrides);
+  **what counts as blocked is the engine's call, and it is stated once** under
+  [*The rules your filing must satisfy*](#the-rules-your-filing-must-satisfy) above.
 - **Epics are the Phase parents**; use **sub-issues** for the children so progress rolls up.
   An epic is a card whose **title** carries `[epic]` (Projects v2 issue types are unset on this
   board). `fsgg-coord lint` enforces the invariants: an **open** `[epic]` must have at least one
@@ -214,7 +241,8 @@ the budget model, executable. Reach for raw `gh` on the board and you are opting
 **When it runs out** (`fsgg-coord budget` shows it, and every command exits **75** with the reset time):
 **back off until the reset — do not retry in a loop.** The claim lock lives on REST, so work continues:
 issues, comments, PRs, and pushes all still function. A board write refused by the budget is **queued,
-not lost** — `fsgg-coord flush` replays it, and the next board-writing command flushes automatically.
+not lost** — `fsgg-coord flush` replays it (#878), but you must RUN it: nothing flushes automatically,
+so check `fsgg-coord flush --dry-run` before you assume a write landed.
 `FSGG_COORD_DEBUG=1` logs every call's cost, so **verify the saving instead of assuming it**. Full cost
 model, with the measured table: `docs/coordination/graphql-budget.md`.
 
@@ -224,10 +252,18 @@ caches the item id (so the `set-field` that always follows pays nothing), and it
 principal on a budget the whole fleet shares (#587).
 
 ```sh
-scripts/fsgg-coord add FS-GG/<repo>#<n>              # put it on the board
-scripts/fsgg-coord set-field <n> Status Backlog      # ...then sequence it
+scripts/fsgg-coord add FS-GG/<repo>#<n>                        # put it on the board
+scripts/fsgg-coord set-field FS-GG/<repo>#<n> Status Backlog   # ...then sequence it
 # `ready` / `next` read the board. NEVER `gh project item-list` — 6 pts to read FIVE items.
 ```
+
+**Qualify the ref — `set-field` does not inherit the repo from the `add` above it.** A bare `<n>`
+resolves against `--repo` if given, else **the checkout you are standing in**, so on a cross-repo
+item it silently addresses `.github#<n>` — a real, unrelated, usually-closed row. The write
+*succeeds* (exit 0, no diagnostic) and the issue you meant is never sequenced. It failed loudly
+until [#548](https://github.com/FS-GG/.github/issues/548) taught the bare form to resolve; the
+`documented-invocation` gate normalises `<n>` to `1` and can only ask whether it **parses**, which
+it does. Bare is right when the item is in *your* repo, wrong here. See `pnext-item` §4.
 
 **One-time board PROVISIONING** is the genuine exception: a human runs it once, with admin rights, and
 no worker ever executes it. View layout/grouping, sub-issue links, issue-type assignment, and built-in

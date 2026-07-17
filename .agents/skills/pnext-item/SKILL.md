@@ -73,15 +73,29 @@ every in-flight claim — then claims it. On a lost race it re-schedules automat
 
 **CHECK THE EXIT CODE BEFORE YOU WORK — `take` exits `0` ONLY when it actually claimed you an item
 ([#585](https://github.com/FS-GG/.github/issues/585)).** It is the one command in your loop, and its
-code tells "you hold it" from the four ways it can hand you nothing:
+code tells "you hold it" from every way it can hand you nothing:
+
+<!-- BEGIN GENERATED: fsgg-protocol:take-exit-codes -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  The hand-written copy of this table was WRONG for as long as it existed (#889): it documented
+  EX_PARTIAL — a write that half-landed — as `take` failing to READ the board, and its "≠0, ≠2"
+  row swallowed every other row in the table. Edit Protocol.fs and regenerate.
+-->
 
 | exit | meaning | what to do |
 |---|---|---|
-| **0** | an item was **claimed** | go work it — and only here |
-| **5** (`EX_NONE`) | looked; **nothing startable** (empty or all-blocked queue) | nothing to do — stop, or wait for the board to free up |
-| **≠0, ≠2** (`EX_PARTIAL`/fatal) | **could not read** the board — a no-verdict, not an empty queue | retry; investigate if it persists |
-| **6** (`EX_CONTENDED`) | lost every race — the board is **contended** | back off briefly and retry |
-| **75** (`EX_RATE`) | the GraphQL **budget** is exhausted | back off until the reset it names |
+| **0** | An item was CLAIMED. This is the ONLY code that means you hold one. | Go work it — and only here. |
+| **5** (`EX_NONE`) | Looked, and nothing was startable — an empty or all-blocked queue. A LOOK THAT SUCCEEDED and found nothing, which is why it is not 0 and not a read failure. | Nothing to do: stop, or wait for the board to free up. Diagnose before you idle — `batch --include-backlog`, `who`, `next` each name a different reason a full board looks empty. |
+| **6** (`EX_CONTENDED`) | The item was startable when it was picked and the claim CAS lost every race for it — somebody else got there first. | Back off briefly and retry. The board is busy, not empty. |
+| **75** (`EX_RATE`) | A rate budget is exhausted. The message names WHICH one (#897): REST takes `claim`/`take`/`who` with it, because the lock lives there (ADR-0034 §3); GraphQL takes the board reads. When it is REST, the fleet STANDING DOWN is the designed behaviour, not an outage (#976): answering "is this item takeable?" costs the very budget that is gone, and a lock you cannot verify is not a lock. So this is a stop, and it is meant to be. | Back off until the reset it names — do not loop. Then `flush --dry-run`: a board write you made on an exhausted budget is QUEUED, and nothing replays it for you. AND IF YOU ARE HOLDING AN ITEM, `heartbeat` is REST too — an outage that outlives your lease cannot be renewed through, and the moment REST returns your item is startable again and the next `take` hands it to somebody else. Two things save you and neither is the timer: an OPEN `item/<n>-*` PR (#581 — the lease lapsed, the work did not), or a liveness probe that itself fails (which fails closed, #266). Push the branch and open the PR EARLY: it is the only proof of life that does not depend on the budget you just lost. |
+| **3** | REFUSED — the batch cannot be scheduled at all. Some in-flight claim declares a touch-set that matches no file, so it reserves NOTHING, and scheduling against it would hand its files to a second worker. The message names the item and the offending tokens. | Do NOT retry — it will refuse identically until the declaration is fixed. Fix the claim it names (`widen <issue> --paths '<paths>'`), or talk to its holder. |
+| **1** | No verdict was reached, for one of two reasons the message tells apart: the engine refused your INPUT before it looked (no worker id resolves; the board document does not parse), or the board READ failed. A read failure is never an empty queue and never EX_NONE (#266) — "I could not look" and "I looked, and it is empty" keep different codes on purpose. | Read the message. A refused input is not retryable — it names its own remedy. Retry only a read failure, and investigate one that persists. |
+| **2** | The ENGINE broke — an unhandled defect, with a stack trace. Its own code, so a broken engine cannot hide behind a stream of what look like bad inputs. | Report it. Do not retry, and do not work an item you were not handed. |
+
+<!-- END GENERATED: fsgg-protocol:take-exit-codes -->
 
 So **never** write `take && work_it` — that fires on nothing (it did, live: a poller printed "CLAIMED"
 over the words "nothing schedulable" and started editing with no claim and no touch-set reservation).
@@ -92,24 +106,83 @@ scripts/fsgg-coord take --repo <r> || { rc=$?; echo "no item (exit $rc)"; exit "
 # only here do you hold a claim — read what it printed for the item id and worktree command.
 ```
 
-**If `take` exits 75, the GraphQL budget is exhausted — back off until the reset it names; do not
-loop.** You and every other worker share ONE 5,000-pt/hr budget (one account), and this loop is what
-drains it ([#418](https://github.com/FS-GG/.github/issues/418)): board reads are GraphQL-only, so N
-workers polling cost N full scans a round. Three rules follow, and they are the difference between a
+**If `take` exits 75, a rate budget is exhausted — back off until the reset it names; do not loop.**
+**Read WHICH budget it named** ([#897](https://github.com/FS-GG/.github/issues/897)): they fail
+differently, and the remedy is not the same. GraphQL takes the **board reads** with it. REST takes the
+**claim lock** — so `claim`/`take`/`who` stop while GraphQL-only work keeps running, and a session can
+be locked out of taking an item on a board it can still read perfectly well.
+
+You and every other worker authenticate as ONE account, so you share **both** of its budgets:
+5,000 pt/hr of GraphQL, and REST's own 5,000 req/hr — which `budget` **cannot show you** (§5). This
+loop drains both, and they are **not** interchangeable: GraphQL carries the **board reads** (#418:
+five workers looping `take` drained it in ~15 minutes, which is why the scan cache exists), REST
+carries the **claim lock** (ADR-0034 §3). Three rules follow, and they are the difference between a
 fan-out that scales and one that takes the board down with it:
 
 - **Let `take`/`next` use the shared 90s scan cache.** Never add `--fresh` in a loop; it exists for
   `take`'s own retry-after-a-lost-race, which already sets it.
-- **Read issues over REST, not GraphQL.** `fsgg-coord issues <repo>` is free; `gh issue list` /
-  `gh issue view` cost 2 points each, and `gh issue edit` costs 4. When GraphQL is gone, REST is still
-  up — `gh api repos/…` will still open your PR and post your comments.
-- **A rate-limited board write is DEFERRED, not lost.** *Every* board write — `set-field`, `claim`,
-  `done --flip`, `release`, `reap` — says so, queues it, and `fsgg-coord flush` (or the next board
-  write) replays it. Do not "fix" the board by hand; you will just duplicate the write.
-  Until `.github#510` this was true of `claim` **only**, while the exhaustion message promised it to
-  everyone — so a `set-field` on an exhausted budget printed "Board WRITES are queued" and dropped
-  the write, and `flush` then reported "nothing pending" and confirmed the lie. If you are running an
-  older kit, check `fsgg-coord flush --dry-run` after any board write you did not see land.
+- **Do NOT route reads onto REST to save GraphQL points.** This bullet used to say the opposite —
+  *"read issues over REST, not GraphQL; `fsgg-coord issues` is free"* — and it was the doctrine that
+  killed the lock ([#895](https://github.com/FS-GG/.github/issues/895)). `issues` is free in the
+  currency that bullet counted, and **the cost lands somewhere else**: it spends a REST *request*,
+  and REST is where the claim lock lives (ADR-0034 §3). Counting one budget while spending another
+  is how the advice read as thrift for as long as it did.
+
+  **And it bought nothing.** Measured in `.github` on 2026-07-17 — same 402 issues, both ways:
+
+  | | metering | a full issue-list read (402 issues) | a full board read (383 items) | carries the lock? |
+  |---|---|---|---|---|
+  | **GraphQL** | **nodes** | `gh issue list --limit 402`: **7 pts** of 5,000 | `scan --fresh`: **31–41 pts**, 4 paged queries | no |
+  | **REST** | **requests** | `fsgg-coord issues`: **6 reqs** of 5,000 | **no REST form exists** | **yes** (ADR-0034 §3) |
+
+  **Seven GraphQL points, or six REST requests.** That is the whole trade the old advice was making:
+  it spent the budget the lock lives on to save **7 points out of 5,000**. The thrift was not small —
+  it was imaginary.
+
+  The costs are near-identical because both reads are trivial. What is *not* symmetric is what each
+  budget also has to carry, and whether you can do anything about it. REST's 5,000 carries **every
+  claim, every heartbeat, every comment, for every worker on the account**, and per-request metering
+  means there is **no lever to pull** under fan-out. GraphQL's 5,000 carries board reads that batch
+  100 nodes to a query. Put the discretionary reads where the lever is, and leave REST for the thing
+  that has no alternative.
+
+  And it already inverted, live: [REST when the budget is gone](#rest-when-the-budget-is-gone) has
+  the measured account — REST hit **0 / 5,000 twice on 2026-07-16**, taking the claim lock with it
+  both times, while GraphQL stayed healthy throughout. That is the one condition four ADRs forbid —
+  *a lock may never live on the budget that dies first* — and the recipe engineered it by steering
+  the fleet onto the lock's own budget on a single shared account.
+
+  **REST remains the fallback when GraphQL is genuinely exhausted**, and §5 leans on that. A fallback
+  is not a default: reach for it when GraphQL is gone, not to keep it topped up.
+- **A rate-limited board write is DEFERRED, not lost — but NOTHING replays it on its own.** *Every*
+  board write — `set-field`, `claim`, `done --flip`, `release`, `reap` — queues itself on an
+  exhausted budget and says so, and `scripts/fsgg-coord flush` replays the queue. Do not "fix" the
+  board by hand; you will just duplicate the write.
+
+  **`flush` is MANUAL.** There is no autoflush: no board write drains the queue as a side effect.
+  Bash had one; the port does not. So `EX_RATE` (75) is a back-off-**and-come-back** instruction, and
+  `flush` is the coming back — a deferral nobody flushes is a write that never lands. What you owe is
+  on disk, so ask before you walk away:
+
+  ```sh
+  scripts/fsgg-coord flush --dry-run   # what is queued, and whose — replays NOTHING
+  scripts/fsgg-coord flush             # replay it, once the budget is back
+  ```
+
+  `flush` replays by **default**; `--dry-run` is the read-only form. Both check the queue before they
+  touch the board, so an empty queue and a dry run cost **zero GraphQL** — which is the point rather
+  than an optimisation: an exhausted budget is the only reason a queue exists, so "what did I defer?"
+  has to be answerable exactly when no board read is possible. `flush` reports what it **replayed**
+  and, separately, what it **DROPPED** — an entry it can never land (an unparseable ref, or an item no
+  longer on the board). A drop is a write that did *not* happen; if it names your item, re-read the
+  board before you believe it.
+
+  **Three repairs got this true, and an older kit has none of them.** `.github#510` made deferral
+  universal — before it, only `claim` queued while the exhaustion message promised it to everyone, so
+  a bare `set-field` printed the promise and dropped the write. `.github#878` then ported `flush`
+  *itself*: the engine had named it in that promise for its whole life and never had it, so a
+  deferred write was queued to `pending.jsonl` and **stranded** — real, on disk, and unreachable by
+  any verb. `.github#862` is this text: the prose went on describing all three states at once.
 - **A REFUSED write is not queued, and that is deliberate.** An unknown field, an unknown option, a
   `Blocked by` that is not a ref — the tool rejects these *before* spending any GraphQL, and replaying
   them could never succeed. You get the refusal and a non-zero exit, not a queue entry.
@@ -126,6 +199,80 @@ Common causes, in order of frequency: every candidate is in `Backlog` (not `Read
 declares no `Paths:` and is therefore **unschedulable**; every candidate is blocked. If the board
 itself looks wrong — items `Blocked` behind closed issues, claims past their lease — run
 [`/check-board`](../check-board/SKILL.md) and try again.
+
+### You hold it. Now read its COMMENTS — before the worktree, not after
+
+`take` hands you a number, and the **body** tells you what somebody wanted three weeks ago. **The
+comments are where a worker who already tried it says how it went** — and a prior worker's *"do not
+do this"* is the highest-signal artifact on the board. Read them. REST, so it costs you nothing:
+
+```sh
+gh api repos/FS-GG/<repo>/issues/<n>/comments --paginate \
+  --jq '.[] | "--- \(.user.login) @ \(.created_at)\n\(.body)"'
+```
+
+`--paginate` is not optional, for §4's reason exactly: a truncated read looks like an answer, and the
+comment that says *"do not do this"* is the **last** one, not the first.
+
+**Nothing else in this loop can tell you.** `take`/`batch` read the **board**, and a conclusion like
+*"investigated — this must not be executed"* has no board field to live in, so it cannot reach the
+scheduler. §0's `inbox` carries only messages addressed **to you**. §4's dedupe asks *"has this
+finding been filed?"* — the right instinct, aimed one step late and at the wrong artifact. The
+question nobody was asked is **"has this item already been worked?"**
+
+On **2026-07-16**, #732 was claimed by **four** workers inside one hour — 16:16, 16:25, 17:08, 17:14.
+Each built the engine, measured both gates, and reached the **same** conclusion (*do not delete*).
+Every one of those conclusions was already sitting on the issue when `take` handed it to the next
+worker: **four hour-long investigations, one answer**
+([#888](https://github.com/FS-GG/.github/issues/888)).
+
+Nobody was careless. [#867](https://github.com/FS-GG/.github/issues/867) kept re-arming the trap —
+`release --status Blocked` **was** a silent no-op (the port parsed the flag and dropped it on the
+floor), so every worker who correctly tried to park #732 put it back to `Ready` — and the recipe said
+*read the body and start*. [#914](https://github.com/FS-GG/.github/issues/914) fixed the engine: an
+explicit `--status` now beats both the recorded restore and the `Ready` fallback. **The body was the
+thing that was wrong. The comments were where four people had already said so.** This is
+[#464](https://github.com/FS-GG/.github/issues/464)'s shape one level up: *N workers file one finding
+N times* became *N workers WORK one falsified item N times*, and it closes the same way — **look
+before you start.**
+
+**If the comments say the item is already answered, believe them.** Re-running the investigation to
+be sure is the exact hour this step exists to save. Add what you know to the issue, park it
+(*Abandoning an item*, below), and `take` again — then **verify the park landed.**
+
+**`release` exits 0 even when the column did NOT land, and that is not a bug.** The lock really is
+gone, so a failed column must not red the command. But it means a green exit is *not* the receipt you
+want. Read **stdout**, which states only what is true (#914):
+
+| `release` printed | the column |
+|---|---|
+| `released .github#732 → Blocked` | landed — `release` SET it, so the board holds it |
+| `released .github#732 (column left at Blocked)` | landed — the board already held it, so `release` wrote nothing (#331) |
+| `released .github#732 (no column to reset — …)` | nothing to set: the item is off the board, or has no `Status` |
+| `released .github#732` (bare) | **no column was set** — stderr, immediately above, says why |
+
+The middle row is a **success**, and it is the one to expect when you parked the item yourself during
+the lease: a column you chose is preserved rather than reverted, and preserving it costs no write, so
+there is no column for `release` to name as its own (#331/#911). The board holds `Blocked` either way.
+
+The bare form is what you get when the board write was **deferred** on an exhausted budget (queued,
+and nothing replays it — `fsgg-coord flush`), when the write failed, when the item is not on the
+board at all, or when the item's **current column could not be read** — a column `release` cannot read
+is one it will not overwrite, so it leaves it alone and says so. So a park can still silently not take,
+and #732 is what that costs. Check:
+
+```sh
+# `ready` is the always-fresh TRUTH read: it reports the column the board actually holds. Do not
+# check with `next` — it answers from the shared 90s scan cache, which can be older than your own
+# write, and it reports only what is SCHEDULABLE. An item withheld because it overlaps somebody
+# else in flight is not offered either, and that reads exactly like a park that landed.
+p="$(scripts/fsgg-coord ready --repo <r> --all)" || { echo "read FAILED — no verdict"; exit 1; }
+jq -r --argjson n <n> '.[] | select(.number == $n) | "status=\(.status)"' <<<"$p"
+```
+
+A comment is not a veto, though. It is **evidence** — it can be stale, or the earlier worker can be
+the one who was wrong. Weigh it as you would any other finding. What you may not do is fail to
+**look**.
 
 ### The item has no `Paths:` line
 
@@ -158,16 +305,42 @@ authorship test, is [intra-repo-parallel-work §1](../intra-repo-parallel-work/S
 
 ## 2. Isolate
 
-`claim` prints the branch and the worktree command. Use them — never work an item in the shared
-checkout, because the other N workers are in it.
+Never work an item in the shared checkout — the other N workers are in it. **Fetch first, then branch
+from `origin/main` by name.** Both halves, every time:
 
 ```sh
-git worktree add ../<repo>-<n> -b item/<n>-<slug>
+git fetch origin                                                # ...or the base you branch from is the PAST
+git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main
 cd ../<repo>-<n>
 ```
 
+Construct that yourself: `claim` prints **only** the claim line. It names no branch and no worktree
+command — older copies of this recipe said it did, and a worker told to paste what the tool prints
+never thinks about the base ref, which is half of how this bug survives.
+
+**Neither half is optional, and each fails silently without the other.**
+
+- **`git worktree add` does not fetch.** It resolves `origin/main` against the *local* remote-tracking
+  ref, which advances only when something in this checkout fetches. The shared checkout is long-lived
+  and the other N workers are merging into `main` — that is the entire point of the fan-out — so **the
+  better the protocol is working, the staler your base is when you start.** Measured: three commits
+  behind after 15 minutes on a two-worker board; five during a single item on a busy one (#622).
+- **Omit `origin/main` and `-b` branches from the shared checkout's `HEAD`** — routinely another
+  worker's unmerged branch rather than `main`. Your PR then silently carries their commits, and
+  `verify-paths` reports it only as an advisory, only for as long as that branch stays unmerged (#319).
+
+**A stale base does not merely hide a merged fix — it manufactures fresh evidence for the bug.** You
+build the engine from your stale tree, so it reproduces the bug faithfully. The item's body was written
+before the fix landed, so it agrees with you. And every local gate goes green, because they check the
+tree against *itself* and not one has an opinion about whether it is current. One worker re-ported
+`flush` from scratch — an hour of work, deleted before merge — onto a `main` that had carried it for
+two hours (#878). Another came one push from reverting a 76-line rewrite of **this very file**, merged
+2h earlier, with a clean diff and no conflict (#892). Nothing inside the tree can tell you; by the time
+any gate runs, the evidence is gone.
+
 Agents: prefer the harness's built-in worktree isolation (`isolation: "worktree"`) — same
-discipline, managed for you.
+discipline, managed for you. Fetch anyway: whatever cuts the worktree can only cut it from the refs
+**this checkout has already fetched**.
 
 ## 3. Work it
 
@@ -219,15 +392,31 @@ discipline, managed for you.
   tells you to stop working it. Believe it. Re-take with `claim`, or walk away — renewing a dead
   marker would put two workers on one item, which is the entire failure this protocol exists to
   prevent.
-- **Commit with the trailer `claim` printed** — the literal line, with your id already in it — so
-  attribution survives into history. No id is written here to copy (#551), and **do not derive one**:
-  `$FSGG_WORKER` is empty if your id came from the worktree name, and `$(git config fsgg.worker)`
-  returns whoever claimed most recently (it is repo-shared unless `extensions.worktreeConfig` is set).
-  A blank trailer loses the attribution; a borrowed one asserts a false one.
+- **Commit with the trailer, so attribution survives into history.** No id is written here to copy
+  (#551) — expand the one §0 minted you:
 
   ```sh
-  git commit --trailer "FSGG-Worker: <the id `claim` printed>"
+  git commit --trailer "FSGG-Worker: $FSGG_WORKER"
   ```
+
+  **`claim` does NOT print this line, and this step used to tell you to copy it from what `claim`
+  printed** (#629). `claim` prints one line — `claimed <repo>#<n> by worker <id>` — and
+  `grep -rn 'FSGG-Worker' src/` matches nothing. The **bash** client printed the trailer; ADR-0040's
+  port dropped that output and this instruction outlived it. Worse, the same sentence forbade **both**
+  ways to reconstruct it, so it left no legal move: copy a line that does not exist, or nothing.
+
+  **`$FSGG_WORKER` is the honest read, and the reason it was forbidden is gone.** The old text said it
+  "is empty if your id came from the **worktree name**" — there is no worktree-name derivation
+  (`Identity.resolve` is `--worker` → `$FSGG_WORKER` → session id → *refuse*), so that is not a way it
+  can be empty. §0 mandates the mint, and the mint sets it: for anyone who followed §0, this variable
+  **is** the id holding the lock.
+
+  If it is empty you skipped §0, and your id came from the session — the one every subagent of your
+  session shares. Mint one rather than writing a trailer around it.
+
+  **`$(git config fsgg.worker)` is still wrong**, for a reason nothing retired: it returns whoever
+  claimed *most recently* (repo-shared unless `extensions.worktreeConfig` is set). A blank trailer
+  loses the attribution; a borrowed one asserts a false one.
 
 - Watch for stray build artifacts (`.pyc`, `bin/`, `obj/`) sneaking into the commit from a fresh
   worktree.
@@ -293,12 +482,24 @@ is: you are looking at it, you can change it, and you are choosing to write abou
 
 ### Look before you file — you are not the only one filing
 
-**Check whether it is already filed. Two REST reads, zero GraphQL, and they cost you nothing:**
+**Check whether it is already filed. Two REST reads — cheap, but not *free*: they spend the budget the claim lock lives on (#895). Spend them anyway; a duplicate costs the org more than two requests:**
 
 ```sh
 # 1. Is there already an issue for this?  --state all IS NOT OPTIONAL: see below.
-scripts/fsgg-coord issues <target> --state all \
-  --jq '.[] | select(.title | test("<keyword>"; "i")) | "#\(.number) [\(.state)] \(.title)"'
+#    `issues` emits the raw JSON array and has NO --jq flag — it exits 1 on one. The --jq on the
+#    `gh api` line below IS real; the two lines are not the same command (#874).
+#    CAPTURE, don't pipe: `issues | jq` gives you jq's exit code, and jq is happy to read a FAILED
+#    read as empty and print nothing, exit 0. "No hits" and "the read died" would be the same
+#    answer — and the answer decides whether you file a duplicate. On an exhausted budget (§1 says
+#    EXPECT one by now) that is not hypothetical. Believe an empty list only after a 0 here.
+hits="$(scripts/fsgg-coord issues <target> --state all)" \
+  || { echo "dedupe read FAILED ($?) — do NOT read this as 'nothing filed'"; exit 1; }
+#    contains(), not test(): the keyword is a LITERAL, and test() would read it as a regex —
+#    `test("C++")` matches every title containing "c" (oniguruma: `++` is possessive), so a
+#    metachar keyword silently answers "already filed" and suppresses your finding.
+jq -r --arg k "<keyword>" '.[]
+  | select(.title | ascii_downcase | contains($k | ascii_downcase))
+  | "#\(.number) [\(.state)] \(.title)"' <<<"$hits"
 
 # 2. If you are filing a CHILD of an item you hold — look at what it ALREADY has. This is the
 #    highest-signal place to look, and the one people skip.
@@ -363,14 +564,52 @@ gh api -X POST repos/FS-GG/<target>/issues \
 Paths: src/Scene/ tests/Scene/" --jq .html_url
 
 # 2. Put it on the board, so it is sequenced rather than merely filed.
+#    QUALIFY EVERY REF HERE. A bare `<new>` resolves against the repo you are STANDING IN — which in
+#    this block is never the target repo — so it would silently address `.github#<new>`: a real,
+#    unrelated, usually-closed item. See "A bare ref is not a short ref" below.
 scripts/fsgg-coord add FS-GG/<target>#<new>
-scripts/fsgg-coord set-field <new> 'Repo Scope' <target-short-id>
-scripts/fsgg-coord set-field <new> Phase '<the target repo's phase>'
-scripts/fsgg-coord set-field <new> Status Backlog
+scripts/fsgg-coord set-field FS-GG/<target>#<new> 'Repo Scope' <target-short-id>
+scripts/fsgg-coord set-field FS-GG/<target>#<new> Phase '<the target repo's phase>'
+scripts/fsgg-coord set-field FS-GG/<target>#<new> Status Backlog
 
 # 3. If the finding belongs under an epic, LINK it as a sub-issue — NOW, not at close-out.
 scripts/fsgg-coord child FS-GG/<repo>#<parent> FS-GG/<target>#<new>
 ```
+
+**A bare ref is not a short ref — it resolves against the repo you are STANDING IN, and this block
+is the one place that is always wrong.** `<n>`, `repo#n` and `owner/repo#n` are three different
+refs, not three spellings of one. A bare `<n>` is resolved against `--repo` if you passed one, and
+otherwise against **your checkout's own remote** — so in a cross-repo filing block, where every ref
+names an issue in *another* repo, a bare `<new>` addresses `.github#<new>` instead. Measured:
+
+```
+$ scripts/fsgg-coord item-id 12                    # bare, from a .github checkout
+PVTI_lADOEYAWY84Bb08WzgxC5-4                       # ...is .github#12 — a CLOSED P0 decision row
+$ scripts/fsgg-coord item-id FS-GG/FS.GG.Audio#12
+fsgg-coord-engine: GraphQL refused the query: Could not resolve to an Issue with the number of 12.
+```
+
+**This is not a corner case — it is every case.** Measured 2026-07-17, every target repo's numbering
+sits *entirely inside* `.github`'s: the highest issue in any of them is FS.GG.Rendering#855, and
+`.github` is past #1020. So the number you just filed in a target repo **always exists here too**,
+and the write does not fail — it **succeeds, on the wrong item**: `Status: Backlog` stamped over a
+closed row, exit 0, no diagnostic. Meanwhile the issue you actually filed is never sequenced, which
+is [#442](https://github.com/FS-GG/.github/issues/442)'s invisible-work shape again.
+
+**This used to fail LOUDLY, and the repair is what quieted it.** [#611](https://github.com/FS-GG/.github/issues/611)
+named this very line and fixed the *error label*, correctly leaving a spelling that still errored.
+Then [#548](https://github.com/FS-GG/.github/issues/548) taught the parser to resolve a bare `<n>`
+against your checkout — right for the in-repo case it was about, and it turned this block's error
+into a silent mis-write. Nothing re-read the cross-repo block in that light, and the
+`documented-invocation` gate ([#919](https://github.com/FS-GG/.github/issues/919)) cannot: it
+normalises `<new>` to `1` and asks whether `set-field 1 …` **parses**, which it does. That gate
+checks the *shape* of an invocation — it has no referent to check, so a metavariable's repo is
+outside its subject by construction.
+
+**So the rule is not "always qualify".** It is: **qualify when the ref's repo is not your
+checkout's.** The bare form below is correct precisely because it is not cross-repo —
+`set-field <this-issue> …` names an item in the repo you are standing in, which is the case a bare
+ref is *for*.
 
 **A finding filed without `Paths:` is a finding nobody can pick up.** `take`/`batch` refuse an item
 with no declared touch-set — correctly, since an undeclared one cannot be proven disjoint from
@@ -427,6 +666,19 @@ scripts/fsgg-coord set-field <this-issue> 'Blocked by' 'FS-GG/<target>#<new>'
 scripts/fsgg-coord set-field <this-issue> Status Blocked
 scripts/fsgg-coord release <this-issue>     # don't hold a lease on work you cannot finish
 ```
+
+**The third line no longer undoes the second, and for most of this protocol's life it did**
+([#331](https://github.com/FS-GG/.github/issues/331)/[#911](https://github.com/FS-GG/.github/issues/911)).
+`release` restored the column recorded in the claim marker *at claim time* and never read the item's live
+one, so the `Blocked` you set on line 2 was reverted to `Ready` by line 3 — **this fence could not produce
+its own documented end state**, and the board was left asserting `Ready` on a row whose `Blocked by` named
+an open issue. `release` now reads the live column: `In progress` is the claim's own footprint and resets,
+and **any other column was chosen deliberately and is preserved** — with no write at all, which is why a
+preserving release reports `released <ref> (column left at Blocked)` rather than naming a column it set.
+`reap` asks the same question, so a lease that lapses on a parked item no longer resets it either.
+
+You may still write `release <this-issue> --status Blocked` — it is equivalent here, and it is the honest
+form when you are parking an item whose column you have *not* already set.
 
 Then `/pnext-item` again — take something startable while the other repo responds.
 
@@ -574,9 +826,35 @@ gh api -X PUT repos/FS-GG/<repo>/pulls/<pr>/merge \
 gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the branch, explicitly
 ```
 
-`landable` prints one word and puts the decision in the exit code — `green` (0), `pending` (3),
-`red` / `conflicted` / `unknown` (1). Without `--wait` it answers once and returns; that is the form
-`adopt`, `who` and `reap` use.
+`landable` prints one word on stdout and puts the decision in the **exit code**, so a poll loop reads
+"keep waiting" from "stop" without parsing prose. Without `--wait` it answers once and returns; that is
+the form `adopt`, `who` and `reap` use — and it is exactly when you must key on the code yourself:
+
+<!-- BEGIN GENERATED: fsgg-protocol:landable-exit-codes -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  The hand-written copy of this table documented BASH's codes (#900) — green 0, pending 3, red 1
+  — where the engine returns 0/7/3/4 and keeps 3 == red across every verdict command. It was
+  wrong in BOTH directions on the two codes a poll loop reads. Edit Protocol.fs and regenerate.
+-->
+
+| exit | meaning | what to do |
+|---|---|---|
+| **0** | GREEN — the PR is finished work: it merges cleanly, and every workflow run and check-run scored on its head SHA passed. The ONLY code that means merge it. | Merge it. This is the only code that says so. |
+| **7** | PENDING — the verdict has not SETTLED: checks are still running, none have registered yet, the run set is still growing, GitHub has not finished computing the PR's mergeability (it does so in a BACKGROUND job, and `null` is the normal first answer for a PR you just opened — #950), or an assertion you added (`--require`, `--sha`) is not yet met. The ONE retryable verdict, which is why it has a code of its own rather than sharing one with a way to stop. | Keep waiting — this is the only code that says wait. Prefer `--wait`, which polls until the verdict settles rather than believing an early green. A `pending` that NEVER resolves is a finding: the job was RENAMED, its workflow's `paths:` filter no longer matches, `--sha` named the wrong commit, or GitHub never finished computing mergeability (rare, and not something waiting longer fixes — read the PR yourself). |
+| **3** | RED or CONFLICTED — two words, one code, because both mean STOP and neither improves by waiting. Red: a run or check-run failed. Conflicted: the PR does not merge cleanly, so GitHub cannot build `refs/pull/N/merge` and gives it NO CI at all — which is why it is returned immediately rather than polled. | Stop. Do NOT wait — 3 is the code the recipe used to call `pending`, and a loop that waits on it never terminates. A red check is a finding; a conflicted PR needs a rebase, which is AUTHORING, not landing. |
+| **4** | UNKNOWN — no verdict, and this is the FAIL-CLOSED one (#266). The read could not be made or its answer was not conclusive: a rate limit, a 404, a PR whose `mergeable` field is ABSENT entirely. Note what it is NOT. A `mergeable` GitHub has not computed YET is PENDING (7), not this — it is guaranteed to change, and calling it unknown made `--wait` settle at once and abandon a seconds-old PR (#950). And there is no EX_RATE (75) here, unlike `take`: an exhausted budget arrives as this code, because `landable` has no error channel to carry a budget on. | Do not merge, and do not treat it as a red. An unreachable answer is not a negative one. Look at why the read failed — check `budget` if you suspect a rate limit — and ask again. |
+| **1** | REFUSED — the engine rejected your INPUT before it ever looked at the PR: no `--repo` (so which repo the PR is in is undefined), a ref that is not a PR number, or the wrong number of arguments. It is not a verdict about the PR, and no word is printed. | Read the message and fix the call. Not retryable — it will refuse identically. |
+| **2** | The ENGINE broke — an unhandled defect, with a stack trace. Its own code, so a broken engine cannot hide behind a stream of what look like bad inputs. | Report it. Do not retry, and do not merge a PR you have no verdict on. |
+
+<!-- END GENERATED: fsgg-protocol:landable-exit-codes -->
+
+**`7` is the only code that means wait.** Every other non-zero means stop, which is why §5's own fence
+(`landable <pr> --wait || exit 1`) is safe against this table being wrong — and why it stayed wrong so
+long: the copy-pasteable command never read the numbers, and only a worker building their own loop got
+hurt.
 
 > **THIS USED TO BE FORTY LINES OF `jq` IN THIS FENCE, AND IT WAS WRONG FOUR TIMES**
 > ([#724](https://github.com/FS-GG/.github/issues/724)). Each fix edited a **copy**:
@@ -787,26 +1065,72 @@ parent epic whose children are now all `Done`. A **red** stamp means a check fai
 not done, whatever you believe. Do not hand-set `Status` to make the stamp green; the stamp is
 earned, and faking it is how the board starts lying.
 
-**`done --flip` is a board write, so an exhausted budget DROPS it — silently.** It exits 75 saying
-*"Board WRITES are queued: see `fsgg-coord flush`"*, and that is **false**: only `claim` defers.
-Nothing is queued, `flush` has an empty queue and will cheerfully report success, and your merged
-work sits **unstamped** with your claim still reserving its touch-set
-([#510](https://github.com/FS-GG/.github/issues/510)). Check, don't trust:
+**`done --flip` is a board write, so an exhausted budget QUEUES it and exits 75 — and then it is on
+YOU to replay it.** The stamp is not lost, and it has not landed either: it is a line in
+`pending.jsonl`, and nothing drains that queue by itself (§1). Until you flush, your merged work sits
+**unstamped** with your claim still reserving its touch-set. Check, don't trust — and the check is
+free:
 
 ```sh
-scripts/fsgg-coord budget | jq .pendingBoardWrites   # 0 means your stamp was DROPPED, not queued
+scripts/fsgg-coord flush --dry-run   # is your stamp still owed? Reads the queue, not the board
+scripts/fsgg-coord flush             # replay it, after the budget resets
 ```
 
-**Wait for the reset and re-run `done --flip`.** Do not hand-set `Status` to close the gap — an
-unstamped item is a nuisance; a hand-stamped one is a board that lies.
+If `flush` reports your stamp **DROPPED** rather than replayed, it did not land and never will —
+`--flip` again once you have fixed what made it undroppable.
+
+**Do not hand-set `Status` to close the gap** — an unstamped item is a nuisance; a hand-stamped one is
+a board that lies.
+
+> **This block used to say the opposite, and the opposite was true when it was written.** It said the
+> stamp was *"DROPPED — silently"* because *"only `claim` defers"*, and prescribed
+> `budget | jq .pendingBoardWrites` to prove it. Every part of that is now dead:
+> [#510](https://github.com/FS-GG/.github/issues/510) made deferral universal, so every board write
+> queues; [#878](https://github.com/FS-GG/.github/issues/878) ported the `flush` that replays it,
+> which the engine had named all along and never had. And `pendingBoardWrites` was **never** a field
+> the engine emitted — that `jq` answered `null`, not `0`, so the check prescribed for detecting a
+> dropped write could not detect one, and read as "0 = dropped" on every healthy run. `flush
+> --dry-run` is the read that actually looks at the queue.
 
 ### REST when the budget is gone
 
 The **merge** is already REST above — it has to be, under §2's worktree (#564). These are the *other*
 `gh pr …` / `gh issue …` commands, which are GraphQL and die on an exhausted budget with
 `API rate limit already exceeded`. Verified end-to-end at **0 remaining** GraphQL. `gh api repos/…`
-spends the **REST** budget, which is separate and almost never exhausted — `fsgg-coord budget` shows
-both.
+spends the **REST** budget, which is a *separate* one — so GraphQL being gone does not stop it.
+
+**That is the only thing REST being separate buys you. It is not a budget you can count on, and it is
+UNMETERED** ([#907](https://github.com/FS-GG/.github/issues/907)). This line used to say REST was
+"almost never exhausted" and that `fsgg-coord budget` "shows both". Both halves were false:
+
+- **REST dies.** Twice on 2026-07-16 in `.github` — core hit **0 / 5,000** both times, with every real
+  read 403'ing and the budget resetting at 17:46:14Z
+  ([#894](https://github.com/FS-GG/.github/issues/894)) and 18:46:17Z (#907). It takes the **claim
+  lock** with it, because the lock lives on REST (ADR-0034 §3), so `claim`/`take`/`who` stop while
+  GraphQL-only work keeps running — a session can be locked out of taking an item on a board it can
+  still read perfectly well. (Those are the **reset** instants, read from `X-RateLimit-Reset` on the
+  403s; the exhaustion is earlier. #907 probed it dead at 18:29Z, ~17 minutes before its reset.)
+- **`budget` cannot see REST.** It reports the GraphQL meter and the depth of the deferral queue, and
+  nothing else — there is no REST line to read. So the worker who hits a REST limit and reaches for the
+  free pre-flight read is shown a **healthy** number *for the budget that did not die*, and reads it as
+  "everything is fine". That is [#266](https://github.com/FS-GG/.github/issues/266)'s signature — a
+  check reporting green on a subject it cannot see — and this recipe was the thing asserting the check
+  looks.
+
+**`budget` is RIGHT to be silent, and the fix is not to teach it `/rate_limit`.** #894 ruled that out
+explicitly, and two independent probes measured why: on this account `/rate_limit` **disagrees with
+reality**. It reported `core: 2431/5000` (#894) and `core: 2320/5000` (#907, at 18:28Z) while real
+requests 403'd with `x-ratelimit-remaining: 0`, `resource: core` — #907's pair in the *same second*,
+#894's stably across repeated probes and naming a *different reset instant*. Metering REST from it
+would replace silence with a confident wrong number, which is strictly worse.
+
+**So the 403's own headers are the only honest reading of REST**, and the engine's `EX_RATE` message
+is the one thing that names the budget that actually died — since
+[#897](https://github.com/FS-GG/.github/issues/897) it tells three apart (`GraphQlBudget` /
+`RestBudget` / `UnknownBudget`, `src/FS.GG.Coord.GitHub/Errors.fs`), reading them off the failing
+response rather than guessing. **Believe that message over any pre-flight number**: it is emitted by
+the call that actually died, at the moment it died, and `budget` is a *different* call reading a
+*different* budget. When the two disagree, the message is the one that looked.
 
 ```sh
 # CREATE the PR  (gh pr create is GraphQL)
@@ -839,10 +1163,12 @@ Two more that bite in the same state:
     | gh api -X POST repos/FS-GG/<target>/issues --input - --jq '"#\(.number) \(.html_url)"'
   ```
 
-  The **board** placement that follows it (`gh project item-add`, `set-field`) is Projects v2 and has
-  no REST form. It cannot be done on an exhausted budget, and `set-field` will *say* it queued the
-  write and drop it (#510). File the issue now, place it after the reset, and say so on the issue so
-  the gap is a decision somebody made rather than an omission nobody noticed.
+  The **board** placement that follows it (`add`, `set-field`) is Projects v2 and has no REST form, so
+  it cannot land on an exhausted budget. It is not lost: `set-field` QUEUES the write and exits 75, and
+  `scripts/fsgg-coord flush` replays it after the reset (#510 made that true of every board write;
+  #878 gave you the verb that replays them). So file the issue now, then either flush once the budget
+  is back or say on the issue that the placement is still owed — the gap should be a decision somebody
+  made rather than an omission nobody noticed.
 
 ## 6. Clean up, then go again
 
@@ -900,10 +1226,35 @@ Do not just walk away — the lease holds the item for two hours and blocks its 
 scripts/fsgg-coord release <issue>          # marker deleted, unassigned, Status RESTORED
 ```
 
-`release` puts back **the column the claim overwrote** — a `Backlog` item returns to `Backlog`, not
-`Ready` (#481). `Ready` is only the fallback for a claim that recorded nothing to restore. A column
-you set *deliberately* during the lease still wins, so `release` will not undo a `Blocked` you meant
-(#331); to land somewhere specific, say so: `release <issue> --status Blocked`.
+`release` undoes **the claim, and only the claim**. It asks one question: *is the item still sitting in
+the `In progress` that `claim` itself wrote?*
+
+- **Yes** — that column is the claim's own footprint, so it goes back to **the column the claim
+  overwrote**: a `Backlog` item returns to `Backlog`, not `Ready` (#481). `Ready` is only the fallback
+  for a claim that recorded nothing to restore, and for a recorded `In progress`, which is that same
+  footprint written twice and still nobody's choice.
+- **No** — then somebody moved it **during the lease**, deliberately, and `release` **preserves it**
+  (#331/#911). A `Blocked` you set because you hit a blocker is yours, not the claim's, and dropping a
+  lease is not a reason to undo it. Preserving costs **no write at all**, which is why stdout reads
+  `released <ref> (column left at Blocked)` rather than naming a column `release` set.
+
+`reap` asks the same question, so a lapsed lease on an item you parked does not reset it either — a
+reaper collects a *lease*, and knows nothing about whether the item became startable.
+
+**A column the tool cannot READ is one it will not overwrite.** On a failed read `release` leaves the
+column exactly as it is and says so on stderr, naming the repair, rather than guessing in either
+direction — the lease is dropped first, so a board it cannot read never strands a lock.
+
+**To land somewhere specific, say so:** `release <issue> --status Blocked`. An explicit `--status` beats
+the preserve, the recorded restore, and the `Ready` fallback alike — the caller stating the end state
+instead of `release` inferring it (#331/#481's precedence, restored by
+[#914](https://github.com/FS-GG/.github/issues/914) after the port parsed the flag and ignored it — that
+no-op is how #732 came back four times, §1). It also spends no read, having left no default to derive.
+
+**Confirm it landed rather than assuming**: `release` exits 0 even when the column write does not
+take, and the tell is on stdout — `released <ref> → Blocked` names a column it SET, `released <ref>
+(column left at Blocked)` is a preserve (the board holds it either way), and a bare `released <ref>`
+means no column was set, with the reason on stderr (§1).
 
 If you got far enough to be worth resuming, say so on the issue first (`fsgg-coord say`), and push
 the branch so the next worker inherits the work rather than redoing it.

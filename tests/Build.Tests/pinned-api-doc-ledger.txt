@@ -112,3 +112,21 @@
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
+
+# `Physics.circleCircleManifold` — the PIN'S OWN PROSE names it, and no package exports it.
+# CREDITOR: FS-GG/FS.GG.Game#378. Retires itself (PHANTOM) once Game reworks the sentence and
+# $(FsGgGameVersion) moves — this entry is not allowed to outlive its subject, per this file's header.
+#
+# NOT OUR DOC, AND THAT IS THE NEW PART (#752). Every other line this rule could ever judge was written
+# by a human in this repo. This one was written in FS.GG.Game, shipped inside FS.GG.Game.Core 0.5.0's
+# `api-surface/Geometry.fsi`, and COPIED here verbatim by the mirror generator — which is the point of
+# generating from the pin, and also its bill: the pin's prose arrives with the pin's mistakes. The
+# hand-written mirror never carried the sentence, so nothing has ever seen it. Game.Core exports
+# `Physics.manifold`; `circleCircleManifold` appears to be an internal or pre-rename spelling that
+# FS.GG.Game#340 cross-referenced without checking against its own exported surface.
+#
+# So this rule now judges the FRAMEWORK's documentation as well as the scaffold's, for free, and it
+# caught an upstream defect on its first run. Do NOT "fix" it by hand-editing the mirror: the mirror is
+# a generated artifact, the edit would be reverted by the next regeneration, and the gate would go red
+# again. The fix is in FS.GG.Game, and the ledger is how we wait for it without going red meanwhile.
+template/base/docs/api-surface/Game.Core/Geometry.fsi::Physics.circleCircleManifold

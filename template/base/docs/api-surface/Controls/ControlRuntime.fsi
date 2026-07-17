@@ -25,7 +25,7 @@ type ControlDrag =
       CurrentX: float
       CurrentY: float }
 
-/// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, diagnostics).
+/// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, scroll, diagnostics).
 type ControlRuntimeEffect =
     | FocusChanged of ControlId option
     | HoverChanged of ControlId option
@@ -77,7 +77,7 @@ type ControlRuntimeMsg =
     | ScrollControl of ControlId * float
     | Reset
 
-/// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, and derived visual state.
+/// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, scroll, and derived visual state.
 module ControlRuntime =
     /// Seeds an empty `ControlRuntimeModel` with no focus or interaction and its initial effects.
     val init: unit -> ControlRuntimeModel * ControlRuntimeEffect list

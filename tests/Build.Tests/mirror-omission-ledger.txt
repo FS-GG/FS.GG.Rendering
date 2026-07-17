@@ -431,3 +431,30 @@ type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualReviewerValidationResult
 type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualSize
 type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualSummarySectionUpdate
 type FS.GG.UI.Testing::FS.GG.UI.Testing.VisualTheme
+
+# --------------------------------------------------------------------------------------------------
+# THE DEVICE LANE OF FS.GG.Audio.Host — a DELIBERATE curation, and the ceiling is raised 373 -> 382 in
+# the same commit to say so out loud (#752).
+#
+# Audio 0.3.0 added a device/diagnostics surface to a namespace the mirror already declares. The mirror
+# teaches the half a scaffolded product actually uses — the headless, record-only one: `AssetResolver`,
+# `IAudioBackend`, `IMixingBackend`, `Wav`, `Spatial`. `Backend`, `DeviceDiagnostics` and
+# `AssetDiagnostics` (with the types they carry) drive and diagnose a real device, and the scaffold does
+# not: `fs-gg-product-audio` is explicit that a product emits audio as PURE VALUES recorded at the host
+# boundary, with no device call in `update`. Mirroring them would teach a lane the product has no way to
+# reach, and would put device-lane prose in the one skill that exists to keep the device out.
+#
+# HOW IT ARRIVED UNDECLARED, which is the part worth fixing elsewhere: this rule reads the PINNED
+# package, and a release publishes the very packages it pins — so on the release commit the read fails,
+# `withPinnedSurface` defers it as ReleasePending, and the gate is green. That is correct (a release
+# cannot be blocked on a package it has not pushed yet). Nothing re-asks after the publish, so the debt
+# lands on whoever opens the next PR — here, #752, which had not touched Audio at all.
+module FS.GG.Audio.Host::FS.GG.Audio.Host.AssetDiagnostics
+module FS.GG.Audio.Host::FS.GG.Audio.Host.Backend
+module FS.GG.Audio.Host::FS.GG.Audio.Host.DeviceDiagnostics
+type FS.GG.Audio.Host::FS.GG.Audio.Host.Asset
+type FS.GG.Audio.Host::FS.GG.Audio.Host.BackendKind
+type FS.GG.Audio.Host::FS.GG.Audio.Host.Failure
+type FS.GG.Audio.Host::FS.GG.Audio.Host.Fault
+type FS.GG.Audio.Host::FS.GG.Audio.Host.Operation
+type FS.GG.Audio.Host::FS.GG.Audio.Host.Silence

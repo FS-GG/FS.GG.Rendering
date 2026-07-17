@@ -41,6 +41,7 @@ module Theming =
 
     /// Project a role palette onto the framework `Theme` — the "paint theme" passed to the render
     /// path (`Control.renderTree`) so the captured palette is EXACT, while the consumer keeps a
-    /// static `host.Theme` for the fragment-reuse key (FR-018). Non-colour fields (font / density /
-    /// radius / contrast ratio) carry from `Theme.light`.
+    /// static `host.Theme` for the fragment-reuse key (FR-018). The palette's `Mode` seeds the base
+    /// `Theme` (Light/Dark), so `Success`/`Warning`/`Name` and the non-colour fields (font / density /
+    /// radius / contrast ratio) are mode-correct; the neutral role colours are then overwritten.
     val toTheme: palette: RolePalette -> Theme

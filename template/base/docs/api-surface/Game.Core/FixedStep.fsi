@@ -21,6 +21,10 @@ module FixedStep =
     /// input: a non-positive or non-finite `interval` yields `struct(0, accumulator)`; a non-positive or
     /// non-finite `frameTime` contributes nothing; a non-finite or negative `accumulator` is treated as
     /// empty (so a stray NaN `dt` can never poison the loop); `stepCount` is capped at `Int32.MaxValue`.
+    /// The one exception to `newAccumulator < interval`: when `stepCount` saturates at `Int32.MaxValue`
+    /// (only reachable with a pathologically tiny `interval`), the steps that could not be counted stay
+    /// banked, so `newAccumulator` can exceed `interval`. It stays finite and `>= 0`; `stepCount >= 0` is
+    /// never violated. A real sim `interval` (a frame or physics tick) never approaches this.
     val drain: interval: float -> frameTime: float -> accumulator: float -> struct (int * float)
 
     /// Public contract function exposed by the FS.GG.Game.Core package.

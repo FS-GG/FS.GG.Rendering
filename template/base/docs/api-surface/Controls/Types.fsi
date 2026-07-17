@@ -3,9 +3,6 @@ namespace FS.GG.UI.Controls
 
 open FS.GG.UI.Scene
 open FS.GG.UI.Layout
-// Feature 125: the design-system primitives (ValidationState, VisualState, StyleVariant,
-// StyleClass, ResolvedStyle, Theme) now live in FS.GG.UI.DesignSystem; the control-semantic
-// types below reference them (e.g. AttrValue's ThemeValue/StyleClassesValue cases).
 open FS.GG.UI.DesignSystem
 
 /// Stable string identity of a control instance (`ControlId`), used as the join key
@@ -17,7 +14,6 @@ type ControlKind = string
 
 /// Feature 175 (FR-001/FR-002): the scroll model owned per `scroll-viewer` ControlId. Pure value;
 /// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
-/// Carried by `ControlRuntimeModel.ScrollOffsets`.
 type ScrollState =
     { Offset: float
       ContentHeight: float
@@ -148,11 +144,17 @@ type ControlSchema =
 /// Severity level of a `ControlDiagnostic` (`ControlDiagnosticSeverity`): `Info`,
 /// `Warning`, or `Error`, ordered from advisory to authoring-blocking.
 ///
-/// Qualify these: write `ControlDiagnosticSeverity.Error`, never a bare `Error`. Without the
-/// attribute the case name shadows `FSharp.Core`'s `Result.Error` for everyone who `open`s
-/// `FS.GG.UI.Controls`, so an ordinary `Error "..."` in your decode railway stops compiling with
-/// `error FS0003: This value is not a function and cannot be applied` — which names neither `Result`
-/// nor the shadowing nor the fix. Issue #459.
+/// `RequireQualifiedAccess` — the bare case name `Error` otherwise shadows `FSharp.Core`'s
+/// `Result.Error` constructor for anyone who `open`s this namespace, so every `Error "..."` in an
+/// ordinary decode railway stops compiling with `error FS0003: This value is not a function and
+/// cannot be applied` — a message that names neither `Result` nor shadowing nor the fix. This is the
+/// same hazard the attribute already guards against on `KnownControl`, `KnownEvent`, `KnownAttribute`,
+/// `StandardControlKind`, `StandardEventKind`, `StandardAttributeName` and `ControlEventOrigin` in
+/// this very file — and on `PointerButton`/`PointerPhase`/`FrameCause`/`FrameInput` elsewhere. It was
+/// simply never applied to the one case that shadows a FSharp.Core constructor, which is the worst
+/// collision of the set: `Result` is the error-handling vocabulary of the whole language. That our own
+/// `SkiaViewer.fs` already writes `Result.Error`/`Result.Ok` fully qualified throughout is the
+/// workaround being load-bearing in our own source. Issue #459.
 type ControlDiagnosticSeverity =
     | Info
     | Warning
@@ -284,10 +286,10 @@ type ControlEventOrigin =
     | Selection
     | Clipboard
 
-/// Typed navigation outcome (`NavPayload`): `SteppedValue` for a value change,
-/// `MovedSelection` for a selection move, or `MovedCell` for grid cell movement.
-/// Feature 100 (R5): the closed set of navigation-outcome payload shapes (FR-005, SC-005).
-/// Mirrors <c>NavIntent</c> one-to-one; exhaustively matched at the host edge.
+/// Typed navigation/interaction outcome (`NavPayload`): `SteppedValue` for a value change,
+/// `MovedSelection` for a selection move, `MovedCell` for grid cell movement, or `EditedText` for a
+/// free-text edit. Feature 100 (R5) / Feature 184 (US3): the closed set of interaction-outcome
+/// payload shapes — the single typed representation now that the stringly `Payload` is retired.
 type NavPayload =
     | SteppedValue of value: float
     | MovedSelection of index: int * item: string option
@@ -295,7 +297,9 @@ type NavPayload =
     | EditedText of text: string
 
 /// A dispatched control event (`ControlEvent`): its `Kind`, the source `ControlId`, the
-/// `Origin` input source, an optional string `Payload`, and an optional typed `Nav` outcome.
+/// `Origin` input source, and the typed `Nav` outcome. Feature 184 (US3): the stringly
+/// `Payload : string option` was removed; read the typed outcome via `Nav` or the
+/// `ControlEvent.navText`/`navValue`/`navCell` accessors below.
 type ControlEvent =
     { Kind: string
       ControlId: ControlId option
