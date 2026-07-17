@@ -396,7 +396,12 @@ if [ -n "$TOP" ]; then
     # A MANIFEST IS A DECLARATION, NOT AN INSTALLATION (#655). If the tool is not yet restored, `dotnet tool
     # run` prints a restore hint and exits 1 — so restore it once (bookkeeping, in a subshell), then exec.
     # Asking a worker to restore has a measured hit rate of zero; do it for them.
-    if ! ( cd "$TOP" && dotnet tool run fsgg-coord-engine --version ) >/dev/null 2>&1; then
+    # `--` here is PROPHYLACTIC, not a fix: measured on dotnet 10.0.302, `tool run` does NOT consume
+    # `--version` (unlike `--help`/`-h`, which it does — see the exec below, #1029). It is separated anyway
+    # because this probe FAILS OPEN if that ever changes: a consumed `--version` would answer 0 from dotnet
+    # itself, the shim would read "already restored" and skip the restore, and the exec would then fail with
+    # the very hint this branch exists to pre-empt. One separator costs nothing and removes the whole class.
+    if ! ( cd "$TOP" && dotnet tool run fsgg-coord-engine -- --version ) >/dev/null 2>&1; then
       # THE RESTORE'S OWN DIAGNOSIS IS THE EVIDENCE — DO NOT DISCARD IT AND THEN GUESS (#957).
       #
       # This was `>/dev/null 2>&1 || die "… the feed is unreachable or the version is unpublished"`:
@@ -455,7 +460,21 @@ $restore_out$hint"
     # exec from the ORIGINAL cwd, not $TOP: `dotnet tool run` finds the manifest by walking up from here,
     # and the engine is cwd-sensitive (reap scopes to the checkout you stand in, #480; the git-remote repo
     # default reads it, #430). A cd to $TOP would silently rescope those commands.
-    exec dotnet tool run fsgg-coord-engine "$@"
+    #
+    # `--` IS LOAD-BEARING, AND ITS ABSENCE IS WHY THIS SHIM WAS NOT THE TRANSPARENT PIPE ITS HEADER
+    # PROMISES (#1029). `dotnet tool run` has its OWN `-?, -h, --help` option, so without a separator it
+    # CONSUMES those flags and answers for itself — the engine is never reached. Measured on dotnet
+    # 10.0.302, and it is not position-dependent (`… fsgg-coord-engine next --help` is eaten too):
+    #
+    #   dotnet tool run fsgg-coord-engine --help        -> dotnet's own help, EXIT 0
+    #   dotnet tool run fsgg-coord-engine next --help   -> dotnet's own help, EXIT 0
+    #   dotnet tool run fsgg-coord-engine -- next --help -> reaches the engine
+    #
+    # Exit 0 is what made it silent: the worker asked the coordination tool for help, got dotnet's, and
+    # nothing reported a failure. THIS repo cannot reproduce it — `.github` builds from source and resolves
+    # at tier 2, which is a real `exec` — so the only repo that owns the shim is the one repo where the bug
+    # is invisible, and every RECEIVER got dotnet's help instead (ADR-0034 decision 2).
+    exec dotnet tool run fsgg-coord-engine -- "$@"
   fi
 fi
 
