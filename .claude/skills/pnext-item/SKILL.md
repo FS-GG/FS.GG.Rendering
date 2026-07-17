@@ -521,27 +521,30 @@ you are filing it *to work it*, not to be rid of it.)
 about to delete the only place it exists:
 
 ```sh
-# The follow-up QUEUE: one ref per line, deliberately outside the worktree §6 removes.
-# Keyed on §0's worker id, because the queue is YOUR promise — see below, it is not a shared board.
-echo 'FS-GG/<repo>#<new>' >> "${FSGG_FOLLOWUPS:-$HOME/.fsgg-followups-$FSGG_WORKER}"
+# The follow-up QUEUE — your promise to yourself, one ref per line, outside the worktree §6 removes.
+# The VERB owns the queue; the recipe only names it. Qualify with the TARGET repo, not `.github`.
+scripts/fsgg-coord followup add FS-GG/<repo>#<new>
 ```
 
-**Qualify the ref (`owner/repo#n`), and note it is `<repo>`, not `.github`.** Both halves matter, for
-§4's own reason: a bare number resolves against whatever checkout you are standing in when §6 reads the
-line back, and by then you are somewhere else. And every target repo's numbering sits *entirely inside*
-`.github`'s, so a ref that says `.github` when you meant `game` does not fail — it **resolves, onto a
-real, unrelated, usually-closed item**, and §6 will dutifully claim it. That is the trap
-["A bare ref is not a short ref"](#4-findings-you-make-along-the-way--fix-them-file-only-what-you-cannot)
-describes below, and a hardcoded owner walks into it from the other side.
+**The three things the hand-rolled `echo >>` used to get wrong are now the verb's refusals, not prose
+you have to remember** ([#1063](https://github.com/FS-GG/.github/issues/1063)):
 
-**The queue is PER-WORKER, and `$FSGG_WORKER` is what makes it safe.** Not a preference — the default
-path is keyed on the id §0 minted you, and without that key it is a **shared file that N workers race**.
-Two workers popping one queue both read the same head ref before either deletes it: one item gets handed
-out **twice** (the four-workers-one-item waste §1 exists to prevent) and the next ref is deleted having
-been handed to **nobody** — the queue silently losing the very promise it exists to keep. It is the
-shape the shared `flush` queue already has, and §0's id is the thing that dissolves it: a queue only you
-write and only you read cannot race. If `$FSGG_WORKER` is empty you skipped §0, and you are back to the
-shared file — mint the id rather than working around it.
+- **`add` refuses a bare `<new>`.** A queued ref must name its repo, because the queue outlives the
+  checkout that wrote it — that is what it is *for* — so by the time §6 pops it you are standing
+  somewhere else, and every target repo's numbering sits *entirely inside* `.github`'s, so a bare
+  number would resolve onto a real, unrelated, usually-closed `.github` row (exit 0, wrong item).
+- **`add` refuses an empty worker id.** The queue file is keyed on §0's *resolved* id, not on an env
+  var you may have skipped — so it cannot become the shared file N workers race, where two pops read
+  one head and the item is handed out twice. Skip §0 and `add` tells you to mint one, rather than
+  keying every worker onto one file.
+- **`add` stores the ref fully qualified**, owner and all, so the line means the same thing when a
+  different checkout reads it back.
+
+This stopped being ten lines of shell for the reason §5's merge gate did: nothing executes a recipe, so
+nothing tested those ten lines, and #1061 shipped them wrong four ways before one review caught them
+([#1063](https://github.com/FS-GG/.github/issues/1063)/[#724](https://github.com/FS-GG/.github/issues/724)).
+The logic now lives in one tested place — `fsgg-coord followup`, with its own `.fsi` and legs — and the
+recipe calls it.
 
 **3. Can you not fix it?** Only these count:
 
@@ -1370,37 +1373,43 @@ cd - && git worktree remove ../<repo>-<n>
 git branch -D item/<n>-<slug>               # the LOCAL branch; §5's REST DELETE removed only the remote
 scripts/fsgg-coord inbox --repo <r>         # anything arrive while you were heads-down?
 
-# Your own follow-ups FIRST (§4 case 2) — this is the "take it next" you promised, and the
-# ONLY thing that keeps that promise. The file is the queue; §0's worker id keys it, so no
-# other worker races you for it.
-q="${FSGG_FOLLOWUPS:-$HOME/.fsgg-followups-${FSGG_WORKER:?empty — mint an id first (§0)}}"
-next="$(grep -m1 . "$q" 2>/dev/null)"
-
-if [ -n "$next" ]; then
-  sed -i '0,/./{/./d}' "$q"                 # off the queue: you are working it now
-  echo "follow-up -> $next"                 # then: widen FIRST, then /pnext-item <that ref>
-else
-  echo "queue empty -> the board"           # then: /pnext-item
-fi
+# Your own follow-ups FIRST (§4 case 2) — the "take it next" you promised, and the ONLY thing that
+# keeps it. `followup pop` returns the head ref on stdout and removes it ATOMICALLY; the queue is
+# keyed on §0's worker id, so no other worker races you for it. GATE ON THE EXIT CODE, not on an
+# empty string: 5 is "I looked, you owe yourself nothing" (go to the board); any OTHER non-zero is
+# "I could not read the queue" — a promise may still be there, so STOP, do not read it as empty
+# (#266/#585). Only 0 hands you a ref.
+next="$(scripts/fsgg-coord followup pop)"; rc=$?
+case "$rc" in
+  0) echo "follow-up -> $next" ;;                 # then: /pnext-item $next (CLAIMS), then widen
+  5) echo "queue empty -> the board" ;;           # then: /pnext-item
+  *) echo "queue UNREADABLE (exit $rc) — NOT empty; fix it before you walk away"; exit "$rc" ;;
+esac
 ```
 
-**Then do EXACTLY ONE of these — the `if` is the whole point, and it is not decoration:**
+**Then do EXACTLY ONE of these — the `case` is the whole point, and it is not decoration:**
 
-| the queue had one | `scripts/fsgg-coord widen <that ref> --paths <your set>`, believe a non-zero exit, then `/pnext-item <that ref>` |
-| the queue was empty | `/pnext-item` — back to the board |
+| the queue had one (exit 0) | `/pnext-item <that ref>` — which CLAIMS it — **then** `scripts/fsgg-coord widen <that ref> --paths <your set>`, and believe a non-zero widen |
+| the queue was empty (exit 5) | `/pnext-item` — back to the board |
 
-**`widen` first, always, and this is the one place the recipe cannot do it for you.** `/pnext-item <ref>`
-uses `claim`, and **`claim` does not check disjointness — only `take` does.** Your follow-up's paths are
-by construction the ones you *just* released, so another worker's `take` may have been handed them the
-moment your claim dropped. `widen`'s exit code is the only collision check left; a non-zero means `say`,
-not a second claim.
+**Claim FIRST, then `widen` — and that order is not interchangeable.** `/pnext-item <ref>` uses `claim`,
+and **`widen` rewrites the touch-set of a lock you must be holding, so it refuses an item you do not
+hold** ([#706](https://github.com/FS-GG/.github/issues/706)). This step told you to `widen` *before* the
+claim for a day, and that cannot run: the refusal is a non-zero exit, and "believe a non-zero exit" then
+reads it as a phantom `OVERLAP` and drops a follow-up nothing was colliding with
+([#1094](https://github.com/FS-GG/.github/issues/1094)). §1 already prescribes the right order for the
+same reason — *claim, then declare* — and this is that order.
 
-**And if you cannot take it, PUT IT BACK** — `printf '%s\n' "$next" >> "$q"`. The pop above spends the
-ref the moment it reads it, which is right for an item you are about to work and **wrong** for one you
-bounced off. A `75` in particular is a budget, not a verdict: §1 tells you to *expect* one by this point
-and to come back, and a queue that drops a promise on a rate limit is a queue that fails at the one job
-it has. Requeue on anything transient; drop the line only when the ref is genuinely spent — somebody
-else took it (guard 4), or it is done.
+**The collision check is still real; it just runs one step later.** `claim` does **not** check
+disjointness — only `take` does — and your follow-up's paths are, by construction, the ones you *just*
+released, so another worker's `take` may have been handed them the moment your claim dropped. So after
+the claim, `widen` is the only collision check left. On a non-zero widen — an `OVERLAP`, or a `75` (§1
+tells you to *expect* a budget by this point) — it is not yours to work right now: `release --status
+Ready`, `say` the holder, and **put the promise back** —
+`scripts/fsgg-coord followup add <that ref>` re-queues it at the BACK, so a blocked head does not stall
+the ones behind it. A queue that drops a promise on a rate limit fails at the one job it has: requeue on
+anything transient, and drop the ref only when it is genuinely spent — somebody else took it (guard 4),
+or it is done.
 
 **The local branch is not cleaned by anything else.** `--delete-branch` never deleted it either — `gh`
 aborted at the `git checkout main` step *before* it got that far (#564) — so these have been quietly
@@ -1443,8 +1452,9 @@ the four guards that stop a loop from becoming the churn §4's own box warns abo
   overlap guarantee is simply absent here, and your `widen` exit code is the only collision check you
   get. That is not a general caution: it is pointed. Your follow-up's paths are, by construction, the
   paths you *just* released — the ones §6 above says are the likeliest in the repo to collide, because
-  another worker's `take` may have been offered them the moment your claim dropped. **So `widen` first,
-  and believe a non-zero exit** — it means somebody took the files while you were merging, and the
+  another worker's `take` may have been offered them the moment your claim dropped. **So `widen` right
+  after the claim — never before it, because `widen` refuses an item you do not hold ([#706](https://github.com/FS-GG/.github/issues/706)/[#1094](https://github.com/FS-GG/.github/issues/1094))**
+  — and believe a non-zero exit: it means somebody took the files while you were merging, and the
   answer is `say`, not a second claim.
 - **3. It must terminate, and the done-stamp is the bound.** One landed item per hop. A hop that cannot
   land honestly does not spawn another hop — it goes back to the board. A queue that grows faster than it

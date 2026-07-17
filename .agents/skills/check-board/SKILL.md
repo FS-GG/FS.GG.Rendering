@@ -293,6 +293,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **ask** (§5) — someone is working outside the protocol; only a human knows who, and whether to park it |
 | `CLAIM-STATUS-LAG` | held claim, and board `status` is one of `Ready`/`Backlog`/*(no status)* — the columns a claim SHOULD have overwritten. A held `Blocked`/`In review` is the holder's own decision and is **deferred, not reconciled** (#331) | `set-field --batch <i> "Status=In progress"` |
 | `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **ask** (§5) — the fix is an *issue* edit, so it takes an answer |
+| `ON-BOARD-NO-STATUS` | open, **unclaimed**, on the board, with an empty `Status` column (`""` — `NoStatus`) | **report only** — a human must choose `Ready` vs `Backlog`; the reconciler cannot invent the missing fact (§5's *never guess*), so it names the drift and writes **nothing** |
 | `EPIC-*` (`error`) | from `lint --json` — an epic that **cannot** roll up | **report only** — a mechanical remedy, and no answer substitutes for it (§4) |
 | `EPIC-ROLLUP-READY` | from `lint --json` (`note`) — every precondition to roll up holds, epic still open | **ask** (§4/§5) — the close needs a `Discharge` judgement, and only a human has it |
 
@@ -315,9 +316,10 @@ combination with no kind excluded; this table has no such test, which is exactly
 is written into each row above rather than left to be remembered.
 
 The remaining classes (`UNCLAIMED-IN-PROGRESS`, `DONE-STATUS-OPEN-ISSUE`, `BLOCKER-UNKNOWN`,
-`BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`, `EPIC-*`, `EPIC-ROLLUP-READY`, `OFF-BOARD-ISSUE`) are
-outside this rule, and they are this skill's own rather than `Chore`'s. **They used to be outside it
-because they wrote no column. That is no longer the reason, and the difference matters:** an *answered*
+`BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`, `ON-BOARD-NO-STATUS`, `EPIC-*`, `EPIC-ROLLUP-READY`,
+`OFF-BOARD-ISSUE`) are outside this rule, and they are this skill's own rather than `Chore`'s. **They
+used to be outside it because they wrote no column. That is no longer the reason, and the difference
+matters:** an *answered*
 question writes (§5) — `DONE-STATUS-OPEN-ISSUE` judged premature puts `Status` back, and
 `EPIC-ROLLUP-READY` answered `yes` writes `Status=Done`. So they must earn their place in the
 invariant rather than sit outside it by definition.
@@ -326,7 +328,11 @@ Most earn it **on status**, which is the same fact the rows above already turn o
 column-writers need `Closed` / `Blocked` / `Ready`-`Backlog`, while `DONE-STATUS-OPEN-ISSUE` needs
 `Done` and `UNCLAIMED-IN-PROGRESS` needs `In progress`. Pairwise disjoint, so at most one.
 `UNDECLARED-PATHS` and `BLOCKER-UNPARSEABLE` write an issue body and a text field; neither touches a
-column.
+column. **`ON-BOARD-NO-STATUS` writes nothing at all** — it is the one drift here whose fix is a fact
+only a human holds (`Ready` vs `Backlog`), so it is report-only by necessity and sits outside the
+invariant for the older reason, not the newer one. It is disjoint anyway: it needs `state == OPEN`,
+no claim, and `status == ""`, which no column-writer above shares — `NoStatus` is neither `Closed`,
+`Blocked`, `Ready`/`Backlog`, `Done`, nor `In progress`.
 
 **`EPIC-ROLLUP-READY` is the exception, and it is a real overlap.** It is gated on the sub-issue graph,
 not on status — so a `Blocked` epic whose blocker has cleared and whose children are all resolved
@@ -517,6 +523,26 @@ jq -r 'def col: if . == null then "—" elif . == "" then "(no status)" else . e
   | "CLAIM-STATUS-LAG  \(.owner)/\(.repo)#\(.number)  held by \(.claim.worker)"
     + ", board says \(.status | col)"
     + " (claim overwrote \(.claim.prevStatus | col))"
+' /tmp/scan.json
+```
+
+**`ON-BOARD-NO-STATUS` is the no-claim counterpart of that lag, and it reads the same field the same
+way.** A held item with an empty `Status` is the lag above (the claim should have overwritten the
+column and did not). An **unclaimed** item with an empty `Status` is different: no marker was ever
+going to write that column, so the board is sitting with a genuine hole — the one drift `check-board`
+exists to catch and, until now, the one it could not see. It keys on the same `""` sentinel, and it
+is **report-only**: a column nobody set is a fact only a human holds (`Ready` vs `Backlog`), and a
+reconciler that guessed would invent the very fact that is missing (§5's *never guess*).
+
+```sh
+# `""` IS NoStatus (Types.fs: statusWireName NoStatus = ""); match it LITERALLY. `.status // "…"`
+# would hide it exactly as it hides a null — an empty string is truthy, so `//` never fires, but a
+# bare `== ""` is the whole point here. Report-only: this names the drift and writes NOTHING.
+jq -r '.items[]
+  | select(.state == "OPEN")     # a CLOSED item with no Status is CLOSED-ISSUE-NOT-DONE, not this
+  | select(.claim == null)       # unclaimed — a held/stale NoStatus is CLAIM-STATUS-LAG / STALE-CLAIM
+  | select(.status == "")        # the empty column, the hole a claim was never going to fill
+  | "ON-BOARD-NO-STATUS  \(.owner)/\(.repo)#\(.number)  — no Status column; a human must choose Ready or Backlog"
 ' /tmp/scan.json
 ```
 
