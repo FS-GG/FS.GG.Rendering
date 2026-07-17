@@ -52,12 +52,23 @@ before you let anything write.
 
 ## The rules this pass enforces
 
-**These are the engine's, and they are GENERATED — the §2 finding codes below are this skill's own.**
-That difference is the one to hold onto: a finding code is a decision *this pass* makes about what to
-report and what to refuse to fix, where these are facts about what is *true*, and a reconciler that
-gets one wrong enforces it wrong across the whole board. They were restated here by hand until #889.
+**These are the engine's, and they are GENERATED. So are five of the §2 finding codes below —
+`STALE-CLAIM`, `CLAIM-STATUS-LAG`, `CLOSED-ISSUE-NOT-DONE`, `BLOCKER-CLEARED` and `STATUS-NOT-BLOCKED`
+are `Chore.fsi`'s, each carrying its remedy AND its deference rules as a type. Read them there before
+you re-spell one here.**
 
-If you are re-spelling one of these in `jq`, spell it once.
+This line used to say the §2 codes were *"this skill's own"*, and that premise is what kept them
+hand-rolled. It was true until Phase 4.3 and false after it: `Chore` owns those five outright. The
+skill re-derived what the engine already knew, and got `CLAIM-STATUS-LAG` **backwards** — the engine's
+own docstring named the bug, with the remedy, before anyone found it (#1035). `Chore` is dead code
+with a live test suite pending #733's wiring, so the correct rule ships, is tested, and nothing reads
+it, while the hand-rolled `jq` below is what actually runs. That is #889's thesis exactly.
+
+What is still **this skill's own**: the ordering of the passes, the apply/dry-run policy, and the
+report-only refusals — decisions about what to *do* with a finding, not about what is *true*. A
+reconciler that gets a truth wrong enforces it wrong across the whole board.
+
+If you are re-spelling one of these in `jq`, spell it once — and spell it the way `Chore.fsi` states it.
 
 <!-- BEGIN GENERATED: fsgg-protocol:reconcile-rules -->
 <!--
@@ -182,18 +193,40 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 
 | Code | Condition | Fix (`--apply`) |
 |---|---|---|
-| `CLOSED-ISSUE-NOT-DONE` | `state == CLOSED` and `status != Done` | `set-field --batch <i> Status=Done` |
+| `CLOSED-ISSUE-NOT-DONE` | **no live claim**, `state == CLOSED`, and `status != Done` | `set-field --batch <i> Status=Done` |
 | `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **report only** — is the work done, or was the flip premature? |
 | `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `fsgg-coord add <i>` — idempotent; see the note below |
-| `BLOCKER-CLEARED` | every blocker `closed` **or `merged`**, but `status == Blocked` | `set-field --batch <i> Status=Ready` |
+| `BLOCKER-CLEARED` | **no live claim**, every blocker `closed` **or `merged`**, but `status == Blocked` | `set-field --batch <i> Status=Ready` |
 | `BLOCKER-UNKNOWN` | a blocker ref `scan` could not resolve | resolve over REST (§3), then board the blocker if it is open |
 | `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **report only** — hand-fix the field |
-| `STATUS-NOT-BLOCKED` | an open blocker, but `status` is `Ready`/`Backlog` | `set-field --batch <i> Status=Blocked` |
+| `STATUS-NOT-BLOCKED` | **no live claim**, an open blocker, but `status` is `Ready`/`Backlog` | `set-field --batch <i> Status=Blocked` |
 | `STALE-CLAIM` | `who` says `state == "stale"` | `reap --repo <r> --apply` |
 | `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **report only** — someone is working outside the protocol |
-| `CLAIM-STATUS-LAG` | held claim, but board `status != In progress` | `set-field --batch <i> "Status=In progress"` |
+| `CLAIM-STATUS-LAG` | held claim, and board `status` is one of `Ready`/`Backlog`/*(no status)* — the columns a claim SHOULD have overwritten. A held `Blocked`/`In review` is the holder's own decision and is **deferred, not reconciled** (#331) | `set-field --batch <i> "Status=In progress"` |
 | `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **report only** — the fix is an *issue* edit, and this skill never writes to an issue |
 | `EPIC-*` | from `lint --json` (severity `error`) | **report only** — a broken epic needs a human |
+
+**AN ITEM YIELDS AT MOST ONE FINDING THAT WRITES ITS COLUMN, and the claim is what splits them.**
+That is `Chore.fs`'s structure, not a style note: it matches on the claim first, and the two halves
+never overlap.
+
+- **A live claim reserves the item**, and only the two rules that act on the MARKER may fire:
+  `STALE-CLAIM` (lapsed lease) and `CLAIM-STATUS-LAG` (live lease). They are mutually exclusive *on
+  the lease state*, so at most one. Neither writes a column the reserver did not already own.
+- **No claim** — then, and only then, the three that write the column directly: `CLOSED-ISSUE-NOT-DONE`
+  (needs `Closed`), `BLOCKER-CLEARED` (needs `Blocked`, every blocker resolved), `STATUS-NOT-BLOCKED`
+  (needs `Ready`/`Backlog`, one blocker open). Pairwise disjoint on facts you can see, so at most one.
+
+**Drop the claim check and this table contradicts itself.** An item that was `Ready`, claimed, and
+blocked yields BOTH `CLAIM-STATUS-LAG` (*"set In progress"*) and `STATUS-NOT-BLOCKED` (*"set
+Blocked"*) — two writes of opposite columns to one item, with the winner decided by whichever ran
+last. `ChoreTests` asserts the invariant over every (status × claim × blocker × issue-state)
+combination with no kind excluded; this table has no such test, which is exactly why the claim check
+is written into each row above rather than left to be remembered.
+
+The report-only classes (`UNCLAIMED-IN-PROGRESS`, `DONE-STATUS-OPEN-ISSUE`, `BLOCKER-UNKNOWN`,
+`BLOCKER-UNPARSEABLE`, `UNDECLARED-PATHS`, `EPIC-*`, `OFF-BOARD-ISSUE`) are outside this rule: they
+write no column, so they cannot contradict anything. They are also this skill's own, not `Chore`'s.
 
 **Always write with `set-field --batch`, never the single-field form.** On the engine the fleet is
 **pinned** to, `set-field <ref> <field> <value>` **cannot write any single-select**: it declares its
@@ -243,21 +276,51 @@ established — a definite answer built on no information. `add` now enforces th
 `--apply` may board what your snapshot genuinely shows off-board; if the scan failed, you have no
 finding to act on in the first place.
 
-`CLAIM-STATUS-LAG` is the one class you cannot read off a single command: `who --json` does not
-emit `inProgress`. Join it yourself — an item `who` reports as `held` whose board `status` is not
-`In progress` is a lock whose `Status` write **never landed**. Before you repair it by hand, run
-`scripts/fsgg-coord flush --dry-run`: if that write is sitting in the deferred queue, an exhausted
-budget merely *paused* it, `flush` is the repair, and reconciling it here would duplicate the write
-rather than fix it (#878). What this pass repairs is the lag that is **not** queued — a `Status`
-write that was refused outright, or one whose worker walked away without flushing. Write it:
+`CLAIM-STATUS-LAG` reads off **one command, at one instant** — `scan --fresh --include-backlog`, which
+§1 already mandates. Every claimed item carries a `claim` object *atomically with its `status`*:
+
+```json
+{ "number": 931, "status": "In progress",
+  "claim": { "worker": "godwit-5b49", "ageSeconds": 1933, "prevStatus": "Backlog",
+             "liveness": { "kind": "lease-held" } } }
+```
+
+**Do not join `scan` against a separately-timed `who`.** This section used to, and the join is both
+unnecessary and wrong: two reads are two *instants*, so a claim landing between them reports as lag
+that never existed. Measured on a busy board: **4 raw hits, 0 real** — two items were claimed between
+the `scan` and the `who` (#1035).
+
+**`liveness.kind == "lease-held"` is the live-claim predicate** — the same condition `who` calls
+`held`. A lapsed lease is `STALE-CLAIM`'s, not this one's, and `lease-expired-pr-open` is a worker
+demonstrably still working (#581); neither is a lag.
+
+**Only the columns a claim SHOULD have overwritten qualify: `Ready`, `Backlog`, and `""` (no status).**
+A holder who set `Blocked` or `In review` *during* the lease made a decision, and #331 is the rule
+that a column set deliberately during a lease still wins — so those are **deferred, not reconciled**.
+Reconciling them would overwrite the holder's own judgement with a default: the drift this pass
+closes, running backwards. This is not hypothetical — the rule here fired on `.github#1004`, a live
+item whose holder had parked it `Blocked` with *"this is a decision, so I am parking it rather than
+working it"*, and `--apply` would have overwritten that park with `In progress` (#1035). `Chore.fsi`
+states this rule, with its reasoning; it is the owner, and this is its restatement.
+
+Before you repair a real one by hand, run `scripts/fsgg-coord flush --dry-run`: if that write is
+sitting in the deferred queue, an exhausted budget merely *paused* it, `flush` is the repair, and
+reconciling it here would duplicate the write rather than fix it (#878). What this pass repairs is the
+lag that is **not** queued — a `Status` write that was refused outright, or one whose worker walked
+away without flushing. Write it:
 
 ```sh
-jq -r --slurpfile s /tmp/scan.json '
-  ($s[0].items | map({ key: "\(.owner)/\(.repo)#\(.number)", value: .status }) | from_entries) as $st
-  | .[] | select(.state == "held")
-  | select($st["\(.repo)#\(.number)"] != "In progress")
-  | "CLAIM-STATUS-LAG  \(.repo)#\(.number)  held by \(.worker), board says \($st["\(.repo)#\(.number)"] // "—")"
-' /tmp/who.json
+# `""` IS the wire form of "no status" (Types.fs: statusWireName NoStatus = ""), for `status` and for
+# `prevStatus` alike — so render it, don't `//` it. jq's `//` only catches null, and an empty string
+# is truthy: `.prevStatus // "—"` prints nothing at all for the very column it exists to name.
+jq -r 'def col: if . == null then "—" elif . == "" then "(no status)" else . end;
+  .items[]
+  | select(.claim.liveness.kind == "lease-held")
+  | select(.status == "Ready" or .status == "Backlog" or .status == "")
+  | "CLAIM-STATUS-LAG  \(.owner)/\(.repo)#\(.number)  held by \(.claim.worker)"
+    + ", board says \(.status | col)"
+    + " (claim overwrote \(.claim.prevStatus | col))"
+' /tmp/scan.json
 ```
 
 `UNDECLARED-PATHS` is the class that makes a **full queue look like an empty one**. An item with no
