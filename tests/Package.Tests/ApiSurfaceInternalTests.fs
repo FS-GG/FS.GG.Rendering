@@ -21,11 +21,30 @@ module ApiSurfaceInternalTests
 // WHY THE MIRROR AND NOT THE SOURCE. The `src/` originals keep these declarations — they are real
 // `InternalsVisibleTo` seams that Controls.Tests / Elmish.Tests reach, and an `.fsi` that simply
 // omits a value makes it PRIVATE to its implementation file rather than internal to the assembly, so
-// deleting them at the source would break the tests that legitimately use them. The mirror is
-// therefore its original MINUS the internals — not a byte copy — and M-MIR (`ApiSurfaceMirrorTests`,
-// `stripInternalDeclarations`) compares it that way. (M-MIR used to be named here alongside a PR-time
-// twin, `ApiSurfaceMirrorCoherenceTests`; #613 retired it — this project has been on the PR gate since
-// #540, so the rule already fires there at its source.)
+// deleting them at the source would break the tests that legitimately use them. The mirror ships the
+// product-visible surface; `src/` keeps the seams.
+//
+// WHY THIS SURVIVED #753, WHEN M-MIR AND THE LEDGER DID NOT. #752 made the mirror a BUILD OUTPUT
+// (`scripts/refresh-api-surface-mirror.fsx`, emitted from the pinned package's `.fsi` + the curation in
+// `scripts/api-surface-manifest.txt`), and #694's test retires any gate that compares a generated
+// artifact against its generator's input. #753 listed S-INT for deletion on that basis. It does not
+// meet the test, and deleting it would have been a fail-open:
+//
+//   S-INT does not compare the mirror to the generator's input. It asserts a PROPERTY of the emitted
+//   tree — and THE GENERATOR DOES NOT ENFORCE THAT PROPERTY. There is no `internal` filter anywhere in
+//   it. The only place the generator touches the word is `FsiSurface.nameOf`, which STRIPS the
+//   accessibility keyword off a declaration to key the lookup — so a manifest line naming an internal
+//   member RESOLVES to it and `render` then emits `node.Text` verbatim, `internal` keyword and all.
+//   `FsiSurface.fsx` even states the invariant it never checks: "`module internal` matters — the pin
+//   ships three, they are NOT public surface, and a mirror must never declare one."
+//
+// So S-INT's subject did not disappear with the hand-maintained tree — it MOVED. It used to guard a
+// hand-copied mirror; it now guards the hand-edited MANIFEST, by reading what the manifest made the
+// generator emit. The manifest is the surviving human-authored input and `internal` members are live in
+// the pin's `.fsi`, so the leak #585 recorded (ten `val internal`, two `module internal`, and
+// `type internal RuntimeStampResult<'msg>`) is still one manifest line away. This gate is what catches
+// it. (M-MIR used to be named here alongside a PR-time twin, `ApiSurfaceMirrorCoherenceTests`; #613
+// retired it — this project has been on the PR gate since #540.)
 //
 // WHY NOT S-DOC. `SurfaceDocCoverageTests`' `publicValRegex` excludes `internal` ON PURPOSE, and that
 // exclusion must stay. Admitting internals there would let a leak be LAUNDERED into "documented" by
@@ -49,11 +68,11 @@ open FS.GG.TestSupport
 let private apiSurfaceRoot =
     Path.Combine(RepositoryRoot.value, "template", "base", "docs", "api-surface")
 
-/// THE SAME reader the strip uses (`SurfaceSignature.internalDeclaration`), not a second copy of it.
-/// S-INT asserts the mirror contains nothing `stripInternalDeclarations` would have removed, so the two
-/// must be the same rule by construction: a private regex here that drifted from the shared one would let
-/// S-INT pass a declaration the strip still deletes — the gate and the transform disagreeing about what an
-/// internal declaration IS, which is the one thing neither can be wrong about.
+/// The shared reader (`SurfaceSignature.internalDeclaration`), not a second copy of it. It is the only
+/// definition in the tree of what an internal DECLARATION is, and #753 left it that way deliberately: the
+/// transform it used to share this module with (`stripInternalDeclarations`) went with the mirror gates
+/// that were its only callers, and a private regex re-spelled here would be the fourth reader of a
+/// grammar that has already cost this repo #648 and #669.
 let private internalDeclaration = SurfaceSignature.internalDeclaration
 
 let private bundledSignatures () =
@@ -94,8 +113,10 @@ let apiSurfaceInternalTests =
                   offenders
                   "the bundled api-surface declares no internal members — a product reads this tree from its own \
                    assembly, where an `internal` member does not exist and the keyword cannot warn it. Keep the \
-                   declaration in src/ (it is a real InternalsVisibleTo seam) and leave it out of the mirror; M-MIR's \
-                   `stripInternalDeclarations` already expects the difference"
+                   declaration in src/ (it is a real InternalsVisibleTo seam) and leave it out of the mirror. The \
+                   mirror is generated (#752), so the fix is in `scripts/api-surface-manifest.txt`: drop the line \
+                   naming this member. The generator has no internal filter — it will emit whatever the manifest \
+                   names, `internal` keyword and all, which is why this gate and not the generator catches it"
           }
 
           // The reader can fail, and fails on the right thing. Without this, S-INT is a regex nobody
@@ -126,112 +147,5 @@ let apiSurfaceInternalTests =
 
               for line in prose do
                   Expect.isFalse (internalDeclaration.IsMatch line) $"S-INT does not eat the doc comment: {line}"
-          }
-
-          // The TRANSFORM, not just the regex. `stripInternalDeclarations` is what three mirror gates
-          // compare against (Package.Tests, Rendering.Harness.Tests, Symbology.Tests), so the mirror on
-          // disk is only as correct as this is. It is also subtle — it measures a declaration's INDENT to
-          // decide how much of what follows belongs to it — and its failures are quiet: take the indent
-          // from the wrong regex group and it silently swallows the next public member, or stops at the
-          // first continuation line and leaves half a signature behind. Pinned directly, on the two shapes
-          // that are hard: a multi-line `val internal` signature, and a `module internal` with a body.
-          test "stripInternalDeclarations removes the declaration, its doc comment, its continuations and its body" {
-              let source =
-                  [| "module Widget ="
-                     "    /// Public and stays."
-                     "    val render: control: Control -> Scene"
-                     ""
-                     "    /// Internal, with a continuation-line signature."
-                     "    /// Reached from Controls.Tests via InternalsVisibleTo."
-                     "    val internal routeFocusedKey:"
-                     "        retained: RetainedRender<'msg> ->"
-                     "        key: Key ->"
-                     "            RetainedRender<'msg> * 'msg list"
-                     ""
-                     "    /// Mentions `module internal Reconcile` in prose — must survive."
-                     "    val hitTest: x: float -> y: float -> ControlId option"
-                     ""
-                     "/// A whole internal module, body and all."
-                     "module internal ControlInternals ="
-                     "    /// Internal by enclosure — note NO `internal` keyword of its own."
-                     "    val chartValues: control: Control -> ChartPoint list"
-                     ""
-                     "    val setMeasureTextHook: hook: (string -> TextMetrics) option -> unit"
-                     ""
-                     "/// Public and stays, after the internal module."
-                     "module Trailing ="
-                     "    val ofMessage: msg: 'msg -> Command<'msg>" |]
-
-              let expected =
-                  [| "module Widget ="
-                     "    /// Public and stays."
-                     "    val render: control: Control -> Scene"
-                     ""
-                     "    /// Mentions `module internal Reconcile` in prose — must survive."
-                     "    val hitTest: x: float -> y: float -> ControlId option"
-                     ""
-                     "/// Public and stays, after the internal module."
-                     "module Trailing ="
-                     "    val ofMessage: msg: 'msg -> Command<'msg>" |]
-
-              Expect.equal
-                  (SurfaceSignature.stripInternalDeclarations source)
-                  expected
-                  "the internal `val` (with its continuations) and the internal `module` (with its whole body, \
-                   including the members that carry no `internal` keyword of their own) are gone; every public \
-                   member, and the doc comment that merely MENTIONS an internal module, survives"
-          }
-
-          // An internal TYPE is the same defect, and the one the issue's own wording would have missed:
-          // `type internal RuntimeStampResult<'msg>` shipped as the RETURN type of the three `val internal`
-          // functions in ControlRuntime.fsi. A strip that took only #585's literal "`val internal` /
-          // `module internal`" would delete the functions and leave the type behind — declared in the
-          // mirror, referenced by nothing in it, and still uncallable by the product reading it.
-          test "stripInternalDeclarations removes an internal type, with its whole body" {
-              let source =
-                  [| "namespace FS.GG.UI.Controls"
-                     ""
-                     "/// Internal: the result of a targeted runtime stamp."
-                     "type internal RuntimeStampResult<'msg> ="
-                     "    { Stamped: Control<'msg>"
-                     "      Touched: int }"
-                     ""
-                     "/// Public and stays."
-                     "type ControlRuntimeModel ="
-                     "    { Hovered: ControlId option }" |]
-
-              let expected =
-                  [| "namespace FS.GG.UI.Controls"
-                     ""
-                     "/// Public and stays."
-                     "type ControlRuntimeModel ="
-                     "    { Hovered: ControlId option }" |]
-
-              Expect.equal
-                  (SurfaceSignature.stripInternalDeclarations source)
-                  expected
-                  "an internal type goes with its record/DU body; the public type beside it is untouched"
-          }
-
-          // The transform must be the IDENTITY on a signature with no internals. The Symbology gate strips
-          // Legibility.fsi and Render.fsi — which declare none — and compares the result against a BYTE
-          // copy. A strip that "tidied" anything on that path (a trailing blank line, say) would report a
-          // faithful mirror as drifted, and the message would send the next reader hunting a drift that
-          // does not exist.
-          test "stripInternalDeclarations leaves a signature with no internals exactly as it found it" {
-              let source =
-                  [| "namespace FS.GG.UI.Symbology"
-                     ""
-                     "module Legibility ="
-                     "    /// Score a token's label against the grammar that draws it."
-                     "    val scoreIn: grammar: Grammar -> token: Token -> Score"
-                     ""
-                     "" |]
-
-              Expect.equal
-                  (SurfaceSignature.stripInternalDeclarations source)
-                  source
-                  "no internal declaration, no change — not even to the trailing blank lines, which the \
-                   byte-for-byte Symbology mirror comparison would otherwise report as drift"
           }
         ]

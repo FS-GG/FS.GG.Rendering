@@ -11,9 +11,19 @@
 //
 // The mirror teaches what a SCAFFOLDED PRODUCT restores, and a scaffolded product restores the pin. For
 // the whole window between a feature landing on `main` and the release that publishes it, `src/` is
-// AHEAD of the pin — which is the entire reason `tests/Package.Tests/mirror-pending-release-ledger.txt`
-// exists. Generating from the pin closes that window by construction: the mirror cannot name a symbol
-// the pin does not export, so `M-MIR/TYPE` can no longer contradict #550's doc-vs-pin rule.
+// AHEAD of the pin — which was the entire reason `tests/Package.Tests/mirror-pending-release-ledger.txt`
+// existed. Generating from the pin closes that window by construction: the mirror cannot name a symbol
+// the pin does not export. #753 has since deleted `M-MIR/TYPE` and that ledger with it.
+//
+// Be precise about WHY they went, because this comment used to claim the narrower thing: generating from
+// the pin does NOT make `M-MIR/TYPE` stop contradicting #550's doc-vs-pin rule. It closes only ONE
+// direction of it (the mirror can no longer teach a member the pin cannot bind). `M-MIR/TYPE` was an
+// EQUALITY rule (mirror == src, member for member), so the OTHER direction got WORSE: the mirror now
+// tracks the pin, so any type that grows a case on `main` makes the mirror legitimately OMIT it — and an
+// equality rule reds on that, needing a ledger entry. Kept as-is, `M-MIR/TYPE` would have needed the
+// ledger MORE than before, not less. Deleting the rule is what retired the ledger; the generator is what
+// made the rule pointless (it compared this script's OUTPUT against `src/`, one link up its own input
+// chain: `src/` -> nupkg -> mirror).
 //
 // ---------------------------------------------------------------------------------------------
 // WHY IT READS `.fsi` AND NOT METADATA — the item's plan, and why it was not followed

@@ -2,15 +2,18 @@ module LedgerNarrativeTests
 
 // #709 — the ledgers' PROSE, held against the pin it narrates.
 //
-// THE BLIND SPOT, AND IT IS ONE LEVEL UP FROM THE ONE THE LEDGERS CLOSE. Both release ledgers ratchet on
-// rules that red LINES:
+// THE BLIND SPOT, AND IT IS ONE LEVEL UP FROM THE ONE THE LEDGERS CLOSE. A release ledger ratchets on a
+// rule that reds LINES:
 //
-//   * `tests/Package.Tests/mirror-pending-release-ledger.txt` — P-PEND/PIN: an entry's stamp must equal
-//     $(FsGgUiVersion), so "a pin bump reds EVERY line, forcing each to be judged afresh".
 //   * `tests/Build.Tests/pinned-api-doc-ledger.txt` — the STALE rule: "the pin NOW exports the symbol ->
 //     delete the line".
 //
-// Both files are EMPTY, which is their declared goal state. **A bump with no lines to red forces no
+// (`tests/Package.Tests/mirror-pending-release-ledger.txt` was the second such file, narrating on
+// P-PEND/PIN — "an entry's stamp must equal $(FsGgUiVersion)", so a pin bump reds every line. #753 deleted
+// it: #752 made the mirror a build output generated from the pin, which closed the window it existed to
+// cover. Its removal does not narrow this gate's blind spot — it removes one of the two files that HAD it.)
+//
+// The file is EMPTY, which is its declared goal state. **A bump with no lines to red forces no
 // re-judgement of anything.** So the 0.9.1 -> 0.9.2 bump sailed straight past prose asserting
 //
 //     `$(FsGgUiVersion)` is 0.9.1, published FS.GG.UI.SkiaViewer 0.9.1 ...
@@ -102,9 +105,12 @@ let private claimsIn (text: string) : PinClaim list =
 /// so a claim written there in a spelling the pattern does not know (a backticked version, a line-wrapped
 /// sentence) would go unchecked in silence, where the same mistake in the two files below reds. If S-DOC
 /// ever does start narrating a release, move it up here and it inherits the teeth.
-let private narratingLedgers =
-    [ "tests/Package.Tests/mirror-pending-release-ledger.txt"
-      "tests/Build.Tests/pinned-api-doc-ledger.txt" ]
+/// `mirror-pending-release-ledger.txt` was the other entry here until #753 deleted it. It existed to
+/// resolve M-MIR/TYPE (mirror must EQUAL src) against #550's doc-vs-pin rule (a doc must not EXCEED the
+/// pin) during the window where `src/` runs ahead of the published package. #752 made the mirror a build
+/// output generated FROM the pin, which closes that window by construction — the mirror cannot name a
+/// member the pin does not export — so the ledger had nothing left to hold and went with M-MIR.
+let private narratingLedgers = [ "tests/Build.Tests/pinned-api-doc-ledger.txt" ]
 
 /// Every ledger — DISCOVERED, not listed. A hand-written list is a finder that silently stops reaching its
 /// subject the moment somebody adds a fourth ledger: its epitaph would rot with every gate green, which is
