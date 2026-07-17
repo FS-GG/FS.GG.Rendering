@@ -105,7 +105,8 @@ the shim resolves no engine it fails loudly with what to do — never a silent n
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
 scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
-git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # `take` prints this; name the base
+git fetch origin                               # NOTHING else does — the base is otherwise the PAST (#622)
+git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # name the base (#319)
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
 scripts/fsgg-coord done <issue> --flip         # earn the stamp
 ```
@@ -312,6 +313,14 @@ not `main`. Omit the base and the item's PR silently carries that branch's commi
 you: `verify-paths` reports the resulting drift only as an advisory, and only for as long as that
 sibling branch stays unmerged (.github#319).
 
+**And `git fetch origin` FIRST — naming the base is only half of it.** `git worktree add` does not
+fetch; it resolves `origin/main` against the *local* remote-tracking ref, which advances only when
+something in this checkout fetches. The same premise that makes the base ref necessary makes the fetch
+necessary, and pointing the other way: N workers are merging into `main`, so **the better this protocol
+is working, the staler your `origin/main` is when you start.** A stale base is worse than it sounds —
+it does not merely hide a merged fix, it manufactures fresh evidence for the bug, because the tree you
+build and test is internally consistent and simply old (.github#622).
+
 Keep `main` green. **Disjoint** items merge in any order; **overlapping** items (which you
 sequenced) merge in `Blocked by` order and rebase.
 
@@ -496,13 +505,13 @@ The scheduler asks, in order: is the issue closed? is its Status one we hand out
 
 A claim is an `fsgg:claim` marker COMMENT, and the lowest live marker id wins. GitHub issues comment ids from one server-side sequence, so "lowest live marker" is a total order every racer observes identically. The GitHub ASSIGNEE cannot be the lock, because N agents share one account.
 
-> **Why:** ADR-0027. The lock lives on REST deliberately: GraphQL is the first budget to die under fan-out (#418), and a lock may never live on the budget that dies first.
+> **Why:** ADR-0027. The lock lives on REST, and the invariant it serves — a lock may never live on the budget that dies first — is unamended. What inverted is WHICH budget that is, so this rule no longer asserts a standing answer. #418 measured GraphQL dying first (five workers looping `take` drained 5,000 pt/hr in ~15 minutes), and REST was chosen as the survivor. #895 measured the reverse, twice on 2026-07-16: REST core hit 0/5,000 and took `claim`/`take`/`who` down with it, while GraphQL stayed healthy through both — 3,639/5,000 at the first of them. This rule used to state "GraphQL is the first budget to die" as standing fact, and that premise is what kept regenerating the doctrine that caused the inversion — a recipe steering every worker's reads onto REST to save GraphQL points, on one shared account, spending the lock's own budget to save 7 points of 5,000. #895 decided (2026-07-17) that the lock STAYS and the DOCTRINE moves (#968): REST is metered per request and cannot be batched, so under fan-out it is structurally the scarcer budget with no lever to pull, where GraphQL batches 100 nodes to a query. Discretionary reads belong on GraphQL; REST carries the lock, which has no alternative.
 
 #### The lease is a WINDOW, and an unknown age says so
 
 A claim's lease is 120 minutes by default (`FSGG_CLAIM_LEASE_MIN`). Past it the claim is REAPABLE — not free: only `reap` may break a lock, and an item's touch-set stays reserved until it does. A claim whose age cannot be read reports `lease unknown`, never a window.
 
-> **Why:** #428 ("nothing schedulable" and "queued behind a claim held by <w>, lease frees in ~96m" are the same fact and two completely different operator instructions — the first reads as an empty queue and sends a worker home) and #440/#488 (inventing "frees in ~120m" from a missing timestamp is a confident-but-unfounded sentence, which is the class both were closed for).
+> **Why:** #428 ("nothing schedulable" and "queued behind a claim held by <w>, lease frees in ~96m" are the same fact and two completely different operator instructions — the first reads as an empty queue and sends a worker home) and #440/#488 (inventing "frees in ~120m" from a missing timestamp is a confident-but-unfounded sentence, which is the class both were closed for). And the lease is a TIMER, which is why it never decides alone: it cannot see a REST outage, and `heartbeat` is REST, so an outage on the lock's budget spends a lease nobody can renew and silently reads as abandonment (#976, ratifying that the fleet stops there rather than making the clock outage-aware). What answers instead is evidence — an open `item/<n>-*` PR (#581), or a liveness probe that failed and therefore fails closed (#266). Expiry is EVIDENCE of abandonment, never proof.
 
 #### A read that did not happen may never render as a confident answer
 
@@ -522,8 +531,9 @@ an unreachable answer is not a negative one.
 - **`no-touch-set`** — No `Paths:` line at all — an OMISSION. The item is real work and it is invisible to every worker who asks for work. Declare one, or `Paths: none` if it truly has no touch-set.
 - **`deliberately-no-touch-set`** — `Paths: none` — a decision somebody made. An epic, a decision item, an investigation whose scope IS the question. Unschedulable BY DESIGN, and correct.
 - **`unusable-touch-set`** — The declaration contains token(s) that can match no file, so they reserve NOTHING — and files nobody reserved are invisible to every other worker's overlap check.
-- **`held`** — A live claim marker holds it. Wait out the lease, or talk to the worker.
+- **`held-by`** — A live claim marker holds it. Wait out the lease, or talk to the worker.
 - **`held-by-live-work`** — The lease EXPIRED but the work did not: an open `item/<n>-*` PR is the worktree protocol's own artifact, and it outranks a timer. Not offered; its touch-set stays reserved.
+- **`item-pr-open`** — No claim marker governs it, but an `item/<n>-*` PR is already OPEN on its branch — an implementation is in flight whether or not anyone claimed it. Not offered: claiming it would duplicate work that is already written (#651).
 - **`overlaps-in-flight`** — Its files collide with work already in flight. The holder and its lease window are named, because "nothing schedulable" and "queued behind a claim that frees in ~96m" are the same fact and two completely different instructions.
 - **`undetermined`** — WE COULD NOT DECIDE — and that is never a silent no. An unreachable answer is not a negative one. This is the case whose absence made every other case a lie waiting to happen.
 
