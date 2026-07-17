@@ -5,7 +5,6 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Symbology.Render</PackageId>
     <AssemblyName>FS.GG.UI.Symbology.Render</AssemblyName>
-    <Version>0.4.0-preview.1</Version>
     <Title>FS.GG.UI.Symbology.Render</Title>
     <Description>Thin headless Scene to PNG bridge for the symbology design loop. Wraps the public SkiaViewer ReferenceRendering path via a SceneCodec round-trip and fails loud on any non-passing verdict.</Description>
     <PackageTags>fsharp;skia;scene;symbology;render;ui</PackageTags>

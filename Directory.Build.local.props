@@ -24,7 +24,33 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Package">
-    <Version>0.1.0-preview.1</Version>
+    <!-- THE LOCAL-PACK AXIS — NOT the version anything publishes at, and NOT a number to bump when
+         the framework releases. The ONE definition for all 17 packable projects under src/ (#866);
+         they carried this literal inline, 17 identical copies, and #815 read one of them as a
+         package's published version and scoped a Diagnostics-only major against it. There is no such
+         cut: the 17 move together or not at all.
+
+         WHAT PUBLISHES. release.yml packs the whole slnx with `-p:Version=$pin`, where
+         $pin = <FsGgUiVersion> in template/base/Directory.Packages.props. That switch overrides this
+         property for every one of the 17, so the value here NEVER reaches a public feed. To find what
+         a package actually ships at, read <FsGgUiVersion> — not this line, and not a number quoted
+         here (which would be one more version literal to rot, the very thing #866 removed).
+
+         WHY IT IS DELIBERATELY NOT $(FsGgUiVersion). Package-consuming samples restore FS.GG.UI.*
+         from a LOCAL feed of freshly-packed bytes. Because this version is published nowhere, a
+         sample can only ever resolve the local pack: a stale or missing feed fails loudly instead of
+         silently succeeding against the real released package and testing bytes nobody built here.
+         Tracking $(FsGgUiVersion) would surrender that and add a 17-way keep-in-step to the axis that
+         wedged #611/#848.
+
+         SAMPLE PINS MIRROR THIS VALUE and are GENERATED — if you change it, regenerate them by
+         running the Rendering.Harness `package-feed` command with mode set to refresh (flag written
+         without its leading dashes here because XML comments forbid a double dash: it is the `mode`
+         option with value `refresh`); gate.yml's "Sample pins mirror src <Version>" step (#300) is
+         what fails if you do not. Projects inherit this by omission (PackageFeed.resolveProjectVersion,
+         #677); .template.package/FS.GG.UI.Template.fsproj is NOT one of them — it is not a slnx
+         member and ships on the release-tag axis, so it keeps its own inline <Version>. -->
+    <Version>0.4.0-preview.1</Version>
     <Authors>FS.GG Contributors</Authors>
     <Company>FS.GG Contributors</Company>
     <RepositoryType>git</RepositoryType>

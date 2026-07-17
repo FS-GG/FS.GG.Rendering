@@ -5,7 +5,7 @@ module Issue727UmbrellaVersionTests
 // shipped.
 //
 // What shipped: `src/Meta/FS.GG.UI.fsproj` declared no `<Version>` of its own, so `$(Version)` fell back
-// to the repo default in `Directory.Build.local.props` (0.1.0-preview.1) while the 16 members pin
+// to the repo default in `Directory.Build.local.props` (0.1.0-preview.1) while the 16 members pinned
 // themselves inline at 0.4.0-preview.1. The nuspec spends `$version$` TWICE — on the BOM's own version
 // and on all 16 `[$version$]` EXACT dependency pins — so what packed was:
 //
@@ -36,6 +36,13 @@ module Issue727UmbrellaVersionTests
 //
 //   VISIBILITY — the pack path can SEE the umbrella (and the identity rule still admits the bare id).
 //   COHERENCE  — the umbrella's version equals the members', so its EXACT pins name packages that exist.
+//
+// #866 then removed the CAUSE the two halves were guarding against. The drift needed TWO definitions of
+// the version — the repo-wide default the BOM inherited, and the inline literals the members declared —
+// so the version is now defined ONCE, in `Directory.Build.local.props`, and all 17 inherit it. The
+// coherence assertions are unchanged (they compare RESOLVED versions, so they hold however the version is
+// spelled); the last test below flipped from "the BOM declares it inline" to "nothing declares it inline",
+// which is the same invariant guarded at its new source. See that test's own note.
 //
 // Deterministic and hermetic: reads project files and the nuspec, packs nothing, touches no network.
 
@@ -185,36 +192,70 @@ let issue727UmbrellaVersionTests =
                     unresolvable)
         }
 
-        // The mechanism, guarded at its source. The bug was not "the version is wrong" — it was that the
-        // version was INHERITED from a repo-wide default that has nothing to do with what the members ship,
-        // so the two could drift apart without anyone writing a wrong number anywhere. The members all
-        // declare theirs inline; the BOM must too, or it silently re-acquires whatever the default becomes.
-        test "the umbrella declares its version INLINE, like the members — not inherited from the repo default" {
-            let projectDoc = XDocument.Load(repo "src/Meta/FS.GG.UI.fsproj")
-
-            let inlineVersion =
-                projectDoc.Descendants()
+        // The mechanism, guarded at its source — and #866 MOVED that source, so this test now asserts the
+        // opposite spelling of the same invariant. Read this before "restoring" it.
+        //
+        // The bug was never "the version is wrong". It was that the version had TWO definitions — a
+        // repo-wide default in Directory.Build.local.props that the BOM inherited, and inline literals the
+        // 16 members declared — so the two could drift apart without anyone writing a wrong number
+        // anywhere. #727 closed the GAP by giving the BOM an inline literal too, in lockstep with the
+        // members, and asserted that here.
+        //
+        // Lockstep across 17 copies is a rule that has already failed once per reader: #815 read one of
+        // those literals as a package's PUBLISHED version and scoped a Diagnostics-only major against it,
+        // which does not exist (#866). So #866 deleted the second definition instead of testing for the gap
+        // between them: ONE <Version>, in Directory.Build.local.props, inherited by all 17. The BOM cannot
+        // drift from its members because there is no longer a second value to drift from — bump the one
+        // definition and the BOM and all 16 move together, which is exactly what the EXACT [$version$] pins
+        // require.
+        //
+        // The coherence tests above are unchanged and remain the real guard: they compare RESOLVED versions
+        // (discovery honours inheritance — PackageFeed.resolveProjectVersion, #677), so they catch drift
+        // however it is spelled. This test guards the property that makes drift unrepresentable: that the
+        // second definition has not come back.
+        test "the umbrella and its members resolve ONE version from ONE definition — none declares it inline" {
+            let inlineVersionOf (projectPath: string) =
+                XDocument.Load(repo projectPath).Descendants()
                 |> Seq.tryFind (fun e ->
                     e.Name.LocalName = "Version"
                     && (match e.Parent with
                         | null -> false
                         | parent -> parent.Name.LocalName = "PropertyGroup"))
                 |> Option.map (fun e -> e.Value.Trim())
+                |> Option.filter (String.IsNullOrWhiteSpace >> not)
 
-            match inlineVersion with
-            | Some version when not (String.IsNullOrWhiteSpace version) ->
-                Expect.equal
-                    version
-                    (PackablePackages.umbrellaPackage ()).Version
-                    "the inline <Version> is the one the pack path resolves for the BOM"
-            | _ ->
-                failtest
-                    "src/Meta/FS.GG.UI.fsproj declares no inline <Version>, so $(Version) — and therefore the \
-                     nuspec's $version$, and therefore all 16 EXACT dependency pins — falls back to the repo-wide \
-                     default in Directory.Build.local.props. That default tracks nothing the members ship, so the \
-                     BOM drifts to a version no member was ever published at and the package cannot restore. This \
-                     is #727 exactly: declare the version here, in lockstep with the members. (A command-line \
-                     -p:Version=V is a global property and still overrides it, so the coherent release pack is \
-                     unaffected.)"
+            // Derived from discovery, never a hardcoded list: a 17th packable project added tomorrow is
+            // covered by this the day it is added, with no edit here. And it covers ONLY the src/**
+            // packable set — .template.package/FS.GG.UI.Template.fsproj is not a slnx member, so
+            // discovery never returns it, and its legitimate inline <Version> (the release-tag axis, not
+            // this one) is correctly outside this assertion rather than a false OFFENDER.
+            let redeclared =
+                PackablePackages.packablePackages ()
+                |> List.choose (fun p ->
+                    inlineVersionOf p.ProjectPath
+                    |> Option.map (fun v -> $"{p.ProjectPath} declares <Version>{v}</Version> inline"))
+
+            Expect.isEmpty
+                redeclared
+                (sprintf
+                    "a packable project under src/ has re-declared <Version> inline, which re-creates the SECOND \
+                     definition #866 deleted. The version of all 17 is defined once, in \
+                     Directory.Build.local.props; an inline literal here overrides it for THIS project only, so \
+                     the BOM and its members can once again drift to different versions — and the BOM's 16 EXACT \
+                     [$version$] pins then name packages that do not exist (NU1102 x16, #727). Delete the inline \
+                     <Version> and let it inherit; to change what the 17 pack at, edit the one definition. (A \
+                     command-line -p:Version=V is a global property and overrides the inherited value, so the \
+                     coherent release pack is unaffected.) Offenders: %A"
+                    redeclared)
+
+            // And the one definition actually resolves — the inverse failure. If the sole <Version> were
+            // deleted outright, discovery would refuse (PackageDiscoveryError, #677) rather than reach here;
+            // this pins the positive fact that the BOM's resolved version is non-empty and shared.
+            let umbrella = PackablePackages.umbrellaPackage ()
+
+            Expect.isFalse
+                (String.IsNullOrWhiteSpace umbrella.Version)
+                "the BOM must resolve a non-empty version from the single Directory.Build.local.props \
+                 definition — $version$ stamps its own version and all 16 EXACT pins from it"
         }
     ]

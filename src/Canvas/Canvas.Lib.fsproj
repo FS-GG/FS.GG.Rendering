@@ -5,7 +5,6 @@
     <IsPackable>true</IsPackable>
     <PackageId>FS.GG.UI.Canvas</PackageId>
     <AssemblyName>FS.GG.UI.Canvas</AssemblyName>
-    <Version>0.4.0-preview.1</Version>
     <Title>FS.GG.UI.Canvas</Title>
     <!-- 0.2.0 major (ADR-0022 P5): the deterministic sim primitives (Rng/FixedStep/Pathfinding/
          SpatialGrid) moved OUT to FS.GG.Game.Core (the new bottom layer). Canvas now carries only
