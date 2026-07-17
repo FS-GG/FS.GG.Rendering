@@ -123,4 +123,10 @@ module Persistence =
     /// this fold is what a headless test uses to assert what the product ASKED for.
     /// Headless-safe: no filesystem access, never blocks, never throws. The evidence it returns
     /// proves what the product ASKED for, and nothing about durability.
+    ///
+    /// It was called `interpret` up to FS.GG.UI 0.9.0, when no `ViewerEffect` case carried a
+    /// `PersistenceEffect` at all — the name promised a downstream that did not exist, and it was
+    /// retired at the 0.10.0 major (#537). `ViewerEffect.Persist` has since given the requests
+    /// somewhere to go (#535), but THIS fold still records and drops, so the longer name stays the
+    /// honest one: it names what the function does, not what the batch may later reach.
     val interpretRecordOnly: effects: PersistenceEffect list -> PersistenceEvidence
