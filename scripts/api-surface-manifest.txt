@@ -20,8 +20,37 @@
 # Nothing mechanical tells those apart — `module Physics` does BOTH inside one doc block — so an
 # "override wherever they differ" rule would have checked 63 stale doc blocks in as curation and
 # called the drift a decision. The mirror NETS +368 doc lines under this rule, because the pin's docs
-# are the richer ones. The 91 scaffold-only sentences it does drop are tracked for pushing UPSTREAM
-# into `src/*.fsi`, which is where prose the mirror needs and the pin cannot carry actually belongs.
+# are the richer ones.
+#
+# THE "91 SCAFFOLD-ONLY SENTENCES" WERE TRIAGED IN #849, AND THE NUMBER WAS AN ARTEFACT OF HOW IT WAS
+# COUNTED. It came from a sentence-level diff of the old mirror against the new, which reports a
+# sentence as "dropped" when its TEXT does not survive — and the rule above rewords essentially every
+# sentence it keeps. Both examples this header used to offer as teaching-the-pin-lacks are in the pin
+# verbatim: `Persistence`'s "It is evidence of intent, NOT of durability" and `Physics`'s "Arcade
+# resolution stays the first-class default".
+#
+# The tally is not the error — the CATEGORY is. Re-running that count reproduces it (80 here, 91 there;
+# the same method, and the gap is only where a splitter ends a sentence). What it cannot do is tell a
+# REWORDING from a LOSS, and under a rule that rewords everything it keeps, almost every hit is the
+# former. Re-measured for surviving CONTENT against the whole file rather than sentence-to-sentence:
+# SIX sentences, in three doc blocks, lost their teaching. The rest is this rule working.
+#
+#   * `Physics` (31 of the 91, the largest block) drops NOTHING. All of it is reworded, and the pin is
+#     richer in nearly every case — it adds the parentheticals the mirror lacked.
+#   * `Pathfinding`'s 5 are STALE — they are the `10`/`14`-vs-`baseStep` case this header already cites.
+#     Route 3: already gone, correctly.
+#   * `KeyboardInput`'s 5 were ALREADY UPSTREAM, on `mapKeyRaw` (#456/#523) — and the mirror's version
+#     is stale: it taught "you write the forwarding seam yourself", which is what `mapKeyRaw` exists to
+#     stop. The pin will carry it when $(FsGgUiVersion) moves past 0.11.0.
+#   * Genuinely lost, and now upstream: `TextInput.update`'s effect round-trip (no framework function
+#     maps a raised effect back to a `Msg`, and there cannot be one), `interpretRecordOnly`'s naming
+#     rationale (both are #537's retirement of an inert member, and the note is what stops the next
+#     reader restoring it), and `ScrollState`'s "Carried by `ControlRuntimeModel.ScrollOffsets`".
+#
+# So there is no cross-repo prose debt: the 13 cross-repo mirror files (Game.Core x9, Audio.* x4) need
+# no ask, because none of them lost teaching. CHECK `src/` BEFORE CONCLUDING THE MIRROR LOST ANYTHING —
+# the mirror is generated from the PINNED .fsi, so prose already in `src/` reads as missing until the
+# pin moves, and that alone accounted for 5 of the 91.
 #
 # THIS FILE IS AUTHORED. It was DERIVED once, mechanically, from the mirror as it stood at
 # FS.GG.UI 0.11.0 / FS.GG.Game.Core 0.5.0 / FS.GG.Audio 0.3.0 — that is why it reads like a machine
