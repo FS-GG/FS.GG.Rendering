@@ -17,9 +17,10 @@
 
   <!-- Org-wide baseline: versions every FS-GG repo MUST agree on. This is the cross-repo
        coherence point — one place that pins the runtime/language floor shared by all repos.
-       FSharp.Core 10.1.301 is currently the common pin in Rendering, SDD, and Governance;
-       centralising it here keeps the F# core in lockstep across the org. Adopting repos
-       remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
+       FSharp.Core is the common pin across Rendering, SDD, and Governance; centralising it
+       here keeps the F# core in lockstep across the org. The version itself is declared once,
+       below — restating it here is a second copy that drifts every time the baseline moves.
+       Adopting repos remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
   <ItemGroup Label="org-baseline">
     <PackageVersion Include="FSharp.Core" Version="10.1.302" />
   </ItemGroup>
