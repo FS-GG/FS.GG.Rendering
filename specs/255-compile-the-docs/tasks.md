@@ -30,7 +30,7 @@ and SC-006 (no coverage loss vs. the historical cases) is demonstrated.
 
 - [ ] T001 Create the harness project `tests/DocFences.Tests/DocFences.Tests.fsproj` (xUnit, `net10.0`, references `tests/TestSupport`) and add it to `FS.GG.Rendering.slnx` so the gate's slnx loop picks it up
 - [ ] T002 Establish the no-regression baseline: `dotnet fsi scripts/baseline-tests.fsx --out specs/255-compile-the-docs/readiness/baseline.md` (runs every `*.Tests.fsproj` — solution + Package.Tests + samples — and records the full red/green set)
-- [ ] T003 [P] Confirm the pinned packages resolve: read the live `$(FsGgUiVersion)` from `Directory.Build.local.props` and confirm `FS.GG.UI.*` restore from the local nupkg feed; record the release-pending-waiver behavior the harness must honor (research.md D4, [[fsgg-release-window-pin-probes]])
+- [ ] T003 [P] Confirm the pinned packages resolve: read the live `$(FsGgUiVersion)` and confirm the **published** `FS.GG.UI.*` restore from **nuget.org** (cleared sources, isolated packages dir — the `runNameofProbe` approach), NOT the local feed; record the release-pending (`PinPending`) waiver behavior the harness must honor (research.md D4, [[fsgg-release-window-pin-probes]])
 
 ---
 
@@ -52,7 +52,7 @@ actually replaces the extractors — BEFORE any machinery is deleted.
 - [ ] T006 [P] Define the per-corpus preamble format + in-fence `open`-directive (research.md D2) as reviewed config in the repo; document the default `open` set per corpus. **Lock the format against the real fences proven in T005 before generalizing** — this is the plan's highest-risk decision (the "which opens are in scope" that only the compiler answers); do not widen it beyond what a real fence needs
 - [ ] T007 [P] Define the per-fence `SkipWithReason` opt-out directive (research.md D3) that replaces the ledger — local, greppable, reason-carrying (FR-005)
 - [ ] T008 Draft the harness helper seams first (`.fsi` for any `TestSupport` helper): fence → `CompilationUnit` assembly, the generated `FenceProject`, and the `SymbolManifest` emitter (data-model.md); per constitution I (sketch signatures before bodies)
-- [ ] T009 [waiver] Test that the harness **soft-passes** (does not fail the gate) when the pinned `$(FsGgUiVersion)` is not yet on the feed — the release-pending waiver at the restore boundary (FR-012, research.md D4, [[fsgg-release-window-pin-probes]]); exercise with an absent-pin feed stub, in `tests/DocFences.Tests/DocFencesCompileTests.fs`
+- [ ] T009 [waiver] Test that the harness **soft-passes** (does not fail the gate) when the pinned `$(FsGgUiVersion)` is not yet published to nuget.org — the release-pending (`PinPending`) waiver at the restore boundary (FR-012, research.md D4, [[fsgg-release-window-pin-probes]]); exercise with an absent-pin stub, in `tests/DocFences.Tests/DocFencesCompileTests.fs`
 
 **Checkpoint**: Corpus map built, green+red proven end to end on real fences, preamble/opt-out formats
 fixed, waiver behavior asserted, seams drafted — US1 implementation can proceed.
@@ -79,7 +79,7 @@ unreleased symbol; a legitimate partial snippet still compiles; the historical c
 ### Implementation for User Story 1
 
 - [ ] T015 [US1] Implement fence → `CompilationUnit` assembly (corpus preamble + fence `ExtraOpens`, unique module name encoding doc+line) in `tests/DocFences.Tests/` (data-model.md CompilationUnit)
-- [ ] T016 [US1] Implement `FenceProject` generation + single pinned restore + `dotnet build` (reuse the `runProbeBuild` project-generation approach; ONE restore amortized over all fences); **honor the release-pending waiver** — when the pin is absent from the feed, soft-pass rather than fail the gate (FR-012, satisfies the T009 assertion) in `tests/DocFences.Tests/`
+- [ ] T016 [US1] Implement `FenceProject` generation + single pinned restore + `dotnet build` (reuse the `runNameofProbe` approach: PackageReference the pin, `<clear/>` sources to nuget.org, isolated `RestorePackagesPath`, `NU1603;NU1101;NU1102;NU1608` as errors; ONE restore amortized over all fences); **honor the release-pending (`PinPending`) waiver** — when the pin is not yet published to nuget.org, soft-pass rather than fail the gate (FR-012, satisfies the T009 assertion) in `tests/DocFences.Tests/`
 - [ ] T017 [US1] Map compiler diagnostics back through `Origin` to `{Doc, Line, Diagnostic}` so a failure is clickable (FR-003, constitution VI) in `tests/DocFences.Tests/`
 - [ ] T018 [P] [US1] Classify non-F# fences: excluded from the compile set but counted for coverage accounting, never silently dropped (edge case) in `tests/DocFences.Tests/`
 - [ ] T019 [US1] Emit the per-fence `SymbolManifest` (resolved pinned symbols) — built now, consumed by US3 (data-model.md SymbolManifest, D6) in `tests/DocFences.Tests/`

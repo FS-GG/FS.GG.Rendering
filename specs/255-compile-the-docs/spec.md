@@ -133,7 +133,10 @@ credit the surface as taught.
   (`SKILL.md`), the api-surface mirror `.fsi` `///` comments, and scaffold-source `///` comments — using the
   single shared fence engine (`MarkdownFences`).
 - **FR-002**: The system MUST assemble the extracted fences into one or more generated F# projects that
-  `PackageReference` the pinned packages at `$(FsGgUiVersion)` and restore against the local nupkg feed.
+  `PackageReference` the pinned packages at `$(FsGgUiVersion)` and restore the **published** packages from
+  **nuget.org** — with package sources cleared to nuget.org and restored into an isolated packages folder
+  (the proven `runNameofProbe` approach) — so a locally-`pack`ed unreleased seam cannot fake a pass. (The
+  local nupkg feed is the template-consumer mechanism, NOT the doc-vs-pin oracle.)
 - **FR-003**: The system MUST compile the generated fence project(s) in CI on every PR, and MUST fail the
   gate when a fence names a symbol the pinned package does not export, reporting the offending doc and the
   compiler diagnostic.
@@ -159,8 +162,8 @@ credit the surface as taught.
 - **FR-011**: S-DOC coverage MUST define "cited" as "appears in a fence that compiled against the pin", so
   that a same-language homonym (a local `let` binding sharing a public surface's name) cannot credit that
   surface as documented.
-- **FR-012**: The pinned-package restore MUST respect the release-pending waiver so the gate does not wedge
-  a release when the pinned version is not yet on the feed.
+- **FR-012**: The pinned-package restore MUST respect the release-pending waiver (the `PinPending` bound) so
+  the gate does not wedge a release when the pinned version is not yet published to nuget.org.
 
 ### Key Entities
 

@@ -60,10 +60,14 @@ smaller. (b) Language-tag the fence non-F# (```text) to hide it — rejected: si
 
 ## D4 — Restore, feed, and the release-pending waiver
 
-**Decision**: Reuse the existing pinned-restore approach (local nupkg feed, `$(FsGgUiVersion)`), amortized
-into one restore for the whole fence project. Read the pin from the live property; carry **no** second
-oracle version. Honor the release-pending waiver so the harness does not probe a not-yet-published pin
-during a release window.
+**Decision**: Reuse the existing `runNameofProbe` restore approach — the **published** pinned packages from
+**nuget.org**, package sources `<clear/>`ed down to nuget.org, restored into an isolated packages folder so
+no locally-`pack`ed unreleased seam can satisfy the restore — amortized into one restore for the whole fence
+project. Read the pin from the live `$(FsGgUiVersion)`; carry **no** second oracle version. Honor the
+release-pending (`PinPending`) waiver so the harness does not probe a not-yet-published pin during a release
+window. (Correction to an earlier draft that said "local nupkg feed": that feed is the template-consumer
+mechanism; restoring the oracle from it would let a local `pack` fake a green — the exact failure the
+cleared-sources isolation exists to prevent.)
 
 **Rationale**: The `oracleVersion = "0.9.0"` hardcode existed only because the probe restored per-call and
 the pin moved underneath it; a single up-front restore keyed on the live `$(FsGgUiVersion)` removes the
