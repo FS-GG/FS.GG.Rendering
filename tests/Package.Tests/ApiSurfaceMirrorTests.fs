@@ -66,10 +66,7 @@ module ApiSurfaceMirrorTests
 // package — CI cannot see the other repo. That is enough for the drift it exists to catch, because
 // bumping a pin without recopying leaves the stamp behind and fails here.
 
-open System.Collections.Concurrent
-open System.Collections.Generic
 open System.IO
-open System.Text
 open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
