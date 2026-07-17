@@ -45,19 +45,29 @@ type LogicalCanvasFit =
       OffsetX: float
       OffsetY: float }
 
-/// Issue #246: the letterbox seam for a fixed-logical-resolution product. The host applies this
-/// for you when `ViewerOptions.LogicalSize` is set; it is public so a product can assert the
-/// mapping (and map its own points) with no window and no device.
+/// Issue #246: the letterbox seam for a fixed-logical-resolution product.
+///
+/// The game family withholds the window `Size` from `view` on purpose, so a product renders
+/// in its own logical coordinate space and the host fits that space to whatever surface it
+/// was given. `ViewerOptions.LogicalSize` turns that fit on; everything here is the pure
+/// arithmetic behind it, so a product can assert the mapping with no window and no device.
 [<RequireQualifiedAccess>]
 module LogicalCanvas =
 
     /// The uniform (aspect-preserving) fit of `logical` centered inside `actual`.
+    /// A non-positive extent on either size yields the identity fit rather than a division by zero.
     val fit: logical: Size -> actual: Size -> LogicalCanvasFit
 
     /// Wrap a scene authored in `logical` coordinates so it renders scaled and centered in `actual`.
+    /// Content is always clipped to the logical canvas — a product cannot draw into the letterbox
+    /// bars, and that does not become a fact about the current window size. Under the identity fit
+    /// the scale is elided and the clip is a visual no-op, so an unscaled render stays
+    /// pixel-identical to one taken without a `LogicalSize`.
     val present: logical: Size -> actual: Size -> node: SceneNode -> SceneNode
 
-    /// Map a point in `actual` (window/surface) coordinates back into `logical` coordinates.
+    /// Map a point in `actual` (window/surface) coordinates back into `logical` coordinates —
+    /// the inverse of `present`, for routing pointer input to a letterboxed product. Points inside
+    /// a letterbox bar map outside the logical canvas, which is faithful: nothing is drawn there.
     val toLogicalPoint: logical: Size -> actual: Size -> x: float -> y: float -> float * float
 
 /// Public contract type exposed by this FS.GG.UI package.
@@ -328,6 +338,7 @@ type ScreenshotCaptureAvailability =
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotCaptureSource =
     | LiveViewerWindow
+    /// #141: the offscreen CPU scene raster the capture really performs (no GL context, no live window).
     | OffscreenSceneRaster
     | DeterministicSceneRender
     | PixelReadbackSource
@@ -688,8 +699,9 @@ module Viewer =
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val runtimeCapability: unit -> ViewerRuntimeCapability
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val run: options: ViewerOptions -> scene: SceneNode -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
     /// Issue #444 — EVIDENCE EFFECTS ARE HONORED HERE. A host that emits `CaptureScreenshot`,
     /// `CaptureImageEvidence`, `WriteVisualEvidence` or `WriteRunEvidence` from `Init`/`Update` gets the
     /// file written. Before #444 all four were discarded by the launch loop — no file, no error, and the
@@ -730,10 +742,19 @@ module Viewer =
     /// `GeneratedAppHost` has no pointer: a product that needed both got silence, because the
     /// interactive loop discarded `PlayAudio`. `audioSink` receives every batch in dispatch order,
     /// exactly as it does under `runAppWithAudio`; `runInteractiveViewer` (no sink) is unchanged.
-    val runInteractiveViewerWithAudio: options: ViewerOptions -> audioSink: (AudioEffect list -> unit) -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerWithAudio:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #429 — `runInteractiveViewerWithAudio` with an explicit window behavior, completing the
     /// pairing the sinkless interactive runners already have.
-    val runInteractiveViewerWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #438 — `runInteractiveViewerScript` with an audio sink. #429 gave the interactive family a
     /// sink but only on its NON-scripted entry points; the scripted runners kept passing `ignore`, so a
     /// scripted product's `PlayAudio` was still dropped with no error and no diagnostic. That mattered
@@ -741,17 +762,38 @@ module Viewer =
     /// responsiveness tooling drives, so "audio was requested during a scripted run" was the one thing
     /// about sound that could not be observed. `audioSink` receives every batch in dispatch order, from
     /// the same shared fold the live loops use; `runInteractiveViewerScript` (no sink) is unchanged.
-    val runInteractiveViewerScriptWithAudio: options: ViewerOptions -> script: ViewerScriptInput list -> audioSink: (AudioEffect list -> unit) -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerScriptWithAudio:
+        options: ViewerOptions ->
+        script: ViewerScriptInput list ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #438 — `runInteractiveViewerScriptWithAudio` with an explicit window behavior, completing
     /// the pairing the sinkless scripted runners already have.
-    val runInteractiveViewerScriptWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> script: ViewerScriptInput list -> audioSink: (AudioEffect list -> unit) -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerScriptWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        script: ViewerScriptInput list ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Drives a real bounded Silk.NET window and reports `FramesRendered` = the number of frame
+    /// callbacks the window fired. The window itself is NOT painted with `scene` (on-screen
+    /// presentation is `run`/`runApp`); instead, when the request's `EvidencePath` names a `.png`
+    /// the scene is rasterized to real pixels through the shared CPU painter, so image evidence
+    /// genuinely depicts `scene`. Read `FramesRendered` as window/frame-cadence proof, not as
+    /// "the scene was presented on screen" (P6 / R4).
     val runBounded: request: ViewerRunRequest -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Bounded run stopping at the first frame callback; see `runBounded` for what the evidence
+    /// proves (window/frame cadence; scene depicted only in `.png` evidence, not on the live surface).
     val runUntilFirstFrame: options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
+    /// Bounded run stopping after `frameCount` frame callbacks; see `runBounded` for what the
+    /// evidence proves (window/frame cadence; scene depicted only in `.png` evidence).
     val runForFrames: frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.
     val captureScreenshotEvidence: request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult

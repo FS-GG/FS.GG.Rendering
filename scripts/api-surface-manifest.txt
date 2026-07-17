@@ -1,0 +1,1667 @@
+# THE CURATION — the input the pinned package cannot carry (#752 / #694).
+#
+# `scripts/refresh-api-surface-mirror.fsx` emits `template/base/docs/api-surface/**` from the .fsi the
+# PINNED packages ship, and this file is everything the package cannot know: WHICH of the pin's 2,575
+# members are taught (the mirror declares 1,294 — omission is the DESIGN, and M-MIR is coherence
+# "never completeness"), which of the pin's 114 .fsi merge into which of the 62 mirror files, the
+# `// See skill:` pointer M-PTR requires (0 of the packed .fsi carry one), and the handful of doc
+# blocks the pin is SILENT on.
+#
+# THE PIN IS AUTHORITATIVE FOR PROSE, AND THIS FILE DOES NOT SECOND-GUESS IT. `scaffold-map.md` says
+# it outright — "when they disagree, the `.fsi` wins" — so wherever the pin documents a member, its
+# text is emitted verbatim and there is no entry here. `prose`/`proseat` exist for exactly one case:
+# the pin says NOTHING and the mirror taught something (six blocks, e.g. `KeyboardEffect`'s
+# "Issue 456: NOT INTERPRETED BY ANY HOST" warning, which sits on a union case the pin leaves bare).
+#
+# That rule is not a preference, it is the point of the item. Measured at the 0.11.0 pin, EVERY one of
+# the 98 members both sides documented had text that DIFFERED — sometimes because the mirror was a
+# stale copy (`Neighbourhood.FourWay` taught "each move costs 1 (`bfs`) / 10 (`astar`)"; the pin has
+# said `baseStep` since Game.Core 0.5.0), sometimes because the mirror added teaching the pin lacks.
+# Nothing mechanical tells those apart — `module Physics` does BOTH inside one doc block — so an
+# "override wherever they differ" rule would have checked 63 stale doc blocks in as curation and
+# called the drift a decision. The mirror NETS +368 doc lines under this rule, because the pin's docs
+# are the richer ones. The 91 scaffold-only sentences it does drop are tracked for pushing UPSTREAM
+# into `src/*.fsi`, which is where prose the mirror needs and the pin cannot carry actually belongs.
+#
+# THIS FILE IS AUTHORED. It was DERIVED once, mechanically, from the mirror as it stood at
+# FS.GG.UI 0.11.0 / FS.GG.Game.Core 0.5.0 / FS.GG.Audio 0.3.0 — that is why it reads like a machine
+# wrote it — but it is an INPUT from here on. To teach a symbol the pin exports, add a `+` line. To
+# stop teaching one, delete its line. Never regenerate this from the mirror: the mirror is this file's
+# OUTPUT, and deriving the input from the output is a gate that compares a thing to itself and agrees
+# (#661) — the loss would look exactly like the intent.
+#
+# GRAMMAR
+#   file    <path under template/base/docs/api-surface>
+#   skill   <product skill name>              -> `// See skill: <name>`  (M-PTR requires it)
+#   header  <verbatim comment line>           -> emitted under the skill pointer
+#   ns      <namespace>
+#   pkg     <pinned package the members come from>
+#   open    <namespace>                       -> emitted after `namespace`, in listed order
+#   +       <pin .fsi> <kind> <dotted path>   -> teach this member, here, in this order
+#   prose   <pin .fsi> <kind> <dotted path>   -> the following `| ` lines REPLACE the member's doc
+#   proseat <pin .fsi> <kind> <path> ::: <anchor>
+#                                             -> the `| ` lines REPLACE the doc block above the line
+#                                                whose text is <anchor>, INSIDE that declaration (a
+#                                                union case has no lead of its own to override)
+#
+# A `+` naming a member the pin does not export is a hard error, not a skip; so is a `proseat` whose
+# anchor the pin no longer has. That is the point — it is the drift #694 was filed about, and it can
+# no longer be silent.
+# ------------------------------------------------------------------------------------------
+file   Audio.Core/Audio.fsi
+skill  fs-gg-audio
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.3.0 (src/FS.GG.Audio.Core/Audio.fsi); regenerate when $(FsGgAudioVersion) moves.
+ns     FS.GG.Audio.Core
+pkg    FS.GG.Audio.Core
++      Audio.fsi type SoundId
++      Audio.fsi type TrackId
++      Audio.fsi type Bus
++      Audio.fsi type AudioEffect
++      Audio.fsi type AudioEvidence
++      Audio.fsi val Audio.minVolume
++      Audio.fsi val Audio.maxVolume
++      Audio.fsi val Audio.clampVolume
++      Audio.fsi val Audio.playSfx
++      Audio.fsi val Audio.playMusic
++      Audio.fsi val Audio.stopMusic
++      Audio.fsi val Audio.setMasterVolume
++      Audio.fsi val Audio.playSfx3D
++      Audio.fsi val Audio.setBusVolume
++      Audio.fsi val Audio.duck
++      Audio.fsi val Audio.emptyEvidence
++      Audio.fsi val Audio.record
++      Audio.fsi val Audio.interpret
+
+# ------------------------------------------------------------------------------------------
+file   Audio.Elmish/Elmish.fsi
+skill  fs-gg-audio
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.3.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
+ns     FS.GG.Audio.Elmish
+pkg    FS.GG.Audio.Elmish
+open   FS.GG.Audio.Core
+open   FS.GG.Audio.Host
+open   FS.GG.Audio.Engine
++      Elmish.fsi val Audio.Cmd.ofEffects
++      Elmish.fsi val Audio.Cmd.ofEngine
++      Elmish.fsi val Audio.Cmd.playSfx
++      Elmish.fsi val Audio.Cmd.playMusic
++      Elmish.fsi val Audio.Cmd.stopMusic
++      Elmish.fsi val Audio.Cmd.setMasterVolume
+
+# ------------------------------------------------------------------------------------------
+file   Audio.Engine/Engine.fsi
+skill  fs-gg-audio
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.3.0 (src/FS.GG.Audio.Engine/Engine.fsi); regenerate when $(FsGgAudioVersion) moves.
+ns     FS.GG.Audio.Engine
+pkg    FS.GG.Audio.Engine
+open   FS.GG.Audio.Core
+open   FS.GG.Audio.Host
++      Engine.fsi type SpatialConfig
++      Engine.fsi type Voice
++      Engine.fsi type T
++      Engine.fsi val Engine.defaultSpatial
++      Engine.fsi val Engine.create
++      Engine.fsi val Engine.createWith
++      Engine.fsi val Engine.step
++      Engine.fsi val Engine.fadeBus
++      Engine.fsi val Engine.crossFade
++      Engine.fsi val Engine.setListener
+
+# ------------------------------------------------------------------------------------------
+file   Audio.Host/Host.fsi
+skill  fs-gg-audio
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.3.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
+ns     FS.GG.Audio.Host
+pkg    FS.GG.Audio.Host
+open   System
+open   FS.GG.Audio.Core
++      Host.fsi type AssetResolver
++      Host.fsi type IAudioBackend
++      Host.fsi type IMixingBackend
++      Host.fsi type Wav.PcmData
++      Host.fsi val Wav.tryParse
++      Host.fsi val Spatial.panToPosition
++      Host.fsi type BufferCache.T`1
++      Host.fsi type VoicePool.Ops
++      Host.fsi type VoicePool.T
++      Host.fsi val Audio.play
++      Host.fsi type NullBackend.T
++      Host.fsi val NullBackend.create
++      Host.fsi val OpenAlBackend.create
+
+# ------------------------------------------------------------------------------------------
+file   Canvas/Elements.fsi
+ns     FS.GG.UI.Canvas
+pkg    FS.GG.UI.Canvas
+open   FS.GG.UI.Scene
++      Elements.fsi type Element`1
++      Elements.fsi val Elements.rect
++      Elements.fsi val Elements.sprite
++      Elements.fsi val Elements.circle
++      Elements.fsi val Elements.polyline
++      Elements.fsi val Elements.at
++      Elements.fsi val Elements.layer
++      Elements.fsi val Elements.cached
+
+# ------------------------------------------------------------------------------------------
+file   Canvas/Persistence.fsi
+skill  fs-gg-persistence
+ns     FS.GG.UI.Canvas
+pkg    FS.GG.UI.Canvas
++      Persistence.fsi type SaveSlot
++      Persistence.fsi type SavePayload
++      Persistence.fsi type SaveEnvelope
++      Persistence.fsi type PersistenceEffect
++      Persistence.fsi type PersistenceBackend
++      Persistence.fsi type PersistenceEvidence
++      Persistence.fsi val Persistence.minVersion
++      Persistence.fsi val Persistence.clampVersion
++      Persistence.fsi val Persistence.saveEnvelope
++      Persistence.fsi val Persistence.save
++      Persistence.fsi val Persistence.load
++      Persistence.fsi val Persistence.deleteSlot
++      Persistence.fsi val Persistence.emptyEvidence
++      Persistence.fsi val Persistence.record
++      Persistence.fsi val Persistence.interpretRecordOnly
+
+# ------------------------------------------------------------------------------------------
+file   Controls.Elmish/Authoring.fsi
+skill  fs-gg-elmish
+ns     FS.GG.UI.Controls.Elmish.Authoring
+pkg    FS.GG.UI.Controls.Elmish
+open   FS.GG.UI.Controls.Elmish
++      Authoring.fsi val Cmd.none
++      Authoring.fsi val Sub.none
+
+# ------------------------------------------------------------------------------------------
+file   Controls.Elmish/ControlsElmish.fsi
+skill  fs-gg-elmish
+ns     FS.GG.UI.Controls.Elmish
+pkg    FS.GG.UI.Controls.Elmish
+open   System
+open   FS.GG.Audio.Core
+open   FS.GG.UI.Controls
+open   FS.GG.UI.KeyboardInput
+open   FS.GG.UI.Scene
+open   FS.GG.UI.SkiaViewer
+open   Elmish
+open   FS.GG.UI.DesignSystem
++      ControlsElmish.fsi type AdapterDiagnostic
++      ControlsElmish.fsi type AdapterEffect`1
++      ControlsElmish.fsi type AdapterCommand`1
++      ControlsElmish.fsi type AdapterSubscription`1
++      ControlsElmish.fsi type AdapterProgram`2
++      ControlsElmish.fsi type FrameCause
++      ControlsElmish.fsi type FrameMetrics
++      ControlsElmish.fsi type CompositorFrameDiagnostics
++      ControlsElmish.fsi type LayoutWorkMetrics
++      ControlsElmish.fsi type ResponsivenessTimingContribution
++      ControlsElmish.fsi type DiagnosticsDisabledCompatibility
++      ControlsElmish.fsi type FrameInput`1
++      ControlsElmish.fsi type LiveScriptRunResult
++      ControlsElmish.fsi type InteractiveAppHost`2
++      ControlsElmish.fsi type RespondsVerdict
++      ControlsElmish.fsi type RespondsProof
++      ControlsElmish.fsi val AdapterCmd.none
++      ControlsElmish.fsi val AdapterCmd.ofMessage
++      ControlsElmish.fsi val AdapterCmd.productMessages
++      ControlsElmish.fsi val AdapterCmd.diagnostics
++      ControlsElmish.fsi val AdapterCmd.toCmd
++      ControlsElmish.fsi val ControlsElmish.interpretKeyboardEffect
++      ControlsElmish.fsi val ControlsElmish.interpretControlEffect
++      ControlsElmish.fsi val ControlsElmish.interpretOverlayEffect
++      ControlsElmish.fsi val ControlsElmish.interpretOverlayOutcome
++      ControlsElmish.fsi val ControlsElmish.interpretPointerEffect
++      ControlsElmish.fsi val ControlsElmish.interpretPointerOutcome
++      ControlsElmish.fsi val ControlsElmish.compositorDiagnostics
++      ControlsElmish.fsi val ControlsElmish.layoutMetrics
++      ControlsElmish.fsi val ControlsElmish.responsivenessTimingContribution
++      ControlsElmish.fsi val ControlsElmish.diagnosticsDisabledCompatibility
++      ControlsElmish.fsi val ControlsElmish.subscriptions
++      ControlsElmish.fsi val ControlsElmish.program
++      ControlsElmish.fsi val ControlsElmish.diagnostic
++      ControlsElmish.fsi val ControlsElmish.adapterDiagnosticToRuntimeDiagnostic
++      ControlsElmish.fsi val ControlsElmish.widgetView
++      ControlsElmish.fsi val ControlsElmish.programOfWidget
++      ControlsElmish.fsi val ControlsElmish.routeInteractivePointer
++      ControlsElmish.fsi val ControlsElmish.respondsProofOf
++      ControlsElmish.fsi val ControlsElmish.captureRespondsProof
++      ControlsElmish.fsi val ControlsElmish.runInteractiveApp
++      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithWindowBehavior
++      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithAudio
++      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio
++      ControlsElmish.fsi val ControlsElmish.audioRequests
++      ControlsElmish.fsi val ControlsElmish.Live.runScript
++      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithWindowBehavior
++      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithAudio
++      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithWindowBehaviorAndAudio
++      ControlsElmish.fsi val ControlsElmish.Perf.runScript
++      ControlsElmish.fsi val ControlsElmish.Perf.runScriptToModel
++      ControlsElmish.fsi val ControlsElmish.Perf.runScriptToEffects
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Accessibility.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Accessibility.fsi val Accessibility.keyboard
++      Accessibility.fsi val Accessibility.contrast
++      Accessibility.fsi val Accessibility.metadata
++      Accessibility.fsi val Accessibility.defaultFor
++      Accessibility.fsi val Accessibility.validate
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Attributes.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Attributes.fsi val Attr.create
++      Attributes.fsi val Attr.standardAttribute
++      Attributes.fsi val Attr.customAttribute
++      Attributes.fsi val Attr.standardEvent
++      Attributes.fsi val Attr.customEvent
++      Attributes.fsi val Attr.text
++      Attributes.fsi val Attr.value
++      Attributes.fsi val Attr.items
++      Attributes.fsi val Attr.child
++      Attributes.fsi val Attr.children
++      Attributes.fsi val Attr.enabled
++      Attributes.fsi val Attr.visible
++      Attributes.fsi val Attr.readOnly
++      Attributes.fsi val Attr.loading
++      Attributes.fsi val Attr.selected
++      Attributes.fsi val Attr.width
++      Attributes.fsi val Attr.height
++      Attributes.fsi val Attr.padding
++      Attributes.fsi val Attr.margin
++      Attributes.fsi val Attr.style
++      Attributes.fsi val Attr.styleClasses
++      Attributes.fsi val Attr.visualState
++      Attributes.fsi val Attr.theme
++      Attributes.fsi val Attr.validation
++      Attributes.fsi val Attr.accessibility
++      Attributes.fsi val Attr.on
++      Attributes.fsi val Attr.onWith
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Buttons.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Buttons.fsi type SplitButtonItem
++      Widgets/Buttons.fsi type ToggleButtonProps`1
++      Widgets/Buttons.fsi type SplitButtonProps`1
++      Widgets/Buttons.fsi val ToggleButton.defaults
++      Widgets/Buttons.fsi val ToggleButton.view
++      Widgets/Buttons.fsi val SplitButton.defaults
++      Widgets/Buttons.fsi val SplitButton.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Catalog.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Catalog.fsi type CatalogAccessibility
++      Catalog.fsi type ControlDefinition
++      Catalog.fsi val Catalog.supportedControls
++      Catalog.fsi val Catalog.standardSchema
++      Catalog.fsi val Catalog.knownControlKinds
++      Catalog.fsi val Catalog.requiredAttributes
++      Catalog.fsi val Catalog.supportedAttributes
++      Catalog.fsi val Catalog.supportedEvents
++      Catalog.fsi val Catalog.validateStandardControl
++      Catalog.fsi val Catalog.supportedCount
++      Catalog.fsi val Catalog.categories
++      Catalog.fsi val Catalog.validate
++      Catalog.fsi val Catalog.markdownSummary
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Charts.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Charts.fsi val LineChart.create
++      Charts.fsi val LineChart.series
++      Charts.fsi val BarChart.create
++      Charts.fsi val BarChart.series
++      Charts.fsi val PieChart.create
++      Charts.fsi val PieChart.values
++      Charts.fsi val ScatterPlot.create
++      Charts.fsi val ScatterPlot.series
++      Charts.fsi val GraphView.create
++      Charts.fsi val GraphView.nodes
+
+# ------------------------------------------------------------------------------------------
+file   Controls/ChartsWidgets.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/ChartsWidgets.fsi type LineChartProps`1
++      Widgets/ChartsWidgets.fsi type BarChartProps`1
++      Widgets/ChartsWidgets.fsi type PieChartProps`1
++      Widgets/ChartsWidgets.fsi type ScatterPlotProps`1
++      Widgets/ChartsWidgets.fsi type GraphViewProps`1
++      Widgets/ChartsWidgets.fsi val LineChart.defaults
++      Widgets/ChartsWidgets.fsi val LineChart.view
++      Widgets/ChartsWidgets.fsi val BarChart.defaults
++      Widgets/ChartsWidgets.fsi val BarChart.view
++      Widgets/ChartsWidgets.fsi val PieChart.defaults
++      Widgets/ChartsWidgets.fsi val PieChart.view
++      Widgets/ChartsWidgets.fsi val ScatterPlot.defaults
++      Widgets/ChartsWidgets.fsi val ScatterPlot.view
++      Widgets/ChartsWidgets.fsi val GraphView.defaults
++      Widgets/ChartsWidgets.fsi val GraphView.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Collections.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Collections.fsi type VisibleRange
++      Collections.fsi type CollectionModel
++      Collections.fsi type CollectionMsg
++      Collections.fsi type CollectionEffect
++      Collections.fsi val Collections.visibleRange
++      Collections.fsi val Collections.init
++      Collections.fsi val Collections.update
+
+# ------------------------------------------------------------------------------------------
+file   Controls/CollectionsWidgets.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/CollectionsWidgets.fsi type ListViewProps`1
++      Widgets/CollectionsWidgets.fsi type ListBoxProps`1
++      Widgets/CollectionsWidgets.fsi type MultiSelectListProps`1
++      Widgets/CollectionsWidgets.fsi type ComboBoxProps`1
++      Widgets/CollectionsWidgets.fsi type TreeViewProps`1
++      Widgets/CollectionsWidgets.fsi val ListView.defaults
++      Widgets/CollectionsWidgets.fsi val ListView.init
++      Widgets/CollectionsWidgets.fsi val ListView.update
++      Widgets/CollectionsWidgets.fsi val ListView.view
++      Widgets/CollectionsWidgets.fsi val ListBox.defaults
++      Widgets/CollectionsWidgets.fsi val ListBox.init
++      Widgets/CollectionsWidgets.fsi val ListBox.update
++      Widgets/CollectionsWidgets.fsi val ListBox.view
++      Widgets/CollectionsWidgets.fsi val MultiSelectList.defaults
++      Widgets/CollectionsWidgets.fsi val MultiSelectList.init
++      Widgets/CollectionsWidgets.fsi val MultiSelectList.update
++      Widgets/CollectionsWidgets.fsi val MultiSelectList.view
++      Widgets/CollectionsWidgets.fsi val ComboBox.defaults
++      Widgets/CollectionsWidgets.fsi val ComboBox.init
++      Widgets/CollectionsWidgets.fsi val ComboBox.update
++      Widgets/CollectionsWidgets.fsi val ComboBox.view
++      Widgets/CollectionsWidgets.fsi val TreeView.defaults
++      Widgets/CollectionsWidgets.fsi val TreeView.init
++      Widgets/CollectionsWidgets.fsi val TreeView.update
++      Widgets/CollectionsWidgets.fsi val TreeView.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Containers.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Containers.fsi type GridProps`1
++      Widgets/Containers.fsi type DockProps`1
++      Widgets/Containers.fsi type WrapProps`1
++      Widgets/Containers.fsi type BorderProps`1
++      Widgets/Containers.fsi type PanelProps`1
++      Widgets/Containers.fsi type ScrollViewerProps`1
++      Widgets/Containers.fsi type SplitViewProps`1
++      Widgets/Containers.fsi val Grid.defaults
++      Widgets/Containers.fsi val Grid.view
++      Widgets/Containers.fsi val Dock.defaults
++      Widgets/Containers.fsi val Dock.view
++      Widgets/Containers.fsi val Wrap.defaults
++      Widgets/Containers.fsi val Wrap.view
++      Widgets/Containers.fsi val Border.defaults
++      Widgets/Containers.fsi val Border.view
++      Widgets/Containers.fsi val Panel.defaults
++      Widgets/Containers.fsi val Panel.view
++      Widgets/Containers.fsi val ScrollViewer.defaults
++      Widgets/Containers.fsi val ScrollViewer.view
++      Widgets/Containers.fsi val SplitView.defaults
++      Widgets/Containers.fsi val SplitView.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Control.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Control.fsi val Control.create
++      Control.fsi val Control.standard
++      Control.fsi val Control.customControl
++      Control.fsi val Control.lowerStandard
++      Control.fsi val Control.lowerCustom
++      Control.fsi val Control.withKey
++      Control.fsi val Control.map
++      Control.fsi val Control.render
++      Control.fsi val Control.renderTree
++      Control.fsi val Control.hitTest
++      Control.fsi val Control.nearestAuthored
++      Control.fsi val Control.diagnostics
++      Control.fsi val Control.dispatch
++      Control.fsi val Control.count
++      Control.fsi val TextBlock.create
++      Control.fsi val TextBlock.text
++      Control.fsi val Label.create
++      Control.fsi val Label.text
++      Control.fsi val Image.create
++      Control.fsi val Image.source
++      Control.fsi val Icon.create
++      Control.fsi val Icon.name
++      Control.fsi val Separator.create
++      Control.fsi val Badge.create
++      Control.fsi val Badge.text
++      Control.fsi val Button.create
++      Control.fsi val Button.text
++      Control.fsi val Button.enabled
++      Control.fsi val Button.onClick
++      Control.fsi val Button.onClickWith
++      Control.fsi val IconButton.create
++      Control.fsi val IconButton.icon
++      Control.fsi val IconButton.onClick
++      Control.fsi val CheckBox.create
++      Control.fsi val CheckBox.text
++      Control.fsi val CheckBox.checked'
++      Control.fsi val CheckBox.onChanged
++      Control.fsi val Switch.create
++      Control.fsi val Switch.checked'
++      Control.fsi val Switch.onChanged
++      Control.fsi val Slider.create
++      Control.fsi val Slider.value
++      Control.fsi val Slider.onChanged
++      Control.fsi val NumericInput.create
++      Control.fsi val NumericInput.value
++      Control.fsi val NumericInput.onChanged
++      Control.fsi val TextBox.create
++      Control.fsi val TextBox.value
++      Control.fsi val TextBox.readOnly
++      Control.fsi val TextBox.validation
++      Control.fsi val TextBox.onChanged
++      Control.fsi val TextArea.create
++      Control.fsi val TextArea.value
++      Control.fsi val TextArea.onChanged
++      Control.fsi val RadioGroup.create
++      Control.fsi val RadioGroup.items
++      Control.fsi val RadioGroup.selected
++      Control.fsi val RadioGroup.onChanged
++      Control.fsi val Stack.create
++      Control.fsi val Stack.children
++      Control.fsi val Stack.orientation
++      Control.fsi val Grid.create
++      Control.fsi val Grid.children
++      Control.fsi val Dock.create
++      Control.fsi val Dock.children
++      Control.fsi val Wrap.create
++      Control.fsi val Wrap.children
++      Control.fsi val Border.create
++      Control.fsi val Border.child
++      Control.fsi val Panel.create
++      Control.fsi val Panel.children
++      Control.fsi val ProgressBar.create
++      Control.fsi val ProgressBar.value
++      Control.fsi val Spinner.create
++      Control.fsi val ValidationMessage.create
++      Control.fsi val ValidationMessage.text
++      Control.fsi val Tabs.create
++      Control.fsi val Tabs.items
++      Control.fsi val Tabs.selected
++      Control.fsi val Tabs.onChanged
++      Control.fsi val Menu.create
++      Control.fsi val Menu.items
++      Control.fsi val Menu.onSelected
++      Control.fsi val Toolbar.create
++      Control.fsi val Toolbar.children
++      Control.fsi val Tooltip.create
++      Control.fsi val Tooltip.text
++      Control.fsi val Dialog.create
++      Control.fsi val Dialog.children
++      Control.fsi val Toast.create
++      Control.fsi val Toast.text
++      Control.fsi val Overlay.create
++      Control.fsi val Overlay.child
+
+# ------------------------------------------------------------------------------------------
+file   Controls/ControlRuntime.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      ControlRuntime.fsi type ControlCaret
++      ControlRuntime.fsi type ControlSelection
++      ControlRuntime.fsi type ControlComposition
++      ControlRuntime.fsi type ControlDrag
++      ControlRuntime.fsi type ControlRuntimeEffect
++      ControlRuntime.fsi type ControlRuntimeModel
++      ControlRuntime.fsi type ControlRuntimeMsg
++      ControlRuntime.fsi val ControlRuntime.init
++      ControlRuntime.fsi val ControlRuntime.update
++      ControlRuntime.fsi val ControlRuntime.diagnostics
++      ControlRuntime.fsi val ControlRuntime.deriveVisualState
+
+# ------------------------------------------------------------------------------------------
+file   Controls/CustomControl.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      CustomControl.fsi type CustomControlDefinition
++      CustomControl.fsi val CustomControl.create
++      CustomControl.fsi val CustomControl.validate
+
+# ------------------------------------------------------------------------------------------
+file   Controls/CustomControlWidget.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/CustomControlWidget.fsi val CustomControl.ofControl
+
+# ------------------------------------------------------------------------------------------
+file   Controls/DataGrid.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      DataGrid.fsi type DataGridColumnType
++      DataGrid.fsi type DataGridColumn
++      DataGrid.fsi type DataGridCell
++      DataGrid.fsi type DataGridRow
++      DataGrid.fsi type DataGridSortDirection
++      DataGrid.fsi type DataGridSort
++      DataGrid.fsi type DataGridFocusedCell
++      DataGrid.fsi type DataGridModel
++      DataGrid.fsi type DataGridMsg
++      DataGrid.fsi type DataGridEffect
++      DataGrid.fsi val DataGrid.init
++      DataGrid.fsi val DataGrid.update
++      DataGrid.fsi val DataGrid.create
++      DataGrid.fsi val DataGrid.columns
++      DataGrid.fsi val DataGrid.rows
++      DataGrid.fsi val DataGrid.visibleRange
++      DataGrid.fsi val DataGrid.selectedRows
++      DataGrid.fsi val DataGrid.focusedCell
+
+# ------------------------------------------------------------------------------------------
+file   Controls/DataGridWidget.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/DataGridWidget.fsi type DataGridProps`1
++      Widgets/DataGridWidget.fsi val DataGrid.defaults
++      DataGrid.fsi val DataGrid.init
++      DataGrid.fsi val DataGrid.update
++      Widgets/DataGridWidget.fsi val DataGrid.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Diagnostics.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      Diagnostics.fsi val Diagnostics.create
++      Diagnostics.fsi val Diagnostics.missingRequired
++      Diagnostics.fsi val Diagnostics.duplicateAttribute
++      Diagnostics.fsi val Diagnostics.missingAccessibility
++      Diagnostics.fsi val Diagnostics.keyCollision
++      Diagnostics.fsi val Diagnostics.unsupportedEnvironment
++      Diagnostics.fsi val Diagnostics.unsupportedStandardAttribute
++      Diagnostics.fsi val Diagnostics.unsupportedStandardEvent
++      Diagnostics.fsi val Diagnostics.missingStandardAttribute
++      Diagnostics.fsi val Diagnostics.customExtension
++      Diagnostics.fsi val Diagnostics.stalePackageReference
++      Diagnostics.fsi val Diagnostics.dependencyLeak
++      Diagnostics.fsi val Diagnostics.catalogOmission
++      Diagnostics.fsi val Diagnostics.duplicateRuntimeDefinition
++      Diagnostics.fsi val Diagnostics.staleEventTarget
++      Diagnostics.fsi val Diagnostics.unsupportedScopeExpansion
++      Diagnostics.fsi val Diagnostics.stabilityReport
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Display.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Display.fsi type RichTextProps`1
++      Widgets/Display.fsi type LabelProps`1
++      Widgets/Display.fsi type ImageProps`1
++      Widgets/Display.fsi type IconProps`1
++      Widgets/Display.fsi type SeparatorProps`1
++      Widgets/Display.fsi type BadgeProps`1
++      Widgets/Display.fsi type ProgressBarProps`1
++      Widgets/Display.fsi type SpinnerProps`1
++      Widgets/Display.fsi type ValidationMessageProps`1
++      Widgets/Display.fsi val RichText.defaults
++      Widgets/Display.fsi val RichText.view
++      Widgets/Display.fsi val Label.defaults
++      Widgets/Display.fsi val Label.view
++      Widgets/Display.fsi val Image.defaults
++      Widgets/Display.fsi val Image.view
++      Widgets/Display.fsi val Icon.defaults
++      Widgets/Display.fsi val Icon.view
++      Widgets/Display.fsi val Separator.defaults
++      Widgets/Display.fsi val Separator.view
++      Widgets/Display.fsi val Badge.defaults
++      Widgets/Display.fsi val Badge.view
++      Widgets/Display.fsi val ProgressBar.defaults
++      Widgets/Display.fsi val ProgressBar.view
++      Widgets/Display.fsi val Spinner.defaults
++      Widgets/Display.fsi val Spinner.view
++      Widgets/Display.fsi val ValidationMessage.defaults
++      Widgets/Display.fsi val ValidationMessage.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Input.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Input.fsi type IconButtonProps`1
++      Widgets/Input.fsi type NumericInputProps`1
++      Widgets/Input.fsi type RadioGroupProps`1
++      Widgets/Input.fsi type SwitchProps`1
++      Widgets/Input.fsi type SliderProps`1
++      Widgets/Input.fsi val IconButton.defaults
++      Widgets/Input.fsi val IconButton.view
++      Widgets/Input.fsi val NumericInput.defaults
++      Widgets/Input.fsi val NumericInput.view
++      Widgets/Input.fsi val RadioGroup.defaults
++      Widgets/Input.fsi val RadioGroup.view
++      Widgets/Input.fsi val Switch.defaults
++      Widgets/Input.fsi val Switch.view
++      Widgets/Input.fsi val Slider.defaults
++      Widgets/Input.fsi val Slider.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Navigation.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Navigation.fsi type TabsProps`1
++      Widgets/Navigation.fsi type MenuProps`1
++      Widgets/Navigation.fsi type ContextMenuProps`1
++      Widgets/Navigation.fsi type ToolbarProps`1
++      Widgets/Navigation.fsi val Tabs.defaults
++      Widgets/Navigation.fsi val Tabs.view
++      Widgets/Navigation.fsi val Menu.defaults
++      Widgets/Navigation.fsi val Menu.view
++      Widgets/Navigation.fsi val ContextMenu.defaults
++      Widgets/Navigation.fsi val ContextMenu.view
++      Widgets/Navigation.fsi val Toolbar.defaults
++      Widgets/Navigation.fsi val Toolbar.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Overlay.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Overlay.fsi type TooltipProps`1
++      Widgets/Overlay.fsi type DialogProps`1
++      Widgets/Overlay.fsi type ToastProps`1
++      Widgets/Overlay.fsi type OverlayProps`1
++      Widgets/Overlay.fsi val Tooltip.defaults
++      Widgets/Overlay.fsi val Tooltip.view
++      Widgets/Overlay.fsi val Dialog.defaults
++      Widgets/Overlay.fsi val Dialog.view
++      Widgets/Overlay.fsi val Toast.defaults
++      Widgets/Overlay.fsi val Toast.view
++      Widgets/Overlay.fsi val Overlay.defaults
++      Widgets/Overlay.fsi val Overlay.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Pickers.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   System
+open   FS.GG.UI.Controls
+open   FS.GG.UI.Scene
++      Widgets/Pickers.fsi type ColorSwatch
++      Widgets/Pickers.fsi type DatePickerProps`1
++      Widgets/Pickers.fsi type TimePickerProps`1
++      Widgets/Pickers.fsi type ColorPickerProps`1
++      Widgets/Pickers.fsi val DatePicker.defaults
++      Widgets/Pickers.fsi val DatePicker.view
++      Widgets/Pickers.fsi val TimePicker.defaults
++      Widgets/Pickers.fsi val TimePicker.view
++      Widgets/Pickers.fsi val ColorPicker.defaults
++      Widgets/Pickers.fsi val ColorPicker.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Pointer.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Layout
++      Pointer.fsi type PointerButton
++      Pointer.fsi type PointerOrigin
++      Pointer.fsi type PointerPhase
++      Pointer.fsi type PointerSample
++      Pointer.fsi type PressCandidate
++      Pointer.fsi type PointerState
++      Pointer.fsi type PointerDiagnosticCode
++      Pointer.fsi type PointerDiagnostic
++      Pointer.fsi type PointerInteraction
++      Pointer.fsi type PointerMsg
++      Pointer.fsi val Pointer.origin
++      Pointer.fsi val Pointer.init
++      Pointer.fsi val Pointer.toMsg
++      Pointer.fsi val Pointer.update
++      Pointer.fsi val Pointer.replay
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Primitives.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/Primitives.fsi type ButtonIntent
++      Widgets/Primitives.fsi type StackOrientation
++      Widgets/Primitives.fsi type TextBlockProps`1
++      Widgets/Primitives.fsi type ButtonProps`1
++      Widgets/Primitives.fsi type CheckBoxProps`1
++      Widgets/Primitives.fsi type StackProps`1
++      Widgets/Primitives.fsi val TextBlock.defaults
++      Widgets/Primitives.fsi val TextBlock.view
++      Widgets/Primitives.fsi val Button.defaults
++      Widgets/Primitives.fsi val Button.view
++      Widgets/Primitives.fsi val CheckBox.defaults
++      Widgets/Primitives.fsi val CheckBox.view
++      Widgets/Primitives.fsi val Stack.defaults
++      Widgets/Primitives.fsi val Stack.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/RichText.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Scene
++      RichText.fsi type RichTextWeight
++      RichText.fsi type RichTextStyle
++      RichText.fsi type RichTextRun
++      RichText.fsi type RichTextBlock
++      RichText.fsi type RichTextMeasurement
++      RichText.fsi val RichText.defaultStyle
++      RichText.fsi val RichText.run
++      RichText.fsi val RichText.block
++      RichText.fsi val RichText.measure
++      RichText.fsi val RichText.create
+
+# ------------------------------------------------------------------------------------------
+file   Controls/TextAreaWidget.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/TextAreaWidget.fsi type TextAreaProps`1
++      Widgets/TextAreaWidget.fsi val TextArea.defaults
++      Widgets/TextAreaWidget.fsi val TextArea.init
++      Widgets/TextAreaWidget.fsi val TextArea.update
++      Widgets/TextAreaWidget.fsi val TextArea.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/TextBoxWidget.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls.Typed
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Controls
++      Widgets/TextBoxWidget.fsi type TextBoxProps`1
++      Widgets/TextBoxWidget.fsi val TextBox.defaults
++      Widgets/TextBoxWidget.fsi val TextBox.init
++      Widgets/TextBoxWidget.fsi val TextBox.update
++      Widgets/TextBoxWidget.fsi val TextBox.view
+
+# ------------------------------------------------------------------------------------------
+file   Controls/TextInput.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
++      TextInput.fsi type TextInputMode
++      TextInput.fsi type TextSelection
++      TextInput.fsi type TextInputModel
++      TextInput.fsi type TextInputMsg
++      TextInput.fsi type TextInputEffect
++      TextInput.fsi val TextInput.init
++      TextInput.fsi val TextInput.update
++      TextInput.fsi val TextInput.diagnostics
+
+# ------------------------------------------------------------------------------------------
+file   Controls/Types.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.Scene
+open   FS.GG.UI.Layout
+open   FS.GG.UI.DesignSystem
++      Types.fsi type ControlId
++      Types.fsi type ControlKind
++      Types.fsi type ScrollState
++      Types.fsi type ChartPoint
++      Types.fsi type ChartSeries
++      Types.fsi type KnownControl
++      Types.fsi type KnownEvent
++      Types.fsi type KnownAttribute
++      Types.fsi type StandardControlKind
++      Types.fsi type StandardEventKind
++      Types.fsi type StandardAttributeName
++      Types.fsi type StandardAttributeValue`1
++      Types.fsi type ControlSchema
++      Types.fsi type ControlDiagnosticSeverity
++      Types.fsi type ControlDiagnosticCode
++      Types.fsi type AccessibilityRole
++      Types.fsi type KeyboardOperation
++      Types.fsi type ContrastEvidence
++      Types.fsi type NavRange
++      Types.fsi type CollectionPosition
++      Types.fsi type AccessibilityMetadata
++      Types.fsi type ControlEventOrigin
++      Types.fsi type NavPayload
++      Types.fsi type ControlEvent
+proseat Types.fsi type ControlEvent ::: Nav: NavPayload option }
+| /// Feature 184 (US3): the closed typed navigation/interaction outcome, and the single typed
+| /// replacement for the RETIRED stringly `Payload`. Project it with `Types.navText` /
+| /// `Types.navValue` rather than re-deriving a string; non-navigation events leave it `None`.
++      Types.fsi type AttrCategory
++      Types.fsi type Control`1
++      Types.fsi and Attr`1
++      Types.fsi and AttrValue`1
++      Types.fsi type ControlDiagnostic
++      Types.fsi type ControlEventBinding`1
++      Types.fsi type ControlRenderResult`1
+
+# ------------------------------------------------------------------------------------------
+file   DesignSystem/DesignTokens.fsi
+skill  fs-gg-styling
+ns     FS.GG.UI.DesignSystem
+pkg    FS.GG.UI.DesignSystem
+open   FS.GG.UI.Scene
++      DesignTokens.fsi val DesignTokens.Light.foreground
++      DesignTokens.fsi val DesignTokens.Light.background
++      DesignTokens.fsi val DesignTokens.Light.accent
++      DesignTokens.fsi val DesignTokens.Light.danger
++      DesignTokens.fsi val DesignTokens.Light.success
++      DesignTokens.fsi val DesignTokens.Light.warning
++      DesignTokens.fsi val DesignTokens.Light.muted
++      DesignTokens.fsi val DesignTokens.Light.fontFamily
++      DesignTokens.fsi val DesignTokens.Light.fontSize
++      DesignTokens.fsi val DesignTokens.Light.density
++      DesignTokens.fsi val DesignTokens.Light.cornerRadius
++      DesignTokens.fsi val DesignTokens.Light.contrastRequiredRatio
++      DesignTokens.fsi val DesignTokens.Light.controlHeight
++      DesignTokens.fsi val DesignTokens.Light.controlHeightSm
++      DesignTokens.fsi val DesignTokens.Light.controlHeightLg
++      DesignTokens.fsi val DesignTokens.Light.spaceXs
++      DesignTokens.fsi val DesignTokens.Light.spaceSm
++      DesignTokens.fsi val DesignTokens.Light.spaceMd
++      DesignTokens.fsi val DesignTokens.Light.spaceLg
++      DesignTokens.fsi val DesignTokens.Dark.foreground
++      DesignTokens.fsi val DesignTokens.Dark.background
++      DesignTokens.fsi val DesignTokens.Dark.accent
++      DesignTokens.fsi val DesignTokens.Dark.danger
++      DesignTokens.fsi val DesignTokens.Dark.success
++      DesignTokens.fsi val DesignTokens.Dark.warning
++      DesignTokens.fsi val DesignTokens.Dark.muted
++      DesignTokens.fsi val DesignTokens.Dark.fontFamily
++      DesignTokens.fsi val DesignTokens.Dark.fontSize
++      DesignTokens.fsi val DesignTokens.Dark.density
++      DesignTokens.fsi val DesignTokens.Dark.cornerRadius
++      DesignTokens.fsi val DesignTokens.Dark.contrastRequiredRatio
++      DesignTokens.fsi val DesignTokens.Dark.controlHeight
++      DesignTokens.fsi val DesignTokens.Dark.controlHeightSm
++      DesignTokens.fsi val DesignTokens.Dark.controlHeightLg
++      DesignTokens.fsi val DesignTokens.Dark.spaceXs
++      DesignTokens.fsi val DesignTokens.Dark.spaceSm
++      DesignTokens.fsi val DesignTokens.Dark.spaceMd
++      DesignTokens.fsi val DesignTokens.Dark.spaceLg
+
+# ------------------------------------------------------------------------------------------
+file   DesignSystem/Style.fsi
+skill  fs-gg-styling
+ns     FS.GG.UI.DesignSystem
+pkg    FS.GG.UI.DesignSystem
+open   FS.GG.UI.Scene
++      Style.fsi val Style.resolve
+
+# ------------------------------------------------------------------------------------------
+file   DesignSystem/Types.DesignSystem.fsi
+skill  fs-gg-styling
+ns     FS.GG.UI.DesignSystem
+pkg    FS.GG.UI.DesignSystem
+open   FS.GG.UI.Scene
++      Types.DesignSystem.fsi type ValidationState
++      Types.DesignSystem.fsi type VisualState
++      Types.DesignSystem.fsi type StyleVariant
++      Types.DesignSystem.fsi type FontDelta
++      Types.DesignSystem.fsi type StyleClass
++      Types.DesignSystem.fsi type IntentPolicy
++      Types.DesignSystem.fsi and ResolvedStyle
++      Types.DesignSystem.fsi and Theme
++      Types.DesignSystem.fsi val IntentPolicy.neutral
+
+# ------------------------------------------------------------------------------------------
+file   Elmish/Elmish.fsi
+skill  fs-gg-elmish
+ns     FS.GG.UI.Elmish
+pkg    FS.GG.UI.Elmish
+open   FS.GG.UI.Scene
+open   FS.GG.UI.SkiaViewer
++      Elmish.fsi type ElmishAdapterModel`1
++      Elmish.fsi type ElmishAdapterMsg`1
++      Elmish.fsi type ElmishAdapterEffect`1
++      Elmish.fsi val ElmishAdapter.init
++      Elmish.fsi val ElmishAdapter.update
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/FixedStep.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      FixedStep.fsi val FixedStep.defaultMaxFrameTime
++      FixedStep.fsi val FixedStep.drain
++      FixedStep.fsi val FixedStep.drainWith
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Geometry.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Geometry.fsi val Geometry.intersects
++      Geometry.fsi val Geometry.contains
++      Geometry.fsi val Geometry.containsPoint
++      Geometry.fsi val Geometry.center
++      Geometry.fsi val Geometry.ofCenter
++      Geometry.fsi val Geometry.aabbContact
++      Geometry.fsi val Geometry.circleContact
++      Geometry.fsi val Geometry.circleAabbContact
++      Geometry.fsi val Geometry.segmentAabbHit
++      Geometry.fsi val Geometry.segmentCircleHit
++      Geometry.fsi val Geometry.obbPolygon
++      Geometry.fsi val Geometry.polygonContact
++      Geometry.fsi val Geometry.polygonManifold
++      Geometry.fsi val Geometry.segmentPolygonHit
++      Geometry.fsi val Geometry.sweptIntersects
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Loop.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Loop.fsi type StepState`1
++      Loop.fsi val Loop.init
++      Loop.fsi val Loop.advance
++      Loop.fsi val Loop.alpha
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Pathfinding.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Pathfinding.fsi type Neighbourhood
++      Pathfinding.fsi type Pathfinding.Step
++      Pathfinding.fsi type Pathfinding.Reach
++      Pathfinding.fsi type Pathfinding.Step
++      Pathfinding.fsi type Pathfinding.Reach
++      Pathfinding.fsi type Pathfinding.Step
++      Pathfinding.fsi type Pathfinding.Reach
++      Pathfinding.fsi val Pathfinding.astar
++      Pathfinding.fsi val Pathfinding.bfs
++      Pathfinding.fsi val Pathfinding.distanceField
++      Pathfinding.fsi val Pathfinding.flowField
++      Pathfinding.fsi val Pathfinding.reachableWithin
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Physics.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Physics.fsi type Physics.BodyKind
++      Physics.fsi type Physics.Shape
++      Physics.fsi type Physics.Material
++      Physics.fsi type Physics.Config
+proseat Physics.fsi type Physics.Config ::: { Gravity: Point
+| /// Uniform acceleration applied to every `Dynamic` body each step.
++      Physics.fsi type Physics.World
++      Physics.fsi type Physics.Transform
++      Physics.fsi val Physics.empty
++      Physics.fsi val Physics.addBody
++      Physics.fsi val Physics.addBodies
++      Physics.fsi val Physics.pairs
++      Physics.fsi val Physics.manifold
++      Physics.fsi val Physics.step
++      Physics.fsi val Physics.interpolate
++      Physics.fsi val Physics.checksum
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Primitives.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Primitives.fsi type Point
++      Primitives.fsi type Rect
++      Primitives.fsi type Cell
++      Primitives.fsi type Contact
++      Primitives.fsi type Circle
++      Primitives.fsi type RayHit
++      Primitives.fsi type ConvexPolygon
++      Primitives.fsi type Manifold
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Resolution.fsi
+skill  fs-gg-collision
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Resolution.fsi val Resolution.pushOut
++      Resolution.fsi val Resolution.slide
++      Resolution.fsi type Resolution.CellStep
++      Resolution.fsi type Resolution.PushStop
++      Resolution.fsi type Resolution.Push
++      Resolution.fsi val Resolution.push
++      Resolution.fsi val Resolution.knockback
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Rng.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Rng.fsi type Rng
++      Rng.fsi val Rng.ofSeed
++      Rng.fsi val Rng.nextFloat
++      Rng.fsi val Rng.nextInt
++      Rng.fsi val Rng.nextBool
++      Rng.fsi val Rng.split
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/SpatialGrid.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.5.0 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      SpatialGrid.fsi type SpatialGrid`1
++      SpatialGrid.fsi val SpatialGrid.build
++      SpatialGrid.fsi val SpatialGrid.buildBounds
++      SpatialGrid.fsi val SpatialGrid.query
++      SpatialGrid.fsi val SpatialGrid.queryBounds
++      SpatialGrid.fsi val SpatialGrid.queryRadius
+
+# ------------------------------------------------------------------------------------------
+file   KeyboardInput/KeyboardInput.fsi
+skill  fs-gg-keyboard-input
+ns     FS.GG.UI.KeyboardInput
+pkg    FS.GG.UI.KeyboardInput
++      KeyboardInput.fsi type CommandId
++      KeyboardInput.fsi type KeyId
++      KeyboardInput.fsi type ViewerKey
++      KeyboardInput.fsi type ViewerKeyDirection
++      KeyboardInput.fsi type ViewerKeyEvent
++      KeyboardInput.fsi type KeyboardBinding
++      KeyboardInput.fsi type KeyboardDiagnostic
++      KeyboardInput.fsi type KeyboardStateDisplay
++      KeyboardInput.fsi type KeyboardEffect
+proseat KeyboardInput.fsi type KeyboardEffect ::: | RequestHostKeyCapture of KeyId
+| /// Issue 456: NOT INTERPRETED BY ANY HOST. No `ViewerEffect` carries a `KeyboardEffect`
+| /// (`DispatchInput` is host->product only), so this request never reaches a host and the capture it
+| /// appears to arm never fires. `ControlsElmish.interpretKeyboardEffect` reports it as a
+| /// `keyboard-input/HostKeyCaptureNotInterpreted` diagnostic rather than pretending to serve it.
+| /// To actually capture a rebind key, set the host's `MapKey` to a seam that FORWARDS the raw key
+| /// (`fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown))`) and route the key in your
+| /// `update`, where your keymap and capture state live. See `ViewerKeyboard.toKeyId`.
++      KeyboardInput.fsi type KeyboardModel
++      KeyboardInput.fsi type KeyboardMsg
++      KeyboardInput.fsi val Keyboard.init
++      KeyboardInput.fsi val Keyboard.update
++      KeyboardInput.fsi val Keyboard.stateDisplay
++      KeyboardInput.fsi type KeyModifiers
++      KeyboardInput.fsi val ViewerKeyboard.normalize
++      KeyboardInput.fsi val ViewerKeyboard.normalizeEvent
++      KeyboardInput.fsi val ViewerKeyboard.toKeyId
++      KeyboardInput.fsi val ViewerKeyboard.noModifiers
++      KeyboardInput.fsi val ViewerKeyboard.normalizeEventWithModifiers
+
+# ------------------------------------------------------------------------------------------
+file   Layout/Graph.fsi
+skill  fs-gg-layout
+ns     FS.GG.UI.Layout
+pkg    FS.GG.UI.Layout
+open   FS.GG.UI.Scene
++      Graph.fsi type GraphTarget
++      Graph.fsi val Graph.layout
++      Graph.fsi val Graph.directed
++      Graph.fsi val Graph.undirected
++      Graph.fsi val Graph.hitTest
+
+# ------------------------------------------------------------------------------------------
+file   Layout/GraphValidation.fsi
+skill  fs-gg-layout
+ns     FS.GG.UI.Layout
+pkg    FS.GG.UI.Layout
++      GraphValidation.fsi type GraphValidationIssue
++      GraphValidation.fsi val GraphValidation.validate
++      GraphValidation.fsi val GraphValidation.hasCycle
++      GraphValidation.fsi val GraphValidation.disconnectedComponents
+
+# ------------------------------------------------------------------------------------------
+file   Layout/Layout.fsi
+skill  fs-gg-layout
+ns     FS.GG.UI.Layout
+pkg    FS.GG.UI.Layout
+open   FS.GG.UI.Scene
++      Layout.fsi val Layout.evaluate
++      Layout.fsi val Layout.evaluateIncremental
++      Layout.fsi val Layout.renderComputed
++      Layout.fsi val Layout.snapBounds
++      Layout.fsi val Layout.hitTestComputed
++      Layout.fsi val Layout.initWorkflow
++      Layout.fsi val Layout.updateWorkflow
++      Layout.fsi val Layout.interpretWorkflowEffect
++      Layout.fsi val Layout.horizontalStack
++      Layout.fsi val Layout.verticalStack
++      Layout.fsi val Layout.dock
++      Layout.fsi val Layout.measureHorizontal
++      Layout.fsi val Layout.measureVertical
+
+# ------------------------------------------------------------------------------------------
+file   Layout/Types.fsi
+skill  fs-gg-layout
+ns     FS.GG.UI.Layout
+pkg    FS.GG.UI.Layout
+open   FS.GG.UI.Scene
++      Types.fsi type LayoutBounds
++      Types.fsi type LayoutNodeId
++      Types.fsi type HorizontalAlignment
++      Types.fsi type VerticalAlignment
++      Types.fsi type DockPosition
++      Types.fsi type LayoutPadding
++      Types.fsi type MeasureMode
++      Types.fsi type LayoutDirection
++      Types.fsi type LayoutWrap
++      Types.fsi type LayoutAlign
++      Types.fsi type LayoutVisibility
++      Types.fsi type LayoutSize
++      Types.fsi type LayoutGap
++      Types.fsi type DiagnosticSeverity
++      Types.fsi type LayoutDiagnosticCode
++      Types.fsi type LayoutDiagnostic
++      Types.fsi type LayoutIntent
++      Types.fsi type MeasureRequest
++      Types.fsi type MeasureResponse
++      Types.fsi type ContentMeasure
++      Types.fsi type LayoutNode
++      Types.fsi type AvailableSpace
++      Types.fsi type ComputedBounds
++      Types.fsi type LayoutResult
++      Types.fsi type SnapMode
++      Types.fsi type PixelSnapPolicy
++      Types.fsi type LayoutWorkflowModel
++      Types.fsi type LayoutWorkflowMsg
++      Types.fsi type LayoutWorkflowEffect
++      Types.fsi type LayoutSizing
++      Types.fsi type LayoutChild
++      Types.fsi type StackConfig
++      Types.fsi type DockConfig
++      Types.fsi type GraphKind
++      Types.fsi type GraphNode
++      Types.fsi type GraphEdge
++      Types.fsi type GraphConfig
++      Types.fsi type GraphDefinition
++      Types.fsi type GraphNodeLayout
++      Types.fsi type GraphLayoutResult
++      Types.fsi val Defaults.padding
++      Types.fsi val Defaults.layoutGap
++      Types.fsi val Defaults.layoutSize
++      Types.fsi val Defaults.layoutIntent
++      Types.fsi val Defaults.layoutNode
++      Types.fsi val Defaults.availableSpace
++      Types.fsi val Defaults.pixelSnapPolicy
++      Types.fsi val Defaults.sizing
++      Types.fsi val Defaults.bounds
++      Types.fsi val Defaults.stackConfig
++      Types.fsi val Defaults.dockConfig
++      Types.fsi val Defaults.graphConfig
++      Types.fsi val Defaults.child
+
+# ------------------------------------------------------------------------------------------
+file   Scene/Scene.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      Types.fsi type Size
++      Types.fsi type Color
++      Types.fsi type Point
++      Types.fsi type Rect
++      Types.fsi type StrokeCap
++      Types.fsi type StrokeJoin
++      Types.fsi type BlendMode
++      Types.fsi type Stroke
++      Types.fsi type Shader
++      Types.fsi type ColorFilter
++      Types.fsi type MaskFilter
++      Types.fsi type ImageFilter
++      Types.fsi type PathEffect
++      Types.fsi type Paint
++      Types.fsi type PathFillType
++      Types.fsi type PathCommand
++      Types.fsi type PathSpec
++      Types.fsi type Clip
++      Types.fsi type RegionOperation
++      Types.fsi type Region
++      Types.fsi type ColorSpace
++      Types.fsi type PerspectiveTransform
++      Types.fsi type PathOperation
++      Types.fsi type PathCombineError
++      Types.fsi type PathMeasure
++      Types.fsi type FontSpec
++      Types.fsi type TextRun
++      Types.fsi type TextMetrics
++      Types.fsi type Vertex
++      Types.fsi type VertexMode
++      Types.fsi type SceneElementKind
++      Types.fsi type RenderReadbackEvidence
++      Types.fsi type ShapePlacement
++      Types.fsi type CircleShapeEvidence
++      Types.fsi type EllipseShapeEvidence
++      Types.fsi type LayoutProofLevel
++      Types.fsi type LayoutMeasurementMode
++      Types.fsi type LayoutOverlapKind
++      Types.fsi type LayoutOverlapDiagnostic
++      Types.fsi type LayoutOverlapStatus
++      Types.fsi type LayoutRegionEvidence
++      Types.fsi type LayoutTextBounds
++      Types.fsi type LayoutGameplayBounds
++      Types.fsi type LayoutUnsupportedReason
++      Types.fsi type DiagnosticSeverity
++      Types.fsi type DiagnosticStage
++      Types.fsi type RenderDiagnostic
++      Types.fsi type TextDirection
++      Types.fsi type TextScript
++      Types.fsi type ShapingProviderAvailability
++      Types.fsi type ShapingProviderEvidence
++      Types.fsi type TextFallbackDecision
++      Types.fsi type ShapedGlyph
++      Types.fsi type TextShapeRun
++      Types.fsi type ShapedTextFallbackMode
++      Types.fsi type GlyphRunGlyph
++      Types.fsi type GlyphRunMetrics
++      Types.fsi type GlyphRunData
++      Types.fsi type GlyphRun
++      Types.fsi type SceneNode
+proseat Types.fsi type SceneNode ::: | Rectangle of bounds: (float * float * float * float) * fill: Color
+| /// Positional `(x, y, width, height)` — the arity slip `filledRectangle` exists to avoid.
+| /// Prefer `Scene.filledRectangle` (`Rect`-based), which names the bounds.
+proseat Types.fsi type SceneNode ::: | Text of position: (float * float) * text: string * fill: Color
+| /// Positional `(x, y)` — the arity slip `textAt` exists to avoid.
+| /// Prefer `Scene.textAt` (`Point`-based), which names the position.
+| /// To centre or lay text out, measure it with `Scene.measureText` rather than estimating
+| /// from character count and font size.
+proseat Types.fsi type SceneNode ::: | SizedText of position: (float * float) * text: string * size: float * fill: Color
+| /// Positional `(x, y)`, then `text`, then `size`, then `fill` — the same arity slip as `Text`,
+| /// with no `Point`-based sibling to escape to: `Scene.sizedText` takes the identical positional
+| /// tuple. Read the field order here before calling it, and measure with `Scene.measureText`.
++      Types.fsi and Scene
++      Types.fsi and Picture
++      Types.fsi and CacheBoundary
++      Types.fsi type LayoutEvidenceReport
++      Scene.fsi val Colors.rgba
++      Scene.fsi val Colors.rgb
++      Scene.fsi val Colors.black
++      Scene.fsi val Colors.white
++      Scene.fsi val Colors.transparent
++      Scene.fsi val Paint.fill
++      Scene.fsi val Paint.stroke
++      Scene.fsi val Paint.withOpacity
++      Scene.fsi val Paint.withBlendMode
++      Scene.fsi val Paint.withAntialias
++      Scene.fsi val Paint.withStrokeCap
++      Scene.fsi val Paint.withStrokeJoin
++      Scene.fsi val Paint.withMiter
++      Scene.fsi val Paint.withShader
++      Scene.fsi val Paint.withColorFilter
++      Scene.fsi val Paint.withMaskFilter
++      Scene.fsi val Paint.withImageFilter
++      Scene.fsi val Paint.withPathEffect
++      Scene.fsi val Path.create
++      Scene.fsi val Path.moveTo
++      Scene.fsi val Path.lineTo
++      Scene.fsi val Path.quadTo
++      Scene.fsi val Path.cubicTo
++      Scene.fsi val Path.close
++      Scene.fsi val Path.bounds
++      Scene.fsi val Path.measure
++      Scene.fsi val Path.segment
++      Scene.fsi val Path.combine
++      Scene.fsi val Scene.empty
++      Scene.fsi val Scene.group
++      Scene.fsi val Scene.rectangle
++      Scene.fsi val Scene.rectangleWithPaint
++      Scene.fsi val Scene.filledRectangle
++      Scene.fsi val Scene.circle
++      Scene.fsi val Scene.filledEllipse
++      Scene.fsi val Scene.ellipse
++      Scene.fsi val Scene.line
++      Scene.fsi val Scene.path
++      Scene.fsi val Scene.points
++      Scene.fsi val Scene.vertices
++      Scene.fsi val Scene.arc
++      Scene.fsi val Scene.text
++      Scene.fsi val Scene.textAt
++      Scene.fsi val Scene.textRun
++      Scene.fsi val Scene.measureText
++      Scene.fsi val Scene.image
++      Scene.fsi val Scene.clipped
++      Scene.fsi val Scene.region
++      Scene.fsi val Scene.withColorSpace
++      Scene.fsi val Scene.withPerspective
++      Scene.fsi val Scene.picture
++      Scene.fsi val Scene.chart
++      Scene.fsi val Scene.translate
++      Scene.fsi val Scene.sizedText
++      Scene.fsi val Scene.describe
++      Scene.fsi val Scene.diagnostics
++      Scene.fsi val Scene.renderReadbackEvidence
++      Scene.fsi val Scene.circleEvidence
++      Scene.fsi val Scene.ellipseEvidence
++      Evidence.fsi type SceneEvidenceFormat
++      Evidence.fsi type SceneEvidenceFailureClassification
++      Evidence.fsi type SceneEvidenceFailure
++      Evidence.fsi type SceneEvidenceRequest
++      Evidence.fsi type SceneEvidence
++      Evidence.fsi val SceneEvidence.render
++      Evidence.fsi val SceneEvidence.renderHash
++      Evidence.fsi val SceneEvidence.renderPng
++      Evidence.fsi val LayoutEvidence.classify
++      Evidence.fsi val LayoutEvidence.fromRenderEvidence
++      Evidence.fsi val LayoutEvidence.unsupported
+
+# ------------------------------------------------------------------------------------------
+file   SkiaViewer/SkiaViewer.fsi
+skill  fs-gg-skiaviewer
+ns     FS.GG.UI.SkiaViewer
+pkg    FS.GG.UI.SkiaViewer
+open   System
+open   FS.GG.Audio.Core
+open   FS.GG.UI.Canvas
+open   FS.GG.UI.KeyboardInput
+open   FS.GG.UI.Scene
++      Viewer.Types.fsi type ViewerOptions
++      LogicalCanvas.fsi type LogicalCanvasFit
++      LogicalCanvas.fsi val LogicalCanvas.fit
++      LogicalCanvas.fsi val LogicalCanvas.present
++      LogicalCanvas.fsi val LogicalCanvas.toLogicalPoint
++      Viewer.Types.fsi type ViewerLaunchMode
++      Viewer.Types.fsi type ViewerCloseReason
++      Viewer.Types.fsi type ViewerObservedValue
++      Viewer.Types.fsi type ViewerWindowResizePolicy
++      Viewer.Types.fsi type ViewerWindowMaximizePolicy
++      Viewer.Types.fsi type ViewerWindowStartupState
++      Viewer.Types.fsi type ViewerWindowPosition
++      Viewer.Types.fsi type ViewerBackendPreference
++      Viewer.Types.fsi type ViewerWindowOptionStatus
++      Viewer.Types.fsi type ViewerWindowBehaviorRequest
++      Viewer.Types.fsi type ViewerWindowOptionResult
++      Viewer.Types.fsi type ViewerWindowStateDiagnostic
++      Viewer.Types.fsi type ViewerVisualEvidenceKind
++      Viewer.Types.fsi type ViewerVisualEvidenceArtifact
++      Viewer.Types.fsi type ViewerFailureClass
++      Viewer.Types.fsi type ViewerInputDispatchStatus
++      Viewer.Types.fsi type ViewerDiagnosticLevel
++      Viewer.Types.fsi type ViewerDiagnosticCategory
++      Viewer.Types.fsi type ViewerRunBlockedStage
++      Viewer.Types.fsi type ViewerRunFailureClassification
++      Viewer.Types.fsi type ViewerDiagnosticEvent
++      Viewer.Types.fsi type ViewerDiagnosticsOptions
++      Viewer.Types.fsi type ViewerEvidenceTarget
++      Viewer.Types.fsi type ViewerRunRequest
++      Viewer.Types.fsi type ViewerRunEvidence
++      Viewer.Types.fsi type ViewerRunFailure
++      Viewer.Types.fsi type ScreenshotEvidenceStatus
++      Viewer.Types.fsi type ScreenshotEvidenceRequest
++      Viewer.Types.fsi and ScreenshotCaptureMode
++      Viewer.Types.fsi type ViewerOpenStatus
++      Viewer.Types.fsi type FirstFrameStatus
++      Viewer.Types.fsi type ScreenshotCaptureAvailability
++      Viewer.Types.fsi type ScreenshotCaptureSource
++      Viewer.Types.fsi type ScreenshotPixelContentValidation
++      Viewer.Types.fsi type ScreenshotEvidenceResult
++      Viewer.Types.fsi type ViewerRuntimeCapability
++      Viewer.Types.fsi type ViewerDesktopSessionDiagnostic
++      Viewer.Types.fsi type ViewerLaunchOutcome
++      Viewer.Types.fsi type WindowObservationInputs
++      Viewer.Types.fsi type ViewerWindowObservationResult
++      Viewer.Types.fsi type ViewerLifecycleState
++      Viewer.Types.fsi type ViewerModel
++      Viewer.Types.fsi type ViewerRunModel
++      Viewer.Types.fsi type ViewerMsg
++      Viewer.Types.fsi type ViewerRunMsg
++      Viewer.Types.fsi type ViewerEffect
++      Viewer.Types.fsi type ViewerRunEffect
++      Viewer.Types.fsi type EvidenceWorkflowModel
++      Viewer.Types.fsi type EvidenceWorkflowMsg
++      Viewer.Types.fsi type EvidenceWorkflowEffect
++      Viewer.Types.fsi type GeneratedAppHost`2
++      Viewer.Types.fsi type ViewerPointerButtonKind
++      Viewer.Types.fsi type ViewerPointerPhaseKind
++      Viewer.Types.fsi type ViewerPointerInput
++      Viewer.Types.fsi type InteractiveViewerHost`2
++      SkiaViewer.fsi val Viewer.init
++      SkiaViewer.fsi val Viewer.initWithWindowBehavior
++      SkiaViewer.fsi val Viewer.update
++      SkiaViewer.fsi val Viewer.initRun
++      SkiaViewer.fsi val Viewer.updateRun
++      SkiaViewer.fsi val Viewer.defaultDiagnostics
++      SkiaViewer.fsi val Viewer.defaultWindowBehavior
++      SkiaViewer.fsi val Viewer.validateWindowBehavior
++      SkiaViewer.fsi val Viewer.validateWindowLaunchBehavior
++      SkiaViewer.fsi val Viewer.classifyWindowState
++      SkiaViewer.fsi val Viewer.shouldCaptureDiagnostic
++      SkiaViewer.fsi val Viewer.captureDiagnostic
++      SkiaViewer.fsi val Viewer.failureFromDiagnostic
++      SkiaViewer.fsi val Viewer.classifyWindowObservation
++      SkiaViewer.fsi val Viewer.desktopSessionDiagnostic
++      SkiaViewer.fsi val Viewer.runtimeCapability
++      Host/Viewer.fsi val Viewer.run
++      SkiaViewer.fsi val Viewer.runApp
++      SkiaViewer.fsi val Viewer.runAppWithWindowBehavior
++      SkiaViewer.fsi val Viewer.runAppWithAudio
++      SkiaViewer.fsi val Viewer.runAppWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewer
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehavior
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.runAppEvidence
++      SkiaViewer.fsi val Viewer.runBounded
++      SkiaViewer.fsi val Viewer.runUntilFirstFrame
++      SkiaViewer.fsi val Viewer.runForFrames
++      SkiaViewer.fsi val Viewer.captureScreenshotEvidence
++      SkiaViewer.fsi val Viewer.initEvidenceWorkflow
++      SkiaViewer.fsi val Viewer.updateEvidenceWorkflow
++      SkiaViewer.fsi val GeneratedAppHost.dispatchKey
++      SkiaViewer.fsi val GeneratedAppHost.audioRequests
++      SkiaViewer.fsi val GeneratedAppHost.smoke
+
+# ------------------------------------------------------------------------------------------
+file   Symbology.Render/Render.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology.Render
+pkg    FS.GG.UI.Symbology.Render
+open   FS.GG.UI.Scene
++      Render.fsi val Render.toPng
+
+# ------------------------------------------------------------------------------------------
+file   Symbology/LabelLayout.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology
+pkg    FS.GG.UI.Symbology
+open   FS.GG.UI.Scene
++      LabelLayout.fsi type LabelRun
++      LabelLayout.fsi type LabelAlign
++      LabelLayout.fsi type LabelParagraph
++      LabelLayout.fsi type LabelText
++      LabelLayout.fsi type LabelMotion
+
+# ------------------------------------------------------------------------------------------
+file   Symbology/Legibility.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology
+pkg    FS.GG.UI.Symbology
++      Legibility.fsi type Legibility.Channel
++      Legibility.fsi type Legibility.ChannelKind
++      Legibility.fsi type Legibility.Severity
++      Legibility.fsi type Legibility.Finding
++      Legibility.fsi type Legibility.ChannelSpec
++      Legibility.fsi type Legibility.ChannelUsage
++      Legibility.fsi type Legibility.Verdict
++      Legibility.fsi type Legibility.Report
++      Legibility.fsi val Legibility.table
++      Legibility.fsi val Legibility.score
++      Legibility.fsi val Legibility.scoreAnimated
++      Legibility.fsi val Legibility.scoreIn
++      Legibility.fsi val Legibility.scoreAnimatedIn
+
+# ------------------------------------------------------------------------------------------
+file   Symbology/Symbology.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology
+pkg    FS.GG.UI.Symbology
+open   FS.GG.UI.Scene
++      Symbology.fsi type Faction
++      Symbology.fsi type Klass
++      Symbology.fsi type Sigil
++      Symbology.fsi type TokenState
++      Symbology.fsi type Motion
++      Symbology.fsi type AutoField
++      Symbology.fsi type AutoLabelSpec
++      Symbology.fsi type Token
++      Symbology.fsi type Grammar
++      Symbology.fsi val Symbology.defaultToken
++      Symbology.fsi val Symbology.plainLabel
++      Symbology.fsi val Symbology.run
++      Symbology.fsi val Symbology.richLabel
++      Symbology.fsi val Symbology.paragraph
++      Symbology.fsi val Symbology.align
++      Symbology.fsi val Symbology.laidLabel
++      Symbology.fsi val Symbology.autoLabel
++      Symbology.fsi val Symbology.autoLabelSep
++      Symbology.fsi val Symbology.labelMotion
++      Symbology.fsi val Symbology.token
++      Symbology.fsi val Symbology.animate
++      Symbology.fsi val Symbology.gallery
++      Symbology.fsi val Symbology.filmstrip
++      Symbology.fsi val Symbology.badge
++      Symbology.fsi val Symbology.ring
++      Symbology.fsi val Symbology.render
++      Symbology.fsi val Symbology.galleryIn
++      Symbology.fsi val Symbology.filmstripIn
++      Symbology.fsi val Symbology.animateIn
+
+# ------------------------------------------------------------------------------------------
+file   Testing/Testing.fsi
+skill  fs-gg-testing
+ns     FS.GG.UI.Testing
+pkg    FS.GG.UI.Testing
+open   System
+open   FS.GG.UI.Scene
++      TestingTypes.fsi type PackageReferenceExpectation
++      TestingTypes.fsi type GeneratedProductExpectation
++      TestingTypes.fsi type LocalConsumerPackage
++      TestingTypes.fsi type LocalConsumerPackageDrift
++      TestingTypes.fsi type LocalConsumerPackageReport
++      TestingTypes.fsi type GeneratedValidationCategory
++      TestingTypes.fsi type GeneratedValidationResult
++      TestingTypes.fsi type GeneratedProductLaunchValidationResult
++      TestingTypes.fsi type GeneratedWindowDiagnosticCheck
++      TestingTypes.fsi type GeneratedWindowDiagnosticValidationResult
++      TestingTypes.fsi type PackageResolutionCheck
++      TestingTypes.fsi type PackageResolutionCheckResult
++      TestingTypes.fsi type GeneratedTestExecutionCheck
++      TestingTypes.fsi type GeneratedTestExecutionResult
++      TestingTypes.fsi type VisualEvidenceKind
++      TestingTypes.fsi type VisualEvidenceRequest
++      TestingTypes.fsi type VisualEvidenceResult
++      TestingTypes.fsi type GeneratedVisualEvidenceCommandCheck
++      TestingTypes.fsi type GeneratedVisualEvidenceCommandResult
++      TestingTypes.fsi type GeneratedValidationContractCheck
++      TestingTypes.fsi type GeneratedValidationContractResult
++      TestingTypes.fsi type GeneratedLayoutValidationFailureClass
++      TestingTypes.fsi type GeneratedLayoutValidationCheck
++      TestingTypes.fsi type GeneratedLayoutValidationResult
++      TestingTypes.fsi type HostWarningClass
++      TestingTypes.fsi type HostWarningClassificationCheck
++      TestingTypes.fsi type HostWarningClassificationResult
++      TestingTypes.fsi type PersistentLaunchArtifactCheck
++      TestingTypes.fsi type PersistentLaunchArtifactValidationResult
++      TestingTypes.fsi type ReadinessFileDiscoveryCheck
++      TestingTypes.fsi type ReadinessFileDiscoveryResult
++      TestingTypes.fsi type EvidenceReportStatus
++      TestingTypes.fsi type EvidenceReportField
++      TestingTypes.fsi type EvidenceReport
++      TestingTypes.fsi type EvidenceReportRequest
++      TestingTypes.fsi type EvidenceReportValidationResult
++      TestingTypes.fsi type ScreenshotEvidenceReportCheck
++      TestingTypes.fsi type ScreenshotEvidenceReportValidationResult
++      TestingTypes.fsi type ScreenshotArtifactValidationCheck
++      TestingTypes.fsi type ScreenshotArtifactValidationResult
++      TestingTypes.fsi type DefaultTextGlyphEvidenceCheck
++      TestingTypes.fsi type DefaultTextGlyphEvidenceValidationResult
++      TestingTypes.fsi type ScreenshotEvidenceRecord
++      TestingEvidence.fsi val GeneratedProductAssertions.summarize
++      TestingEvidence.fsi val GeneratedProductAssertions.validateDefaultInteractiveLaunch
++      TestingEvidence.fsi val GeneratedProductAssertions.validateWindowDiagnostics
++      TestingEvidence.fsi val LocalConsumerPackages.report
++      TestingEvidence.fsi val LocalConsumerPackages.classifyDrift
++      TestingEvidence.fsi val GeneratedConsumerValidation.summarize
++      TestingEvidence.fsi val GeneratedConsumerValidation.verifyPackageResolution
++      TestingEvidence.fsi val GeneratedConsumerValidation.verifyGeneratedTests
++      TestingEvidence.fsi val GeneratedConsumerValidation.selectVisualEvidence
++      TestingEvidence.fsi val GeneratedConsumerValidation.validateVisualEvidenceCommandOutput
++      TestingEvidence.fsi val GeneratedConsumerValidation.buildValidationContractOutput
++      TestingEvidence.fsi val GeneratedLayoutValidation.validate
++      TestingEvidence.fsi val HostWarningClassification.classify
++      TestingEvidence.fsi val PersistentLaunchArtifactValidation.validate
++      TestingEvidence.fsi val ReadinessFileDiscovery.validate
++      TestingEvidence.fsi val DefaultTextGlyphEvidence.validate
++      TestingEvidence.fsi val EvidenceReports.statusText
++      TestingEvidence.fsi val EvidenceReports.field
++      TestingEvidence.fsi val EvidenceReports.build
++      TestingEvidence.fsi val EvidenceReports.write
++      TestingEvidence.fsi val EvidenceReports.validate
++      TestingEvidence.fsi val EvidenceReports.parseScreenshotEvidenceRecord
++      TestingEvidence.fsi val EvidenceReports.validateScreenshotArtifact
++      TestingEvidence.fsi val EvidenceReports.validateScreenshotEvidence
+
+# ------------------------------------------------------------------------------------------
+file   Themes.Default/Theme.fsi
+skill  fs-gg-styling
+ns     FS.GG.UI.Themes.Default
+pkg    FS.GG.UI.Themes.Default
+open   FS.GG.UI.DesignSystem
++      Theme.fsi val Theme.light
++      Theme.fsi val Theme.dark
++      Theme.fsi val Theme.withDensity
++      Theme.fsi val Theme.withAccent
++      Theme.fsi val Theme.resolve
+
+# ------------------------------------------------------------------------------------------
+file   Themes.Default/Theming.fsi
+skill  fs-gg-styling
+ns     FS.GG.UI.Themes.Default.Theming
+pkg    FS.GG.UI.Themes.Default
+open   FS.GG.UI.Scene
+open   FS.GG.UI.DesignSystem
++      Theming.fsi type ThemeMode
++      Theming.fsi type RolePalette
++      Theming.fsi val Theming.resolve
++      Theming.fsi val Theming.toTheme

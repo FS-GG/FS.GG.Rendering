@@ -25,7 +25,10 @@ module Rng =
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// Draw an integer in `[lo, hi]` inclusive on both ends, and the advanced generator. Total on
-    /// degenerate ranges: `lo = hi` yields `lo`; `lo > hi` yields `lo`.
+    /// degenerate ranges: `lo = hi` yields `lo`; `lo > hi` yields `lo`. Reduces one 64-bit draw with a
+    /// single modulo, so — unlike `nextBool` — it carries a residual modulo bias: when the span does not
+    /// divide 2^64 evenly the lowest `2^64 mod span` results are over-represented by ~span/2^64
+    /// (negligible for game-scale ranges; use `nextBool` when a modulus-free unbiased draw is required).
     val nextInt: lo: int -> hi: int -> rng: Rng -> struct (int * Rng)
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
@@ -34,5 +37,8 @@ module Rng =
     val nextBool: rng: Rng -> struct (bool * Rng)
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
-    /// Derive two independent generators from the current state, for splitting into sub-streams.
+    /// Split into two sub-streams for divergent branches (e.g. per-entity generators). The left
+    /// continues the current stream; the right is re-seeded from a mixed draw. Both share the global
+    /// gamma, so the sub-streams are practically decorrelated (overlap risk ~2^-64) rather than the
+    /// paper's independent-gamma split. Pure: the input generator is unchanged.
     val split: rng: Rng -> struct (Rng * Rng)

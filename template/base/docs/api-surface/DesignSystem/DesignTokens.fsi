@@ -1,14 +1,4 @@
 // See skill: fs-gg-styling
-// DesignTokens.fsi — curated public surface of the generated token module (feature 069).
-// Principle II: this hand-curated signature is the SOLE public-surface declaration; the
-// paired DesignTokens.fs is GENERATED from src/Themes.Default/design-tokens.tokens.json (the
-// DTCG single source of truth) and carries no access modifiers. Regenerate via
-// `dotnet fsi scripts/generate-design-tokens.fsx`; currency is enforced by that script's --check
-// (the Feature 126 drift gate).
-//
-// Feature 125: relocated from FS.GG.UI.Controls to the FS.GG.UI.DesignSystem layer. The
-// generated token MODULE lives here; the DTCG JSON source travels with the default theme.
-
 namespace FS.GG.UI.DesignSystem
 
 open FS.GG.UI.Scene

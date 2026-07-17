@@ -117,25 +117,12 @@ type KeyModifiers =
 module ViewerKeyboard =
     /// Public contract function exposed by this FS.GG.UI package.
     val normalize: raw: string -> ViewerKey
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// Public contract function exposed by this FS.GG.UI package. Does NOT strip modifiers: a host
+    /// reports a chord as the raw `Ctrl+L`, which normalizes to `ViewerKey.Unknown "Ctrl+L"` so the
+    /// `MapKeyChord` seam can recover them (issue 183). Use `normalizeEventWithModifiers` for the
+    /// base key plus its modifiers.
     val normalizeEvent: event: ViewerKeyEvent -> ViewerKey * bool
-    /// Turns a host `ViewerKey` into the `KeyId` your keymap speaks — and it is what a key-rebind CAPTURE
-    /// is built on.
-    ///
-    /// `MapKey` is a closure fixed when your host record is built, and it never sees your model. So a seam
-    /// that RESOLVES a key (`mapKeyOfKeymap`, against the keymap it closed over) necessarily drops both
-    /// key-up and every key that keymap does not bind — and a rebind capture needs exactly what it drops,
-    /// because the key the user presses next is by definition not bound yet.
-    ///
-    /// A seam that FORWARDS drops nothing, and you write it yourself — `MapKey` is only a function:
-    ///
-    ///     MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown))
-    ///
-    /// Every key-DOWN and key-UP then reaches your `update` as a raw `KeyId`, where your keymap and capture
-    /// state live: a capture becomes an ordinary model transition, and the rebind re-routes the very next
-    /// key. This is why host key capture needs no viewer state and no `ViewerEffect` — and why
-    /// `KeyboardEffect.RequestHostKeyCapture`, which no host interprets, is not the way to ask for one.
-    /// Pure, total; never throws.
+    /// Public contract function exposed by this FS.GG.UI package.
     val toKeyId: key: ViewerKey -> KeyId
 
     /// Feature 108 (US5, FR-016): the all-false `KeyModifiers` — an unmodified key's modifier set.
