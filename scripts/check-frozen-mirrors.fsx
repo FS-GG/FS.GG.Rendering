@@ -130,8 +130,8 @@ let mutable failed = false
 // ================================================================================================
 
 let private runRequired () =
-    printfn "frozen-mirror [required] — did THIS change edit a body this repo does not own? (#541)"
-    printfn "  Reads the working tree and `git`. NOT the registry, NOT the canonical, NO network (#738)."
+    printfn "frozen-mirror [required] — is each mirrored body the body this tree DECLARES it froze? (#541, #833)"
+    printfn "  Reads the working tree. NOT the registry, NOT the canonical, NO network, NO token (#738)."
     printfn ""
 
     for skill in foreignSkills do
@@ -143,7 +143,7 @@ let private runRequired () =
         // never had one, so `rm -rf template/product-skills/fs-gg-game-core` exited 0 — and a
         // `--profile game` scaffold silently lost a skill. Deleting a mirror is as much a break as editing
         // one. A fact about the tree, so it stays in the required lane.
-        | Mirrored, false ->
+        | Mirrored _, false ->
             failed <- true
 
             eprintfn
@@ -166,40 +166,67 @@ let private runRequired () =
 
         | NoCounterpart, false -> ()
 
-        | Mirrored, true ->
+        | Mirrored frozenAt, true ->
             let local = sha256Of body
 
-            // #541's ENTIRE case, and `git` proves it from the merge base without consulting anything
-            // outside this checkout. THIS is what may be required.
-            match baselineOf repoRoot relative local with
-            | (EditedHere _ | AddedHere) as baseline ->
-                failed <- true
-                eprintfn "%s" (describeEditedHere skill.Id skill.Owner skill.Source relative baseline local)
+            // #541's ENTIRE case, proved from the WORKING TREE without consulting anything outside it —
+            // not the registry, not the canonical, and (since #833) not even `git`. THIS is what may be
+            // required.
+            //
+            // `git` is still asked, but only for the EVIDENCE the message carries: it can say whether the
+            // body or the declaration is the thing that moved, which is the difference between "you edited a
+            // mirror" and "somebody edited the pin". It cannot change the verdict, so a checkout it cannot
+            // read costs a good error message and nothing else — see the header on why the fail-closed arm
+            // that used to live here is gone.
+            let baseline = baselineOf repoRoot relative local
 
-            // A probe that did not run has proved nothing, and it must not prove it QUIETLY. With the
-            // canonical comparison gone from this lane, a blind `git` would leave the required gate with
-            // NOTHING to say about a mirror edit — a silent fail-open of exactly the #266 family. It fails
-            // closed, and it is allowed to: its subject is THIS checkout's config (`fetch-depth: 0`, which
-            // gate.yml sets), not another repo's `main`, so ADR-0105's test still answers NO.
-            | Unknown why ->
-                failed <- true
-                eprintfn "%s" (describeProbeFailed skill.Id relative why)
+            match sanctionOf frozenAt local with
+            | Undeclared ->
+                // Asking `failsIn` rather than asserting it keeps the lane policy in ONE place (#738): if
+                // `MirrorEdited` ever stopped reding the required lane, this lane would stop failing, which
+                // is exactly what the tests pin. A `sanctionOf` that convicts and a `failsIn` that shrugs
+                // must not be able to disagree silently.
+                if failsIn Required MirrorEdited then
+                    failed <- true
 
-            | UnchangedHere _ -> printfn "  frozen-mirror OK     %-22s this change did not touch it" skill.Id
+                eprintfn "%s" (describeUndeclared skill.Id skill.Owner skill.Source relative baseline local frozenAt)
+
+            | Declared ->
+                // The body IS the declaration. Three different events land here, and they are told apart ONLY
+                // to say something TRUE to the reader — all three are green, and green for the same reason
+                // (#833). `AddedHere` is not a re-freeze and must not be called one: naming the wrong event
+                // in an otherwise-correct message is #720's exact bug, and it is no less wrong on a green line.
+                //
+                // `frozenAt` is safe to slice here where the freshness lane's copy is not: `Declared` MEANS
+                // `frozenAt = local`, and `local` is a computed sha256. The `min` costs nothing and spares
+                // the next reader from having to re-derive that.
+                let short = frozenAt.Substring(0, min 12 frozenAt.Length)
+
+                match baseline with
+                | EditedHere _ -> printfn "  frozen-mirror RE-FROZEN %-19s this change re-froze it to the declared canonical %s…" skill.Id short
+                | AddedHere -> printfn "  frozen-mirror ADDED  %-22s new mirror, declared at %s…" skill.Id short
+                | UnchangedHere _
+                | Unknown _ -> printfn "  frozen-mirror OK     %-22s body == declaration" skill.Id
 
     printfn ""
 
     printfn
         "frozen-mirror [required]: %d foreign skill(s) pinned in-tree, %d of them mirrored."
         (List.length foreignSkills)
-        (foreignSkills |> List.filter (fun s -> s.Disposition = Mirrored) |> List.length)
+        (foreignSkills |> List.filter (fun s -> isMirrored s.Disposition) |> List.length)
 
     // SAY WHAT THIS LANE DID NOT CHECK. A reader who takes a green `Deterministic gate` to mean "the
     // mirrors are in sync with FS.GG.Game" would be wrong, and that misreading is exactly how a gate
     // becomes decoration. This lane cannot answer that question — deliberately — and says so every run.
-    printfn "  NOT checked here: whether these mirrors still MATCH FS.GG.Game's canonicals. That is another"
-    printfn "  repo's `main`, so it may not decide whether THIS commit merges (ADR-0105). The non-required"
-    printfn "  `frozen-mirror-freshness` job answers it, and a re-freeze PR is its remedy."
+    //
+    // #833 SHARPENED WHAT THIS DISCLAIMER HAS TO SAY, and it is now the more important half. This lane
+    // compares each body against a digest THIS TREE declares. A declaration is a claim about FS.GG.Game
+    // that this lane cannot check, so a green here means "the bodies are what we SAY they are", never
+    // "the bodies are what FS.GG.Game HAS". Only the freshness lane can tell the difference.
+    printfn "  NOT checked here: whether these mirrors still MATCH FS.GG.Game's canonicals — nor whether the"
+    printfn "  digests declared in scripts/FrozenMirrorVerdict.fs are the canonicals at all. Both are facts"
+    printfn "  about another repo's `main`, so they may not decide whether THIS commit merges (ADR-0105). The"
+    printfn "  non-required `frozen-mirror-freshness` job answers both, and a re-freeze PR is its remedy."
 
 // ================================================================================================
 // THE FRESHNESS LANE — the world. Reports it; may never wedge on it.
@@ -431,7 +458,7 @@ let private runFreshness () =
             // The registry states `mirrored:` itself. Disagreeing with it means one of the two is wrong about
             // whether this repo is supposed to ship a body at all — and BOTH readings are breaks: a mirror
             // nobody guards, or a body vendored in that ADR-0022 §6 never asked for.
-            let pinSaysMirrored = pinned.Disposition = Mirrored
+            let pinSaysMirrored = isMirrored pinned.Disposition
 
             match row.Mirrored with
             | Some registrySaysMirrored when registrySaysMirrored <> pinSaysMirrored ->
@@ -458,20 +485,23 @@ let private runFreshness () =
 
     let mirrors =
         foreignSkills
-        |> List.filter (fun skill -> skill.Disposition = Mirrored)
         |> List.choose (fun skill ->
+            match skill.Disposition with
+            | NoCounterpart -> None
+            | Mirrored frozenAt ->
+
             let relative = mirrorPath skill.Id
             let body = repoPath relative
 
             // A MISSING body is the REQUIRED lane's finding — it is a fact about the tree, and it reds
             // there. Reporting it once, in the lane that owns it, is the point of having lanes.
             if File.Exists body then
-                Some(skill, relative, sha256Of body)
+                Some(skill, frozenAt, relative, sha256Of body)
             else
                 printfn "  frozen-mirror SKIP   %-22s body missing — the required lane reds on this" skill.Id
                 None)
 
-    for skill, relative, local in mirrors do
+    for skill, frozenAt, relative, local in mirrors do
         // WHERE THE CANONICAL LIVES IS THE REGISTRY'S FACT, NOT THE PIN'S — and getting that backwards
         // makes this guard print a command that DESTROYS the mirror.
         //
@@ -510,6 +540,45 @@ let private runFreshness () =
                 skill.Id
                 (registrySha.Substring(0, min 12 registrySha.Length))
                 (canonical.Substring(0, 12))
+
+        // ---- THE DECLARATION vs THE WORLD (#833) -----------------------------------------------
+        //
+        // The required lane sanctions a mirror edit that matches the digest this tree DECLARES (#833). That
+        // is a claim about FS.GG.Game made by a file in this repo, and this is the only lane allowed to
+        // check it — which is what keeps the sanction from being a rubber stamp.
+        //
+        // IT IS ONLY WORTH ITS OWN LINE WHEN THE BODY AND THE DECLARATION HAVE COME APART. When they agree —
+        // which the required lane enforces, and which is therefore the normal state — `frozenAt` IS `local`,
+        // so "declaration vs canonical" is the identical comparison to the drift verdict below, and printing
+        // both would mean two errors for one condition on the ordinary moved-canonical wedge, in front of a
+        // reader whose repo is already red. Saying the same thing twice is how a reader learns to skim.
+        //
+        // When they HAVE come apart, this lane knows something the required lane cannot: which of the two is
+        // the liar. The required lane sees a mismatch and must blame the body; this lane can look at the
+        // canonical and tell the reader whether the body drifted or the pin did.
+        if local <> frozenAt then
+            failed <- true
+
+            let which =
+                if frozenAt = canonical then
+                    $"The DECLARATION is correct — it matches {skill.Owner}'s live canonical — so it is the BODY that drifted. Do not touch the declaration; see the required lane's error for this file, which is the one to act on."
+                elif local = canonical then
+                    $"The BODY is correct — it is byte-identical to {skill.Owner}'s live canonical — so it is the DECLARATION that is wrong. Nothing sanctioned this: a declaration edited on its own would sanction the next edit to this body. Set it back to {(local.Substring(0, 12))}…"
+                else
+                    $"NEITHER matches {skill.Owner}'s live canonical ({canonical.Substring(0, 12)}…), so this tree is wrong about this mirror twice over. Re-freeze the body from the canonical and declare that same digest, in one commit."
+
+            // `min 12 frozenAt.Length`, not a bare `Substring(0, 12)` — the same guard the registry-lag NOTE
+            // above uses, and for a reason this message is unusually exposed to: `frozenAt` is the ONE digest
+            // here that a human hand-types. A malformed pin threw `ArgumentOutOfRangeException` out of the
+            // guard, so the diagnostic that names the malformed pin was killed by the malformed pin. `local`
+            // and `canonical` are computed sha256s and cannot be short.
+            eprintfn
+                "::error file=%s::FROZEN MIRROR DECLARATION DOES NOT MATCH ITS BODY — scripts/FrozenMirrorVerdict.fs declares `%s` frozen at %s…, but the body in this tree hashes %s…. %s"
+                relative
+                skill.Id
+                (frozenAt.Substring(0, min 12 frozenAt.Length))
+                (local.Substring(0, 12))
+                which
 
         let baseline = baselineOf repoRoot relative local
 
@@ -560,7 +629,7 @@ let private runFreshness () =
 
     // A waiver for a skill that is not a mirror at all is dead weight that will mask a real one later.
     for w in waivers do
-        if not (mirrors |> List.exists (fun (skill, _, _) -> skill.Id = w.Id)) then
+        if not (mirrors |> List.exists (fun (skill, _, _, _) -> skill.Id = w.Id)) then
             failed <- true
 
             eprintfn

@@ -53,6 +53,52 @@
 // registry and the canonical bodies stay in the script, where they belong.
 //
 // One definition, two consumers, no drift — the `SurfaceRenderer.fs` rule (#661), for the same reason.
+
+// #833 — ...AND THE LANE SPLIT LEFT A RE-FREEZE UNMERGEABLE, because the required lane reds on the very
+// edit a re-freeze must make.
+//
+// #738 (above) put exactly one question in the required lane — *did THIS change edit a body this repo does
+// not own?* — and answered it from `git` against the merge base. That is right about #541's case and WRONG
+// about the one edit this repo is obliged to make: a RE-FREEZE, where the canonical moved and somebody
+// copies the new bytes down. Both change the body vs. the merge base, so both read `EditedHere`, so both
+// red — and the required lane is `enforce_admins`, so the re-freeze that unwedges the repo could not be
+// merged by anyone. #789 hit it first (PR #832 needed a one-time protection lift to land); every prior
+// re-freeze (#714, #773, #780, #781) was pre-#738, back when the required lane checked FRESHNESS, which a
+// re-freeze SATISFIES. #696 counts ~40 of these, so it recurs forever.
+//
+// The offline lane cannot tell the two apart by looking at the bytes: "edited toward the canonical" and
+// "edited away from it" are the same diff against the merge base, and the canonical is the input ADR-0105
+// forbids it from reading. So it is TOLD. A `Mirrored` skill now DECLARES the canonical digest it is frozen
+// to (`Disposition`, below), and the required lane's whole question becomes one the tree can answer:
+//
+//     is the body in this tree the body this tree SAYS it froze?   (`sanctionOf`)
+//
+// A re-freeze updates the body and the declaration in ONE commit and passes. #541's author — editing content
+// in a body they did not know was a mirror — updates only the body, and still reds. The teeth are where they
+// always were; what changed is that the correct edit now has a legal way to say so.
+//
+// WHAT THIS DELIBERATELY GIVES UP, stated plainly because a sanction nobody understands is a rubber stamp.
+// An author who edits the body AND writes a matching declaration passes the required lane. That is not an
+// oversight — it is the trade, and it is bounded on three sides:
+//
+//   * It cannot happen by ACCIDENT, which is the entirety of #541's case. All three of the breaks that
+//     motivated this guard were authors who never knew the file was a mirror; not one of them would have
+//     written a declaration. The gate still catches every one of them.
+//   * It reds the FRESHNESS lane, and cannot be waived there: the declaration is `sha256(body)`, so
+//     `declaration <> canonical` IS `body <> canonical`, which is the drift `decide` already convicts on.
+//     Forging the declaration buys a green required lane and a red freshness lane — trading a silent break
+//     for a loud one, which is the direction this repo keeps pushing everything.
+//   * It is a deliberate, reviewable act, in the diff, next to the body it sanctions.
+//
+// AND `git` LEAVES THE REQUIRED LANE'S VERDICT ENTIRELY. This falls out of the above, and it is worth saying
+// once, loudly, because it deletes a fail-closed arm (#738's `describeProbeFailed`) that was RIGHT when it
+// was written: that lane convicted on `git` and nothing else, so a `git` that could not answer had to red,
+// or a shallow clone was a silent fail-open of #541 (the #266 family). The declaration replaces `git` as the
+// oracle, and `sanctionOf` reads only the working tree — so a blind `git` no longer costs the lane its
+// verdict: an undeclared edit reds whether or not `git` can see the merge base. Reding on `Unknown` NOW would
+// be a false red carrying a message ("we cannot tell whether you edited it") about a question this lane no
+// longer asks. `baselineOf` stays: it is the freshness lane's oracle, and here it supplies the EVIDENCE an
+// error message needs. It simply no longer decides what the tree already answers.
 module FsGg.Governance.FrozenMirrorVerdict
 
 open System
@@ -115,11 +161,32 @@ type Lane =
 /// What this repo does about a product skill it does not own. Absence is a DECISION, never an inference
 /// from a missing file.
 type Disposition =
-    /// This repo ships a byte-identical copy (ADR-0022 §6, the two-copies cost of the P4 migration).
-    | Mirrored
+    /// This repo ships a byte-identical copy (ADR-0022 §6, the two-copies cost of the P4 migration), and
+    /// DECLARES the canonical digest that copy is frozen to (#833).
+    ///
+    /// THE DECLARATION IS WHAT MAKES A RE-FREEZE LANDABLE. The required lane is offline, so it cannot ask
+    /// FS.GG.Game what the canonical is — but it can ask whether the body here is the body this tree SAYS it
+    /// froze. A re-freeze updates both in one commit and passes; an edit that updates only the body does not.
+    ///
+    /// IT CARRIES NO INFORMATION THE BODY DOES NOT ALREADY HAVE, and that is the point rather than a flaw. A
+    /// correct mirror is byte-identical to its canonical, so this digest always equals `sha256(body)` — it is
+    /// pure redundancy, and the redundancy IS the mechanism: it is an expectation the next edit must
+    /// consciously break, exactly as a waiver's `DriftedSha` pin is ("pinning the digest means the NEXT edit
+    /// to a waived mirror is still a RED"). What it adds is not a fact. It is INTENT, in the diff, reviewable.
+    | Mirrored of frozenAt: string
     /// Authored in the owning repo and never migrated — this repo has no counterpart and must not grow one
-    /// (.github#486; Rendering#505 asked for exactly this and was refused).
+    /// (.github#486; Rendering#505 asked for exactly this and was refused). No body, so nothing to declare.
     | NoCounterpart
+
+/// Does this repo ship a body for the skill at all?
+///
+/// `= Mirrored` used to answer this by equality. It cannot now that `Mirrored` carries the declaration
+/// (#833) — and F# would not have complained: `Mirrored "…" = Mirrored "…"` compares the DIGESTS, so every
+/// such site would have quietly started asking a different question. Hence one named predicate.
+let isMirrored (disposition: Disposition) =
+    match disposition with
+    | Mirrored _ -> true
+    | NoCounterpart -> false
 
 /// One foreign (non-Rendering-owned) product skill, PINNED IN THIS TREE.
 ///
@@ -160,10 +227,17 @@ let foreignSkills: Foreign list =
           Source = $"FS.GG.Game/template/product-skills/{id}/SKILL.md"
           Disposition = disposition }
 
-    [ game "fs-gg-game-core" Mirrored
-      game "fs-gg-audio" Mirrored
-      game "fs-gg-persistence" Mirrored
-      game "fs-gg-model-swap" Mirrored
+    // THE `Mirrored` DIGESTS ARE THE DECLARATION (#833) — the canonical each mirror is frozen to. They are
+    // `sha256(body)` of the copy this repo ships, and a re-freeze changes BOTH, in one commit. If you are
+    // here to change one of these without touching the body, stop: you are not re-freezing anything, and the
+    // required lane will red on the mismatch you are about to create.
+    //
+    // Verified against FS.GG.Game's live canonicals when this landed: all four IN SYNC. That is what makes
+    // them safe to pin — a declaration seeded from a DRIFTED body would sanction that drift permanently.
+    [ game "fs-gg-game-core" (Mirrored "183a888810b2ad0da7e20b32d2fefe958ea33d3444c356851c9fa5fe4d84c62f")
+      game "fs-gg-audio" (Mirrored "d1833a673c2a970716e36923f6247253a614b79ddcf7f7c2a482dc0071527420")
+      game "fs-gg-persistence" (Mirrored "9461822e5c282f0cac37aa0a88720fbb910319a6571d74bbcb1119eeb48530fb")
+      game "fs-gg-model-swap" (Mirrored "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26")
       game "fs-gg-ballistics" NoCounterpart
       game "fs-gg-ai" NoCounterpart
       game "fs-gg-effects" NoCounterpart
@@ -171,6 +245,26 @@ let foreignSkills: Foreign list =
 
 /// Where this repo keeps its copy of a foreign skill's body.
 let mirrorPath (id: string) = $"template/product-skills/{id}/SKILL.md"
+
+/// Is this body the body the tree DECLARES it froze? (#833)
+type Sanction =
+    /// The body hashes exactly its declared canonical. Nothing to answer for: either nobody touched it, or
+    /// this change re-froze it and SAID SO in the same commit.
+    | Declared
+    /// The body does not hash its declared canonical. #541's case — and the only verdict the required lane
+    /// can produce.
+    | Undeclared
+
+/// THE REQUIRED LANE'S ENTIRE VERDICT (#833). A function of the WORKING TREE alone: no registry, no
+/// canonical, no network, no token, and — since the declaration replaced `git` as this lane's oracle — no
+/// `git` either. ADR-0105's test (*could this turn an already-green commit red without anyone changing this
+/// repository?*) answers NO, and now answers it without needing an argument about `fetch-depth`.
+///
+/// It is trivial, and it is a named function anyway, for #661's reason: the lane policy is this module's to
+/// decide. A script that inlined `if local = frozenAt` would put the sanction somewhere no test looks — which
+/// is precisely how #720's text and #738's lane policy each came to live where they could drift.
+let sanctionOf (frozenAt: string) (local: string) : Sanction =
+    if local = frozenAt then Declared else Undeclared
 
 /// The verdict. PURE — every input is already resolved, so this is a truth table and is tested as one.
 ///
@@ -214,9 +308,10 @@ let decide (baseline: Baseline) (local: string) (registry: string) (canonical: s
 /// The split is ADR-0105's test, applied verdict by verdict — *could this turn an already-green commit red
 /// without anyone changing this repository?*
 ///
-///   * `MirrorEdited` — NO. `decide` returns it only when `git` says THIS change edited or added the body
-///     (`EditedHere`/`AddedHere`), which is a fact about this commit's diff and nothing else. It keeps
-///     every tooth it had in #541, in the required lane, where it belongs.
+///   * `MirrorEdited` — NO. In the freshness lane `decide` returns it only when `git` says THIS change
+///     edited or added the body (`EditedHere`/`AddedHere`); in the required lane it is what `sanctionOf`
+///     reports as `Undeclared` (#833). Both are facts about this commit and nothing else. It keeps every
+///     tooth it had in #541, in the required lane, where it belongs.
 ///   * `CanonicalMoved` — YES, trivially: FS.GG.Game merges, and a commit that was green is red.
 ///   * `DriftUnattributed` — **YES, AND THIS IS THE ONE THAT LOOKS SAFE AND IS NOT.** #738's suggested
 ///     shape moved only `CanonicalMoved`, which would have left the wedge in place with a new name on it:
@@ -232,7 +327,7 @@ let decide (baseline: Baseline) (local: string) (registry: string) (canonical: s
 /// AND THE ANNOTATION LEVEL MOVES WITH THE EXIT CODE — the trap the old comment here warned whoever did
 /// this. It is now closed BY CONSTRUCTION rather than by a matching rule that could drift: `describe` is
 /// only ever reached from the freshness lane, which reds on every verdict it can produce, and the required
-/// lane prints its own message (`describeEditedHere`) for the only verdict it can produce. Neither lane can
+/// lane prints its own message (`describeUndeclared`) for the only verdict it can produce. Neither lane can
 /// emit an `::error` for something it does not fail on, because neither lane can emit the other's verdicts.
 let failsIn (lane: Lane) (verdict: Verdict) : bool =
     match verdict with
@@ -382,37 +477,44 @@ let refreezeCommand (source: string) (relative: string) =
 
     $"gh api repos/FS-GG/{repo}/contents/{path} --jq .content | base64 -d > {relative}"
 
-/// The REQUIRED lane's `MIRROR EDITED` line (#738). Offline, so it has NO canonical digest to name — and
-/// that absence is the point, not a shortcoming: this lane convicts on `git`'s answer about THIS diff, and
-/// it never needed the canonical to do it. #541's case was always provable from the commit alone; the
-/// guard simply never separated it from the questions that were not.
+/// The REQUIRED lane's `MIRROR EDITED` line (#738, #833). Offline, so it has NO canonical digest to name —
+/// and that absence is the point, not a shortcoming: this lane convicts on the DECLARATION, and it never
+/// needed the canonical to do it. #541's case was always provable from the commit alone; the guard simply
+/// never separated it from the questions that were not.
 ///
 /// Every "do NOT" from #541 survives here verbatim. The strictness was never what made the gate wedge.
-let describeEditedHere (id: string) (owner: string) (source: string) (relative: string) (baseline: Baseline) (local: string) : string =
+///
+/// AND IT MUST NOT READ AS "UPDATE THE DECLARATION TO GO GREEN" (#833). This message is the ONLY place the
+/// sanction is explained to the person who tripped it, and its reader is, overwhelmingly likely, #541's
+/// author: someone doing correct content work who has just been told off for editing a file they did not
+/// know was a mirror. Handing them a one-line trick to silence the gate would convert this guard into the
+/// rubber stamp the whole design is arranged to avoid. So the re-freeze escape is stated LAST, gated on a
+/// precondition the reader can check ("the canonical moved and you are copying it down"), and paired with
+/// what happens if they take it anyway — the freshness lane compares the declaration against the LIVE
+/// canonical, so a forged one reds there.
+let describeUndeclared
+    (id: string)
+    (owner: string)
+    (source: string)
+    (relative: string)
+    (baseline: Baseline)
+    (local: string)
+    (frozenAt: string)
+    : string =
+    // `git` no longer decides anything here — it only says HOW the body and its declaration came apart, and
+    // every one of its answers (including "I cannot tell") leaves the verdict untouched.
     let evidence =
         match baseline with
         | AddedHere ->
             "This change ADDED this body; it did not exist at the merge base. Vendoring in a skill this repo has no counterpart for is itself the break (.github#486)."
         | EditedHere baseSha ->
             $"This change EDITED it: at the merge base it hashed {shortSha baseSha}, and it now hashes {shortSha local}."
-        | UnchangedHere _
-        | Unknown _ -> $"Your copy now hashes {shortSha local}." // unreachable: those baselines do not convict.
+        | UnchangedHere _ ->
+            "`git` says this change did not touch the BODY, so it is the DECLARATION that moved — or the two were already apart on `main`. Either way they must agree: a declaration edited on its own sanctions nothing, and would sanction the NEXT edit to this body if it were allowed to stand."
+        | Unknown why ->
+            $"`git` could not tell whether this change touched it ({why}) — which does not change this verdict. This lane compares the body against its declaration, and they do not match either way."
 
-    $"::error file={relative}::FROZEN MIRROR EDITED — `{id}` is owned by {owner} ({source}), and this repo only ships a byte-identical copy (ADR-0022 §6). {evidence}\n\nDO NOT REVERT YOUR WORK, do NOT re-freeze this file from the canonical (that would silently delete it), and DO NOT ADD A WAIVER FOR YOURSELF in scripts/check-frozen-mirrors.fsx — a waiver records drift that already existed before this guard, and is not a way to land new drift. Take the change to the OWNING repo's canonical body ({source}), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541)."
-
-/// The REQUIRED lane cannot CLEAR you if `git` did not answer, so it does not pass you (#738).
-///
-/// This fails CLOSED, and unlike everything else this file removed from the required gate, it is allowed
-/// to: its subject is THIS CHECKOUT'S configuration — `fetch-depth: 0`, which `gate.yml` sets — and not
-/// another repo's `main`. It cannot be tripped by FS.GG.Game merging anything, so ADR-0105's test still
-/// answers NO.
-///
-/// It is the last place #541's teeth could have been lost quietly. With the canonical comparison gone from
-/// this lane, a blind probe would mean the required gate simply had NOTHING to say about a mirror edit —
-/// a silent fail-open, in the exact family (#266) this repo keeps closing. A gate that cannot run its
-/// probe has proved nothing, and reporting green for it is how a gate becomes decoration.
-let describeProbeFailed (id: string) (relative: string) (why: string) : string =
-    $"::error file={relative}::FROZEN MIRROR PROBE DID NOT RUN — `git` could not tell whether this change edited `{id}`'s mirrored body ({why}).\n\nThis lane's ONLY question is \"did THIS change edit a body this repo does not own?\" (#541), and it answers it from `git` alone. A probe that cannot answer has proved nothing, so this is NOT a pass — it fails closed, on purpose.\n\nThis is a fault in the CHECKOUT, not in your change, and it is fixable here: the job needs full history (`fetch-depth: 0`, which .github/workflows/gate.yml already sets). On a fork or an unusual remote, set FSGG_FROZEN_MIRROR_BASE to the ref this branch forked from."
+    $"::error file={relative}::FROZEN MIRROR EDITED — `{id}` is owned by {owner} ({source}), and this repo only ships a byte-identical copy (ADR-0022 §6). The body hashes {shortSha local}, but this tree DECLARES it frozen at {shortSha frozenAt} (scripts/FrozenMirrorVerdict.fs). {evidence}\n\nDO NOT REVERT YOUR WORK, do NOT re-freeze this file from the canonical (that would silently delete it), and DO NOT ADD A WAIVER FOR YOURSELF in scripts/check-frozen-mirrors.fsx — a waiver records drift that already existed before this guard, and is not a way to land new drift. Take the change to the OWNING repo's canonical body ({source}), and re-freeze here once it lands. This repo gives you no other signal that you are editing a body it does not own, which is why three correct edits to this file merged green before this check existed (#541).\n\nONLY IF YOU ARE RE-FREEZING — that is, {owner} moved the canonical and you are copying the new bytes DOWN, authoring nothing — update the declaration for `{id}` in scripts/FrozenMirrorVerdict.fs to {shortSha local} in this same commit, and this lane will pass it (#833). That is the one edit this repo is obliged to make and could not merge before. It is NOT a way to land your own content: the declaration is compared against {owner}'s LIVE canonical in the non-required `frozen-mirror-freshness` job, so a declaration that names bytes {owner} does not have reds there, loudly, and the drift is still yours to route upstream."
 
 /// The GitHub-Actions error line for a drift verdict. The TEXT is the bug #720 is about, so it is defined
 /// here, next to the verdict that selects it, and asserted in the tests — not assembled at the call site

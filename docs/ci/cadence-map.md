@@ -534,7 +534,7 @@ This repo ships byte-identical copies of four product skills whose canonical bod
 
 | | question | whose commit decides it | lane |
 |---|---|---|---|
-| 1 | did **this change** edit a body this repo does not own? | **this one** — `git`, against the merge base | `--required` |
+| 1 | did **this change** edit a body this repo does not own? | **this one** — the tree, against the digest it **declares** (§4g; `git` against the merge base until #833) | `--required` |
 | 2 | is our mirror what FS.GG.Game's `main` says it is *right now*? | **somebody else's** | `--freshness` |
 
 Question 2 has an input that is not in this tree, so its answer moves when another repo merges. In a
@@ -552,13 +552,13 @@ settles under, and its one-sentence test is the whole of the decision:
 
 **The split.**
 
-- **`--required`**, in the `Deterministic gate`. Reads the working tree and `git` — **no registry, no
-  canonical, no network, and no `GH_TOKEN`** (its `env:` block is gone, and a test asserts the absence).
-  It reds on `MIRROR EDITED`, which is #541's entire case and is provable from the commit alone; on a
-  mirror **deleted** or a `NoCounterpart` body **vendored in**; and — failing closed — on a `git` probe
-  that could not answer, since with the canonical gone from this lane a blind probe would leave the
-  required gate with nothing at all to say about a mirror edit. That last red is permissible here because
-  its subject is *this checkout's* `fetch-depth`, not another repo's `main`.
+- **`--required`**, in the `Deterministic gate`. Reads the working tree — **no registry, no canonical, no
+  network, no `GH_TOKEN`** (its `env:` block is gone, and a test asserts the absence). Since #833 its
+  **verdict** needs no `git` either: it reds on `MIRROR EDITED` — a body that does not hash the digest this
+  tree **declares** it froze, which is #541's entire case (see §4g); on a mirror **deleted**; and on a
+  `NoCounterpart` body **vendored in**. It still *invokes* `git`, for the **evidence** its error carries
+  (which of the body and the declaration moved) — a checkout git cannot read costs a worse message, never a
+  different verdict.
 - **`--freshness`**, in the **non-required** `Frozen mirror freshness` job. Reads the org registry and the
   owners' live bodies. Reds on `CANONICAL MOVED` and `FROZEN MIRROR STALE`, prints the runnable re-freeze
   command, and asserts the in-tree pin (`FrozenMirrorVerdict.foreignSkills`) against the registry so a new
@@ -582,6 +582,67 @@ other buys a wedge that waits for a cron job. Both moved; both still red the fre
 
 Tracking issues: FS.GG.Rendering#738 (this split), FS.GG.Rendering#714 (the live wedge),
 FS.GG.Rendering#541 (why the guard exists), FS.GG.Rendering#720 (the verdict split it depends on).
+
+## 4g. Frozen skill mirrors — how a re-freeze lands (#833)
+
+§4f's split left one edit with **no legal way to merge**: the **re-freeze** itself.
+
+The required lane asked `git` *"did this change edit a mirror?"* — and a re-freeze **does**. Copying new
+canonical bytes down and vendoring in your own content are the **same diff** against the merge base, and the
+canonical that would tell them apart is the input ADR-0105 forbids that lane from reading. So the required,
+`enforce_admins` gate red on the one edit this repo is **obliged** to make. #789 was the first re-freeze
+after §4f landed and hit it immediately; PR #832 carried correct content, was green on the freshness lane,
+and needed a **one-time protection lift** to land. Every earlier re-freeze (#714, #773, #780, #781) predates
+§4f, when the required lane checked *freshness* — which a re-freeze **satisfies**. #696 counts ~40 of these,
+so it recurs until fixed.
+
+**The decision: an offline lane cannot infer intent, so it is TOLD.** Each `Mirrored` skill in
+`FrozenMirrorVerdict.foreignSkills` **declares** the canonical digest it is frozen to, and the required
+lane's whole question becomes one the tree can answer:
+
+> **Is the body in this tree the body this tree says it froze?** (`sanctionOf`)
+
+| what you did | body | declaration | required lane |
+|---|---|---|---|
+| nothing | unchanged | unchanged | **green** |
+| **re-freeze** — both, one commit | new canonical | updated to match | **green** (#833) |
+| edited a mirror (#541's author) | changed | untouched | **RED** |
+| edited the declaration alone | unchanged | changed | **RED** |
+
+**Why this is not a rubber stamp**, which is the only question worth asking about a sanction:
+
+- **#541's break cannot reach it.** All three motivating breaks were authors who never knew the file was a
+  mirror. None would write a declaration; every one still reds.
+- **A forged declaration reds the freshness lane.** The declaration is `sha256(body)`, so
+  `declaration ≠ canonical` **is** `body ≠ canonical` — the drift `decide` already convicts on. Forging buys
+  a green required lane and a red freshness lane: a silent break traded for a loud one.
+- **It is deliberate and reviewable**, in the diff, next to the body it sanctions.
+
+**What it gives up, said plainly:** an author who edits a body *and* writes a matching declaration passes
+the required lane. That is the trade, not an oversight — the alternative was ~40 admin merges, and a gate
+whose documented remedy is *"merge past a red required check"* teaches exactly one lesson.
+
+**ADR-0105 is untouched, and did not need amending.** The sanction hashes this commit's own bytes against a
+declaration carried in this commit — `sanctionOf` takes two digests off the working tree and consults no
+registry, no canonical, no network, no token, and no `git`. *Could this gate turn an already-green commit
+red without anyone changing this repository?* Still **no**, and now structurally rather than by argument:
+there is no input in scope for FS.GG.Game to move.
+
+ADR-0105's own narrative still calls `MIRROR EDITED` *"the one verdict `git` proves from the commit alone"*,
+which described #738's implementation accurately and is now the *mechanism* rather than the *decision*. The
+decision — a required gate reads only the commit — is what this strengthens. Amending or superseding an
+accepted ADR is a call for a human, so it is flagged rather than done here.
+
+That also retires §4f's `git`-probe fail-closed. It was right then — that lane convicted on `git` alone, so
+a blind probe had to red or a shallow clone was a silent #541 fail-open — but its **premise** is gone. The
+declaration is the oracle and it is in the working tree, which a shallow clone has in full; an undeclared
+edit reds whether or not `git` can see the merge base. `baselineOf` stays as the freshness lane's oracle and
+as **evidence** in the required lane's message, where it says *which* of the body and the declaration moved.
+Reding on `Unknown` now would be a false red about a question the lane no longer asks.
+
+Tracking issues: FS.GG.Rendering#833 (this sanction), FS.GG.Rendering#789 / PR #832 (the re-freeze it
+blocked), FS.GG.Rendering#738 (§4f, the split that introduced the gap), FS.GG.Rendering#541 (why the guard
+exists), FS.GG.Rendering#696 (the ~40-re-freeze cadence that makes it recur).
 
 ## 5. Branch protection (one-time maintainer step)
 
