@@ -1,6 +1,6 @@
 ---
 name: pnext-item
-description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. A problem it finds along the way is FIXED, in the same PR when that keeps the change reviewable; it is filed only when it is genuinely not fixable from here — another repo owns it, or it needs a decision a human has to make. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
+description: Claim the next schedulable item assigned to THIS FS-GG repo and take it all the way to merged and done-stamped, then keep going. Use when you are a worker (agent or person) picking up work in a repo, especially one of several running in parallel. Wraps the intra-repo-parallel-work protocol — worker id, comment-order claim lock, per-item git worktree, disjoint `Paths:` touch-set — then implements, opens a PR, reviews it, merges on green, and earns the done-stamp. A problem it finds along the way is FIXED, in the same PR when that keeps the change reviewable; what it files, it files at the ROOT CAUSE rather than the surface, and then TAKES — landing the current item first, then popping its own follow-up by number, recursively, until the queue drains. It files-and-leaves only when the finding is genuinely not fixable from here — another repo owns it, or it needs a decision a human has to make. Canonical protocol lives in FS-GG/.github. See ADR-0001, ADR-0021 and ADR-0027.
 ---
 
 # pnext-item (FS-GG)
@@ -8,7 +8,16 @@ description: Claim the next schedulable item assigned to THIS FS-GG repo and tak
 One command's worth of intent: **"give me the next thing to work on in this repo, and don't collide
 with the other workers."** It is the driver for
 [intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md), which owns the protocol — read it
-if any step below surprises you. This skill is the *loop*, start to done-stamp.
+if any step below surprises you. This skill is the *loop*, start to done-stamp — and then **round
+again**, because a done-stamp is not the end: what you found while working the item is the best-sourced
+work on the board, and §6 pops it rather than letting `take` re-roll for it.
+
+**Two rules run through the whole loop, and they are the same rule.** When you find something: **fix the
+CAUSE, not the surface** (§4) — the surface is where a defect showed up, not where it lives, and a fix to
+the surface is a diff that regenerates. And when you cannot fix it here: **file the cause, then take it**
+(§4 case 2 → §6) — you are the only worker who has the context, so hand the work to yourself rather than
+to a scheduler that never saw the problem. The recursion is bounded by the done-stamp: **one item in
+flight, ever**.
 
 Safe to run N times concurrently in one repo. That is the whole point: the claim lock is a
 server-side total order over comment ids, so exactly one worker wins each item, and `take`
@@ -18,7 +27,12 @@ re-schedules a loser rather than sending it home.
 /pnext-item                     # claim + work the next schedulable item in this repo
 /pnext-item --repo game         # ...in another repo (registry short-id)
 /pnext-item 186                 # ...that specific item (uses `claim`, not `take`)
+/pnext-item FS-GG/game#186      # ...qualified — takes whatever `claim` takes, and §6 pops this form
 ```
+
+**The third form is how §6 takes your own follow-up, and it buys that with the scheduler's guarantee.**
+`claim` does **not** check your touch-set against live claims — **only `take` does** — so on this form
+`widen`'s exit code is the only collision check you get. Run it, and believe a non-zero.
 
 ## 0. Be someone before you take anything
 
@@ -445,9 +459,48 @@ already know.
 
 **2. Can you fix it, but not in *this* PR?** Same repo, but it is its own change — a different subject,
 a different touch-set, or a diff that would make this PR two stories.
-→ **Take it next.** Land this item, then claim that one and fix it. It is still yours; you just do it
-in the right order. (If it needs an issue to be claimable, file one — but you are filing it *to work
-it*, not to be rid of it.)
+→ **Take it next, and WRITE THE NUMBER DOWN.** Land this item, then claim that one and fix it. It is
+still yours; you just do it in the right order. (If it needs an issue to be claimable, file one — but
+you are filing it *to work it*, not to be rid of it.)
+
+> **"It is still yours" is a promise the recipe could not keep, and the number is why**
+> ([#1061](https://github.com/FS-GG/.github/issues/1061)). §6's last line was a bare `/pnext-item`,
+> which re-scans the board and lets `take` pick — and **`take` is not bound by what you filed.** So the
+> follow-up you promised to take was handed to a scheduler that never heard the promise.
+>
+> It was worse than a coin flip. §6's own text says it: the items most likely to overlap a just-finished
+> item are **its own follow-up findings**, because §4 told you to file them *while you were standing in
+> those files*. So your filing was the one `take` was **least** able to hand back, and the happy path
+> guaranteed it. Meanwhile the number lived only in your head and your worktree, and §6 removes both.
+>
+> Hence the queue below. It is three lines of shell against the fact that a decision made with full
+> context should not have to be re-derived by a scheduler that has none.
+
+**Record it where it will outlive the worktree** — the disposition is the valuable part, and you are
+about to delete the only place it exists:
+
+```sh
+# The follow-up QUEUE: one ref per line, deliberately outside the worktree §6 removes.
+# Keyed on §0's worker id, because the queue is YOUR promise — see below, it is not a shared board.
+echo 'FS-GG/<repo>#<new>' >> "${FSGG_FOLLOWUPS:-$HOME/.fsgg-followups-$FSGG_WORKER}"
+```
+
+**Qualify the ref (`owner/repo#n`), and note it is `<repo>`, not `.github`.** Both halves matter, for
+§4's own reason: a bare number resolves against whatever checkout you are standing in when §6 reads the
+line back, and by then you are somewhere else. And every target repo's numbering sits *entirely inside*
+`.github`'s, so a ref that says `.github` when you meant `game` does not fail — it **resolves, onto a
+real, unrelated, usually-closed item**, and §6 will dutifully claim it. That is the trap
+["A bare ref is not a short ref"](#4-findings-you-make-along-the-way--fix-them-file-only-what-you-cannot)
+describes below, and a hardcoded owner walks into it from the other side.
+
+**The queue is PER-WORKER, and `$FSGG_WORKER` is what makes it safe.** Not a preference — the default
+path is keyed on the id §0 minted you, and without that key it is a **shared file that N workers race**.
+Two workers popping one queue both read the same head ref before either deletes it: one item gets handed
+out **twice** (the four-workers-one-item waste §1 exists to prevent) and the next ref is deleted having
+been handed to **nobody** — the queue silently losing the very promise it exists to keep. It is the
+shape the shared `flush` queue already has, and §0's id is the thing that dissolves it: a queue only you
+write and only you read cannot race. If `$FSGG_WORKER` is empty you skipped §0, and you are back to the
+shared file — mint the id rather than working around it.
 
 **3. Can you not fix it?** Only these count:
 
@@ -461,21 +514,62 @@ it*, not to be rid of it.)
   instead, and if it still needs doing after they land, take it next.
 - **You cannot verify the fix.** You would be guessing, and a guess merged is worse than a finding filed.
 
-→ **File it.**
+→ **File it — and do NOT queue it.**
+
+**This is the case that must not auto-take, and the reason is every bullet above.** The queue is for
+case 2 — *"I can fix this, just not here"*. Case 3 is the opposite finding: each of its four bullets is a
+statement that **you are not the one who should work it next**, and taking it anyway does not route
+around the obstacle, it walks into it.
+
+| why you filed it | what auto-taking it would mean |
+|---|---|
+| **it needs a DECISION** | an agent making the architectural call the item was filed to escalate — the "needs a human" case, answered by the machine that noticed a human was needed |
+| **another repo owns it** | a boundary the worktree cannot cross; you would take an item you cannot open a PR for |
+| **`widen` refuses it** | a live claim holds those files. `claim` does **not** re-check disjointness (§6) — so the recursion would sail straight through the one refusal that was protecting somebody's in-flight work |
+| **you cannot verify it** | a guess, merged. The bullet says it: a guess merged is worse than a finding filed |
+
+A case-3 item is **still yours to have filed well** — the root-cause question above applies hardest here,
+because a decision item is the one thing another worker genuinely cannot rebuild from a thin issue. Give
+it the context, then leave it on the board for whoever should have it.
 
 **4. Never drop it.** A finding that lives only in a PR description, a code comment, or your session
 transcript is lost the moment the worktree is removed. That has not changed. The worker who *had* the
 context is the only one who ever sees the problem, and they moved on.
 
-### Before you file anything, three questions
+### Before you file anything, four questions
 
+- **Is this the thing, or the thing's SHADOW?** Ask it *first*, and ask it every time — not once the
+  duplicates have piled up. A finding is where a defect *surfaced*, which is rarely where it *lives*: a
+  doc that lies is often a premise that generates the lie into three docs; a gate that fails open is
+  often a subject the gate cannot see. **File the cause. Fix the cause.** Filing the surface is how the
+  same defect gets seven numbers, and the seventh is the first one anybody notices is a pattern.
+
+  You are the only worker who can answer this, and you can answer it *now* — you have the files open and
+  the failure in front of you. Whoever reads your issue in three weeks has neither, and will file the
+  shadow again because the shadow is all your issue described.
+
+  Two questions find the cause cheaply, and both are mechanical:
+  - **"What would have had to be true for this never to happen?"** If the answer is *"someone would have
+    had to remember"*, the thing to fix is whatever made remembering load-bearing.
+  - **"If I fix only what I am looking at, what regenerates it?"** `grep` for the premise before you
+    write the issue. If a generator, a projection, or a shared source emits your finding, **that** is the
+    item — and fixing the emitted copy is a diff that reverts itself the next time anything regenerates.
 - **Would fixing it take less time than writing the issue?** Then writing the issue is the *expensive*
   option, and you chose it to avoid the work. Fix it.
 - **Is the issue you are about to write mostly a restatement of a rule that already exists?** Then the
-  rule is not the problem — the code is. Fix the code.
-- **Has this, or its sibling, been filed before?** *Look* (below). And if a fix keeps regenerating the
-  same finding, **the finding is not the bug — the thing that regenerates it is.** File *that*, once,
-  and fix it. Do not file the symptom for the seventh time.
+  rule is not the problem — the code is. Fix the code. **And if the rule exists and keeps being broken,
+  the rule is not the fix either** — a rule nothing enforces is a rule that has already failed once per
+  worker. Fix what lets it be broken.
+- **Has this, or its sibling, been filed before?** *Look* (below).
+
+> **The first question used to be the LAST one, and it was conditional** — it fired only *"if a fix keeps
+> regenerating the same finding"*, and told you not to *"file the symptom for the seventh time"*. Both
+> halves were right and it was **addressed to the wrong worker**: the one about to file #1 has no way to
+> know there will be a seventh, and the one who *can* see the pattern is the seventh — by which point the
+> org has paid six times. That is [#266](https://github.com/FS-GG/.github/issues/266)'s signature in a
+> recipe rather than a gate: a check whose subject is invisible to it at the moment it runs. Asking it
+> first costs one question and needs no pattern to have formed yet
+> ([#1061](https://github.com/FS-GG/.github/issues/1061)).
 
 **Do not file an issue about a file that is already open in your diff.** That is the clearest case there
 is: you are looking at it, you can change it, and you are choosing to write about it instead.
@@ -1215,8 +1309,38 @@ or leaving alone.
 cd - && git worktree remove ../<repo>-<n>
 git branch -D item/<n>-<slug>               # the LOCAL branch; §5's REST DELETE removed only the remote
 scripts/fsgg-coord inbox --repo <r>         # anything arrive while you were heads-down?
-/pnext-item                                 # next
+
+# Your own follow-ups FIRST (§4 case 2) — this is the "take it next" you promised, and the
+# ONLY thing that keeps that promise. The file is the queue; §0's worker id keys it, so no
+# other worker races you for it.
+q="${FSGG_FOLLOWUPS:-$HOME/.fsgg-followups-${FSGG_WORKER:?empty — mint an id first (§0)}}"
+next="$(grep -m1 . "$q" 2>/dev/null)"
+
+if [ -n "$next" ]; then
+  sed -i '0,/./{/./d}' "$q"                 # off the queue: you are working it now
+  echo "follow-up -> $next"                 # then: widen FIRST, then /pnext-item <that ref>
+else
+  echo "queue empty -> the board"           # then: /pnext-item
+fi
 ```
+
+**Then do EXACTLY ONE of these — the `if` is the whole point, and it is not decoration:**
+
+| the queue had one | `scripts/fsgg-coord widen <that ref> --paths <your set>`, believe a non-zero exit, then `/pnext-item <that ref>` |
+| the queue was empty | `/pnext-item` — back to the board |
+
+**`widen` first, always, and this is the one place the recipe cannot do it for you.** `/pnext-item <ref>`
+uses `claim`, and **`claim` does not check disjointness — only `take` does.** Your follow-up's paths are
+by construction the ones you *just* released, so another worker's `take` may have been handed them the
+moment your claim dropped. `widen`'s exit code is the only collision check left; a non-zero means `say`,
+not a second claim.
+
+**And if you cannot take it, PUT IT BACK** — `printf '%s\n' "$next" >> "$q"`. The pop above spends the
+ref the moment it reads it, which is right for an item you are about to work and **wrong** for one you
+bounced off. A `75` in particular is a budget, not a verdict: §1 tells you to *expect* one by this point
+and to come back, and a queue that drops a promise on a rate limit is a queue that fails at the one job
+it has. Requeue on anything transient; drop the line only when the ref is genuinely spent — somebody
+else took it (guard 4), or it is done.
 
 **The local branch is not cleaned by anything else.** `--delete-branch` never deleted it either — `gh`
 aborted at the `git checkout main` step *before* it got that far (#564) — so these have been quietly
@@ -1239,6 +1363,42 @@ you to file *because* you were standing in those files. So the recipe reliably p
 own author had locked out for two hours, and `take` reported a dead queue over it.
 
 **The claim's lifetime is the work's lifetime.** The work is done, so the claim is done.
+
+### The follow-up loop, and the four things that keep it honest
+
+Popping your own filing here — rather than letting `take` re-scan — is what makes §4 case 2's *"it is
+still yours"* true ([#1061](https://github.com/FS-GG/.github/issues/1061)). It is a **loop**, so it needs
+the four guards that stop a loop from becoming the churn §4's own box warns about:
+
+- **1. It is a TAIL call. Never recurse mid-item.** The pop is *here* — after the merge, after the
+  done-stamp, after the claim is dropped — and never in §4 where you found the thing. A worker who
+  descends into a follow-up while holding an item lands **nothing**: the outer item's claim sits live
+  for the rest of its **120m** lease, reserving a touch-set nobody is editing, while you go three deep
+  into work that has not been reviewed either. §4 case 2 has always said the right words — *land this
+  item, **then** claim that one* — and this is the line that executes them. **One item in flight, ever.**
+  Depth-first is how you turn a board full of observations into a worker who never merges, which is the
+  same disease one level down.
+- **2. `claim` does NOT check disjointness — and this loop aims straight at that.** `/pnext-item <n>`
+  claims by number, and **only `take` checks a touch-set against live claims.** So the scheduler's
+  overlap guarantee is simply absent here, and your `widen` exit code is the only collision check you
+  get. That is not a general caution: it is pointed. Your follow-up's paths are, by construction, the
+  paths you *just* released — the ones §6 above says are the likeliest in the repo to collide, because
+  another worker's `take` may have been offered them the moment your claim dropped. **So `widen` first,
+  and believe a non-zero exit** — it means somebody took the files while you were merging, and the
+  answer is `say`, not a second claim.
+- **3. It must terminate, and the done-stamp is the bound.** One landed item per hop. A hop that cannot
+  land honestly does not spawn another hop — it goes back to the board. A queue that grows faster than it
+  drains is not a loop, it is the churn §4 describes with extra steps: if every item you take files two
+  more, you have built a machine for never finishing anything, and it will look productive the whole time.
+- **4. The queue is a promise, not a claim.** A line in it reserves **nothing** — no lock, no lease, no
+  touch-set. Another worker may take your follow-up before you get back to it, and **that is a success**:
+  the work got done, which was the point. `claim` will exit non-zero and tell you who holds it. Drop the
+  line and pop the next one; do not race them for an item you filed.
+
+**And if the queue is empty, the bare `/pnext-item` is not a consolation prize.** The board is the
+default and the loop is the exception: it exists only so that a decision you made **with** the context is
+not thrown away and re-derived by a scheduler that has none. When you have no follow-up, you have no
+decision to carry, and `take` is exactly right.
 
 **And an expired lease is not proof that you stopped** ([#581](https://github.com/FS-GG/.github/issues/581)).
 If a long build outruns the lease, an **open PR on `item/<n>-*` is proof of life**: `batch` will not
