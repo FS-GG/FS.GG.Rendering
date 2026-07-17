@@ -21,6 +21,15 @@ Controls.Elmish, Testing, or the validation harness.
 The exact implementation may refine naming during `.fsi` work, but the public
 contract must expose these concepts:
 
+> **Amended at the 0.12.0 major (#815).** This block listed a `DiagnosticReadinessImpact` DU
+> (`NonBlocking | BlocksReadiness | RequiresReview | EnvironmentLimited`) alongside
+> `ReadinessDiagnosticStatus`. It shipped, and then nothing ever read it: outside its own
+> declaration it was referenced only here and in the generated surface baselines. The concept this
+> contract needed was carried by `ReadinessDiagnosticStatus` all along. Deleting a public type is a
+> CP0002 break, so the removal waited for a major (ADR-0103 — the `API compatibility gate` is
+> required and not `--admin`-bypassable). It is struck from the block above rather than left
+> standing, because this block states what the surface **must** expose.
+
 ```fsharp
 namespace FS.GG.UI.Diagnostics
 
@@ -35,12 +44,6 @@ type DiagnosticCategory =
     | RenderingLimitation
     | ReadinessBlocker
     | DeveloperAction
-
-type DiagnosticReadinessImpact =
-    | NonBlocking
-    | BlocksReadiness
-    | RequiresReview
-    | EnvironmentLimited
 
 type ReadinessDiagnosticStatus =
     | Accepted
