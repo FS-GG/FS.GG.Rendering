@@ -138,8 +138,10 @@ let private mirrorModuleRegex =
         RegexOptions.Compiled
     )
 
-let private mirrorValRegex =
-    Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z]\w*)\s*:", RegexOptions.Compiled)
+// #695 convergence: the one `.fsi` `val` reader, prime-aware, lives in TestSupport. This used a
+// no-prime `[a-z]\w*` copy that silently missed `val checked'` (a fail-open hole, #598); folding onto
+// SurfaceSignature.publicValRegex both dedups and closes it.
+let private mirrorValRegex = SurfaceSignature.publicValRegex
 
 /// Parse one mirrored `.fsi` into the modules a call site can NAME — every public one, at every
 /// depth, each owning only the `val`s it declares ITSELF.

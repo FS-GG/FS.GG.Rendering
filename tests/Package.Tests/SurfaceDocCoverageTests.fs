@@ -77,8 +77,10 @@ let private ledgerPath = repositoryPath ledgerRel
 /// being UNPARSEABLE. A surface the extractor cannot see is a surface the gate cannot hold, which is this
 /// item's whole thesis one level further down. (TemplateConsumesPinnedApiTests learned the same lesson from
 /// the other side in #598: "the member may end in a prime, and it must, or the rule invents violations".)
-let private publicValRegex =
-    Regex(@"^(?<indent>\s+)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
+// #695 convergence: the one `.fsi` `val` reader lives in TestSupport (prime-aware, internal-excluding).
+// This copy was already prime-aware; the only nominal difference was `\s+` (nested-only) vs the canonical
+// `\s*`, and a column-0 `val` is illegal F# so the two match identically on any real signature.
+let private publicValRegex = SurfaceSignature.publicValRegex
 
 /// A `module M =` inside a signature file. THE INDENT IS LOAD-BEARING: it is the only thing that separates a
 /// module nested INSIDE another from a sibling that merely follows it, and `ControlsElmish.fsi` has both —
