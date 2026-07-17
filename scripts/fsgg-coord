@@ -33,12 +33,26 @@
 # A resolution that finds nothing is a hard error naming what to do — never a silent no-op, which is the
 # #266 failure this whole effort exists to end.
 #
-# IT DECIDES ONE THING ABOUT COORDINATION, AND ONLY BECAUSE NOTHING ELSE CAN (#929). `BOARD_WRITES` below
-# names which verbs write shared state, so a STALE engine can be refused one. That is coordination
-# knowledge in a pipe that is meant to hold none, and the trade is deliberate: the check cannot live in
-# the engine, because the stale engine IS the thing being checked — an engine built before the check
-# existed would not run it, which is exactly how a fix for #914 sat in `src/` while the fleet ran without
-# it. The resolver is the last place that sees both the artifact and the source before the exec.
+# IT DECIDES TWO THINGS ABOUT COORDINATION, AND ONLY BECAUSE NOTHING ELSE CAN (#929, #709). `BOARD_WRITES`
+# below names which verbs write shared state, so a STALE engine can be refused one; and an engine built
+# from UNCOMMITTED source is warned about. That is coordination knowledge in a pipe that is meant to hold
+# none, and the trade is deliberate: neither check can live in the engine, because the suspect engine IS
+# the thing being checked — an engine built before the check existed would not run it, which is exactly
+# how a fix for #914 sat in `src/` while the fleet ran without it. The resolver is the last place that
+# sees both the artifact and the source before the exec.
+#
+# The two are one question asked at two joints — "is the code about to run the code this checkout says?"
+# `stale_guard` compares the ARTIFACT to the source; `dirty_guard` compares that SOURCE to HEAD. Neither
+# subsumes the other, and a build satisfies the first while defeating the second (see #709 below).
+#
+# NEITHER ASKS "IS IT ON MAIN?", AND THIS COMMENT MUST NOT IMPLY THEY DO. Both compare against the local
+# checkout — the artifact to `src/`, `src/` to HEAD — so a worker who COMMITS kit WIP on a branch here,
+# or whose shared checkout simply sits behind `origin/main`, defeats both while running code the fleet
+# never merged. That gap is real and deliberately unclosed: the honest comparison is against
+# `origin/main`, which is a network read this resolver must not do on every invocation, and which would
+# fire on every checkout that is merely BEHIND — the normal state of a shared checkout nobody fetches. What is
+# left is a guard that catches the observed bug (#709's ` M scripts/fsgg-coord`) and does not pretend to
+# be a merge check.
 set -uo pipefail
 
 die() { echo "fsgg-coord: $*" >&2; exit 69; }  # EX_UNAVAILABLE — the engine is not here
@@ -105,6 +119,88 @@ $detail" ;;
   echo "            Board writes are refused until you do." >&2
 }
 
+# AND THE SOURCE IS NOT A REF EITHER (#709). `stale_guard` asks one question — "is the ARTIFACT behind
+# the source?" — and it is an mtime question. It cannot ask the other one: "is the SOURCE ITSELF on
+# main?" So the two states it separates are not the two that matter:
+#
+#   edited, NOT built   → .fs newer than .dll  → stale_guard fires.  The engine is the OLD, merged code.
+#   edited AND built    → .dll newer than .fs  → stale_guard SILENT. The engine is somebody's WIP.
+#
+# The guard is loudest in the safe case and mute in the dangerous one. Building is what a worker does
+# NEXT, so #929's window closes itself: the warning decays into silence exactly as the risk arrives.
+#
+# THE RISK IS THIS REPO'S ALONE, AND IT IS THE WHOLE FLEET'S. `/pnext-item` sends EVERY worker to
+# `scripts/fsgg-coord` in the SHARED checkout — a worktree has no bin/, so tier 4 cannot resolve there
+# (that is why §2's isolation does not isolate this). Under `src/` live the scheduler, the claim CAS
+# and the board writer. So one worker editing the kit here, in violation of pnext-item §2, silently
+# hands every other worker on this board an untested build of the lock they are about to take. #709
+# observed it live: ` M scripts/fsgg-coord` in a checkout the reporter had not touched, discovered only
+# because they diffed it against HEAD afterwards.
+#
+# WARN, NEVER REFUSE — and this is NOT #929's trade repeated with a new subject. #929 may refuse a
+# board write because its remedy is local, cheap and yours: rebuild, and you are clear. Dirtiness has
+# no such exit. The checkout is dirty because somebody ELSE is mid-edit, and nothing you can run will
+# clean it — so refusing would let one worker's §2 violation halt every OTHER worker's board writes,
+# a fleet-wide outage manufactured by the guard rather than the bug. It would also trap the kit's own
+# author, who is the one person who must be able to test an engine that is by definition uncommitted.
+# The filer reached the same answer (#709: "my weak preference is warn always, refuse never").
+#
+# NO HEAD, NO VERDICT. A checkout with no commit has no baseline to be dirty AGAINST, so there is
+# nothing to assert — the same shape as `stale_guard`'s "no IL to measure against" above, and as
+# `release`'s "a column we cannot read is not one we may overwrite" (#331). This is also what keeps the
+# receivers' shape silent: tiers 2/3 never reach here at all.
+#
+# A LINKED WORKTREE IS THE SANCTIONED FLOW, SO IT IS EXEMPT — and getting this wrong would aim the
+# guard at the one worker obeying the rule it enforces. pnext-item §2 orders you to work the item in a
+# worktree; a kit author who does that and builds there makes tier 4 resolve THERE, against a tree
+# their own correct edits have made dirty. Warning them would accuse them of the §2 violation they are
+# in the middle of avoiding, and there is nothing to warn about: no other worker resolves an engine
+# through their worktree, so the WIP is reachable by nobody but them. Only the MAIN checkout is shared,
+# and only its dirt is everyone's problem. `--git-dir` == `--git-common-dir` is exactly that question
+# (they diverge in a linked worktree and nowhere else), which is why this is a git question and not a
+# guess about paths.
+#
+# `status --porcelain`, NOT `diff --quiet`: it sees STAGED work (a `git add`ed WIP is still not on
+# main) and untracked files, which `diff` alone cannot. `bin/` and `obj/` are gitignored, so the build
+# every worker performs is invisible to it — the difference between a guard and a permanent false
+# positive. Measured at ~3ms.
+#
+# AND PLAIN `status`, DELIBERATELY — no `--no-optional-locks`. It looks made for this caller, and it is
+# the `-quit` trap above wearing a different hat: it is git 2.19+, and on anything older it is an
+# unknown option, which this probe's necessary `2>/dev/null` would swallow — leaving `$dirty` empty,
+# "empty" reading as "clean", and the guard SILENTLY never firing. The contention it would avoid does
+# not exist: measured with `.git/index.lock` HELD, `status` still answered correctly and exited 0,
+# because refreshing the index is *optional* and git simply skips the write. A real portability hole
+# traded for an imaginary lock.
+#
+# SCOPED TO WHAT ACTUALLY ENDS UP IN THE ENGINE, which is more than `src/`. The root
+# `Directory.Build.props`, `Directory.Packages.props` and `global.json` are imported implicitly by every
+# project beneath them, so a dirty package pin or SDK band changes the compiled engine exactly as an
+# edited `.fs` does — and #672 (the ADR-0032 shared-build-config rollout) is an epic whose whole subject
+# is editing those files. Naming only `src/` would have left the guard blind to part of its own subject:
+# #266's signature, rebuilt inside the check written to end it. A pathspec that matches nothing is
+# lenient (exit 0, no output), so naming a file this repo may not have costs nothing.
+dirty_guard() {
+  local top="$1" dirty n detail
+  git -C "$top" rev-parse --verify -q HEAD >/dev/null 2>&1 || return 0
+  [ "$(git -C "$top" rev-parse --git-dir 2>/dev/null)" \
+    = "$(git -C "$top" rev-parse --git-common-dir 2>/dev/null)" ] || return 0
+  dirty="$(git -C "$top" status --porcelain -- \
+             src scripts/fsgg-coord Directory.Build.props Directory.Packages.props global.json 2>/dev/null)"
+  [ -n "$dirty" ] || return 0
+  n="$(printf '%s\n' "$dirty" | wc -l | tr -d ' ')"
+  detail="$(printf '%s\n' "$dirty" | head -5 | sed 's/^/              /')"
+  [ "$n" -gt 5 ] && detail="$detail
+              … and $((n - 5)) more"
+  echo "fsgg-coord: WARNING — this engine is built from UNCOMMITTED code (#709)." >&2
+  echo "            $n path(s) that end up INSIDE the engine are modified in this SHARED checkout:" >&2
+  printf '%s\n' "$detail" >&2
+  echo "            Somebody is working the kit here, which pnext-item §2 forbids. Every worker on this" >&2
+  echo "            board runs THIS scripts/fsgg-coord, so that WIP — the scheduler, the claim CAS, the" >&2
+  echo "            board writer — is deciding your claims too. If it is yours: move it to a worktree." >&2
+  return 0
+}
+
 # AN EXPLICIT PATH IS AN INSTRUCTION, NOT A HINT (bash's rule, kept exactly): if it is set and not runnable,
 # REFUSE — do not fall through to some other engine the caller did not choose.
 if [ -n "${FSGG_COORD_ENGINE_BIN:-}" ]; then
@@ -144,6 +240,10 @@ if [ -n "$TOP" ]; then
   # `src/` beside the binary, so it is the one tier that can be stale against it (#929).
   CANDIDATE="$TOP/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
   if [ -x "$CANDIDATE" ]; then
+    # DIRTY BEFORE STALE, because a dirty checkout is usually WHY an engine is stale, and a refusal is
+    # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
+    # one never does, so it cannot swallow that refusal.
+    dirty_guard "$TOP"
     stale_guard "$TOP" "${CANDIDATE}.dll" "${1:-}"
     exec "$CANDIDATE" "$@"
   fi

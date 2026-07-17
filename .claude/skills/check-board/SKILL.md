@@ -50,6 +50,44 @@ scripts/fsgg-coord budget                      # free; are we near the GraphQL c
 Dry run is the default, as it is for `reap` and `coordination-sync --check`. Read the findings
 before you let anything write.
 
+## The rules this pass enforces
+
+**These are the engine's, and they are GENERATED — the §2 finding codes below are this skill's own.**
+That difference is the one to hold onto: a finding code is a decision *this pass* makes about what to
+report and what to refuse to fix, where these are facts about what is *true*, and a reconciler that
+gets one wrong enforces it wrong across the whole board. They were restated here by hand until #889.
+
+If you are re-spelling one of these in `jq`, spell it once.
+
+<!-- BEGIN GENERATED: fsgg-protocol:reconcile-rules -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
+
+  These rules were restated by hand here, and a RECONCILER restating them is the sharpest form
+  of the problem: this pass exists to correct the projection, so a rule it gets wrong is a rule
+  it enforces WRONG across the whole board. The hand-written copies agreed with each other for
+  as long as they existed (#916). Edit Protocol.fs and regenerate.
+-->
+
+*Generated from the typed core. The engine that resolves your blockers is the engine that wrote
+this. The full rule set, with the incident behind each one, is in
+[intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md).*
+
+**`Paths:` is a declaration, and a fenced one is a QUOTATION**
+
+Declare the touch-set as a `Paths:` line at up to three leading spaces. A `Paths:` line INSIDE a fenced code block is a quotation of the grammar, not a use of it — the protocol docs quote it constantly. `Paths: none` is a SENTINEL meaning "this item deliberately has no touch-set", and it is not the same fact as having forgotten one.
+
+**A MERGED blocker is RESOLVED; an unreadable one BLOCKS**
+
+`Blocked by` clears on CLOSED **or MERGED**. It does not clear on OPEN, on a blocker whose state could not be read (unverifiable), or on prose that is not an issue ref at all (unparseable) — all three BLOCK.
+
+**A read that did not happen may never render as a confident answer**
+
+An error, an empty result, and a legitimate "no" are three different facts. A failed board scan is not an empty board; a failed marker read is not an unheld item; an unread issue body is not an undeclared touch-set. Every one of them fails CLOSED and says which it was.
+
+<!-- END GENERATED: fsgg-protocol:reconcile-rules -->
+
 ## 1. Snapshot (three reads, whole board)
 
 Take the snapshot **once** and classify from it. Do not re-query per item — a scan is a full-board
@@ -105,20 +143,10 @@ Two shape details that will bite you if you skim:
 - **The ref field is `raw`, not `ref`** — `.blockers[].raw` is `"FS.GG.Game#321"`. `.ref` yields
   `null`, which prints as a finding you cannot act on.
 
-**A blocker is RESOLVED iff it is `closed` *or* `merged`.** The engine spells this rule once and
-`fsgg-coord facts` will recite it to you; the scheduler, the `BLOCKED BY` column and `take`'s
-diagnostic all consume that one copy. If you are re-spelling it in jq, spell it once.
-
-`merged` is not pedantry. `Blocked by` may name a **pull request**, whose state is `open | closed |
-merged` — so a rule that only clears on `closed` unblocks when the PR is **abandoned** and blocks
-forever once it is **finished**. The gate opened precisely when the blocking work was thrown away,
-and shut precisely when it was done (`.github#476`). If a blocker is an issue rather than a PR the
-distinction cannot arise — but you do not know which it is until you look, so do not assume.
-
 `scan` resolves an off-board ref **over REST itself**, in the scan, and says how many on stderr
 (`scan: 1059 candidate(s); 0 off-board blocker(s) resolved`) — you no longer have to. What it
-cannot resolve stays `unknown`, and an `unknown` **blocks**: "I could not look" is not "I looked
-and it is fine" (epic `#266`). Same for `unparseable`.
+cannot resolve stays `unknown`, and both `unknown` and `unparseable` **block**, per `fail-closed`
+above.
 
 ## 2. The findings
 
@@ -218,11 +246,10 @@ The touch-set lives in the issue body, which the REST issue list already carries
 **no extra call**:
 
 **Do not re-grep for `Paths:` — ask the tool.** A hand-rolled `test("(?m)^Paths:")` is a **fourth**
-parser of a grammar that already has three, and it is the loosest: it is not fence-aware (a `Paths:`
-line inside a code fence **declares nothing** — `#277`), it is case-sensitive where the tool accepts
-up to three leading spaces and either case, and it counts the `Paths: none` **sentinel** as a
-declaration when the whole point of `#496` was to tell those two apart. `lint` applies the real
-grammar, and since `#520` it also reports a touch-set that is *declared but unusable*:
+parser of a grammar that already has three, and it is the loosest: it gets the fence rule and the
+`Paths: none` sentinel wrong — both of which `touch-set-declaration` states above — and it is
+case-sensitive where the tool is not. `lint` applies the real grammar, and since `#520` it also
+reports a touch-set that is *declared but unusable*:
 
 ```sh
 scripts/fsgg-coord lint --repo <r> --json \
@@ -265,8 +292,8 @@ Then, per blocker state (lower case — see §1):
   **REST** — `gh issue view` is GraphQL, and spending the budget here is spending the budget this
   pass needs to write its own fixes in §4:
 
-  A blocker ref reads `owner/repo#n`; REST wants the parts, so split it. Keep `html_url` — step 2
-  of §4 (`gh project item-add --url`) needs it, and it is the field that tells an issue from a PR.
+  A blocker ref reads `owner/repo#n`; REST wants the parts, so split it. Keep `html_url` — it is the
+  field that tells an issue from a PR, which is exactly what `blocker-resolution` above turns on.
   The scan hands you the parts already (`.blockers[]` carries `owner`, `repo`, `number` beside
   `raw`), so you rarely have to parse the ref yourself:
 
@@ -292,9 +319,9 @@ Then, per blocker state (lower case — see §1):
 
   `CLOSED` (or a merged PR) → treat as `BLOCKER-CLEARED`. `OPEN` → the blocker is genuine but
   **off-board**, so `next` will refuse this item forever and never say why in a way you can act on.
-  Fix the *cause*: board the blocker (§2's `gh project item-add` note — `fsgg-coord add` is gone),
-  turning `unknown` into `open`. The remedy is the same whether the blocker is an issue or a PR;
-  only the diagnosis gets clearer.
+  Fix the *cause*: board the blocker (`fsgg-coord add <i>` — see §2, and mind its note on where that
+  verb exists yet), turning `unknown` into `open`. The remedy is the same whether the blocker is an
+  issue or a PR; only the diagnosis gets clearer.
 - **`unparseable`** — prose or a placeholder leaked into the field before it was validated. Report
   it with the offending token. A human re-writes the field with refs, or clears it — and `Blocked
   by` is a **text** field, so the single-field form is the one that works here:
