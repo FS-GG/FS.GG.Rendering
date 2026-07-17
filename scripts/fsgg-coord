@@ -365,8 +365,60 @@ if [ -n "$TOP" ]; then
     # run` prints a restore hint and exits 1 — so restore it once (bookkeeping, in a subshell), then exec.
     # Asking a worker to restore has a measured hit rate of zero; do it for them.
     if ! ( cd "$TOP" && dotnet tool run fsgg-coord-engine --version ) >/dev/null 2>&1; then
-      ( cd "$TOP" && dotnet tool restore ) >/dev/null 2>&1 \
-        || die "the engine is declared in $MANIFEST but 'dotnet tool restore' failed — the feed is unreachable or the version is unpublished"
+      # THE RESTORE'S OWN DIAGNOSIS IS THE EVIDENCE — DO NOT DISCARD IT AND THEN GUESS (#957).
+      #
+      # This was `>/dev/null 2>&1 || die "… the feed is unreachable or the version is unpublished"`:
+      # the restore's words thrown away, and TWO causes asserted from an exit code. Both are false for
+      # the failure that actually fires — a missing credential for the auth-walled org feed, which says
+      # `401 (Unauthorized)` in as many words. The cause that fires was not in the list, and the list
+      # was not observed. That is #266's class (a check reporting a cause it structurally cannot see),
+      # and it fails toward the two LEAST actionable readings: told "the feed is unreachable" a worker
+      # checks their network; told "the version is unpublished" they go read the release workflow.
+      # Neither is the remedy, and the real one was named nowhere. It cost the reporter a debugging
+      # pass on an otherwise-clean checkout.
+      if ! restore_out="$( cd "$TOP" && dotnet tool restore 2>&1 )"; then
+        # A HINT IS KEYED OFF THE OUTPUT, NEVER ASSERTED BLIND — that asymmetry IS the fix. Output we
+        # do not recognise gets NO cause: the restore's own words are the finding, and inventing one on
+        # top of them is the bug being removed. The two original causes survive here, demoted from
+        # fallback to what they always should have been — claims made only when something observed
+        # supports them.
+        # MATCH ON THE PHRASE, NEVER ON A BARE STATUS NUMBER. `*401*` would fire on any output that
+        # happens to contain those three digits — a hash, a version, a tmpdir called `tmp.401xyz` — and
+        # then assert an auth failure nobody observed. That is this block's own bug, one level down, so
+        # the patterns below are anchored to text NuGet actually emits.
+        hint=""
+        case "$restore_out" in
+          *"401 (Unauthorized)"*|*Unauthorized*)
+            hint="
+
+  This is an AUTH failure, not an unreachable feed. The org feed (nuget.pkg.github.com) refused the
+  credentials. Export FSGG_PACKAGES_ACTOR (your GitHub login) and FSGG_PACKAGES_READ_TOKEN (a PAT with
+  read:packages) — a receiver's nuget.config reads them as %FSGG_PACKAGES_ACTOR% / %FSGG_PACKAGES_READ_TOKEN%." ;;
+          *"403 (Forbidden)"*|*Forbidden*)
+            hint="
+
+  The credential was ACCEPTED and is missing the scope: FSGG_PACKAGES_READ_TOKEN needs read:packages." ;;
+          *"Unable to load the service index"*|*"No such host"*|*"Name or service not known"*|*"Connection refused"*|*"timed out"*)
+            hint="
+
+  The feed is genuinely unreachable — this one IS a network fault, and the message says so because the
+  restore's output said so." ;;
+          *"is not found in NuGet feeds"*|*"Unable to find package"*)
+            # The first pattern is the wording NuGet ACTUALLY emits — measured by driving a manifest that
+            # declares a version no feed carries, not guessed. The obvious `Unable to find package` never
+            # fired against the real thing; it is kept because `dotnet tool install` does use it. A hint
+            # branch that cannot match is the same fail-open shape as the assertion this whole block
+            # replaces, so these patterns are observations, not expectations. A bare `*404*` was dropped
+            # for the reason given above the `case`.
+            hint="
+
+  The version declared in the manifest is not on the feed. This is the 'unpublished' case, claimed here
+  only because the restore reported it." ;;
+        esac
+        die "the engine is declared in $MANIFEST but 'dotnet tool restore' failed:
+
+$restore_out$hint"
+      fi
     fi
     # exec from the ORIGINAL cwd, not $TOP: `dotnet tool run` finds the manifest by walking up from here,
     # and the engine is cwd-sensitive (reap scopes to the checkout you stand in, #480; the git-remote repo
