@@ -81,8 +81,9 @@ module Harness =
             System.Text.RegularExpressions.RegexOptions.Compiled)
 
     /// Build all units in one generated project against the pin. ONE restore + build amortized over every
-    /// fence. `packages` are the pinned package ids to reference; `pin` is the live `$(FsGgUiVersion)`.
-    let compile (pin: string) (packages: string list) (units: CompilationUnit list) : Outcome =
+    /// fence. `packages` are the pinned `(id, version)` pairs to reference — read live from the props by
+    /// `Pins.pinnedPackages`, so there is no second hardcoded oracle version.
+    let compile (packages: (string * string) list) (units: CompilationUnit list) : Outcome =
         let workDir =
             Path.Combine(Path.GetTempPath(), "fsgg-docfences-" + Guid.NewGuid().ToString("N"))
 
@@ -91,7 +92,7 @@ module Harness =
         try
             let references =
                 packages
-                |> List.map (fun id -> $"    <PackageReference Include=\"{id}\" Version=\"{pin}\" />")
+                |> List.map (fun (id, version) -> $"    <PackageReference Include=\"{id}\" Version=\"{version}\" />")
                 |> String.concat "\n"
 
             let compiles =
@@ -171,3 +172,37 @@ module Harness =
                   Diagnostics = diagnostics }
         finally
             try Directory.Delete(workDir, true) with _ -> ()
+
+    /// A stable, filesystem-safe module name for a fence, encoding its origin so a diagnostic maps back.
+    let moduleNameFor (index: int) (fence: Corpus.FenceBlock) : string =
+        let slug =
+            fence.Doc
+            |> Seq.map (fun c -> if System.Char.IsLetterOrDigit c then c else '_')
+            |> Seq.toArray
+            |> System.String
+        $"Fence_{index}_{slug}_L{fence.StartLine}"
+
+    /// Turn the compilable fences of a corpus into units: corpus preamble (T006) + the fence's own
+    /// `docfences:open` additions, skipping any fence marked `docfences:skip` (T007). Returns the units and
+    /// the skipped fences (so a caller can report what was excluded, and why — never a silent drop).
+    let unitsFor (fences: Corpus.FenceBlock list) : CompilationUnit list * (Corpus.FenceBlock * string) list =
+        let skipped =
+            fences |> List.choose (fun f -> f.Skip |> Option.map (fun r -> f, r))
+
+        let units =
+            fences
+            |> List.filter (fun f -> Option.isNone f.Skip)
+            |> List.mapi (fun i f ->
+                { ModuleName = moduleNameFor i f
+                  Origin = f
+                  Opens = Preamble.forKind f.Kind @ f.ExtraOpens
+                  Body = f.Body })
+
+        units, skipped
+
+    /// Was a build failure caused by the PIN being unpublished (release window: NU1101/NU1102), rather than
+    /// by a fence? Then the harness must skip, not fail — the `PinPending` waiver at the restore boundary
+    /// (FR-012).
+    let pinUnpublished (outcome: Outcome) =
+        not outcome.Succeeded
+        && (outcome.RawOutput.Contains "NU1101" || outcome.RawOutput.Contains "NU1102")

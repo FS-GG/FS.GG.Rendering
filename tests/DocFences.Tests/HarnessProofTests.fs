@@ -15,18 +15,12 @@ open FS.GG.DocFences.Corpus
 /// restore fails for a DIFFERENT reason (NU1101/NU1102) and the test is skipped rather than red — the
 /// `PinPending` waiver at the harness boundary (FR-012).
 
-let private pin = "0.12.0"
-let private scenePackage = [ "FS.GG.UI.Scene" ]
+let private pin = Pins.uiVersion.Value
+let private scenePackage = [ "FS.GG.UI.Scene", pin ]
 
 /// A fake origin so a diagnostic has a doc+line to map back to.
 let private origin doc line body : FenceBlock =
-    { Kind = ProductSkill; Doc = doc; StartLine = line; Body = body }
-
-/// Did the build fail because the PIN is unpublished (release window), not because of the fence? Then the
-/// proof cannot run and must skip, not fail — the waiver.
-let private pinUnpublished (o: Harness.Outcome) =
-    not o.Succeeded
-    && (o.RawOutput.Contains "NU1101" || o.RawOutput.Contains "NU1102")
+    { Kind = ProductSkill; Doc = doc; StartLine = line; Body = body; Skip = None; ExtraOpens = [] }
 
 [<Tests>]
 let tests =
@@ -42,9 +36,9 @@ let tests =
                     Harness.Opens = [ "FS.GG.UI.Scene" ]
                     Harness.Body = body }
 
-              let outcome = Harness.compile pin scenePackage [ unit ]
+              let outcome = Harness.compile scenePackage [ unit ]
 
-              if pinUnpublished outcome then
+              if Harness.pinUnpublished outcome then
                   skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
 
               Expect.isTrue
@@ -61,9 +55,9 @@ let tests =
                     Harness.Opens = [ "FS.GG.UI.Scene" ]
                     Harness.Body = body }
 
-              let outcome = Harness.compile pin scenePackage [ unit ]
+              let outcome = Harness.compile scenePackage [ unit ]
 
-              if pinUnpublished outcome then
+              if Harness.pinUnpublished outcome then
                   skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
 
               Expect.isFalse

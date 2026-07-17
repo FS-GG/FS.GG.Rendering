@@ -13,9 +13,11 @@
 
   <ItemGroup>
     <Compile Include="Corpus.fs" />
-    <Compile Include="CorpusTests.fs" />
+    <Compile Include="Pins.fs" />
     <Compile Include="Harness.fs" />
+    <Compile Include="CorpusTests.fs" />
     <Compile Include="HarnessProofTests.fs" />
+    <Compile Include="DriveTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -51,6 +51,51 @@ let tests =
                   Expect.isGreaterThan (List.length f.Body) 0 (sprintf "empty scaffold fence at %s:%d" f.Doc f.StartLine)
           }
 
+          test "docfences:skip and docfences:open directives are parsed off the fences they precede (T007)" {
+              // Exercised against a FIXTURE, not a shipped skill: the product skills are frozen and
+              // manifest-tracked, so authoring real skip directives into them is a deliberate act tied to
+              // the (still open) full-corpus design decision — not something a unit test should require.
+              let fixture =
+                  String.concat
+                      "\n"
+                      [ "# Fixture"
+                        ""
+                        "A plain fence:"
+                        ""
+                        "```fsharp"
+                        "let a = 1"
+                        "```"
+                        ""
+                        "<!-- docfences:skip illustrative — undefined locals -->"
+                        "```fsharp"
+                        "doThing undefinedLocal"
+                        "```"
+                        ""
+                        "<!-- docfences:open FS.GG.UI.Controls -->"
+                        "```fsharp"
+                        "Button.create ()"
+                        "```" ]
+
+              let fences = Corpus.parseMarkdown Corpus.ProductSkill "fixture/SKILL.md" fixture
+
+              Expect.equal (List.length fences) 3 "three fences in the fixture"
+
+              let plain = fences.[0]
+              Expect.isNone plain.Skip "the first fence has no directive"
+              Expect.isEmpty plain.ExtraOpens "the first fence adds no opens"
+
+              let skipped = fences.[1]
+              Expect.isSome skipped.Skip "the second fence carries a skip directive"
+              Expect.stringContains
+                  (skipped.Skip |> Option.defaultValue "")
+                  "illustrative"
+                  "the skip reason is captured"
+
+              let opened = fences.[2]
+              Expect.isNone opened.Skip "the third fence is not skipped"
+              Expect.contains opened.ExtraOpens "FS.GG.UI.Controls" "the open directive adds the namespace"
+          }
+
           test "the map covers both fence-bearing corpora and excludes the generated mirror" {
               let kinds = Corpus.all () |> List.map fst
               Expect.contains kinds ProductSkill "product skills must be a corpus"
