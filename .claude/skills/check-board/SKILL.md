@@ -131,7 +131,7 @@ An error, an empty result, and a legitimate "no" are three different facts. A fa
 
 <!-- END GENERATED: fsgg-protocol:reconcile-rules -->
 
-## 1. Snapshot (three reads, whole board)
+## 1. Snapshot (four reads — three of the board, one of the issues)
 
 Take the snapshot **once** and classify from it. Do not re-query per item — a scan is a full-board
 read, and the whole point of `fsgg-coord` is that it costs ~3 points instead of ~2,500.
@@ -141,7 +141,24 @@ scripts/fsgg-coord scan --fresh --include-backlog > /tmp/scan.json  # EVERY item
 scripts/fsgg-coord lint --json            > /tmp/lint.json   # touch-sets, epic invariants, the Done/open
                                                             #   note, and the §4 roll-up candidates
 scripts/fsgg-coord who  --repo <r> --json > /tmp/who.json    # live claims, per repo
+scripts/fsgg-coord issues <r>             > /tmp/issues.json # the REPO's open issues — the ONLY read here
+                                                            #   that is not of the board (OFF-BOARD-ISSUE)
 ```
+
+**The fourth read is not an optimisation, and for most of this skill's life it was missing.** The
+first three all read the **board**, and `OFF-BOARD-ISSUE`'s subject is *an issue that is not on the
+board* — a fact no board read contains, **by construction**. So the rule sat in §2's table, `--apply`
+named a fix for it (§6 step 2), and **nothing in the pass ever listed a repo's issues**: the finding
+could not fire, and the pass reported a clean board over every item nobody had boarded
+([#654](https://github.com/FS-GG/.github/issues/654), [#1065](https://github.com/FS-GG/.github/issues/1065)).
+That is [#266](https://github.com/FS-GG/.github/issues/266)'s signature in its purest form — a check
+that runs, reports clean, and **cannot see its subject** — and it is why this read is listed with the
+other three rather than left to be remembered.
+
+`issues` is **REST**, so it does not touch the GraphQL budget the three board reads share. It pages
+for you, filters pull requests out already, and defaults to `state=open` — which is the state this
+rule wants, so take the default. Note the cost lands on the budget the **claim lock** lives on
+(`#895`), so take it once, per repo, into a file — never per item.
 
 **`--fresh` is not optional, and it is the one flag `scan` needs that `ready` never did.** `scan` is
 the **scheduler's** read, so it is served from a 90s shared cache (`FSGG_COORD_SCAN_TTL_SEC`) — that
@@ -228,7 +245,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 |---|---|---|
 | `CLOSED-ISSUE-NOT-DONE` | **no live claim**, `state == CLOSED`, and `status != Done` | `set-field --batch <i> Status=Done` |
 | `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **ask** (§5) — is the work done, or was the flip premature? |
-| `OFF-BOARD-ISSUE` | open `roadmap` issue in a rostered repo with no board item | `fsgg-coord add <i>` — idempotent; see the note below |
+| `OFF-BOARD-ISSUE` | open, **non-bot**, not `board:unlisted` issue in a rostered repo with no board item — see the note below, and §1's fourth read, which is the only read that can see it | `fsgg-coord add <i>` — idempotent; see the note below |
 | `BLOCKER-CLEARED` | **no live claim**, every blocker `closed` **or `merged`**, but `status == Blocked` | `set-field --batch <i> Status=Ready` |
 | `BLOCKER-UNKNOWN` | a blocker ref `scan` could not resolve | resolve over REST (§3), then board the blocker if it is open |
 | `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **ask** (§5) — what did the prose mean? `Blocked by` is text, so the answer can be written |
@@ -302,6 +319,90 @@ carries `#857` and the pin flips (as `#852`/`#853` did for 0.2.0). So **"is it f
 answers at once**, and which one is true depends only on where you are standing — a merged fix is
 not a distributed one (`#846`). `--batch` is correct in both, and is the cheaper spend regardless:
 it writes N fields in **one aliased mutation** (`#448`) against a budget every worker shares.
+
+**`OFF-BOARD-ISSUE` is derived from §1's fourth read against the board, and it keys on NO label.**
+The board is the set of items; the issue list is the set of work. The finding is the difference:
+
+```sh
+# 1. the repo NAME as the BOARD spells it — NOT the short-id. Derived from the issue list itself,
+#    so the two sides cannot disagree about which repo they mean (see the vocabulary note below).
+[ "$(jq 'length' /tmp/issues.json)" -gt 0 ] || { echo "no open issues — nothing to reconcile"; exit 0; }
+r_name="$(jq -r '.[0].repository_url | split("/") | last' /tmp/issues.json)"
+
+# 2. board membership for that repo — from the snapshot you already have, no extra call.
+#    NON-EMPTY OR STOP: an empty set here means every issue reads as off-board (see below).
+jq -r --arg r "$r_name" '.items[] | select(.repo == $r) | .number' /tmp/scan.json > /tmp/boarded.txt
+[ -s /tmp/boarded.txt ] || { echo "board holds NO items for $r_name — a READ finding, not a clean board"; exit 1; }
+
+# 3. the difference: open issues that are not on it, minus the two exclusions.
+jq -r --slurpfile boarded /tmp/boarded.txt '
+  .[]
+  | select(.user.type != "Bot")                               # exclusion 1: bots
+  | select([.labels[].name] | index("board:unlisted") | not)  # exclusion 2: the opt-out
+  | . as $i
+  | select($boarded | index($i.number) | not)                 # $i, NOT `.` — index() rebinds `.`
+  | "OFF-BOARD-ISSUE  #\($i.number)  \($i.title)"' /tmp/issues.json
+```
+
+Three shape details. The first is this skill's own trap turned on itself, and the other two fail in
+the direction that boards things it should not:
+
+- **`<r>` and `.repo` are two different vocabularies, and `select` does not mind.** Every other read
+  in §1 takes `--repo <r>`, a **registry short-id** (`sdd`) — but `scan`'s `.repo` field is the repo
+  **NAME** (`FS.GG.SDD`), and the two strings are equal for exactly one repo: `.github`. So
+  `select(.repo == "sdd")` matches **0 of 422 items**, boarded set empty, and the rule either halts or
+  — without the guard below — reports the entire repo as off-board. It would have been *right on
+  `.github` and wrong on the other six*, which is the worst possible way to be wrong: it passes
+  wherever you test it. Hence deriving `r_name` from `.repository_url` rather than reusing `<r>`: the
+  name comes from the same read as the issues, so it cannot drift from them. This is `#1058`'s lesson
+  applied to this very rule — *a selector that matches nothing does not error, it returns empty, and
+  empty renders as "nothing wrong with the board"*.
+- **`. as $i` is load-bearing.** `select($boarded | index(.number))` reads `.number` against the
+  *array*, not the issue — it yields `null` for every item, so **every** issue reports as off-board.
+  Bind the issue first.
+- **An empty `/tmp/boarded.txt` reports the whole repo**, which under `--apply` boards it. That is
+  `#421`'s rule exactly — *the only thing licensing the mutation is a successful read that found
+  nothing* — and here a **failed** board read and a genuinely empty board are the same file. Hence
+  the guard: a rostered repo with zero board items is a finding about the read, not about the issues.
+
+**It used to key on `roadmap`, and that is why it never fired even once the read existed.** The
+condition was *"open `roadmap` issue in a rostered repo with no board item"* — a predicate that can
+only see the auto-add path. Measured on `.github` (2026-07-17): **21 of 27** boarded items — 78% —
+carry **no** `roadmap` label, and **zero** `roadmap`-carrying issues were unboarded. Boarding is
+overwhelmingly a manual `fsgg-coord add`, so the only automated net for a *missed* boarding was scoped
+to a label that real board traffic never touches. Worse, **nothing applies `roadmap`**:
+`scripts/apply-labels.sh` *creates* it in every repo, `pnext-item` §4's filing block hard-codes
+`cross-repo`/`cross-repo:request`, and review and sweep paths apply nothing. The label believed to be
+the board's admission ticket is issued by no one, and
+[#305](https://github.com/FS-GG/.github/issues/305)'s own open question 1 — *does the board's built-in
+workflow actually filter on `label:roadmap`?* — **has never been answered**, because Projects v2 does
+not expose a workflow's filter query via GraphQL (`ProjectV2Workflow` exposes `name` and `enabled`, no
+`query`). So the fix is **not** "apply `roadmap` more often": that reinforces a trigger nobody has
+verified. The net keys on board membership, which is a fact, and on nothing else.
+
+What it cost, every time in this exact shape — an honest issue, filed, and invisible to `take`:
+
+| issue | off-board for | what it was |
+|---|---|---|
+| [#1010](https://github.com/FS-GG/.github/issues/1010) | hours, over a **red `main`** | the fix for a `source-coherence` red. Its author *recorded the omission in the issue* and it still went unseen |
+| [FS.GG.Rendering#815](https://github.com/FS-GG/FS.GG.Rendering/issues/815) | 2 days | filed by the 2026-07-15 architecture review |
+| [FS.GG.Rendering#833](https://github.com/FS-GG/FS.GG.Rendering/issues/833) | 1 day | a required `enforce_admins` gate that reds every future re-freeze — orphaned when its parent epic closed |
+
+**The two exclusions are facts the read carries, not a list of numbers that rots.** A hardcoded
+issue number is the thing this rule is *for* — it would go stale the first time a second ledger
+appeared, and silently:
+
+- **`.user.type == "Bot"`** — renovate's `Dependency Dashboard` is one per repo and is correctly
+  off-board. This is a field REST already returns; no convention, nothing to maintain.
+- **the `board:unlisted` label** — the opt-out, following `architecture-map:unaffected`'s exact
+  precedent (`scripts/apply-labels.sh`). It is how a human says *"this is deliberately not board
+  work"* once, instead of dismissing the same finding every pass.
+
+**The default is REPORTED, and that is the fail-loud direction on purpose.** An issue nobody
+labelled is reported, not skipped — so a missing opt-out costs one noisy line, while a missing
+*inclusion* costs invisible work. That asymmetry is the whole lesson of `roadmap`: **a net that
+requires a label nobody applies reports clean forever.** Do not "fix" a noisy finding by narrowing
+this predicate; label the issue, and the noise is gone for good.
 
 **Board an off-board issue with `fsgg-coord add <i>`, and never with the raw `gh project` call.**
 The client is metered and cached; a recipe that reaches past it is an unmetered principal on the
