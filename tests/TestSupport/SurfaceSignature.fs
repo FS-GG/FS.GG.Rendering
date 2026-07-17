@@ -29,3 +29,20 @@ module SurfaceSignature =
     /// reader that must decide how much of one to consume will want the indent back.
     let internalDeclaration = Regex(@"^(\s*)(val|module|type)\s+internal\s")
 
+    /// The ONE reader of a PUBLIC `val` declaration in a signature file (spec 255 / #695 convergence).
+    ///
+    /// `val NAME :`, at any indent, EXCLUDING `val internal` (a `(?!internal\b)` guard, not a blanklist),
+    /// allowing an `inline` modifier, and — this is the part every ad-hoc copy got wrong at least once —
+    /// allowing a trailing PRIME on the name. #598: "the member may end in a prime, and it must, or the
+    /// rule invents violations." The mirror really ships one (`val checked'` in Controls), and a name class
+    /// of `[a-z]\w*` (no prime) does not merely miss the name — it fails the whole match, because after
+    /// `checked` comes `'`, not the `:` the regex then demands, so the declaration is INVISIBLE to the gate.
+    /// That is a fail-OPEN hole, which is why this is the one reader and the ad-hoc `[a-z]\w*` copies fold
+    /// onto it.
+    ///
+    /// Group `indent` is the leading whitespace — a column-0 `val` is illegal in F# (a `val` lives in a
+    /// module or type), so in practice it is always non-empty; a caller that wants nested-only can still
+    /// gate on its length. Group `name` is the identifier a call site spells.
+    let publicValRegex =
+        Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
+

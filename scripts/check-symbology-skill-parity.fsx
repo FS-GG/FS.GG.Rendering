@@ -44,6 +44,11 @@ open System
 open System.IO
 open System.Text.RegularExpressions
 
+// #695 convergence: the ONE markdown-fence reader (#669). This script used to hand-roll its own
+// ```fsharp regex — the third fence engine that disagreed with the two the tests already share.
+#load "../tests/TestSupport/MarkdownFences.fs"
+open FS.GG.TestSupport
+
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
 
 let libraryPath = Path.Combine(repoRoot, "src", "Symbology", "skill", "SKILL.md")
@@ -110,10 +115,15 @@ let invariantsSection = section "### The invariants" @"(?m)^###\s+The invariants
 /// so scanning them would false-positive on a legitimate example-only edit. Here we compare only the
 /// documented public API, which the two variants MUST keep in step.
 let fenceSymbols (markdown: string) : Set<string> =
-    Regex.Matches(publicContract markdown, @"```fsharp\s*\n(.*?)```", RegexOptions.Singleline)
-    |> Seq.collect (fun (m: Match) ->
-        Regex.Matches(m.Groups.[1].Value, @"(?m)^\s*(?:val|type)\s+([A-Za-z_][A-Za-z0-9_]*)")
-        |> Seq.map (fun d -> d.Groups.[1].Value))
+    // Fence-finding is MarkdownFences' one answer now (#695); the val/type NAME extraction stays local —
+    // it reads both `val` and `type` for cross-variant parity, a different concern from the `.fsi` val reader.
+    let nameRegex = Regex(@"^\s*(?:val|type)\s+([A-Za-z_][A-Za-z0-9_]*)")
+
+    MarkdownFences.scan (publicContract markdown)
+    |> MarkdownFences.fsharpLines
+    |> List.choose (fun line ->
+        let m = nameRegex.Match line.Text
+        if m.Success then Some m.Groups.[1].Value else None)
     |> Set.ofSeq
 
 /// The bold lead-phrase of each identity-label invariant bullet in that section: a list item whose text
