@@ -1084,13 +1084,42 @@ a board that lies.
 
 > **This block used to say the opposite, and the opposite was true when it was written.** It said the
 > stamp was *"DROPPED — silently"* because *"only `claim` defers"*, and prescribed
-> `budget | jq .pendingBoardWrites` to prove it. Every part of that is now dead:
+> `budget | jq .pendingBoardWrites` to prove it. All three are dead, and two died honestly:
 > [#510](https://github.com/FS-GG/.github/issues/510) made deferral universal, so every board write
 > queues; [#878](https://github.com/FS-GG/.github/issues/878) ported the `flush` that replays it,
-> which the engine had named all along and never had. And `pendingBoardWrites` was **never** a field
-> the engine emitted — that `jq` answered `null`, not `0`, so the check prescribed for detecting a
-> dropped write could not detect one, and read as "0 = dropped" on every healthy run. `flush
-> --dry-run` is the read that actually looks at the queue.
+> which the engine had named all along and never had. The `jq` line is dead too — deleting it was
+> right.
+>
+> **But the REASON given for killing it was a misdiagnosis — this block's own repair, wrong in the
+> same shape as the thing it repaired** ([#1030](https://github.com/FS-GG/.github/issues/1030)). It
+> said `pendingBoardWrites` was *"**never** a field the engine emitted"*, so the `jq` answered `null`
+> and the check could not detect the drop it was for. **The engine emits it, and did when that
+> sentence was written** — #878's port added it at 17:09:52Z, and #892's head commit was authored
+> **42 minutes later** at 17:52:03Z on a branch that already contained it
+> (`compare 8237c57...1ac545690` → `behind_by=0`; do NOT read this off the squash — its ancestry
+> reflects `main` at landing time and says nothing about what the author's tree held). The base was
+> fine. The command was simply never run. Measured on `main`:
+>
+> ```console
+> $ scripts/fsgg-coord budget --json
+> {"graphql":{"limit":5000,"remaining":2191},"pendingBoardWrites":0}
+> ```
+>
+> **The old line WAS broken — just not that way.** It read `# 0 means your stamp was DROPPED, not
+> queued`, which is the semantics **inverted**: `0` is an *empty queue*, the answer a healthy run
+> gives, so the check called every landed stamp a drop. Deleting it was right; the reason given was
+> not. And *"never"* is the word that did the damage — it forecloses **looking**, at a read that costs
+> **nothing on either budget**: the depth is a local file, and the meter beside it is REST
+> `/rate_limit`, which is billed to neither counter (`Reads.fs`, `Budget = Free`). That is the read you
+> want precisely when a budget is gone — which is the state this whole section is about.
+>
+> **`null` is a third answer, and it means neither.** `Client.fs` holds `None` and `0` apart
+> deliberately ([#266](https://github.com/FS-GG/.github/issues/266)): a queue that could not be READ is
+> `null`, **never** `0` — *"I cannot tell you what is waiting"* is not *"nothing is waiting"*, and
+> rendering the second as the first is how a worker concludes a queued stamp was dropped.
+>
+> So the two reads are **complementary, not one replacing a thing that never existed**: `budget --json`
+> gives the queue's **depth**, free; `flush --dry-run` names **what** is queued and **whose**.
 
 ### REST when the budget is gone
 
