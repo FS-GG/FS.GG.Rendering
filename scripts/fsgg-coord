@@ -219,6 +219,38 @@ $detail" ;;
 # every worker performs is invisible to it — the difference between a guard and a permanent false
 # positive. Measured at ~3ms.
 #
+# AND `-c status.showUntrackedFiles=normal`, BECAUSE THE LINE ABOVE WAS NOT TRUE ON ITS OWN (#1043).
+# "it sees … untracked files" is a claim about the CALLER'S CONFIG, not about `status`: `--porcelain`
+# is a FORMATTING flag and does not override `status.showUntrackedFiles`. Set it to `no` — the usual
+# remedy for a slow `git status` on a big repo, and inherited from ~/.gitconfig, which the shared
+# checkout does not control — and this probe returns EMPTY on a tree full of uncommitted WIP. "Empty"
+# then reads as "clean" at the `[ -n "$dirty" ]` below, and the guard SILENTLY never fires: #266's
+# signature, rebuilt inside the check written to end it. Measured against a real tier-2 checkout with an
+# untracked `New.fs`: default warns `1 path(s)`, `showUntrackedFiles=no` says NOTHING AT ALL.
+#
+# This is the `-quit` trap immediately above, and the `--no-optional-locks` trap below, wearing a third
+# hat — and it is why they are worth spelling out rather than deleting as pedantry. All three are the
+# same bug: a probe whose failure is INVISIBLE, so its silence is indistinguishable from a clean tree.
+# The author reasoned it out twice for `find` and for a git flag, and the config channel kept the hole.
+#
+# `normal`, NOT `all`: it preserves exactly today's counting — a wholly-untracked directory stays
+# collapsed to one entry — so `$n path(s)` and the `head -5` truncation below are byte-identical on any
+# machine that never set the option. This forces the ANSWER's scope; it does not widen it.
+#
+# AND `core.excludesFile` IS LEFT ALONE — DECIDED, not overlooked (#1043 asked; this is the answer). It is
+# the obvious next knob: a global ignore also hides files from `status`, so why force one and not both?
+# Because THEY ARE NOT SYMMETRIC, and the difference is the whole design of this guard. Forcing
+# `showUntrackedFiles` can only ever reveal files that are genuinely uncommitted and NOT ignored — every
+# path it adds is real dirt, so it cannot produce a false positive. Forcing `core.excludesFile=/dev/null`
+# would resurrect whatever the WORKER chose to ignore globally: measured, a `Protocol.fs.swp` beside a real
+# source file reports as `?? src/…/Protocol.fs.swp` and warns about an editor swapfile that never reaches
+# the engine. That is a permanent false positive on somebody's editor, and this guard cannot afford one —
+# a warning that fires when nothing is wrong is one the fleet learns to skim, and the next one is real.
+# (The repo's OWN `.gitignore` — `bin/`, `obj/` — is unaffected by either knob: measured, `bin/artifact`
+# stays invisible with `excludesFile` forced off, so the build every worker performs stays invisible too.)
+# The trade is a far-fetched miss (a worker whose global ignore matches `*.fs`) against a plausible false
+# alarm. Take the miss.
+#
 # AND PLAIN `status`, DELIBERATELY — no `--no-optional-locks`. It looks made for this caller, and it is
 # the `-quit` trap above wearing a different hat: it is git 2.19+, and on anything older it is an
 # unknown option, which this probe's necessary `2>/dev/null` would swallow — leaving `$dirty` empty,
@@ -239,7 +271,7 @@ dirty_guard() {
   git -C "$top" rev-parse --verify -q HEAD >/dev/null 2>&1 || return 0
   [ "$(git -C "$top" rev-parse --git-dir 2>/dev/null)" \
     = "$(git -C "$top" rev-parse --git-common-dir 2>/dev/null)" ] || return 0
-  dirty="$(git -C "$top" status --porcelain -- \
+  dirty="$(git -C "$top" -c status.showUntrackedFiles=normal status --porcelain -- \
              src scripts/fsgg-coord Directory.Build.props Directory.Packages.props global.json 2>/dev/null)"
   [ -n "$dirty" ] || return 0
   n="$(printf '%s\n' "$dirty" | wc -l | tr -d ' ')"
