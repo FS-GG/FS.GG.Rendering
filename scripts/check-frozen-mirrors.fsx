@@ -192,13 +192,19 @@ let private runRequired () =
                 eprintfn "%s" (describeUndeclared skill.Id skill.Owner skill.Source relative baseline local frozenAt)
 
             | Declared ->
-                // The body IS the declaration. Two very different events land here, and they are told apart
-                // ONLY to say something true to the reader — both are green, and both are green for the same
-                // reason (#833).
+                // The body IS the declaration. Three different events land here, and they are told apart ONLY
+                // to say something TRUE to the reader — all three are green, and green for the same reason
+                // (#833). `AddedHere` is not a re-freeze and must not be called one: naming the wrong event
+                // in an otherwise-correct message is #720's exact bug, and it is no less wrong on a green line.
+                //
+                // `frozenAt` is safe to slice here where the freshness lane's copy is not: `Declared` MEANS
+                // `frozenAt = local`, and `local` is a computed sha256. The `min` costs nothing and spares
+                // the next reader from having to re-derive that.
+                let short = frozenAt.Substring(0, min 12 frozenAt.Length)
+
                 match baseline with
-                | EditedHere _
-                | AddedHere ->
-                    printfn "  frozen-mirror RE-FROZEN %-19s this change re-froze it to the declared canonical %s…" skill.Id (frozenAt.Substring(0, 12))
+                | EditedHere _ -> printfn "  frozen-mirror RE-FROZEN %-19s this change re-froze it to the declared canonical %s…" skill.Id short
+                | AddedHere -> printfn "  frozen-mirror ADDED  %-22s new mirror, declared at %s…" skill.Id short
                 | UnchangedHere _
                 | Unknown _ -> printfn "  frozen-mirror OK     %-22s body == declaration" skill.Id
 
@@ -561,11 +567,16 @@ let private runFreshness () =
                 else
                     $"NEITHER matches {skill.Owner}'s live canonical ({canonical.Substring(0, 12)}…), so this tree is wrong about this mirror twice over. Re-freeze the body from the canonical and declare that same digest, in one commit."
 
+            // `min 12 frozenAt.Length`, not a bare `Substring(0, 12)` — the same guard the registry-lag NOTE
+            // above uses, and for a reason this message is unusually exposed to: `frozenAt` is the ONE digest
+            // here that a human hand-types. A malformed pin threw `ArgumentOutOfRangeException` out of the
+            // guard, so the diagnostic that names the malformed pin was killed by the malformed pin. `local`
+            // and `canonical` are computed sha256s and cannot be short.
             eprintfn
                 "::error file=%s::FROZEN MIRROR DECLARATION DOES NOT MATCH ITS BODY — scripts/FrozenMirrorVerdict.fs declares `%s` frozen at %s…, but the body in this tree hashes %s…. %s"
                 relative
                 skill.Id
-                (frozenAt.Substring(0, 12))
+                (frozenAt.Substring(0, min 12 frozenAt.Length))
                 (local.Substring(0, 12))
                 which
 

@@ -534,7 +534,7 @@ This repo ships byte-identical copies of four product skills whose canonical bod
 
 | | question | whose commit decides it | lane |
 |---|---|---|---|
-| 1 | did **this change** edit a body this repo does not own? | **this one** — `git`, against the merge base | `--required` |
+| 1 | did **this change** edit a body this repo does not own? | **this one** — the tree, against the digest it **declares** (§4g; `git` against the merge base until #833) | `--required` |
 | 2 | is our mirror what FS.GG.Game's `main` says it is *right now*? | **somebody else's** | `--freshness` |
 
 Question 2 has an input that is not in this tree, so its answer moves when another repo merges. In a
@@ -553,10 +553,12 @@ settles under, and its one-sentence test is the whole of the decision:
 **The split.**
 
 - **`--required`**, in the `Deterministic gate`. Reads the working tree — **no registry, no canonical, no
-  network, no `GH_TOKEN`** (its `env:` block is gone, and a test asserts the absence), and since #833 **no
-  `git`** either. It reds on `MIRROR EDITED` — a body that does not hash the digest this tree **declares**
-  it froze, which is #541's entire case (see §4g); on a mirror **deleted**; and on a `NoCounterpart` body
-  **vendored in**.
+  network, no `GH_TOKEN`** (its `env:` block is gone, and a test asserts the absence). Since #833 its
+  **verdict** needs no `git` either: it reds on `MIRROR EDITED` — a body that does not hash the digest this
+  tree **declares** it froze, which is #541's entire case (see §4g); on a mirror **deleted**; and on a
+  `NoCounterpart` body **vendored in**. It still *invokes* `git`, for the **evidence** its error carries
+  (which of the body and the declaration moved) — a checkout git cannot read costs a worse message, never a
+  different verdict.
 - **`--freshness`**, in the **non-required** `Frozen mirror freshness` job. Reads the org registry and the
   owners' live bodies. Reds on `CANONICAL MOVED` and `FROZEN MIRROR STALE`, prints the runnable re-freeze
   command, and asserts the in-tree pin (`FrozenMirrorVerdict.foreignSkills`) against the registry so a new
@@ -621,9 +623,15 @@ the required lane. That is the trade, not an oversight — the alternative was ~
 whose documented remedy is *"merge past a red required check"* teaches exactly one lesson.
 
 **ADR-0105 is untouched, and did not need amending.** The sanction hashes this commit's own bytes against a
-declaration carried in this commit. No registry, no canonical, no network, no token — and, now, no `git`.
-*Could this gate turn an already-green commit red without anyone changing this repository?* Still **no**,
-and now structurally rather than by argument: `sanctionOf` has no input FS.GG.Game can move.
+declaration carried in this commit — `sanctionOf` takes two digests off the working tree and consults no
+registry, no canonical, no network, no token, and no `git`. *Could this gate turn an already-green commit
+red without anyone changing this repository?* Still **no**, and now structurally rather than by argument:
+there is no input in scope for FS.GG.Game to move.
+
+ADR-0105's own narrative still calls `MIRROR EDITED` *"the one verdict `git` proves from the commit alone"*,
+which described #738's implementation accurately and is now the *mechanism* rather than the *decision*. The
+decision — a required gate reads only the commit — is what this strengthens. Amending or superseding an
+accepted ADR is a call for a human, so it is flagged rather than done here.
 
 That also retires §4f's `git`-probe fail-closed. It was right then — that lane convicted on `git` alone, so
 a blind probe had to red or a shallow clone was a silent #541 fail-open — but its **premise** is gone. The
