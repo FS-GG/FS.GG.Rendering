@@ -1488,35 +1488,40 @@ Do not just walk away — the lease holds the item for two hours and blocks its 
 scripts/fsgg-coord release <issue>          # marker deleted, unassigned, Status RESTORED
 ```
 
-`release` undoes **the claim, and only the claim**. It asks one question: *is the item still sitting in
-the `In progress` that `claim` itself wrote?*
+`release` undoes **the claim, and only the claim** — the marker is deleted, the assignee cleared, and
+the board column is decided by the precedence below. It asks one question — *is the item still sitting in
+the `In progress` that `claim` itself wrote?* — and everything else follows from the answer, plus the
+explicit `--status` that overrides it. This table is emitted from the engine's own `unclaimColumn`, so
+it cannot drift from what `release` actually does. The most-repaired behaviour in the org — seven issues
+corrected a hand copy of it (#1099) — so read the **stdout — the tell** column and believe it:
 
-- **Yes** — that column is the claim's own footprint, so it goes back to **the column the claim
-  overwrote**: a `Backlog` item returns to `Backlog`, not `Ready` (#481). `Ready` is only the fallback
-  for a claim that recorded nothing to restore, and for a recorded `In progress`, which is that same
-  footprint written twice and still nobody's choice.
-- **No** — then somebody moved it **during the lease**, deliberately, and `release` **preserves it**
-  (#331/#911). A `Blocked` you set because you hit a blocker is yours, not the claim's, and dropping a
-  lease is not a reason to undo it. Preserving costs **no write at all**, which is why stdout reads
-  `released <ref> (column left at Blocked)` rather than naming a column `release` set.
+<!-- BEGIN GENERATED: fsgg-protocol:release-columns -->
+<!--
+  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
+  scripts/generate-projections, and `projections` in CI fails on any diff.
 
-`reap` asks the same question, so a lapsed lease on an item you parked does not reset it either — a
-reaper collects a *lease*, and knows nothing about whether the item became startable.
+  This precedence was hand-authored here, and it is the single most-repaired behaviour in the
+  org: seven issues (#331/#354/#531/#867/#911/#914/#921) corrected a prose copy of it while the
+  engine's `unclaimColumn` was, eventually, right. #889/#900 proved the cure — the two exit-code
+  tables that were GENERATED have never drifted since. This is the third. Edit Protocol.fs and
+  regenerate.
+-->
 
-**A column the tool cannot READ is one it will not overwrite.** On a failed read `release` leaves the
-column exactly as it is and says so on stderr, naming the repair, rather than guessing in either
-direction — the lease is dropped first, so a board it cannot read never strands a lock.
+| release sees | the column becomes | writes? | stdout — the tell |
+|---|---|---|---|
+| You pass an explicit `--status <col>`. It BEATS the recorded restore and the `Ready` fallback alike — the caller naming the deliberate end state (#867/#914), which is why parking an item into a column is `release <n> --status <col>`. | `<col>` — the column you named. | yes | `released <ref> → <col>` |
+| No `--status`; the live column is still the `In progress` the claim wrote, and the marker recorded NO other column (or recorded `In progress` — the same footprint written twice). | `Ready` — the fallback for a claim with nothing to restore (#481). | yes | `released <ref> → Ready` |
+| No `--status`; the live column is the claim's own `In progress`, and the marker recorded a DIFFERENT column at claim time — what the claim overwrote. | the recorded column, RESTORED — a `Backlog` item returns to `Backlog`, not `Ready` (#481). | yes | `released <ref> → <recorded>` |
+| No `--status`; the live column is anything OTHER than the claim's `In progress` — it was chosen DURING the lease (you parked it `Blocked`, say). `reap` asks the same question, so a lapsed lease does not revert it either (#331/#911). | that column, PRESERVED — the write is skipped, and the absence of the write is what says the column was nobody's to change. | no | `released <ref> (column left at <col>)` |
+| No `--status`; the item has no `Status` set, or is not on this board — so there is no column to reset. | nothing to set. | no | `released <ref> (no column to reset — not on this board, or no Status set)` |
+| The live column could not be READ (unresolvable board, or a transient failure), OR a column `release` chose to write was DEFERRED on an exhausted budget or FAILED. A column it cannot read is one it will not overwrite (#266/#331). | UNCHANGED — left exactly as it is; the lock is dropped regardless. The BARE line — no `→`, no `(...)` — is the tell, and stderr immediately above it names the repair. | no | `released <ref>` |
 
-**To land somewhere specific, say so:** `release <issue> --status Blocked`. An explicit `--status` beats
-the preserve, the recorded restore, and the `Ready` fallback alike — the caller stating the end state
-instead of `release` inferring it (#331/#481's precedence, restored by
-[#914](https://github.com/FS-GG/.github/issues/914) after the port parsed the flag and ignored it — that
-no-op is how #732 came back four times, §1). It also spends no read, having left no default to derive.
+<!-- END GENERATED: fsgg-protocol:release-columns -->
 
-**Confirm it landed rather than assuming**: `release` exits 0 even when the column write does not
-take, and the tell is on stdout — `released <ref> → Blocked` names a column it SET, `released <ref>
-(column left at Blocked)` is a preserve (the board holds it either way), and a bare `released <ref>`
-means no column was set, with the reason on stderr (§1).
+**Confirm it landed rather than assuming.** `release` exits 0 even when the column write does not take,
+so the exit code cannot tell a park that landed from one that did not — the stdout line can, and it is
+the last column above. A bare `released <ref>` with the reason on stderr is a park that did NOT land
+(§1); read stderr, and set the column yourself if you meant to.
 
 If you got far enough to be worth resuming, say so on the issue first (`fsgg-coord say`), and push
 the branch so the next worker inherits the work rather than redoing it.
