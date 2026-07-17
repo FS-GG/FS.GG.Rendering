@@ -79,6 +79,25 @@ die() { echo "fsgg-coord: $*" >&2; exit 69; }  # EX_UNAVAILABLE — the engine i
 
 git_toplevel() { git rev-parse --show-toplevel 2>/dev/null || true; }
 
+# THE SHARED CHECKOUT'S WORKING TREE — the one every worker's worktree hangs off (#931).
+#
+# `git worktree list` reports the MAIN working tree FIRST, always and by documented contract, and as an
+# ABSOLUTE path from anywhere. That is the whole reason it is spelled this way rather than the obvious
+# `dirname "$(git rev-parse --git-common-dir)"`, which LOOKS equivalent and is not: `--git-common-dir`
+# answers RELATIVE from the main checkout (a bare `.git`, measured), so `dirname` yields `.` — and `.`
+# is the CALLER's tree, not the shared one. That would make the fallback below resolve to whatever tree
+# the caller happens to be standing in, silently, exactly when it is meant to reach past it.
+#
+# `--porcelain`, because the human form appends `[branch]`/`(bare)` decorations that would land in the
+# path. `cut -f2-` rather than `awk '{print $2}'`: a checkout path may contain spaces, and taking only
+# field 2 would truncate it to the first word — a path that then fails `-x` and reads as "no build".
+shared_toplevel() { git worktree list --porcelain 2>/dev/null | head -1 | cut -d' ' -f2- ; }
+
+# The source build's path under a given working tree. ONE spelling, used by both tiers below: two
+# copies of it is one edit away from a fallback that probes a path the primary tier does not, which
+# would resolve a DIFFERENT engine than the one the guards just measured.
+engine_path() { printf '%s/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine' "$1"; }
+
 # THE ARTIFACT IS NOT A REF (#929). Tier 2 execs a BUILD OUTPUT, and nothing keeps it in step with the
 # `src/` beside it: `git pull` does not rebuild it, `git status` cannot see it, and `--version` answers
 # the same assembly version from every build ever made — `0.2.0.0` when this line was written, `0.3.0.0`
@@ -159,13 +178,18 @@ $detail" ;;
 # The guard is loudest in the safe case and mute in the dangerous one. Building is what a worker does
 # NEXT, so #929's window closes itself: the warning decays into silence exactly as the risk arrives.
 #
-# THE RISK IS THIS REPO'S ALONE, AND IT IS THE WHOLE FLEET'S. `/pnext-item` sends EVERY worker to
-# `scripts/fsgg-coord` in the SHARED checkout — a worktree has no bin/, so the source build cannot resolve there
-# (that is why §2's isolation does not isolate this). Under `src/` live the scheduler, the claim CAS
-# and the board writer. So one worker editing the kit here, in violation of pnext-item §2, silently
-# hands every other worker on this board an untested build of the lock they are about to take. #709
-# observed it live: ` M scripts/fsgg-coord` in a checkout the reporter had not touched, discovered only
-# because they diffed it against HEAD afterwards.
+# THE RISK IS THIS REPO'S ALONE, AND IT IS THE WHOLE FLEET'S. Every worker on this board runs the
+# SHARED checkout's engine. Under `src/` live the scheduler, the claim CAS and the board writer. So one
+# worker editing the kit here, in violation of pnext-item §2, silently hands every other worker an
+# untested build of the lock they are about to take. #709 observed it live: ` M scripts/fsgg-coord` in a
+# checkout the reporter had not touched, discovered only because they diffed it against HEAD afterwards.
+#
+# WHY they all run it moved, and the guard's subject did not. This paragraph used to say "a worktree has
+# no bin/, so the source build cannot resolve there (that is why §2's isolation does not isolate this)"
+# — true when written, and #931's tier 2b is precisely the repair of it: a worktree caller now RESOLVES
+# the shared build rather than dying 69 at it. The conclusion is unchanged and is now a property of the
+# resolver rather than an accident of where `bin/` happens to be, so tier 2b passes $SHARED to this
+# guard — the reader standing in a worktree is exactly the reader whose claims that WIP is deciding.
 #
 # WARN, NEVER REFUSE — and this is NOT #929's trade repeated with a new subject. #929 may refuse a
 # board write because its remedy is local, cheap and yours: rebuild, and you are clear. Dirtiness has
@@ -260,13 +284,66 @@ TOP="$(git_toplevel)"
 # the documented way to mean it rather than to get it by accident:
 #   FSGG_COORD_ENGINE_BIN="$(command -v fsgg-coord-engine)" scripts/fsgg-coord …
 if [ -n "$TOP" ]; then
-  CANDIDATE="$TOP/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine"
+  CANDIDATE="$(engine_path "$TOP")"
   if [ -x "$CANDIDATE" ]; then
     # DIRTY BEFORE STALE, because a dirty checkout is usually WHY an engine is stale, and a refusal is
     # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
     # one never does, so it cannot swallow that refusal.
     dirty_guard "$TOP"
     stale_guard "$TOP" "${CANDIDATE}.dll" "${1:-}"
+    exec "$CANDIDATE" "$@"
+  fi
+fi
+
+# TIER 2b — THE SHARED CHECKOUT'S BUILD, FOR A CALLER STANDING IN A WORKTREE (#931).
+#
+# WHAT WAS BROKEN. `/pnext-item` §2 MANDATES an item worktree ("never work an item in the shared
+# checkout"), and a fresh worktree has no `bin/`. So tier 2a missed, tier 3 found no global tool, tier 4
+# found no manifest (`.github` has none — its engine is tier 2a), and the resolver died 69 for EVERY
+# worker following the recipe. The tool printed dozens of commands into that: `fsgg-coord-engine <verb>`
+# is 127 (`command not found`), and `scripts/fsgg-coord <verb>` was 69 — a MORE convincing failure,
+# because it looks like a real diagnostic. Both spellings were broken, which is why printing the other
+# one was not a fix and this tier is. (#931 says "25 sites"; it was 31 by the time it was worked, across
+# verbs the issue never named. The thesis survived the drift; the count did not, so no number is pinned
+# here for the next reader to re-check — `check-worker-id-attractor.py` rule 5 counts them at run time.)
+#
+# DECIDED ON THE RECORD, not chosen here (#931). Three alternatives were weighed and rejected: shipping
+# the engine on PATH (a provisioning change, and it would make #569's fix wrong); printing
+# `scripts/fsgg-coord` and stopping (still 69 — the trade this tier exists to refuse); an absolute path
+# at runtime (correct, and unpasteable into any doc). This one fixes every site without changing what
+# any of them print, and RETIRES the tribal note — *"run coord from the shared checkout"* — that every
+# bitten worker was carrying privately. #570: a rule enforced by whoever happens to remember it decays.
+#
+# AFTER 2a, NEVER BEFORE IT. A worker who builds in their own worktree gets THEIR build — that is the
+# kit author's whole workflow, and preempting it would hand them the shared engine and silently discard
+# the edits they are testing. The consequence — a worker who edits `src/` here but does not build gets
+# the shared engine, which does not carry their edits — is the status quo of the note this retires, not
+# a regression this introduces.
+#
+# THE GUARDS MEASURE THE SHARED TREE, AND THAT IS LOAD-BEARING RATHER THAN TIDY. Passing "$TOP" here
+# would compare the CALLER's `src/` against the SHARED build — and `git worktree add` writes every file
+# at checkout time, so a fresh worktree's `.fs` mtimes are NEWER than any shared `.dll` by construction.
+# `stale_guard` would fire on EVERY fresh worktree, and it REFUSES board writes: a guard that halts the
+# entire fleet the moment it starts working, fail-closed, hiding inside an obviously-correct-looking
+# line. The honest question is the same one tier 2a asks — "is THIS artifact behind the source beside
+# IT?" — and both halves of that pair live under $SHARED.
+#
+# AND THE DIRTY GUARD NOW REACHES ITS REAL SUBJECT. `dirty_guard` exempts a linked worktree because
+# nobody else resolves an engine through it. That premise held only while a worktree resolved NO engine;
+# this tier is exactly the case where the shared checkout's WIP decides a worktree worker's claims, so
+# `dirty_guard "$SHARED"` is the #709 warning arriving at the reader who needs it. It fires by the same
+# rule, not an exception to it: $SHARED is a main working tree, so its `--git-dir` and `--git-common-dir`
+# agree and the exemption simply does not apply.
+# Only ASK when there is a git repo to ask about. `$TOP` empty means `rev-parse` already failed, so
+# `git worktree list` would fail too — and this line is on the RECEIVERS' hot path, where tiers 3/4
+# answer and every invocation would otherwise pay for a subprocess that cannot succeed.
+SHARED=""
+[ -n "$TOP" ] && SHARED="$(shared_toplevel)"
+if [ -n "$SHARED" ] && [ "$SHARED" != "$TOP" ]; then
+  CANDIDATE="$(engine_path "$SHARED")"
+  if [ -x "$CANDIDATE" ]; then
+    dirty_guard "$SHARED"
+    stale_guard "$SHARED" "${CANDIDATE}.dll" "${1:-}"
     exec "$CANDIDATE" "$@"
   fi
 fi
