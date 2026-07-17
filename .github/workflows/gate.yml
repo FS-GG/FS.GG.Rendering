@@ -305,8 +305,9 @@ jobs:
       # NOT redundant with the surface-baseline step above, which asks a different question of a different
       # subject: that one records THIS REPO'S `src/` surface, this one asserts the SCAFFOLD'S DOCS match
       # the PACKAGE A PRODUCT RESTORES. `src/` is ahead of the pin for the whole window between a feature
-      # landing and the release that publishes it — which is what `mirror-pending-release-ledger.txt`
-      # exists to hold — so the two can disagree legitimately and the mirror has to track the pin.
+      # landing and the release that publishes it — which `mirror-pending-release-ledger.txt` used to hold
+      # open by hand (#753 deleted it: generating from the pin closes the window by construction) — so the
+      # two can disagree legitimately and the mirror has to track the pin.
       #
       # `--check` never writes, so a red here is a REPORT, not a mutation the next step trips over.
       - name: API-surface mirror drift (generated from the pin)
