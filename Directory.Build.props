@@ -69,19 +69,33 @@
        the org would notice: the sync drift check only proves this file still MATCHES its copies, never
        that it WORKS.
 
-       WHY THAT MATTERS, STATED HONESTLY (.github#536). This comment used to say it mattered "because
-       global.json says rollForward: latestFeature". That was FALSE of most of the repos reading it:
-       four of the five consumers — Game, Rendering, SDD, Governance — have NO global.json at all, so
-       there is no floor and no rollForward policy to reason from. Only FS.GG.Audio had one.
+       WHY THAT MATTERS, STATED HONESTLY (.github#536, corrected by #805). This comment used to say it
+       mattered "because global.json says rollForward: latestFeature", and was then corrected to say the
+       opposite — that four of the five consumers had NO global.json, so there was no floor to reason
+       from. BOTH sentences hard-coded a per-repo census, and a census is exactly the thing that rots:
+       the second one was false within weeks, once the consumers began adopting the pin (#805).
 
-       The conclusion survives the correction, and is in fact STRONGER: with no SDK pin, the SDK that
-       serves a build is whatever the machine happens to have. So an SDK-dependent contentHash is not
-       a risk that materialises the next time somebody bumps a pin — it is a difference between any
-       two machines, today. An UNPINNED SDK makes SDK-independence more valuable, not less.
+       So state the part that does NOT rot. `rollForward: latestFeature` means a pin is a FLOOR, not a
+       lock: within the pinned major.minor it accepts the HIGHEST feature band and patch installed, so
+       10.0.301 is served by whatever 10.0.x the machine happens to have. (It is a floor, not a free
+       roll: a machine with only 11.x satisfies nothing and the build fails.) So a pin narrows WHICH
+       SDK restores without determining it — two machines honouring the same global.json can still
+       restore under different SDKs. An SDK-dependent contentHash is therefore a difference between
+       any two machines TODAY, not a risk that materialises the next time somebody bumps the pin.
+       Pinned or unpinned, SDK-independence is worth having, and this property is why.
 
-       The SDK pin is being distributed as a managed file (dist/dotnet/global.json, #536), but it is
-       NOT in sync-build-config's FILES list yet and MUST NOT BE ADDED until every consumer carries
-       one — see the ordering note in scripts/sync-build-config.sh before you touch that list.
+       Do not re-add a census in place of that argument. If you need to know who carries the pin, ASK
+       THE REPOS — the answer changes without touching this file, which is the whole problem. The
+       FILES note in FS-GG/.github's scripts/sync-build-config.sh carries a loop that measures it.
+
+       The SDK pin is distributed as a managed file (dist/dotnet/global.json, #536) but is NOT in
+       sync-build-config's FILES list. Presence in every consumer is NOT sufficient to add it: the
+       drift check compares CONTENT, so a consumer naming a different band than the canonical one goes
+       red the moment the name lands in that list — which is not hypothetical, it was true of three of
+       the five in July 2026. Whether it should EVER be managed is an open decision (.github#903);
+       leaving it unmanaged is a live option. Read the ordering note in FS-GG/.github's
+       scripts/sync-build-config.sh before you touch that list. (If you are reading this in a consumer
+       repo, that script is not here — this file is distributed; its source of truth is FS-GG/.github.)
 
        ADOPTING THIS IS A ONE-TIME RE-PIN, AND THE ORDER IS LOAD-BEARING. Syncing this file flips the
        source a repo restores from, so its committed `FwQFuqOA…` becomes `excLf2zM…`. Regenerate the
