@@ -53,17 +53,19 @@ let private hasLockfile (projDir: string) =
 let restoreLockTests =
     testList "Feature 211 — locked-restore policy" [
 
-        test "the gate solution membership is the expected 39-project LOCKED set" {
+        test "the gate solution membership is the expected 40-project LOCKED set" {
             // Guards against the slnx silently gaining/losing a project without the lockfile coverage
-            // assertion below being updated; 18 src + 18 tests + 2 samples + 1 tools = 39.
+            // assertion below being updated; 18 src + 19 tests + 2 samples + 1 tools = 40.
             //
             // 38 -> 39 in #540, which added tests/Package.Tests. It arrived with NO packages.lock.json and
             // an explicit <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>, and VR-1 below
             // is what said so — the moment the project entered the slnx, the policy it had been exempt from
             // for two features applied to it and it was one line short. Which is the point of #540: this
             // guard is scoped to slnx MEMBERS, so a project outside the solution was invisible to it.
-            Expect.equal slnxProjectDirs.Length 39
-                (sprintf "expected 39 slnx projects, found %d: %A" slnxProjectDirs.Length slnxProjectDirs)
+            //
+            // 39 -> 40 in #695 (spec 255), which added tests/DocFences.Tests — the doc-fence-compile harness.
+            Expect.equal slnxProjectDirs.Length 40
+                (sprintf "expected 40 slnx projects, found %d: %A" slnxProjectDirs.Length slnxProjectDirs)
         }
 
         test "VR-1: every FS.GG.Rendering.slnx member has a committed packages.lock.json" {
