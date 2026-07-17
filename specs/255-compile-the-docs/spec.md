@@ -179,8 +179,8 @@ credit the surface as taught.
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of F# fences in every shipped doc corpus are compiled against the pinned packages on
-  every PR.
+- **SC-001**: 100% of F# fences in every shipped doc corpus — except those explicitly marked
+  `SkipWithReason` (FR-005) — are compiled against the pinned packages on every PR.
 - **SC-002**: A doc introducing a symbol absent from the pinned package fails the gate 100% of the time,
   with a diagnostic that names the offending doc.
 - **SC-003**: Exactly one fence engine, one `.fsi` reader, and one symbol oracle remain in the tree

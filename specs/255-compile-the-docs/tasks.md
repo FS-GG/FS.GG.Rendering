@@ -49,12 +49,13 @@ actually replaces the extractors — BEFORE any machinery is deleted.
 
 - [ ] T004 Build the corpus/fence map: enumerate the three corpora (`template/product-skills/**/*.md`, `template/base/docs/api-surface/**/*.fsi` `///`, scaffold sources under `template/base/src` + `template/fragments` `///`) and extract F# fences via `FS.GG.TestSupport.MarkdownFences` only; assert no corpus silently yields zero fences (FR-001)
 - [ ] T005 **Early live proof**: minimal end-to-end run in `tests/DocFences.Tests/DocFencesCompileTests.fs` — generate a pinned project from ~5 real fences, one restore + `dotnet build`, assert GREEN on a known-good fence and RED (with doc+line) on an injected unreleased symbol. Record evidence under `specs/255-compile-the-docs/readiness/` before proceeding
-- [ ] T006 [P] Define the per-corpus preamble format + in-fence `open`-directive (research.md D2) as reviewed config in the repo; document the default `open` set per corpus
+- [ ] T006 [P] Define the per-corpus preamble format + in-fence `open`-directive (research.md D2) as reviewed config in the repo; document the default `open` set per corpus. **Lock the format against the real fences proven in T005 before generalizing** — this is the plan's highest-risk decision (the "which opens are in scope" that only the compiler answers); do not widen it beyond what a real fence needs
 - [ ] T007 [P] Define the per-fence `SkipWithReason` opt-out directive (research.md D3) that replaces the ledger — local, greppable, reason-carrying (FR-005)
 - [ ] T008 Draft the harness helper seams first (`.fsi` for any `TestSupport` helper): fence → `CompilationUnit` assembly, the generated `FenceProject`, and the `SymbolManifest` emitter (data-model.md); per constitution I (sketch signatures before bodies)
+- [ ] T009 [waiver] Test that the harness **soft-passes** (does not fail the gate) when the pinned `$(FsGgUiVersion)` is not yet on the feed — the release-pending waiver at the restore boundary (FR-012, research.md D4, [[fsgg-release-window-pin-probes]]); exercise with an absent-pin feed stub, in `tests/DocFences.Tests/DocFencesCompileTests.fs`
 
 **Checkpoint**: Corpus map built, green+red proven end to end on real fences, preamble/opt-out formats
-fixed, seams drafted — US1 implementation can proceed.
+fixed, waiver behavior asserted, seams drafted — US1 implementation can proceed.
 
 ---
 
@@ -78,7 +79,7 @@ unreleased symbol; a legitimate partial snippet still compiles; the historical c
 ### Implementation for User Story 1
 
 - [ ] T015 [US1] Implement fence → `CompilationUnit` assembly (corpus preamble + fence `ExtraOpens`, unique module name encoding doc+line) in `tests/DocFences.Tests/` (data-model.md CompilationUnit)
-- [ ] T016 [US1] Implement `FenceProject` generation + single pinned restore + `dotnet build` (reuse the `runProbeBuild` project-generation approach; ONE restore amortized over all fences) in `tests/DocFences.Tests/`
+- [ ] T016 [US1] Implement `FenceProject` generation + single pinned restore + `dotnet build` (reuse the `runProbeBuild` project-generation approach; ONE restore amortized over all fences); **honor the release-pending waiver** — when the pin is absent from the feed, soft-pass rather than fail the gate (FR-012, satisfies the T009 assertion) in `tests/DocFences.Tests/`
 - [ ] T017 [US1] Map compiler diagnostics back through `Origin` to `{Doc, Line, Diagnostic}` so a failure is clickable (FR-003, constitution VI) in `tests/DocFences.Tests/`
 - [ ] T018 [P] [US1] Classify non-F# fences: excluded from the compile set but counted for coverage accounting, never silently dropped (edge case) in `tests/DocFences.Tests/`
 - [ ] T019 [US1] Emit the per-fence `SymbolManifest` (resolved pinned symbols) — built now, consumed by US3 (data-model.md SymbolManifest, D6) in `tests/DocFences.Tests/`
@@ -155,7 +156,7 @@ the line (SC-006) before US2/US3 remove anything. Belt-and-suspenders for one tr
 ### Parallel Opportunities
 
 - T003 alongside T001/T002 in Setup.
-- T006/T007 in parallel in Foundational; T008 alongside once formats are fixed.
+- T006/T007 in parallel in Foundational; T008 alongside once formats are fixed; T009 after T005's restore path exists.
 - US1 tests T010–T014 in parallel (all in the one test file but independent cases); T018 alongside T015–T017.
 - Once US1 holds: **US2 and US3 run in parallel** (different files — `TemplateConsumesPinnedApiTests.fs` /
   `scripts/*.fsx` for US2; `SurfaceDocCoverageTests.fs` / the ledger for US3).
