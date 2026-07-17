@@ -4,7 +4,10 @@
 
 **Created**: 2026-07-17
 
-**Status**: Draft — **REFRAMED to convergence (2026-07-17)**, see banner below.
+**Status**: Shipped
+
+<!-- REFRAMED to convergence (2026-07-17); harness ships as an optional check (PR #881), convergence via #883, #695 closed. See the scope-resolution banner below. -->
+
 
 **Input**: Epic #695 — "Compile the docs instead of parsing them: retire the hand-rolled compiler front-end behind doc-vs-pin"
 
