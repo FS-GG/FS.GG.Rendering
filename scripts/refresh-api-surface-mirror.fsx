@@ -84,6 +84,8 @@ open System.Text.RegularExpressions
 #load "lib/FsiSurface.fsx"
 open FsiSurface
 
+#load "lib/ReleaseWindow.fsx"
+
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
 let manifestPath = Path.Combine(repoRoot, "scripts", "api-surface-manifest.txt")
 let mirrorRoot = Path.Combine(repoRoot, "template", "base", "docs", "api-surface")
@@ -130,6 +132,45 @@ let pins =
     |> Map.ofSeq
 
 // ---------------------------------------------------------------------------------------------
+// The release window — where the pin's `.fsi` come from `src/` because the feed cannot have them yet.
+// ---------------------------------------------------------------------------------------------
+
+/// The FS.GG.UI pins this commit BUMPS, mapped to the `src/` project that will publish them.
+/// Empty on every commit that is not the release bump — which is the overwhelmingly common case, and
+/// the one where `src/` is AHEAD of the pin and must NOT be read (that is the window #752 closed).
+///
+/// WHY `src/` IS THE RIGHT SOURCE HERE, AND ONLY HERE. `release.yml` packs this very commit —
+/// `dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$pin"` — so the `.fsi` in `src/` ARE the
+/// `.fsi` that become `api-surface/` in the nupkg at the new pin. Inside the window the substitution
+/// is not an approximation of the package: it is the same bytes, one step earlier in the chain
+/// (`src/` -> nupkg -> mirror). So the mirror this commit checks in is byte-identical to the one the
+/// published package generates the moment it lands, and the first post-release commit — which reads
+/// the now-published pin — sees no drift. That is what keeps this from reintroducing the class where a
+/// stale generated file reds the required gate and blocks the whole repo (#435, #477, #515).
+///
+/// FS.GG.Game.Core / FS.GG.Audio.* are NOT substituted at any time: they are released from their own
+/// repos on their own axes ($(FsGgGameVersion)/$(FsGgAudioVersion)), this repo builds no project for
+/// them, and a bump of those pins is a CONSUMER bump onto something already published. The feed is the
+/// only honest source for them, and it can answer.
+let srcBackedPins: Map<string, string> =
+    let pinsRel = "template/base/Directory.Packages.props"
+
+    let bumped =
+        match ReleaseWindow.bumpedInCommitUnderTest repoRoot pinsRel "FsGgUiVersion" with
+        | Ok b -> b
+        | Error e -> fail e
+
+    if not bumped then
+        Map.empty
+    else
+        let projects = ReleaseWindow.packableProjects repoRoot
+
+        pins
+        |> Map.toList
+        |> List.choose (fun (id, _) -> projects |> Map.tryFind id |> Option.map (fun dir -> id, dir))
+        |> Map.ofList
+
+// ---------------------------------------------------------------------------------------------
 // Restore, and read the `api-surface/` each package carries.
 // ---------------------------------------------------------------------------------------------
 
@@ -147,9 +188,12 @@ let restorePins () =
     Directory.CreateDirectory work |> ignore
 
     try
+        // Inside the release window the bumped pins are deliberately absent from this probe: the feed
+        // cannot serve them yet, and asking it to is precisely the NU1102 that deadlocked the release.
         let refs =
             pins
             |> Map.toList
+            |> List.filter (fun (id, _) -> not (srcBackedPins |> Map.containsKey id))
             |> List.map (fun (id, v) -> $"""    <PackageReference Include="{id}" Version="{v}" />""")
             |> String.concat "\n"
 
@@ -209,24 +253,33 @@ let loadPinSurface () =
     pins
     |> Map.toList
     |> List.map (fun (id, version) ->
-        let dir =
-            Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
+        // In the window, this package's `api-surface/` does not exist to be read — it is packed from
+        // `src/` by the release this commit performs — so read the same `.fsi` at their source paths.
+        let sources =
+            match srcBackedPins |> Map.tryFind id with
+            | Some projectDir -> ReleaseWindow.projectFsi projectDir
+            | None ->
+                let dir =
+                    Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
 
-        if not (Directory.Exists dir) then
-            fail
-                $"{id} {version} carries no api-surface/ — it predates #782. Bump the pin to a release that packs its .fsi."
+                if not (Directory.Exists dir) then
+                    fail
+                        $"{id} {version} carries no api-surface/ — it predates #782. Bump the pin to a release that packs its .fsi."
+
+                Directory.GetFiles(dir, "*.fsi", SearchOption.AllDirectories)
+                |> Array.toList
+                |> List.map (fun f -> Path.GetRelativePath(dir, f).Replace('\\', '/'), f)
 
         let files =
-            Directory.GetFiles(dir, "*.fsi", SearchOption.AllDirectories)
-            |> Array.map (fun f ->
-                let rel = Path.GetRelativePath(dir, f).Replace('\\', '/')
+            sources
+            |> List.map (fun (rel, f) ->
                 let nodes, unparsed = parseFsi (File.ReadAllLines f |> Array.toList)
 
                 if not unparsed.IsEmpty then
                     fail $"{id}/{rel}: {unparsed.Length} line(s) the .fsi reader could not classify, first: {unparsed.Head.Trim()}"
 
                 rel, nodes)
-            |> Map.ofArray
+            |> Map.ofList
 
         if files.IsEmpty then
             fail $"{id} {version}: api-surface/ exists but carries no .fsi"
@@ -568,6 +621,15 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
 // ---------------------------------------------------------------------------------------------
 // Drive.
 // ---------------------------------------------------------------------------------------------
+
+// Say it out loud. A run that silently swapped its own inputs would be indistinguishable from one that
+// read the feed, and the whole argument for the swap is that it happens on exactly one commit.
+if not srcBackedPins.IsEmpty then
+    printfn
+        "RELEASE WINDOW: this commit bumps <FsGgUiVersion> to %s, which no feed can serve yet — reading the .fsi of %d package(s) from src/, which is what release.yml packs at that pin. %d pin(s) still restore from the feed."
+        (pins |> Map.find (srcBackedPins |> Map.toList |> List.head |> fst))
+        srcBackedPins.Count
+        (pins.Count - srcBackedPins.Count)
 
 restorePins ()
 let surface = loadPinSurface ()
