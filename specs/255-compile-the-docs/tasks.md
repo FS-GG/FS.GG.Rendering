@@ -2,6 +2,24 @@
 
 **Input**: Design documents from `specs/255-compile-the-docs/`
 
+## ⚠️ Scope resolution (2026-07-17) — read before executing
+
+Reframed to **convergence** (see spec.md banner, #695 decision). The task list below was written for the
+original "compile every fence / retire the extractors" scope; use it through this filter:
+
+- **DONE & KEPT (landed, PR #881):** T001–T009 (project, corpus map, harness, live proof, preamble,
+  skip/open directives). These stay as the **optional, proven** harness — not gating.
+- **DROPPED:** T010–T020 full-corpus drive (DriveTests stays `ptest` pending), T014b scaffold authoring,
+  T023 (retire extractors — they all STAY), the "empty the ledger" half of T029.
+- **THE REFRAMED WORK (the remaining epic):**
+  - **T022** — fold the 5 `val`-regexes onto `SurfaceSignature` (one `.fsi` reader). ✅ in scope.
+  - **T021** — fold `check-symbology-skill-parity.fsx`'s fence reader onto `MarkdownFences`. ✅ in scope.
+  - **T027/T028** — rebase S-DOC "cited" on the **symbol oracle** (a symbol the metadata walk resolves),
+    NOT compiled-fence membership; keep the homonym regression. ✅ in scope (re-pointed to the oracle).
+  - **T029 (relaxed)** — shrink the ledger to only what the oracle cannot cover; not necessarily empty.
+  - T024/T025 (drop the compile probe / one-oracle-API): **reconsider** — the probe checks that Program.fs
+    compiles, which the metadata walk does not, so keep it unless the dedup is purely the shared restore.
+
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, quickstart.md (all present)
 
 **Tests**: Included — this feature *is* test/CI tooling, and the constitution (V) makes test evidence

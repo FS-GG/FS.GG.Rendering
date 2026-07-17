@@ -4,9 +4,28 @@
 
 **Created**: 2026-07-17
 
-**Status**: Draft
+**Status**: Draft — **REFRAMED to convergence (2026-07-17)**, see banner below.
 
 **Input**: Epic #695 — "Compile the docs instead of parsing them: retire the hand-rolled compiler front-end behind doc-vs-pin"
+
+## ⚠️ Scope resolution (2026-07-17) — supersedes the requirements below where they conflict
+
+Implementation (PR #881) proved the fence-compile mechanism live, and then proved it **cannot** cover the
+skill corpus: skill fences use reader-owned symbols (`Model`/`Msg`/`update`/…), cross-fence continuity, and
+qualified opens — the compiler has nothing to resolve them against, and `skillFenceSymbols` is the right tool
+for them. So the epic is reframed to its **achievable, harness-independent** half — **convergence**:
+
+- exactly one `.fsi` reader (fold the 5 `val`-regexes onto `SurfaceSignature`) — FR-007 half;
+- exactly one fence engine (fold `check-symbology-skill-parity.fsx` onto `MarkdownFences`) — FR-007 half;
+- S-DOC "cited" decided by the **symbol oracle**, not English-word match (dissolves the homonym class,
+  #692/#663) — FR-011, but via the oracle, **not** compiled-fence membership;
+- the ledger **shrunk to what the oracle cannot cover** (not necessarily emptied) — FR-010, relaxed.
+
+**DROPPED:** FR-001/FR-002/FR-003 (compile every fence on every PR), FR-006 (retire the extractors — they
+all STAY), FR-013 (author scaffold fences). The DocFences.Tests harness stays **landed as an optional,
+proven stronger check** for self-contained fences — not gating, not a deletion driver. The requirements and
+success criteria below are retained for provenance; where they say "retire"/"empty"/"every fence", read them
+through this banner.
 
 ## Context *(why this exists)*
 
