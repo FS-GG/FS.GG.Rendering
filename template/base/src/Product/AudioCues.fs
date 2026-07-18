@@ -17,6 +17,11 @@ open AppRoot.Model
 // entry point, and the viewer hands it each `ViewerEffect.PlayAudio` batch in dispatch order. Your
 // `update` never changes.
 //
+// Why BOTH models are in the signature: most gameplay cues (a shot, a death, a pickup, a room seal)
+// have NO `Msg` of their own — they are recovered by DIFFING `previous` against `next`, so you add
+// them without touching `Msg` or `Model.fs`. The `scored`/`bounced` helpers below do exactly this.
+// Its coverage boundary lives at the point of use — see the `Tick` cues.
+//
 // REPLACE ME, with Model.fs. This file names your `Msg` cases and reads your `Model`'s fields, so a
 // model swap rewrites it. The seam that carries its output (`PlayAudio` + the `*WithAudio` launch)
 // is durable and does not — see docs/scaffold-map.md.
@@ -120,6 +125,12 @@ let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list 
     // Silent until you drop `assets/audio/start.wav` — an unresolved id is a recorded no-op, never an
     // error. Replace this with whatever YOUR initial state implies (restored volume, resumed music).
     | Started -> [ Audio.playSfx (SoundId "start") 0.5 ]
+    // NET-DIFF BOUNDARY: one `Tick` drains a WHOLE run of fixed sim steps (Model.advanceSim runs
+    // `stepSim` that many times), so `previous`/`next` straddle the entire drain — an event that both
+    // appears AND disappears inside that one host frame nets to no diff here and never cues. The real
+    // cues are safe (a score persists to the next frame; a bounce reverses and stays reversed), but a
+    // same-frame spawn+consume cue would silently not fire — cue it from its own `Msg` instead.
+    //
     // A score resets the ball, which also reverses it — so score wins over bounce, and only one
     // sound plays on that frame.
     | Tick _ when scored previous next -> [ Audio.playSfx (SoundId "score") 0.9 ]
