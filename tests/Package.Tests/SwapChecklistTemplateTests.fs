@@ -134,7 +134,7 @@ let private productMd = File.ReadAllText(repositoryPath "template/base/docs/prod
 
 /// The agreed load-bearing phrases that must appear in every surface (no drift).
 let private bannerPhrases =
-    [ "completion-marker"; "does not compile"; "first real"; "merge-gate audit"; "hard-block" ]
+    [ "completion-marker"; "does not compile"; "first real"; "merge-gate audit"; "hard-block"; "evidence baseline" ]
 
 [<Tests>]
 let buildHelpBannerTemplateTests =

@@ -273,7 +273,9 @@ let helpBanner =
     + "           your code; a green Dev is not evidence the build passes. Use Test for real feedback.\n"
     + "  Test     The first real compile + `dotnet test` (audit-free). Use this mid-implementation.\n"
     + "  Verify   Runs the merge-gate audit (EvidenceGraph -> EvidenceAudit) first — the audit hard-blocks\n"
-    + "           until every task is [X] — then runs the tests. Use only when the feature is complete.\n\n"
+    + "           until every task is [X] — then runs the tests. Use only when the feature is complete.\n"
+    + "           The first Verify on a fresh scaffold fails until you generate the headless evidence baseline\n"
+    + "           (readiness/layout-evidence.txt + headless-scene-evidence.txt) once — see docs/product.md.\n\n"
     + "  Restore | Build | Run | Pack   Pass-through to stock `dotnet` over the single root .slnx.\n\n"
     + "  Help:  ./build.sh --help   |   dotnet fsi build.fsx help   (fsi reserves --help/-h on the script path)"
 
