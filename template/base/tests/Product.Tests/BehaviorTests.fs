@@ -14,6 +14,11 @@ open FS.GG.UI.Scene
 let rec collectSceneNodes node =
     seq {
         yield node
+        // Recurse into EVERY container case. This match is deliberately exhaustive — no `_`
+        // wildcard — so a new `SceneNode` case added to FS.GG.UI.Scene surfaces here as an
+        // incomplete-match warning (FS0025) naming the unhandled case, instead of being
+        // silently swallowed by a catch-all and dropping every node beneath it (#899). The
+        // library's own walker (`Scene.describe`) is exhaustive for the same reason; mirror it.
         match node with
         | Group scenes ->
             for scene in scenes do
@@ -21,19 +26,77 @@ let rec collectSceneNodes node =
                     yield! collectSceneNodes child
         | ClipNode(_, scene)
         | ColorSpaceNode(_, scene)
-        | PerspectiveNode(_, scene) ->
+        | PerspectiveNode(_, scene)
+        | Translate(_, scene) ->
             for child in scene.Nodes do
                 yield! collectSceneNodes child
         | PictureNode picture ->
             for child in picture.Scene.Nodes do
                 yield! collectSceneNodes child
-        | _ -> ()
+        | CachedSubtree boundary ->
+            for child in boundary.Scene.Nodes do
+                yield! collectSceneNodes child
+        // Leaf nodes carry no child scenes. Enumerated explicitly (not a `_` wildcard) so the
+        // exhaustiveness guard above stays armed — a new case forces a decision here.
+        | Empty
+        | Rectangle _
+        | PaintedRectangle _
+        | Circle _
+        | FilledEllipse _
+        | Ellipse _
+        | Line _
+        | Path _
+        | Points _
+        | Vertices _
+        | Arc _
+        | Text _
+        | TextRun _
+        | Image _
+        | RegionNode _
+        | Chart _
+        | SizedText _
+        | GlyphRun _ -> ()
     }
 
 let sceneText node =
     collectSceneNodes node
-    |> Seq.choose (function Text(_, value, _) -> Some value | TextRun run -> Some run.Text | _ -> None)
+    |> Seq.choose (function
+        | Text(_, value, _) -> Some value
+        | TextRun run -> Some run.Text
+        | SizedText(_, value, _, _) -> Some value
+        | GlyphRun run -> Some run.Data.Text
+        | _ -> None)
     |> String.concat " "
+
+// Regression guard for #899: the scene walker must recurse through EVERY container case.
+// `Translate` and `CachedSubtree` were added to `SceneNode` after this helper was first
+// written, and a `| _ -> ()` catch-all silently dropped everything beneath them — a product
+// that wraps its world layers in a `Translate` camera-slide got a walker that under-reported
+// with no error. This test is profile-independent (it exercises the shared helpers directly,
+// not the product `view`), so it guards the fix across every scaffold profile.
+[<Tests>]
+let sceneWalkerTests =
+    let black = { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 255uy }
+
+    testList "scene-walker (#899)" [
+        test "collectSceneNodes recurses through Translate and CachedSubtree; sceneText reads their text" {
+            let translated =
+                Translate((5.0, 5.0), { Nodes = [ Text((0.0, 0.0), "hello", black); SizedText((0.0, 0.0), "sized", 12.0, black) ] })
+            let cached =
+                CachedSubtree { CacheId = 1UL; Fingerprint = 2UL; Scene = { Nodes = [ Text((1.0, 1.0), "cached", black) ] } }
+            let root = Group [ { Nodes = [ translated; cached ] } ]
+
+            let nodes = collectSceneNodes root |> Seq.toList
+            // Group + Translate + (Text, SizedText) + CachedSubtree + Text = 6. Pre-fix, the two
+            // container children were dropped and this was 3.
+            Expect.equal (List.length nodes) 6 "the walker yields every node beneath Translate and CachedSubtree"
+
+            let text = sceneText root
+            Expect.stringContains text "hello" "Text beneath a Translate is reached"
+            Expect.stringContains text "sized" "SizedText is recognised as text-bearing"
+            Expect.stringContains text "cached" "Text beneath a CachedSubtree is reached"
+        }
+    ]
 
 //#if (profile == "governed" || profile == "headless-scene")
 [<Tests>]
