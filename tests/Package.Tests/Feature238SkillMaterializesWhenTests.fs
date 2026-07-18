@@ -68,6 +68,7 @@ let private canonicalSources =
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md"
       "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md"
       "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md"
+      "fs-gg-symbol-design", "template/product-skills/fs-gg-symbol-design/SKILL.md"
       "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md"
       "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md"
       "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md"

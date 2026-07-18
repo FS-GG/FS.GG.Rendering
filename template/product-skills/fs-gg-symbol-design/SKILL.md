@@ -127,7 +127,7 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
 
 ## The loop (the unit of change is the candidate set → the mapping, never the grammar library)
 
-```
+```text
 1. INTAKE    read game structure + full roster/stats; capture the hard frame (positions + terrain).
              Fix ONE axis of variation for this round (grammar, OR urgency assignment, OR treatment).
 
