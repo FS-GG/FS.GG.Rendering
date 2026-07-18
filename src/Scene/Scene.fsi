@@ -18,7 +18,10 @@ module Colors =
 module Paint =
     /// Public contract function exposed by this FS.GG.UI package.
     val fill: color: Color -> Paint
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// The stroke `color` is stored in `Paint.Fill`; the returned `Paint.Stroke` carries
+    /// width/cap/join/miter only, no colour. The painter reads a paint's colour from `Fill` for
+    /// both fills and strokes, so a stroke-then-inspect consumer reads the stroke colour back from
+    /// `Fill`, not `Stroke`.
     val stroke: color: Color -> width: float -> Paint
     /// Public contract function exposed by this FS.GG.UI package.
     val withOpacity: opacity: float -> paint: Paint -> Paint
