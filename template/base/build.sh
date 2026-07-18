@@ -24,6 +24,8 @@ FS.GG.UI generated product — build targets
   Test     The first real compile + `dotnet test` (audit-free). Use this mid-implementation.
   Verify   Runs the merge-gate audit (EvidenceGraph -> EvidenceAudit) first — the audit hard-blocks
            until every task is [X] — then runs the tests. Use only when the feature is complete.
+           The first Verify on a fresh scaffold fails until you generate the headless evidence baseline
+           (readiness/layout-evidence.txt + headless-scene-evidence.txt) once — see docs/product.md.
 
   Restore | Build | Run | Pack   Pass-through to stock dotnet over the single root .slnx.
 BANNER

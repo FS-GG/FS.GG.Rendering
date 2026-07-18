@@ -199,6 +199,24 @@ feature is complete and you want the full merge-gate. The documented
 `Dev → Test → Verify` order does **not** mean the audit is a separate later step —
 it is embedded inside `Verify`.
 
+**The first `Verify` needs a headless evidence baseline — generate it once.**
+`EvidenceGraph` audits two files that `Dev` and `Test` never write:
+`readiness/layout-evidence.txt` and `readiness/headless-scene-evidence.txt`. On a fresh
+scaffold neither exists yet, so the **first** `-t Verify` fails at the audit step with both
+listed as `MISSING (required)` in `readiness/evidence-graph.md`. This is not a defect to work
+around — producing the evidence is a deliberate developer act. Run the product once in each
+headless evidence mode to write the **evidence baseline**:
+
+```bash
+dotnet run --project src/Product/Product.fsproj -- --layout-evidence readiness/layout-evidence.txt
+dotnet run --project src/Product/Product.fsproj -- --scene-evidence readiness/headless-scene-evidence.txt
+```
+
+Re-run `-t Verify` and the audit finds the baseline. Regenerate it whenever you change the
+layout or the scene, so the audited evidence reflects the current product — a stale baseline is
+a `Verify` you cannot trust. This is the same render-and-look act the evidence gate exists to
+witness, which is why `Verify` does not silently create the baseline for you.
+
 Evidence graph and audit checks are exposed as generated FAKE targets:
 
 Generated FAKE-backed commands (`./fake.sh`, `fake.cmd`, or `dotnet fake`)
