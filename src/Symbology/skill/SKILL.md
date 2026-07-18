@@ -429,6 +429,12 @@ The recurring failure modes, collected. Three of the four are the contract worki
   echo as a *second* offset placeholder, and `Spin` / `Damage` emit overlay nodes that are simply degenerate
   at `R = 0`. So a placeholder box with a stray dot beside it is a bad radius, not a motion bug. Fix the
   mapping.
+- **`token` won't drop into a `SceneNode` layer** — `token : Token -> Scene` returns a `Scene`
+  (`{ Nodes: SceneNode list }`), **not** a `SceneNode`, while a view is `Model -> SceneNode` and
+  `SceneNode.Group` takes a `Scene list`. So `Sym.token tok` will not typecheck straight into a
+  `SceneNode list`. Compose it one of two ways: wrap it — `Group [ Sym.token tok ]` — or splice its
+  nodes — `yield! (Sym.token tok).Nodes`. Same for `animate` / `render` / the grammar-selecting
+  renderers; every one returns a `Scene`.
 - **`NU1403` on restore** — the known poisoned-NuGet-cache trap. Restore against a **scratch
   `NUGET_PACKAGES` directory**; do **not** clear the shared cache.
 
