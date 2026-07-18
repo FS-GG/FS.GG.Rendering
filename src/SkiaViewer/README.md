@@ -59,6 +59,16 @@ false pass.
   that render to a `ViewerRunFailure`-or-`ViewerRunEvidence` `Result` for CI and screenshots.
 - **`Viewer.captureScreenshotEvidence`** — drive a `ScreenshotEvidenceRequest` to a
   `ScreenshotEvidenceResult` recording capture source, pixel-content validation, and proof status.
+
+> **Readback frame size vs logical canvas (issue #885).** The bounded/evidence readback rasterizes the
+> scene 1:1 into an `InitialSize`-sized frame. With `LogicalSize = None` (the default) there is no
+> logical→physical mapping: the frame *is* the coordinate space, and content a product authored beyond
+> `InitialSize` is clipped — **no scale, no letterbox, no warning**. Set `ViewerOptions.LogicalSize` to
+> the canvas the product renders in (e.g. `{ Width = 1280; Height = 720 }`) and the host scales, centers
+> and letterboxes that whole canvas into whatever readback surface it is given (#246), so nothing is
+> silently dropped. If you leave `LogicalSize` unset, size `InitialSize` to cover the authored content —
+> a smaller readback frame captures only its top-left corner. The emitted evidence records the capture
+> `Size`, so compare it against your design canvas when a screenshot looks cropped.
 - **`ReferenceRendering.init` / `update` / `run`** — MVU-style reference rendering for portable
   scene packages, with explicit inspect/render/write effects and Skia-backed PNG evidence.
 - **`Viewer.desktopSessionDiagnostic` / `runtimeCapability`** — probe the host for a usable desktop
