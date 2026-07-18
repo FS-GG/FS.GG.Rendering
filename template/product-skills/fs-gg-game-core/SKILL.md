@@ -133,6 +133,10 @@ let forkStream (model: Model) : Rng * Model =
     child, { model with Rng = rng' }
 ```
 
+To *test* determinism over this RNG — byte-identical fixtures for a fixed seed, and the
+stream-independence property that proves a `split` sub-stream is isolated from the stream it was
+derived from — see the seeded-generation section in **[[fs-gg-rendering:fs-gg-testing]]**.
+
 ## Collision
 
 Collision detection **and** response now have a dedicated skill — see **[[fs-gg-game:fs-gg-collision]]**. It covers
