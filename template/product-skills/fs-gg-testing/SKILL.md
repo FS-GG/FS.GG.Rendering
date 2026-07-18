@@ -165,6 +165,112 @@ The shape is generic — serialize-and-compare, then vary-the-other-stream-and-r
 — so it pins every later generator (enemy population, determinism audits); write it
 once here.
 
+## Assert on a repo document — locate it CWD-independently, then prove the guard can redden
+
+Some of the most valuable tests a product suite carries assert on a **checked-in
+document**, not on code: a design doc's milestone table that must not drift from
+merged reality, a coverage manifest that must list every host-shell surface, a
+roadmap `§`-status line that a test reddens the moment it disagrees with what
+actually shipped. The document becomes evidence *because* a test refuses to let it
+lie.
+
+Every product that reaches for this reinvents the same three parts, and gets the
+same two of them subtly wrong. Write them once, from here.
+
+- **Locate the doc by walking up from `AppContext.BaseDirectory`, never from the
+  working directory.** `File.ReadAllText "docs/roadmap.md"` resolves against the
+  *current directory*, and a test has no say in what that is — `dotnet test`, the
+  IDE runner, and CI each start the process somewhere different, so a CWD-relative
+  path is a guess that passes on your machine and reds in CI (or worse, reads a
+  *different* repo's file and passes for the wrong reason). `AppContext.BaseDirectory`
+  is the `bin/` folder the test assembly runs from, and its distance to the repo
+  root is fixed by the build layout rather than by who launched the run. Walk
+  *parents* from there until one contains the doc. The framework's own repo-root
+  finder is `tests/`-internal and not product-reachable (FS.GG.Rendering#725), and
+  a marker-file walk is accepted hand-rolled hygiene — so this helper is yours to
+  own, not a package to import.
+
+  ```fsharp
+  open System
+  open System.IO
+
+  // From the test assembly's own location, walk PARENTS until one contains the doc.
+  // CWD-independent by construction: it never consults the working directory.
+  let findDocUp (relativePath: string) : string =
+      let rec up (dir: DirectoryInfo) =
+          match dir with
+          | null ->
+              failwithf "could not locate %s in any ancestor of %s"
+                  relativePath AppContext.BaseDirectory
+          | d ->
+              let candidate = Path.Combine(d.FullName, relativePath)
+              if File.Exists candidate then candidate else up d.Parent
+      up (DirectoryInfo AppContext.BaseDirectory)
+  ```
+
+- **Split by heading, so an assertion names one section.** A whole-file
+  `Contains`/`Regex.IsMatch` reddens when an unrelated paragraph three headings away
+  is reworded — a false red that trains the next reader to ignore the guard. Parse
+  the document into `heading -> body` once and assert against the *section* whose
+  fact you are pinning; then the test fails only when the thing it names actually
+  moves.
+
+  ```fsharp
+  // markdown -> (heading text -> the lines beneath it), keyed by heading.
+  let sectionsByHeading (markdown: string) : Map<string, string> =
+      let step (map: Map<string, string>, head) (line: string) =
+          if line.StartsWith "#" then
+              let h = line.TrimStart('#').Trim()
+              Map.add h "" map, h
+          elif head = "" then map, head
+          else Map.add head (map.[head] + line + "\n") map, head
+      markdown.Replace("\r\n", "\n").Split('\n')
+      |> Array.fold step (Map.empty, "")
+      |> fst
+  ```
+
+- **Prove the guard can go red — and make its message name the offender — before you
+  trust a green.** A doc-invariant test is a *negative* test: it passes by finding no
+  disagreement, which is exactly the shape [Test that your UI actually
+  responds](#test-that-your-ui-actually-responds) warns about — a guard wired to
+  nothing passes just as green as a guard that works. So do not trust the green until
+  you have watched the red. **Revert one asserted fact in the doc, run the guard,
+  confirm it reddens *and names which item drifted*, then restore and confirm green.**
+  A guard whose failure says only "the doc changed" points at nothing; a guard whose
+  failure says "roadmap lists §16 as `Pending` but FS.GG.Rendering#919 is merged"
+  points at the fix.
+
+  Better still, bake that proof into the suite so it cannot rot: hand the guard a
+  deliberately-mutated *copy* of the parsed doc and assert it reddens, alongside the
+  real-doc case that must green. Then the fail-red demonstration is a committed test,
+  not a one-time manual dance you have to remember to redo.
+
+  ```fsharp
+  // The invariant, as a pure function of the doc text so both cases can drive it.
+  let drift (docText: string) : string option =
+      let sections = sectionsByHeading docText
+      match Map.tryFind "16. Roadmap status" sections with
+      | Some body when body.Contains "#919" && body.Contains "merged" -> None
+      | Some _ -> Some "§16 does not record #919 as merged"
+      | None -> Some "§16 (Roadmap status) is missing from the doc"
+
+  [<Tests>]
+  let roadmapGuard =
+      testList "roadmap doc invariant" [
+          test "the real doc records merged reality" {
+              let doc = File.ReadAllText (findDocUp "docs/design.md")
+              Expect.isNone (drift doc) "the roadmap section must match merged reality"
+          }
+          // The fail-red proof, permanent: a mutated copy MUST redden. If this ever
+          // greens, the guard has stopped biting and the test above is worthless.
+          test "the guard reddens on a doc that lies" {
+              let lying = File.ReadAllText (findDocUp "docs/design.md")
+                          |> fun d -> d.Replace("#919", "#000")
+              Expect.isSome (drift lying) "a doc missing the merged item must fail the guard"
+          }
+      ]
+  ```
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
