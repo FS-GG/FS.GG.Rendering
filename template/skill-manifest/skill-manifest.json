@@ -12,7 +12,7 @@
     {
       "id": "fs-gg-collision",
       "scope": "product",
-      "sha256": "85d359e3e48e260c274522df6130d12d4c6a6bda09ec0f637d6375de7787a1e4",
+      "sha256": "d8ab344c1cd4b5a0701487ac85bb176a2a33ae1abbdd97289a4277a25ae19442",
       "resolvablePath": ".agents/skills/fs-gg-collision/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-collision/"
