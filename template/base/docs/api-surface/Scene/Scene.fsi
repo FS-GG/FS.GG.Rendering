@@ -51,6 +51,9 @@ type BlendMode =
     | Exclusion
 
 /// Public contract type exposed by this FS.GG.UI package.
+///
+/// Geometry only — `Stroke` carries no colour. A stroked paint's colour lives in `Paint.Fill`
+/// (see `Paint` and `Paint.stroke`).
 type Stroke =
     { Width: float
       Cap: StrokeCap
@@ -87,6 +90,11 @@ type PathEffect =
     | Corner of radius: float
 
 /// Public contract type exposed by this FS.GG.UI package.
+///
+/// `Fill` holds the paint colour for BOTH fills and strokes: the painter reads the drawn colour
+/// from `Fill` regardless of style, and `Stroke` carries only width/cap/join/miter (no colour).
+/// So a stroke built by `Paint.stroke` stores its stroke colour in `Fill` — read it back from
+/// `Fill`, not `Stroke`.
 type Paint =
     { Fill: Color option
       Stroke: Stroke option
@@ -533,7 +541,10 @@ module Colors =
 module Paint =
     /// Public contract function exposed by this FS.GG.UI package.
     val fill: color: Color -> Paint
-    /// Public contract function exposed by this FS.GG.UI package.
+    /// The stroke `color` is stored in `Paint.Fill`; the returned `Paint.Stroke` carries
+    /// width/cap/join/miter only, no colour. The painter reads a paint's colour from `Fill` for
+    /// both fills and strokes, so a stroke-then-inspect consumer reads the stroke colour back from
+    /// `Fill`, not `Stroke`.
     val stroke: color: Color -> width: float -> Paint
     /// Public contract function exposed by this FS.GG.UI package.
     val withOpacity: opacity: float -> paint: Paint -> Paint
