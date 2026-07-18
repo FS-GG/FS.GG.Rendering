@@ -1,6 +1,6 @@
 ---
 name: fs-gg-symbology
-description: Map a unit roster to legible vector symbols in a generated FS.GG.UI product, render boards headlessly, and run the render->eyeball->tweak design loop.
+description: Map a unit roster to legible vector symbols in a generated FS.GG.UI product, and run the headless render-and-look loop — render a frame (any Scene) to a PNG with `Render.toPng` and look at it to visually inspect the output, the fastest way to catch defects no requirements-derived test does.
 ---
 
 # Symbology Capability
