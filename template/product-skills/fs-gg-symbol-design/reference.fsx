@@ -58,7 +58,7 @@ let place (m: Stats -> Token) (u: Placed) : Scene =
 let tile (col, row) =
     Scene.filledRectangle
         { X = float col * cellSize; Y = float row * cellSize; Width = cellSize; Height = cellSize }
-        (Color.rgb 30uy 32uy 38uy)
+        { Red = 30uy; Green = 32uy; Blue = 38uy; Alpha = 255uy }
 let terrain = Scene.group [ for c in walkableCells -> tile c ]
 
 let frameScene (m: Stats -> Token) : Scene =

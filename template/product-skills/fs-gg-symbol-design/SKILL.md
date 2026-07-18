@@ -1,9 +1,6 @@
 ---
 name: fs-gg-symbol-design
 description: Design a game's visual language iteratively, in situ. You hand the agent the game structure (world / unit / stats types), the full roster with stats, and a captured gamestate frame (unit positions + terrain); it drafts SEVERAL competing visual directions, renders each as a FAITHFUL frame — real symbols at their real positions over the real board via `Symbology.Render` — screens them with the `Legibility` linter and the eye, presents a contact sheet, and converges with you to one approved symbol language. The divergent, whole-frame exploration loop on top of the single-mapping mechanics of [[fs-gg-symbology]].
-metadata:
-  author: FS.GG
-  source: FS.GG.Rendering symbol-design loop (builds on specs/192-agent-unit-symbology)
 ---
 
 # Symbol-Design Loop
@@ -242,7 +239,7 @@ let place (grammarMap: Stats -> Token) (u: Placed) : Scene =
 // Build ONE faithful frame for a candidate: terrain first, symbols on top.
 let tile (col, row) =
     Scene.filledRectangle { X = float col * cellSize; Y = float row * cellSize; Width = cellSize; Height = cellSize }
-                          (Color.rgb 30uy 32uy 38uy)
+                          { Red = 30uy; Green = 32uy; Blue = 38uy; Alpha = 255uy }
 let frameScene (grammarMap: Stats -> Token) (terrain: Scene) (roster: Placed list) : Scene =
     Scene.group (terrain :: (roster |> List.map (place grammarMap)))
 
