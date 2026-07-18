@@ -2,8 +2,8 @@
 # Skill Parity Report
 
 Overall status: `passed`
-Canonical sources: `32`
-Wrappers: `65`
+Canonical sources: `33`
+Wrappers: `67`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
@@ -34,6 +34,7 @@ Wrappers: `65`
 | fs-gg-scene | 14 | 14 | 0 | 0 |
 | fs-gg-skiaviewer | 5 | 5 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
+| fs-gg-symbol-design | 6 | 6 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
 | fs-gg-testing | 12 | 12 | 0 | 0 |
 | fs-gg-ui-widgets | 44 | 44 | 0 | 0 |
