@@ -189,6 +189,7 @@ same two of them subtly wrong. Write them once, from here.
   finder is `tests/`-internal and not product-reachable (FS.GG.Rendering#725), and
   a marker-file walk is accepted hand-rolled hygiene — so this helper is yours to
   own, not a package to import.
+  <!-- skill-refs: closed-ok FS.GG.Rendering#725 — cited as the ruling that made this a hand-rolled walk, not somewhere to go. Closed is correct; it stays closed. -->
 
   ```fsharp
   open System
@@ -237,8 +238,8 @@ same two of them subtly wrong. Write them once, from here.
   you have watched the red. **Revert one asserted fact in the doc, run the guard,
   confirm it reddens *and names which item drifted*, then restore and confirm green.**
   A guard whose failure says only "the doc changed" points at nothing; a guard whose
-  failure says "roadmap lists §16 as `Pending` but FS.GG.Rendering#919 is merged"
-  points at the fix.
+  failure names the row — "§16 lists the Scene-host driver as `pending`, but it
+  merged" — points at the fix.
 
   Better still, bake that proof into the suite so it cannot rot: hand the guard a
   deliberately-mutated *copy* of the parsed doc and assert it reddens, alongside the
@@ -247,11 +248,12 @@ same two of them subtly wrong. Write them once, from here.
 
   ```fsharp
   // The invariant, as a pure function of the doc text so both cases can drive it.
+  // Pins ONE row of the roadmap table: the Scene-host driver milestone, status column.
   let drift (docText: string) : string option =
       let sections = sectionsByHeading docText
       match Map.tryFind "16. Roadmap status" sections with
-      | Some body when body.Contains "#919" && body.Contains "merged" -> None
-      | Some _ -> Some "§16 does not record #919 as merged"
+      | Some body when body.Contains "Scene-host driver" && body.Contains "| merged |" -> None
+      | Some _ -> Some "§16 no longer records the Scene-host driver milestone as merged"
       | None -> Some "§16 (Roadmap status) is missing from the doc"
 
   [<Tests>]
@@ -265,8 +267,8 @@ same two of them subtly wrong. Write them once, from here.
           // greens, the guard has stopped biting and the test above is worthless.
           test "the guard reddens on a doc that lies" {
               let lying = File.ReadAllText (findDocUp "docs/design.md")
-                          |> fun d -> d.Replace("#919", "#000")
-              Expect.isSome (drift lying) "a doc missing the merged item must fail the guard"
+                          |> fun d -> d.Replace("| merged |", "| pending |")
+              Expect.isSome (drift lying) "a milestone recorded as pending must fail the guard"
           }
       ]
   ```
