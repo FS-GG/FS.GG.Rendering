@@ -51,6 +51,7 @@ let feature246CollisionSkillTests =
               Expect.stringContains skillBody "Geometry" "narrow-phase reuses Geometry"
               Expect.stringContains skillBody "SpatialGrid" "broad-phase reuses SpatialGrid"
               Expect.stringContains skillBody "Collision.fs" "points at the adaptable helper source"
+              Expect.stringContains skillBody "slideCircle" "documents the circle-vs-static-AABB sliding sweep (#890)"
           }
 
           test "the skill materializes for game/sample-pack in the manifest" {
@@ -68,7 +69,7 @@ let feature246CollisionSkillTests =
               let src = File.ReadAllText helperSource
               Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
               Expect.stringContains src "module Collision" "the Collision module"
-              for fn in [ "contact"; "collide"; "resolve"; "step" ] do
+              for fn in [ "contact"; "collide"; "resolve"; "step"; "slideCircle"; "clampCircleInside" ] do
                   Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)
               for ty in [ "Body"; "Contact"; "Resolution"; "ResponseRule" ] do
                   Expect.stringContains src (sprintf "type %s" ty) (sprintf "exposes %s" ty)

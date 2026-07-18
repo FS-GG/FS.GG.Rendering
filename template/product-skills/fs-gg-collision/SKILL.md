@@ -36,10 +36,10 @@ game-opinionated *policy* layer on top of them is your own product source:
   re-deriving. This `Resolution` is a **module**; your product's `Collision.Resolution<'T>` is a
   *different*, body-carrying result **record** — see the pitfall.
 - `src/<ProductDir>/Collision.fs` — **product-owned, adaptable** source: the generic `Body<'T>`/
-  `Contact<'T>`/`Resolution<'T>`/`ResponseRule` shapes and `contact`/`collide`/`resolve`/`step`, always
-  reached module-qualified as `Collision.*`. This is the game-opinionated **policy** — which body is a
-  wall, how bounce is booked — that the framework primitives above deliberately do not decide. Yours to
-  edit or delete.
+  `Contact<'T>`/`Resolution<'T>`/`ResponseRule` shapes and `contact`/`collide`/`resolve`/`step`, plus the
+  circular-hitbox movement helpers `slideCircle`/`clampCircleInside`, always reached module-qualified as
+  `Collision.*`. This is the game-opinionated **policy** — which body is a wall, how bounce is booked —
+  that the framework primitives above deliberately do not decide. Yours to edit or delete.
 
 All detection helpers are **total**: degenerate inputs return a documented value, they never throw.
 
@@ -103,6 +103,38 @@ displacement) — compose those inside `resolve` rather than re-deriving separat
 let resolutions = Collision.step Collision.SeparateEqually 32.0 bodies
 // Fold each resolution's separated bodies back into your Model.
 ```
+
+## Moving a circular hitbox against walls — `slideCircle`
+
+`Body`/`collide`/`step` above resolve **AABB-body-vs-AABB-body**. A **circular** mover — a player
+hitbox, a ball — sliding against static walls is a *different* narrow-phase, so faking the disc as its
+bounding box catches on corners and feels wrong. `Collision.slideCircle` is that case: it moves a
+`Circle` by a per-step `displacement` (velocity × dt) against **static** AABB `walls`, resolving the X
+move and the Y move **independently** so a wall that stops one axis leaves the other free — the "slide
+along the wall" feel. Detection reuses the framework `Geometry.circleAabbContact` primitive (clamp
+centre to box, squared-distance test) — no hand-rolled circle math, matching `contact`. An optional
+`bounds` clamps the final centre inside the playfield (inset by the radius) via `clampCircleInside`.
+
+```fsharp
+open FS.GG.Game.Core       // Rect, Point, Circle, Geometry
+
+let walls  = [ { X = 100.0; Y = 0.0; Width = 20.0; Height = 200.0 } ]   // immovable, stable order
+let bounds = Some { X = 0.0; Y = 0.0; Width = 640.0; Height = 360.0 }   // or None for no clamp
+let player = { Center = { X = 80.0; Y = 50.0 }; Radius = 13.0 }
+
+// velocity × dt for this fixed step; X is blocked by the wall, Y still slides.
+let moved = Collision.slideCircle bounds walls player { X = 6.0; Y = 4.0 }
+// fold moved.Center back into your Model — the radius is unchanged.
+```
+
+Pure, total (NaN-safe), and deterministic (walls fold in list order). It is a single **move-and-resolve**
+step, **not** a swept cast: it lands the disc on a wall's near face only while the moved centre stays in
+that wall's near half — always true for a player hitbox against tile-sized walls, whose per-step
+displacement is well under the wall thickness. A mover fast enough to overshoot a wall's midline in one
+step is a **projectile**, not a hitbox: use the swept `collide`/`step` pass (it reads `Body.Velocity`,
+FS.GG.Rendering#290), or call `slideCircle` in sub-steps each no longer than the radius so consecutive
+discs overlap. This is the deliberate boundary of the helper, not a silent gap — see the pitfall below.
+<!-- skill-refs: closed-ok FS.GG.Rendering#290 — cited as the issue that ESTABLISHED the swept collide/step pass (why a hitbox helper need not sweep), not as somewhere to go. Closed is correct; it stays closed. File-scoped, so it honours the ref in the pitfall below too. -->
 
 ## Shoving a unit across a grid — `Resolution.push`
 
@@ -198,6 +230,11 @@ never touch the durable `Product.fsproj`.
   built-in MTV is sqrt-free so output is byte-identical across runs/platforms (safe under replay).
 - **Expecting `step` to fully de-stack a pile in one call.** It is a single positional pass per frame;
   for dense stacking, call it again on the resolved bodies or add your own iteration.
+- **Driving a fast PROJECTILE through `slideCircle`.** It is a single move-and-resolve step for a
+  player-speed *hitbox*, not a swept cast: a mover that overshoots a wall's midline in one step tunnels.
+  A projectile is what the swept `collide`/`step` pass (via `Body.Velocity`, FS.GG.Rendering#290) is for; or sub-step
+  `slideCircle` with each chunk no longer than the radius so consecutive discs overlap. Do not raise the
+  per-step displacement of a hitbox past its wall thickness and expect a wall to stop it.
 - **Deleting `Collision.fs` and then editing `Product.fsproj`.** You don't need to — the compile item
   is `Exists`-guarded. Leave `Product.fsproj` alone.
 

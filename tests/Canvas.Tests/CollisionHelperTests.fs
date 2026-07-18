@@ -193,4 +193,74 @@ let tests =
             let swept = Collision.collide 16.0 bodies |> List.map (fun c -> c.A.Tag, c.B.Tag)
             Expect.equal swept [ (1, 2) ] "static (zero-velocity) bodies collide exactly as before"
         }
+
+        // --- #890: circle-vs-static-AABB axis-separated sliding sweep (player-hitbox movement) --------
+        // The moving-CIRCLE case `Body`/`collide` do NOT cover. `slideCircle` composes the framework
+        // `Geometry.circleAabbContact` primitive; all real pure computation, no synthetic evidence.
+
+        let circle cx cy r : Circle = { Center = { X = cx; Y = cy }; Radius = r }
+
+        test "slideCircle with no walls moves the centre by the full displacement" {
+            let start = circle 0.0 0.0 13.0
+            let out = Collision.slideCircle None [] start { X = 5.0; Y = -3.0 }
+            Expect.floatClose Accuracy.high out.Center.X 5.0 "X advances by dx"
+            Expect.floatClose Accuracy.high out.Center.Y -3.0 "Y advances by dy"
+            Expect.floatClose Accuracy.high out.Radius 13.0 "radius is unchanged"
+        }
+
+        test "slideCircle stops on the blocked axis but keeps moving on the free one (slides)" {
+            // A tall wall at x∈[100,120]; the circle (r=13) starts left of it at (80,50) and moves
+            // right-and-down. X is blocked at the wall face; Y must still advance the full 10 units.
+            let wall = { X = 100.0; Y = 0.0; Width = 20.0; Height = 200.0 }
+            let start = circle 80.0 50.0 13.0
+            let out = Collision.slideCircle None [ wall ] start { X = 25.0; Y = 10.0 }
+            Expect.floatClose Accuracy.high (out.Center.X + out.Radius) wall.X
+                "the disc's right edge rests on the wall's near face (X blocked, not tunnelled through)"
+            Expect.floatClose Accuracy.high out.Center.Y 60.0 "Y slides the full 10 units despite the X block"
+            Expect.isNone (Geometry.circleAabbContact out wall) "the resolved circle no longer overlaps the wall"
+        }
+
+        test "slideCircle clamps the centre inside bounds (inset by the radius)" {
+            let bounds = { X = 0.0; Y = 0.0; Width = 200.0; Height = 200.0 }
+            let start = circle 190.0 10.0 13.0
+            let out = Collision.slideCircle (Some bounds) [] start { X = 50.0; Y = -50.0 }
+            Expect.floatClose Accuracy.high out.Center.X (200.0 - 13.0) "clamped to the right inset"
+            Expect.floatClose Accuracy.high out.Center.Y 13.0 "clamped to the top inset"
+        }
+
+        test "slideCircle is deterministic: repeated runs are byte-identical" {
+            let walls = [ { X = 100.0; Y = 0.0; Width = 20.0; Height = 200.0 }
+                          { X = 40.0; Y = 40.0; Width = 10.0; Height = 10.0 } ]
+            let bounds = Some { X = 0.0; Y = 0.0; Width = 300.0; Height = 300.0 }
+            let start = circle 80.0 50.0 13.0
+            let run () = Collision.slideCircle bounds walls start { X = 40.0; Y = 12.0 }
+            Expect.equal (run ()) (run ()) "identical inputs -> identical resolved circle"
+        }
+
+        test "a fast mover is kept from tunnelling by sub-stepping (each chunk <= the radius)" {
+            // 40 units in ONE step overshoots the 20-wide wall's midline and tunnels (documented
+            // single-step boundary); folding the same move as four 10-unit chunks (each < r=13) keeps
+            // consecutive discs overlapping, so the sweep stops on the wall's near face instead.
+            let wall = { X = 100.0; Y = 0.0; Width = 20.0; Height = 200.0 }
+            let start = circle 80.0 50.0 13.0
+            let stepped =
+                [ 1..4 ]
+                |> List.fold (fun c _ -> Collision.slideCircle None [ wall ] c { X = 10.0; Y = 0.0 }) start
+            Expect.floatClose Accuracy.high (stepped.Center.X + stepped.Radius) wall.X
+                "sub-stepped fast move rests on the wall's near face — no tunnel"
+        }
+
+        test "slideCircle is total on non-finite displacement and radius (never throws)" {
+            let wall = { X = 100.0; Y = 0.0; Width = 20.0; Height = 200.0 }
+            let start = circle 80.0 50.0 13.0
+            let nan = 0.0 / 0.0
+            // A non-finite displacement axis contributes nothing rather than poisoning the centre.
+            let out = Collision.slideCircle None [ wall ] start { X = nan; Y = 5.0 }
+            Expect.isTrue (System.Double.IsFinite out.Center.X && System.Double.IsFinite out.Center.Y)
+                "non-finite dx is dropped; the centre stays finite"
+            Expect.floatClose Accuracy.high out.Center.Y 55.0 "the finite Y axis still advances"
+            // A NaN radius is a no-contact input, so no wall resolution fires and nothing throws.
+            let bad = Collision.slideCircle None [ wall ] (circle 80.0 50.0 nan) { X = 40.0; Y = 0.0 }
+            Expect.floatClose Accuracy.high bad.Center.X 120.0 "NaN-radius disc is not resolved (moves freely)"
+        }
     ]
