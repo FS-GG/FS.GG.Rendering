@@ -98,6 +98,87 @@ module GeneratedAppHost =
         | Some msg -> host.Update msg model
         | None -> model, [ DispatchInput(key, isDown) ]
 
+    /// Issue #911: the scene-host analogue of `ControlsElmish.Perf.runScriptToModel` (#461). Fold an
+    /// ordered key-event script through THIS host's own routing — `Init`'s model first, then each event
+    /// via `dispatchKey` (`normalizeEvent -> MapKey -> Update`) — to the FINAL model, returning it with
+    /// every `ViewerEffect` requested in order (`Init`'s batch first, then each key's). No window, no
+    /// device, no GL: it closes the "drive input through the host -> assert the resulting model" loop
+    /// purely and headlessly, so a `game`-family product — which takes input through this scene-host,
+    /// not the Controls click path — can write an end-to-end "played through the host" test.
+    ///
+    /// It routes through `dispatchKey`, the SAME fold the live runtime's `handleKey` performs
+    /// (`ViewerRuntime`), so what it drives is the product's real routing, not a test-local
+    /// re-derivation of it — which is the whole point. A hand-rolled fold in a test asserts what the
+    /// TEST does; the defect this hunts is the product's `MapKey`/`Update` doing something else. That
+    /// is precisely how Rougue1 shipped "v1 complete" with 108 green tests while unplayable: the suite
+    /// injected messages straight into `update`, so nothing ever exercised `mapKey -> host -> update`
+    /// and the missing routing could not turn a test red.
+    ///
+    /// This drives the KEY runtime source only. `Tick` is the host's other source; a product whose
+    /// script needs a clock folds `host.Tick dt` itself, or checks the wiring with `reachableMessages`.
+    ///
+    /// The effects are `dispatchKey`'s: a key `MapKey` HANDLES contributes `Update`'s batch, and one it
+    /// does NOT contributes a single `DispatchInput(key, isDown)` marker (dispatchKey's "seen but
+    /// unhandled" record — the live loop instead flips runtime state and repaints). Filtering paths like
+    /// `audioRequests` ignore the marker; only an effect-list-EQUALITY assertion need account for it.
+    let runKeyScriptToModel (host: GeneratedAppHost<'model, 'msg>) (script: ViewerKeyEvent list) : 'model * ViewerEffect list =
+        let initModel, initEffects = host.Init()
+        let mutable model = initModel
+        let effects = ResizeArray<ViewerEffect>(initEffects)
+
+        for raw in script do
+            let model', requested = dispatchKey host raw model
+            model <- model'
+            effects.AddRange requested
+
+        model, List.ofSeq effects
+
+    /// Issue #911: the scene-host analogue of `ControlRenderResult.BoundIds` — "a key that is bound is
+    /// a key that dispatches". Partition a declared input surface (`probe` — the events a product CLAIMS
+    /// to bind) into the events that route through `MapKey` to a product message and the DEAD ones that
+    /// route to none. A non-empty `Dead` is a bound key that dispatches nothing. Reflection-free, total,
+    /// and pure: it consults only `MapKey` (through `normalizeEvent`, exactly as the live runtime does)
+    /// and never runs `Update`.
+    let auditKeyWiring (host: GeneratedAppHost<'model, 'msg>) (probe: ViewerKeyEvent list) : SceneHostKeyWiring<'msg> =
+        let wired, dead =
+            probe
+            |> List.fold
+                (fun (wired, dead) raw ->
+                    let key, isDown = ViewerKeyboard.normalizeEvent raw
+
+                    match host.MapKey key isDown with
+                    | Some msg -> (raw, msg) :: wired, dead
+                    | None -> wired, raw :: dead)
+                ([], [])
+
+        { Wired = List.rev wired
+          Dead = List.rev dead }
+
+    /// Issue #911: every product message this host's runtime SOURCES can produce over `probe`, in probe
+    /// order — the raw material for the stronger "handled-but-unwired" check. A `game`-family product
+    /// takes input through two runtime sources, `MapKey` and `Tick`; a `Msg` case handled in `Update`
+    /// but produced by NEITHER is dispatched by nothing (the Rougue1 defect: `StartRun`/`Menu*`/
+    /// `TogglePause`/`EnterRoom`/`DescendFloor` all handled, dispatched from no source). This package
+    /// does not use reflection, so it cannot enumerate the product's `Msg` universe; instead — exactly
+    /// as `BoundIds` hands back a set the product checks its render against, rather than a self-contained
+    /// pass/fail — it returns what IS reachable, and the product asserts its handled universe is covered.
+    ///
+    /// Pass `tickSample = Some dt` to include the message `Tick dt` produces (if any). A `Msg` reachable
+    /// ONLY through `Tick` is not unwired, so omit the sample and a clock message reads as a false
+    /// positive.
+    ///
+    /// The result is positional (probe order), NOT a set: a message several probe keys produce appears
+    /// several times. The intended `handledUniverse - reachable` check runs through a `Set`, so this is
+    /// immaterial there; a caller counting the raw list should de-dup first.
+    let reachableMessages
+        (host: GeneratedAppHost<'model, 'msg>)
+        (probe: ViewerKeyEvent list)
+        (tickSample: TimeSpan option)
+        : 'msg list =
+        let fromKeys = (auditKeyWiring host probe).Wired |> List.map snd
+        let fromTick = tickSample |> Option.bind host.Tick |> Option.toList
+        fromKeys @ fromTick
+
     let audioRequests (effects: ViewerEffect list) : AudioEffect list =
         effects
         |> List.collect (function

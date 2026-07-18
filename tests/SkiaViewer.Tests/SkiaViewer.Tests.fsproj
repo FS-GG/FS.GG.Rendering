@@ -90,6 +90,7 @@
     <Compile Include="FCore4RenderThreadTests.fs" />
     <Compile Include="FCore1DispatchAssemblyTests.fs" />
     <Compile Include="FCore1FocusRepaintTests.fs" />
+    <Compile Include="Issue911SceneHostDriverTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

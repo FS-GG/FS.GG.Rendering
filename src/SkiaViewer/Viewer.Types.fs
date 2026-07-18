@@ -685,6 +685,16 @@ type GeneratedAppHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+/// Issue #911: the `GeneratedAppHost.auditKeyWiring` result — a declared input surface partitioned
+/// into the events that route through `MapKey` to a product message and the DEAD ones that route to
+/// none. The scene-host analogue of the click path's `ControlRenderResult.BoundIds`: where that guard
+/// answers "a button that renders is a button that dispatches", `Dead` answers the sibling question
+/// for this host — "a key that is bound is a key that dispatches" — and a non-empty `Dead` over a
+/// product's declared keymap is a bound key that dispatches nothing.
+type SceneHostKeyWiring<'msg> =
+    { Wired: (ViewerKeyEvent * 'msg) list
+      Dead: ViewerKeyEvent list }
+
 [<RequireQualifiedAccess>]
 /// Framework-neutral pointer button identity surfaced to the interactive host (085).
 type ViewerPointerButtonKind =
