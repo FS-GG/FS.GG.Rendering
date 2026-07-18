@@ -92,6 +92,79 @@ If you write your own cue seam by analogy (a `SaveCues.forTransition`, say), you
 inherit this blind spot along with the pattern. Give it a `Started` too, and test it
 here.
 
+## Seeded generation — pin it byte-for-byte, and prove the streams are independent
+
+This one is for products that generate content from a seed — the `game` and
+`sample-pack` profiles that carry the `Rng` value type ([[fs-gg-game-core]]); a
+`headless-scene` or `governed` product with no seeded generator can skip it. Your
+product already `open`s `FS.GG.Game.Core`, so the snippets below use `Rng` as an
+in-scope symbol rather than repeating the open.
+
+Seeded generation makes two promises the type system does **not** keep for you, and a
+suite that spot-checks a field or two proves neither:
+
+1. **Determinism** — the same seed produces the same artifact, every run, every
+   machine.
+2. **Stream-independence** — an artifact built from one RNG stream does not shift
+   because an *unrelated* stream advanced. `Rng.split` ([[fs-gg-game-core]]) hands
+   you decorrelated sub-streams precisely so loot draws cannot perturb the floor;
+   the test is what proves you wired them that way and not by accident onto one
+   shared generator.
+
+Both break silently. A generator that reaches for `System.Random`, the wall clock,
+or dictionary/`HashSet` iteration order still returns a plausible artifact and
+passes every structural spot-check — it just returns a *different* plausible one
+next run. And a stream you meant to keep separate but threaded back into the wrong
+place stays invisible until something draws from the other stream a different number
+of times. Neither is a type error; both ship.
+
+Assert on the **serialized fixture**, not the live value. You already own a pure
+`serialize` for save slots ([[fs-gg-persistence]]) — reuse it. Byte-identity on the
+serialized form is the strongest cheap determinism check there is (it catches drift
+a field-by-field `Expect.equal` misses), it produces a diffable artifact in a
+failing test, and it is the *exact* bytes a save would carry.
+
+```fsharp
+// The product owns `serialize : Floor -> string` (see [[fs-gg-persistence]]); `Rng`
+// comes from the product's own `FS.GG.Game.Core` import, and `test`/`Expect` from
+// Expecto.
+// A generator that draws from TWO streams: `layout` builds the floor, a split-off
+// `drops` stream rolls `lootCount` items. `split` keeps them decorrelated — never
+// build both from one Rng, and never reuse the input generator (thread the advanced
+// one back). `lootCount` is the knob the second test turns to vary the OTHER stream.
+let generate (seed: uint64) (lootCount: int) : Floor * Item list =
+    let struct (layoutRng, dropRng) = Rng.split (Rng.ofSeed seed)
+    buildFloor layoutRng, rollLoot lootCount dropRng   // layout | drops — disjoint streams
+
+[<Tests>]
+let seededGeneration =
+    testList "seeded floor generation" [
+
+        // 1. Determinism: a fixed seed reproduces the fixture byte-for-byte.
+        test "same seed reproduces the fixture byte-for-byte" {
+            let a = serialize (generate 42UL 5)
+            let b = serialize (generate 42UL 5)
+            Expect.equal b a "a fixed seed must reproduce the identical serialized output"
+        }
+
+        // 2. Stream-independence: vary how much the DROP stream draws, and the FLOOR
+        //    must not move. This fails loudly if layout and drops share one generator.
+        test "the floor is unaffected by how many loot items are rolled" {
+            let floorOf lootCount = serialize (fst (generate 42UL lootCount))
+            Expect.equal (floorOf 50) (floorOf 0)
+                "the floor must not depend on how far the drop stream has advanced"
+        }
+    ]
+```
+
+The second test is the one that earns its keep: property 1 alone passes even when
+`layout` and `drops` are secretly the same stream, because nothing varies between
+the two runs. Only by advancing the unrelated stream — here, rolling more loot — and
+re-asserting the floor is unchanged do you prove the `split` actually isolated them.
+The shape is generic — serialize-and-compare, then vary-the-other-stream-and-re-assert
+— so it pins every later generator (enemy population, determinism audits); write it
+once here.
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
@@ -204,6 +277,10 @@ rather than hard-failing the phase.
 - [[fs-gg-elmish]] — the runnable interaction-driver recipe (`Perf.runScriptToModel`,
   the `BoundIds` pre-click guard, post-interaction frame capture).
 - [[fs-gg-scene]] — the capability whose generated output these tests assert.
+- [[fs-gg-game-core]] — the seeded `Rng` (`ofSeed`/`nextInt`/`split`) the
+  seeded-generation tests pin determinism over.
+- [[fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
+  assertions reuse.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
 
 ## Sources / links
