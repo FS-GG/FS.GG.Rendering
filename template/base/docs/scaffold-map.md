@@ -111,6 +111,13 @@ it does **not** mean "do not touch":
   evidence command (`RendererMode = "deterministic-scene"`); renders the starter
   scene. Re-point it at your own `view`, keeping the command surface and tokens.
 
+> The headless scene-evidence baseline renders `view initialModel` — the initial
+> state (the starter's Title screen). So a render **reachable only in a non-initial
+> state** (a started run, a non-Title screen, a modal opened mid-session) **cannot
+> change the baseline**: regenerating it is byte-identical. Adding such a
+> gameplay-only render needs no "will this churn the baseline?" check — the baseline
+> only ever sees `initialModel`.
+
 > You only touch the re-point files when your swap **changes the specific model fields they read**
 > (the starter's HUD/gameplay regions or `view`/`initialModel`). A purely additive swap — e.g.
 > adding a new model field — leaves them untouched, as the feature-220 swap evidence shows.
