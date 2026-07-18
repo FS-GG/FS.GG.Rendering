@@ -234,7 +234,7 @@ let foreignSkills: Foreign list =
     //
     // Verified against FS.GG.Game's live canonicals when this landed: all four IN SYNC. That is what makes
     // them safe to pin — a declaration seeded from a DRIFTED body would sanction that drift permanently.
-    [ game "fs-gg-game-core" (Mirrored "183a888810b2ad0da7e20b32d2fefe958ea33d3444c356851c9fa5fe4d84c62f")
+    [ game "fs-gg-game-core" (Mirrored "91eaeb4ae6c2e62cf9d36bdc3d185ce6b37f2e0281fd7650ab28a65ddc3741e5")
       game "fs-gg-audio" (Mirrored "d1833a673c2a970716e36923f6247253a614b79ddcf7f7c2a482dc0071527420")
       game "fs-gg-persistence" (Mirrored "9461822e5c282f0cac37aa0a88720fbb910319a6571d74bbcb1119eeb48530fb")
       game "fs-gg-model-swap" (Mirrored "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26")

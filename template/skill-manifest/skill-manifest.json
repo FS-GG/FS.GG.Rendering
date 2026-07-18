@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-game-core",
       "scope": "product",
-      "sha256": "183a888810b2ad0da7e20b32d2fefe958ea33d3444c356851c9fa5fe4d84c62f",
+      "sha256": "91eaeb4ae6c2e62cf9d36bdc3d185ce6b37f2e0281fd7650ab28a65ddc3741e5",
       "resolvablePath": ".agents/skills/fs-gg-game-core/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-game-core/"
