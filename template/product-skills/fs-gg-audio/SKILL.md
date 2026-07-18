@@ -188,6 +188,50 @@ The entry point that *accepts* that sink differs by profile — see
 [the launch entry point is per family](#the-launch-entry-point-is-per-family--take-the-one-your-profile-launches-with)
 below.
 
+### Deriving cues from a model diff — most gameplay events have no `Msg`
+
+The name `forTransition` invites you to `match` on the `Msg`, and for player-driven one-shots (a
+fire button, a menu confirm) that is exactly right. But **most** gameplay cues — a shot leaving the
+barrel, an enemy dying, a pickup consumed, a room sealing then clearing, a boss changing phase —
+have **no `Msg` of their own**. They fall out of the simulation advancing under a single `Tick`, so
+there is no message to match. You recover them instead by **diffing `previous` against `next`**:
+
+```fsharp
+let forTransition (msg: Msg) (previous: Model) (next: Model) : AudioEffect list =
+    match msg with
+    | Started -> [ Audio.setMasterVolume next.Settings.Volume ]
+    | Fired   -> [ Audio.playSfx (SoundId "fire") 0.8 ]        // a real Msg — match it directly
+    | Tick _  ->
+        // No Msg carries these. Read them out of the before/after model.
+        [ if next.Score > previous.Score then Audio.playSfx (SoundId "score") 0.9
+          if List.length next.Enemies < List.length previous.Enemies then
+              Audio.playSfx (SoundId "enemy-death") 0.8 ]
+```
+
+This is why wiring event-driven audio into a scaffolded product needs **no new `Msg` case and no
+`Model.fs` change**: the events are already latent in the model, and `forTransition`'s before/after
+pair is where you read them off. The scaffold's `AudioCues.fs` ships the pattern — its Pong
+`scored` / `bounced` helpers are exactly this previous-vs-next diff — so start from the shape it
+gives you rather than inventing a message for every sound.
+
+**The net-diff coverage boundary.** A single `Tick` does not advance the sim once — it drains a
+whole *run* of fixed steps. The scaffold's `Model.advanceSim` folds the host's `dt` into an
+accumulator and runs `stepSim` for **every whole fixed step** the accumulator has banked, so on a
+slow frame that can be several steps at once. The `previous` and `next` handed to `forTransition`
+therefore **straddle the entire drain**, not one step — you see where the sim *started* and where it
+*ended up*, never the states in between.
+
+So a cue works by model-diff **only if the state change it keys on survives to the end of the
+drain**. That covers the real cues: a fired shot persists across frames, an enemy that died stays
+dead, a score or a bounce is a durable state change — each still differs at `next`. The trap is an
+event that both **appears and disappears inside one host frame**: a projectile spawned and consumed
+within the same drain, a flag raised and cleared between two whole steps. It nets to **no diff**,
+`forTransition` never sees it, and the cue silently never fires — no type is wrong and no test that
+asserts on the model catches it, the same failure shape as the [`Started`
+hole](#started--the-initial-model-makes-no-transition) below one level down. If you need to cue a
+same-frame appear-and-vanish event, **give it its own `Msg`** and match that, rather than trying to
+recover it from a diff that has already cancelled it out.
+
 ### `Started` — the initial model makes no transition
 
 `forTransition` is a function of a **transition**, and the initial model does not make one: it comes
