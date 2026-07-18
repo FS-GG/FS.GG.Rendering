@@ -346,6 +346,36 @@ let behaviorTests =
                 Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
         }
 
+        // #901: the --view-image probe renders the FULL product view at logical resolution to a
+        // real, eyeballable PNG through the window-free CPU readback. It must survive a headless
+        // host (real pixels) OR report an honest UnsupportedEnvironment — never a bare failure —
+        // and it renders at 1280x720, not the 640x480 surface the windowed probes use.
+        test "view-image probe renders the full view at logical resolution to a headless PNG (#901)" {
+            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
+            let path = System.IO.Path.Combine(dir, "view-image.png")
+            let exitCode = AppRoot.EvidenceCommands.viewImage path
+            // Read every fact off disk BEFORE deleting, then assert — so a failing assertion cannot
+            // leak the temp dir (the read-then-delete-then-assert pattern the windowDiagnostics test uses).
+            let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
+            let pngExists = System.IO.File.Exists path
+            let pngHead = if pngExists then System.IO.File.ReadAllBytes path |> Array.truncate 8 else [||]
+            System.IO.Directory.Delete(dir, true)
+            let pngSignature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
+
+            Expect.equal exitCode 0 "view-image is never a failure: real pixels on a supported host, honest unsupported otherwise"
+            Expect.stringContains metadata "command=--view-image" "records the evidence command"
+            Expect.stringContains metadata "output-size=1280x720" "renders at logical resolution, not the evidence surface size"
+            Expect.isFalse (metadata.Contains "status=failed") "the readback never reports a failure it did not observe"
+
+            if metadata.Contains "status=ok" then
+                Expect.isTrue pngExists "a supported host writes the PNG file"
+                Expect.equal pngHead pngSignature "the readback is a decodable PNG"
+                Expect.stringContains metadata "image-decodable=True" "a supported host reports a decodable image"
+                Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
+            else
+                Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never failed) — the honest fail-closed path"
+        }
+
         // #139: the keyboard-only host boundary must be SURFACED where a game author first wires input
         // (a comment at the input-mapping site) and must stay ACCURATE to the emitted host contract, so
         // it cannot silently rot if the seams change. Source/contract scan — no host launch needed.
@@ -768,6 +798,36 @@ let behaviorTests =
                 Expect.isFalse (output.Contains "status=unsupported") "a window-capable host is never told a live window is impossible"
             else
                 Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
+        }
+
+        // #901: the --view-image probe renders the FULL product view at logical resolution to a
+        // real, eyeballable PNG through the window-free CPU readback. It must survive a headless
+        // host (real pixels) OR report an honest UnsupportedEnvironment — never a bare failure —
+        // and it renders at 1280x720, not the 640x480 surface the windowed probes use.
+        test "view-image probe renders the full view at logical resolution to a headless PNG (#901)" {
+            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
+            let path = System.IO.Path.Combine(dir, "view-image.png")
+            let exitCode = AppRoot.EvidenceCommands.viewImage path
+            // Read every fact off disk BEFORE deleting, then assert — so a failing assertion cannot
+            // leak the temp dir (the read-then-delete-then-assert pattern the windowDiagnostics test uses).
+            let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
+            let pngExists = System.IO.File.Exists path
+            let pngHead = if pngExists then System.IO.File.ReadAllBytes path |> Array.truncate 8 else [||]
+            System.IO.Directory.Delete(dir, true)
+            let pngSignature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
+
+            Expect.equal exitCode 0 "view-image is never a failure: real pixels on a supported host, honest unsupported otherwise"
+            Expect.stringContains metadata "command=--view-image" "records the evidence command"
+            Expect.stringContains metadata "output-size=1280x720" "renders at logical resolution, not the evidence surface size"
+            Expect.isFalse (metadata.Contains "status=failed") "the readback never reports a failure it did not observe"
+
+            if metadata.Contains "status=ok" then
+                Expect.isTrue pngExists "a supported host writes the PNG file"
+                Expect.equal pngHead pngSignature "the readback is a decodable PNG"
+                Expect.stringContains metadata "image-decodable=True" "a supported host reports a decodable image"
+                Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
+            else
+                Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never failed) — the honest fail-closed path"
         }
     ]
 //#endif

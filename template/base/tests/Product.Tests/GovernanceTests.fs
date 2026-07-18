@@ -197,9 +197,16 @@ let governanceTests =
             Expect.stringContains source "mode=persistent-evidence" "bounded evidence uses persistent evidence mode"
             Expect.stringContains source "command=--launch-evidence" "first-frame evidence records the evidence command"
             Expect.stringContains source "\"--image-evidence\"" "image evidence records the evidence command"
+            Expect.stringContains source "\"--view-image\"" "view-image evidence records the evidence command"
             Expect.stringContains source "\"--screenshot-evidence\"" "screenshot evidence records the evidence command"
             Expect.stringContains source "\"--pixel-readback-evidence\"" "pixel-readback evidence records the evidence command"
             Expect.stringContains source "Viewer.runBounded" "generated evidence commands use bounded viewer evidence entry points"
+            // #901: --view-image is the FULL-view logical-resolution readback. It must use the
+            // window-free CPU path (so it survives a headless host, unlike the windowed probes) and
+            // render at logical resolution, not the 640x480 evidence surface.
+            Expect.stringContains source "Text.installPngRasterizer" "view-image uses the SkiaViewer-owned headless CPU rasterizer"
+            Expect.stringContains source "SceneEvidence.renderPng" "view-image renders real pixels through the public Scene evidence pixel seam"
+            Expect.stringContains source "{ Width = 1280; Height = 720 }" "view-image renders at logical resolution"
             // FR-005 (086, D6): the host-lock assertion is generalized to the per-family
             // persistent interactive host — controls → runInteractiveAppWithAudio, game/sample-pack →
             // runAppWithAudio. #436: both carry the audio sink; no family launches through a
@@ -213,6 +220,7 @@ let governanceTests =
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not claim evidence self-close"
             Expect.isFalse (defaultBranch.Contains("input-dispatch=not-required")) "normal launch does not reuse bounded evidence input-dispatch wording"
             Expect.isFalse (defaultBranch.Contains("--image-evidence")) "image evidence stays out of normal launch branch"
+            Expect.isFalse (defaultBranch.Contains("--view-image")) "view-image evidence stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--screenshot-evidence")) "screenshot evidence stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--pixel-readback-evidence")) "pixel-readback evidence stays out of normal launch branch"
         }
