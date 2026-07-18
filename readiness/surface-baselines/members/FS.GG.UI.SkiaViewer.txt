@@ -179,7 +179,10 @@ FS.GG.UI.SkiaViewer.Fonts.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS
 FS.GG.UI.SkiaViewer.Fonts.shapeTextWithResolution(System.String, FS.GG.UI.Scene.FontSpec) : System.Tuple<FS.GG.UI.Scene.ShapedTextResult, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>>
 FS.GG.UI.SkiaViewer.Fonts.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
 FS.GG.UI.SkiaViewer.GeneratedAppHost.audioRequests(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>
+FS.GG.UI.SkiaViewer.GeneratedAppHost.auditKeyWiring<model, msg>(GeneratedAppHost<model, msg>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent>) : SceneHostKeyWiring<msg>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.dispatchKey<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.KeyboardInput.ViewerKeyEvent, model) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
+FS.GG.UI.SkiaViewer.GeneratedAppHost.reachableMessages<model, msg>(GeneratedAppHost<model, msg>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent>, Microsoft.FSharp.Core.FSharpOption<System.TimeSpan>) : FSharpList<msg>
+FS.GG.UI.SkiaViewer.GeneratedAppHost.runKeyScriptToModel<model, msg>(GeneratedAppHost<model, msg>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent>) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.smoke<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.SkiaViewer.ViewerRunRequest) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>> [get]
@@ -512,6 +515,9 @@ FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.OutputSize : FS.GG.UI.Scene.Size [
 FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.PackageBytes : System.Byte[] [get]
 FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.Resources : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability> [get]
 FS.GG.UI.SkiaViewer.ReferenceRenderingRequest.new(System.Byte[], System.String, FS.GG.UI.Scene.Size, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ResourceAvailability>)
+FS.GG.UI.SkiaViewer.SceneHostKeyWiring`1.Dead : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent> [get]
+FS.GG.UI.SkiaViewer.SceneHostKeyWiring`1.Wired : FSharpList<Tuple<FS.GG.UI.KeyboardInput.ViewerKeyEvent, msg>> [get]
+FS.GG.UI.SkiaViewer.SceneHostKeyWiring`1.new(FSharpList<Tuple<FS.GG.UI.KeyboardInput.ViewerKeyEvent, msg>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent>)
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureAvailabilityUnknown : System.Int32
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureAvailable : System.Int32
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+Tags.CaptureUnavailable : System.Int32

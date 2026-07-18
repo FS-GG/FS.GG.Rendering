@@ -170,6 +170,7 @@ FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+RenderCompleted
 FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+RenderFailed
 FS.GG.UI.SkiaViewer.ReferenceRenderingMsg+Tags
 FS.GG.UI.SkiaViewer.ReferenceRenderingRequest
+FS.GG.UI.SkiaViewer.SceneHostKeyWiring`1
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+CaptureAvailabilityUnknown
 FS.GG.UI.SkiaViewer.ScreenshotCaptureAvailability+CaptureUnavailable
