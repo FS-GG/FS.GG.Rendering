@@ -138,6 +138,14 @@
       "supplied-by": "template/product-skills/fs-gg-styling/"
     },
     {
+      "id": "fs-gg-symbol-design",
+      "scope": "product",
+      "sha256": "3864cfb232b196b24e8dc64242f834c4449d300ce578f55f641b2f6ae1622fa8",
+      "resolvablePath": ".agents/skills/fs-gg-symbol-design/SKILL.md",
+      "materializes-when": "profile in [game, sample-pack]",
+      "supplied-by": "template/product-skills/fs-gg-symbol-design/"
+    },
+    {
       "id": "fs-gg-symbology",
       "scope": "product",
       "sha256": "ed12257f290a881c80cb07740773ce6d199edf11adfd0906b336a1b624ffc887",

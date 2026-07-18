@@ -68,6 +68,10 @@ let catalog =
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+      // The divergent, whole-frame symbol-DESIGN loop on top of fs-gg-symbology. game/sample-pack only:
+      // it is meaningless without a captured gamestate frame. Kept to pure Scene + the two Symbology
+      // packages (no render adapter), so its reach is a SUBSET of fs-gg-symbology's — R-REACH holds.
+      "fs-gg-symbol-design", "template/product-skills/fs-gg-symbol-design/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       // #430: the three SkiaViewer profiles, not all five — Render.toPng reaches SkiaViewer, which
       // `headless-scene`/`governed` do not pin. Kept identical to the template.json row by G-EQUIV.
       "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
