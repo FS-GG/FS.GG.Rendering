@@ -192,3 +192,68 @@ module Collision =
     /// again on the resolved bodies or add your own iteration.
     let step (rule: ResponseRule) (cellSize: float) (bodies: Body<'T> list) : Resolution<'T> list =
         collide cellSize bodies |> List.map (resolve rule)
+
+    // ---- Circle-vs-static-AABB sliding sweep (the player-hitbox movement case) --------------------
+    // The moving-CIRCLE case the `Body`/`collide` pass above does NOT cover: a round hitbox — a player,
+    // a ball — sliding against IMMOVABLE axis-aligned walls. That pass resolves AABB-body-vs-AABB-body,
+    // so a circular mover would have to be faked as a box; this is its true narrow-phase instead.
+    // Detection still reuses a framework primitive — `Geometry.circleAabbContact` (clamp the centre to
+    // the box, compare squared distance to squared radius) — so there is no hand-rolled circle math
+    // here either, exactly as `contact` defers to `Geometry`. THIS, like `resolve`, is yours to adapt.
+
+    /// Clamp a circle's CENTRE so the whole disc stays inside `bounds`, each axis inset by the radius —
+    /// the playfield bound a moving hitbox needs so it cannot leave the map. Total: a `bounds` narrower
+    /// than the disc on an axis pins the centre to that axis' high inset (`min hi (max lo v)`), and a
+    /// non-finite centre or radius clamps to a finite bound rather than throwing. Pure, deterministic.
+    let clampCircleInside (bounds: Rect) (c: Circle) : Circle =
+        let r = finiteDim c.Radius
+        let clamp lo hi v = min hi (max lo (finiteDim v))
+        { c with
+            Center =
+                { X = clamp (bounds.X + r) (bounds.X + finiteDim bounds.Width - r) c.Center.X
+                  Y = clamp (bounds.Y + r) (bounds.Y + finiteDim bounds.Height - r) c.Center.Y } }
+
+    /// Move circle `c` by `displacement` (velocity × dt) against STATIC `walls`, resolving the X move
+    /// and the Y move INDEPENDENTLY so a wall that stops one axis does not cancel motion on the other —
+    /// the "slide along the wall" feel a player hitbox wants (dead against a wall on X, still free on Y).
+    /// Each axis pass advances that axis, then folds the walls in LIST ORDER, pushing the circle out of
+    /// any wall it penetrates by the AXIS COMPONENT of the minimum-translation vector
+    /// `Geometry.circleAabbContact` reports (the circle's separation is `−Normal × Depth`; a flat face
+    /// gives an axis-aligned MTV so the off-axis component is zero and the other axis is untouched — that
+    /// is the slide). When `bounds` is `Some`, the final centre is clamped inside it (inset by the
+    /// radius) via `clampCircleInside`. Walls are IMMOVABLE; pass them in a stable order for a
+    /// byte-identical result. Pure, total (NaN-safe: a non-finite displacement axis contributes nothing,
+    /// and `circleAabbContact` treats a NaN/non-positive radius as no contact), and deterministic.
+    ///
+    /// This is a single MOVE-AND-RESOLVE step, NOT a swept cast: it advances the centre then separates
+    /// the resulting overlap, which lands the circle on a wall's near face only while the moved centre
+    /// stays in that wall's near half. A player hitbox against tile-sized walls never leaves that
+    /// regime (its per-step displacement is well under the wall thickness), which is what this helper is
+    /// for. A mover fast enough to overshoot a wall's midline in one step — a PROJECTILE — would tunnel;
+    /// that is the swept `collide`/`step` pass above's job (`Body.Velocity`, #290), or call this in
+    /// sub-steps each no longer than the radius so consecutive discs overlap. One pass also assumes
+    /// SPARSE walls; for a very dense cluster call again on the result, exactly as `step` documents.
+    let slideCircle (bounds: Rect option) (walls: Rect list) (c: Circle) (displacement: Point) : Circle =
+        // Resolve one axis: push the circle out of each wall by the chosen-axis component of the
+        // circle-vs-AABB MTV, folding walls deterministically in list order.
+        let resolveAxis (axisOf: Point -> Point) (circle: Circle) : Circle =
+            (circle, walls)
+            ||> List.fold (fun (cur: Circle) (wall: Rect) ->
+                match Geometry.circleAabbContact cur wall with
+                | Some contact ->
+                    let sep =
+                        axisOf { X = -contact.Normal.X * contact.Depth
+                                 Y = -contact.Normal.Y * contact.Depth }
+                    { cur with Center = { X = cur.Center.X + sep.X; Y = cur.Center.Y + sep.Y } }
+                | None -> cur)
+        let onlyX (p: Point) = { X = p.X; Y = 0.0 }
+        let onlyY (p: Point) = { X = 0.0; Y = p.Y }
+        let afterX =
+            { c with Center = { c.Center with X = c.Center.X + finiteDim displacement.X } }
+            |> resolveAxis onlyX
+        let afterY =
+            { afterX with Center = { afterX.Center with Y = afterX.Center.Y + finiteDim displacement.Y } }
+            |> resolveAxis onlyY
+        match bounds with
+        | Some b -> clampCircleInside b afterY
+        | None -> afterY
