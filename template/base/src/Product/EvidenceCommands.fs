@@ -567,6 +567,76 @@ let imageEvidence evidencePath =
                   evidenceField "category" $"{failure.DiagnosticCategory}" ]
         report
 
+// Issue #901: render the FULL product view at LOGICAL resolution to a real, eyeballable PNG.
+// This is the readback the existing probes do not give: `--image-evidence` is a fixed 640x480
+// windowed OffscreenReadback (UnsupportedEnvironment on a headless host) and `--scene-evidence`
+// is a 320x200 metadata-only frame. `--view-image` renders `view initialModel` at 1280x720
+// through the SkiaViewer-OWNED headless CPU readback (feature 221): `Text.installPngRasterizer`
+// injects `ReferenceRendering.renderScenePngResult` into `SceneEvidence.renderPng`, which needs
+// no GPU/GL/display — so this path survives CI where the windowed one is unsupported.
+//
+// The frame IS the logical canvas (#885's LogicalSize=None contract): content the view authors
+// beyond 1280x720 is clipped 1:1 with no scale or letterbox and no runtime diagnostic. The size
+// is therefore a CONTRACT the product owns — widen it here if the product's view is authored
+// larger. `renderPng` returns a typed `UnsupportedEnvironment` failure (not a stub) when the CPU
+// rasterizer cannot run, which maps to exit 0 exactly like the other visual probes.
+let viewImage (evidencePath: string) =
+    Text.installPngRasterizer ()
+    let size = { Width = 1280; Height = 720 }
+    let scene = { Nodes = [ view initialModel ] }
+
+    match SceneEvidence.renderPng size scene with
+    | Result.Ok pngBytes ->
+        let directory = Path.GetDirectoryName evidencePath
+
+        if not (String.IsNullOrWhiteSpace directory) then
+            Directory.CreateDirectory(directory |> string) |> ignore
+
+        File.WriteAllBytes(evidencePath, pngBytes)
+        let decodable = isPngFile evidencePath
+
+        writeEvidenceReport
+            (evidencePath + ".metadata.txt")
+            GeneratedEvidenceOk
+            "--view-image"
+            [ evidenceField "mode" "headless-readback"
+              evidenceField "evidence-kind" "view-image"
+              evidenceField "path" evidencePath
+              evidenceField "output-size" $"{size.Width}x{size.Height}"
+              evidenceField "image-decodable" $"{decodable}"
+              evidenceField "png-bytes" $"{pngBytes.Length}"
+              evidenceField "renders-full-view" "true"
+              evidenceField "renderer-mode" "headless-cpu-readback"
+              evidenceField "readback-frame" "logical-canvas"
+              evidenceField "input-dispatch" "not-required"
+              evidenceField "self-closed-for-evidence" "true" ]
+    | Result.Error failure ->
+        // Match only UnsupportedEnvironment explicitly; the wildcard catches the defect case. The
+        // literal name of that other case is NOT spelled out on purpose — the scaffold's sourceName
+        // substitution rewrites the `Product` substring, so writing it here would mangle the pattern.
+        let status =
+            match failure.Classification with
+            | SceneEvidenceFailureClassification.UnsupportedEnvironment -> GeneratedEvidenceUnsupported
+            | _ -> GeneratedEvidenceFailed
+
+        let evidenceKind =
+            match failure.Classification with
+            | SceneEvidenceFailureClassification.UnsupportedEnvironment -> "unsupported-host"
+            | _ -> "failed"
+
+        writeEvidenceReport
+            (evidencePath + ".metadata.txt")
+            status
+            "--view-image"
+            [ evidenceField "mode" "headless-readback"
+              evidenceField "evidence-kind" evidenceKind
+              evidenceField "path" evidencePath
+              evidenceField "output-size" $"{size.Width}x{size.Height}"
+              evidenceField "blocked-stage" $"{failure.BlockedStage}"
+              evidenceField "classification" $"{failure.Classification}"
+              evidenceField "category" $"{failure.DiagnosticCategory}"
+              evidenceField "message" failure.Message ]
+
 let screenshotEvidence evidencePath =
     let deterministicFallback = "deterministic-scene-evidence"
     let result =
@@ -791,6 +861,8 @@ let tryRunEvidenceCommand args =
     | "--window-options" :: _ -> Some(windowOptionsReport "readiness/window-options.txt" (parseWindowBehavior []))
     | "--image-evidence" :: path :: _ -> Some(imageEvidence path)
     | "--image-evidence" :: _ -> Some(imageEvidence "readiness/game-image-evidence.png")
+    | "--view-image" :: path :: _ -> Some(viewImage path)
+    | "--view-image" :: _ -> Some(viewImage "readiness/view-image.png")
     | "--screenshot-evidence" :: path :: _ -> Some(screenshotEvidence path)
     | "--screenshot-evidence" :: _ -> Some(screenshotEvidence "readiness/game-screenshot-evidence.txt")
     | "--pixel-readback-evidence" :: path :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" path)
