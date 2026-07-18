@@ -159,6 +159,9 @@ module Symbology =
 
     /// The Directional-Token element: renders every channel so each observably alters output (SC-002).
     /// Pure & deterministic (FR-003). Zero/empty area degrades to a visible placeholder (FR-020).
+    /// Returns a `Scene` (`{ Nodes: SceneNode list }`), NOT a `SceneNode`: to compose a token into a
+    /// `SceneNode` tree (e.g. a per-entity layer under `SceneNode.Group`), wrap it as `Group [ token tok ]`
+    /// or splice its `.Nodes` into a `SceneNode list` — `yield! (token tok).Nodes`.
     val token: token: Token -> Scene
 
     /// Deterministic motion overlay; phase is caller-owned, no wall-clock (FR-007/FR-009).

@@ -302,6 +302,12 @@ The recurring failure modes, collected. Three of the four are the contract worki
   token. `Blink` still draws its red dot on top (that dot has a 2px floor), `Moving` draws the echo as a
   *second* offset placeholder, and `Spin` / `Damage` emit overlay nodes that are simply degenerate at
   `R = 0`. So a placeholder box with a stray dot beside it is a bad `R`, not a motion bug. Fix `mapUnit`.
+- **`token` won't drop into a `SceneNode` layer** — `token : Token -> Scene` returns a `Scene`
+  (`{ Nodes: SceneNode list }`), **not** a `SceneNode`, while a view is `Model -> SceneNode` and
+  `SceneNode.Group` takes a `Scene list`. So `Sym.token tok` will not typecheck straight into a
+  `SceneNode list`. Compose it one of two ways: wrap it — `Group [ Sym.token tok ]` — or splice its
+  nodes — `yield! (Sym.token tok).Nodes`. Same for `animate` / `render` / the grammar-selecting
+  renderers; every one returns a `Scene`.
 - **`NU1403` on restore** — a poisoned NuGet cache. Restore against a **scratch `NUGET_PACKAGES`
   directory**; do **not** clear the shared cache.
 
