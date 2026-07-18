@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "d7b08d2a04138da4e4776d183ccb7e95400887ad30a32635610e79937953bb52",
+      "sha256": "da2c5acf71da2873fcd375c01566ff777f895a39c9f998576964ab3f473130af",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"
