@@ -339,6 +339,27 @@ module Viewer =
 module GeneratedAppHost =
     /// Public contract function exposed by this FS.GG.UI package.
     val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+    /// Issue #911: the scene-host analogue of `ControlsElmish.Perf.runScriptToModel` (#461). Fold an
+    /// ordered key-event script through the host's own `dispatchKey` (`normalizeEvent -> MapKey ->
+    /// Update`) from `Init`'s model to the FINAL model, returning it with every `ViewerEffect` requested
+    /// in order (`Init`'s batch first). No window, no device, no GL — it lets a `game`-family product,
+    /// which routes input through this scene-host rather than the Controls click path, write an
+    /// end-to-end "played through the host" test purely and headlessly. It drives the KEY source only;
+    /// `Tick` is folded by the caller, or checked via `reachableMessages`.
+    val runKeyScriptToModel: host: GeneratedAppHost<'model,'msg> -> script: ViewerKeyEvent list -> 'model * ViewerEffect list
+    /// Issue #911: the scene-host analogue of `ControlRenderResult.BoundIds` — "a key that is bound is a
+    /// key that dispatches". Partition a declared input surface into the events that route through
+    /// `MapKey` to a product message (`Wired`) and the DEAD ones that route to none (`Dead`). A non-empty
+    /// `Dead` over a product's declared keymap is a bound key that dispatches nothing. Reflection-free,
+    /// total, pure — consults only `MapKey` (via `normalizeEvent`, as the live runtime does), never `Update`.
+    val auditKeyWiring: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> SceneHostKeyWiring<'msg>
+    /// Issue #911: every product message the host's runtime SOURCES (`MapKey` over `probe`, and `Tick`
+    /// when `tickSample` is `Some dt`) can produce, in probe order — the raw material for the stronger
+    /// "handled-but-unwired" check. A `Msg` case handled in `Update` but absent from this list is
+    /// dispatched by no source (the Rougue1 defect). This package uses no reflection, so it returns what
+    /// IS reachable — as `BoundIds` returns a set the product checks against — and the product asserts its
+    /// handled `Msg` universe is covered.
+    val reachableMessages: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> tickSample: TimeSpan option -> 'msg list
     /// Issue #245 — every sound request in an effect batch, flattened in dispatch order; non-audio
     /// effects are dropped. This is exactly what `runAppWithAudio` feeds its sink, exposed as a pure
     /// function so a product can assert what a frame requested without opening a window or a device:
