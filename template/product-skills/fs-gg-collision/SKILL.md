@@ -132,8 +132,9 @@ step, **not** a swept cast: it lands the disc on a wall's near face only while t
 that wall's near half — always true for a player hitbox against tile-sized walls, whose per-step
 displacement is well under the wall thickness. A mover fast enough to overshoot a wall's midline in one
 step is a **projectile**, not a hitbox: use the swept `collide`/`step` pass (it reads `Body.Velocity`,
-#290), or call `slideCircle` in sub-steps each no longer than the radius so consecutive discs overlap.
-This is the deliberate boundary of the helper, not a silent gap — see the pitfall below.
+FS.GG.Rendering#290), or call `slideCircle` in sub-steps each no longer than the radius so consecutive
+discs overlap. This is the deliberate boundary of the helper, not a silent gap — see the pitfall below.
+<!-- skill-refs: closed-ok FS.GG.Rendering#290 — cited as the issue that ESTABLISHED the swept collide/step pass (why a hitbox helper need not sweep), not as somewhere to go. Closed is correct; it stays closed. File-scoped, so it honours the ref in the pitfall below too. -->
 
 ## Shoving a unit across a grid — `Resolution.push`
 
@@ -231,7 +232,7 @@ never touch the durable `Product.fsproj`.
   for dense stacking, call it again on the resolved bodies or add your own iteration.
 - **Driving a fast PROJECTILE through `slideCircle`.** It is a single move-and-resolve step for a
   player-speed *hitbox*, not a swept cast: a mover that overshoots a wall's midline in one step tunnels.
-  A projectile is what the swept `collide`/`step` pass (via `Body.Velocity`, #290) is for; or sub-step
+  A projectile is what the swept `collide`/`step` pass (via `Body.Velocity`, FS.GG.Rendering#290) is for; or sub-step
   `slideCircle` with each chunk no longer than the radius so consecutive discs overlap. Do not raise the
   per-step displacement of a hitbox past its wall thickness and expect a wall to stop it.
 - **Deleting `Collision.fs` and then editing `Product.fsproj`.** You don't need to — the compile item
