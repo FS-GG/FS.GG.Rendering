@@ -212,7 +212,6 @@ vocabulary  warning
 vocabulary  neutral
 
 # ---- Game.Core/Geometry.fsi
-vocabulary  circleContact
 vocabulary  obbPolygon
 vocabulary  ofCenter
 vocabulary  polygonContact

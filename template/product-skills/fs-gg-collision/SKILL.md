@@ -83,6 +83,76 @@ let bodies =
 let contacts = Collision.collide 32.0 bodies      // cellSize tunes the grid
 ```
 
+## Broadphase combat resolution (pierce + prune)
+
+`Collision.collide` above is **body-vs-body**: it finds *mutual* overlap pairs and hands them to `resolve`
+— the right tool when two bodies separate (player vs wall, two crates). **Combat** is a different shape
+over the same broad-phase, and it is the one every combat milestone re-derives: each shot or hazard asks
+`SpatialGrid.queryRadius` "*who am I hitting?*", spends a limited **pierce budget** over the enemies it
+overlaps, applies damage, and **prunes** the dead — no separation, no `Contact`. So it consumes
+`SpatialGrid` directly rather than bending `collide`/`resolve` into a damage loop.
+
+The broad-phase is dilated and confirmed the same way `collide` does it: `queryRadius` reads each enemy's
+**position**, so dilate the query by the largest enemy radius, then confirm the true circle/circle overlap
+in a sqrt-free narrow phase. The inline boolean below is enough for "did it hit"; when you need the
+manifold (knockback direction, penetration depth) reach for the packaged narrow phase —
+`Geometry.circleContact` for circle/circle, or `Geometry.circleAabbContact` for a circle/AABB target. HP
+and pierce stay **integer**, and every step is a pure fold — no mutation, no iteration order leaking in —
+so the whole pass is replay-identical.
+
+```fsharp
+open FS.GG.Game.Core       // Point, Geometry, SpatialGrid
+
+type Enemy = { Id: int; Pos: Point; Radius: float; Hp: int }
+type Shot  = { Pos: Point; Radius: float; Damage: int; Pierce: int }   // Pierce = enemies still hittable
+
+// One fixed step: build → queryRadius per shot → overlap → apply damage + spend pierce → prune.
+let resolveCombat (enemies: Enemy list) (shots: Shot list) : Enemy list * Shot list =
+    // 1. BUILD once — bucket this step's enemies. `queryRadius` files them in insertion order, so every
+    //    query below is deterministic. `SpatialGrid.build : float -> seq<Point * 'T> -> SpatialGrid<'T>`.
+    let grid = SpatialGrid.build 32.0 [ for e in enemies -> e.Pos, e ]
+    let maxEnemyR = (0.0, enemies) ||> List.fold (fun m e -> max m e.Radius)
+
+    // 2. Walk shots in list order; each spends its pierce budget over the enemies it actually overlaps,
+    //    in the grid's insertion order. Accumulate damage per enemy id — never mutate an enemy in place.
+    let struct (damage, keptShots) =
+        (struct (Map.empty, []), shots)
+        ||> List.fold (fun (struct (dmg, kept)) shot ->
+            // BROAD: candidates whose POSITION is within (shot + max enemy) radius.
+            //   `SpatialGrid.queryRadius : Point -> float -> SpatialGrid<'T> -> 'T list`.
+            let candidates = SpatialGrid.queryRadius shot.Pos (shot.Radius + maxEnemyR) grid
+            // NARROW: true circle/circle overlap, sqrt-free; take only as many as pierce allows.
+            let hits =
+                candidates
+                |> List.filter (fun e ->
+                    let dx, dy = e.Pos.X - shot.Pos.X, e.Pos.Y - shot.Pos.Y
+                    let reach = shot.Radius + e.Radius
+                    dx * dx + dy * dy <= reach * reach)
+                |> List.truncate shot.Pierce                       // spend the pierce budget in order
+            let dmg' =
+                (dmg, hits)
+                ||> List.fold (fun m e -> Map.add e.Id (defaultArg (Map.tryFind e.Id m) 0 + shot.Damage) m)
+            let shot' = { shot with Pierce = shot.Pierce - hits.Length }
+            struct (dmg', if shot'.Pierce > 0 then shot' :: kept else kept))   // drop spent shots here
+
+    // 3. PRUNE — subtract accumulated damage, drop enemies at/below 0 HP. Spent shots already fell out.
+    let survivors =
+        enemies
+        |> List.choose (fun e ->
+            let hp = e.Hp - defaultArg (Map.tryFind e.Id damage) 0
+            if hp > 0 then Some { e with Hp = hp } else None)
+
+    survivors, List.rev keptShots
+```
+
+Two things keep this deterministic and are easy to lose: process shots in a **total order** (list order
+here — never a `Dictionary`/`HashSet`), and truncate the overlaps to the pierce budget *after* the
+insertion-ordered `filter`, so which enemies a piercing shot spends itself on is a pure function of build
+order, not of arrival. A wide `Damage` fold over one enemy id then survives the prune as a single
+subtraction, so two shots landing the same step compose the same way on every replay. Positions here are
+the sim `Point`; a product that stores them in the collision-safe `Geometry.Vec2` crosses at the boundary
+with its own `simPoint` ([[fs-gg-game-core]] *Spatial queries*).
+
 ## Response
 
 `resolve` is the game-opinionated part — **this is the line to edit.** It turns a `Collision.Contact<'T>`
