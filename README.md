@@ -38,7 +38,7 @@ For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
 ## Consume it
 
 Published as `FS.GG.UI.*` packages on `net10.0` — 16 libraries plus the `FS.GG.UI` BOM
-metapackage (current framework version `0.12.0`). Each release **dual-publishes**
+metapackage (current framework version `0.13.0`). Each release **dual-publishes**
 the byte-identical set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI)
 (GitHub OIDC Trusted Publishing) and the org GitHub Packages feed. You can also reference
 the `src/*/*.fsproj` directly, `dotnet pack` to a local feed, or scaffold a ready-wired app
