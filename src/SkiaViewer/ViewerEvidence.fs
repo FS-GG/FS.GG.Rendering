@@ -147,6 +147,21 @@ module internal ViewerEvidence =
         with ex ->
             None, PixelContentUnreadable ex.Message
 
+    // Issue #885: the readback frame IS `size`, and this writer draws the scene into it 1:1 with NO
+    // logical→physical mapping of its own. Any `ViewerOptions.LogicalSize` letterboxing (#246) is the
+    // job of `ViewerLaunchSupport.presentedFor` in the run loops UPSTREAM — the `runBounded` path fits
+    // the scene before it reaches here, the generated-app loop authors its `View` directly at
+    // `InitialSize` (so the fit is inert) — and this writer performs none of it: it rasterizes whatever
+    // scene it is handed into `size`. So when no `LogicalSize` fit applied, content authored beyond
+    // `[0,0 .. size.Width,size.Height]` is clipped: no scale, no letterbox, no diagnostic — the raster
+    // simply never touches those pixels. That is the "renders at a smaller frame than the logical
+    // canvas" clip #885 names. The frame size is not inferable from the scene (no whole-scene
+    // content-bounds walker exists over the `SceneNode` primitive set), so honesty here is a CONTRACT,
+    // not a runtime check: pass a `size` that covers the authored content, or set `LogicalSize` upstream
+    // so a larger canvas is fit into the frame. The capture frame is recorded in the evidence — the
+    // run-evidence writer emits `initialOutputSize=WxH` (see `writeEvidence`) and the written PNG's own
+    // dimensions are read back by `pngDimensionsAndNonBlank` — so a reader can compare the capture frame
+    // against the canvas the product authored in.
     let writeSceneImageEvidence path (size: FS.GG.UI.Scene.Size) scene =
         ensureParentDirectory path
         let width = max 1 size.Width

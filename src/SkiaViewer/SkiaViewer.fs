@@ -125,6 +125,19 @@ module GeneratedAppHost =
         with
         | Result.Error failure -> Result.Error failure
         | Result.Ok scene ->
+            // Issue #885: this is a LIVENESS smoke — it proves the product's `View` yields a first
+            // frame without raising, so the readback frame is deliberately 1×1 and NO viewable pixels
+            // are captured here. The frame size below is therefore not a canvas: it does not, and is
+            // not meant to, hold the scene the product authored.
+            //
+            // The distinction #885 warns about only bites a path that captures pixels to LOOK at
+            // (`captureScreenshotEvidence`, the `.png` evidence writers). There, the readback rasterizes
+            // the scene 1:1 into an `InitialSize` frame with NO logical→physical mapping unless
+            // `ViewerOptions.LogicalSize` is set — set, the host scales/centers/letterboxes the logical
+            // canvas into the frame (#246, applied upstream via `ViewerLaunchSupport.presentedFor`);
+            // unset (as here), content authored beyond `InitialSize` is clipped with no scale, no
+            // letterbox, and no warning. A pixel-capture caller whose scene is larger than its frame
+            // must pass a `LogicalSize`, or it captures only the frame-sized corner of its content.
             let size =
                 match request.Target with
                 | FirstFrame
