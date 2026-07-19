@@ -258,6 +258,72 @@ let result = Viewer.captureScreenshotEvidence request { options with PresentMode
 The state half is deterministic and needs no GL. Only the PNG readback does, and it
 degrades-and-discloses on a no-GL host.
 
+### The keyboard sibling — a key that is bound is a key that dispatches
+
+The recipe above is the **click** route (the `app` family's pointer-driven Controls
+host). The **game** family drives input through a different host — the keyboard
+**scene-host** `generatedHost` (`GeneratedAppHost`), launched by `Viewer.runAppWithAudio`
+— so it has its own sibling of the same toolkit, from the same package. Use it for
+exactly the same reason: a suite that only exercises `update` never asks whether a
+*pressed key* reaches gameplay, and that gap is where a keyboard game ships
+green-but-unplayable (issue FS.GG.Rendering#912, the Rougue1 defect — 108 green tests, nothing
+playable, because every test injected a `Msg` straight into `update`).
+
+| click route (`app`) | keyboard scene-host (`game` / `sample-pack`) |
+|---|---|
+| `ControlsElmish.Perf.runScriptToModel` | `GeneratedAppHost.runKeyScriptToModel` |
+| `ControlRenderResult.BoundIds` (an unbound click is silent) | `GeneratedAppHost.auditKeyWiring` → `.Dead` (a bound key that dispatches nothing) |
+| — | `GeneratedAppHost.reachableMessages` (a handled `Msg` no source produces) |
+
+**Drive → assert**, end to end through the host's own `dispatchKey` fold (each raw
+key normalized, then `MapKey`, then `Update`) — the SAME fold the live runtime
+performs, so what you drive is the product's real routing, not a test-local
+re-derivation:
+
+```fsharp
+open FS.GG.UI.KeyboardInput   // ViewerKeyEvent, ViewerKeyDirection
+open FS.GG.UI.SkiaViewer      // GeneratedAppHost
+
+let down raw : ViewerKeyEvent = { RawKey = raw; Direction = ViewerKeyDirection.KeyDown }
+
+// DRIVE — a raw key SCRIPT, folded from Init's model to the final one. No window, no GL.
+let played, _effects = GeneratedAppHost.runKeyScriptToModel host [ down "w"; down "w" ]
+
+// ASSERT — the pressed key actually drove gameplay (here: it moved a paddle), not just a message.
+Expect.isTrue (played.LeftPaddleY < restedY) "'w' reaches gameplay through key -> mapKey -> update"
+```
+
+**The guard depends on how your `mapKey` is shaped, and this is the crux of FS.GG.Rendering#912.**
+The scaffold's default `mapKey` wraps EVERY key as one `ViewerInput(key, isDown)`
+key-state snapshot and routes to gameplay *inside* `update`. Under that shape
+`auditKeyWiring.Dead` is **structurally empty** — every key "binds" to the snapshot
+message — so it cannot see a key that reaches no gameplay, and the **played-through
+assertion above is the load-bearing guard**. The moment your `mapKey` returns
+<!-- skill-refs: closed-ok FS.GG.Rendering#911 — cited as the framework issue that BUILT the auditKeyWiring primitive, history not a pointer. Closed is correct; it stays closed. -->
+gameplay **intent** messages directly (the shape FS.GG.Rendering#911 was built for), `Dead` becomes
+a real check — a declared key your `mapKey` does not handle shows up in it:
+
+```fsharp
+let wiring = GeneratedAppHost.auditKeyWiring host [ down "Enter"; down "Space"; down "x" ]
+Expect.equal (wiring.Wired |> List.map snd) [ StartRun; TogglePause ] "each live key names its intent"
+Expect.equal wiring.Dead [ down "x" ] "the declared-but-unbound key is dead — a bound key that dispatches nothing shows up here"
+```
+
+And the **handled-but-unwired** check catches the other half — a `Msg` case `update`
+handles that no runtime source produces. `reachableMessages` returns what the host
+SOURCES (`mapKey` over the probe, plus `Tick` when you pass a sample); the product
+asserts its handled intents are covered:
+
+```fsharp
+let reachable = GeneratedAppHost.reachableMessages host probe (Some(TimeSpan.FromMilliseconds 16.0))
+let unwired = Set.difference (Set.ofList handledIntents) (reachable |> List.map caseName |> Set.ofList)
+Expect.isEmpty unwired "every intent your update handles is dispatched by some source"
+```
+
+Pass `Some dt` when a message is reachable only through `Tick`, or the clock message
+reads as a false positive; the package uses no reflection, so you name the handled
+universe (`handledIntents` / `caseName`) and it returns what IS reachable to subtract.
+
 ### Responsiveness evidence: prove it *responds*, not that it *renders*
 
 Your Evidence Rules (and [[fs-gg-testing]]'s, and [[fs-gg-ui-widgets]]') require
