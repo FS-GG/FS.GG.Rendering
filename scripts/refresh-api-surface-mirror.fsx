@@ -84,6 +84,9 @@ open System.Text.RegularExpressions
 #load "lib/FsiSurface.fsx"
 open FsiSurface
 
+#load "ApiSurfaceCoverage.fs"
+open FsGg.ApiSurface
+
 #load "lib/ReleaseWindow.fsx"
 
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
@@ -93,6 +96,9 @@ let pinsProps = Path.Combine(repoRoot, "template", "base", "Directory.Packages.p
 
 let argv = fsi.CommandLineArgs |> Array.toList |> List.tail
 let checkOnly = argv |> List.contains "--check"
+// Print the pin's currently-untaught public members as `waive` lines and exit — the seed for, and the
+// regeneration path of, the manifest's waiver block (#925). Emits nothing else so its output pastes clean.
+let emitWaivers = argv |> List.contains "--emit-waivers"
 
 let fail (msg: string) =
     eprintfn "refresh-api-surface-mirror: %s" msg
@@ -319,12 +325,15 @@ type Stanza =
       /// wrong case — worse than losing it. An anchor that no longer matches is a hard error.
       BodyProse: Map<string * string * string, (string * string list) list> }
 
-let parseManifest (path: string) : Stanza list =
+let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
     if not (File.Exists path) then
         fail $"no manifest at {path}"
 
     let lines = File.ReadAllLines path
     let stanzas = ResizeArray<Stanza>()
+    // Waivers are file-global (`waive <pkg> <source> <kind> <path>`), collected independent of any `file`
+    // stanza — a deliberately-omitted member belongs to no teaching file, which is the whole point of it.
+    let waivers = ResizeArray<Coverage.MemberKey>()
     let mutable cur: Stanza option = None
     let mutable proseKey: (string * string * string) option = None
     let mutable bodyKey: (string * string * string * string) option = None
@@ -364,6 +373,11 @@ let parseManifest (path: string) : Stanza list =
             let parts = Regex.Split(s, @"\s+") |> Array.toList
 
             match parts with
+            | [ "waive"; pkg; src; kind; p ] ->
+                // A global waiver, valid at any position. It touches no stanza — deliberately, so a `waive`
+                // block can sit apart from the teaching curation (it lives at the tail of the manifest).
+                waivers.Add(Coverage.key pkg src kind p)
+            | "waive" :: _ -> fail $"manifest: `waive` needs `<pkg> <source> <kind> <path>`: {s}"
             | "file" :: rest ->
                 flush ()
 
@@ -415,7 +429,42 @@ let parseManifest (path: string) : Stanza list =
                     | _ -> fail $"manifest: unrecognised line: {s}"
 
     flush ()
-    List.ofSeq stanzas
+    List.ofSeq stanzas, List.ofSeq waivers
+
+// ---------------------------------------------------------------------------------------------
+// Coverage — is every public member the pin ships either taught or waived?
+// ---------------------------------------------------------------------------------------------
+
+/// A declaration's OWN line declares it `internal`/`private` (FsiSurface's `nameOf` strips exactly this).
+/// The pin ships twelve `module internal`; that a member is non-public because it, or an ANCESTOR, is
+/// internal is `Coverage.publicMembers`' job — this only reads the one line.
+let private isInternal (n: Node) =
+    Regex.IsMatch(n.Decl.Head, @"^\s*(type|module|val|and)\s+(internal|private)\b")
+
+/// Project a parse `Node` onto the minimal shape the coverage decision consumes.
+let rec private toDecl (n: Node) : Coverage.Decl =
+    { Kind = n.Kind
+      Name = n.Name
+      Internal = isInternal n
+      Children = n.Children |> List.map toDecl }
+
+/// Every public `type`/`val`/`and` the pinned packages export, as coverage keys. The pruning and the
+/// group-accessibility inheritance live in `Coverage.publicMembers` (tested there); this only restores the
+/// surface and projects it.
+let publicUniverse (surface: Map<string, Map<string, Node list>>) : Coverage.MemberKey list =
+    [ for KeyValue(pkg, files) in surface do
+        for KeyValue(source, nodes) in files do
+            yield! Coverage.publicMembers pkg source (nodes |> List.map toDecl) ]
+
+/// The manifest's taught set, restricted to the kinds the universe carries: each stanza's `+` includes,
+/// keyed by that stanza's package. (`+ ... module` lines are structural, like the modules they name, and
+/// are not coverage keys.)
+let taughtSet (stanzas: Stanza list) : Set<Coverage.MemberKey> =
+    [ for st in stanzas do
+        for inc in st.Includes do
+            if inc.Kind = "type" || inc.Kind = "val" || inc.Kind = "and" then
+                yield Coverage.key st.Package inc.Source inc.Kind inc.Path ]
+    |> Set.ofList
 
 // ---------------------------------------------------------------------------------------------
 // Emit.
@@ -634,10 +683,28 @@ if not srcBackedPins.IsEmpty then
 restorePins ()
 let surface = loadPinSurface ()
 
-let stanzas = parseManifest manifestPath
+let stanzas, waivers = parseManifest manifestPath
 
 if stanzas.IsEmpty then
     fail $"the manifest at {manifestPath} declares no files"
+
+// #925 — reconcile the pin's public surface against the manifest's teach + waive decisions. Computed in
+// every mode: you cannot "regenerate" your way out of an untaught member — it must be taught or waived, so
+// this is a validation like the orphan check below, not a generation step. `--emit-waivers` prints the
+// current gap as paste-ready `waive` lines (the seed for, and the regeneration path of, the waiver block)
+// and stops before touching the mirror.
+let universe = publicUniverse surface
+let taught = taughtSet stanzas
+let coverage = Coverage.reconcile universe taught (Set.ofList waivers)
+
+if emitWaivers then
+    // The WHOLE block, ignoring any waivers already committed — this replaces the block wholesale on a
+    // regeneration, so it must reconcile against `taught` alone, not against the block it is re-seeding
+    // (which would emit only the delta and drop every existing waiver).
+    for m in (Coverage.reconcile universe taught Set.empty).Untaught do
+        printfn "%s" (Coverage.waiveLine m)
+
+    exit 0
 
 let mutable drift = 0
 
@@ -675,6 +742,32 @@ if orphans.Length > 0 then
         eprintfn "orphan (no manifest stanza): %s" (Path.GetRelativePath(mirrorRoot, o))
 
     fail $"{orphans.Length} mirror file(s) no manifest stanza claims"
+
+// #925 — a waiver that waives nothing (its member left the pin's public surface, or is now taught) is a
+// hard error: a dead waiver list accretes entries the next real omission hides behind (#266).
+if not (List.isEmpty coverage.StaleWaivers) then
+    eprintfn
+        "%d waiver(s) in %s waive nothing (member no longer public, or now taught):"
+        coverage.StaleWaivers.Length
+        (Path.GetRelativePath(repoRoot, manifestPath))
+
+    for m in coverage.StaleWaivers do
+        eprintfn "  %s %s %s %s" m.Package m.Source m.Kind m.Path
+
+    fail $"{coverage.StaleWaivers.Length} stale waiver(s) — delete each, or restore the member it names."
+
+// #925 — the gap this item closes: a public member the pin ships that is taught NOWHERE and waived
+// nowhere. Silent under the drift check (the mirror and its regeneration agree on omitting it), loud here.
+if not (List.isEmpty coverage.Untaught) then
+    eprintfn
+        "%d public member(s) the pin ships are neither taught nor waived:"
+        coverage.Untaught.Length
+
+    for m in coverage.Untaught do
+        eprintfn "  %s %s %s %s" m.Package m.Source m.Kind m.Path
+
+    fail
+        $"{coverage.Untaught.Length} untaught public member(s) — TEACH each in {Path.GetRelativePath(repoRoot, manifestPath)} (a `+` in a file stanza) or WAIVE it deliberately (a `waive` line). Seed the waivers with: dotnet fsi scripts/refresh-api-surface-mirror.fsx --emit-waivers"
 
 if checkOnly && drift > 0 then
     fail $"{drift} mirror file(s) differ from what the pin + manifest generate"

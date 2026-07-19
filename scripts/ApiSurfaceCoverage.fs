@@ -1,0 +1,140 @@
+// #925 — THE ALLOWLIST-OMISSION HALF OF THE API-SURFACE MIRROR GATE, SPLIT OUT SO IT IS TESTED.
+//
+// `scripts/refresh-api-surface-mirror.fsx` regenerates `(pinned .fsi) ∩ api-surface-manifest.txt` and
+// `gate.yml` fails on any diff against the committed mirror. That drift check catches a mirror that was
+// hand-edited or that drifted from the pin — but it is blind in one direction: a public member the pin
+// SHIPS that is simply ABSENT from the manifest allowlist. The regenerated `(surface ∩ manifest)` and the
+// committed mirror still agree, so there is no drift, so the gate is green — while a shipped public
+// surface is taught nowhere in the scaffold. That is exactly how 0.13.0 shipped #911's key-wiring surface
+// (`auditKeyWiring` / `runKeyScriptToModel` / `reachableMessages`, `SceneHostKeyWiring<'msg>`) with the
+// mirror silently omitting it and #912 reading as "mirror can't teach it" for the whole window (#924
+// fixed the omission by hand; nothing would have flagged it).
+//
+// This module is the reconciliation that closes that direction, and it lives HERE — a compiled `.fs`,
+// `#load`ed by the generator AND compiled into `tests/Package.Tests` — for the #720/#661 reason
+// `FrozenMirrorVerdict.fs` does: the DECISION (which members are uncovered, which waivers have rotted) is
+// pure and needs neither the network nor a restore to test, so it must not sit untested inside an `.fsx`
+// that only a live gate ever exercises. The generator supplies the surface (it restores the pin); this
+// says whether that surface is fully accounted for.
+//
+// WHY A WAIVER LIST, AND WHY PER-MEMBER. The mirror is a CURATED teaching document — it teaches roughly
+// half the pin's members by design (`docs/scaffold-map.md` sanctions the omissions) — so "every public
+// member must be taught" is the wrong rule; it would demand the mirror teach its whole surface. The rule
+// is "every public member must be a DECISION": taught, or explicitly WAIVED in the manifest, never
+// omitted by silence. The waiver is per-member and NOT a wildcard on purpose: a `waive Module.*` would
+// swallow the next member added under `Module` too, which is the precise "untaught by silence" this gate
+// exists to prevent. So a new member is unwaived by default and forces a maintainer to decide.
+//
+// FAILS CLOSED (#266). A waiver that waives nothing — its member was removed or renamed in the pin, or is
+// now taught — is a HARD error, not a shrug: a dead waiver list silently accretes entries, and the next
+// real omission hides among them. Same posture the generator takes on a manifest line naming a member the
+// pin does not export.
+
+namespace FsGg.ApiSurface
+
+module Coverage =
+
+    /// One public declaration, addressed the way both the pin surface and the manifest address it:
+    /// the package that ships it, the pin's `.fsi` file it lives in, its F# kind (`type`/`val`/`and`),
+    /// and the dotted path within that file (`Paint.fill`). This is the join key between the three sets.
+    type MemberKey =
+        { Package: string
+          Source: string
+          Kind: string
+          Path: string }
+
+    /// Build a key. A function, not a record literal at the call sites, because the generator's own
+    /// `Include` record shares `Source`/`Kind`/`Path` — an unqualified `{ Source = … }` there binds to
+    /// `Include`, so a helper defined HERE (where there is no such collision) is what keeps the callers clean.
+    let key package source kind path =
+        { Package = package
+          Source = source
+          Kind = kind
+          Path = path }
+
+    /// A declaration projected from the pin's parse tree — just what coverage needs: its F# kind, its
+    /// dotted name within the file, whether its OWN line declared it `internal`/`private`, and (for a
+    /// module) its children. The generator projects `FsiSurface.Node` onto this; keeping the decision that
+    /// consumes it here — rather than in the `.fsx` — is what makes it testable without a package restore.
+    type Decl =
+        { Kind: string
+          Name: string
+          Internal: bool
+          Children: Decl list }
+
+    /// The public `type`/`val`/`and` members a source file exports, as coverage keys. Two things make this
+    /// more than a filter, and both are why it is tested:
+    ///
+    ///   * ACCESSIBILITY IS INHERITED. A `val` inside a `module internal` carries no modifier on its own
+    ///     line, and neither does `and Bar` continuing a `type internal Foo = … and Bar = …` group — yet
+    ///     both are non-public. Descending only through public modules prunes the internal subtree at its
+    ///     root; carrying the group leader's accessibility across its `and` continuations catches the other.
+    ///   * MODULES ARE NOT KEYS. They are structural shells the generator re-emits around whatever members
+    ///     are taught, so accounting for the members accounts for the module.
+    let publicMembers (package: string) (source: string) (decls: Decl list) : MemberKey list =
+        let rec collect (decls: Decl list) =
+            let acc = ResizeArray<MemberKey>()
+            // The accessibility of the current mutually-recursive group's LEADER. An `and` inherits it; any
+            // other declaration starts fresh (a group cannot span a `val`/`module` in valid F#).
+            let mutable groupPublic = true
+
+            for d in decls do
+                match d.Kind with
+                | "type" ->
+                    groupPublic <- not d.Internal
+                    if groupPublic then acc.Add(key package source d.Kind d.Name)
+                | "and" ->
+                    if groupPublic && not d.Internal then
+                        acc.Add(key package source d.Kind d.Name)
+                | "val" ->
+                    groupPublic <- true
+                    if not d.Internal then acc.Add(key package source d.Kind d.Name)
+                | "module" ->
+                    groupPublic <- true
+                    if not d.Internal then acc.AddRange(collect d.Children)
+                | _ -> ()
+
+            List.ofSeq acc
+
+        collect decls
+
+    /// The reconciliation verdict. Both lists EMPTY is the only pass.
+    type Verdict =
+        { /// Public members the pin exports that are neither taught nor waived — the gap #925 closes.
+          Untaught: MemberKey list
+          /// Waivers that no longer waive anything: their member is absent from the pin's current public
+          /// surface (removed/renamed), or it is now TAUGHT. A rotted waiver must red, or the list
+          /// accretes dead entries the next real omission can hide behind.
+          StaleWaivers: MemberKey list }
+
+    let private ordered (keys: MemberKey seq) =
+        keys
+        |> Seq.sortBy (fun m -> m.Package, m.Source, m.Path, m.Kind)
+        |> Seq.toList
+
+    /// Reconcile the pin's public surface against the manifest's teach + waive decisions.
+    ///
+    /// `universe` is every public `type`/`val`/`and` the pinned packages export (the same surface the
+    /// generator reads, filtered to public — modules are structural containers, accounted for by the
+    /// members inside them). `taught` is the manifest's `+` includes; `waived` its `waive` lines.
+    let reconcile (universe: MemberKey list) (taught: Set<MemberKey>) (waived: Set<MemberKey>) : Verdict =
+        let universeSet = Set.ofList universe
+
+        let untaught =
+            universe
+            |> List.filter (fun m -> not (taught.Contains m) && not (waived.Contains m))
+
+        let staleWaivers =
+            waived
+            |> Set.filter (fun w -> not (universeSet.Contains w) || taught.Contains w)
+
+        { Untaught = ordered untaught
+          StaleWaivers = ordered staleWaivers }
+
+    /// True when the pin's public surface is fully accounted for: every member taught or waived, and no
+    /// waiver rotted.
+    let isClean (v: Verdict) = v.Untaught.IsEmpty && v.StaleWaivers.IsEmpty
+
+    /// The manifest line that would waive a member — the token order the generator's `+` includes use
+    /// (`waive <pkg> <source> <kind> <path>`), so a maintainer can paste an `Untaught` report straight in.
+    let waiveLine (m: MemberKey) = sprintf "waive %s %s %s %s" m.Package m.Source m.Kind m.Path
