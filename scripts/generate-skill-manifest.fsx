@@ -63,6 +63,10 @@ let catalog =
       "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
+      // FS.GG.Rendering#923 (WI-6): the headless-gameplay test companion to fs-gg-game-core, an
+      // fs-gg-game-owned frozen mirror. Same game||sample-pack gate as game-core, kept identical to the
+      // .template.config/template.json row by G-EQUIV.
+      "fs-gg-playtest", "template/product-skills/fs-gg-playtest/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\") && lifecycle == \"spec-kit\""
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"

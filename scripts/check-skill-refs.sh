@@ -21,7 +21,8 @@
 #                        layout, keyboard-input, styling, ui-widgets, testing, and the four game-sim
 #                        skills collision / grids / line-drawing / visibility, which ADR-0022 P4
 #                        explicitly did NOT migrate.
-#    4 are FROZEN MIRRORS (registry `owner: fs-gg-game`) — game-core, audio, persistence, model-swap.
+#    5 are FROZEN MIRRORS (registry `owner: fs-gg-game`) — game-core, audio, persistence, model-swap,
+#                        playtest (FS.GG.Rendering#923, WI-6 — the headless-gameplay test companion).
 #                        ADR-0022 P4 migrated OWNERSHIP to FS.GG.Game; ADR-0022 §6 accepted the
 #                        two-copies cost, so we still SHIP them and our bytes must stay IDENTICAL to
 #                        FS.GG.Game's. (Verified so at the time of writing. `fsgg-skill-registry-check`
@@ -410,7 +411,7 @@ DEFAULT_OWNER="FS-GG"
 # It stays a CONSTANT, and that is not a hedge: § 1's verdicts are still f(tree) (§ 4), because the
 # SUBJECT is built from this list, hermetically. The registry read only asserts that the list still
 # tells the truth — the same split `KIT_SKILLS` runs under (§ 0c).
-MIRRORED_SKILLS=$'fs-gg-game-core\nfs-gg-audio\nfs-gg-persistence\nfs-gg-model-swap'
+MIRRORED_SKILLS=$'fs-gg-game-core\nfs-gg-audio\nfs-gg-persistence\nfs-gg-model-swap\nfs-gg-playtest'
 
 # NOT `exit 0`. A missing manifest is not "nothing to check" — it is this gate's entire subject gone
 # missing, and passing green over it is the `.github#416` shape (a gate reports green because it found

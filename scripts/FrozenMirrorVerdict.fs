@@ -232,12 +232,16 @@ let foreignSkills: Foreign list =
     // here to change one of these without touching the body, stop: you are not re-freezing anything, and the
     // required lane will red on the mismatch you are about to create.
     //
-    // Verified against FS.GG.Game's live canonicals when this landed: all four IN SYNC. That is what makes
+    // Verified against FS.GG.Game's live canonicals when this landed: all five IN SYNC. That is what makes
     // them safe to pin — a declaration seeded from a DRIFTED body would sanction that drift permanently.
+    // fs-gg-playtest (FS.GG.Rendering#923, WI-6) is the fifth: its digest was taken from FS.GG.Game's
+    // canonical at vendor time. The org registry row (owner fs-gg-game, mirrored) is a cross-repo
+    // prerequisite in FS-GG/.github; until it lands the non-required Freshness lane reds `DEAD pin`.
     [ game "fs-gg-game-core" (Mirrored "91eaeb4ae6c2e62cf9d36bdc3d185ce6b37f2e0281fd7650ab28a65ddc3741e5")
       game "fs-gg-audio" (Mirrored "e9fff88a3be86c2d95829357ffc180e3c53c18f2872b4f84e792de5a24f73bb7")
       game "fs-gg-persistence" (Mirrored "9461822e5c282f0cac37aa0a88720fbb910319a6571d74bbcb1119eeb48530fb")
       game "fs-gg-model-swap" (Mirrored "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26")
+      game "fs-gg-playtest" (Mirrored "0541a9f30328732d998dfd0bb5a1e79d8887d7cf2f3b42cc03324f0de5adbb41")
       game "fs-gg-ballistics" NoCounterpart
       game "fs-gg-ai" NoCounterpart
       game "fs-gg-effects" NoCounterpart

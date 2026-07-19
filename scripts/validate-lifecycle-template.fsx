@@ -323,7 +323,7 @@ let private verifyGatedSources () =
         countWhere (fun (row, (c, _)) -> c = "workspace" && row.Source.Replace('\\', '/') = source)
     let materializeChecked = workspaceSourced "template/lifecycle/"
     let speckitNarrowChecked = workspaceSourced ".agents/skills/"
-    assertTrue (frameworkChecked = 19) (sprintf "expected exactly 19 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design, no twins), checked %d" frameworkChecked)
+    assertTrue (frameworkChecked = 20) (sprintf "expected exactly 20 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design + fs-gg-playtest, no twins), checked %d" frameworkChecked)
     assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
@@ -696,9 +696,12 @@ let private expectedFrameworkSkills =
       // "sample-pack"`). Each of those was added to the profile by its own feature without updating this
       // map — eight silent drifts, invisible because the lane that would have caught them never ran.
       // fs-gg-samples is the one spec-kit-gated member and is dropped from the sdd/none expectation below.
+      // fs-gg-playtest (FS.GG.Rendering#923, WI-6): the headless-gameplay test companion to
+      // fs-gg-game-core, gated `profile == "game" || profile == "sample-pack"` like it, so it joins
+      // this sample-pack row (the game row is not live-validated — the tracked #469 gap).
       "sample-pack", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-samples"; "fs-gg-testing"
                                   "fs-gg-audio"; "fs-gg-collision"; "fs-gg-game-core"; "fs-gg-grids"
-                                  "fs-gg-line-drawing"; "fs-gg-model-swap"; "fs-gg-persistence"; "fs-gg-visibility" ] ]
+                                  "fs-gg-line-drawing"; "fs-gg-model-swap"; "fs-gg-persistence"; "fs-gg-playtest"; "fs-gg-visibility" ] ]
     |> Map.ofList
 
 /// The skill id a provider-surface source emits, if it emits one: `.agents/skills/<id>/`.

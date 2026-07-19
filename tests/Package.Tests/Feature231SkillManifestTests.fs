@@ -52,6 +52,8 @@ let private canonicalSources =
       "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md"
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md"
       "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md"
+      // FS.GG.Rendering#923 (WI-6): fs-gg-game-owned frozen-mirror playtest skill.
+      "fs-gg-playtest", "template/product-skills/fs-gg-playtest/SKILL.md"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"
       "fs-gg-samples", "template/fragments/samples/skill/SKILL.md"
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md"
