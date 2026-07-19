@@ -268,6 +268,7 @@ exactly the same reason: a suite that only exercises `update` never asks whether
 *pressed key* reaches gameplay, and that gap is where a keyboard game ships
 green-but-unplayable (issue FS.GG.Rendering#912, the Rougue1 defect — 108 green tests, nothing
 playable, because every test injected a `Msg` straight into `update`).
+<!-- skill-refs: closed-ok FS.GG.Rendering#912 — cited as the green-but-unplayable defect that NAMED the scene-host test-altitude gap this section guards against, history not a pointer. File-scoped, so it also excuses the "crux of #912" citation below. Closed is correct; it stays closed. -->
 
 | click route (`app`) | keyboard scene-host (`game` / `sample-pack`) |
 |---|---|
