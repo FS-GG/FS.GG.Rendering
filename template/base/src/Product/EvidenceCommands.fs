@@ -231,6 +231,24 @@ let layoutEvidenceCommand evidencePath width height =
               evidenceField "diagnostics" diagnostics ]
     report
 
+// KEY-STATE STUB — the scene-host's default key seam, deliberately the weakest one that compiles.
+// `mapKey` wraps EVERY key as a single `ViewerInput(key, isDown)` — a key-STATE event, not a
+// gameplay INTENT. On its own that folds keypresses into a snapshot (`Model.LastInput`) and drives
+// no game message: a product that stops here is dead-but-green — the pure-`update` suite passes
+// while nothing in the game moves. That is the trap issue #912 exists to close (the Rougue1 defect).
+//
+// The ROUTER from key-state to gameplay is a PURE function you own, and in this starter it already
+// exists downstream: `Model.update`'s `ViewerInput` arm reads a key-to-intent map (`paddleForKey`
+// in the game starter, `transitionViewerInput` in the controls starter) and folds the result into
+// the model. Swap in your own game and that router is yours to write — either extend it, or make
+// `mapKey` itself return your intent message instead of the `ViewerInput` snapshot.
+//
+// Either way, PROVE the composition, not the halves: `mapKey k true` returning `Some` and `update`
+// advancing on an INJECTED message are each necessary and neither is sufficient — the bug lives
+// between them. `Product.Tests` drives `GeneratedAppHost.runKeyScriptToModel generatedHost [keys]`
+// (key -> mapKey -> update, the live runtime's own fold) and asserts a pressed key reaches gameplay;
+// `auditKeyWiring` / `reachableMessages` guard the handled-but-unwired case. See the fs-gg-elmish /
+// fs-gg-testing skills — this is documented here at the seam, exactly as `AudioCues.forTransition` is.
 let mapKey key isDown =
     Some(ViewerInput(key, isDown))
 

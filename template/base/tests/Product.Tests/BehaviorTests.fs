@@ -146,6 +146,13 @@ open AppRoot.Geometry // Vec2 (Vx/Vy) — the collision-safe positions the start
 // One fixed sim step's worth of elapsed time — enough for `update (Tick oneStep)` to drain a step.
 let private oneStep = 1.0 / 60.0
 
+// A raw viewer key-DOWN event, built exactly as the host receives one from the window. The #911
+// scene-host driver (`runKeyScriptToModel` / `auditKeyWiring` / `reachableMessages`) normalizes the
+// RawKey itself ("w" -> Letter 'W', "ArrowUp" -> ArrowUp), so a test hands it the raw string the
+// live runtime would, never a pre-normalized ViewerKey.
+let private downKey raw : ViewerKeyEvent =
+    { RawKey = raw; Direction = ViewerKeyDirection.KeyDown }
+
 // GAME family (feature 220): replaceable scaffold-behaviour tests. These drive the Pong
 // skeleton's update/view/tick/host directly, so when you swap in your own game you rewrite THIS
 // file. GovernanceTests.fs stays model-agnostic and keeps passing across the swap (SC-004).
@@ -252,6 +259,60 @@ let behaviorTests =
                 cued
                 expected
                 "generatedHost.Init routes the initial model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458)"
+        }
+
+        // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.
+        //
+        // They prove the halves in isolation: `MapKey ArrowUp true` returns SOME message, and
+        // `Update` (handed a message) advances the model. Neither COMPOSES them, and the gap between
+        // the halves is exactly where a product ships green-but-unplayable — a key that maps to a
+        // message `update` quietly ignores, or a `mapKey` that folds every key into a key-state
+        // snapshot no gameplay ever reads. The model-level test below (`update (ViewerInput …)`)
+        // INJECTS the message; it never asks whether pressing the key PRODUCES it.
+        //
+        // `runKeyScriptToModel` asks the whole question. It folds a raw key SCRIPT through the host's
+        // own `dispatchKey` (`normalizeEvent -> MapKey -> Update`) — the SAME fold the live runtime
+        // performs — from `Init`'s model to the final one, no window and no GL. Rougue1 shipped "v1
+        // complete" with 108 green tests while unplayable precisely because the suite injected
+        // messages straight into `update` and nothing ever exercised key -> host -> update. This is
+        // the shape of test that would have caught it — rewrite its script/assertions for your game.
+        test "generated game host PLAYS THROUGH: a pressed key reaches gameplay, not just a message" {
+            let host = AppRoot.Program.generatedHost
+            let restedLeftPaddle = (fst (host.Init())).LeftPaddleY
+
+            // 'W' drives the LEFT paddle UP (Model.paddleForKey -> movePaddle). Folded key -> mapKey
+            // -> update through the real driver, two presses move it. If `mapKey` stopped wrapping the
+            // key, or `update` stopped routing `ViewerInput` to `movePaddle`, the paddle would not
+            // move and this reddens — where injecting `ViewerInput(Letter 'W', true)` stays green.
+            let played, _ = GeneratedAppHost.runKeyScriptToModel host [ downKey "w"; downKey "w" ]
+
+            Expect.isTrue
+                (played.LeftPaddleY < restedLeftPaddle)
+                "two 'w' presses, folded key -> mapKey -> update, move the left paddle up: the key reaches gameplay"
+            Expect.equal played.LastInput (Some(Letter 'W')) "the host records the last key it actually routed"
+        }
+
+        // Issue #911/#912: HANDLED-BUT-UNWIRED guard — the scene-host analogue of the click path's
+        // `BoundIds` ("a key that is bound is a key that dispatches"). `reachableMessages` returns
+        // every message the host's runtime SOURCES: `mapKey` over the probed keys, plus `Tick` when a
+        // sample is given. A `Msg` case your `update` handles but that appears in NO source is
+        // dispatched by nothing — the Rougue1 defect. List the intents a player must be able to reach
+        // and assert each is sourced; it reddens the moment you add a handled intent (a Fire, a Jump)
+        // and forget to wire an input — or a tick — to it. (This starter's `mapKey` wraps EVERY key as
+        // `ViewerInput`, so `auditKeyWiring.Dead` is structurally empty here and the PLAYED-THROUGH
+        // test above is the load-bearing guard; a game whose `mapKey` returns intent messages directly
+        // gets a non-vacuous `Dead` too — see the fs-gg-elmish skill.)
+        test "generated game host SOURCES the intents a player must reach (handled-but-unwired guard)" {
+            let host = AppRoot.Program.generatedHost
+            let probe = [ downKey "w"; downKey "s"; downKey "ArrowUp"; downKey "ArrowDown" ]
+            let reachable = GeneratedAppHost.reachableMessages host probe (Some(TimeSpan.FromMilliseconds 16.0))
+
+            Expect.isTrue
+                (reachable |> List.exists (function ViewerInput _ -> true | _ -> false))
+                "the keyboard is a live source of ViewerInput — the seam the paddle router reads, not a dead key-state snapshot"
+            Expect.isTrue
+                (reachable |> List.exists (function Tick _ -> true | _ -> false))
+                "the clock is a live source of Tick — the fixed-step sim advances from a real source, not only from injected ticks"
         }
 
         test "generated game host boundary keeps app commands separate from viewer effects" {
