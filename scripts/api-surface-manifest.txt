@@ -988,7 +988,7 @@ open   FS.GG.UI.SkiaViewer
 # ------------------------------------------------------------------------------------------
 file   Game.Core/FixedStep.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      FixedStep.fsi val FixedStep.defaultMaxFrameTime
@@ -998,7 +998,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Geometry.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Geometry.fsi val Geometry.intersects
@@ -1020,7 +1020,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Loop.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Loop.fsi type StepState`1
@@ -1031,7 +1031,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Pathfinding.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Pathfinding.fsi type Neighbourhood
@@ -1050,7 +1050,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Physics.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Physics.fsi type Physics.BodyKind
@@ -1073,7 +1073,7 @@ proseat Physics.fsi type Physics.Config ::: { Gravity: Point
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Primitives.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Primitives.fsi type Point
@@ -1088,7 +1088,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Resolution.fsi
 skill  fs-gg-collision
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Resolution.fsi val Resolution.pushOut
@@ -1102,7 +1102,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Rng.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Rng.fsi type Rng
@@ -1115,7 +1115,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/SpatialGrid.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.5.1 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.7.1 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      SpatialGrid.fsi type SpatialGrid`1
@@ -1756,6 +1756,7 @@ waive FS.GG.Game.Core Ai.fsi val Ai.best
 waive FS.GG.Game.Core Ai.fsi val Ai.due
 waive FS.GG.Game.Core Ai.fsi val Ai.fleeField
 waive FS.GG.Game.Core Ai.fsi val Ai.ghosts
+waive FS.GG.Game.Core Ai.fsi val Ai.influenceMap
 waive FS.GG.Game.Core Ai.fsi val Ai.known
 waive FS.GG.Game.Core Ai.fsi val Ai.spotted
 waive FS.GG.Game.Core Ai.fsi val Ai.substream
@@ -1777,6 +1778,35 @@ waive FS.GG.Game.Core Ballistics.fsi val Ballistics.splash
 waive FS.GG.Game.Core Ballistics.fsi val Ballistics.step
 waive FS.GG.Game.Core Ballistics.fsi type Projectile
 waive FS.GG.Game.Core Ballistics.fsi type ProjectileStep
+waive FS.GG.Game.Core Dice.fsi val Dice.advantage
+waive FS.GG.Game.Core Dice.fsi val Dice.constant
+waive FS.GG.Game.Core Dice.fsi val Dice.convolve
+waive FS.GG.Game.Core Dice.fsi val Dice.die
+waive FS.GG.Game.Core Dice.fsi val Dice.disadvantage
+waive FS.GG.Game.Core Dice.fsi val Dice.mean
+waive FS.GG.Game.Core Dice.fsi val Dice.outcomes
+waive FS.GG.Game.Core Dice.fsi val Dice.repeat
+waive FS.GG.Game.Core Dice.fsi val Dice.sample
+waive FS.GG.Game.Core Dice.fsi val Dice.totalWeight
+waive FS.GG.Game.Core Dice.fsi val Dice.uniform
+waive FS.GG.Game.Core Dice.fsi val Dice.variance
+waive FS.GG.Game.Core Dice.fsi type Distribution
+waive FS.GG.Game.Core Edges.fsi type Dir
+waive FS.GG.Game.Core Edges.fsi type Edge
+waive FS.GG.Game.Core Edges.fsi val Edges.astar
+waive FS.GG.Game.Core Edges.fsi val Edges.bfs
+waive FS.GG.Game.Core Edges.fsi val Edges.borders
+waive FS.GG.Game.Core Edges.fsi val Edges.corners
+waive FS.GG.Game.Core Edges.fsi val Edges.edgeBetween
+waive FS.GG.Game.Core Edges.fsi val Edges.edgeCells
+waive FS.GG.Game.Core Edges.fsi val Edges.edgeEndpoints
+waive FS.GG.Game.Core Edges.fsi val Edges.edgeOf
+waive FS.GG.Game.Core Edges.fsi val Edges.isEdgePassable
+waive FS.GG.Game.Core Edges.fsi val Edges.neighbours
+waive FS.GG.Game.Core Edges.fsi val Edges.step
+waive FS.GG.Game.Core Edges.fsi val Edges.vertexCells
+waive FS.GG.Game.Core Edges.fsi val Edges.vertexEdges
+waive FS.GG.Game.Core Edges.fsi type Vertex
 waive FS.GG.Game.Core Effects.fsi type DamageTrace
 waive FS.GG.Game.Core Effects.fsi type Damage`1
 waive FS.GG.Game.Core Effects.fsi type Effects.Active`1
@@ -1804,13 +1834,37 @@ waive FS.GG.Game.Core Grids.fsi val Grids.cellCenter
 waive FS.GG.Game.Core Grids.fsi val Grids.cellCorners
 waive FS.GG.Game.Core Grids.fsi val Grids.cellEdges
 waive FS.GG.Game.Core Grids.fsi val Grids.cellRect
+waive FS.GG.Game.Core Grids.fsi val Grids.disc
 waive FS.GG.Game.Core Grids.fsi val Grids.edgeCells
 waive FS.GG.Game.Core Grids.fsi val Grids.edgeMidpoint
 waive FS.GG.Game.Core Grids.fsi val Grids.edgeSegment
 waive FS.GG.Game.Core Grids.fsi val Grids.edgeVertices
+waive FS.GG.Game.Core Grids.fsi val Grids.ring
 waive FS.GG.Game.Core Grids.fsi val Grids.vertexCells
 waive FS.GG.Game.Core Grids.fsi val Grids.vertexEdges
 waive FS.GG.Game.Core Grids.fsi val Grids.vertexPoint
+waive FS.GG.Game.Core Hex.fsi type Hex
+waive FS.GG.Game.Core Hex.fsi val Hex.add
+waive FS.GG.Game.Core Hex.fsi val Hex.astar
+waive FS.GG.Game.Core Hex.fsi val Hex.bfs
+waive FS.GG.Game.Core Hex.fsi val Hex.create
+waive FS.GG.Game.Core Hex.fsi val Hex.directions
+waive FS.GG.Game.Core Hex.fsi val Hex.distance
+waive FS.GG.Game.Core Hex.fsi val Hex.lineDraw
+waive FS.GG.Game.Core Hex.fsi val Hex.neighbours
+waive FS.GG.Game.Core Hex.fsi val Hex.ofDoubled
+waive FS.GG.Game.Core Hex.fsi val Hex.ofOffset
+waive FS.GG.Game.Core Hex.fsi val Hex.origin
+waive FS.GG.Game.Core Hex.fsi val Hex.range
+waive FS.GG.Game.Core Hex.fsi val Hex.ring
+waive FS.GG.Game.Core Hex.fsi val Hex.rotateLeft
+waive FS.GG.Game.Core Hex.fsi val Hex.rotateRight
+waive FS.GG.Game.Core Hex.fsi val Hex.round
+waive FS.GG.Game.Core Hex.fsi val Hex.scale
+waive FS.GG.Game.Core Hex.fsi val Hex.spiral
+waive FS.GG.Game.Core Hex.fsi val Hex.subtract
+waive FS.GG.Game.Core Hex.fsi val Hex.toDoubled
+waive FS.GG.Game.Core Hex.fsi val Hex.toOffset
 waive FS.GG.Game.Core InputCommand.fsi type Command
 waive FS.GG.Game.Core InputCommand.fsi val Command.all
 waive FS.GG.Game.Core InputCommand.fsi val Command.id
@@ -1822,10 +1876,20 @@ waive FS.GG.Game.Core Los.fsi val Los.lineOfSight
 waive FS.GG.Game.Core Los.fsi val Los.lineOfSightBy
 waive FS.GG.Game.Core Los.fsi val Los.supercover
 waive FS.GG.Game.Core Los.fsi val Los.trace
+waive FS.GG.Game.Core Pathfinding.fsi type Pathfinding.Landmarks
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Landmarks.astar
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Landmarks.build
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Landmarks.heuristic
+waive FS.GG.Game.Core Pathfinding.fsi type Pathfinding.Regions
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Regions.build
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Regions.sameComponent
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.astarStraight
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.baseStep
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.budgetFor
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.jps
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.pathTo
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.reachable
+waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.smooth
 waive FS.GG.Game.Core Visibility.fsi type Visibility.Segment
 waive FS.GG.Game.Core Visibility.fsi type Visibility.Settings
 waive FS.GG.Game.Core Visibility.fsi type Visibility.VisibilityPolygon
