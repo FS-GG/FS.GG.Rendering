@@ -1479,6 +1479,7 @@ open   FS.GG.UI.Scene
 +      Viewer.Types.fsi type EvidenceWorkflowMsg
 +      Viewer.Types.fsi type EvidenceWorkflowEffect
 +      Viewer.Types.fsi type GeneratedAppHost`2
++      Viewer.Types.fsi type SceneHostKeyWiring`1
 +      Viewer.Types.fsi type ViewerPointerButtonKind
 +      Viewer.Types.fsi type ViewerPointerPhaseKind
 +      Viewer.Types.fsi type ViewerPointerInput
@@ -1520,6 +1521,9 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val GeneratedAppHost.dispatchKey
 +      SkiaViewer.fsi val GeneratedAppHost.audioRequests
 +      SkiaViewer.fsi val GeneratedAppHost.smoke
++      SkiaViewer.fsi val GeneratedAppHost.runKeyScriptToModel
++      SkiaViewer.fsi val GeneratedAppHost.auditKeyWiring
++      SkiaViewer.fsi val GeneratedAppHost.reachableMessages
 
 # ------------------------------------------------------------------------------------------
 file   Symbology.Render/Render.fsi
