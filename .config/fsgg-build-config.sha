@@ -8,4 +8,4 @@
 #
 # Written by scripts/sync-build-config.sh. Do not hand-edit: editing the pin without re-syncing the
 # files is how you would tell the gate to check your work against the wrong baseline.
-19f84eede14ad066e4826787b503b538b6226bdb
+c586a4bada85e4a6c417dd6584de772c29fabe1c
