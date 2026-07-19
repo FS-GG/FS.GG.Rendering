@@ -20,7 +20,7 @@
     {
       "id": "fs-gg-elmish",
       "scope": "product",
-      "sha256": "7683ad34bdda9c00cd51fac43ce5a4ef8085f671ee2b3ecc49043e1e416d1075",
+      "sha256": "2d48e721837c571cd13e073c54787350cb59c4bd5e3cf9cc928c3d2c96303a23",
       "resolvablePath": ".agents/skills/fs-gg-elmish/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-elmish/"
