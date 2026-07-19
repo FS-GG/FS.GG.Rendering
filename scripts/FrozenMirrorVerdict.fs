@@ -241,7 +241,13 @@ let foreignSkills: Foreign list =
       game "fs-gg-ballistics" NoCounterpart
       game "fs-gg-ai" NoCounterpart
       game "fs-gg-effects" NoCounterpart
-      game "fs-gg-physics" NoCounterpart ]
+      game "fs-gg-physics" NoCounterpart
+      // fs-gg-playtest: owner fs-gg-game, registry `mirrored: false` (#1194/.github#299). Authored
+      // there, deliberately not vendored here — so NOT a game-scaffold skill in this repo and NOT a
+      // Mirrored copy. Declaring `Mirrored` would hand-forge an obligation the owner never asserted
+      // (the #505/#658 trap). If the scaffold is ever meant to offer it, the prerequisite is the org
+      // registry flipping to `mirrored: true` first; only then does a Mirrored bundle become valid.
+      game "fs-gg-playtest" NoCounterpart ]
 
 /// Where this repo keeps its copy of a foreign skill's body.
 let mirrorPath (id: string) = $"template/product-skills/{id}/SKILL.md"
