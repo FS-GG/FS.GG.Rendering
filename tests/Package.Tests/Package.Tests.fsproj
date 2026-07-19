@@ -110,6 +110,12 @@
          entries were machine-checked, the sentence explaining them was not. -->
     <Compile Include="Issue776StaleSuppressionTests.fs" />
     <Compile Include="LedgerNarrativeTests.fs" />
+    <!-- #925 — the api-surface coverage VERDICT, split out of `refresh-api-surface-mirror.fsx` so it is
+         tested rather than only exercised by a live gate (the #720/#661 reason FrozenMirrorVerdict.fs is).
+         `#load`ed by the generator, compiled here; the tests below drive it with synthetic surfaces, no
+         restore. Must precede the test file that opens it. -->
+    <Compile Include="..\..\scripts\ApiSurfaceCoverage.fs" Link="ApiSurfaceCoverage.fs" />
+    <Compile Include="Issue925ApiSurfaceCoverageTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

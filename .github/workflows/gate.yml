@@ -310,11 +310,17 @@ jobs:
       # two can disagree legitimately and the mirror has to track the pin.
       #
       # `--check` never writes, so a red here is a REPORT, not a mutation the next step trips over.
-      - name: API-surface mirror drift (generated from the pin)
+      # #925 — this one invocation now enforces BOTH directions of the mirror<->pin relationship:
+      #   * DRIFT: template/base/docs/api-surface/** matches (pinned .fsi) ∩ manifest;
+      #   * COVERAGE: every public member the pin SHIPS is either taught (a `+`) or WAIVED (a `waive`) in
+      #     the manifest — the allowlist-omission the drift check is blind to, which is how #911's
+      #     key-wiring surface shipped untaught for the whole #912 window. Stale waivers red here too.
+      # The script prints which failure it is to stderr; the annotation below covers all three modes.
+      - name: API-surface mirror drift + coverage (generated from the pin)
         run: |
           set -euo pipefail
           if ! dotnet fsi scripts/refresh-api-surface-mirror.fsx --check; then
-            echo "::error::template/base/docs/api-surface/** no longer matches what the pinned packages + scripts/api-surface-manifest.txt generate. It is a BUILD OUTPUT: do not hand-edit it. Run 'dotnet fsi scripts/refresh-api-surface-mirror.fsx' and commit, or fix the manifest if the curation is what changed."
+            echo "::error::api-surface FAILED — see the script's stderr above for which. DRIFT: template/base/docs/api-surface/** no longer matches what the pinned packages + scripts/api-surface-manifest.txt generate — it is a BUILD OUTPUT, do not hand-edit it; run 'dotnet fsi scripts/refresh-api-surface-mirror.fsx' and commit, or fix the manifest if the curation changed. COVERAGE: a public member the pin ships is neither taught nor waived — teach it (a '+' in a file stanza) or waive it (a 'waive' line); re-seed with 'dotnet fsi scripts/refresh-api-surface-mirror.fsx --emit-waivers'. STALE WAIVER: a 'waive' line names a member the pin no longer exports or now teaches — delete it."
             exit 1
           fi
 
