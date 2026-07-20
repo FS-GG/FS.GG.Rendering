@@ -102,7 +102,7 @@
       "scope": "product",
       "sha256": "5fb78dd43379d13f84526a70dfd01000544e6c99bbf164c510d160da06b1ce31",
       "resolvablePath": ".agents/skills/fs-gg-samples/SKILL.md",
-      "materializes-when": "profile == sample-pack and lifecycle == spec-kit",
+      "materializes-when": "profile == sample-pack",
       "supplied-by": "template/fragments/samples/skill/"
     },
     {

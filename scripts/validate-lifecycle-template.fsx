@@ -109,9 +109,15 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 /// `template/base/.agents/skills/` but is now the SAME shape — a dedicated profile-gated,
 /// lifecycle-independent source (promoted off the former lifecycle-gated whole-`.agents/`
 /// blanket so it materializes on every lifecycle), so it classifies as a framework skill too.
+/// Issue #939 (ADR-0056: spec-kit removal): `fs-gg-samples` likewise keeps its canonical body at
+/// its historical fragment path `template/fragments/samples/skill/` (co-located with the sample
+/// content it guides), and is re-gated to the profile predicate ONLY — a profile-gated,
+/// lifecycle-independent product skill, so it classifies as framework here just like fs-gg-project.
 let private isFrameworkSkillSource (source: string) =
     let s = source.Replace('\\', '/')
-    s.StartsWith "template/product-skills/" || s.StartsWith "template/base/.agents/skills/"
+    s.StartsWith "template/product-skills/"
+    || s.StartsWith "template/base/.agents/skills/"
+    || s = "template/fragments/samples/skill/"
 
 /// Feature 219 (R4): the `docs/skillist-reference.md` catalog is a lifecycle-coupled reference doc
 /// emitted under a `spec-kit`-gated source whose `target` is the product `./` tree but which is
@@ -323,12 +329,12 @@ let private verifyGatedSources () =
         countWhere (fun (row, (c, _)) -> c = "workspace" && row.Source.Replace('\\', '/') = source)
     let materializeChecked = workspaceSourced "template/lifecycle/"
     let speckitNarrowChecked = workspaceSourced ".agents/skills/"
-    assertTrue (frameworkChecked = 19) (sprintf "expected exactly 19 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design, no twins), checked %d" frameworkChecked)
+    assertTrue (frameworkChecked = 20) (sprintf "expected exactly 20 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design + fs-gg-samples (re-gated profile-only under #939), no twins), checked %d" frameworkChecked)
     assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
-    assertTrue (workspaceChecked >= 7) (sprintf "expected >=7 lifecycle-workspace sources, checked %d" workspaceChecked)
+    assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 

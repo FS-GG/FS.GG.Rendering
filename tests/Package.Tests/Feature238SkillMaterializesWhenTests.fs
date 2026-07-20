@@ -296,16 +296,33 @@ let feature238SkillMaterializesWhenTests =
               Expect.isTrue (evalCanonical headless scene) "fs-gg-scene emits for profile=headless-scene"
               Expect.isTrue (evalCanonical governed scene) "fs-gg-scene emits for profile=governed"
               Expect.isFalse (evalCanonical controls scene) "fs-gg-scene suppressed for an off-list profile"
-              // Conjunction suppression over a two-clause gate: fs-gg-samples is
-              // `(profile == "sample-pack") && lifecycle == "spec-kit"`, so flipping EITHER conjunct
-              // false must suppress it. (This coverage previously rode on fs-gg-feedback-capture, whose
-              // `(feedback == true) && lifecycle == "spec-kit"` gate had the same shape; that skill was
-              // removed under ADR-0056 Decision 3, so the check now rides on fs-gg-samples.)
+              // Issue #939 (ADR-0056): fs-gg-samples is re-gated to the profile predicate ONLY, so it
+              // now emits for profile == sample-pack on EVERY lifecycle — including the default sdd lane
+              // that formerly stranded the sample content with no guiding skill — and is suppressed only
+              // by an off-list profile, never by the lifecycle. (Behaviour, not exact-string: the
+              // canonical single-value rendering is not this test's concern; G-EQUIV proves the manifest
+              // form ≡ template.json's C-style gate over the whole grid, including sample-pack × sdd.)
               let samples = (Map.find "fs-gg-samples" entries).MaterializesWhen
-              let samplesOn = Map.ofList [ "profile", "sample-pack"; "lifecycle", "spec-kit"; "feedback", "false" ]
-              let samplesOff = Map.ofList [ "profile", "sample-pack"; "lifecycle", "sdd"; "feedback", "false" ]
-              Expect.isTrue (evalCanonical samplesOn samples) "fs-gg-samples emits when profile == sample-pack and lifecycle == spec-kit"
-              Expect.isFalse (evalCanonical samplesOff samples) "fs-gg-samples suppressed when lifecycle != spec-kit (conjunction)"
+              for lifecycle in [ "spec-kit"; "sdd"; "none" ] do
+                  let on = Map.ofList [ "profile", "sample-pack"; "lifecycle", lifecycle; "feedback", "false" ]
+                  Expect.isTrue (evalCanonical on samples) (sprintf "fs-gg-samples emits for sample-pack on the %s lane (#939)" lifecycle)
+              let samplesOffProfile = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "false" ]
+              Expect.isFalse (evalCanonical samplesOffProfile samples) "fs-gg-samples suppressed for an off-list profile (gate is profile-scoped, #939)"
+
+              // Conjunction suppression over the canonical evaluator: no SHIPPING skill carries a
+              // two-clause gate any more (fs-gg-feedback-capture removed under ADR-0056 Decision 3;
+              // fs-gg-samples re-gated to a single profile clause under #939), so exercise `and`
+              // directly with a synthetic canonical gate — flipping EITHER clause false must suppress it.
+              let twoClause = "profile == sample-pack and lifecycle == spec-kit"
+              Expect.isTrue
+                  (evalCanonical (Map.ofList [ "profile", "sample-pack"; "lifecycle", "spec-kit" ]) twoClause)
+                  "conjunction holds when both clauses are satisfied"
+              Expect.isFalse
+                  (evalCanonical (Map.ofList [ "profile", "app"; "lifecycle", "spec-kit" ]) twoClause)
+                  "conjunction suppressed when the profile clause is false"
+              Expect.isFalse
+                  (evalCanonical (Map.ofList [ "profile", "sample-pack"; "lifecycle", "sdd" ]) twoClause)
+                  "conjunction suppressed when the lifecycle clause is false"
 
               // Issue #248 / #434: the report is the UNCONDITIONAL counterpart of the (now-removed) per-phase
               // capture skill. The report is agent-invoked at cycle end and reads only optional,
