@@ -1,6 +1,6 @@
 // Feature 231 — VENDORED copy of the FS.GG.Contracts skill-mirror algorithm (ADR-0014
 // §Decision 2, standalone lane). The module body below transliterates `Fsgg.SkillMirror`
-// (FS.GG.Contracts 1.4.0) with only the namespace/module header, this banner, and the
+// (FS.GG.Contracts 4.0.0) with only the namespace/module header, this banner, and the
 // `SkillScope`/`agentSkillRoots` vendored definitions (which live in `Fsgg.Schemas`
 // upstream) changed. DO NOT "improve" it: the Package.Tests parity gate
 // (Feature231SkillManifestTests) asserts behavioral equality with the published library,
@@ -23,8 +23,16 @@ module SkillMirror =
 
     let providerSourceRoot = ".agents"
 
+    // Normalize CRLF -> LF before hashing so a byte-for-byte-logically-identical skill body
+    // hashes the same regardless of a checkout's line endings. This matches
+    // FS.GG.SDD.Artifacts SchemaVersion.sha256Text, so the 057/058 per-skill sha256 manifest
+    // does not spuriously flag drift on a CRLF checkout of LF-authored content.
     let sha256 (body: string) : string =
-        Encoding.UTF8.GetBytes body
+        (if String.IsNullOrEmpty body then
+             ""
+         else
+             body.Replace("\r\n", "\n"))
+        |> Encoding.UTF8.GetBytes
         |> SHA256.HashData
         |> Array.map (fun b -> b.ToString("x2"))
         |> String.concat ""

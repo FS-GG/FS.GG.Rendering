@@ -3,8 +3,9 @@
 // Writes template/skill-manifest/skill-manifest.json: the full product-scope catalog, one
 // entry per provider skill the template can emit, each carrying the SHA256 of its canonical
 // SKILL.md body. Digest semantics match Fsgg.SkillMirror.sha256 (lowercase hex over the
-// UTF-8 bytes of the body TEXT — i.e. hash(Encoding.UTF8.GetBytes(File.ReadAllText path)),
-// so a BOM never enters the digest on either the producing or the verifying side).
+// UTF-8 bytes of the body TEXT, CRLF normalized to LF first — i.e.
+// hash(Encoding.UTF8.GetBytes(File.ReadAllText(path).Replace("\r\n","\n"))), so neither a BOM
+// nor a checkout's line endings enter the digest on the producing or the verifying side).
 //
 // The manifest is the contract the standalone materialize step and the release gates read;
 // Feature231SkillManifestTests recomputes these digests independently and fails on drift.
@@ -156,8 +157,11 @@ let normalizeCondition (condition: string) : string =
 let jsonEscape (s: string) : string =
     s.Replace("\\", "\\\\").Replace("\"", "\\\"")
 
+// Normalize CRLF -> LF before hashing, matching Fsgg.SkillMirror.sha256 (FS.GG.Contracts
+// 4.0.0), so an LF-authored body digests identically on a CRLF checkout.
 let sha256Text (body: string) : string =
-    Encoding.UTF8.GetBytes body
+    (if String.IsNullOrEmpty body then "" else body.Replace("\r\n", "\n"))
+    |> Encoding.UTF8.GetBytes
     |> SHA256.HashData
     |> Array.map (fun b -> b.ToString "x2")
     |> String.concat ""
