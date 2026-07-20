@@ -1,0 +1,27 @@
+# kit-materialize — thin caller for the shared reusable workflow (FS-GG/.github, ADR-0062 / #1262).
+#
+# This repo is a `coordination-kit` receiver with `kit-delivery: package`: it references the versioned
+# FS.GG.Kit package (.config/kit/FS.GG.Kit.receiver.proj) instead of taking the kit by byte-copy sync PR.
+# Renovate bumps the FS.GG.Kit pin without running the materialize, so this workflow re-materializes the
+# kit on the bump PR and pushes the refreshed, committed kit back to the branch — keeping the committed
+# kit in step with its pin so coordination-coherence stays green. The package-fabric analogue of
+# lockfile-sync.yml.
+#
+# All mechanics + rationale (App-token push that re-triggers coherence, renovate/*-same-repo gating,
+# self-limiting second pass, provisioning gate shared with lockfile-sync) live in the reusable workflow:
+#   FS-GG/.github .github/workflows/kit-materialize.yml
+name: kit-materialize
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read   # the App token inside the reusable workflow performs the write
+
+jobs:
+  materialize:
+    uses: FS-GG/.github/.github/workflows/kit-materialize.yml@main
+    secrets:
+      app-id:          ${{ secrets.FSGG_DISPATCH_APP_ID }}
+      app-private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
