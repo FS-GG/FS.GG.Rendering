@@ -78,7 +78,7 @@ What do you want to scaffold?
 
 | value | includes | excludes |
 |-------|----------|----------|
-| `sdd` (default) | the generated product (app-only), plus a fail-closed guard sentinel (`readiness/lifecycle-scaffolding-pending.md`) | the entire gated lifecycle surface — an **external orchestrator** (the SDD scaffold) re-supplies lifecycle/governance, which clears the guard |
+| `sdd` (default) | the generated product (app-only), plus a fail-closed guard sentinel at the product root (`lifecycle-scaffolding-pending.md`) | the entire gated lifecycle surface — an **external orchestrator** (the SDD scaffold) re-supplies lifecycle/governance, which clears the guard |
 | `spec-kit` | the full Spec Kit lifecycle surface: `.specify/`, the generated constitution, the `.agents/` + `.claude/` skill/context trees, and the generated `AGENTS.md`/`CLAUDE.md` agent-context tree (**legacy** — frozen, scheduled for removal per ADR-0056) | — (full surface) |
 | `none` | the generated product only, no guard | the gated lifecycle surface **and** any orchestrator expectation |
 
@@ -87,7 +87,7 @@ What do you want to scaffold?
 The `sdd` lane emits the product only and expects an external SDD orchestrator to re-supply the
 lifecycle. So the default ships **with** a guard: a post-scaffold notice, a build **warning**, and a
 fail-closed `Verify` readiness/doctor gate — all keyed on the one file that distinguishes the otherwise
-byte-identical `sdd`/`none` trees (`readiness/lifecycle-scaffolding-pending.md`, emitted only under
+byte-identical `sdd`/`none` trees (the product-root `lifecycle-scaffolding-pending.md`, emitted only under
 `sdd`). Run `fsgg-sdd` to re-supply the lifecycle (which clears the guard), or pass `--lifecycle none`
 for a deliberately lifecycle-less product with no guard. `none` is silent; only `sdd` warns.
 

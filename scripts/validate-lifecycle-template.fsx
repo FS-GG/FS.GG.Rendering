@@ -1006,7 +1006,9 @@ let private productPresent (dir: string) =
 
 // ADR-0056 §Decision.2: the one file that distinguishes the byte-identical sdd/none trees — present
 // only when `--lifecycle sdd` was chosen. `def`==`sdd` carries it; `none` and `spec-kit` do not.
-let private lifecycleGuardSentinelRel = "readiness/lifecycle-scaffolding-pending.md"
+// It lives at the PRODUCT ROOT; it formerly targeted `readiness/`, an SDD-owned tree the provider
+// may not write under the orchestrated fsgg-sdd flow (#954, FS.GG.SDD#609).
+let private lifecycleGuardSentinelRel = "lifecycle-scaffolding-pending.md"
 
 let private hasGuardSentinel (dir: string) =
     File.Exists(Path.Combine(dir, lifecycleGuardSentinelRel.Replace('/', Path.DirectorySeparatorChar)))
