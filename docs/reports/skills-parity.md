@@ -2,8 +2,8 @@
 # Skill Parity Report
 
 Overall status: `passed`
-Canonical sources: `33`
-Wrappers: `67`
+Canonical sources: `32`
+Wrappers: `65`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |

@@ -51,7 +51,6 @@ let catalog =
     [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md", "(feedback == true) && lifecycle == \"spec-kit\""
       // #434: the report is UNCONDITIONAL — its template.json row carries no `condition` at all, which
       // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
       // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.

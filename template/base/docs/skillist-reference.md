@@ -42,14 +42,12 @@ each. Each is a self-contained canonical body declared (with its content digest)
 > (spec-kit, sdd, none) — the default sdd lane is no longer left without a top-level map.
 >
 > Under the spec-kit lifecycle the product additionally carries (when selected)
-> `fs-gg-samples` for the sample-pack profile and `fs-gg-feedback-capture` with `--feedback true`
-> at the same `.agents/skills/<id>/` locations.
+> `fs-gg-samples` for the sample-pack profile at the same `.agents/skills/<id>/` locations.
 >
-> `fs-gg-feedback-report` — the retrospective, cycle-end synthesis counterpart to the per-phase
-> `fs-gg-feedback-capture` — ships in **every** workspace, on every profile and every lifecycle,
-> and is **not** gated by `--feedback`. Unlike capture (Spec Kit hook machinery), the report is
-> agent-invoked and reads only optional, guarded evidence, so it degrades cleanly on a lane that
-> captured none.
+> `fs-gg-feedback-report` — the retrospective, cycle-end synthesis skill — ships in **every**
+> workspace, on every profile and every lifecycle. It is agent-invoked and reads only optional,
+> guarded evidence, so it degrades cleanly on a lane with no captured records. (The per-phase
+> capture counterpart it once paired with was retired with the spec-kit lane under ADR-0056.)
 > The framework's own developer surface (`fs-gg-product-*` aliases, `fs-gg-diagnostics`,
 > `fs-gg-design-system`, …) stays in the FS.GG.Rendering repository and does not ship
 > (Feature 231 / ADR-0014). After the first build the same union is materialized byte-identically

@@ -43,7 +43,6 @@ let private canonicalSources =
     [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md"
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
-      "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
@@ -154,9 +153,6 @@ let private resolves (skillId: string) (skillRoot: string) (containingFile: stri
         else
             File.Exists(repositoryPath ("template/base/" + productPath))
             || Directory.Exists(repositoryPath ("template/base/" + productPath))
-    elif cleaned.StartsWith ".specify/extensions/feedback" then
-        // emitted by the feedback row: template/feedback/extensions/ -> .specify/extensions/feedback/
-        Directory.Exists(repositoryPath "template/feedback/extensions")
     elif cleaned.StartsWith ".specify" then
         File.Exists(repositoryPath cleaned) || Directory.Exists(repositoryPath cleaned)
     elif cleaned = "samples" || cleaned.StartsWith "samples/" then

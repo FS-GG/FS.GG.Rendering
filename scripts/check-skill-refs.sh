@@ -360,9 +360,9 @@ done
 # FS.GG.Game's script, and it is not a refinement: a direct port is WRONG here, and silently.
 #
 # Game's `is_published` globs `template/product-skills/*/`, which in Game is exactly what it ships.
-# In Rendering it is not. We materialize 21 skills; only 17 live under that root. The other four are
+# In Rendering it is not. We materialize 21 skills; only 18 live under that root. The other three are
 # supplied from off-convention paths — fs-gg-project from `template/base/.agents/skills/`,
-# fs-gg-samples from `template/fragments/`, and the two feedback skills from `template/feedback*/`.
+# fs-gg-samples from `template/fragments/`, and fs-gg-feedback-report from `template/feedback-report/`.
 # A directory scan cannot see them, so it calls a CORRECT `[[fs-gg-project]]` dangling — and the
 # suggested fix (`[[fs-gg-rendering:fs-gg-project]]`) is then reported as self-qualified. A false red
 # with no green on the other side of it, which is the one thing a gate may never do.
@@ -737,8 +737,8 @@ fi
 #
 # This IS disjoint today — the manifest supplies from `template/` roots, never from `src/` — so it would
 # be easy to write "disjoint by construction" in a comment and move on. That is exactly what the first
-# draft of this line did. But the manifest ALREADY supplies four skills from off-convention roots
-# (`template/base/`, `template/fragments/`, `template/feedback*/`), so "the roots never overlap" is a
+# draft of this line did. But the manifest ALREADY supplies three skills from off-convention roots
+# (`template/base/`, `template/fragments/`, `template/feedback-report/`), so "the roots never overlap" is a
 # convention, not a construction, and the day someone publishes a library skill straight out of
 # `src/*/skill/` this gate goes quietly wrong. An invariant this file relies on is one it checks — and
 # here it is free, because both lists are already in hand.

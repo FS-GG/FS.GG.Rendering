@@ -328,7 +328,7 @@ let private verifyGatedSources () =
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
     assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
-    assertTrue (workspaceChecked >= 9) (sprintf "expected >=9 lifecycle-workspace sources, checked %d" workspaceChecked)
+    assertTrue (workspaceChecked >= 7) (sprintf "expected >=7 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked
 
@@ -713,8 +713,7 @@ let private emittedSkillId (target: string) =
 /// `fs-gg-project` is excluded here for exactly the reason the hand map excludes it: it is REQUIRED on
 /// every lane and every profile, so `assertNoWrapperDirs` adds it back at the call site rather than
 /// carrying it per profile (#91/#452). Skills with no `profile ==` term at all (`fs-gg-feedback-report`,
-/// unconditional; `fs-gg-feedback-capture`, gated on the `feedback` flag) are likewise not part of the
-/// per-profile roster and are handled at the call site.
+/// unconditional) are likewise not part of the per-profile roster and are handled at the call site.
 let private declaredFrameworkSkills () =
     use doc = templateDoc ()
 
@@ -935,11 +934,15 @@ let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillC
 /// Feature 231: the emitted fs-gg-* dir set must be EXACTLY the expected profile set (+ the
 /// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
 let private assertNoWrapperDirs (dir: string) (profile: string) (specKit: bool) =
-    // fs-gg-feedback-capture is the per-phase CAPTURE skill, gated `(feedback == true) && lifecycle == "spec-kit"`.
-    // `feedback` defaults to false and no call site of this function scaffolds with `--feedback true`, so in
-    // practice it never emits here — this is a tolerance for a spec-kit lane that turns the flag on, not a
-    // requirement. (Contrast fs-gg-feedback-report below, which is unconditional and so is REQUIRED.)
-    let allowedSpecKitExtras = Set.ofList [ "fs-gg-feedback-capture" ]
+    // No skill is merely TOLERATED on the spec-kit lane today. The per-phase fs-gg-feedback-capture
+    // skill (gated `(feedback == true) && lifecycle == "spec-kit"`) used to sit here, since `feedback`
+    // defaults to false and it never emitted from any call site below — but it was removed under
+    // ADR-0056 Decision 3 (the spec-kit lane's scheduled removal), so the allow-list is now empty.
+    // A future flag-gated capability skill needs no entry here either: every scaffold below runs with
+    // its flag defaulted off, so it never emits and never reads as an extra — an allowance can only
+    // ever PERMIT a skill, never catch its absence (the hole that shipped fs-gg-feedback-report to
+    // nobody, #434). (Contrast fs-gg-feedback-report below, which is unconditional and so is REQUIRED.)
+    let allowedSpecKitExtras : Set<string> = Set.empty
     let expected =
         let baseSet =
             match Map.tryFind profile expectedFrameworkSkills with
@@ -1132,7 +1135,7 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       DanglingRoutes = dangling.Length }
 
 /// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
-/// ungated ant overlay present; feedback=true emits no gated feedback skill under sdd/none.
+/// ungated ant overlay present; the ungated retrospective report skill emits under sdd/none.
 let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
     let mutable count = 0
     for lc in values do
@@ -1141,19 +1144,13 @@ let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
             if not (File.Exists(Path.Combine(dir, "design-system.json"))) then
                 failwithf "composition %s/%s/ant: ungated ant overlay (design-system.json) missing" lc p
             count <- count + 1
-    // feedback=true under a non-spec-kit lifecycle must NOT emit the gated feedback skill.
-    let fb = scaffold tmpRoot "app" [ "--lifecycle"; "sdd"; "--feedback"; "true" ] "fb-sdd"
-    // Probe `.agents/`, not `.claude/`: under sdd the whole `.claude/` root is suppressed, so a
-    // `.claude/skills/fs-gg-feedback-capture` probe is vacuously false and would stay green even if
-    // capture lost its lifecycle clause and leaked into the provider surface. `.agents/skills/` is
-    // where a leak would actually land.
-    let feedbackSkill = Directory.Exists(Path.Combine(fb, ".agents", "skills", "fs-gg-feedback-capture"))
-    if feedbackSkill then failwithf "feedback=true under sdd emitted the gated feedback skill (should be suppressed)"
-    // ...but the UNGATED retrospective report skill (issue #248) MUST emit on that same lane — it is
-    // agent-invoked, not hook-invoked, so it carries no lifecycle clause. This is the positive dual of
-    // the check above: together they pin that exactly one of the two feedback skills is lane-gated.
+    // The UNGATED retrospective report skill (issue #248) MUST emit on the sdd lane — it is
+    // agent-invoked, not hook-invoked, so it carries no lifecycle clause and ships on every lane.
+    // (Its per-phase counterpart fs-gg-feedback-capture, the only lifecycle-gated feedback skill, was
+    // removed under ADR-0056 Decision 3, so there is no longer a suppressed twin to probe for here.)
+    let fb = scaffold tmpRoot "app" [ "--lifecycle"; "sdd" ] "fb-sdd"
     if not (Directory.Exists(Path.Combine(fb, ".agents", "skills", "fs-gg-feedback-report"))) then
-        failwith "feedback=true under sdd did NOT emit fs-gg-feedback-report (should be lifecycle-independent)"
+        failwith "sdd lane did NOT emit fs-gg-feedback-report (should be lifecycle-independent)"
     count
 
 /// Feature 231 (Constitution V red case): a corrupted canonical copy must turn the enforcing

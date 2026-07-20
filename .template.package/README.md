@@ -30,9 +30,9 @@ cd MyApp
 dotnet restore
 ```
 
-Pass `--profile <p>` to pick what to scaffold, and add `--feedback true` or
-`--initGit true` as needed (see **Options**). Every profile carries the Spec Kit
-install and `speckit-*` skills, so you drive features through a governed agent loop.
+Pass `--profile <p>` to pick what to scaffold, and add `--initGit true` as needed
+(see **Options**). Every profile carries the Spec Kit install and `speckit-*` skills,
+so you drive features through a governed agent loop.
 
 Generation is **side-effect-free by default**: it emits files only — it starts no process,
 creates no Git repository, and never hangs in CI or IDE "new project" hosts. To initialize a
@@ -47,7 +47,6 @@ for you, so `--initGit` is unnecessary there.
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
 | `--lifecycle <l>` | `sdd` | Which lifecycle scaffolding to emit alongside the product: `sdd` (default — product only, to be composed by an external SDD orchestrator, with a fail-closed guard until the lifecycle is re-supplied), `spec-kit` (full Spec Kit workspace — **legacy**, frozen and scheduled for removal per ADR-0056), or `none` (product only, nothing attached, no guard). See **Lifecycle** below. |
-| `--feedback true` | `false` | Emit the per-phase feedback **capture** machinery: under `--lifecycle spec-kit`, capture into `specs/<feature>/feedback/` via the `after_*` hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. It does **not** gate the retrospective `fs-gg-feedback-report` skill, which ships in every scaffold on every profile and lifecycle: the report is agent-invoked at cycle end and reads only whatever guarded evidence exists, so it degrades cleanly when nothing was captured. |
 | `--initGit true` | `false` | Opt in to initialize a Git repository with a `[Spec Kit] Initial commit` **and** mark generated shell scripts executable. Skipped when already inside a repository; non-fatal if `git` is absent. Pair with `--allow-scripts yes` for non-interactive runs. Default `false` is side-effect-free. Unnecessary under the SDD scaffold path. |
 
 | Profile | Scaffolds |
