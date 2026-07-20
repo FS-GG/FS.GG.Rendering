@@ -40,13 +40,14 @@ let writeLog target =
 // ADR-0056 §Decision.2: the fail-closed half of the sdd-lane guard. The `sdd` lane (the default)
 // emits the product only and expects an external SDD lifecycle owner (fsgg-sdd) to re-supply the
 // lifecycle; the one file that distinguishes the byte-identical sdd/none trees —
-// readiness/lifecycle-scaffolding-pending.md — is present only when `--lifecycle sdd` was chosen.
-// While it is present, the readiness/doctor gate stays RED (this raises, which fails Verify): a
-// lifecycle-less product cannot pass the merge-gate audit. `none` (no sentinel) and `spec-kit` (no
-// sentinel) never trip it. The stock `dotnet build`/Directory.Build.props path only WARNS ("sdd
-// warns"); the fail-closed verdict lives here so it does not break the smoke build/test lane.
-let private lifecycleGuardSentinel =
-    Path.Combine("readiness", "lifecycle-scaffolding-pending.md")
+// the product-root lifecycle-scaffolding-pending.md — is present only when `--lifecycle sdd` was
+// chosen. (It formerly lived under `readiness/`, but that is an SDD-owned tree the provider may not
+// write under the orchestrated fsgg-sdd flow — see #954.) While it is present, the readiness/doctor
+// gate stays RED (this raises, which fails Verify): a lifecycle-less product cannot pass the
+// merge-gate audit. `none` (no sentinel) and `spec-kit` (no sentinel) never trip it. The stock
+// `dotnet build`/Directory.Build.props path only WARNS ("sdd warns"); the fail-closed verdict lives
+// here so it does not break the smoke build/test lane.
+let private lifecycleGuardSentinel = "lifecycle-scaffolding-pending.md"
 
 let private assertLifecycleSupplied () =
     // The message avoids the literal `product`/`fs-gg-ui` tokens (this file is not copyOnly, so the

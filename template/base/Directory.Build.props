@@ -39,15 +39,17 @@
   <!-- ADR-0056 §Decision.2: the sdd-lane guard. `sdd` (the default) emits the product only and
        expects an external SDD lifecycle owner (fsgg-sdd) to re-supply the lifecycle; until then the
        tree is lifecycle-less. The guard keys on the CHOSEN INTENT via the one file that distinguishes
-       the byte-identical sdd/none trees: readiness/lifecycle-scaffolding-pending.md, emitted only
-       under `lifecycle == "sdd"`. This target WARNS on every build while the sentinel is present
+       the byte-identical sdd/none trees: the product-root lifecycle-scaffolding-pending.md, emitted
+       only under `lifecycle == "sdd"`. (It formerly lived under `readiness/`, but that is an
+       SDD-owned tree the provider may not write under the orchestrated fsgg-sdd flow — see #954.)
+       This target WARNS on every build while the sentinel is present
        ("sdd warns"); `none` (deliberately lifecycle-less, no sentinel) and `spec-kit` (full workspace,
        no sentinel) are silent. The FAIL-CLOSED half — a readiness/doctor verdict that stays red until
        the lifecycle is re-supplied or the sentinel removed — lives in build.fsx's `Verify` gate, NOT
        here: a hard build error would break the stock `dotnet build`/`dotnet test` smoke checks that
        scaffold the default lane, and the ADR asks for a build that WARNS. -->
   <PropertyGroup>
-    <FsGgLifecyclePendingSentinel>$(MSBuildThisFileDirectory)readiness/lifecycle-scaffolding-pending.md</FsGgLifecyclePendingSentinel>
+    <FsGgLifecyclePendingSentinel>$(MSBuildThisFileDirectory)lifecycle-scaffolding-pending.md</FsGgLifecyclePendingSentinel>
   </PropertyGroup>
   <Target Name="FsGgSddLifecycleGuard"
           BeforeTargets="Build"
@@ -55,6 +57,6 @@
     <!-- The Warning text avoids the literal tokens `fs-gg-ui` and `product`/`Product`: this file is
          NOT copyOnly, so the projectSlug / effectiveName template symbols would rewrite them to the
          scaffolded name and mangle the message. `tree` / `scaffolded with` keep it name-stable. -->
-    <Warning Text="ADR-0056: lifecycle scaffolding not yet supplied (scaffolded with --lifecycle sdd, the default). Run `fsgg-sdd` to re-supply it (clears readiness/lifecycle-scaffolding-pending.md), or re-scaffold with `--lifecycle none` if a lifecycle-less tree is deliberate. The `Verify` readiness/doctor gate fails closed until then. See readiness/lifecycle-scaffolding-pending.md." />
+    <Warning Text="ADR-0056: lifecycle scaffolding not yet supplied (scaffolded with --lifecycle sdd, the default). Run `fsgg-sdd` to re-supply it (clears lifecycle-scaffolding-pending.md), or re-scaffold with `--lifecycle none` if a lifecycle-less tree is deliberate. The `Verify` readiness/doctor gate fails closed until then. See lifecycle-scaffolding-pending.md." />
   </Target>
 </Project>

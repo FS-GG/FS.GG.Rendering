@@ -133,7 +133,7 @@ This product is generated without a bundled lifecycle workspace — the default
 lifecycle owner you compose this product under, which supplies the workspace and the
 governance skills. On the default `sdd` lane, run `fsgg-sdd` to re-supply the
 lifecycle; until then a readiness/doctor check stays red and the build warns (see
-`readiness/lifecycle-scaffolding-pending.md`). Pass `--lifecycle none` for a
+`lifecycle-scaffolding-pending.md` at the product root). Pass `--lifecycle none` for a
 deliberately lifecycle-less product with no such guard. To bundle the legacy Spec Kit
 lifecycle workspace in instead, scaffold with `--lifecycle spec-kit` (frozen and
 scheduled for removal — see ADR-0056).
