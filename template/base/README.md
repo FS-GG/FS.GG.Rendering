@@ -128,11 +128,15 @@ only `#r`s the assemblies and `open`s `Product` — it launches nothing, so it
 neither emits nor suppresses host warnings, and a missing assembly surfaces as a
 normal load failure.
 
-This product is generated without a bundled lifecycle workspace
-(`--lifecycle sdd` / `--lifecycle none`). Governed feature work is driven by the
-lifecycle owner you compose this product under, which supplies the workspace and
-the governance skills. To generate the product with the Spec Kit lifecycle
-workspace bundled in instead, scaffold with the default `--lifecycle spec-kit`.
+This product is generated without a bundled lifecycle workspace — the default
+`--lifecycle sdd` (or `--lifecycle none`). Governed feature work is driven by the
+lifecycle owner you compose this product under, which supplies the workspace and the
+governance skills. On the default `sdd` lane, run `fsgg-sdd` to re-supply the
+lifecycle; until then a readiness/doctor check stays red and the build warns (see
+`readiness/lifecycle-scaffolding-pending.md`). Pass `--lifecycle none` for a
+deliberately lifecycle-less product with no such guard. To bundle the legacy Spec Kit
+lifecycle workspace in instead, scaffold with `--lifecycle spec-kit` (frozen and
+scheduled for removal — see ADR-0056).
 
 The product references FS.GG.UI packages from **public nuget.org** — the generated
 `NuGet.config` references that feed only, with no machine-local path, so `dotnet restore`

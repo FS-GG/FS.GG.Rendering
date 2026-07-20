@@ -38,9 +38,10 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // The profile -> framework `fs-gg-*` skill-set contract (data-model.md matrix). `fs-gg-symbology` is
 // now VENDORED (Feature 223): it follows the `fs-gg-scene` profile set (app, headless-scene, governed,
 // sample-pack, game) with no `lifecycle` clause, so it appears in every one of those rows. The earlier
-// Feature 219 "not-vendored / would red GV-3" rationale was a misread of GV-3 (research R1): GV-3
-// compares explicit `--lifecycle spec-kit` against the no-flag default of the SAME template, which an
-// ungated source leaves byte-identical — so wiring symbology is GV-3-neutral.
+// Feature 219 "not-vendored / would red GV-3" rationale was a misread of GV-3 (research R1): an
+// ungated framework skill is byte-identical across EVERY lifecycle lane, so wiring symbology is
+// GV-3-neutral. (ADR-0056 flipped the no-flag default spec-kit->sdd; the neutrality is unchanged —
+// it never depended on WHICH lane is the default, only on the source being lifecycle-independent.)
 // Feature 226 wired `fs-gg-styling` (consumer theming/styling) on the controls-bearing profiles
 // (app, game) — gated on product surface, not lifecycle — so it joins the app and game rows alongside
 // `fs-gg-ui-widgets` (the controls it themes). Feature 227 wired the consumer `fs-gg-layout` (compute

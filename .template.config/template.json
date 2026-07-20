@@ -59,20 +59,20 @@
     "lifecycle": {
       "type": "parameter",
       "datatype": "choice",
-      "defaultValue": "spec-kit",
-      "description": "Lifecycle scaffolding to emit alongside the generated product. 'spec-kit' (default) is byte-identical to today: it emits the full Spec Kit lifecycle workspace (.specify/, the project constitution, the .agents/ + .claude/ agent skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree). 'sdd' and 'none' suppress that entire gated lifecycle set while leaving the generated product (source, projects, product tests, docs, samples, and the designSystem overlay) untouched. Unknown values are rejected.",
+      "defaultValue": "sdd",
+      "description": "Lifecycle scaffolding to emit alongside the generated product. ADR-0056 (2026-07-20) makes 'sdd' the default and reclassifies 'spec-kit' as a legacy lane, frozen and scheduled for removal. 'sdd' (default) and 'none' both suppress the entire gated Spec Kit lifecycle workspace (.specify/, the project constitution, the .agents/ + .claude/ agent skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree), emitting only the generated product (source, projects, product tests, docs, samples, and the designSystem overlay). The two are byte-identical EXCEPT that 'sdd' also emits a fail-closed guard sentinel (readiness/lifecycle-scaffolding-pending.md) — the one file that distinguishes the chosen intent — so a standalone consumer who takes the default but never re-supplies the lifecycle gets a red readiness/doctor check and a printed notice rather than a silently lifecycle-less tree. 'spec-kit' still emits the full workspace. Unknown values are rejected.",
       "choices": [
         {
           "choice": "spec-kit",
-          "description": "Emit the full Spec Kit lifecycle workspace: .specify/, the project constitution, the .agents/ and .claude/ skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree (default; no diff vs today's template)."
+          "description": "Legacy lane (ADR-0056: frozen, scheduled for removal). Emit the full Spec Kit lifecycle workspace: .specify/, the project constitution, the .agents/ and .claude/ skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree. Byte-identical to the pre-ADR-0056 spec-kit output."
         },
         {
           "choice": "sdd",
-          "description": "Suppress the gated lifecycle set; emit only the generated product. Intent: an external SDD lifecycle owner re-supplies the lifecycle scaffolding."
+          "description": "Default (ADR-0056). Suppress the gated Spec Kit lifecycle set; emit only the generated product, plus the fail-closed guard sentinel readiness/lifecycle-scaffolding-pending.md. Intent: an external SDD lifecycle owner re-supplies the lifecycle scaffolding (which removes the sentinel). Until then the readiness/doctor check stays red (and the build warns)."
         },
         {
           "choice": "none",
-          "description": "Suppress the gated lifecycle set; emit only the generated product. Intent: no lifecycle scaffolding is wanted. Same template-level output as 'sdd'."
+          "description": "Suppress the gated lifecycle set; emit only the generated product, with NO guard sentinel. Intent: a lifecycle-less product is deliberate, so nothing warns. Byte-identical to 'sdd' except for the absence of readiness/lifecycle-scaffolding-pending.md — the guard keys on that chosen intent."
         }
       ]
     },
@@ -552,9 +552,29 @@
       "source": "template/design-system/ant/",
       "target": "./",
       "comment": "Feature 128 (F3): the ant-only design-system overlay (the feedback no-diff precedent). Fires ONLY for designSystem == \"ant\"; no entry fires for wcag, so the default scaffold stays byte-identical to today (FR-003/SC-001). Copies a self-describing policy record + the Ant imprint as data; template/base/ is untouched."
+    },
+    {
+      "condition": "(lifecycle == \"sdd\")",
+      "source": "template/lifecycle-guard/",
+      "target": "readiness/",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "ADR-0056 §Decision.2: the sdd-lane GUARD sentinel. 'sdd' and 'none' are byte-identical at the template level, so the guard keys on the CHOSEN INTENT — this is the ONE file that distinguishes them, present under 'sdd' and absent under 'none'. It is the fail-closed readiness/doctor marker: the FsGgSddLifecycleGuard target in template/base/Directory.Build.props WARNS on every build while it is present (sdd warns; none is silent), and the generated product's `Verify` readiness/doctor gate fails CLOSED (red) until it is removed — which the external SDD lifecycle owner (`fsgg-sdd`) does when it re-supplies the lifecycle. copyOnly so the marker ships verbatim (no sourceName rewrite). This is the FIRST lifecycle == \"sdd\"-gated source; the source classifier (validate-lifecycle-template.fsx + its Feature204 mirror) files it under PRODUCT — its product-tree target trips neither the framework/capability/manifest tests nor the lifecycle-workspace `isGatedTarget`, and the product rule forbids only a SPEC-KIT clause, so this deliberate sdd clause is admitted. That is a benign fit, not a taxonomy hole: the guard is the single sanctioned lifecycle-gated product-tree file, and adding a dedicated category for one row would cost more drift risk (the dual classifier + agreement fixture) than it buys."
     }
   ],
   "postActions": [
+    {
+      "condition": "(lifecycle == \"sdd\")",
+      "description": "ADR-0056 §Decision.2: the sdd-lane guard NOTICE. Printed after scaffolding the default (sdd) lane, which emits the product only and expects an external SDD lifecycle owner to re-supply the lifecycle scaffolding. manualInstructions-only (the built-in 'print instructions' processor AC1156F7…) — it runs NO process, so it neither hangs on the allow-scripts prompt nor makes generation stateful, and it is invisible to the Feature 205 Run-post-action side-effect gate. Silent under 'none' (a deliberately lifecycle-less product) and 'spec-kit'.",
+      "manualInstructions": [
+        {
+          "text": "lifecycle scaffolding not yet supplied (--lifecycle sdd, the default). Run `fsgg-sdd` to re-supply the lifecycle (which clears readiness/lifecycle-scaffolding-pending.md), or re-scaffold with `--lifecycle none` if a lifecycle-less product is deliberate. Until then this product's readiness/doctor check fails closed and the build warns. See ADR-0056 and readiness/lifecycle-scaffolding-pending.md."
+        }
+      ],
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEE8AF8FD6",
+      "continueOnError": true
+    },
     {
       "condition": "(initGit && OS != \"Windows_NT\")",
       "description": "Opt-in (--initGit true): make generated shell scripts executable and create the initial Git commit (skipped if already inside a repository).",

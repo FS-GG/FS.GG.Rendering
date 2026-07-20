@@ -635,9 +635,9 @@ let private scaffoldExpectFail (tmpRoot: string) (outSubdir: string) (extra: str
 
 type private ProfileVerdict =
     { Profile: string
-      SpecKitDiff: string       // "diff-vs-today=none"
-      Sdd: string               // "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-      None_: string             // "gated-absent=ok product-present=ok"
+      SpecKitDiff: string       // "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
+      Sdd: string               // "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+      None_: string             // "gated-absent=ok product-present=ok guard-sentinel=absent"
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
       NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
       SddClaudeProductSkills: int   // ADR-0011: .claude/skills/fs-gg-* product count under sdd (must be 0)
@@ -995,43 +995,62 @@ let private productPresent (dir: string) =
     File.Exists(Path.Combine(dir, "Directory.Build.props"))
     && Directory.Exists(Path.Combine(dir, "src"))
 
+// ADR-0056 §Decision.2: the one file that distinguishes the byte-identical sdd/none trees — present
+// only when `--lifecycle sdd` was chosen. `def`==`sdd` carries it; `none` and `spec-kit` do not.
+let private lifecycleGuardSentinelRel = "readiness/lifecycle-scaffolding-pending.md"
+
+let private hasGuardSentinel (dir: string) =
+    File.Exists(Path.Combine(dir, lifecycleGuardSentinelRel.Replace('/', Path.DirectorySeparatorChar)))
+
 let private validateProfileLive (tmpRoot: string) (profile: string) =
+    // ADR-0056: the no-flag DEFAULT is now the `sdd` lane, so the spec-kit lane is reachable ONLY via
+    // an explicit --lifecycle spec-kit and all the spec-kit-lane integrity checks below run on it.
     let def = scaffold tmpRoot profile [] (sprintf "%s-default" profile)
-    let explicit = scaffold tmpRoot profile [ "--lifecycle"; "spec-kit" ] (sprintf "%s-speckit" profile)
-    // SC-001 (operational): explicit spec-kit == no-value default, byte for byte (compared BEFORE
-    // the materialize step runs, so the comparison is of the raw template emission).
-    if treeFingerprint def <> treeFingerprint explicit then
-        failwithf "%s: explicit spec-kit scaffold differs from the no-value default (SC-001 broken)" profile
-    // Feature 231 / ADR-0014 §Decision 2: under spec-kit (standalone, no orchestrator) the SINGLE
-    // materialize step — the vendored FS.GG.Contracts algorithm the product's build target invokes —
-    // fans .agents/skills/ into .claude/ + .codex/ and verifies content-addressed against the
-    // shipped skill-manifest (--enforce: digests + presence + cross-root identity, ADR-0014 §3).
-    if not (manifestPresent def) then
+    let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
+    let specKit = scaffold tmpRoot profile [ "--lifecycle"; "spec-kit" ] (sprintf "%s-speckit" profile)
+    let none_ = scaffold tmpRoot profile [ "--lifecycle"; "none" ] (sprintf "%s-none" profile)
+
+    // SC-001 (post-ADR-0056): the no-value default is byte-for-byte the explicit `sdd` lane.
+    if treeFingerprint def <> treeFingerprint sdd then
+        failwithf "%s: no-value default differs from explicit --lifecycle sdd (ADR-0056 SC-001 broken)" profile
+    // The default/sdd lane carries the fail-closed guard sentinel — the ONE file that keys the guard
+    // on the chosen intent, distinguishing it from the byte-identical `none` lane (ADR-0056 §D2).
+    if not (hasGuardSentinel sdd) then
+        failwithf "%s/sdd: guard sentinel %s absent (ADR-0056 §D2 fail-closed guard missing)" profile lifecycleGuardSentinelRel
+
+    // ---- spec-kit lane integrity (Feature 231 / ADR-0014), now on the EXPLICIT lane ----
+    // Under spec-kit (standalone, no orchestrator) the SINGLE materialize step fans .agents/skills/
+    // into .claude/ + .codex/ and verifies content-addressed against the shipped skill-manifest.
+    if not (manifestPresent specKit) then
         failwithf "%s/spec-kit: .agents/skills/skill-manifest.json missing (ADR-0014 §1)" profile
-    let _, materializeOut = runMaterialize def false
+    let _, materializeOut = runMaterialize specKit false
     if not (materializeOut.Contains "fs-gg-skill-roots: ok") then
         failwithf "%s/spec-kit: materialize did not report ok: %s" profile materializeOut
     let specKitDigests = "ok"
     // Idempotence: a second enforcing run mirrors nothing and stays green.
-    let _, secondRun = runMaterialize def false
+    let _, secondRun = runMaterialize specKit false
     if not (secondRun.Contains "0 files mirrored") then
         failwithf "%s/spec-kit: materialize is not idempotent: %s" profile secondRun
     // Byte-identical union across ALL THREE roots (files, incl. extra skill files + the manifest).
-    assertRootsByteIdentical def (sprintf "%s/spec-kit" profile)
+    assertRootsByteIdentical specKit (sprintf "%s/spec-kit" profile)
     let specKitMirror = "ok (materialized)"
     // Audit F3: no dev-surface wrapper dirs; the emitted fs-gg-* set is exactly the profile set.
-    assertNoWrapperDirs def profile true
+    assertNoWrapperDirs specKit profile true
     // R2.4: zero dangling path routes in the emitted fs-gg-* skill bodies.
-    let dangling = danglingSkillRoutes def
+    let dangling = danglingSkillRoutes specKit
     if not (List.isEmpty dangling) then
         failwithf "%s/spec-kit: dangling skill routes (R2.4): %s" profile (String.concat "; " dangling)
-    // Feature 231 (F5, both directions): the --enforce digest pass above already proves emitted
-    // skill bodies are byte-verbatim (no name rewriting in skill prose); conversely the intended
-    // capital-Product rename outside skills must still fire (src/<Name>/ project dir).
-    if not (Directory.Exists(Path.Combine(def, "src", productName))) then
+    // Feature 231 (F5): the intended capital-Product rename outside skills must still fire.
+    if not (Directory.Exists(Path.Combine(specKit, "src", productName))) then
         failwithf "%s/spec-kit: intended Product rename regressed — src/%s missing" profile productName
+    // FR-005: the full-registry catalog IS present under spec-kit (coherent only in that lane).
+    if catalogAbsent specKit then
+        failwithf "%s/spec-kit: docs/skillist-reference.md missing (FR-005 broken)" profile
+    // spec-kit must NOT carry the sdd-lane guard sentinel (it ships a full lifecycle).
+    if hasGuardSentinel specKit then
+        failwithf "%s/spec-kit: guard sentinel %s present (must be sdd-only, ADR-0056 §D2)" profile lifecycleGuardSentinelRel
 
-    let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
+    // ---- sdd lane ----
     if not (workspaceAbsent sdd) then failwithf "%s/sdd: lifecycle workspace not fully absent" profile
     if not (productPresent sdd) then failwithf "%s/sdd: product missing" profile
     // FR-001 (positive): the framework `fs-gg-*` product skills ARE present under sdd.
@@ -1050,18 +1069,20 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if sddCodexProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .codex/skills/ (providerWroteSddTree, #47)" profile sddCodexProduct
     // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
     if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
-    // FR-009: default-minus-sdd differs in ONLY gated paths, and sdd adds nothing.
+    // FR-009 (post-ADR-0056): the spec-kit lane == the default (sdd) lane PLUS exactly the gated
+    // lifecycle set it ADDS, MINUS exactly the guard sentinel it lacks. (Pre-flip this compared the
+    // default against sdd; the default IS sdd now, so the meaningful diff is spec-kit-vs-default.)
     let defSet = relFilesSet def
-    let sddSet = relFilesSet sdd
-    let removed = Set.difference defSet sddSet
-    let added = Set.difference sddSet defSet
-    if not (Set.isEmpty added) then
-        failwithf "%s/sdd: added non-gated files vs default: %s" profile (String.concat ", " (Set.toList added))
-    let nonGatedRemoved = removed |> Set.filter (isGatedPath >> not)
-    if not (Set.isEmpty nonGatedRemoved) then
-        failwithf "%s/sdd: removed NON-gated files (FR-009 broken): %s" profile (String.concat ", " (Set.toList nonGatedRemoved))
+    let specKitSet = relFilesSet specKit
+    let addedBySpecKit = Set.difference specKitSet defSet
+    let removedBySpecKit = Set.difference defSet specKitSet
+    let nonGatedAdded = addedBySpecKit |> Set.filter (isGatedPath >> not)
+    if not (Set.isEmpty nonGatedAdded) then
+        failwithf "%s/spec-kit: adds NON-gated files vs the default (FR-009 broken): %s" profile (String.concat ", " (Set.toList nonGatedAdded))
+    if removedBySpecKit <> Set.singleton lifecycleGuardSentinelRel then
+        failwithf "%s/spec-kit: differs from the default in files other than the guard sentinel (expected only %s removed, got removed=%A)" profile lifecycleGuardSentinelRel (Set.toList removedBySpecKit)
 
-    let none_ = scaffold tmpRoot profile [ "--lifecycle"; "none" ] (sprintf "%s-none" profile)
+    // ---- none lane ----
     if not (workspaceAbsent none_) then failwithf "%s/none: lifecycle workspace not fully absent" profile
     if not (productPresent none_) then failwithf "%s/none: product missing" profile
     let noneSkills = frameworkSkillCount none_
@@ -1073,9 +1094,15 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if noneClaudeProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .claude/skills/ (#47)" profile noneClaudeProduct
     if noneCodexProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .codex/skills/ (#47)" profile noneCodexProduct
     if not (catalogAbsent none_) then failwithf "%s/none: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
-    // none == sdd at the template level.
-    if treeFingerprint none_ <> treeFingerprint sdd then
-        failwithf "%s: none tree differs from sdd tree (research CC-3 broken)" profile
+    // none carries NO guard sentinel — the intent-keyed distinction from sdd (ADR-0056 §D2).
+    if hasGuardSentinel none_ then
+        failwithf "%s/none: guard sentinel %s present (must be sdd-only, ADR-0056 §D2)" profile lifecycleGuardSentinelRel
+    // CC-3 (post-ADR-0056): none == sdd EXCEPT the guard sentinel. Compare the sdd fingerprint with
+    // the sentinel row removed against none's.
+    let sddMinusGuard =
+        treeFingerprint sdd |> List.filter (fun (rel, _) -> rel <> lifecycleGuardSentinelRel)
+    if sddMinusGuard <> treeFingerprint none_ then
+        failwithf "%s: none tree differs from the sdd tree beyond the guard sentinel (research CC-3 broken)" profile
 
     // CC-1: directive agent-context docs carry no suppressed-path reference under sdd/none.
     for tree in [ sdd; none_ ] do
@@ -1087,19 +1114,13 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
                     if txt.Contains sp then
                         failwithf "%s: emitted %s references suppressed path %s (dangling ref)" tree d sp
 
-    // FR-005/FR-006 (R4): the full-registry catalog is a spec-kit authoring-lane artifact. It is
-    // PRESENT under spec-kit (where the full Spec Kit registry + tooling exist) and SUPPRESSED under
-    // sdd/none (verified above), so no scaffold emits a catalog enumerating skills it was meant to
-    // vendor but did not — the dangling bug (#30: sdd shipped the ~44-id catalog with 0 skills
-    // present). Per-id scoping of the catalog to exactly the vendored `fs-gg-*` set is the deferred
-    // R4 follow-up; this feature's guarantee is the emission gating.
-    if catalogAbsent explicit then
-        failwithf "%s/spec-kit: docs/skillist-reference.md missing (FR-005 broken)" profile
-
     { Profile = profile
-      SpecKitDiff = "diff-vs-today=none"
-      Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-      None_ = "gated-absent=ok product-present=ok"
+      // ADR-0056: `sdd` is the DEFAULT (diff-vs-default=none) and carries the guard; `spec-kit` is
+      // unchanged vs its historical output and now differs from the default only in the gated set it
+      // ADDS plus the guard it lacks; `none` == sdd minus the guard.
+      SpecKitDiff = "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
+      Sdd = "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+      None_ = "gated-absent=ok product-present=ok guard-sentinel=absent"
       SddSkillCount = sddSkills
       NoneSkillCount = noneSkills
       SddClaudeProductSkills = sddClaudeProduct
@@ -1138,7 +1159,9 @@ let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
 /// Feature 231 (Constitution V red case): a corrupted canonical copy must turn the enforcing
 /// verify red and NAME the drifted skill — the property the whole apparatus exists to check.
 let private validateEnforceRedCase (tmpRoot: string) =
-    let dir = scaffold tmpRoot "app" [] "enforce-red-case"
+    // The materialize step is spec-kit-only (ADR-0056 flipped the default to sdd, which does NOT emit
+    // it), so this spec-kit-mechanism red case must scaffold the spec-kit lane explicitly.
+    let dir = scaffold tmpRoot "app" [ "--lifecycle"; "spec-kit" ] "enforce-red-case"
     // First materialize green, then corrupt the SOURCE-ROOT copy: the re-mirror propagates the
     // corruption to every root, so the manifest digest check is what must catch it.
     runMaterialize dir false |> ignore
@@ -1216,9 +1239,13 @@ let private synthVerdicts () =
     profiles
     |> List.map (fun p ->
         { Profile = p
-          SpecKitDiff = "diff-vs-today=none"
-          Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-          None_ = "gated-absent=ok product-present=ok"
+          // ADR-0056: `sdd` is now the DEFAULT, so "byte-identical to the no-flag default" is an sdd
+          // fact (diff-vs-default=none), and it carries the guard sentinel. `spec-kit` is unchanged
+          // vs its historical output (diff-vs-today=none) and now differs from the default only in the
+          // gated lifecycle set it ADDS, plus the guard sentinel it lacks. `none` == sdd minus the guard.
+          SpecKitDiff = "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
+          Sdd = "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+          None_ = "gated-absent=ok product-present=ok guard-sentinel=absent"
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
           NoneSkillCount = 1

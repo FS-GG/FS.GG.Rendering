@@ -484,22 +484,31 @@ let feature204LifecycleTemplateTests =
                   "the fixture emits no rule id missing from the shared vocabulary"
           }
 
-          // GV-3 (US1 / FR-002 / SC-001): spec-kit is byte-identical to today, every profile.
-          test "GV-3 spec-kit is byte-identical (diff-vs-today=none) for every profile" {
-              let report = readValidationReport ()
-              for p in profiles do
-                  Expect.stringContains report (sprintf "spec-kit/%s: generate=pass diff-vs-today=none" p) (sprintf "spec-kit/%s byte-identical" p)
-          }
-
-          // GV-4 (US2 / FR-004/FR-005/FR-009 / SC-003): sdd suppresses exactly the lifecycle WORKSPACE
-          // (not the framework skills, which are now PRESENT under sdd — Feature 219 FR-001), product intact.
-          test "GV-4 sdd suppresses the lifecycle workspace while the framework skills are present" {
+          // GV-3 (US1 / FR-002 / SC-001, amended by ADR-0056): spec-kit is byte-identical to its
+          // historical output (diff-vs-today=none) — the flip changed the DEFAULT, not the spec-kit
+          // lane's content — and, now that the default is sdd, spec-kit differs from the default only
+          // in the gated lifecycle set it ADDS (diff-vs-default=gated-only) plus the guard sentinel it
+          // does NOT carry (guard-sentinel=absent).
+          test "GV-3 spec-kit is byte-identical to today and adds only gated paths vs the sdd default" {
               let report = readValidationReport ()
               for p in profiles do
                   Expect.stringContains
                       report
-                      (sprintf "sdd/%s: generate=pass gated-absent=ok product-present=ok diff-vs-default=gated-only" p)
-                      (sprintf "sdd/%s gated-only suppression" p)
+                      (sprintf "spec-kit/%s: generate=pass diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent" p)
+                      (sprintf "spec-kit/%s byte-identical to today; gated-only + no guard vs default" p)
+          }
+
+          // GV-4 (US2 / FR-004/FR-005/FR-009 / SC-003, amended by ADR-0056): sdd suppresses exactly the
+          // lifecycle WORKSPACE (not the framework skills, which are now PRESENT under sdd — Feature 219
+          // FR-001), product intact. Post-flip sdd IS the default, so it is byte-identical to it
+          // (diff-vs-default=none) and carries the fail-closed guard sentinel (guard-sentinel=present).
+          test "GV-4 sdd is the default lane, guarded, with the framework skills present" {
+              let report = readValidationReport ()
+              for p in profiles do
+                  Expect.stringContains
+                      report
+                      (sprintf "sdd/%s: generate=pass gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present" p)
+                      (sprintf "sdd/%s is the default lane, carries the guard sentinel" p)
                   Expect.stringContains
                       report
                       (sprintf "sdd/%s: framework-skills-present=ok" p)
@@ -514,14 +523,17 @@ let feature204LifecycleTemplateTests =
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a catalog listing absent skills (FR-005/FR-006)"
           }
 
-          // GV-5 (US3 / FR-004 / SC-003): none suppresses the workspace, framework skills present (same as sdd).
-          test "GV-5 none suppresses the lifecycle workspace while the framework skills are present" {
+          // GV-5 (US3 / FR-004 / SC-003, amended by ADR-0056): none suppresses the workspace, framework
+          // skills present (same as sdd) — and carries NO guard sentinel (guard-sentinel=absent). That
+          // absence is the intent-keyed distinction from the byte-identical sdd default: `none` is a
+          // deliberately lifecycle-less product, so nothing warns.
+          test "GV-5 none suppresses the lifecycle workspace, framework skills present, no guard" {
               let report = readValidationReport ()
               for p in profiles do
                   Expect.stringContains
                       report
-                      (sprintf "none/%s: generate=pass gated-absent=ok product-present=ok" p)
-                      (sprintf "none/%s suppression" p)
+                      (sprintf "none/%s: generate=pass gated-absent=ok product-present=ok guard-sentinel=absent" p)
+                      (sprintf "none/%s suppression, unguarded" p)
                   Expect.stringContains
                       report
                       (sprintf "none/%s: framework-skills-present=ok" p)
