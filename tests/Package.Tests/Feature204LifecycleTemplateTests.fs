@@ -153,7 +153,11 @@ let private classifySource (row: SourceRow) : string * string list =
     let verbatimBody = List.contains "**/*" row.CopyOnly
 
     let isProductSkillSource =
-        source.StartsWith "template/product-skills/" || source.StartsWith "template/base/.agents/skills/"
+        source.StartsWith "template/product-skills/"
+        || source.StartsWith "template/base/.agents/skills/"
+        // Issue #939 (ADR-0056): fs-gg-samples keeps its historical fragment path but is re-gated to
+        // a profile-only predicate — a framework product skill, exactly like fs-gg-project's home.
+        || source = "template/fragments/samples/skill/"
     // #434: admits an UNGATED body too (`condition = ""` — the engine's "always"). The manifest row
     // is ungated as well, so it can no longer be excluded here by `condition <> ""`; the category
     // order below resolves its named path first.
@@ -319,8 +323,8 @@ let private agreementFixture: (string * SourceRow) list =
       row "template/lifecycle/" ".specify/scripts/other/" "(lifecycle == \"spec-kit\")" [] verbatim
       "workspace: a flag-gated body ALSO carrying a spec-kit clause — capability-gated AND spec-kit-gated, so NOT a capability skill",
       row "template/telemetry/skill/" ".agents/skills/fs-gg-telemetry/" "(telemetry == true) && lifecycle == \"spec-kit\"" [] verbatim
-      "workspace: fs-gg-samples — profile-gated AND spec-kit-gated, so NOT a framework skill",
-      row "template/fragments/samples/skill/" ".agents/skills/fs-gg-samples/" "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"" [] verbatim
+      "framework: fs-gg-samples at its historical fragment path, re-gated profile-only (issue #939)",
+      row "template/fragments/samples/skill/" ".agents/skills/fs-gg-samples/" "(profile == \"sample-pack\")" [] verbatim
       "workspace: a profile-gated skill body outside the framework source prefix, missing its clause",
       row "template/other/skill/" ".agents/skills/fs-gg-other/" "(profile == \"game\")" [] verbatim
       "workspace: the generated agent-context tree, ungated",
@@ -421,15 +425,20 @@ let feature204LifecycleTemplateTests =
               // Feature 246 added fs-gg-collision (15th) on the same (game, sample-pack) gate.
               // Feature 247 added fs-gg-visibility (16th) on the same (game, sample-pack) gate.
               // Feature 249 added fs-gg-grids (17th) on the same (game, sample-pack) gate.
+              // Issue #939 (ADR-0056: spec-kit removal) added fs-gg-samples — re-gated from its stray
+              // `&& lifecycle == "spec-kit"` clause to the profile predicate ONLY, so it is now a
+              // framework product skill (kept at its historical template/fragments/samples/skill/ path,
+              // exactly as fs-gg-project keeps template/base/.agents/skills/), moving it out of the
+              // lifecycle-workspace count and into framework.
               // manifest = exactly the 1 ungated skill-manifest row.
               // workspace shrank from Feature 230's >=30 twin matrix to the genuine
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
-              Expect.equal framework 19 (sprintf "expected exactly 19 framework product-skill sources (no twins), found %d" framework)
+              Expect.equal framework 20 (sprintf "expected exactly 20 framework product-skill sources (no twins), found %d" framework)
               // #434 ungated it (`always`), which does NOT move this count: the category is the
               // off-convention, lifecycle-independent skill-body shape, and an ungated body still has it.
               Expect.equal capability 1 (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), found %d" capability)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
-              Expect.isTrue (workspace >= 7) (sprintf "expected >=7 lifecycle-workspace sources, found %d" workspace)
+              Expect.isTrue (workspace >= 6) (sprintf "expected >=6 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
               Expect.stringContains

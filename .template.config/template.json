@@ -513,12 +513,13 @@
       ]
     },
     {
-      "condition": "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"",
+      "condition": "(profile == \"sample-pack\")",
       "source": "template/fragments/samples/skill/",
       "target": ".agents/skills/fs-gg-samples/",
       "copyOnly": [
         "**/*"
-      ]
+      ],
+      "comment": "Issue #939 (ADR-0056: spec-kit removal). fs-gg-samples is the product-scope capability skill for the sample-pack content, and that content (template/fragments/samples/ -> samples/ above) is ungated by lifecycle — it ships on EVERY lane whenever profile == sample-pack. The skill formerly carried a stray `&& lifecycle == \"spec-kit\"` clause, so on the default sdd lane a sample-pack product got the content with no guiding skill (declared-but-unsupplied, the ADR-0017 §C2 seam #91 closed for fs-gg-project). Its body is lane-neutral capability prose (Scene/SkiaViewer/samples reuse, package-feed proof, evidence) with no Spec Kit / framework-process vocabulary and no backing library (no-public-surface, so no SkillPackageReach constraint), so it is re-gated to the profile predicate ONLY, mirroring fs-gg-project and the other product skills. The classifier (validate-lifecycle-template.fsx + its Feature204 mirror) recognises this historical fragment path as a framework product-skill source, exactly as it recognises fs-gg-project's template/base/.agents/skills/ home. copyOnly keeps the body byte-identical to its skill-manifest sha256."
     },
     {
       "source": "template/feedback-report/skill/",

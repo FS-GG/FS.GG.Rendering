@@ -64,7 +64,7 @@ let catalog =
       "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\") && lifecycle == \"spec-kit\""
+      "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\")"
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
