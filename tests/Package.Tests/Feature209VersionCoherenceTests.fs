@@ -853,7 +853,6 @@ let feature209VersionCoherenceTests =
                 // 1. Bump the coherent-set axes, exactly as a release does. Not a synthetic edit: these are
                 //    the three files the 0.9.0 release (893757b5) touched, and the guard cross-checks all of
                 //    them against the pin, so bumping fewer would fail for reasons that are not the subject.
-                let current = pinVersion
 
                 // Deliberately a version no real release will ever cut. The clone carries the repo's real
                 // tags, and this test CREATES the triple for `next` — so deriving it from the pin (0.9.0 ->
@@ -862,12 +861,21 @@ let feature209VersionCoherenceTests =
                 // tag, which is all the guard's ordering rules ask of a pin.
                 let next = "999.0.0"
 
-                for rel in
-                    [ "template/base/Directory.Packages.props"
-                      ".template.package/FS.GG.UI.Template.fsproj"
-                      "template/product-skills/fs-gg-symbology/reference.fsx" ] do
+                // Each file carries ITS OWN version literal, and after a TEMPLATE-ONLY release (#956 — pin
+                // held, <Version> bumped) they are NOT equal: the two framework-pinned files carry
+                // `pinVersion`, while `.template.package/FS.GG.UI.Template.fsproj` carries the package
+                // `<Version>` = `pkgVersion`, which has already moved off the pin. Replacing `pinVersion`
+                // uniformly (the old code) left the fsproj at `pkgVersion` — pin=next but pkg unchanged —
+                // which is `pin-leads-package` DRIFT, a fixture artifact, not the subject. Replace each file
+                // by its own literal so the synthetic release is a coherent lockstep bump (pin == pkg == next)
+                // regardless of any pre-existing skew. When pin == pkg (a lockstep repo) this is identical to
+                // the old behaviour.
+                for (rel, currentLit) in
+                    [ "template/base/Directory.Packages.props", pinVersion
+                      ".template.package/FS.GG.UI.Template.fsproj", pkgVersion
+                      "template/product-skills/fs-gg-symbology/reference.fsx", pinVersion ] do
                     let path = Path.Combine(tmp, rel.Replace('/', Path.DirectorySeparatorChar))
-                    File.WriteAllText(path, File.ReadAllText(path).Replace(current, next))
+                    File.WriteAllText(path, File.ReadAllText(path).Replace(currentLit, next))
 
                 git [ "commit"; "-am"; sprintf "release: cut %s" next ] |> ignore
 
