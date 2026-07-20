@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FS.GG.Kit receiver (ADR-0062, .github#1262). This repo is a `coordination-kit` receiver: it holds
+    the shared coordination skills, the `fsgg-coord` client, and the engine tool manifest on disk. It
+    used to take them by byte-copy sync PR (`coordination-propagate`); it now REFERENCES the versioned
+    `FS.GG.Kit` package and MATERIALIZES that kit onto disk from its pin. A hub change reaches this repo
+    as an ordinary Renovate bump of the pin (in Directory.Packages.local.props), and `kit-materialize.yml`
+    re-runs the materialize on that PR — the same shape lockfile-sync uses for packages.lock.json.
+
+    This project exists ONLY to reference the package and drive its materialize. It compiles nothing and
+    is deliberately NOT in the solution, so the normal build never touches it. Materialize explicitly:
+
+        dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize
+
+    The materialized files (skills, scripts/fsgg-coord, .config/dotnet-tools.json, and — because this is
+    a `build-config` receiver — Directory.Build.props / Directory.Packages.props) are COMMITTED: the
+    materialize is the write arm that replaces the byte-copy, not a live per-build input, so it does NOT
+    run on every build (FsggKitMaterializeOnBuild=false, per the .github#1280 review). The committed bytes
+    are content-addressed and byte-identical to canonical, so `coordination-coherence` stays green.
+  -->
+
+  <PropertyGroup>
+    <!-- A TFM is required by the SDK; nothing is compiled. Matches the repo's band (global.json). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Tooling-only: no source, no output, no lockfile of its own (the gate locks the solution, not this). -->
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+
+    <!-- Materialize into the repo ROOT (two levels up from .config/kit/), on demand — never on build. -->
+    <FsggKitReceiverRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))</FsggKitReceiverRoot>
+    <FsggKitMaterializeOnBuild>false</FsggKitMaterializeOnBuild>
+
+    <!-- This repo `receives: build-config`, so it also materializes Directory.Build.props /
+         Directory.Packages.props to the repo root. First adoption of a hand-authored .props needs
+         FsggKitAdoptBuildConfig=true for one run (.github#387); the canonical files here already carry
+         the 'Source of truth: FS-GG/.github' marker, so no adopt is needed and the overwrite is free. -->
+    <FsggKitMaterializeBuildConfig>true</FsggKitMaterializeBuildConfig>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Version pinned centrally in Directory.Packages.local.props (Renovate-managed), like every other pin. -->
+    <PackageReference Include="FS.GG.Kit" />
+  </ItemGroup>
+
+</Project>
