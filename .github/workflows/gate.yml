@@ -1117,24 +1117,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # The source of truth. Tracked at `main` deliberately, exactly as the sibling adopters track it:
-      # the POINT of this check is to notice when the org moves and this repo has not followed, so
-      # pinning a SHA here would defeat it — the check would go on passing against a frozen snapshot
-      # while the thing it calls the source of truth drifted away from it.
-      - name: Checkout the org build config
-        uses: actions/checkout@v7
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
         with:
-          repository: FS-GG/.github
-          ref: main
-          path: _org-build
+          dotnet-version: 10.0.x
 
-      - name: Assert this repo's build config matches the org source of truth
+      # Build config now ships as the FS.GG.Kit package (ADR-0062, FS-GG/.github#1262): this repo
+      # materializes Directory.Build.props / Directory.Packages.props from its pinned FS.GG.Kit, and
+      # kit-materialize.yml refreshes them on a Renovate bump. This job's NAME is preserved so the
+      # REQUIRED status context is unchanged — only its body moved from the retired byte-copy drift
+      # check (sync-build-config.sh --check + the .config/fsgg-build-config.sha pin, FS-GG/.github#592)
+      # to a package-based check: re-run the materialize and assert the COMMITTED .props still match the
+      # pinned package. A hand-edited managed .props is overwritten by the materialize, so the diff is
+      # non-empty and this fails. Repo-specific settings live in Directory.Build.local.props /
+      # Directory.Packages.local.props, which the materialize never touches.
+      - name: Assert the committed build config matches the pinned FS.GG.Kit
         run: |
           set -euo pipefail
-          if ! _org-build/scripts/sync-build-config.sh --check "$GITHUB_WORKSPACE"; then
-            echo "::error::build-config drift — Directory.Build.props / Directory.Packages.props / .config/dotnet-tools.json differ from FS-GG/.github → dist/dotnet/. These are DISTRIBUTED files: do not hand-edit them here. Re-sync with 'scripts/sync-build-config.sh <repo>' from a checkout of FS-GG/.github and commit the result. If the sync changes what the restore graph resolves (ADR-0032), regenerate the lock files in the SAME commit."
+          dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize -v minimal
+          if ! git diff --quiet -- Directory.Build.props Directory.Packages.props; then
+            echo "::error::build-config drift — Directory.Build.props / Directory.Packages.props do not match this repo's pinned FS.GG.Kit. These are MATERIALIZED files: do not hand-edit them. Put repo-specific settings in Directory.Build.local.props / Directory.Packages.local.props. To refresh, take the Renovate FS.GG.Kit bump, or run 'dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize' and commit."
+            git --no-pager diff -- Directory.Build.props Directory.Packages.props
             exit 1
           fi
+          echo "Build config matches the pinned FS.GG.Kit."
 
   # Every pointer a published skill body makes to its reader must resolve (FS.GG.Rendering#655).
   # Ported from FS.GG.Game's gate (Game#35 → #202 → #208 → #238/#241); the argument for each of the
@@ -1262,13 +1268,12 @@ jobs:
   # package version. This repo consumes FS.GG.Contracts, so a registry that has drifted from
   # the real package version is this repo's problem, and until now nothing here said so.
   #
-  # `check-build-config` is left at its default (true) because registry/repos.yml declares this
-  # repo a `build-config` receiver. That DUPLICATES the hand-rolled `build-config-drift` job in
-  # this same file, and the duplication is DELIBERATE: that job's `name:` is a REQUIRED status
-  # check on main, so deleting it here would leave a required context permanently unreported —
-  # a PR that can never merge, which is exactly the silent deadlock FS-GG/.github#574's verifier
-  # is being built to catch. Retiring the hand-rolled job must happen in a change that updates
-  # this repo's branch protection in the same stroke. Tracked separately; do not "tidy" it away.
+  # The reusable gate's build-config drift step was RETIRED in FS-GG/.github#1262 (ADR-0062): build
+  # config now ships as the FS.GG.Kit package, so `check-build-config` is no longer consulted (a no-op
+  # input kept for compatibility). The inline `build-config-drift` job above keeps its exact `name:` —
+  # the REQUIRED status context is unchanged — but its body now asserts the committed .props match the
+  # pinned package instead of running the byte-copy `sync-build-config.sh --check`. The required context
+  # was preserved rather than removed, so no branch-protection change was needed.
   #
   # `packages: read` is MANDATORY for callers: the gate restores the typed fsgg-sdd registry
   # validator from the org GitHub Packages feed using the run-scoped GITHUB_TOKEN.
