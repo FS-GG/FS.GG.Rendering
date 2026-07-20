@@ -46,7 +46,7 @@ for you, so `--initGit` is unnecessary there.
 | Option | Default | Effect |
 |--------|---------|--------|
 | `--profile <p>` | `app` | Which product to scaffold (see profile table below). |
-| `--lifecycle <l>` | `spec-kit` | Which lifecycle scaffolding to emit alongside the product: `spec-kit` (full Spec Kit workspace), `sdd` (product only, external orchestrator), or `none` (product only, nothing attached). See **Lifecycle** below. The default is byte-identical to the pre-lifecycle template. |
+| `--lifecycle <l>` | `sdd` | Which lifecycle scaffolding to emit alongside the product: `sdd` (default — product only, to be composed by an external SDD orchestrator, with a fail-closed guard until the lifecycle is re-supplied), `spec-kit` (full Spec Kit workspace — **legacy**, frozen and scheduled for removal per ADR-0056), or `none` (product only, nothing attached, no guard). See **Lifecycle** below. |
 | `--feedback true` | `false` | Emit the per-phase feedback **capture** machinery: under `--lifecycle spec-kit`, capture into `specs/<feature>/feedback/` via the `after_*` hooks and the `fs-gg-feedback-capture` skill. Default `false` induces no diff. It does **not** gate the retrospective `fs-gg-feedback-report` skill, which ships in every scaffold on every profile and lifecycle: the report is agent-invoked at cycle end and reads only whatever guarded evidence exists, so it degrades cleanly when nothing was captured. |
 | `--initGit true` | `false` | Opt in to initialize a Git repository with a `[Spec Kit] Initial commit` **and** mark generated shell scripts executable. Skipped when already inside a repository; non-fatal if `git` is absent. Pair with `--allow-scripts yes` for non-interactive runs. Default `false` is side-effect-free. Unnecessary under the SDD scaffold path. |
 
@@ -67,10 +67,10 @@ picks whether the Spec Kit lifecycle *workspace* is emitted alongside it. Every 
 
 ```text
 What do you want to scaffold?
-├─ A governed product with the Spec Kit lifecycle (specify/plan/tasks, constitution, agent context)
-│     → --lifecycle spec-kit   (default; omit the flag for the same result)
 ├─ An app-only product to be composed by the SDD scaffold (external orchestrator supplies governance)
-│     → --lifecycle sdd
+│     → --lifecycle sdd   (default; omit the flag for the same result)
+├─ A governed product with the legacy Spec Kit lifecycle (specify/plan/tasks, constitution, agent context)
+│     → --lifecycle spec-kit   (frozen, scheduled for removal — see ADR-0056)
 └─ A bare standalone product with nothing attached
       → --lifecycle none
 ```
@@ -79,9 +79,18 @@ What do you want to scaffold?
 
 | value | includes | excludes |
 |-------|----------|----------|
-| `spec-kit` (default) | the full Spec Kit lifecycle surface: `.specify/`, the generated constitution, the `.agents/` + `.claude/` skill/context trees, and the generated `AGENTS.md`/`CLAUDE.md` agent-context tree | — (full surface) |
-| `sdd` | the generated product (app-only) | the entire gated lifecycle surface — an **external orchestrator** (the SDD scaffold) re-supplies lifecycle/governance |
-| `none` | the generated product only | the gated lifecycle surface **and** any orchestrator expectation |
+| `sdd` (default) | the generated product (app-only), plus a fail-closed guard sentinel (`readiness/lifecycle-scaffolding-pending.md`) | the entire gated lifecycle surface — an **external orchestrator** (the SDD scaffold) re-supplies lifecycle/governance, which clears the guard |
+| `spec-kit` | the full Spec Kit lifecycle surface: `.specify/`, the generated constitution, the `.agents/` + `.claude/` skill/context trees, and the generated `AGENTS.md`/`CLAUDE.md` agent-context tree (**legacy** — frozen, scheduled for removal per ADR-0056) | — (full surface) |
+| `none` | the generated product only, no guard | the gated lifecycle surface **and** any orchestrator expectation |
+
+### The default (`sdd`) guard
+
+The `sdd` lane emits the product only and expects an external SDD orchestrator to re-supply the
+lifecycle. So the default ships **with** a guard: a post-scaffold notice, a build **warning**, and a
+fail-closed `Verify` readiness/doctor gate — all keyed on the one file that distinguishes the otherwise
+byte-identical `sdd`/`none` trees (`readiness/lifecycle-scaffolding-pending.md`, emitted only under
+`sdd`). Run `fsgg-sdd` to re-supply the lifecycle (which clears the guard), or pass `--lifecycle none`
+for a deliberately lifecycle-less product with no guard. `none` is silent; only `sdd` warns.
 
 ### Standalone `none`
 
@@ -91,12 +100,14 @@ surface; do not expect a scaffold or governance layer to fill it in afterward.
 
 ### Migrating from the pre-lifecycle template
 
-The lifecycle-aware template is a **drop-in upgrade** from the pre-lifecycle template:
+ADR-0056 makes `sdd` the default and reclassifies `spec-kit` as legacy (frozen, scheduled for removal):
 
-- **Select the default (`spec-kit`, or omit `--lifecycle`) to reproduce prior output byte-for-byte** —
-  the default emits exactly what the pre-lifecycle template did.
-- Choose `sdd` or `none` only when you want to **opt out** of the emitted lifecycle surface (e.g. the
-  SDD scaffold owns governance, or you want a bare standalone product).
+- **To reproduce the pre-lifecycle output byte-for-byte, pass `--lifecycle spec-kit` explicitly** — the
+  legacy lane still emits exactly what the pre-lifecycle template did. Omitting `--lifecycle` now yields
+  the `sdd` product-only tree (with the guard), **not** the full Spec Kit workspace.
+- The default (`sdd`) expects an external SDD orchestrator to re-supply the lifecycle; until it does, the
+  build warns and the `Verify` readiness/doctor gate fails closed. Run `fsgg-sdd`, or pass
+  `--lifecycle none` for a deliberately lifecycle-less product with no guard.
 
 ## Manual setup (standalone use)
 
