@@ -1,7 +1,7 @@
 ---
 name: fs-gg-feedback-report
 description: Write one comprehensive retrospective report on the development experience — what worked, what did not, problems hit, improvements proposed — into a dated file under feedback/ at the end of a development cycle.
-compatibility: Agent-invoked authoring skill, shipped in EVERY generated workspace — every profile and every lifecycle lane, with or without `--feedback`; no product runtime.
+compatibility: Agent-invoked authoring skill, shipped in EVERY generated workspace — every profile and every lifecycle lane; no product runtime.
 metadata:
   author: fs-gg-ui
 ---
@@ -9,15 +9,16 @@ metadata:
 # fs-gg-feedback-report
 
 An authoring skill that synthesizes **one retrospective report per development cycle** and
-writes it to `feedback/<date>-<workspace>.md`. It is the synthesis counterpart to
-[[fs-gg-feedback-capture]]: capture writes an incremental record per Spec Kit phase, this
-skill reads whatever evidence exists and produces a single durable document.
+writes it to `feedback/<date>-<workspace>.md`. It reads whatever evidence exists and produces a
+single durable document.
 
-The two compose but neither requires the other. Capture is Spec Kit hook machinery, so it is
-gated on `--feedback true` **and** the spec-kit lane; this skill is agent-invoked, reads only
-optional and guarded evidence, and therefore ships **unconditionally** — every profile, every
-lane (spec-kit, sdd, none), with or without `--feedback`. If nothing was captured, it reports
-from what it can see; a lane with no capture records is a supported case, not a broken one.
+This skill is agent-invoked, reads only optional and guarded evidence, and therefore ships
+**unconditionally** — every profile, every lane (spec-kit, sdd, none). Among the evidence it may
+read are per-phase capture records under `specs/<feature>/feedback/`, but nothing produces those
+in a current scaffold: the per-phase capture machinery (the fs-gg-feedback-capture skill and its
+Spec Kit after_* feedback hooks) was retired with the spec-kit lane under ADR-0056.
+Grandfathered spec-kit trees may still carry such records, so this skill reads them **if present**;
+a lane with no capture records is a supported case, not a broken one.
 
 ## When to use
 
@@ -42,7 +43,7 @@ fact about the lane, not an error, and belongs in §1.
 | `scaffold-provenance.json` | effective parameters, lifecycle lane, package pins | the scaffold predates provenance, or was hand-assembled |
 | the `.fsgg/` work-item store | what was planned vs what shipped | the SDD lane owner did not supply one |
 | git history | ordering, churn, revert-shaped commits | a fresh, uncommitted tree |
-| per-phase capture records | phase-local friction, severity | any lane other than spec-kit, or `fs-gg-feedback-capture` absent |
+| per-phase capture records | phase-local friction, severity | a current scaffold (the per-phase capture skill was retired under ADR-0056); present only in grandfathered spec-kit trees |
 
 Per-phase records live at `specs/<feature>/feedback/<phase>-<date>.md`. When they exist,
 this report **synthesizes** them — it does not restate them; cite the phase and date.
@@ -160,7 +161,7 @@ toolVersion: 0.9.0
 ---
 
 ## §1 Provenance
-Scaffolded from fs-gg-ui 0.4.2, `--profile game --lifecycle sdd --feedback true`.
+Scaffolded from fs-gg-ui 0.4.2, `--profile game --lifecycle sdd`.
 Pins: FS.GG.UI 0.2.0. Toolchain: fsgg-sdd 0.9.0 (`toolVersion` lifted from the stage report;
 latest tag at time of writing, so findings below are checked against current).
 Report describes commit a1b2c3d.
@@ -191,10 +192,10 @@ Persistence, collision narrow-phase, the sample pack.
 
 ## Related
 
-[[fs-gg-project]]. Also [[fs-gg-feedback-capture]] — but only on the spec-kit lane, which is the
-only lane that vendors it. On the sdd and none lanes this skill ships alone and that link resolves
-to nothing; the per-phase records it would have written simply do not exist, which is why every
-evidence source above is read "if present".
+[[fs-gg-project]]. This skill ships on every lane and reads only optional evidence. There is no
+longer a per-phase capture counterpart — the fs-gg-feedback-capture skill and its Spec Kit after_*
+feedback hooks were retired with the spec-kit lane under ADR-0056 — which is why every evidence source
+above is read "if present": the per-phase records exist only in grandfathered spec-kit trees.
 
 ## Sources / links
 

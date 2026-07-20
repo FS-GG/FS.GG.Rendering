@@ -186,12 +186,6 @@
       "defaultValue": "false",
       "description": "Initialize a Git repository with an initial '[Spec Kit] Initial commit' and mark generated shell scripts executable after generation. Default false: generation is side-effect-free (no process, no repository). Unnecessary under the SDD scaffold path, which performs these steps itself."
     },
-    "feedback": {
-      "type": "parameter",
-      "datatype": "bool",
-      "defaultValue": "false",
-      "description": "Emit the per-phase feedback CAPTURE machinery: under lifecycle=spec-kit, capture into specs/<feature>/feedback/ via the after_* feedback hooks and the fs-gg-feedback-capture skill. Default false induces no diff. Does NOT gate fs-gg-feedback-report — since issue #434 the retrospective report skill materializes on every workspace unconditionally, and reads whatever guarded evidence exists (including none)."
-    },
     "projectSlug": {
       "type": "generated",
       "generator": "casing",
@@ -527,25 +521,12 @@
       ]
     },
     {
-      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
-      "source": "template/feedback/skill/",
-      "target": ".agents/skills/fs-gg-feedback-capture/",
-      "copyOnly": [
-        "**/*"
-      ]
-    },
-    {
-      "condition": "(feedback == true) && lifecycle == \"spec-kit\"",
-      "source": "template/feedback/extensions/",
-      "target": ".specify/extensions/feedback/"
-    },
-    {
       "source": "template/feedback-report/skill/",
       "target": ".agents/skills/fs-gg-feedback-report/",
       "copyOnly": [
         "**/*"
       ],
-      "comment": "Issue #434: fs-gg-feedback-report is the retrospective synthesis counterpart to the per-phase fs-gg-feedback-capture above, and carries NO condition at all — it materializes on EVERY generated workspace (manifest materializes-when: always). Capture is Spec Kit hook machinery (after_* hooks into .specify/extensions/), so its `(feedback == true) && lifecycle == \"spec-kit\"` gate is load-bearing; the report is agent-invoked at cycle end and reads only optional, guarded evidence, so it degrades cleanly on a lane that captured none. It was gated on `feedback` until #434 — which, since `feedback` defaults to false, shipped it to nobody. Prefer `always` over enumerating the five profiles: the enumeration silently stops shipping the skill the day a sixth profile is added. copyOnly keeps the body byte-identical to its skill-manifest sha256."
+      "comment": "Issue #434: fs-gg-feedback-report is the retrospective synthesis counterpart to per-phase feedback capture, and carries NO condition at all — it materializes on EVERY generated workspace (manifest materializes-when: always). The report is agent-invoked at cycle end and reads only optional, guarded evidence, so it degrades cleanly on a lane that captured none. It was gated on `feedback` until #434 — which, since `feedback` defaulted to false, shipped it to nobody. Prefer `always` over enumerating the five profiles: the enumeration silently stops shipping the skill the day a sixth profile is added. copyOnly keeps the body byte-identical to its skill-manifest sha256. (The per-phase fs-gg-feedback-capture skill and its `.specify/extensions/feedback` after_* hook fabric were removed under ADR-0056 Decision 3 — the spec-kit lane's scheduled removal.)"
     },
     {
       "condition": "(designSystem == \"ant\")",

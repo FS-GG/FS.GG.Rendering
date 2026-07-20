@@ -54,7 +54,6 @@ let private canonicalSources =
     [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md"
       "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
-      "fs-gg-feedback-capture", "template/feedback/skill/SKILL.md"
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
       "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
@@ -297,15 +296,19 @@ let feature238SkillMaterializesWhenTests =
               Expect.isTrue (evalCanonical headless scene) "fs-gg-scene emits for profile=headless-scene"
               Expect.isTrue (evalCanonical governed scene) "fs-gg-scene emits for profile=governed"
               Expect.isFalse (evalCanonical controls scene) "fs-gg-scene suppressed for an off-list profile"
-              let feedback = (Map.find "fs-gg-feedback-capture" entries).MaterializesWhen
-              let feedbackOn = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "true" ]
-              let feedbackOff = Map.ofList [ "profile", "app"; "lifecycle", "spec-kit"; "feedback", "false" ]
-              Expect.isTrue (evalCanonical feedbackOn feedback) "fs-gg-feedback-capture emits when feedback == true and lifecycle == spec-kit"
-              Expect.isFalse (evalCanonical feedbackOff feedback) "fs-gg-feedback-capture suppressed when feedback == false (conjunction)"
+              // Conjunction suppression over a two-clause gate: fs-gg-samples is
+              // `(profile == "sample-pack") && lifecycle == "spec-kit"`, so flipping EITHER conjunct
+              // false must suppress it. (This coverage previously rode on fs-gg-feedback-capture, whose
+              // `(feedback == true) && lifecycle == "spec-kit"` gate had the same shape; that skill was
+              // removed under ADR-0056 Decision 3, so the check now rides on fs-gg-samples.)
+              let samples = (Map.find "fs-gg-samples" entries).MaterializesWhen
+              let samplesOn = Map.ofList [ "profile", "sample-pack"; "lifecycle", "spec-kit"; "feedback", "false" ]
+              let samplesOff = Map.ofList [ "profile", "sample-pack"; "lifecycle", "sdd"; "feedback", "false" ]
+              Expect.isTrue (evalCanonical samplesOn samples) "fs-gg-samples emits when profile == sample-pack and lifecycle == spec-kit"
+              Expect.isFalse (evalCanonical samplesOff samples) "fs-gg-samples suppressed when lifecycle != spec-kit (conjunction)"
 
-              // Issue #248 / #434: the report is the UNCONDITIONAL counterpart of the capture skill.
-              // Capture's `(feedback == true) && lifecycle == spec-kit` gate is load-bearing (it is Spec
-              // Kit hook machinery); the report is agent-invoked at cycle end and reads only optional,
+              // Issue #248 / #434: the report is the UNCONDITIONAL counterpart of the (now-removed) per-phase
+              // capture skill. The report is agent-invoked at cycle end and reads only optional,
               // guarded evidence, so it must emit on EVERY lane — including one that captured none.
               // #434: it was `feedback == true`, and since `feedback` defaults to false that shipped it
               // to NOBODY. Re-adding ANY clause — lifecycle, profile, or the old capability flag — is the

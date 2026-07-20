@@ -317,8 +317,8 @@ let private agreementFixture: (string * SourceRow) list =
       row "template/lifecycle/" ".specify/scripts/fs-gg/" "(lifecycle == \"spec-kit\")" [] verbatim
       "workspace: materialize step re-pointed off .specify/scripts/fs-gg/",
       row "template/lifecycle/" ".specify/scripts/other/" "(lifecycle == \"spec-kit\")" [] verbatim
-      "workspace: fs-gg-feedback-capture — capability-gated AND spec-kit-gated, so NOT a capability skill",
-      row "template/feedback/skill/" ".agents/skills/fs-gg-feedback-capture/" "(feedback == true) && lifecycle == \"spec-kit\"" [] verbatim
+      "workspace: a flag-gated body ALSO carrying a spec-kit clause — capability-gated AND spec-kit-gated, so NOT a capability skill",
+      row "template/telemetry/skill/" ".agents/skills/fs-gg-telemetry/" "(telemetry == true) && lifecycle == \"spec-kit\"" [] verbatim
       "workspace: fs-gg-samples — profile-gated AND spec-kit-gated, so NOT a framework skill",
       row "template/fragments/samples/skill/" ".agents/skills/fs-gg-samples/" "(profile == \"sample-pack\") && lifecycle == \"spec-kit\"" [] verbatim
       "workspace: a profile-gated skill body outside the framework source prefix, missing its clause",
@@ -429,7 +429,7 @@ let feature204LifecycleTemplateTests =
               // off-convention, lifecycle-independent skill-body shape, and an ungated body still has it.
               Expect.equal capability 1 (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), found %d" capability)
               Expect.equal manifest 1 (sprintf "expected exactly 1 ungated skill-manifest source, found %d" manifest)
-              Expect.isTrue (workspace >= 9) (sprintf "expected >=9 lifecycle-workspace sources, found %d" workspace)
+              Expect.isTrue (workspace >= 7) (sprintf "expected >=7 lifecycle-workspace sources, found %d" workspace)
               Expect.isTrue (product >= 3) (sprintf "expected >=3 ungated product sources, found %d" product)
               let report = readValidationReport ()
               Expect.stringContains
