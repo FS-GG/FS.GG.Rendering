@@ -371,7 +371,13 @@ let feature231SkillManifestTests =
               let occurrences =
                   System.Text.RegularExpressions.Regex.Matches(props, "FsGgMaterializeSkillRoots").Count
               Expect.isTrue (occurrences >= 1) "target present"
-              // exactly one <Target> writes the roots — ONE mechanism (SC-003).
-              Expect.equal (System.Text.RegularExpressions.Regex.Matches(props, "<Target ").Count) 1 "exactly one custom target in the product props"
+              // exactly one <Target> WRITES THE ROOTS — ONE mechanism (SC-003). ADR-0056 added a
+              // second, unrelated target (FsGgSddLifecycleGuard) that writes nothing and only warns on
+              // the sdd-lane guard sentinel, so count the roots-materialize target by name rather than
+              // all <Target>s — the SC-003 guarantee is "one roots mechanism", not "one target total".
+              Expect.equal
+                  (System.Text.RegularExpressions.Regex.Matches(props, "Name=\"FsGgMaterializeSkillRoots\"").Count)
+                  1
+                  "exactly one roots-materialize target (ONE mechanism, SC-003)"
           }
         ]

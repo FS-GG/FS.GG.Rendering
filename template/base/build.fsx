@@ -37,6 +37,25 @@ let writeLog target =
     File.WriteAllText(Path.Combine("readiness", "logs", target + ".txt"), $"{target} completed for generated product.{Environment.NewLine}")
     printfn "%s completed for generated product" target
 
+// ADR-0056 §Decision.2: the fail-closed half of the sdd-lane guard. The `sdd` lane (the default)
+// emits the product only and expects an external SDD lifecycle owner (fsgg-sdd) to re-supply the
+// lifecycle; the one file that distinguishes the byte-identical sdd/none trees —
+// readiness/lifecycle-scaffolding-pending.md — is present only when `--lifecycle sdd` was chosen.
+// While it is present, the readiness/doctor gate stays RED (this raises, which fails Verify): a
+// lifecycle-less product cannot pass the merge-gate audit. `none` (no sentinel) and `spec-kit` (no
+// sentinel) never trip it. The stock `dotnet build`/Directory.Build.props path only WARNS ("sdd
+// warns"); the fail-closed verdict lives here so it does not break the smoke build/test lane.
+let private lifecycleGuardSentinel =
+    Path.Combine("readiness", "lifecycle-scaffolding-pending.md")
+
+let private assertLifecycleSupplied () =
+    // The message avoids the literal `product`/`fs-gg-ui` tokens (this file is not copyOnly, so the
+    // template symbols rewrite them to the scaffolded name); `tree` keeps it name-stable.
+    if File.Exists lifecycleGuardSentinel then
+        failwithf
+            "readiness/doctor: lifecycle scaffolding not yet supplied (scaffolded with --lifecycle sdd, the default) — failing closed (ADR-0056). Run `fsgg-sdd` to re-supply it (clears %s), or re-scaffold with `--lifecycle none` if a lifecycle-less tree is deliberate."
+            lifecycleGuardSentinel
+
 let tryWriteTextLog (filePath: string) (content: string) =
     try
         let directory = Path.GetDirectoryName filePath
@@ -246,6 +265,9 @@ let run target =
     | "Pack" -> runProcess "Pack" "dotnet" (sprintf "pack \"%s\" -c Release" (singleRootSolution ()))
     | "Test" -> runGeneratedTests ()
     | "Verify" ->
+        // ADR-0056 §Decision.2: fail closed BEFORE any other audit work — a lifecycle-less sdd tree
+        // is not a completable feature, so the merge-gate audit must not even begin.
+        assertLifecycleSupplied ()
         [ "Dev"; "GeneratedGuidanceCheck"; "TemplateDrift" ]
         |> List.iter writeLog
         let graphExitCode = runGeneratedEvidence "EvidenceGraph"
