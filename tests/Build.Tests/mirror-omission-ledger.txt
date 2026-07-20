@@ -458,3 +458,30 @@ type FS.GG.Audio.Host::FS.GG.Audio.Host.Failure
 type FS.GG.Audio.Host::FS.GG.Audio.Host.Fault
 type FS.GG.Audio.Host::FS.GG.Audio.Host.Operation
 type FS.GG.Audio.Host::FS.GG.Audio.Host.Silence
+
+# ------------------------------------------------------------------------------------------------
+# ADDED AT $(FsGgUiVersion)=0.14.0 — 10 omissions (5 modules, 5 types): the FS.GG.Game.Core dice /
+# grid-edge / hex / pathfinding-landmark-and-region surface. The 0.14.0 pin exports these modules and
+# types, and every one of their public members is WAIVED in scripts/api-surface-manifest.txt (e.g. the
+# whole `Dice.*` val set, `Hex.fsi type Hex`, `Edges.fsi type Dir/Edge/Vertex`, `Pathfinding.fsi type
+# Pathfinding.Landmarks/Regions`), so the mirror generator emits no `.fsi` for them and the mirror
+# declares nothing in their names. These entries reconcile THIS ledger (module/type-level) to that
+# manifest decision (member-level): the two curation surfaces must agree, and until 0.14.0 they did.
+# Whether any of these should instead be TAUGHT (a mirror file + a curated skill, as grids / line-drawing
+# / visibility already are) is future curation work; for now they are omitted, matching the manifest.
+#
+# HOW IT ARRIVED UNDECLARED is the Audio.Host mechanism above, exactly: a release publishes the very
+# packages this rule pins, so on the 0.14.0 release commit (#935) the pinned read failed, `withPinnedSurface`
+# deferred it as ReleasePending, and the gate went green. Nothing re-asks after the publish, so the debt
+# landed on the next PR to run a cold restore — #937 / PR #940, which had not touched Game.Core at all.
+# Filed and fixed as #941.
+module FS.GG.Game.Core::FS.GG.Game.Core.Dice
+module FS.GG.Game.Core::FS.GG.Game.Core.Edges
+module FS.GG.Game.Core::FS.GG.Game.Core.Hex
+module FS.GG.Game.Core::FS.GG.Game.Core.Pathfinding.Landmarks
+module FS.GG.Game.Core::FS.GG.Game.Core.Pathfinding.Regions
+type FS.GG.Game.Core::FS.GG.Game.Core.Dir
+type FS.GG.Game.Core::FS.GG.Game.Core.Distribution
+type FS.GG.Game.Core::FS.GG.Game.Core.Hex
+type FS.GG.Game.Core::FS.GG.Game.Core.Landmarks
+type FS.GG.Game.Core::FS.GG.Game.Core.Regions

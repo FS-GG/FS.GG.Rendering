@@ -2521,9 +2521,12 @@ let private omissionLedger =
 /// So: a raise is a DECISION, and it must read like one — the ledger carries the argument, this number moves
 /// in the same commit, and a reviewer sees both in one diff. What the ratchet actually buys is that the debt
 /// cannot grow SILENTLY. Raised 373 -> 382 for the FS.GG.Audio.Host device lane; see the ledger's own entry
-/// for why those nine are deliberate (#752).
+/// for why those nine are deliberate (#752). Raised 382 -> 392 for the FS.GG.Game.Core dice / grid-edge /
+/// hex / pathfinding-landmark-and-region surface the 0.14.0 pin added — every member is waived in
+/// scripts/api-surface-manifest.txt, so these ten module/type omissions reconcile this ledger to that
+/// manifest decision; see the ledger's own dated stanza (#941).
 [<Literal>]
-let private OmissionLedgerCeiling = 382
+let private OmissionLedgerCeiling = 392
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
