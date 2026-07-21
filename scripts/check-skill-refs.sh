@@ -13,21 +13,23 @@
 #   an issue/PR link    (Game#202) — "there is a live issue at the other end"
 #   a bare `#N`         (Game#208) — promises nothing it can keep: § 3 REJECTS it outright
 #
-# ── 0. WHAT THIS REPO PUBLISHES, AND THE FOUR BODIES IT DOES NOT OWN ────────────────────────────
-# READ THIS BEFORE "FIXING" ANY REF THIS GATE REPORTS. `template/product-skills/` ships 17 skills,
-# and they are not all Rendering's to edit:
+# ── 0. WHAT THIS REPO PUBLISHES, AND THE BODIES IT DOES NOT OWN ─────────────────────────────────
+# READ THIS BEFORE "FIXING" ANY REF THIS GATE REPORTS. `template/product-skills/` ships 14 skills,
+# and — as of ADR-0063 (2026-07-21 amendment) — ALL 14 are Rendering's:
 #
-#   13 are OURS          (registry `owner: fs-gg-rendering`) — scene, symbology, elmish, skiaviewer,
-#                        layout, keyboard-input, styling, ui-widgets, testing, and the four game-sim
+#   14 are OURS          (registry `owner: fs-gg-rendering`) — scene, symbology, elmish, skiaviewer,
+#                        layout, keyboard-input, styling, ui-widgets, testing, and the game-sim
 #                        skills collision / grids / line-drawing / visibility, which ADR-0022 P4
 #                        explicitly did NOT migrate.
-#    4 are FROZEN MIRRORS (registry `owner: fs-gg-game`) — game-core, audio, persistence, model-swap.
-#                        ADR-0022 P4 migrated OWNERSHIP to FS.GG.Game; ADR-0022 §6 accepted the
-#                        two-copies cost, so we still SHIP them and our bytes must stay IDENTICAL to
-#                        FS.GG.Game's. (Verified so at the time of writing. `fsgg-skill-registry-check`
-#                        has a `frozen-mirror` arm that reads `owner:` precisely to find this twin.)
+#    0 are FROZEN MIRRORS. There USED to be four (game-core, audio, persistence, model-swap, owned by
+#                        fs-gg-game) — ADR-0022 §6's two-copies bridge. ADR-0063 RETIRED them
+#                        (FS.GG.Rendering#965): FS.GG.Game flipped them to `mirrored: false` and
+#                        FS.GG.Game.Skills now delivers them owner-sourced, so this repo ships no frozen
+#                        copy. `MIRRORED_SKILLS` (below) is therefore EMPTY — the #696 end state — and the
+#                        mirror machinery here is dormant, kept intact for any FUTURE mirror.
 #
-# SO: A REF THIS GATE REPORTS INSIDE ONE OF THOSE FOUR IS NOT YOURS TO FIX HERE. Editing it would
+# SO (historical, while a mirror exists): A REF THIS GATE REPORTS INSIDE A FROZEN MIRROR IS NOT YOURS TO
+# FIX HERE. There are none today, but the rule and mechanism below stand for the next one. Editing it would
 # break the byte-identity — trading a dangling pointer for a mirror that silently diverges, which is
 # strictly the worse defect, because nothing in THIS repo would report it. Fix it in FS.GG.Game and
 # re-sync the mirror. In practice this costs nothing: Game runs this same gate, so its bodies are
@@ -410,7 +412,13 @@ DEFAULT_OWNER="FS-GG"
 # It stays a CONSTANT, and that is not a hedge: § 1's verdicts are still f(tree) (§ 4), because the
 # SUBJECT is built from this list, hermetically. The registry read only asserts that the list still
 # tells the truth — the same split `KIT_SKILLS` runs under (§ 0c).
-MIRRORED_SKILLS=$'fs-gg-game-core\nfs-gg-audio\nfs-gg-persistence\nfs-gg-model-swap'
+# EMPTY as of ADR-0063 (2026-07-21 amendment): the four game-owned mirrors (fs-gg-game-core, fs-gg-audio,
+# fs-gg-persistence, fs-gg-model-swap) were RETIRED from this provider (FS.GG.Rendering#965) — FS.GG.Game
+# flipped them to `mirrored: false` and FS.GG.Game.Skills now delivers them owner-sourced. This repo ships
+# NO frozen mirror. The empty set is the #696 end state this machinery always aimed at (see the "MIRROR set
+# may legitimately be empty" note in `verify_mirrors`), and it is VERIFIED against the registry: `canonical`
+# derives to empty (no `owner: fs-gg-game` product row is published here) and must equal this constant.
+MIRRORED_SKILLS=''
 
 # NOT `exit 0`. A missing manifest is not "nothing to check" — it is this gate's entire subject gone
 # missing, and passing green over it is the `.github#416` shape (a gate reports green because it found

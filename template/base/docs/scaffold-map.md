@@ -25,7 +25,7 @@ These call/define the starter game model directly — they are yours to replace:
   positions/velocities are collision-safe `Geometry.Vec2`, advanced by `stepSim` via the
   `FixedStep.drain` accumulator on `Tick`).
 - `<ProductDir>/Vec2.fs` *(game / sample-pack only)* — the collision-safe vector helper (`Geometry.Vec2`,
-  `Vx`/`Vy` + `toPoint`/`toRect`; see `fs-gg-model-swap`). It compiles **before** `Model.fs`. Its labels
+  `Vx`/`Vy` + `toPoint`/`toRect`; see the model-swap swap-guidance skill). It compiles **before** `Model.fs`. Its labels
   reuse none of `Scene.Point`/`Rect`, so a model built on it never trips the durable-`LayoutEvidence.fs`
   record-label collision. **Unlike the other helpers below, the shipped starter `Model.fs` depends on this
   file** — so rename/extend it freely, but delete it only together with (or after) swapping `Model.fs` off

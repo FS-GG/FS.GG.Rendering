@@ -36,21 +36,18 @@ let private repositoryPath (relativePath: string) =
 let private manifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
 let private templateJsonPath = repositoryPath ".template.config/template.json"
 
-/// The catalog contract: id -> canonical body source (mirrors scripts/generate-skill-manifest.fsx;
-/// data-model.md "Catalog (16 entries)" — Feature 240 (#73) added fs-gg-game-core; Feature 243 (#92)
-/// added fs-gg-audio; Feature 244 (#93) added fs-gg-persistence; issue #113 added fs-gg-model-swap).
+/// The catalog contract: id -> canonical body source (mirrors scripts/generate-skill-manifest.fsx).
+/// ADR-0063 (2026-07-21 amendment) RETIRED the four game-owned rows (fs-gg-game-core, fs-gg-audio,
+/// fs-gg-persistence, fs-gg-model-swap) from this provider (FS.GG.Rendering#965): they are now
+/// owner-sourced from FS.GG.Game.Skills, no longer frozen here, so they carry no catalog row.
 let private canonicalSources =
-    [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md"
-      "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
+    [ "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
-      "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md"
       "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md"
-      "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md"
-      "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md"
       "fs-gg-samples", "template/fragments/samples/skill/SKILL.md"
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md"

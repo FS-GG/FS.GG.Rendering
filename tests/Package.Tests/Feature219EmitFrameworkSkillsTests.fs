@@ -80,12 +80,18 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // the SkiaViewer profile set — app, sample-pack, game, every profile that opens a window — and joins the
 // app row here. Its Core/Host pins moved with it (SkillPackageReachTests holds that half); Engine/Elmish
 // stay on the sim profiles, since the skill never tells an author to `open` them.
+// ADR-0063 (2026-07-21 amendment) RETIRED the four game-owned skills (fs-gg-game-core, fs-gg-audio,
+// fs-gg-persistence, fs-gg-model-swap) from this PROVIDER (FS.GG.Rendering#965): their template.json
+// emission rows are gone, so they no longer appear in any profile's emitted set here. A scaffolded game
+// product still receives them — the SDD materializer owner-sources them from FS.GG.Game.Skills — but that
+// delivery is FS.GG.SDD's surface, not this template's emission. `fs-gg-audio` leaves app; all four leave
+// sample-pack and game.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-audio"; "fs-gg-testing" ]
+    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
       "headless-scene", set [ "fs-gg-scene"; "fs-gg-testing" ]
       "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ] ]
+      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ]
+      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ] ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
@@ -177,7 +183,7 @@ let feature219EmitFrameworkSkillsTests =
           test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
               use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
               let sources = frameworkSkillSources ()
-              Expect.equal sources.Length 18 (sprintf "expected exactly 18 framework skill sources (.agents-only, no twins), found %d" sources.Length)
+              Expect.equal sources.Length 14 (sprintf "expected exactly 14 framework skill sources (.agents-only, no twins; ADR-0063 retired the 4 game-owned copies), found %d" sources.Length)
               for s in sources do
                   Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
                   Expect.isTrue (s.Target.StartsWith ".agents/skills/") (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)

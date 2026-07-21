@@ -396,3 +396,52 @@ vocabulary  measure
 
 # `selected` — Attributes and Control. An attribute combinator, beside `enabled` / `readOnly` / `onSelected`.
 vocabulary  selected
+
+# ---- documented by OWNER-SOURCED skills retired under ADR-0063 (FS.GG.Rendering#965)
+#
+# These api-surface vals WERE named in this repo's frozen `--profile game` skill copies —
+# `fs-gg-game-core` (Game.Core: fixed-step / RNG / pathfinding / spatial-grid / geometry / physics),
+# `fs-gg-audio` (Audio.Core/Host/Elmish + the Controls audio hosts and the audio-playback viewer), and
+# `fs-gg-persistence` (Canvas/Persistence save-slot surface). ADR-0063's 2026-07-21 amendment RETIRED
+# those four copies from this provider: they are now OWNER-SOURCED from the `FS.GG.Game.Skills` package
+# and delivered into the scaffolded product by the SDD materializer. The bodies that document these vals
+# therefore still reach every game/sample-pack product — they are just no longer checked out HERE, so
+# S-DOC (which reads only `template/product-skills/**`) can no longer see them. Their `.fsi` still carry
+# the `// See skill:` pointer to the owning skill (ApiSurfaceMirrorTests M-PTR accepts an owner-sourced
+# target), and FS.GG.Game's own gate verifies the body against the surface. The decision recorded here:
+# the documentation is owner-sourced, not absent. If a Rendering-owned skill ever documents one of these,
+# delete its line (S-DOC rule 2 will flag it); if the package retires a surface, its pin drops the .fsi
+# and rule 3 flags the line. Both keep this section honest.
+owner-sourced  addBodies
+owner-sourced  addBody
+owner-sourced  advance
+owner-sourced  alpha
+owner-sourced  astar
+owner-sourced  bfs
+owner-sourced  center
+owner-sourced  checksum
+owner-sourced  child
+owner-sourced  clampVolume
+owner-sourced  defaultMaxFrameTime
+owner-sourced  deleteSlot
+owner-sourced  drain
+owner-sourced  drainWith
+owner-sourced  duck
+owner-sourced  emptyEvidence
+owner-sourced  interpolate
+owner-sourced  manifold
+owner-sourced  maxVolume
+owner-sourced  minVersion
+owner-sourced  minVolume
+owner-sourced  nextFloat
+owner-sourced  pairs
+owner-sourced  playMusic
+owner-sourced  playSfx
+owner-sourced  playSfx3D
+owner-sourced  runInteractiveAppWithAudio
+owner-sourced  runInteractiveAppWithWindowBehaviorAndAudio
+owner-sourced  runInteractiveViewer
+owner-sourced  saveEnvelope
+owner-sourced  setBusVolume
+owner-sourced  setMasterVolume
+owner-sourced  stopMusic

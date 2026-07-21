@@ -227,17 +227,18 @@ let foreignSkills: Foreign list =
           Source = $"FS.GG.Game/template/product-skills/{id}/SKILL.md"
           Disposition = disposition }
 
-    // THE `Mirrored` DIGESTS ARE THE DECLARATION (#833) — the canonical each mirror is frozen to. They are
-    // `sha256(body)` of the copy this repo ships, and a re-freeze changes BOTH, in one commit. If you are
-    // here to change one of these without touching the body, stop: you are not re-freezing anything, and the
-    // required lane will red on the mismatch you are about to create.
-    //
-    // Verified against FS.GG.Game's live canonicals when this landed: all four IN SYNC. That is what makes
-    // them safe to pin — a declaration seeded from a DRIFTED body would sanction that drift permanently.
-    [ game "fs-gg-game-core" (Mirrored "91eaeb4ae6c2e62cf9d36bdc3d185ce6b37f2e0281fd7650ab28a65ddc3741e5")
-      game "fs-gg-audio" (Mirrored "e9fff88a3be86c2d95829357ffc180e3c53c18f2872b4f84e792de5a24f73bb7")
-      game "fs-gg-persistence" (Mirrored "9461822e5c282f0cac37aa0a88720fbb910319a6571d74bbcb1119eeb48530fb")
-      game "fs-gg-model-swap" (Mirrored "720a21596be6d24b05191c91da82e228ff9c8f63837a82ad60d3c089fdbb5a26")
+    // ADR-0063 (2026-07-21 amendment) — the four game product skills that USED to be `Mirrored` here
+    // (`fs-gg-game-core`, `fs-gg-audio`, `fs-gg-persistence`, `fs-gg-model-swap`) are now `NoCounterpart`.
+    // The frozen `--profile game` copies were retired (FS.GG.Rendering#965) once FS.GG.Game's producer
+    // manifest flipped them to `mirrored: false` and `FS.GG.Game.Skills 0.2.0` began delivering them
+    // owner-sourced (FS.GG.Game#454, SDD#631). "No rendering mirror exists" is now true for the WHOLE game
+    // product class — exactly as it already was for ai/ballistics/effects/physics/playtest. This repo ships
+    // NO body for any of them, so there is nothing to declare; the freshness lane asserts this table AGREES
+    // with the registry's `mirrored: false`, and the required lane reds if a body reappears (.github#486).
+    [ game "fs-gg-game-core" NoCounterpart
+      game "fs-gg-audio" NoCounterpart
+      game "fs-gg-persistence" NoCounterpart
+      game "fs-gg-model-swap" NoCounterpart
       game "fs-gg-ballistics" NoCounterpart
       game "fs-gg-ai" NoCounterpart
       game "fs-gg-effects" NoCounterpart

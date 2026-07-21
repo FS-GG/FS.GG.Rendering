@@ -20,7 +20,6 @@ let private repositoryPath (rel: string) = Path.Combine(repositoryRoot, rel.Repl
 let private skillBody = File.ReadAllText(repositoryPath "template/product-skills/fs-gg-line-drawing/SKILL.md")
 let private helperSource = repositoryPath "template/fragments/line-drawing/src/Product/LineDrawing.fs"
 let private productFsproj = File.ReadAllText(repositoryPath "template/base/src/Product/Product.fsproj")
-let private modelSwapBody = File.ReadAllText(repositoryPath "template/product-skills/fs-gg-model-swap/SKILL.md")
 let private scaffoldMap = File.ReadAllText(repositoryPath "template/base/docs/scaffold-map.md")
 let private templateJson = File.ReadAllText(repositoryPath ".template.config/template.json")
 let private manifest = File.ReadAllText(repositoryPath "template/skill-manifest/skill-manifest.json")
@@ -93,17 +92,10 @@ let feature248LineDrawingSkillTests =
           }
 
           // ---- US3: swap-guidance surfaces list the helper as consumer-owned replaceable source ----
-          test "model-swap and scaffold-map classify LineDrawing.fs as replaceable/adaptable" {
-              Expect.stringContains modelSwapBody "LineDrawing.fs" "model-swap lists the line-drawing helper"
-              // OWNER-AGNOSTIC, and it must be (#714). This body is a FROZEN MIRROR of FS.GG.Game's, and
-              // Game now QUALIFIES every ref in it — `[[fs-gg-game:fs-gg-line-drawing]]` — because the same bytes are
-              // judged by both repos and a bare ref resolves in exactly one publish set (Game#279). Pinning
-              // the bare spelling asserted a CONVENTION we do not own, in a body we may not edit, so it broke
-              // the moment the owner re-qualified. What this test actually means is "the body LINKS that
-              // skill", so that is what it now asks — with or without an owner prefix.
-              Expect.isTrue
-                  (Regex.IsMatch(modelSwapBody, @"\[\[(?:[a-z][a-z-]*:)?fs\-gg\-line\-drawing\]\]"))
-                  "model-swap links the line-drawing skill (bare or owner-qualified)"
+          // The fs-gg-model-swap half was removed with ADR-0063 (FS.GG.Rendering#965): model-swap is no
+          // longer shipped by this provider (owner-sourced from FS.GG.Game.Skills), so its body is not
+          // present here to assert against. scaffold-map is Rendering's and still classifies the helper.
+          test "scaffold-map classifies LineDrawing.fs as replaceable/adaptable" {
               Expect.stringContains scaffoldMap "LineDrawing.fs" "scaffold-map classifies the line-drawing helper"
           }
         ]

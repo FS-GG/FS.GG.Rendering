@@ -67,6 +67,27 @@ fixture() {
   chmod +x "$FIX/scripts/check-skill-refs.sh"
 }
 
+# mirror_constant <id>… — inject a synthetic frozen-mirror roster into the fixture's COPY of the
+# subject, by rewriting its `MIRRORED_SKILLS` assignment. Must run AFTER `fixture` (which copies $SUT).
+#
+# WHY THIS EXISTS. The production `MIRRORED_SKILLS` is EMPTY as of ADR-0063 (FS.GG.Rendering#965 retired
+# the four game mirrors). The § 6 machinery cases and the § 9 stale-entry case exercise what the script
+# does WHEN a mirror is declared — a capability that is dormant but must keep working for the next
+# mirror — so they inject one here rather than depending on a constant that no longer names one. It is
+# the twin of `mirror_roster`: that one supplies the REGISTRY's half of "a mirror is foreign AND we
+# publish it" (the fake `gh`'s view), this one supplies the SCRIPT's declared half.
+mirror_constant() {
+  local joined="" id
+  for id in "$@"; do joined+="$id\\n"; done
+  joined=${joined%\\n}
+  local sut="$FIX/scripts/check-skill-refs.sh"
+  awk -v repl="MIRRORED_SKILLS=\$'$joined'" '
+    /^MIRRORED_SKILLS=/ { print repl; next }
+    { print }
+  ' "$sut" >"$sut.new" && mv "$sut.new" "$sut"
+  chmod +x "$sut"
+}
+
 git_init() {
   git -C "$FIX" init -q -b main
   git -C "$FIX" config user.email test@example.invalid
@@ -601,6 +622,7 @@ case_start '§6 a fully-QUALIFIED frozen mirror is green — both directions of 
 # skill we DO publish resolves. This is the case the old convention could not produce.
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror of FS.GG.Game's body
 See [[fs-gg-game:fs-gg-ballistics]], which Game publishes and we do not.
@@ -619,6 +641,7 @@ case_start '§6 a BARE ref inside a FROZEN MIRROR is now a HARD FAILURE'
 # even when we DO publish the skill, because it is Game's gate it breaks, not ours.
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-alpha]] — bare, and we publish it, so nothing else here would object.
@@ -634,6 +657,7 @@ expect_out_has 'QUALIFY it' 'tells the author what to write instead'
 case_start '§6 ...and a bare ref in a mirror to a skill NOBODY here publishes fails too'
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-ballistics]], which Game publishes and we do not.
@@ -648,6 +672,7 @@ case_start '§6 the stopgap is GONE — no note stream survives on the green pat
 # whole section exists to prevent. So the absence is asserted, not assumed.
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core
 See [[fs-gg-game:fs-gg-ballistics]].
@@ -672,6 +697,7 @@ expect_out_hasnt 'not ours to fix' 'and does not call it a note'
 case_start '§6 §2 STILL FAILS inside a mirror — a closed issue is closed in every repo'
 fixture
 mirror_roster fs-gg-audio
+mirror_constant fs-gg-audio
 skill fs-gg-audio <<'MD'
 # audio — a frozen mirror
 Go and add your case in FS.GG.Rendering#900.
@@ -695,6 +721,7 @@ case_start '§6 a mirror finding IS on STDERR now — the sweep must be able to 
 # finding would be lost between them.
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core — a frozen mirror
 See [[fs-gg-ballistics]].
@@ -720,6 +747,7 @@ expect_has 'byte-identity' "$(grep -E '^[^ :]+:[0-9]+: ' <<<"$err")" \
 case_start '§6 §3 STILL FAILS inside a mirror — a bare #N is unresolvable in every repo'
 fixture
 mirror_roster fs-gg-persistence
+mirror_constant fs-gg-persistence
 skill fs-gg-persistence <<'MD'
 # persistence — a frozen mirror
 Track it in #4242.
@@ -1378,7 +1406,7 @@ MD
 skill fs-gg-alpha <<'MD'
 # alpha
 MD
-run                                   # ...and MIRRORED_SKILLS still names only the four
+run                                   # ...and MIRRORED_SKILLS (empty since ADR-0063) does not list it
 expect_rc 1 'a mirror the constant omits is a fail-open, and the gate refuses to run on it'
 expect_out_has '< fs-gg-scene' 'names the mirror it did not know about'
 expect_out_has 'DANGEROUS' 'and says which direction of drift this is'
@@ -1388,6 +1416,7 @@ case_start '§9 MIRRORED_SKILLS drift, the other direction: the constant claims 
 # #696's end state, arrived at halfway: the mirror is retired, the registry says the body is ours, and the
 # constant still names it — so this gate hard-fails bare refs in a body we fully own. A loud false red.
 fixture
+mirror_constant fs-gg-audio
 skill fs-gg-audio <<'MD'
 # audio — ours now, per the registry, and no `mirror_roster` says otherwise
 MD
@@ -1426,9 +1455,11 @@ case_start '§9 an entry for a body we do NOT publish is inert, and is not flagg
 # THE EXACT BOUNDARY, and it is asserted rather than left to be inferred. `mirror_bodies` filters this
 # constant through `is_published`, so an entry naming a body we do not publish reaches no verdict this
 # gate can render. The comparison is scoped to the published set for that reason — everything that CAN
-# change a verdict is checked, and this cannot. A fixture publishing none of the four is the normal case,
-# and it is green.
+# change a verdict is checked, and this cannot. A fixture publishing none of the injected entries is the
+# normal case, and it is green. (Production `MIRRORED_SKILLS` is EMPTY since ADR-0063, so the four are
+# injected here to keep exercising the unpublished-entry boundary rather than a vacuous empty constant.)
 fixture
+mirror_constant fs-gg-game-core fs-gg-audio fs-gg-persistence fs-gg-model-swap
 skill fs-gg-alpha <<'MD'
 # alpha
 MD
@@ -1475,6 +1506,7 @@ case_start '§9 SKILL_REFS_SKIP_LINKS does NOT skip the mirror check — that fl
 # The § 0c rule, and it applies to both narrowings: degrade toward MORE checking, never less. A flag that
 # means "skip the link half" says nothing about whether a registry can be read.
 fixture
+mirror_constant fs-gg-audio
 skill fs-gg-audio <<'MD'
 # audio — the constant lists it, and no `mirror_roster` says the registry agrees
 MD
@@ -1485,6 +1517,7 @@ expect_out_has '> fs-gg-audio' 'the drift is reported even with the link half of
 case_start '§9 a green run NAMES the verification — an unchecked narrowing is not silently green'
 fixture
 mirror_roster fs-gg-game-core
+mirror_constant fs-gg-game-core
 skill fs-gg-game-core <<'MD'
 # game-core — a real mirror, and the registry agrees
 See [[fs-gg-game:fs-gg-ballistics]].

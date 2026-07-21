@@ -80,7 +80,7 @@ Update = fun msg model ->
 (`AudioCues.forTransition Started initialModel initialModel`), so startup sounds fire through the
 identical path — closing the `Init` hole that a loaded state would otherwise slip through. Most
 gameplay cues carry no `Msg` and are recovered by **diffing `previous` against `next`** inside
-`forTransition`; see [[fs-gg-audio]] for that pattern and its net-diff coverage boundary.
+`forTransition`; see [[fs-gg-game:fs-gg-audio]] for that pattern and its net-diff coverage boundary.
 
 > **There is no `SaveCues` seam.** Persistence is *not* a cue diff — it is a `ViewerEffect.Persist`
 > value your `update` emits explicitly, realized only by a persistence-capable launcher (below). The
@@ -241,9 +241,9 @@ rather than hard-failing the phase.
 
 - [[fs-gg-scene]] — build the pure `SceneNode` values this host renders.
 - [[fs-gg-keyboard-input]] — feed normalized `ViewerKey` events into `MapKey`.
-- [[fs-gg-audio]] — the `AudioCues.forTransition` cue seam the host's `Update`/`Init` drive, and the
+- [[fs-gg-game:fs-gg-audio]] — the `AudioCues.forTransition` cue seam the host's `Update`/`Init` drive, and the
   model-diff cue pattern behind `PlayAudio`.
-- [[fs-gg-persistence]] — the `persistenceSink` / `mapOutcome` a persistence launcher needs, and the
+- [[fs-gg-game:fs-gg-persistence]] — the `persistenceSink` / `mapOutcome` a persistence launcher needs, and the
   `ViewerEffect.Persist` seam the launcher table above realizes.
 
 ## Sources / links

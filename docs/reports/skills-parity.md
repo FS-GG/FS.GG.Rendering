@@ -2,8 +2,8 @@
 # Skill Parity Report
 
 Overall status: `passed`
-Canonical sources: `32`
-Wrappers: `65`
+Canonical sources: `28`
+Wrappers: `57`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
@@ -23,13 +23,11 @@ Wrappers: `65`
 ## API Symbol Coverage
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
-| fs-gg-audio | 6 | 6 | 0 | 0 |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 23 | 23 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
-| fs-gg-persistence | 5 | 5 | 0 | 0 |
 | fs-gg-samples | 2 | 2 | 0 | 0 |
 | fs-gg-scene | 14 | 14 | 0 | 0 |
 | fs-gg-skiaviewer | 5 | 5 | 0 | 0 |
@@ -54,7 +52,7 @@ No intentional exceptions were applied.
 
 ## Caveats
 - Global Codex skill installation paths are excluded from required repository parity.
-- 6 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-game-core, fs-gg-grids, fs-gg-line-drawing, fs-gg-model-swap, fs-gg-visibility.
+- 4 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-grids, fs-gg-line-drawing, fs-gg-visibility.
 
 ## Regenerate
 

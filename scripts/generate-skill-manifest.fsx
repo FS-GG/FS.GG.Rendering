@@ -45,24 +45,19 @@ let repoPath (rel: string) =
 // parens/quotes. normalizeCondition (below) is the deterministic bridge; Feature238 proves manifest ≡
 // template.json semantically so the two grammars never drift.
 let catalog =
-    // #436: audio reaches every profile that opens a viewer window, not the simulation profiles only.
-    // Must stay identical to the fs-gg-audio row in .template.config/template.json and to the audio
-    // package gate in template/base/{Directory.Packages.props,src/Product/Product.fsproj} — R-REACH
-    // (SkillPackageReachTests) fails if the skill materializes where its four packages do not.
-    [ "fs-gg-audio", "template/product-skills/fs-gg-audio/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
+    // ADR-0063 (2026-07-21 amendment): the four game-owned product skills (fs-gg-game-core, fs-gg-audio,
+    // fs-gg-persistence, fs-gg-model-swap) were retired from this provider (FS.GG.Rendering#965) — they are
+    // now owner-sourced from FS.GG.Game.Skills, no longer frozen here — so they carry no catalog row.
+    [ "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
       // #434: the report is UNCONDITIONAL — its template.json row carries no `condition` at all, which
       // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
       // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", ""
-      "fs-gg-game-core", "template/product-skills/fs-gg-game-core/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      "fs-gg-model-swap", "template/product-skills/fs-gg-model-swap/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      "fs-gg-persistence", "template/product-skills/fs-gg-persistence/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\")"
       "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"

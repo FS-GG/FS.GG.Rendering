@@ -1,18 +1,18 @@
 module Feature240GameCoreSkillTests
 
-// Feature 240 (#73) — the fs-gg-game-core product skill surface guard.
+// Feature 240 (#73) — the FS.GG.Game.Core bundled-surface + package-wiring guard.
 //
-// The skill body advises the Feature-239 simulation primitives (Geometry / Rng / FixedStep). It is only
-// honest if every FS.GG.Game.Core member it names actually exists in the surface a generated product
-// bundles — the verbatim-copied api-surface .fsi (Feature 060). This gate scans the shipped SKILL.md for
-// every `Geometry.<m>` / `Rng.<m>` / `FixedStep.<m>` token and fails the build if any does NOT resolve to
-// a `val`/member in the matching packed .fsi (SC-004: a renamed/hallucinated reference fails). It also
-// asserts the packaging that makes those APIs consumable exists (FR-011/FR-012): the bundled
-// FS.GG.Game.Core surface (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) and the FS.GG.Game.Core
-// package pin/reference on the sim profiles.
+// ADR-0063 (2026-07-21 amendment, FS.GG.Rendering#965) RETIRED the fs-gg-game-core SKILL copy from this
+// provider — it is now owner-sourced from FS.GG.Game.Skills — so the two SC-004 checks that scanned the
+// shipped SKILL.md body (every `Geometry.<m>`/`Rng.<m>`/`FixedStep.<m>` token resolves; the body names
+// each pattern's entry point) were removed with it: the body is no longer here to scan, and FS.GG.Game's
+// own gate holds it against the canonical. What REMAINS is what the retire does NOT touch — the game
+// PACKAGE and its bundled doc surface still ship (the product's starter simulation compiles against
+// FS.GG.Game.Core): the packed FS.GG.Game.Core api-surface (Rng/FixedStep/Pathfinding/SpatialGrid/
+// Geometry/Loop/Physics) and the FS.GG.Game.Core pin/reference on the sim profiles (FR-011/FR-012). This
+// file must stay (PackageTestsGateMembershipTests, #613: it holds rules with no PR-gate twin).
 
 open System.IO
-open System.Text.RegularExpressions
 open Expecto
 open FS.GG.TestSupport
 
@@ -21,7 +21,6 @@ let private repositoryRoot = RepositoryRoot.value
 let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
-let private skillBodyPath = repositoryPath "template/product-skills/fs-gg-game-core/SKILL.md"
 let private gameCoreGeometryFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Geometry.fsi"
 let private gameCoreRngFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Rng.fsi"
 let private gameCoreFixedStepFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/FixedStep.fsi"
@@ -55,19 +54,6 @@ let private moduleSurface =
         | stem -> stem, path)
     |> Map.ofSeq
 
-/// `Module.member` in code position. The alternation is the DERIVED module set, so it tracks the surface.
-/// The lookbehind rejects file-path / qualified contexts like `Game.Core/Rng.fsi` or `X.Rng.y`.
-let private citedMemberRegex =
-    let alternation =
-        moduleSurface |> Map.toList |> List.map (fst >> Regex.Escape) |> String.concat "|"
-
-    Regex(sprintf @"(?<![\w./])(%s)\.([a-z][A-Za-z0-9']*)" alternation)
-
-/// A packed .fsi declares a member `m` when it carries `val m:` or the type `type m` (for `Rng`).
-let private declaresMember (fsiText: string) (m: string) =
-    Regex.IsMatch(fsiText, sprintf @"(^|\s)val\s+%s\s*:" (Regex.Escape m), RegexOptions.Multiline)
-    || Regex.IsMatch(fsiText, sprintf @"(^|\s)type\s+%s\b" (Regex.Escape m))
-
 [<Tests>]
 let feature240GameCoreSkillTests =
     testList
@@ -96,57 +82,12 @@ let feature240GameCoreSkillTests =
                       (sprintf "the packed Game.Core surface no longer ships %s.fsi" expected)
           }
 
-          // SC-004 — every `Module.member` the body names resolves in the packed api-surface .fsi.
-          // A deliberately-renamed member (e.g. `Geometry.overlaps`) has no `val`/`type` and fails here.
-          test "every Game.Core member cited in SKILL.md resolves in the packed surface" {
-              let body = File.ReadAllText skillBodyPath
-              let fsiText = moduleSurface |> Map.map (fun _ path -> File.ReadAllText path)
-
-              let cited =
-                  citedMemberRegex.Matches body
-                  |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
-                  |> Seq.filter (fun (_, member') -> member' <> "fsi")
-                  |> Seq.distinct
-                  |> Seq.toList
-
-              Expect.isNonEmpty cited "the body must cite at least one Game.Core member"
-
-              for moduleName, member' in cited do
-                  let fsi = Map.find moduleName fsiText
-                  Expect.isTrue
-                      (declaresMember fsi member')
-                      (sprintf
-                          "SKILL.md cites %s.%s but the packed %s surface does not declare it — a dangling/renamed reference"
-                          moduleName
-                          member'
-                          moduleName)
-          }
-
-          // Completeness — each pattern names its key entry point, so the body cannot silently drop a
-          // primitive and still pass the resolve check above (which only judges what IS cited).
-          //
-          // `Physics` is NOT in this list, and that is not an oversight (#767). This SKILL.md is a FROZEN
-          // MIRROR of a body FS.GG.Game owns (ADR-0022 §6, and `scripts/check-frozen-mirrors.fsx` reds the
-          // gate on any edit to it), so THIS repo cannot make it name `Physics.step` — the canonical body
-          // has to, and this copy is re-frozen from it afterwards. Demanding the token here would wedge the
-          // gate on a change no one in this repo is allowed to make. Until then the eight `Physics` vals are
-          // carried in `tests/Package.Tests/surface-doc-ledger.txt` as a DECLARED gap with the cross-repo
-          // issue on it, which is the honest place for a decision somebody made.
-          test "SKILL.md names the key entry point of each pattern" {
-              let body = File.ReadAllText skillBodyPath
-
-              for token in
-                  [ "FixedStep.drain"
-                    "Rng.ofSeed"
-                    "Rng.split"
-                    "Geometry.intersects"
-                    "Geometry.sweptIntersects"
-                    "Pathfinding.astar"
-                    "Pathfinding.bfs"
-                    "SpatialGrid.build"
-                    "SpatialGrid.queryRadius" ] do
-                  Expect.stringContains body token (sprintf "SKILL.md must demonstrate %s" token)
-          }
+          // SC-004 (every Module.member the SKILL.md names resolves in the packed surface) and the
+          // entry-point completeness check were REMOVED with ADR-0063 (FS.GG.Rendering#965): fs-gg-game-core
+          // is no longer shipped by this provider, so there is no body here to scan. FS.GG.Game's own gate
+          // holds its owner-sourced body against the canonical. The bundled surface and package pin below —
+          // which the retire does NOT touch (the product's starter simulation still compiles against
+          // FS.GG.Game.Core) — stay guarded here.
 
           // FR-012 — the bundled surface that makes the citations resolvable exists in the product tree.
           test "the packed FS.GG.Game.Core surface is bundled with the Geometry module (FR-012)" {
