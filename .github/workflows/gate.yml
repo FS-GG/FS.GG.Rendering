@@ -294,6 +294,22 @@ jobs:
           fi
           echo "no .fsi surface drift across $(ls readiness/surface-baselines/*.txt | wc -l) committed baselines"
 
+      # #966 / #968 option 2 (M6 render-from-registry pattern) — THE FRONT-DOOR VERSION/COUNT ARE
+      # BUILD OUTPUTS. README.md / docs/usage.md carry the FS.GG.UI framework version and the "N
+      # libraries plus the BOM" count inside `<!-- BEGIN/END GENERATED: fsgg-doc:* -->` regions,
+      # rendered by scripts/generate-doc-fragments.fsx from the SAME sources Feature 242 asserts
+      # (<FsGgUiVersion> in template/base/Directory.Packages.props, and the slnx's packable set). This
+      # is the generate-and-fail-on-drift half of the pattern; Feature 242's F-DOCS-1/F-DOCS-2 (in the
+      # Default local tier above) are the assertion half — together they keep the front-door docs
+      # current WITHOUT a hand-typed literal (the M2 no-literal rule). `--check` never writes.
+      - name: Doc-fragment drift (generated version/count regions)
+        run: |
+          set -euo pipefail
+          if ! dotnet fsi scripts/generate-doc-fragments.fsx --check; then
+            echo "::error::front-door doc fragments are stale — README.md/docs/usage.md carry generated fsgg-doc regions that no longer match source. They are BUILD OUTPUTS: do not hand-edit them; run 'dotnet fsi scripts/generate-doc-fragments.fsx' and commit."
+            exit 1
+          fi
+
       # #752 / #694 — THE SCAFFOLD'S API MIRROR IS A BUILD OUTPUT, AND THIS IS WHAT MAKES IT ONE.
       #
       # `template/base/docs/api-surface/**` is emitted by the generator from the .fsi the PINNED packages
