@@ -9,11 +9,13 @@ deterministic offscreen path for tests.
 The render core is **Elmish-free**; idiomatic [Elmish](https://elmish.github.io/elmish/)
 (`Cmd`, subscriptions) is an **optional** adapter layer.
 
-> **Platform vs. workspace.** FS-GG is a **platform** — five repositories (the UI
-> framework is one **component** of it). What you scaffold *with* the platform is a
+> **Platform vs. workspace.** FS-GG is a **platform** of framework repositories — the
+> UI framework is one **component** of it. What you scaffold *with* the platform is a
 > **workspace**: a generated repo with a runnable app, the `.fsgg/` lifecycle, skills,
 > and optional governance. See the
-> [vocabulary](https://github.com/FS-GG/.github/blob/main/docs/adr/0020-platform-workspace-component-vocabulary.md).
+> [platform vocabulary](https://github.com/FS-GG/.github/blob/main/docs/adr/0020-platform-workspace-component-vocabulary.md)
+> and [`docs/architecture.md`](https://github.com/FS-GG/.github/blob/main/docs/architecture.md)
+> for how the whole platform fits together.
 
 ## Quick taste
 
@@ -37,8 +39,8 @@ For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
 
 ## Consume it
 
-Published as `FS.GG.UI.*` packages on `net10.0` — 16 libraries plus the `FS.GG.UI` BOM
-metapackage (current framework version `0.15.0`). Each release **dual-publishes**
+Published as `FS.GG.UI.*` packages on `net10.0` — the component libraries plus the
+`FS.GG.UI` BOM metapackage. Each release **dual-publishes**
 the byte-identical set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI)
 (GitHub OIDC Trusted Publishing) and the org GitHub Packages feed. You can also reference
 the `src/*/*.fsproj` directly, `dotnet pack` to a local feed, or scaffold a ready-wired app
