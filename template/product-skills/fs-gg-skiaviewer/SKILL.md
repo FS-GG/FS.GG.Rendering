@@ -127,6 +127,133 @@ not one:
 Reading this before wiring turns "discover the constraint by a failing governance test" into "state it
 up front".
 
+## Wiring a game onto the pointer-aware host (mouse / gamepad)
+
+The default game host — `GeneratedAppHost` launched through `Viewer.runAppWithAudio` — has **no pointer
+seam.** Its only input fields are `MapKey` (keyboard) and `Tick` (time). A twin-stick game (WASD to move,
+**mouse to aim**) or any product that reads a gamepad stick therefore cannot reach the cursor from the
+default host: there is nowhere to put the pointer wiring. Moving onto a **pointer-aware host** is a
+durable, governance-scanned `Program.fs` change, and this is the worked recipe for it.
+
+### The pointer seam is `MapPointer`, and unlike `MapKey` it sees the model
+
+There are two pointer-aware hosts, and you pick by what your `View` draws:
+
+| Your `View` returns | Host record | Launch call (audio-capable) | `MapPointer` receives |
+|---|---|---|---|
+| a `SceneNode` (a game — scene, sprites, HUD you draw yourself) | `InteractiveViewerHost` | `Viewer.runInteractiveViewerWithAudio` | `ViewerPointerInput -> Size -> 'model -> 'msg list` |
+| a `Control<'msg>` tree (a widget UI — buttons, panels, text) | `InteractiveAppHost` | `ControlsElmish.runInteractiveAppWithAudio` | `PointerInteraction -> 'msg option` |
+
+A game is the first row: it draws a `SceneNode`, so it wants **`InteractiveViewerHost`** and the raw
+`ViewerPointerInput` seam. (The Controls adapter routes each sample through your authored widget
+`EventBindings` *first* and only falls back to `MapPointer` for interactions no control consumed — the
+right model for a UI, the wrong one for reading a bare aim cursor. Reach for it only when your product
+is a control tree.)
+
+**`MapPointer` is model-aware, and that is the whole reason it is a different seam from `MapKey`.**
+`MapKey : ViewerKey -> bool -> 'msg list` sees only the key edge — it is a stateless key→message wrapper.
+`MapPointer : ViewerPointerInput -> Size -> 'model -> 'msg list` also gets the current viewport `Size` and
+the `'model`, because a pointer sample is meaningless without them: an aim vector is *the cursor minus the
+player's screen position*, and the player's position is in the model. Keep the same discipline as `MapKey`
+anyway — wrap the raw sample into one of *your* messages and compute what it **means** inside `update`,
+where you already own the model. `MapPointer` returns a `'msg list` (`[]` = "this sample is not for me"),
+so one move can dispatch several messages in order, exactly like the interactive `MapKey`.
+
+### The raw sample: `ViewerPointerInput`
+
+The host hands `MapPointer` a framework-neutral sample. `X`/`Y` are already in scene/swapchain
+coordinates (the same space your `View` draws in — no manual DPI or window-origin math):
+
+```fsharp
+type ViewerPointerInput =
+    { Phase: ViewerPointerPhaseKind          // Moved | Pressed | Released | Wheel | Exited
+      X: float
+      Y: float
+      Button: ViewerPointerButtonKind option // Primary | Secondary | Middle (Some only on Pressed/Released)
+      DeltaX: float                          // wheel/scroll delta on a Wheel sample
+      DeltaY: float }
+```
+
+`ViewerPointerPhaseKind` and `ViewerPointerButtonKind` are `RequireQualifiedAccess`, so match them
+qualified (`ViewerPointerPhaseKind.Pressed`, `ViewerPointerButtonKind.Primary`).
+
+### The swap, field by field: `GeneratedAppHost` -> `InteractiveViewerHost`
+
+`InteractiveViewerHost` mirrors `GeneratedAppHost` field-for-field, plus the pointer seam, with two
+signatures widened:
+
+| Field | `GeneratedAppHost` | `InteractiveViewerHost` | migration |
+|---|---|---|---|
+| `Init` | `unit -> 'model * ViewerEffect list` | *same* | none |
+| `Update` | `'msg -> 'model -> 'model * ViewerEffect list` | *same* | none |
+| `View` | `'model -> SceneNode` | `Size -> 'model -> SceneNode` | add the leading `Size` (ignore it with `_` if your scene is not size-aware yet) |
+| `MapKey` | `ViewerKey -> bool -> 'msg option` | `ViewerKey -> bool -> 'msg list` | `Some m` -> `[ m ]`, `None` -> `[]` |
+| `MapPointer` | *(absent)* | `ViewerPointerInput -> Size -> 'model -> 'msg list` | **new** — the pointer wiring |
+| `Tick` | `TimeSpan -> 'msg option` | *same* | none |
+| `Diagnostics` | `ViewerDiagnosticsOptions` | *same* | none |
+
+### Worked `Program.fs`
+
+```fsharp
+open System
+open FS.GG.UI.Scene
+open FS.GG.UI.SkiaViewer
+
+// Wrap raw pointer samples into product messages; DECIDE what they mean in `update`.
+let mapPointer (input: ViewerPointerInput) (_size: Size) (_model: Model) : Msg list =
+    match input.Phase with
+    | ViewerPointerPhaseKind.Moved ->
+        [ AimAt(input.X, input.Y) ]                    // update turns cursor + player pos into an aim vector
+    | ViewerPointerPhaseKind.Pressed when input.Button = Some ViewerPointerButtonKind.Primary ->
+        [ Fire ]
+    | _ -> []                                          // Released / Wheel / Exited / secondary: not for us
+
+let interactiveHost =
+    { Init = fun () -> initialModel, []
+      Update = update                                  // pure Msg -> Model -> Model * ViewerEffect list
+      View = fun _size model -> view model             // Size-aware View; ignore size if the scene ignores it
+      MapKey = fun key isDown ->                        // widened option -> list
+          match mapKey key isDown with
+          | Some m -> [ m ]
+          | None -> []
+      MapPointer = mapPointer
+      Tick = tick
+      Diagnostics = Viewer.defaultDiagnostics }
+
+// Audio-capable pointer launch: pointer AND sound compose here (see the audio note below).
+match Viewer.runInteractiveViewerWithAudio viewerOptions audioSink interactiveHost with
+| Ok _ -> 0
+| Error _ -> 1
+```
+
+Use `Viewer.runInteractiveViewer` (no sink) if the product is silent; the audio-capable
+`Viewer.runInteractiveViewerWithAudio` is the one a game wants (below).
+
+### Audio: the pointer host is where pointer AND sound finally compose
+
+This is the reason the audio-capable launcher exists. The old pairing forced a choice: `runAppWithAudio`
+gave you sound but its `GeneratedAppHost` has **no pointer**, so a product that needed *both* got silence
+on one of them. `Viewer.runInteractiveViewerWithAudio` closes that gap — it drives the same
+`InteractiveViewerHost` (so `MapPointer` is live) **and** hands every `ViewerEffect.PlayAudio` batch your
+`Update`/`Init` emit to the `audioSink`, exactly as `runAppWithAudio` does. The `AudioCues.forTransition`
+seam and the launcher-vs-effect rules from *Which launcher realizes which effect* apply unchanged; the
+interactive family simply adds the `-WithWindowBehavior`, `-Script`, and `-WithAudio` variants alongside
+the `runApp` ones. A game — which needs pointer *and* audio — uses `Viewer.runInteractiveViewerWithAudio`.
+
+### The launch line is a governance boundary — swap it as one coordinated edit
+
+Just like the persistence swap below, moving off the default game host is **not** a one-line change,
+because `GovernanceTests` pins the launch expression and the host binding as literal-string scans of the
+generated source. Expect to change together:
+
+1. the launch call in `Program.fs` — `Viewer.runAppWithAudio viewerOptions audioSink generatedHost`
+   becomes `Viewer.runInteractiveViewerWithAudio viewerOptions audioSink interactiveHost`; **and**
+2. the governance pins that literally require the old `runAppWithAudio … generatedHost` substring and the
+   `let generatedHost` / `MapKey = mapKey` / `Tick = tick` bindings — until they name the interactive host,
+   the swap fails the governance scan.
+
+Stating this up front turns "discover the constraint by a failing governance test" into a planned edit.
+
 ## Saving and loading: `runAppWithPersistence`
 
 `Viewer.runApp` **discards** `ViewerEffect.Persist`. Your `update` can request a save all day and

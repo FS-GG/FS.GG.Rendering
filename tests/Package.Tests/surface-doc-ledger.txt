@@ -346,7 +346,6 @@ vocabulary  initWithWindowBehavior
 vocabulary  present
 vocabulary  runInteractiveViewerScriptWithAudio
 vocabulary  runInteractiveViewerScriptWithWindowBehaviorAndAudio
-vocabulary  runInteractiveViewerWithAudio
 vocabulary  runInteractiveViewerWithWindowBehavior
 vocabulary  runInteractiveViewerWithWindowBehaviorAndAudio
 vocabulary  runUntilFirstFrame
@@ -438,9 +437,7 @@ owner-sourced  pairs
 owner-sourced  playMusic
 owner-sourced  playSfx
 owner-sourced  playSfx3D
-owner-sourced  runInteractiveAppWithAudio
 owner-sourced  runInteractiveAppWithWindowBehaviorAndAudio
-owner-sourced  runInteractiveViewer
 owner-sourced  saveEnvelope
 owner-sourced  setBusVolume
 owner-sourced  setMasterVolume
