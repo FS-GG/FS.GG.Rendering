@@ -72,6 +72,71 @@ match Viewer.runUntilFirstFrame options scene with
 | Error failure -> printfn "blocked: %A" failure.BlockedStage
 ```
 
+## Pointer-aware host: the `MapPointer` seam (mouse / gamepad)
+
+The default generated game host is `GeneratedAppHost`, launched through `Viewer.runApp` /
+`Viewer.runAppWithAudio`. It carries **only** `MapKey` and `Tick` — there is **no pointer field**, so a
+`game`-profile product that needs the cursor (the twin-stick archetype: WASD move + mouse aim) cannot
+reach it from the default host. The `.fsi` marks the trap directly on `runInteractiveViewerWithAudio`:
+*"`runAppWithAudio` … `GeneratedAppHost` has no pointer: a product that needed both got silence."*
+
+The pointer-aware, size-aware variant is `InteractiveViewerHost<'model,'msg>` — a field-for-field mirror
+of `GeneratedAppHost` **plus** a model-aware pointer seam, with two signatures widened:
+
+```fsharp
+type InteractiveViewerHost<'model,'msg> =
+    { Init: unit -> 'model * ViewerEffect list        // same as GeneratedAppHost
+      Update: 'msg -> 'model -> 'model * ViewerEffect list
+      View: Size -> 'model -> SceneNode               // now Size-aware (was 'model -> SceneNode)
+      MapKey: ViewerKey -> bool -> 'msg list          // widened from 'msg option (Some m -> [m], None -> [])
+      MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list   // the new seam
+      Tick: TimeSpan -> 'msg option
+      Diagnostics: ViewerDiagnosticsOptions }
+```
+
+**`MapPointer` is model-aware where `MapKey` is not**, and that is why it is a separate seam: a pointer
+sample is meaningless without the viewport `Size` and the `'model` (an aim vector is the cursor minus the
+player's screen position, which lives in the model). Keep the `MapKey` discipline anyway — wrap the raw
+`ViewerPointerInput` into a product message and decide what it means in `update`. Its `'model'` argument is
+the only reason the interactive host's `View` had to become `Size`-aware too. The raw sample:
+
+```fsharp
+type ViewerPointerInput =
+    { Phase: ViewerPointerPhaseKind    // Moved | Pressed | Released | Wheel | Exited (RequireQualifiedAccess)
+      X: float                          // scene/swapchain coordinate space — no manual DPI/origin math
+      Y: float
+      Button: ViewerPointerButtonKind option   // Primary | Secondary | Middle (RequireQualifiedAccess)
+      DeltaX: float
+      DeltaY: float }
+```
+
+### Launchers, and the audio-capable path (#429 / #463)
+
+<!-- skill-refs: closed-ok FS.GG.Rendering#429 — cited as history: the issue that added the audio-capable pointer path (runInteractiveViewerWithAudio) -->
+<!-- skill-refs: closed-ok FS.GG.Rendering#463 — cited as history: the code-path prior art that let pointer and audio compose -->
+
+The interactive host has the same launcher family as `runApp`, so pointer and audio compose:
+
+- `Viewer.runInteractiveViewer` — the live pointer/keyboard host (audio dropped, like `runApp`).
+- `Viewer.runInteractiveViewerWithAudio` — **the game path**: pointer *and* an `audioSink`. #429/#463
+  added this because audio was previously reachable only through `runAppWithAudio`, whose
+  `GeneratedAppHost` has no pointer — so a product that needed pointer **and** sound got silence on one.
+  `PlayAudio` batches are handed to the sink exactly as under `runAppWithAudio`.
+- `-WithWindowBehavior` and `-Script` (`runInteractiveViewerScript*`, for offscreen/headless folds)
+  variants mirror the `runApp` set.
+
+The Controls adapter `ControlsElmish.runInteractiveApp` / `runInteractiveAppWithAudio` sits on top for
+**control-tree** products (its `View` returns a `Control<'msg>` and its `MapPointer` takes a resolved
+`PointerInteraction` — authored `EventBindings` win, `MapPointer` is the fallback). A game that draws its
+own `SceneNode` wants the scene-level `InteractiveViewerHost`, not the Controls host.
+
+Swapping a generated game off `GeneratedAppHost`/`runAppWithAudio` is a governance-scanned `Program.fs`
+change (the launch expression and the `let generatedHost` / `MapKey = mapKey` / `Tick = tick` bindings are
+literal-string pins in the generated product's `GovernanceTests`, so the launch line and the pins move
+together — the same coordinated edit persistence adoption needs). The product-facing worked recipe,
+with the field-by-field swap table and a full `Program.fs`, is in the generated product's
+`fs-gg-skiaviewer` skill under *Wiring a game onto the pointer-aware host*.
+
 ## Common pitfalls
 
 - **`Result.Ok`/`Result.Error` shadowed by `ViewerDiagnosticLevel`.** `open
