@@ -33,16 +33,21 @@ Three things are worth internalizing up front:
 
 ## Getting the packages
 
-The libraries are published as `FS.GG.UI.*` packages targeting **`net10.0`** (current
-framework version `0.15.0`). Every release **dual-publishes** the byte-identical
+<!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
+The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.15.0`.
+<!-- END GENERATED: fsgg-doc:package-coordinates -->
+
+Every release **dual-publishes** the byte-identical
 coherent set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI) (via GitHub
 OIDC Trusted Publishing) and the org [GitHub Packages](https://github.com/orgs/FS-GG/packages)
 feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
-1. **Public feed** — restore straight from nuget.org (no source configuration needed):
+1. **Public feed** — restore straight from nuget.org (no source configuration needed).
+   Reference the `FS.GG.UI` BOM to pin the whole coherent set at one version, or add
+   individual packages (omit `--version` for the latest published preview):
    ```sh
-   dotnet add package FS.GG.UI.SkiaViewer --version 0.15.0
-   dotnet add package FS.GG.UI.Controls   --version 0.15.0
+   dotnet add package FS.GG.UI.SkiaViewer
+   dotnet add package FS.GG.UI.Controls
    ```
 
 2. **Project reference** — clone this repo and reference the `src/*/*.fsproj` you need
@@ -65,8 +70,9 @@ feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 
 ### Package map
 
-All 16 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md)
-for the owning source module of each):
+<!-- BEGIN GENERATED: fsgg-doc:library-count (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
+All 16 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md) for the owning source module of each):
+<!-- END GENERATED: fsgg-doc:library-count -->
 
 | Package | What it gives you |
 |---|---|

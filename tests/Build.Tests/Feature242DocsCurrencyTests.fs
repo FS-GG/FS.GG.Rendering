@@ -99,10 +99,11 @@ let private libraryCount = packableIds |> Set.remove bomPackageId |> Set.count
 // The library count each front-door doc states in its "N libraries plus/+ the … BOM (meta)package"
 // prose, tolerant of both phrasings (README/usage "N libraries plus the `FS.GG.UI` BOM"; module-map
 // "N libraries + the BOM metapackage") and of a backtick-quoted BOM id between the two.
-let private docLibraryCounts (relDoc: string) =
-    let text = File.ReadAllText(repoPath relDoc)
+let private libraryCountsIn (text: string) =
     [ for m in Regex.Matches(text, "(\\d+)\\s+librar\\w+\\s+(?:plus|\\+)\\s+the\\b[^\\n]{0,40}?\\bBOM") ->
         int m.Groups.[1].Value ]
+
+let private docLibraryCounts (relDoc: string) = libraryCountsIn (File.ReadAllText(repoPath relDoc))
 
 // The authoritative FS.GG.UI version — the pin the release actually publishes, read from the same
 // source of truth the template hands a scaffolded product. The front-door docs must quote THIS, so
@@ -117,10 +118,31 @@ let private fsGgUiVersion =
 // backtick-quoted "framework version `X`" prose and the copy-paste "dotnet add package
 // FS.GG.UI.… --version X" command. Scoped to FS.GG.UI so an Audio/Game install example (a
 // different release axis) is not wrongly held to $(FsGgUiVersion).
-let private docVersionMentions (relDoc: string) =
-    let text = File.ReadAllText(repoPath relDoc)
+let private versionMentionsIn (text: string) =
     [ for m in Regex.Matches(text, "framework version `([^`]+)`") -> m.Groups.[1].Value
       for m in Regex.Matches(text, "dotnet add package FS\\.GG\\.UI\\.\\S+\\s+--version\\s+(\\S+)") -> m.Groups.[1].Value ]
+
+let private docVersionMentions (relDoc: string) = versionMentionsIn (File.ReadAllText(repoPath relDoc))
+
+// #966 / #968 option 2 — the front-door version/count are no longer HAND-TYPED literals: they are
+// rendered from source into `<!-- BEGIN/END GENERATED: fsgg-doc:<name> -->` regions by
+// scripts/generate-doc-fragments.fsx (mirroring the M6 render-from-registry pattern). The re-aim of
+// F-DOCS-1/F-DOCS-2 below asserts the value lives INSIDE such a generated fragment and is current
+// (generated-from-source AND current), not merely that some literal is present. The anti-drift
+// guarantee is not weakened — it is strengthened: a value stated OUTSIDE a generated fragment now
+// FAILS, because that is exactly the hand-typed literal M2 forbids and this closes.
+let private generatedRegionRx =
+    Regex("<!--\\s*BEGIN GENERATED: fsgg-doc:[^\\n]*?-->(.*?)<!--\\s*END GENERATED: fsgg-doc:[^\\n]*?-->", RegexOptions.Singleline)
+
+// The concatenated interiors of every generated `fsgg-doc:` fragment in the doc.
+let private generatedRegionText (relDoc: string) =
+    let text = File.ReadAllText(repoPath relDoc)
+    [ for m in generatedRegionRx.Matches(text) -> m.Groups.[1].Value ] |> String.concat "\n"
+
+// The doc with every generated fragment (its markers and interior) removed — the hand-authored
+// residue, which must state no version/count of its own.
+let private docOutsideGeneratedRegions (relDoc: string) =
+    generatedRegionRx.Replace(File.ReadAllText(repoPath relDoc), "\n")
 
 [<Tests>]
 let docsCurrencyTests =
@@ -156,35 +178,58 @@ let docsCurrencyTests =
                 Expect.isFalse (f.Contains "not yet on a public nuget feed") (sprintf "%s still says not yet on a public feed" doc)
         }
 
-        // F-DOCS-1: the version prose must be DERIVED from the pin, not checked against a frozen
-        // known-bad literal. The old gate banned exactly `0.1.0-preview.1`; the docs drifted to a
-        // different stale string (`0.1.58-preview.1`) and sailed through green. Per the review's
-        // meta-observation — assert `doc == source`, never `doc != known-bad-literal`.
-        test "README/usage.md quote the shipped FS.GG.UI version, not a frozen literal" {
+        // F-DOCS-1 (re-aimed by #966 / #968 option 2): the front-door version must be RENDERED FROM
+        // SOURCE into a generated fragment, not hand-typed. The old gate asserted `doc == source` for
+        // any version literal present; that caught drift but still let a HUMAN re-type the literal on
+        // every bump (the anti-pattern M2 forbids). Now: (a) the version is stated INSIDE a generated
+        // `fsgg-doc:` fragment and equals the pin, and (b) NO version is stated outside a fragment —
+        // so the value can only come from scripts/generate-doc-fragments.fsx, never a hand edit.
+        test "README/usage.md quote the shipped FS.GG.UI version via a generated fragment (not a hand-typed literal)" {
             for doc in frontDoorDocs do
-                let mentions = docVersionMentions doc
-                // Non-vacuous PER DOC: each front-door doc must actually state a version, so a doc
-                // that silently drops its version literal cannot pass this gate by leaning on the other.
-                Expect.isNonEmpty mentions (sprintf "%s states no FS.GG.UI version for the currency gate to check" doc)
-                for v in mentions do
+                // (a) present-and-current: the version lives inside a generated fragment and equals the pin.
+                let regionVersions = versionMentionsIn (generatedRegionText doc)
+                Expect.isNonEmpty regionVersions
+                    (sprintf "%s states no FS.GG.UI version inside a generated fsgg-doc fragment (scripts/generate-doc-fragments.fsx) for the currency gate to check" doc)
+                for v in regionVersions do
                     Expect.equal v fsGgUiVersion
-                        (sprintf "%s states version %s but the pin is $(FsGgUiVersion)=%s" doc v fsGgUiVersion)
+                        (sprintf "%s's generated fragment states version %s but the pin is $(FsGgUiVersion)=%s — run scripts/generate-doc-fragments.fsx and commit" doc v fsGgUiVersion)
+                // (b) no hand-typed literal: nothing outside a generated fragment may state a version.
+                let strayVersions = versionMentionsIn (docOutsideGeneratedRegions doc)
+                Expect.isEmpty strayVersions
+                    (sprintf "%s states FS.GG.UI version(s) %A OUTSIDE a generated fragment — move them into a fsgg-doc region so they render from source (#966/#968)" doc strayVersions)
         }
 
-        // F-DOCS-2: the "N libraries plus the BOM" count must be DERIVED from the slnx's packable
-        // set, not a frozen literal — the prose had drifted to `17 libraries` while the repo ships 16
-        // (17 packable products, one of which is the BOM). Per the meta-observation: assert
-        // `doc == source`, so adding or retiring a library forces the count prose to move with it.
-        for doc in [ "README.md"; "docs/usage.md"; "docs/product/module-map.md" ] do
-            test (sprintf "%s states the shipped library count (derived from the slnx)" doc) {
-                let counts = docLibraryCounts doc
-                Expect.isNonEmpty counts
-                    (sprintf "%s states no 'N libraries plus the BOM' count for the currency gate to check" doc)
-                for n in counts do
+        // F-DOCS-2 (re-aimed by #966 / #968 option 2): the front-door "N libraries plus the BOM"
+        // count must be RENDERED FROM the slnx into a generated fragment, not hand-typed. Same shape
+        // as F-DOCS-1: (a) the count lives inside a generated `fsgg-doc:` fragment and equals the
+        // slnx-derived count, and (b) no count is stated outside a fragment. Adding/retiring a library
+        // moves the count via scripts/generate-doc-fragments.fsx, and a hand-typed count now FAILS.
+        for doc in frontDoorDocs do
+            test (sprintf "%s states the library count via a generated fragment (derived from the slnx)" doc) {
+                let regionCounts = libraryCountsIn (generatedRegionText doc)
+                Expect.isNonEmpty regionCounts
+                    (sprintf "%s states no 'N libraries plus the BOM' count inside a generated fsgg-doc fragment for the currency gate to check" doc)
+                for n in regionCounts do
                     Expect.equal n libraryCount
-                        (sprintf "%s states %d libraries but the slnx ships %d (packable minus the %s BOM)"
+                        (sprintf "%s's generated fragment states %d libraries but the slnx ships %d (packable minus the %s BOM) — run scripts/generate-doc-fragments.fsx and commit"
                             doc n libraryCount bomPackageId)
+                let strayCounts = libraryCountsIn (docOutsideGeneratedRegions doc)
+                Expect.isEmpty strayCounts
+                    (sprintf "%s states library count(s) %A OUTSIDE a generated fragment — move them into a fsgg-doc region so they render from source (#966/#968)" doc strayCounts)
             }
+
+        // docs/product/module-map.md is a PRODUCT doc, not one of the front-door docs #966 converts to
+        // generated fragments, so it keeps the derive-and-check gate: its count must equal the
+        // slnx-derived count (whether or not it is behind a generated fragment).
+        test "docs/product/module-map.md states the shipped library count (derived from the slnx)" {
+            let counts = docLibraryCounts "docs/product/module-map.md"
+            Expect.isNonEmpty counts
+                "docs/product/module-map.md states no 'N libraries plus the BOM' count for the currency gate to check"
+            for n in counts do
+                Expect.equal n libraryCount
+                    (sprintf "docs/product/module-map.md states %d libraries but the slnx ships %d (packable minus the %s BOM)"
+                        n libraryCount bomPackageId)
+        }
 
         // F-DOCS-3: CLAUDE.md points every agent at "the current plan"; the pointer must name the
         // latest-planned spec (highest-numbered spec dir with a plan.md), derived from source — not a
