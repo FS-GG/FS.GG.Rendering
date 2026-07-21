@@ -21,7 +21,7 @@
          behind the pure AudioEffect edge — the piece the fs-gg-audio skill calls "a real playback
          backend is deferred". Every profile that opens a viewer window (issue #436), not the
          simulation profiles only. See ADR-0024. -->
-    <FsGgAudioVersion>0.3.0</FsGgAudioVersion>
+    <FsGgAudioVersion>0.4.0</FsGgAudioVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
