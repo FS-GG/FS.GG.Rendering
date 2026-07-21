@@ -8,7 +8,7 @@ description: Work with the parts of a grid in a generated FS.GG.UI product — f
 ## Scope
 
 Use this skill for the **parts of a grid** in a game/sim product: not routing over cells
-([[fs-gg-game-core]]'s `Pathfinding`) or spatial hashing (`SpatialGrid`), but the geometry *vocabulary*
+([[fs-gg-game:fs-gg-game-core]]'s `Pathfinding`) or spatial hashing (`SpatialGrid`), but the geometry *vocabulary*
 of the grid itself — its **faces** (cells/tiles), **edges** (the shared boundaries between two faces),
 and **vertices** (the corners where edges meet), how to give each part one canonical name, how to
 convert between the parts, and how to map each part to and from pixels. It is the workhorse behind
@@ -111,7 +111,7 @@ every cell. A point exactly on a boundary belongs to the cell to its right/below
 ## The adaptable helper
 
 `Grids.fs` is **yours** — a small, readable file classified *replaceable* in the scaffold map (see
-[[fs-gg-model-swap]]). Move the grid origin, add a diagonal-edge orientation, reorder the corners, extend
+[[fs-gg-game:fs-gg-model-swap]]). Move the grid origin, add a diagonal-edge orientation, reorder the corners, extend
 the scheme toward hex/triangle grids, or delete the file if you don't need it: its `Compile` item is
 `Exists`-guarded, so the build stays green and you never touch the durable `Product.fsproj`.
 
@@ -163,7 +163,7 @@ in `FS.GG.UI.Scene`. `Grids.fs` is **product-owned source with no backing packag
 Build your world over `Cell` faces, use `Grids` to address the edges and corners between them each fixed
 step, and hand the pixel geometry (`cellRect`/`edgeSegment`/`vertexPoint`) to your `View` as a `Scene`.
 Pair it with [[fs-gg-collision]] and [[fs-gg-visibility]] for a full geometry pass, and with
-[[fs-gg-game-core]]'s `Pathfinding`/`SpatialGrid` for routing and range queries over the same cells.
+[[fs-gg-game:fs-gg-game-core]]'s `Pathfinding`/`SpatialGrid` for routing and range queries over the same cells.
 
 ## Persistent problems
 
@@ -175,13 +175,13 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling) plus `Pathfinding`/`SpatialGrid`,
+- [[fs-gg-game:fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling) plus `Pathfinding`/`SpatialGrid`,
   which route and bucket over the same `Cell` faces this skill addresses the parts of.
 - [[fs-gg-collision]] — the sibling per-frame geometry pass over the shared `Point`/`Rect`/`SpatialGrid`.
 - [[fs-gg-visibility]] — the sibling angular-sweep visibility pass over the shared vocabulary.
 - [[fs-gg-scene]] — owns the shared `Point`/`Rect` the pixel mapping produces; renders the grid.
 - [[fs-gg-skiaviewer]] — drives the fixed-step loop from the host window.
-- [[fs-gg-model-swap]] — classifies `Grids.fs` as replaceable/adaptable source.
+- [[fs-gg-game:fs-gg-model-swap]] — classifies `Grids.fs` as replaceable/adaptable source.
 
 ## Sources / links
 

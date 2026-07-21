@@ -263,7 +263,7 @@ See [`reference.fsx`](reference.fsx) for a runnable in-tree version, and
   single-mapping RENDER → LINT → TWEAK loop this skill orchestrates over. **Read it first.**
 - [[fs-gg-scene]] — the pure `Scene` / `Color` / `Point` primitives and `Scene.group` used to compose a frame.
 - [[fs-gg-skiaviewer]] — the `ReferenceRendering` path `Render.toPng` wraps.
-- [[fs-gg-game-core]] — the generic `'world` / `StepState` a captured frame is a snapshot of.
+- [[fs-gg-game:fs-gg-game-core]] — the generic `'world` / `StepState` a captured frame is a snapshot of.
 - [[fs-gg-collision]] / [[fs-gg-grids]] / [[fs-gg-visibility]] — the sim frame the visual language dresses.
 - The `cross-repo-coordination` process skill — files the `fs-gg-symbology` channel request when no candidate can encode a state (see *"When a candidate needs a channel…"*).
 

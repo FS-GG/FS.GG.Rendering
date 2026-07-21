@@ -19,7 +19,6 @@ let private repositoryPath (rel: string) = Path.Combine(repositoryRoot, rel.Repl
 let private skillBody = File.ReadAllText(repositoryPath "template/product-skills/fs-gg-collision/SKILL.md")
 let private helperSource = repositoryPath "template/fragments/collision/src/Product/Collision.fs"
 let private productFsproj = File.ReadAllText(repositoryPath "template/base/src/Product/Product.fsproj")
-let private gameCoreBody = File.ReadAllText(repositoryPath "template/product-skills/fs-gg-game-core/SKILL.md")
 let private templateJson = File.ReadAllText(repositoryPath ".template.config/template.json")
 let private manifest = File.ReadAllText(repositoryPath "template/skill-manifest/skill-manifest.json")
 
@@ -91,20 +90,8 @@ let feature246CollisionSkillTests =
               Expect.equal (sourceCondition "template/fragments/collision/src/") (Some simGate) "fragment source gated to sim profiles"
           }
 
-          // ---- US3: game-core points at the new skill (single source of truth) -------------------
-          test "fs-gg-game-core's Collision section is a pointer, not a duplicated write-up" {
-              // OWNER-AGNOSTIC, and it must be (#714). This body is a FROZEN MIRROR of FS.GG.Game's, and
-              // Game now QUALIFIES every ref in it — `[[fs-gg-game:fs-gg-collision]]` — because the same bytes are
-              // judged by both repos and a bare ref resolves in exactly one publish set (Game#279). Pinning
-              // the bare spelling asserted a CONVENTION we do not own, in a body we may not edit, so it broke
-              // the moment the owner re-qualified. What this test actually means is "the body LINKS that
-              // skill", so that is what it now asks — with or without an owner prefix.
-              Expect.isTrue
-                  (Regex.IsMatch(gameCoreBody, @"\[\[(?:[a-z][a-z-]*:)?fs\-gg\-collision\]\]"))
-                  "game-core points at the dedicated skill (bare or owner-qualified)"
-              // the old detailed narrow-phase list must no longer live here
-              Expect.isFalse
-                  (gameCoreBody.Contains("`Geometry.intersects a b` — box-vs-box overlap on positive area", System.StringComparison.Ordinal))
-                  "the detailed detection write-up moved to fs-gg-collision"
-          }
+          // US3 (fs-gg-game-core's Collision section points at this skill) was removed with ADR-0063
+          // (FS.GG.Rendering#965): fs-gg-game-core is no longer shipped by this provider (it is
+          // owner-sourced from FS.GG.Game.Skills), so its body is not present here to assert against.
+          // That cross-reference is now FS.GG.Game's to guard in its own gate.
         ]

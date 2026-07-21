@@ -4,9 +4,13 @@ These are the skill bodies a **scaffolded product** receives. Which product rece
 decided by `materializes-when` in [`../skill-manifest/skill-manifest.json`](../skill-manifest/skill-manifest.json),
 which is **generated** — edit `scripts/generate-skill-manifest.fsx`, never the JSON.
 
-Four of these bodies (`fs-gg-game-core`, `fs-gg-audio`, `fs-gg-persistence`, `fs-gg-model-swap`) are
-**frozen mirrors** of skills FS.GG.Game owns (ADR-0022 §6). Editing one here does not change the
-canonical, and `scripts/check-frozen-mirrors.fsx` will tell you so. Route the content upstream.
+This provider ships **no frozen mirrors** any more. Four game-owned bodies (`fs-gg-game-core`,
+`fs-gg-audio`, `fs-gg-persistence`, `fs-gg-model-swap`) used to be frozen copies of skills FS.GG.Game
+owns (ADR-0022 §6); ADR-0063 (2026-07-21 amendment) **retired** them (FS.GG.Rendering#965) once
+FS.GG.Game.Skills began delivering them owner-sourced. A scaffolded game/sample-pack product still
+receives them — from that package, not from here. Every body now under `template/product-skills/` is
+Rendering-owned. (`scripts/check-frozen-mirrors.fsx` still guards the mechanism should a mirror ever
+return.)
 
 ## Declaring an instrument (`instruments:`)
 

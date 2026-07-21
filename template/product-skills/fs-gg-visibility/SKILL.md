@@ -15,7 +15,7 @@ the ray-segment intersection and the **angular sweep** are game-opinionated and 
 source you own** (`src/<ProductDir>/Visibility.fs`), not a frozen package. Everything here is pure,
 total, deterministic, and bounded — safe to call from a replayed `update`/`view`. The algorithm is the
 classic angular sweep from the Red Blob Games reference (see **Sources**). Advancing the world on a fixed
-step is [[fs-gg-game-core]]'s job; rendering the polygon is [[fs-gg-scene]]'s. This skill materializes
+step is [[fs-gg-game:fs-gg-game-core]]'s job; rendering the polygon is [[fs-gg-scene]]'s. This skill materializes
 for the `game` and `sample-pack` profiles.
 
 ## Public Contract
@@ -98,7 +98,7 @@ source target walls` is the exact line-of-sight convenience built on the same `r
 ## The adaptable helper
 
 `Visibility.fs` is **yours** — a small, readable file classified *replaceable* in the scaffold map (see
-[[fs-gg-model-swap]]). Change the sight radius, cone the FOV, swap the polygon output for a per-cell
+[[fs-gg-game:fs-gg-model-swap]]). Change the sight radius, cone the FOV, swap the polygon output for a per-cell
 mask, or delete the file if you don't need it: its `Compile` item is `Exists`-guarded, so the build
 stays green and you never touch the durable `Product.fsproj`.
 
@@ -158,11 +158,11 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 - [[fs-gg-collision]] — the sibling per-frame geometry pass (detection + response) that shares the
   `Point`/`Rect` vocabulary.
-- [[fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling, pathfinding) that drives the world
+- [[fs-gg-game:fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling, pathfinding) that drives the world
   visibility is computed over.
 - [[fs-gg-scene]] — owns the shared `Point`/`Rect` visibility operates on; renders the polygon.
 - [[fs-gg-skiaviewer]] — drives the fixed-step loop from the host window.
-- [[fs-gg-model-swap]] — classifies `Visibility.fs` as replaceable/adaptable source.
+- [[fs-gg-game:fs-gg-model-swap]] — classifies `Visibility.fs` as replaceable/adaptable source.
 
 ## Sources / links
 

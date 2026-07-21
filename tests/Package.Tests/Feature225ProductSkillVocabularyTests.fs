@@ -23,14 +23,14 @@ open Rendering.Harness
 
 let private repositoryRoot = RepositoryRoot.value
 
-// The product skills shipped today (research R0 / produced-surface T004; + fs-gg-game-core, Feature 240).
-// The guard scans whatever
-// discovery actually finds; this set only backstops the "scan must not silently narrow" assertion —
-// a regression that drops skills from the discovery surface is caught, not masked by a fixed list.
+// The product skills shipped today (research R0 / produced-surface T004). ADR-0063 (2026-07-21 amendment)
+// retired fs-gg-game-core from this provider (FS.GG.Rendering#965), so it is no longer discovered here.
+// The guard scans whatever discovery actually finds; this set only backstops the "scan must not silently
+// narrow" assertion — a regression that drops skills from the discovery surface is caught, not masked by a
+// fixed list.
 let private expectedProductSkillIds =
     set
         [ "fs-gg-elmish"
-          "fs-gg-game-core"
           "fs-gg-keyboard-input"
           "fs-gg-layout"
           "fs-gg-scene"
@@ -187,7 +187,7 @@ let private gatedFeedbackBody =
 let tests =
     testList
         "Feature225ProductSkillVocabulary"
-        [ test "discovery surface did not narrow: the template/product-skills scan covers the 10 expected ids (FR-007 edge case)" {
+        [ test "discovery surface did not narrow: the template/product-skills scan covers the 9 expected ids (FR-007 edge case)" {
               let discovered =
                   discoveredProductSkills ()
                   |> List.map (fun e -> e.SkillName.Trim())

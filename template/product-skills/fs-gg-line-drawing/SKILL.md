@@ -16,7 +16,7 @@ vocabulary reuses the framework primitive; the cell walk is game-opinionated and
 source you own** (`src/<ProductDir>/LineDrawing.fs`), not a frozen package. Everything here is pure,
 total, deterministic, and bounded — safe to call from a replayed `update`/`view`. The algorithm is the
 classic grid line drawing from the Red Blob Games reference (see **Sources**). Advancing the world on a
-fixed step and routing agents is [[fs-gg-game-core]]'s job; the *continuous* (float `Point`) sibling is
+fixed step and routing agents is [[fs-gg-game:fs-gg-game-core]]'s job; the *continuous* (float `Point`) sibling is
 [[fs-gg-visibility]]. This skill materializes for the `game` and `sample-pack` profiles.
 
 ## Public Contract
@@ -93,7 +93,7 @@ LineDrawing.lineOfSight isTransparent a b // false — the wall tile blocks sigh
 ## The adaptable helper
 
 `LineDrawing.fs` is **yours** — a small, readable file classified *replaceable* in the scaffold map (see
-[[fs-gg-model-swap]]). Switch `line` for `supercover`, cap the returned list for a limited-range beam,
+[[fs-gg-game:fs-gg-model-swap]]). Switch `line` for `supercover`, cap the returned list for a limited-range beam,
 make `lineOfSight` stop-and-report the first blocker, or delete the file if you don't need it: its
 `Compile` item is `Exists`-guarded, so the build stays green and you never touch the durable
 `Product.fsproj`.
@@ -101,7 +101,7 @@ make `lineOfSight` stop-and-report the first blocker, or delete the file if you 
 ## Common pitfalls
 
 - **Re-rolling a grid coordinate.** Reuse the framework `Cell`; don't define a look-alike `(row, col)` /
-  grid-position record that shadows it (the [[fs-gg-game-core]] `Cell` vocabulary). And don't conflate
+  grid-position record that shadows it (the [[fs-gg-game:fs-gg-game-core]] `Cell` vocabulary). And don't conflate
   `Cell` (discrete integer tile) with the float `Point` ([[fs-gg-scene]]) — they are different atoms.
 - **Sorting/sampling the line by float `lerp`.** The reference article uses `lerp` + `round` for clarity,
   but its last bit can differ across runtimes and flip a cell — breaking replay determinism. Keep the
@@ -140,7 +140,7 @@ rendering in [[fs-gg-scene]] and host wiring in [[fs-gg-skiaviewer]].
 
 Build endpoints from your world each fixed step, call `LineDrawing.line`/`supercover`/`lineOfSight` from
 your `update`/`view`, and hand the result to your `View` — draw the tiles, gate a shot, or reveal fog.
-Pair it with [[fs-gg-collision]] and [[fs-gg-visibility]] for a full geometry pass, and [[fs-gg-game-core]]
+Pair it with [[fs-gg-collision]] and [[fs-gg-visibility]] for a full geometry pass, and [[fs-gg-game:fs-gg-game-core]]
 for the routing the line complements.
 
 ## Persistent problems
@@ -156,11 +156,11 @@ sources. If your product uses Spec Kit, record findings and resolving links unde
 - [[fs-gg-visibility]] — the *continuous* (float `Point`, angular-sweep) line-of-sight sibling; this skill
   is its discrete-grid counterpart.
 - [[fs-gg-collision]] — the per-frame geometry pass (detection + response) over the shared vocabulary.
-- [[fs-gg-game-core]] — the simulation loop, RNG, and `Cell` **pathfinding** the line complements (route a
+- [[fs-gg-game:fs-gg-game-core]] — the simulation loop, RNG, and `Cell` **pathfinding** the line complements (route a
   path, then draw/step along a line).
 - [[fs-gg-scene]] — owns the float `Point`/`Rect`; renders the tiles a line produces.
 - [[fs-gg-skiaviewer]] — drives the fixed-step loop from the host window.
-- [[fs-gg-model-swap]] — classifies `LineDrawing.fs` as replaceable/adaptable source.
+- [[fs-gg-game:fs-gg-model-swap]] — classifies `LineDrawing.fs` as replaceable/adaptable source.
 
 ## Sources / links
 

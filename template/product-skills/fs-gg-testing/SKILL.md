@@ -109,7 +109,7 @@ here.
 ## Seeded generation — pin it byte-for-byte, and prove the streams are independent
 
 This one is for products that generate content from a seed — the `game` and
-`sample-pack` profiles that carry the `Rng` value type ([[fs-gg-game-core]]); a
+`sample-pack` profiles that carry the `Rng` value type ([[fs-gg-game:fs-gg-game-core]]); a
 `headless-scene` or `governed` product with no seeded generator can skip it. Your
 product already `open`s `FS.GG.Game.Core`, so the snippets below use `Rng` as an
 in-scope symbol rather than repeating the open.
@@ -120,7 +120,7 @@ suite that spot-checks a field or two proves neither:
 1. **Determinism** — the same seed produces the same artifact, every run, every
    machine.
 2. **Stream-independence** — an artifact built from one RNG stream does not shift
-   because an *unrelated* stream advanced. `Rng.split` ([[fs-gg-game-core]]) hands
+   because an *unrelated* stream advanced. `Rng.split` ([[fs-gg-game:fs-gg-game-core]]) hands
    you decorrelated sub-streams precisely so loot draws cannot perturb the floor;
    the test is what proves you wired them that way and not by accident onto one
    shared generator.
@@ -133,13 +133,13 @@ place stays invisible until something draws from the other stream a different nu
 of times. Neither is a type error; both ship.
 
 Assert on the **serialized fixture**, not the live value. You already own a pure
-`serialize` for save slots ([[fs-gg-persistence]]) — reuse it. Byte-identity on the
+`serialize` for save slots ([[fs-gg-game:fs-gg-persistence]]) — reuse it. Byte-identity on the
 serialized form is the strongest cheap determinism check there is (it catches drift
 a field-by-field `Expect.equal` misses), it produces a diffable artifact in a
 failing test, and it is the *exact* bytes a save would carry.
 
 ```fsharp
-// The product owns `serialize : Floor -> string` (see [[fs-gg-persistence]]); `Rng`
+// The product owns `serialize : Floor -> string` (see [[fs-gg-game:fs-gg-persistence]]); `Rng`
 // comes from the product's own `FS.GG.Game.Core` import, and `test`/`Expect` from
 // Expecto.
 // A generator that draws from TWO streams: `layout` builds the floor, a split-off
@@ -399,9 +399,9 @@ rather than hard-failing the phase.
 - [[fs-gg-elmish]] — the runnable interaction-driver recipe (`Perf.runScriptToModel`,
   the `BoundIds` pre-click guard, post-interaction frame capture).
 - [[fs-gg-scene]] — the capability whose generated output these tests assert.
-- [[fs-gg-game-core]] — the seeded `Rng` (`ofSeed`/`nextInt`/`split`) the
+- [[fs-gg-game:fs-gg-game-core]] — the seeded `Rng` (`ofSeed`/`nextInt`/`split`) the
   seeded-generation tests pin determinism over.
-- [[fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
+- [[fs-gg-game:fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
   assertions reuse.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
 

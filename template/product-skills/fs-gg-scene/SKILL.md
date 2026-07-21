@@ -88,7 +88,7 @@ list is the cheapest thing that can tell them apart.
   both carrying `.Pos` (or `.Id`, `.Hp`) — make a bare accessor like
   `let posOf x = x.Pos` infer the **last-declared** record for `x`, so it silently
   type-checks against the wrong type. Annotate the parameter at each shared access
-  (`let posOf (c: Creep) = c.Pos`). The [[fs-gg-game-core]] grid-sim recipe walks
+  (`let posOf (c: Creep) = c.Pos`). The [[fs-gg-game:fs-gg-game-core]] grid-sim recipe walks
   this `.Pos` case in full.
 
 ## Build Commands

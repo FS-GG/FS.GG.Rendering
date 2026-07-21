@@ -768,10 +768,12 @@ let feature541FrozenMirrorGuardTests =
           // the CANONICAL while the body is drifted. `sanctionOf` would then red a correct tree and, worse,
           // pre-sanction the exact bytes of the drift.
           test "every declared frozen digest is the digest of the mirror it declares" {
-              Expect.isNonEmpty
-                  declarations
-                  "the pin declares which foreign skills this repo mirrors, and each must carry the canonical digest it is frozen to (#833). An empty list here means the parse found nothing to assert and every check below is vacuous."
-
+              // AN EMPTY DECLARATION SET IS THE END STATE, NOT A BUG — the same shape as the `isNonEmpty
+              // waivers` bug fixed at #640 above. ADR-0063 (2026-07-21 amendment) retired the four game
+              // mirrors (FS.GG.Rendering#965): every foreign skill is now `NoCounterpart`, so `declarations`
+              // is legitimately empty and the loop below correctly asserts nothing. `declarations` is read
+              // from the compiled-in `foreignSkills` VALUE, not scraped with a regex, so there is no parser
+              // to rot vacuously — the emptiness is a real fact about the pin, not a failed read.
               for id, frozenAt in declarations do
                   let body = repositoryPath $"template/product-skills/{id}/SKILL.md"
 
@@ -786,8 +788,9 @@ let feature541FrozenMirrorGuardTests =
           // A DELETED mirror is as much a break as an edited one — a `--profile game` scaffold just loses
           // the skill. Checked here as well as in the script, because it is free offline.
           test "every mirror the script declares is still shipped" {
-              Expect.isNonEmpty mirrored "the script declares which foreign skills this repo mirrors"
-
+              // Empty as of ADR-0063 (FS.GG.Rendering#965): this repo mirrors NO skill any more, so the loop
+              // asserts nothing. `mirrored` is read from the compiled `foreignSkills` value, so an empty set
+              // is the genuine end state (#696), not a rotted parser.
               for id in mirrored do
                   Expect.isTrue
                       (File.Exists(repositoryPath $"template/product-skills/{id}/SKILL.md"))

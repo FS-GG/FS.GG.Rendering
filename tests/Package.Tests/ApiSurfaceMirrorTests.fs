@@ -154,6 +154,14 @@ let private provenanceVersion (repo: string) (file: string) =
 /// ADR-0104 decision 5, #319.)
 let private pointerExempt = set [ "Canvas/Elements.fsi" ]
 
+/// Product skills this repo no longer SHIPS but whose bodies still reach the scaffolded product —
+/// they are OWNER-SOURCED from FS.GG.Game.Skills (ADR-0063, FS.GG.Rendering#965). Their api-surface
+/// `// See skill:` pointers stay valid — a reader in the product DOES find the skill (materialized from
+/// the package) — even though the body is no longer in `template/product-skills/` here. The pointer is
+/// verified against the owner's body by FS.GG.Game's own gate, not this one.
+let private ownerSourcedSkills =
+    set [ "fs-gg-game-core"; "fs-gg-audio"; "fs-gg-persistence"; "fs-gg-model-swap" ]
+
 let private shippedProductSkills () =
     Directory.GetDirectories productSkillsRoot
     |> Array.map (fun d -> DirectoryInfo(d).Name)
@@ -210,8 +218,12 @@ let apiSurfaceMirrorTests =
           }
 
           // M-PTR — §5.3: the .fsi and the SKILL.md were "two artifacts with no link in either direction".
-          test "every bundled .fsi carries exactly one See skill pointer naming a shipped product skill" {
+          // A pointer may name a skill this repo SHIPS, or one it OWNER-SOURCES (ADR-0063): both reach the
+          // scaffolded product, so both are a live link a reader can follow. Only a pointer to a skill that
+          // is neither is an unknown-skill offence.
+          test "every bundled .fsi carries exactly one See skill pointer naming a shipped or owner-sourced product skill" {
               let skills = shippedProductSkills ()
+              let resolves skill = skills.Contains skill || ownerSourcedSkills.Contains skill
 
               let offenders =
                   bundledFsiFiles ()
@@ -220,12 +232,12 @@ let apiSurfaceMirrorTests =
 
                       match skillPointers file with
                       | _ when pointerExempt.Contains rel -> None
-                      | [ skill ] when skills.Contains skill -> None
+                      | [ skill ] when resolves skill -> None
                       | [ skill ] -> Some(rel, $"names unknown skill '{skill}'")
                       | [] -> Some(rel, "no '// See skill:' pointer above its namespace")
                       | many -> Some(rel, $"carries {many.Length} pointers"))
 
-              Expect.isEmpty offenders "each bundled .fsi points at exactly one shipped product skill"
+              Expect.isEmpty offenders "each bundled .fsi points at exactly one shipped or owner-sourced product skill"
           }
 
           test "the pointer exemptions still exist and still lack a pointer" {

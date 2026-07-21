@@ -329,7 +329,7 @@ let private verifyGatedSources () =
         countWhere (fun (row, (c, _)) -> c = "workspace" && row.Source.Replace('\\', '/') = source)
     let materializeChecked = workspaceSourced "template/lifecycle/"
     let speckitNarrowChecked = workspaceSourced ".agents/skills/"
-    assertTrue (frameworkChecked = 20) (sprintf "expected exactly 20 framework product-skill sources (.agents/skills/ provider surface incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design + fs-gg-samples (re-gated profile-only under #939), no twins), checked %d" frameworkChecked)
+    assertTrue (frameworkChecked = 16) (sprintf "expected exactly 16 framework product-skill sources (.agents/skills/ provider surface; ADR-0063 (FS.GG.Rendering#965) retired the 4 game-owned copies game-core/audio/persistence/model-swap, now owner-sourced from FS.GG.Game.Skills; incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design + fs-gg-samples (re-gated profile-only under #939), no twins), checked %d" frameworkChecked)
     assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
@@ -694,17 +694,18 @@ let private expectedFrameworkSkills =
     // SkiaViewer profile set too. Matches its manifest `materializes-when: profile in [app,
     // sample-pack, game]`, and the audio Core/Host package gate in
     // template/base/{Directory.Packages.props,src/Product/Product.fsproj}.
-    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-audio"; "fs-gg-testing" ]
+    // ADR-0063 (2026-07-21 amendment) RETIRED the four game-owned skills (fs-gg-game-core, fs-gg-audio,
+    // fs-gg-persistence, fs-gg-model-swap) from this provider (FS.GG.Rendering#965): their template.json
+    // emission rows are gone, so they no longer emit on any profile here (they are owner-sourced from
+    // FS.GG.Game.Skills by the SDD materializer instead). fs-gg-audio leaves `app`; all four leave
+    // `sample-pack`. This map is reconciled against template.json below, so it must move with it.
+    [ "app", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
       "headless-scene", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
       "governed", Set.ofList [ "fs-gg-scene"; "fs-gg-testing" ]
-      // sample-pack shares the game profile's capability set (audio/collision/game-core/grids/
-      // line-drawing/model-swap/persistence/visibility are all gated `profile == "game" || profile ==
-      // "sample-pack"`). Each of those was added to the profile by its own feature without updating this
-      // map — eight silent drifts, invisible because the lane that would have caught them never ran.
       // fs-gg-samples is the one spec-kit-gated member and is dropped from the sdd/none expectation below.
       "sample-pack", Set.ofList [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-samples"; "fs-gg-testing"
-                                  "fs-gg-audio"; "fs-gg-collision"; "fs-gg-game-core"; "fs-gg-grids"
-                                  "fs-gg-line-drawing"; "fs-gg-model-swap"; "fs-gg-persistence"; "fs-gg-visibility" ] ]
+                                  "fs-gg-collision"; "fs-gg-grids"
+                                  "fs-gg-line-drawing"; "fs-gg-visibility" ] ]
     |> Map.ofList
 
 /// The skill id a provider-surface source emits, if it emits one: `.agents/skills/<id>/`.

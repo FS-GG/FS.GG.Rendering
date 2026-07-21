@@ -12,7 +12,7 @@ Use this skill for the **collision** half of a game/sim product: testing which b
 bodies separate, and slide/bounce). Detection reuses the framework primitives; the *response* rule is
 game-opinionated and ships as **adaptable source you own** (`src/<ProductDir>/Collision.fs`), not a
 frozen package. Everything here is pure, total, and deterministic — safe to call from a replayed
-`update`. Advancing the world on a fixed step is [[fs-gg-game-core]]'s job; rendering the result is
+`update`. Advancing the world on a fixed step is [[fs-gg-game:fs-gg-game-core]]'s job; rendering the result is
 [[fs-gg-scene]]'s. This skill materializes for the `game` and `sample-pack` profiles.
 
 ## Public Contract
@@ -151,7 +151,7 @@ insertion-ordered `filter`, so which enemies a piercing shot spends itself on is
 order, not of arrival. A wide `Damage` fold over one enemy id then survives the prune as a single
 subtraction, so two shots landing the same step compose the same way on every replay. Positions here are
 the sim `Point`; a product that stores them in the collision-safe `Geometry.Vec2` crosses at the boundary
-with its own `simPoint` ([[fs-gg-game-core]] *Spatial queries*).
+with its own `simPoint` ([[fs-gg-game:fs-gg-game-core]] *Spatial queries*).
 
 ## Response
 
@@ -267,7 +267,7 @@ the classifier over the occupancy each push updates.
 ## The adaptable helper
 
 `Collision.fs` is **yours** — a small, readable file classified *replaceable* in the scaffold map
-(see [[fs-gg-model-swap]]). Change the response rule, add collision layers/masks over `Tag`, or delete
+(see [[fs-gg-game:fs-gg-model-swap]]). Change the response rule, add collision layers/masks over `Tag`, or delete
 the file if you don't need it: its `Compile` item is `Exists`-guarded, so the build stays green and you
 never touch the durable `Product.fsproj`.
 
@@ -344,11 +344,11 @@ community sources. If your product uses Spec Kit, record findings and resolving 
 
 ## Related
 
-- [[fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling, pathfinding, spatial queries)
+- [[fs-gg-game:fs-gg-game-core]] — the simulation loop (fixed step, RNG, culling, pathfinding, spatial queries)
   that drives the world `Collision.step` resolves each frame.
 - [[fs-gg-scene]] — owns the shared `Rect`/`Point` collision operates on; renders the resolved world.
 - [[fs-gg-skiaviewer]] — drives the fixed-step loop from the host window.
-- [[fs-gg-model-swap]] — classifies `Collision.fs` as replaceable/adaptable source.
+- [[fs-gg-game:fs-gg-model-swap]] — classifies `Collision.fs` as replaceable/adaptable source.
 
 ## Sources / links
 

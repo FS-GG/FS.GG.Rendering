@@ -16,7 +16,7 @@ projects it, so you don't have to rediscover the re-points from compiler errors.
       `Ball` = `{ Pos; Velocity }` as collision-safe `Geometry.Vec2`, paddles, scores; `movePaddle`,
       `paddleForKey`, `stepSim` + `advanceSim` (fixed-step `FixedStep.drain` accumulator on `Tick`),
       `keyName`). Replace with your own model — keep positions as `Geometry.Vec2` (Vx/Vy), NOT bare
-      `X`/`Y`/`Width`/`Height`, so `LayoutEvidence.fs` never collides (see `Vec2.fs`, `[[fs-gg-model-swap]]`).
+      `X`/`Y`/`Width`/`Height`, so `LayoutEvidence.fs` never collides (see `Vec2.fs`, `[[fs-gg-game:fs-gg-model-swap]]`).
 - [ ] `<ProductDir>/Vec2.fs` — the collision-safe `Geometry.Vec2` helper the starter is built on.
       Yours to adapt (rename `Vx`/`Vy`, add a `Z`) or delete after you swap `Model.fs` off it.
 - [ ] `<ProductDir>/View.fs` — the starter `view` (`Model -> SceneNode`) reading `model.Ball.Pos`
