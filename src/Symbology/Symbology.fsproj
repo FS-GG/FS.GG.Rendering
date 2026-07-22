@@ -27,6 +27,8 @@
     <Compile Include="Legibility.fs" />
     <Compile Include="Coverage.fsi" />
     <Compile Include="Coverage.fs" />
+    <Compile Include="Catalog.fsi" />
+    <Compile Include="Catalog.fs" />
   </ItemGroup>
 
   <ItemGroup>

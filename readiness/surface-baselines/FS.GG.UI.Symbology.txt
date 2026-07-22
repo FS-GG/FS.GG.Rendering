@@ -1,6 +1,13 @@
 FS.GG.UI.Symbology.AutoField
 FS.GG.UI.Symbology.AutoField+Tags
 FS.GG.UI.Symbology.AutoLabelSpec
+FS.GG.UI.Symbology.Catalog
+FS.GG.UI.Symbology.Catalog+Catalog
+FS.GG.UI.Symbology.Catalog+Entry
+FS.GG.UI.Symbology.Catalog+Visual
+FS.GG.UI.Symbology.Catalog+Visual+Hidden
+FS.GG.UI.Symbology.Catalog+Visual+Shown
+FS.GG.UI.Symbology.Catalog+Visual+Tags
 FS.GG.UI.Symbology.Coverage
 FS.GG.UI.Symbology.Coverage+Finding`1
 FS.GG.UI.Symbology.Coverage+Gap
