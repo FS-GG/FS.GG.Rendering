@@ -89,10 +89,12 @@ let assertNoPreRebrandEngineIdentifier () =
 // upgrade; TowerDefense1 M8's persistence-sink upgrade forced edits to a suite meant to survive swaps.)
 //
 // The persistent host VALUE a governed default launch threads into the launcher, per family (feature
-// 086, FR-006): the controls family launches the pointer-aware `interactiveHost`, the game/sample-pack
-// family the keyboard-only `generatedHost`. This is a host value the product names, not a launcher
-// overload — a sanctioned launcher upgrade renames the runner, not the host it is handed.
-//#if (profile == "app")
+// 086, FR-006; #991/#1000): the controls family AND the game family launch the pointer-aware
+// `interactiveHost` — the game moved onto it when its turnkey default became the generic game shell,
+// whose clickable menu needs the pointer host — while `sample-pack` keeps the keyboard-only
+// `generatedHost`. This is a host value the product names, not a launcher overload — a sanctioned
+// launcher upgrade renames the runner, not the host it is handed.
+//#if (profile == "app" || profile == "game")
 let persistentHostValue = "interactiveHost"
 //#else
 let persistentHostValue = "generatedHost"

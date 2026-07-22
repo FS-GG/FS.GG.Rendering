@@ -151,16 +151,19 @@ let movePaddle side direction model =
 // Keyboard → paddle moves. W/S drive the left paddle; Up/Down the right paddle. Replace this
 // mapping when you swap in your own game (EvidenceCommands.mapKey wraps it as ViewerInput).
 //
-// HOST INPUT BOUNDARY — the game family's default host is KEYBOARD-ONLY (feature 139).
-// This starter launches through `Viewer.runApp` over `GeneratedAppHost` (see Program.fs), whose
-// only input seam is `MapKey: ViewerKey -> bool -> _`. `ViewerKey` has NO mouse/pointer case — a
-// key press arrives at the host as `DispatchInput of ViewerKey * isDown`, which is what maps to
-// `ViewerInput` below. So a mouse-aimed control scheme (e.g. twin-stick WASD + mouse aim) CANNOT be
-// wired here: there is no mouse to read at this site. Reading the mouse requires the pointer-aware
-// interactive host — `InteractiveAppHost` driven by `Controls.Elmish.runInteractiveApp`, which adds
-// a `MapPointer: ViewerPointerInput -> Size -> _ -> _` seam (the same host the `app`/controls family
-// uses in Program.fs). Moving onto it is a durable, governance-scanned host-wiring change in
-// Program.fs, not an edit at this mapping — decide your control scheme with that in mind.
+// HOST INPUT BOUNDARY — this PLAY-INPUT mapping is KEYBOARD-ONLY (feature 139). `paddleForKey`
+// resolves a `ViewerKey` to a paddle move; `ViewerKey` has NO mouse/pointer case, so a key press
+// arrives here as `DispatchInput of ViewerKey * isDown` and maps to `ViewerInput` below. A
+// mouse-aimed control scheme (e.g. twin-stick WASD + mouse aim) therefore CANNOT be wired at this
+// site: there is no mouse to read here.
+//
+// The game's turnkey DEFAULT launch, however, now boots the generic game shell on the pointer-aware
+// interactive host (#991/#1000): `InteractiveAppHost` driven by `Controls.Elmish.runInteractiveApp`
+// (see EvidenceCommands.interactiveHost / Program.fs), the same host the `app`/controls family uses,
+// which adds a `MapPointer` seam so the shell's clickable menu works. Live play keys still flow
+// through the shell's raw-key seam into `paddleForKey` — so to give GAMEPLAY a mouse you read the
+// pointer at the interactive host's `MapPointer`, not at this keyboard mapping. Decide your control
+// scheme with that boundary in mind.
 let private paddleForKey key =
     match key with
     | Letter 'W' -> Some(LeftSide, PaddleUp)
