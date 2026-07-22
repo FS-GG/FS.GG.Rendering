@@ -211,6 +211,64 @@ vocabulary  warning
 # ---- DesignSystem/Types.DesignSystem.fsi
 vocabulary  neutral
 
+# #984 — VENDORED BY #984, DOCUMENTED NOWHERE YET. The game-profile simulation modules
+# (Ai/Difficulty, Ballistics, Dice, Effects, Fov, Los, Visibility, Scene.Animation) were entirely
+# WAIVED out of the mirror; #984 un-waived them so a game scaffold carries the full surface. Their
+# vals are documented in NO shipped skill and NOT in the owner-sourced `fs-gg-game-core` (which covers
+# only fixed-step / RNG / pathfinding / spatial-grid / geometry / physics — NOT these), so they are
+# `tracked` gaps here: a game author WANTS them and cannot find them. The follow-up documents them in
+# the reach-matching skill (owner-sourced `fs-gg-game-core` for the sim modules; `fs-gg-visibility` /
+# `fs-gg-line-drawing` for Los/Fov/Visibility; `fs-gg-scene` for Animation), at which point S-DOC rule 2
+# takes each line the moment its skill cites it. Filed as FS-GG/FS.GG.Rendering follow-up to #984.
+
+# ---- Game.Core/Ai.fsi
+tracked     aimError
+tracked     best
+tracked     due
+tracked     easy
+tracked     fleeField
+tracked     ghosts
+tracked     hard
+tracked     influenceMap
+tracked     known
+tracked     normal
+tracked     spotted
+tracked     substream
+tracked     threatField
+tracked     tryFind
+tracked     viewTick
+
+# ---- Game.Core/Ballistics.fsi
+tracked     intercept
+tracked     inverseSquareFalloff
+tracked     linearFalloff
+tracked     splash
+
+# ---- Game.Core/Dice.fsi
+tracked     advantage
+tracked     constant
+tracked     convolve
+tracked     die
+tracked     disadvantage
+tracked     outcomes
+tracked     totalWeight
+tracked     uniform
+tracked     variance
+
+# ---- Game.Core/Effects.fsi
+tracked     amplify
+tracked     applyAll
+tracked     applyEffect
+tracked     floorAt
+tracked     gatedBy
+tracked     immuneWhen
+tracked     pipeline
+tracked     resist
+tracked     tickEffects
+
+# ---- Game.Core/Fov.fsi
+tracked     fov
+
 # ---- Game.Core/Geometry.fsi
 vocabulary  obbPolygon
 vocabulary  ofCenter
@@ -219,6 +277,11 @@ vocabulary  polygonManifold
 vocabulary  segmentAabbHit
 vocabulary  segmentCircleHit
 vocabulary  segmentPolygonHit
+
+# ---- Game.Core/Los.fsi   (see the #984 note above; `line` / `supercover` / `lineOfSight` are carried
+#                           by other files and already accounted for — only these two are new here)
+tracked     lineOfSightBy
+tracked     trace
 
 # ---- Game.Core/Pathfinding.fsi
 tracked     distanceField
@@ -269,6 +332,22 @@ vocabulary  layoutIntent
 vocabulary  layoutSize
 vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
+
+# ---- Scene/Animation.fsi   (vendored by #984 — see the Game.Core sim-module note above; `empty` /
+#                             `create` / `advance` / `value` / `apply` / `sample` / `lerp` are carried
+#                             by other files and already accounted for)
+tracked     applyAt
+tracked     identity
+tracked     isActive
+tracked     isIdentity
+tracked     isSettled
+tracked     lerpColor
+tracked     lerpFloat
+tracked     progress
+tracked     retarget
+tracked     sampleColor
+tracked     sampleFrames
+tracked     toPerspectiveTransform
 
 # ---- Scene/Scene.fsi
 # `describe` has NO line here, and #692 is the record of why — because its absence has meant two different

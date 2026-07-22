@@ -986,6 +986,126 @@ open   FS.GG.UI.SkiaViewer
 +      Elmish.fsi val ElmishAdapter.update
 
 # ------------------------------------------------------------------------------------------
+file   Game.Core/Ai.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Ai.fsi type AgentId
++      Ai.fsi type Sighting`1
++      Ai.fsi type TeamView`1
++      Ai.fsi type Difficulty
++      Ai.fsi val Ai.view
++      Ai.fsi val Ai.viewTick
++      Ai.fsi val Ai.spotted
++      Ai.fsi val Ai.ghosts
++      Ai.fsi val Ai.known
++      Ai.fsi val Ai.tryFind
++      Ai.fsi val Ai.substream
++      Ai.fsi val Ai.due
++      Ai.fsi val Ai.aimError
++      Ai.fsi val Ai.threatField
++      Ai.fsi val Ai.fleeField
++      Ai.fsi val Ai.best
++      Ai.fsi val Ai.influenceMap
++      Ai.fsi val Difficulty.easy
++      Ai.fsi val Difficulty.normal
++      Ai.fsi val Difficulty.hard
++      Ai.fsi val Difficulty.clamp
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Ballistics.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Ballistics.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Ballistics.fsi type Projectile
++      Ballistics.fsi type ProjectileStep
++      Ballistics.fsi val Ballistics.step
++      Ballistics.fsi val Ballistics.intercept
++      Ballistics.fsi val Ballistics.linearFalloff
++      Ballistics.fsi val Ballistics.inverseSquareFalloff
++      Ballistics.fsi val Ballistics.splash
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Dice.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Dice.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Dice.fsi type Distribution
++      Dice.fsi val Dice.outcomes
++      Dice.fsi val Dice.totalWeight
++      Dice.fsi val Dice.constant
++      Dice.fsi val Dice.uniform
++      Dice.fsi val Dice.die
++      Dice.fsi val Dice.convolve
++      Dice.fsi val Dice.repeat
++      Dice.fsi val Dice.advantage
++      Dice.fsi val Dice.disadvantage
++      Dice.fsi val Dice.mean
++      Dice.fsi val Dice.variance
++      Dice.fsi val Dice.sample
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Effects.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Effects.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Effects.fsi type Source
++      Effects.fsi type Damage`1
++      Effects.fsi type StageResult
++      Effects.fsi type Stage`2
++      Effects.fsi type DamageTrace
++      Effects.fsi val Effects.pipeline
++      Effects.fsi val Effects.applyAll
++      Effects.fsi val Effects.amplify
++      Effects.fsi val Effects.resist
++      Effects.fsi val Effects.subtract
++      Effects.fsi val Effects.floorAt
++      Effects.fsi val Effects.immuneWhen
++      Effects.fsi val Effects.gatedBy
++      Effects.fsi type Effects.Active`1
++      Effects.fsi type Effects.Policy`1
++      Effects.fsi val Effects.applyEffect
++      Effects.fsi val Effects.tickEffects
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Fov.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Fov.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Fov.fsi val Fov.fov
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Los.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Los.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Los.fsi type LineMode
++      Los.fsi val Los.line
++      Los.fsi val Los.supercover
++      Los.fsi val Los.trace
++      Los.fsi val Los.lineOfSight
++      Los.fsi val Los.lineOfSightBy
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/Visibility.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Visibility.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      Visibility.fsi type Visibility.Segment
++      Visibility.fsi type Visibility.Settings
++      Visibility.fsi type Visibility.VisibilityPolygon
++      Visibility.fsi val Visibility.raySegment
++      Visibility.fsi val Visibility.isVisible
++      Visibility.fsi val Visibility.polygon
+
+# ------------------------------------------------------------------------------------------
 file   Game.Core/FixedStep.fsi
 skill  fs-gg-game-core
 header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
@@ -1258,6 +1378,38 @@ open   FS.GG.UI.Scene
 +      Types.fsi val Defaults.child
 
 # ------------------------------------------------------------------------------------------
+file   Scene/Animation.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
+open   System
++      Animation.fsi type Easing
++      Animation.fsi type Transform
++      Animation.fsi type Tween`1
++      Animation.fsi type Animation
++      Animation.fsi type AnimationState`1
++      Animation.fsi val Easing.apply
++      Animation.fsi val Easing.Default
++      Animation.fsi val Transform.identity
++      Animation.fsi val Transform.isIdentity
++      Animation.fsi val Transform.lerp
++      Animation.fsi val Transform.toPerspectiveTransform
++      Animation.fsi val Tween.progress
++      Animation.fsi val Tween.sample
++      Animation.fsi val Animation.lerpFloat
++      Animation.fsi val Animation.lerpColor
++      Animation.fsi val Animation.empty
++      Animation.fsi val Animation.sampleColor
++      Animation.fsi val Animation.applyAt
++      Animation.fsi val Animation.sampleFrames
++      Animation.fsi val Animation.isSettled
++      Animation.fsi val AnimationState.create
++      Animation.fsi val AnimationState.advance
++      Animation.fsi val AnimationState.retarget
++      Animation.fsi val AnimationState.value
++      Animation.fsi val AnimationState.isActive
+
+# ------------------------------------------------------------------------------------------
 file   Scene/Scene.fsi
 skill  fs-gg-scene
 ns     FS.GG.UI.Scene
@@ -1501,6 +1653,8 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val Viewer.runAppWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.runAppWithAudio
 +      SkiaViewer.fsi val Viewer.runAppWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.runAppWithPersistence
++      SkiaViewer.fsi val Viewer.runAppWithAudioAndPersistence
 +      SkiaViewer.fsi val Viewer.runInteractiveViewer
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithAudio
@@ -1746,47 +1900,6 @@ waive FS.GG.Audio.Host Host.fsi val DeviceDiagnostics.message
 waive FS.GG.Audio.Host Host.fsi val DeviceDiagnostics.recovered
 waive FS.GG.Audio.Host Host.fsi type Silence
 waive FS.GG.Audio.Host Host.fsi val Wav.FormatPcm
-waive FS.GG.Game.Core Ai.fsi type AgentId
-waive FS.GG.Game.Core Ai.fsi val Ai.aimError
-waive FS.GG.Game.Core Ai.fsi val Ai.best
-waive FS.GG.Game.Core Ai.fsi val Ai.due
-waive FS.GG.Game.Core Ai.fsi val Ai.fleeField
-waive FS.GG.Game.Core Ai.fsi val Ai.ghosts
-waive FS.GG.Game.Core Ai.fsi val Ai.influenceMap
-waive FS.GG.Game.Core Ai.fsi val Ai.known
-waive FS.GG.Game.Core Ai.fsi val Ai.spotted
-waive FS.GG.Game.Core Ai.fsi val Ai.substream
-waive FS.GG.Game.Core Ai.fsi val Ai.threatField
-waive FS.GG.Game.Core Ai.fsi val Ai.tryFind
-waive FS.GG.Game.Core Ai.fsi val Ai.view
-waive FS.GG.Game.Core Ai.fsi val Ai.viewTick
-waive FS.GG.Game.Core Ai.fsi type Difficulty
-waive FS.GG.Game.Core Ai.fsi val Difficulty.clamp
-waive FS.GG.Game.Core Ai.fsi val Difficulty.easy
-waive FS.GG.Game.Core Ai.fsi val Difficulty.hard
-waive FS.GG.Game.Core Ai.fsi val Difficulty.normal
-waive FS.GG.Game.Core Ai.fsi type Sighting`1
-waive FS.GG.Game.Core Ai.fsi type TeamView`1
-waive FS.GG.Game.Core Ballistics.fsi val Ballistics.intercept
-waive FS.GG.Game.Core Ballistics.fsi val Ballistics.inverseSquareFalloff
-waive FS.GG.Game.Core Ballistics.fsi val Ballistics.linearFalloff
-waive FS.GG.Game.Core Ballistics.fsi val Ballistics.splash
-waive FS.GG.Game.Core Ballistics.fsi val Ballistics.step
-waive FS.GG.Game.Core Ballistics.fsi type Projectile
-waive FS.GG.Game.Core Ballistics.fsi type ProjectileStep
-waive FS.GG.Game.Core Dice.fsi val Dice.advantage
-waive FS.GG.Game.Core Dice.fsi val Dice.constant
-waive FS.GG.Game.Core Dice.fsi val Dice.convolve
-waive FS.GG.Game.Core Dice.fsi val Dice.die
-waive FS.GG.Game.Core Dice.fsi val Dice.disadvantage
-waive FS.GG.Game.Core Dice.fsi val Dice.mean
-waive FS.GG.Game.Core Dice.fsi val Dice.outcomes
-waive FS.GG.Game.Core Dice.fsi val Dice.repeat
-waive FS.GG.Game.Core Dice.fsi val Dice.sample
-waive FS.GG.Game.Core Dice.fsi val Dice.totalWeight
-waive FS.GG.Game.Core Dice.fsi val Dice.uniform
-waive FS.GG.Game.Core Dice.fsi val Dice.variance
-waive FS.GG.Game.Core Dice.fsi type Distribution
 waive FS.GG.Game.Core Edges.fsi type Dir
 waive FS.GG.Game.Core Edges.fsi type Edge
 waive FS.GG.Game.Core Edges.fsi val Edges.astar
@@ -1803,24 +1916,6 @@ waive FS.GG.Game.Core Edges.fsi val Edges.step
 waive FS.GG.Game.Core Edges.fsi val Edges.vertexCells
 waive FS.GG.Game.Core Edges.fsi val Edges.vertexEdges
 waive FS.GG.Game.Core Edges.fsi type Vertex
-waive FS.GG.Game.Core Effects.fsi type DamageTrace
-waive FS.GG.Game.Core Effects.fsi type Damage`1
-waive FS.GG.Game.Core Effects.fsi type Effects.Active`1
-waive FS.GG.Game.Core Effects.fsi type Effects.Policy`1
-waive FS.GG.Game.Core Effects.fsi val Effects.amplify
-waive FS.GG.Game.Core Effects.fsi val Effects.applyAll
-waive FS.GG.Game.Core Effects.fsi val Effects.applyEffect
-waive FS.GG.Game.Core Effects.fsi val Effects.floorAt
-waive FS.GG.Game.Core Effects.fsi val Effects.gatedBy
-waive FS.GG.Game.Core Effects.fsi val Effects.immuneWhen
-waive FS.GG.Game.Core Effects.fsi val Effects.pipeline
-waive FS.GG.Game.Core Effects.fsi val Effects.resist
-waive FS.GG.Game.Core Effects.fsi val Effects.subtract
-waive FS.GG.Game.Core Effects.fsi val Effects.tickEffects
-waive FS.GG.Game.Core Effects.fsi type Source
-waive FS.GG.Game.Core Effects.fsi type StageResult
-waive FS.GG.Game.Core Effects.fsi type Stage`2
-waive FS.GG.Game.Core Fov.fsi val Fov.fov
 waive FS.GG.Game.Core Grids.fsi type Grids.Edge
 waive FS.GG.Game.Core Grids.fsi type Grids.EdgeOrientation
 waive FS.GG.Game.Core Grids.fsi type Grids.GridSpec
@@ -1866,12 +1961,6 @@ waive FS.GG.Game.Core InputCommand.fsi val Command.all
 waive FS.GG.Game.Core InputCommand.fsi val Command.id
 waive FS.GG.Game.Core InputCommand.fsi val Command.label
 waive FS.GG.Game.Core InputCommand.fsi val Command.ofId
-waive FS.GG.Game.Core Los.fsi type LineMode
-waive FS.GG.Game.Core Los.fsi val Los.line
-waive FS.GG.Game.Core Los.fsi val Los.lineOfSight
-waive FS.GG.Game.Core Los.fsi val Los.lineOfSightBy
-waive FS.GG.Game.Core Los.fsi val Los.supercover
-waive FS.GG.Game.Core Los.fsi val Los.trace
 waive FS.GG.Game.Core Pathfinding.fsi type Pathfinding.Landmarks
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Landmarks.astar
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.Landmarks.build
@@ -1886,12 +1975,6 @@ waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.jps
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.pathTo
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.reachable
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.smooth
-waive FS.GG.Game.Core Visibility.fsi type Visibility.Segment
-waive FS.GG.Game.Core Visibility.fsi type Visibility.Settings
-waive FS.GG.Game.Core Visibility.fsi type Visibility.VisibilityPolygon
-waive FS.GG.Game.Core Visibility.fsi val Visibility.isVisible
-waive FS.GG.Game.Core Visibility.fsi val Visibility.polygon
-waive FS.GG.Game.Core Visibility.fsi val Visibility.raySegment
 waive FS.GG.UI.Build Evidence.fsi val Audit.evaluate
 waive FS.GG.UI.Build Evidence.fsi val Audit.render
 waive FS.GG.UI.Build Evidence.fsi type EvidenceNode
@@ -2265,31 +2348,6 @@ waive FS.GG.UI.Layout Types.fsi type LayoutContentExtentSource
 waive FS.GG.UI.Layout Types.fsi type LayoutMeasuredSize
 waive FS.GG.UI.Layout Types.fsi type LayoutMeasurementRequest
 waive FS.GG.UI.Layout Types.fsi type MeasuredLayoutResult
-waive FS.GG.UI.Scene Animation.fsi type Animation
-waive FS.GG.UI.Scene Animation.fsi val Animation.applyAt
-waive FS.GG.UI.Scene Animation.fsi val Animation.empty
-waive FS.GG.UI.Scene Animation.fsi val Animation.isSettled
-waive FS.GG.UI.Scene Animation.fsi val Animation.lerpColor
-waive FS.GG.UI.Scene Animation.fsi val Animation.lerpFloat
-waive FS.GG.UI.Scene Animation.fsi val Animation.sampleColor
-waive FS.GG.UI.Scene Animation.fsi val Animation.sampleFrames
-waive FS.GG.UI.Scene Animation.fsi val AnimationState.advance
-waive FS.GG.UI.Scene Animation.fsi val AnimationState.create
-waive FS.GG.UI.Scene Animation.fsi val AnimationState.isActive
-waive FS.GG.UI.Scene Animation.fsi val AnimationState.retarget
-waive FS.GG.UI.Scene Animation.fsi val AnimationState.value
-waive FS.GG.UI.Scene Animation.fsi type AnimationState`1
-waive FS.GG.UI.Scene Animation.fsi type Easing
-waive FS.GG.UI.Scene Animation.fsi val Easing.Default
-waive FS.GG.UI.Scene Animation.fsi val Easing.apply
-waive FS.GG.UI.Scene Animation.fsi type Transform
-waive FS.GG.UI.Scene Animation.fsi val Transform.identity
-waive FS.GG.UI.Scene Animation.fsi val Transform.isIdentity
-waive FS.GG.UI.Scene Animation.fsi val Transform.lerp
-waive FS.GG.UI.Scene Animation.fsi val Transform.toPerspectiveTransform
-waive FS.GG.UI.Scene Animation.fsi val Tween.progress
-waive FS.GG.UI.Scene Animation.fsi val Tween.sample
-waive FS.GG.UI.Scene Animation.fsi type Tween`1
 waive FS.GG.UI.Scene Evidence.fsi val SceneEvidence.setRealPngRasterizer
 waive FS.GG.UI.Scene Inspection.fsi val RetainedInspection.artifactDiagnostics
 waive FS.GG.UI.Scene Inspection.fsi val RetainedInspection.damageRegion
@@ -2588,8 +2646,6 @@ waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.responsivenessSummaryToJson
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.responsivenessSummaryToMarkdown
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.responsivenessVisibleResponseToken
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.run
-waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.runAppWithAudioAndPersistence
-waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.runAppWithPersistence
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.runInteractiveViewerScript
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithWindowBehavior
 waive FS.GG.UI.SkiaViewer SkiaViewer.fsi val Viewer.summarizeResponsivenessRecords

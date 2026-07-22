@@ -76,6 +76,61 @@ let coverageVerdictTests =
           } ]
 
 // -----------------------------------------------------------------------------------------------------
+// profileGaps — the PROFILE-COMPLETENESS half (#984). The #925 reconcile above closes "untaught by
+// silence" member by member, but a maintainer satisfies it while dropping a whole MODULE by waiving every
+// one of its members — which is how the scaffold shipped `Effects`/`Ballistics`/`Dice`/`Los`/`Fov`/`Ai`/
+// `Visibility`/`Scene.Animation` teaching NONE of them. This is the module-level guard, pure and tested
+// here for the same reason the reconcile is.
+// -----------------------------------------------------------------------------------------------------
+
+let private pm package source : ProfileModule = { Package = package; Source = source }
+
+// A synthetic two-module surface: one module fully vendored, one entirely waived.
+let private effA = key "FS.GG.Game.Core" "Effects.fsi" "val" "Effects.pipeline"
+let private effB = key "FS.GG.Game.Core" "Effects.fsi" "type" "Source"
+let private aiA = key "FS.GG.Game.Core" "Ai.fsi" "val" "Ai.view"
+let private profileUniverse = [ effA; effB; aiA ]
+
+[<Tests>]
+let profileCompletenessTests =
+    testList
+        "issue-984 game-profile completeness"
+        [ test "a declared module with NO taught member is a gap — the whole-module drop the reconcile misses" {
+              // Every member waived: the #925 reconcile is green (each member IS a decision), yet the module
+              // is dropped. This is the only check that reds.
+              let declared = [ pm "FS.GG.Game.Core" "Effects.fsi" ]
+              let gaps = profileGaps profileUniverse Set.empty declared
+              Expect.equal (gaps |> List.map (fun g -> g.Source, g.Reason)) [ ("Effects.fsi", "AllWaived") ] "an entirely-waived declared module is reported AllWaived"
+          }
+
+          test "a declared module with at least one taught member is NOT a gap" {
+              let declared = [ pm "FS.GG.Game.Core" "Effects.fsi" ]
+              let gaps = profileGaps profileUniverse (Set.ofList [ effA ]) declared
+              Expect.isEmpty gaps "teaching one member of the module vendors it — no gap"
+          }
+
+          test "a declared module the pin ships no member for is a ROTTED declaration — fails closed" {
+              // The #266 posture: the list cannot decay into a vacuous green. A module that left the pin is
+              // flagged distinctly so a maintainer removes or corrects the declaration.
+              let declared = [ pm "FS.GG.Game.Core" "Removed.fsi" ]
+              let gaps = profileGaps profileUniverse Set.empty declared
+              Expect.equal (gaps |> List.map (fun g -> g.Source, g.Reason)) [ ("Removed.fsi", "Vanished") ] "a declared module absent from the pin is Vanished"
+          }
+
+          test "gaps are reported for exactly the undecided modules, sorted" {
+              let declared = [ pm "FS.GG.Game.Core" "Effects.fsi"; pm "FS.GG.Game.Core" "Ai.fsi" ]
+              // Ai has a taught member; Effects has none.
+              let gaps = profileGaps profileUniverse (Set.ofList [ aiA ]) declared
+              Expect.equal (gaps |> List.map (fun g -> g.Source)) [ "Effects.fsi" ] "only the entirely-waived declared module is reported"
+          }
+
+          test "the canonical game-profile list names the modules #984 un-waived" {
+              let sources = gameProfileModules |> List.map (fun m -> m.Source) |> Set.ofList
+              [ "Ai.fsi"; "Ballistics.fsi"; "Dice.fsi"; "Effects.fsi"; "Fov.fsi"; "Los.fsi"; "Visibility.fsi"; "Animation.fsi" ]
+              |> List.iter (fun s -> Expect.isTrue (sources.Contains s) $"game-profile list declares {s}")
+          } ]
+
+// -----------------------------------------------------------------------------------------------------
 // duplicateIncludes — the WELL-FORMEDNESS half (#982). The generator renders each `+` include verbatim, in
 // order, so a member listed twice in one stanza is rendered twice: the `Pathfinding.fsi` Step/Reach
 // TRIPLICATION TowerDefense1#4 saw. The #925 reconcile above is blind to it — `taughtSet` is a Set — so this
@@ -236,6 +291,26 @@ let coverageWiringTests =
                   |> Array.filter (fun (_, n) -> n > 1)
                   |> Array.map fst
               Expect.isEmpty dups (sprintf "duplicate waiver line(s): %A" dups)
+          }
+
+          test "the generator calls the profile-completeness gate and fails on an entirely-dropped module (#984)" {
+              Expect.stringContains generator "Coverage.profileGaps" "the generator calls the module-level completeness decision"
+              Expect.stringContains generator "Coverage.gameProfileModules" "it feeds the canonical game-profile list"
+              Expect.stringContains generator "not fully vendored" "it fails, naming the dropped module(s)"
+          }
+
+          test "the un-waived game-profile modules are TAUGHT in the committed manifest, not waived (#984)" {
+              // The regression the item closed: each of these was `waive`d member-for-member. A `+ <Mod>.fsi`
+              // line now teaches each, and no `waive ... <Mod>.fsi` line survives.
+              let lines = manifest.Replace("\r\n", "\n").Split('\n')
+              [ "Ai.fsi"; "Ballistics.fsi"; "Dice.fsi"; "Effects.fsi"; "Fov.fsi"; "Los.fsi"; "Visibility.fsi" ]
+              |> List.iter (fun m ->
+                  Expect.isTrue
+                      (lines |> Array.exists (fun l -> l.TrimStart().StartsWith $"+      {m} "))
+                      $"the manifest teaches at least one member of Game.Core/{m}"
+                  Expect.isFalse
+                      (lines |> Array.exists (fun l -> l.StartsWith $"waive FS.GG.Game.Core {m} "))
+                      $"no waiver survives for Game.Core/{m}")
           }
 
           test "the generator loads the coverage module and fails on a duplicate include (#982)" {

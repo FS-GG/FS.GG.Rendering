@@ -39,38 +39,16 @@
 # `OmissionLedgerCeiling` literal in TemplateConsumesPinnedApiTests.fs is what enforces that.
 # ------------------------------------------------------------------------------------------------
 
-# FS.GG.Game.Core (31 — was 38; #767 paid off `Physics` and the six types scoped to it)
-module FS.GG.Game.Core::FS.GG.Game.Core.Ai
-module FS.GG.Game.Core::FS.GG.Game.Core.Ballistics
+# FS.GG.Game.Core (7 — was 38; #767 paid off `Physics` + its six types, #984 paid off the game-profile
+#                  simulation modules Ai/Difficulty, Ballistics, Effects, Fov, Los, Visibility + their
+#                  types by MIRRORING them. Only the Command / Grids surface remains waived here.)
 module FS.GG.Game.Core::FS.GG.Game.Core.Command
-module FS.GG.Game.Core::FS.GG.Game.Core.Difficulty
-module FS.GG.Game.Core::FS.GG.Game.Core.Effects
-module FS.GG.Game.Core::FS.GG.Game.Core.Fov
 module FS.GG.Game.Core::FS.GG.Game.Core.Grids
-module FS.GG.Game.Core::FS.GG.Game.Core.Los
-module FS.GG.Game.Core::FS.GG.Game.Core.Visibility
-type FS.GG.Game.Core::FS.GG.Game.Core.Active`1
-type FS.GG.Game.Core::FS.GG.Game.Core.AgentId
 type FS.GG.Game.Core::FS.GG.Game.Core.Command
-type FS.GG.Game.Core::FS.GG.Game.Core.DamageTrace
-type FS.GG.Game.Core::FS.GG.Game.Core.Damage`1
-type FS.GG.Game.Core::FS.GG.Game.Core.Difficulty
 type FS.GG.Game.Core::FS.GG.Game.Core.Edge
 type FS.GG.Game.Core::FS.GG.Game.Core.EdgeOrientation
 type FS.GG.Game.Core::FS.GG.Game.Core.GridSpec
-type FS.GG.Game.Core::FS.GG.Game.Core.LineMode
-type FS.GG.Game.Core::FS.GG.Game.Core.Policy`1
-type FS.GG.Game.Core::FS.GG.Game.Core.Projectile
-type FS.GG.Game.Core::FS.GG.Game.Core.ProjectileStep
-type FS.GG.Game.Core::FS.GG.Game.Core.Segment
-type FS.GG.Game.Core::FS.GG.Game.Core.Settings
-type FS.GG.Game.Core::FS.GG.Game.Core.Sighting`1
-type FS.GG.Game.Core::FS.GG.Game.Core.Source
-type FS.GG.Game.Core::FS.GG.Game.Core.StageResult
-type FS.GG.Game.Core::FS.GG.Game.Core.Stage`2
-type FS.GG.Game.Core::FS.GG.Game.Core.TeamView`1
 type FS.GG.Game.Core::FS.GG.Game.Core.Vertex
-type FS.GG.Game.Core::FS.GG.Game.Core.VisibilityPolygon
 
 # FS.GG.UI.Canvas (1)
 type FS.GG.UI.Canvas::FS.GG.UI.Canvas.PersistenceOutcome
@@ -230,17 +208,11 @@ type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
 type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
 type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
 
-# FS.GG.UI.Scene (64)
-module FS.GG.UI.Scene::FS.GG.UI.Scene.Animation
-module FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationState
-module FS.GG.UI.Scene::FS.GG.UI.Scene.Easing
+# FS.GG.UI.Scene (54 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
+#                 Easing / Transform / Tween modules and types) by MIRRORING it.)
 module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
-module FS.GG.UI.Scene::FS.GG.UI.Scene.Transform
-module FS.GG.UI.Scene::FS.GG.UI.Scene.Tween
 module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
-type FS.GG.UI.Scene::FS.GG.UI.Scene.Animation
-type FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationState`1
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityRequirement
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityVerdict
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageInspectionStatus
@@ -248,7 +220,6 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageLocalityFinding
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageNodeCounts
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageRegionInspection
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DegradationPolicy
-type FS.GG.UI.Scene::FS.GG.UI.Scene.Easing
 type FS.GG.UI.Scene::FS.GG.UI.Scene.IntentionalDamageException
 type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageDiagnostic
 type FS.GG.UI.Scene::FS.GG.UI.Scene.PackageDiagnosticStage
@@ -274,8 +245,6 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.SemanticComparison
 type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextMetrics
 type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextResult
 type FS.GG.UI.Scene::FS.GG.UI.Scene.TargetCapabilityProfile
-type FS.GG.UI.Scene::FS.GG.UI.Scene.Transform
-type FS.GG.UI.Scene::FS.GG.UI.Scene.Tween`1
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualClipFact
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionArtifact
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionClipStatus
@@ -461,7 +430,9 @@ type FS.GG.Audio.Host::FS.GG.Audio.Host.Silence
 
 # ------------------------------------------------------------------------------------------------
 # ADDED AT $(FsGgUiVersion)=0.14.0 — 10 omissions (5 modules, 5 types): the FS.GG.Game.Core dice /
-# grid-edge / hex / pathfinding-landmark-and-region surface. The 0.14.0 pin exports these modules and
+# grid-edge / hex / pathfinding-landmark-and-region surface. #984 later MIRRORED the `Dice` module and
+# its `Distribution` type (game-profile completeness), paying off 2 of these; the grid-edge / hex /
+# pathfinding-landmark-and-region surface (8 entries) stays waived, matching the manifest. The 0.14.0 pin exports these modules and
 # types, and every one of their public members is WAIVED in scripts/api-surface-manifest.txt (e.g. the
 # whole `Dice.*` val set, `Hex.fsi type Hex`, `Edges.fsi type Dir/Edge/Vertex`, `Pathfinding.fsi type
 # Pathfinding.Landmarks/Regions`), so the mirror generator emits no `.fsi` for them and the mirror
@@ -475,13 +446,11 @@ type FS.GG.Audio.Host::FS.GG.Audio.Host.Silence
 # deferred it as ReleasePending, and the gate went green. Nothing re-asks after the publish, so the debt
 # landed on the next PR to run a cold restore — #937 / PR #940, which had not touched Game.Core at all.
 # Filed and fixed as #941.
-module FS.GG.Game.Core::FS.GG.Game.Core.Dice
 module FS.GG.Game.Core::FS.GG.Game.Core.Edges
 module FS.GG.Game.Core::FS.GG.Game.Core.Hex
 module FS.GG.Game.Core::FS.GG.Game.Core.Pathfinding.Landmarks
 module FS.GG.Game.Core::FS.GG.Game.Core.Pathfinding.Regions
 type FS.GG.Game.Core::FS.GG.Game.Core.Dir
-type FS.GG.Game.Core::FS.GG.Game.Core.Distribution
 type FS.GG.Game.Core::FS.GG.Game.Core.Hex
 type FS.GG.Game.Core::FS.GG.Game.Core.Landmarks
 type FS.GG.Game.Core::FS.GG.Game.Core.Regions

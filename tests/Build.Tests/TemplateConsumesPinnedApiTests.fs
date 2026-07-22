@@ -2525,8 +2525,14 @@ let private omissionLedger =
 /// hex / pathfinding-landmark-and-region surface the 0.14.0 pin added — every member is waived in
 /// scripts/api-surface-manifest.txt, so these ten module/type omissions reconcile this ledger to that
 /// manifest decision; see the ledger's own dated stanza (#941).
+///
+/// Lowered 392 -> 356 by #984: the game-profile simulation modules (Ai/Difficulty, Ballistics, Dice,
+/// Effects, Fov, Los, Visibility) and Scene.Animation (Animation/AnimationState/Easing/Transform/Tween)
+/// were un-waived in scripts/api-surface-manifest.txt and are now MIRRORED, so their 36 module/type
+/// omission entries were paid off and deleted here (the ratchet only shrinks). This is the debt #984
+/// paid, reconciling this ledger to the same manifest change that added the mirror files.
 [<Literal>]
-let private OmissionLedgerCeiling = 392
+let private OmissionLedgerCeiling = 356
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
