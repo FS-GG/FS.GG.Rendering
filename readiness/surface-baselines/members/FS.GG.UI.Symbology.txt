@@ -8,6 +8,20 @@ FS.GG.UI.Symbology.AutoField+Tags.ThreatTier : System.Int32
 FS.GG.UI.Symbology.AutoLabelSpec.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField> [get]
 FS.GG.UI.Symbology.AutoLabelSpec.Separator : System.String [get]
 FS.GG.UI.Symbology.AutoLabelSpec.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>, System.String)
+FS.GG.UI.Symbology.Catalog+Catalog.Entries : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+Entry> [get]
+FS.GG.UI.Symbology.Catalog+Catalog.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+Entry>)
+FS.GG.UI.Symbology.Catalog+Entry.Element : System.String [get]
+FS.GG.UI.Symbology.Catalog+Entry.Visual : FS.GG.UI.Symbology.Catalog+Visual [get]
+FS.GG.UI.Symbology.Catalog+Entry.new(System.String, FS.GG.UI.Symbology.Catalog+Visual)
+FS.GG.UI.Symbology.Catalog+Visual+Tags.Hidden : System.Int32
+FS.GG.UI.Symbology.Catalog+Visual+Tags.Shown : System.Int32
+FS.GG.UI.Symbology.Catalog.coverage(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Symbology.Catalog+Catalog) : FS.GG.UI.Symbology.Coverage+Report<System.String>
+FS.GG.UI.Symbology.Catalog.declaredElements(FS.GG.UI.Symbology.Catalog+Catalog) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Symbology.Catalog.parse(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Symbology.Catalog+Catalog, System.String>
+FS.GG.UI.Symbology.Catalog.render(FS.GG.UI.Symbology.Catalog+Catalog) : System.String
+FS.GG.UI.Symbology.Catalog.toRepresentation(FS.GG.UI.Symbology.Catalog+Visual) : FS.GG.UI.Symbology.Coverage+Representation
+FS.GG.UI.Symbology.Catalog.tryFind(System.String, FS.GG.UI.Symbology.Catalog+Catalog) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.Catalog+Visual>
+FS.GG.UI.Symbology.Catalog.validate(FS.GG.UI.Symbology.Catalog+Catalog) : FS.GG.UI.Symbology.Coverage+Report<System.String>
 FS.GG.UI.Symbology.Coverage+Finding`1.Element : element [get]
 FS.GG.UI.Symbology.Coverage+Finding`1.Gap : FS.GG.UI.Symbology.Coverage+Gap [get]
 FS.GG.UI.Symbology.Coverage+Finding`1.Message : System.String [get]

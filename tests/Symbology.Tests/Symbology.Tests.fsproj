@@ -18,6 +18,7 @@
     <Compile Include="LegibilityTests.fs" />
     <Compile Include="LegibilityDoctrineTests.fs" />
     <Compile Include="CoverageTests.fs" />
+    <Compile Include="CatalogTests.fs" />
     <Compile Include="ApiSurfaceMirrorTests.fs" />
     <Compile Include="LabelTests.fs" />
     <Compile Include="MultilineLabelTests.fs" />

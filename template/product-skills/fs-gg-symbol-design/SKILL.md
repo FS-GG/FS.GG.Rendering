@@ -1,6 +1,6 @@
 ---
 name: fs-gg-symbol-design
-description: Design a game's visual language iteratively, in situ. You hand the agent the game structure (world / unit / stats types), the full roster with stats, and a captured gamestate frame (unit positions + terrain); it drafts SEVERAL competing visual directions, renders each as a FAITHFUL frame — real symbols at their real positions over the real board via `Symbology.Render` — screens them with the `Legibility` linter and the eye, presents a contact sheet, and converges with you to one approved symbol language. The divergent, whole-frame exploration loop on top of the single-mapping mechanics of [[fs-gg-symbology]].
+description: Design a game's visual language iteratively, in situ, over the WHOLE renderable-element set — not just the unit roster, but doors/interactables, projectiles, explosions & effects, terrain & obstacles, pickups, hazards, and status/marker overlays. You hand the agent the game structure (world / unit / stats types), the FULL element inventory with stats, and a captured gamestate frame (element positions + terrain); it drafts SEVERAL competing visual directions, renders each as a FAITHFUL frame — real symbols at their real positions over the real board via `Symbology.Render` — screens them with the `Legibility` linter and the eye, presents a contact sheet, and converges with you to one approved symbol language. It PRODUCES AND MAINTAINS the machine-readable element↔visual CATALOG (`FS.GG.UI.Symbology.Catalog`) — the single source of truth #989's `Coverage` check consumes — so every gameplay element resolves to a `Shown` token or an explicit `Hidden`-by-mechanic opt-out, never silent omission. The divergent, whole-frame, whole-inventory exploration loop on top of the single-mapping mechanics of [[fs-gg-symbology]].
 ---
 
 # Symbol-Design Loop
@@ -8,15 +8,26 @@ description: Design a game's visual language iteratively, in situ. You hand the 
 ## Scope
 
 Use this skill to **design a game's visual language** — not to hand-write one mapping, but to explore
-**several competing directions at once**, render each as a **faithful gamestate frame** (every unit's
-real symbol at its real board position, over the real terrain), and **converge with a human** to the
-one that reads best. It is the divergent, whole-frame exploration loop that sits **on top of**
+**several competing directions at once**, render each as a **faithful gamestate frame** (every
+element's real symbol at its real board position, over the real terrain), and **converge with a human**
+to the one that reads best. It is the divergent, whole-frame exploration loop that sits **on top of**
 [[fs-gg-symbology]].
 
+**The unit of design is the whole renderable-element set, not the unit roster.** A game's visible
+gameplay is far more than units: **doors and interactables, projectiles, explosions & effects, terrain
+& obstacles, pickups/items, hazards, and status/marker overlays** are all, in principle, visible — and
+each is a visual-language decision. This skill's INTAKE enumerates the **complete** element inventory
+(see *"What you feed it"*), converges **every** element (not only units) through the loop, and its
+first-class output is a **comprehensive, machine-readable element↔visual CATALOG** — the single source
+of truth that [[fs-gg-symbology]]'s `Coverage` check consumes. An element that never gets a visual is
+the **silent-omission** defect the catalog + `Coverage` exist to catch (#989/#990); this skill's job is
+to make sure it never happens by DESIGN.
+
 What you author with this skill is **product / loop code and design artifacts** — candidate
-`'stats -> Token` ChannelMaps, a frame-placement projection, rendered contact sheets, a decision
-record, and a pinned golden frame. It edits **no library**. The fixed channel grammar, the `Token`
-record, and the `Legibility` linter all belong to [[fs-gg-symbology]] and are consumed unchanged.
+`'stats -> Token` ChannelMaps, a frame-placement projection, rendered contact sheets, the
+**element↔visual catalog** artifact, a decision record, and a pinned golden frame. It edits **no
+library**. The fixed channel grammar, the `Token` record, the `Legibility` linter, and the `Coverage`
+check + `Catalog` format all belong to [[fs-gg-symbology]] and are consumed unchanged.
 
 **This skill does not restate the grammar.** The channel table, the capacity rules, the three
 grammars, the label channel, the "when the grammar can't encode it → ask for the channel" doctrine,
@@ -46,12 +57,32 @@ Three inputs, all supplied by the consuming product — none invented here:
    will read. `FS.GG.Game.Core` is generic over `'world` (`Loop.StepState<'world>`); there is **no
    fixed `Unit` or `GameState` type** in the framework. The unit record and its stat fields are the
    product's, and the ChannelMap is written against **them**.
-2. **The full roster + stats** — every unit type and the stat ranges they span, so a candidate is
-   judged against the whole cast, not a lucky subset. Min/max of each ordered stat matters: the
-   mapping's quantisation (`Speed`, `Threat`, `Charge`, `R`) is chosen against the real spread.
-3. **A captured gamestate frame** — one `StepState.Current` (or any snapshot carrying each unit's
+2. **The FULL renderable-element inventory + stats — not just the unit roster.** Enumerate **every
+   element that is, in principle, visible**, so the design converges the whole game and the catalog is
+   exhaustive. The canonical checklist — walk it explicitly and record each element (its DU case, and
+   the stat spread if it has one):
+
+   | Element class | Examples (product-defined DU cases) |
+   |---|---|
+   | **Units / enemies** | the roster + stats — the classic intake, now one class among several |
+   | **Projectiles** | bullets, arrows, missiles, beams — often a `ProjectileKind` DU |
+   | **Explosions & effects** | blasts, muzzle flashes, impact sparks, auras, trails |
+   | **Doors & interactables** | doors, levers, chests, terminals, portals — a `RoomType`/`InteractableKind` |
+   | **Terrain & obstacles** | walls, water, lava, cover, destructible blocks — an `ObstacleKind`/tile set |
+   | **Pickups / items** | health, ammo, keys, power-ups, coins |
+   | **Hazards** | spikes, mines, fire, poison clouds, hazard zones |
+   | **Status / marker overlays** | selection rings, alert markers, objective pins, damage numbers |
+
+   For each ORDERED stat (unit or otherwise) the min/max spread matters: the mapping's quantisation
+   (`Speed`, `Threat`, `Charge`, `R`) is chosen against the real spread. **Every element in this
+   inventory becomes a row in the catalog** (see *"The element↔visual catalog"*) — designed to a `Shown`
+   token, or explicitly `Hidden` with a mechanic reason. Nothing is allowed to leave the inventory
+   without a disposition; that is exactly the silent-omission `Coverage` reds.
+3. **A captured gamestate frame** — one `StepState.Current` (or any snapshot carrying each element's
    **position** plus the **terrain** it stands on). This is what makes the render *faithful* rather
-   than a gallery. Capture it from the product's own loop:
+   than a gallery. A frame worth designing against holds more than units — a door in a wall, a
+   projectile in flight, an explosion mid-bloom — so the frame-eye check sees the WHOLE inventory in
+   context, not the roster in isolation. Capture it from the product's own loop:
 
    ```fsharp
    // In the product, at the frame you want to design against:
@@ -63,6 +94,62 @@ Three inputs, all supplied by the consuming product — none invented here:
    Pick a frame that is **hard on purpose**: peak unit count, a contested chokepoint, mixed factions
    overlapping, the alert state you most need to read fast. A visual language that survives the worst
    frame survives the rest.
+
+## The element↔visual catalog — the artifact you produce and maintain
+
+<!-- skill-refs: prose-ok #989 — provenance citation of the framework's Coverage/Catalog design issue, not a pointer into the reader's product tracker. -->
+<!-- skill-refs: prose-ok #990 — provenance citation of the framework's catalog-format design issue, not a pointer into the reader's product tracker. -->
+<!-- skill-refs: prose-ok #994 — provenance citation of the framework's scaffold-gate design issue, not a pointer into the reader's product tracker. -->
+
+The **durable output** of this skill is not just the winning ChannelMap — it is the
+**comprehensive, machine-readable element↔visual CATALOG**: one row per element in the INTAKE
+inventory, each recording the element's approved visual as **either** a `Shown` token handle **or** an
+explicit `Hidden`-by-mechanic opt-out with a reason. This is the **single source of truth** that
+[[fs-gg-symbology]]'s `Coverage` check consumes (#989) — designed **once**, shared by both: this skill
+AUTHORS it, `Coverage` ENFORCES it. The format is owned by `FS.GG.UI.Symbology.Catalog`, so the skill
+never invents a second element-set source.
+
+**The format** (`FS.GG.UI.Symbology.Catalog`) is a flat, ordered, deterministic text artifact — a
+versioned header line followed by one tab-separated row per element (`element<TAB>shown<TAB>handle` or
+`element<TAB>hidden<TAB>reason`). The `Shown` handle is a **stable name** into your symbol-set module
+(the token the ChannelMap produces for that element), NOT inlined geometry — the actual `Token` lives
+in code, referenced by the handle. Build and check the catalog with the library, never a hand-rolled
+parser:
+
+```fsharp
+open FS.GG.UI.Symbology
+
+// Author the catalog as the design loop converges each element — one row per INTAKE element.
+let catalog : Catalog.Catalog =
+    { Entries =
+        [ { Element = "Grunt";      Visual = Catalog.Shown "token/grunt" }        // a unit
+          { Element = "Bullet";     Visual = Catalog.Shown "token/projectile" }   // a projectile
+          { Element = "Blast";      Visual = Catalog.Shown "token/explosion" }    // an effect
+          { Element = "Door";       Visual = Catalog.Shown "token/door" }         // an interactable
+          { Element = "SpikeTrap";  Visual = Catalog.Shown "token/hazard" }       // a hazard
+          // A deliberate, reasoned opt-out — legal, and recorded on the audit ledger:
+          { Element = "Sapper";     Visual = Catalog.Hidden "stealth: cloaked until it detonates" } ] }
+
+// Persist it deterministically (the loop stamps the filename; Catalog.render carries no clock):
+let artifact = Catalog.render catalog          // -> the versioned tab-separated text to write out
+// Re-read a persisted catalog with the library parser (this is what #994's scaffold gate does):
+let reloaded = Catalog.parse artifact          // -> Result<Catalog.Catalog, string>
+
+// GATE the catalog against the product's DECLARED element set — the visual analog of match
+// exhaustiveness. An element in the declared set with NO row is a Missing gap (the silent omission);
+// a Hidden row with a blank reason is Unreasoned. `Coverage.Covered` iff every element is disposed.
+let declared = [ "Grunt"; "Bullet"; "Blast"; "Door"; "SpikeTrap"; "Sapper" ] // your product's DU cases
+let report = Catalog.coverage declared catalog
+// report.Verdict = Coverage.Covered  — ship-gate assertion (see #989's productCoverageGate pattern)
+// report.OptedOut = [ "Sapper", "stealth: cloaked until it detonates" ]  — the opt-out audit trail
+```
+
+**Maintain it as the game grows.** A new `EnemyKind` / `RoomType` / `ProjectileKind` / `ObstacleKind`
+case is **a new catalog row** that must be *designed* to a `Shown` token or *explicitly opted out* with
+a reason — never left absent. `Catalog.coverage` (and #989's product gate / #994's scaffold-emitted
+gate) reds the moment a declared element has no row, so keeping the catalog in sync is a checked
+obligation, not a discipline you hope holds. Treat every new gameplay element as a design task that
+ends with a catalog row.
 
 ## What a "candidate" is
 
@@ -128,7 +215,10 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
 ## The loop (the unit of change is the candidate set → the mapping, never the grammar library)
 
 ```text
-1. INTAKE    read game structure + full roster/stats; capture the hard frame (positions + terrain).
+1. INTAKE    read game structure + the FULL element inventory (units AND projectiles/explosions/
+             doors/terrain/pickups/hazards/markers) with each element's stat spread; capture the hard
+             frame (positions + terrain). Seed the element↔visual CATALOG with one row per element —
+             every one starts owing a disposition (a Shown token OR a Hidden opt-out).
              Fix ONE axis of variation for this round (grammar, OR urgency assignment, OR treatment).
 
 2. DIVERGE   draft N candidates (2–4) that differ ONLY on that axis. Each is a full triple:
@@ -147,7 +237,9 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
                        whole reason this skill renders the frame and not the gallery).
 
 5. PRESENT   assemble the surviving candidates into ONE contact sheet (label each with its grammar +
-             the one-line editorial choice + its lint verdict) and show the human. Ask for a DIRECTION,
+             the one-line editorial choice + its lint verdict) and show the human. The contact sheet
+             covers the WHOLE element inventory — a gallery of doors/bombs/explosions/projectiles/
+             hazards ALONGSIDE the unit roster, not the roster alone. Ask for a DIRECTION,
              not pixels: "which reads fastest under pressure?", not "nudge this blue."
 
 6. CONVERGE  capture the pick + the reason. Narrow to 1–2. If the human splits, the reason names the
@@ -158,7 +250,9 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
              [[fs-gg-symbology]]: adjust the ChannelMap / Token params ONLY until the linter is `Clean`
              and the frame-eye check passes.
 
-8. APPROVE   emit the final symbol-set module (the winning ChannelMap + the placement projection), a
+8. APPROVE   emit the final symbol-set module (the winning ChannelMap + the placement projection), the
+             completed element↔visual CATALOG (`Catalog.render` — every INTAKE element a Shown token or
+             a reasoned Hidden opt-out, `Catalog.coverage` = Covered against the declared set), a
              design rationale (channel assignments + the candidates that LOST and why), and a pinned
              golden FRAME with a stable `SceneCodec` identity.
 ```
@@ -197,8 +291,13 @@ work around it inside a candidate.
 - **Every convergence** → the **direction chosen and the reason**, and the candidates eliminated with
   why. This is the design rationale; it is the durable artifact, more than any single image.
 - **On APPROVE** → the final symbol-set module (winning ChannelMap + placement projection), the
-  rationale, and a **pinned golden frame** with a stable `SceneCodec` identity, so a re-render is a
-  byte comparison and a future regression is visible.
+  **completed element↔visual catalog** (`Catalog.render`, `Coverage.Covered` against the declared
+  element set), the rationale, and a **pinned golden frame** with a stable `SceneCodec` identity, so a
+  re-render is a byte comparison and a future regression is visible.
+- **Whenever an element is added** across milestones → the catalog gains a row (a designed `Shown`
+  token or a reasoned `Hidden` opt-out) in the SAME change, kept green by `Catalog.coverage` / the
+  product's `Coverage` gate. The catalog is the durable, machine-readable proof that no element ships
+  unrepresented by accident.
 - Filenames/timestamps are stamped by the **loop**, never by library code (determinism — see above).
 
 ## FSI recipe (multi-candidate faithful-frame render)
@@ -259,8 +358,12 @@ See [`reference.fsx`](reference.fsx) for a runnable in-tree version, and
 
 ## Related
 
-- [[fs-gg-symbology]] — the fixed channel grammar, the `Token` record, the `Legibility` linter, and the
-  single-mapping RENDER → LINT → TWEAK loop this skill orchestrates over. **Read it first.**
+- [[fs-gg-symbology]] — the fixed channel grammar, the `Token` record, the `Legibility` linter, the
+  `Coverage` visual-exhaustiveness check, and the single-mapping RENDER → LINT → TWEAK loop this skill
+  orchestrates over. **Read it first.**
+- `FS.GG.UI.Symbology.Catalog` — the machine-readable element↔visual catalog FORMAT this skill authors
+  and `Coverage` consumes (#990/#989); designed once, shared by both. Its `Catalog.render` /
+  `Catalog.parse` / `Catalog.coverage` surface is the artifact contract.
 - [[fs-gg-scene]] — the pure `Scene` / `Color` / `Point` primitives and `Scene.group` used to compose a frame.
 - [[fs-gg-skiaviewer]] — the `ReferenceRendering` path `Render.toPng` wraps.
 - [[fs-gg-game:fs-gg-game-core]] — the generic `'world` / `StepState` a captured frame is a snapshot of.

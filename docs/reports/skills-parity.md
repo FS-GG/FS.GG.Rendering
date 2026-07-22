@@ -32,7 +32,7 @@ Wrappers: `57`
 | fs-gg-scene | 27 | 27 | 0 | 0 |
 | fs-gg-skiaviewer | 6 | 6 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
-| fs-gg-symbol-design | 6 | 6 | 0 | 0 |
+| fs-gg-symbol-design | 9 | 9 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
 | fs-gg-testing | 12 | 12 | 0 | 0 |
 | fs-gg-ui-widgets | 44 | 44 | 0 | 0 |
