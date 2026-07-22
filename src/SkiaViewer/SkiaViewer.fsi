@@ -250,6 +250,22 @@ module Viewer =
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
         host: GeneratedAppHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Issue #979 — window behavior AND sound AND saves, the last corner of the generated-app launcher
+    /// matrix. `runAppWithWindowBehaviorAndAudio` (audio, no saves) and `runAppWithAudioAndPersistence`
+    /// (saves, but `defaultWindowBehavior`) each drop one capability the other keeps, so a `--window-*`
+    /// launch that also needs durable saves had no path and silently lost one on whichever branch it took.
+    /// This threads all four — `behavior`, `audioSink`, `persistenceSink`, `mapOutcome` — through the same
+    /// generated-app launch as its siblings; the audio and persistence sinks behave exactly as they do in
+    /// `runAppWithAudioAndPersistence` (see there for the sink contract). Additive: the existing overloads
+    /// stay intact and keep their defaults.
+    val runAppWithWindowBehaviorAndAudioAndPersistence:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
+        mapOutcome: (PersistenceOutcome -> 'msg option) ->
+        host: GeneratedAppHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).
