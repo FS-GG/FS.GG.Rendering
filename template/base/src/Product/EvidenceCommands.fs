@@ -392,6 +392,172 @@ let interactiveHost: InteractiveAppHost<Model, Msg> =
       Diagnostics = Viewer.defaultDiagnostics }
 //#endif
 
+//#if (profile == "game")
+// ============================================================================================
+// TURNKEY GAME SHELL (issue #1000, child of epic #991) — the scaffolded game's DEFAULT launch boots
+// the generic shell: a main menu (title + Start / Config / Exit), an Esc pause overlay, and the
+// resolution/fullscreen + key-rebinding settings screen (the merged #991/#1001 shell). A clickable
+// menu needs a mouse, so the game family moves onto the pointer-aware interactive host
+// (`ControlsElmish.runInteractiveApp*`): the keyboard-only `generatedHost` above cannot drive the
+// menu buttons and now serves only the headless evidence commands — exactly as it does on `app`.
+//
+// The shell COMPOSES the play scene. `AppRoot.GameShell` (game-agnostic) owns the menu chrome; the
+// game owns the `Playing` screen. The composite threads the shell router's state alongside the play
+// model, and the one host seam you re-point when you swap the play model lives HERE (see the
+// fs-gg-game-shell skill). `GameShell.fs` is emitted on this profile and compiled before this file
+// (Product.fsproj), so referencing it here is sound.
+
+/// The interactive host's composite: the shell router's state alongside the play model. `Init` boots
+/// `MainMenu`; `Start` routes into `Playing`, where the play model advances on `Tick`.
+type ShellHostModel =
+    { Shell: AppRoot.GameShell.Model
+      Play: Model }
+
+/// The interactive host's message: a shell-chrome message, a live-play message, or a forwarded raw
+/// key-down. The raw key is FORWARDED (not resolved) in `MapKey` and routed in `Update`, where the
+/// shell state (a capture in flight / the current screen) lives — the rebind-capture seam the shell
+/// needs (a resolving `MapKey` drops the unbound key a capture waits on; fs-gg-keyboard-input).
+type ShellHostMsg =
+    | ShellDispatch of AppRoot.GameShell.Msg
+    | PlayDispatch of Msg
+    | RawKeyDown of KeyId
+
+/// The game's parameterization of the shell: its name (the menu title), its rebindable key->command
+/// map (the play controls), and the resolutions/modes the settings screen offers.
+let shellConfig: AppRoot.GameShell.Config =
+    { Title = "Generated Product"
+      DefaultKeymap =
+        Keymap.ofBindings
+            [ { Key = ViewerKeyboard.toKeyId (Letter 'W'); Command = "left-up" }
+              { Key = ViewerKeyboard.toKeyId (Letter 'S'); Command = "left-down" }
+              { Key = ViewerKeyboard.toKeyId ArrowUp; Command = "right-up" }
+              { Key = ViewerKeyboard.toKeyId ArrowDown; Command = "right-down" } ]
+      DisplayModes = [ AppRoot.GameShell.Windowed; AppRoot.GameShell.Borderless; AppRoot.GameShell.Fullscreen ]
+      Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
+      InitialDisplay = { Resolution = { Width = 1280; Height = 720 }; Mode = AppRoot.GameShell.Windowed } }
+
+/// Lift a resolved live-play `CommandId` (from the possibly-rebound keymap) into a play `Msg`. The
+/// shell resolves a key to a command only while `Playing`; this is the `toGame` the shell needs.
+let private playCommandToMsg (command: CommandId) : Msg option =
+    match command with
+    | "left-up" -> Some(MovePaddle(LeftSide, PaddleUp))
+    | "left-down" -> Some(MovePaddle(LeftSide, PaddleDown))
+    | "right-up" -> Some(MovePaddle(RightSide, PaddleUp))
+    | "right-down" -> Some(MovePaddle(RightSide, PaddleDown))
+    | _ -> None
+
+// The turnkey shell persists the WHOLE settings screen (display + bindings) on ONE seam beside the
+// game (#1001): the shell's deterministic `encodeSettings`/`decodeSettings` envelope, under
+// `readiness/`. Total by construction — a corrupt or absent file degrades to the game's defaults, so
+// a bad save never throws at startup.
+let private shellSettingsPath = "readiness/game-shell-settings.json"
+
+let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShell.Model =
+    try
+        if File.Exists shellSettingsPath then
+            AppRoot.GameShell.decodeSettings (File.ReadAllBytes shellSettingsPath) model
+        else
+            model
+    with _ -> model
+
+let private persistShellSettings (model: AppRoot.GameShell.Model) =
+    try
+        let directory = Path.GetDirectoryName shellSettingsPath
+
+        if not (String.IsNullOrWhiteSpace directory) then
+            Directory.CreateDirectory(directory |> string) |> ignore
+
+        File.WriteAllBytes(shellSettingsPath, AppRoot.GameShell.encodeSettings model)
+    with _ -> ()
+
+/// Interpret one shell `Effect` at the host boundary: Exit closes the window; a display change
+/// re-applies the window behaviour AND persists; a keymap change persists. Persistence is
+/// best-effort (the host owns IO), so the settings screen survives a restart (the MUST persistence
+/// of #991/#1001).
+let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.GameShell.Effect) : ViewerEffect list =
+    match effect with
+    | AppRoot.GameShell.ExitRequested -> [ CloseWindow ]
+    | AppRoot.GameShell.DisplayChanged settings ->
+        persistShellSettings shell
+        [ ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings) ]
+    | AppRoot.GameShell.KeymapChanged _ ->
+        persistShellSettings shell
+        []
+
+// FR-004/FR-006 (086, D6) + #991/#1000: the game family's governed default is now the pointer-aware
+// persistent host, booting the shell. It renders the shell menu chrome while not `Playing` (the typed
+// Controls tree the shell authors, lowered with `Widget.toControl`) and the play scene while
+// `Playing` (the play `view`, carried through the render path by a `canvas` control). `generatedHost`
+// above is retained for the headless evidence commands — the keyboard host is not removed, it is the
+// per-profile evidence host, mirroring the `app` family (feature 086, FR-006).
+let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
+    { Init =
+        fun () ->
+            let shell = loadShellSettings (AppRoot.GameShell.init shellConfig)
+            let model = { Shell = shell; Play = initialModel }
+            // Issue #458: the LOADED initial state still reaches the audio sink. `Started` announces
+            // the initial play model through the SAME cue seam every transition uses. The shell host is
+            // the launch host now, so it owns this the way `generatedHost` did before the move.
+            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+            | [] -> model, []
+            | cues -> model, [ PlayAudio cues ]
+      Update =
+        fun msg model ->
+            match msg with
+            | ShellDispatch shellMsg ->
+                let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
+                { model with Shell = nextShell }, (effects |> List.collect (applyShellEffect nextShell))
+            | RawKeyDown key ->
+                match AppRoot.GameShell.routeKeyDown playCommandToMsg key model.Shell with
+                | AppRoot.GameShell.ShellMsg shellMsg ->
+                    let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
+                    { model with Shell = nextShell }, (effects |> List.collect (applyShellEffect nextShell))
+                | AppRoot.GameShell.Game playMsg ->
+                    let nextPlay, _ = AppRoot.Model.update playMsg model.Play
+                    let next = { model with Play = nextPlay }
+
+                    match AppRoot.AudioCues.forTransition playMsg model.Play nextPlay with
+                    | [] -> next, []
+                    | cues -> next, [ PlayAudio cues ]
+                | AppRoot.GameShell.NoInput -> model, []
+            | PlayDispatch playMsg ->
+                // Live play only advances while the shell is on the `Playing` screen — the menu, the
+                // pause overlay and the settings screen freeze the world behind them.
+                match model.Shell.Screen with
+                | AppRoot.GameShell.Playing ->
+                    let nextPlay, _ = AppRoot.Model.update playMsg model.Play
+                    let next = { model with Play = nextPlay }
+
+                    match AppRoot.AudioCues.forTransition playMsg model.Play nextPlay with
+                    | [] -> next, []
+                    | cues -> next, [ PlayAudio cues ]
+                | _ -> model, []
+      View =
+        fun _size model ->
+            match AppRoot.GameShell.view ShellDispatch shellConfig model.Shell with
+            | Some widget -> Widget.toControl widget
+            | None -> Canvas.create [ Canvas.scene { Nodes = [ AppRoot.View.view model.Play ] } ]
+      Theme = Theme.light
+      MapKey =
+        // Forward EVERY key-down raw (do not resolve here): a rebind capture waits on exactly the
+        // unbound key a resolving `MapKey` would drop. `Update` routes it through the shell, where the
+        // capture state and keymap live (the fs-gg-keyboard-input `mapKeyRaw` recipe).
+        fun key isDown ->
+            if isDown then
+                Some(RawKeyDown(ViewerKeyboard.toKeyId key))
+            else
+                None
+      MapPointer =
+        // The menu buttons carry their own authored `OnClick` bindings (the shell's `view`), and
+        // `routeInteractivePointer` dispatches those directly — authored bindings win, and `MapPointer`
+        // is only the fallback for unbound pointer interactions, of which the shell menu has none.
+        fun _ -> None
+      Tick = fun elapsed -> tick elapsed |> Option.map PlayDispatch
+      MapKeyChord = fun _ _ -> None
+      OnFrameMetrics = ignore
+      Diagnostics = Viewer.defaultDiagnostics }
+//#endif
+
 let defaultCommand = "dotnet run --project src/Product/Product.fsproj"
 
 let private isPngFile path =

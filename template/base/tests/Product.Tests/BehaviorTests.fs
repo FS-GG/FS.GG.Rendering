@@ -227,22 +227,31 @@ let behaviorTests =
             Expect.isNonEmpty effects "generatedHost returns a render effect to SkiaViewer"
         }
 
-        // Issue #458. Assert at the SINK, not at the model.
+        // Host-boot (#991/#1000) + the audio-init seam (#458). The game's turnkey DEFAULT launch is
+        // now the pointer-host `interactiveHost` booting the generic game shell, so this asserts what
+        // the LAUNCH host does at `Init` — model-agnostically (the shell's default-launch BEHAVIOUR),
+        // not a brittle model substring:
+        //   (1) it boots the shell's MAIN MENU (`Init -> MainMenu`), not straight into the play model;
+        //   (2) it still routes the LOADED initial play state through the audio seam (#458).
         //
-        // This is the only shape of test that catches this class. A test that asserts on the MODEL
-        // cannot: a restored setting the mixer was never told about is indistinguishable, from inside
-        // the model, from one that was applied correctly. So this asks what the host actually HANDED
-        // OUT — the ViewerEffect list `Init` returns, which is what `Viewer.runAppWithAudio` feeds to
-        // the audio sink.
-        //
-        // Its failure leg is real: revert `Init` to `fun () -> initialModel, []` (what it was) and
-        // this test goes red. That matters — a fix whose failure leg is untested is how this class
-        // survives its own fix.
-        test "generated game host cues the INITIAL state through the same seam as every other state" {
-            let host = AppRoot.Program.generatedHost
+        // (2) is only catchable at the SINK, not the model: a restored setting the mixer was never
+        // told about is indistinguishable, from inside the model, from one applied correctly. So it
+        // asks what the host actually HANDED OUT — the ViewerEffect list `Init` returns, which is what
+        // `ControlsElmish.runInteractiveAppWithAudio` feeds to the audio sink. The failure leg is real:
+        // drop the `AudioCues.forTransition Started` route from the shell host's `Init` and this reds.
+        test "generated game host boots the shell main menu and cues the initial state through the same seam (#991/#1000/#458)" {
+            let host = AppRoot.Program.interactiveHost
             let model0, initEffects = host.Init()
 
-            let expected = AppRoot.AudioCues.forTransition Started model0 model0
+            // (1) host-boot: the turnkey default launches into the shell's main menu.
+            Expect.equal
+                model0.Shell.Screen
+                AppRoot.GameShell.MainMenu
+                "the interactive launch host boots into the shell main menu (Init -> MainMenu), not the raw play model"
+
+            // (2) #458: the loaded initial play state still reaches the audio sink at Init.
+            let expected =
+                AppRoot.AudioCues.forTransition Started AppRoot.Program.initialModel AppRoot.Program.initialModel
 
             Expect.isNonEmpty
                 expected
@@ -258,7 +267,7 @@ let behaviorTests =
             Expect.equal
                 cued
                 expected
-                "generatedHost.Init routes the initial model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458)"
+                "interactiveHost.Init routes the initial play model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458)"
         }
 
         // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.
@@ -373,7 +382,12 @@ let behaviorTests =
 
             let source = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "Product", "Program.fs"))
             let defaultBranch = source.Substring(source.LastIndexOf("| None ->", StringComparison.Ordinal))
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game-family normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
+            // #991/#1000 + Governance#297: the game family now boots the generic game shell on the
+            // pointer-aware `interactiveHost`. Asserted by the default-launch BEHAVIOUR — the audio sink
+            // and the persistent host reach the launcher — not the launcher-overload substring, so this
+            // survives both a model swap and a sanctioned launcher upgrade (the model-agnostic contract
+            // the durable GovernanceTests spine owns; reused here rather than re-pinned).
+            AppRootGovernanceTests.assertDefaultLaunchHonoursEffects defaultBranch
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not report evidence self-close"
@@ -437,10 +451,13 @@ let behaviorTests =
                 Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never failed) — the honest fail-closed path"
         }
 
-        // #139: the keyboard-only host boundary must be SURFACED where a game author first wires input
-        // (a comment at the input-mapping site) and must stay ACCURATE to the emitted host contract, so
-        // it cannot silently rot if the seams change. Source/contract scan — no host launch needed.
-        test "keyboard-only host boundary is surfaced at the input-wiring site and accurate to the host contract (#139)" {
+        // #139 (revised for #991/#1000): the input boundary must be SURFACED where a game author first
+        // wires input (a comment at the input-mapping site) and must stay ACCURATE to the emitted host
+        // contract, so it cannot silently rot if the seams change. The game family now boots the
+        // pointer-host shell by default, so the note states that the PLAY-INPUT mapping is keyboard-only
+        // while the turnkey launch is the pointer-aware interactive host. Source/contract scan — no
+        // host launch needed.
+        test "play-input boundary is surfaced at the input-wiring site and accurate to the host contract (#139/#1000)" {
             let readAppRootFile parts =
                 System.IO.File.ReadAllText(System.IO.Path.Combine(Array.append [| __SOURCE_DIRECTORY__; ".."; ".." |] parts))
 
@@ -452,10 +469,10 @@ let behaviorTests =
 
             // A1 — the boundary is present at the game input-wiring site (Model.fs, by paddleForKey).
             let modelSource = readAppRootFile [| "src"; "Product"; "Model.fs" |]
-            Expect.stringContains modelSource "HOST INPUT BOUNDARY" "Model.fs surfaces the keyboard-only host boundary at the input-wiring site"
-            Expect.stringContains (modelSource.ToLowerInvariant()) "keyboard-only" "the boundary states the default host is keyboard-only"
-            Expect.stringContains modelSource "runInteractiveApp" "the boundary names the pointer-aware interactive host path as the way to mouse-aim"
-            Expect.stringContains modelSource "MapPointer" "the boundary names the pointer seam an author would need"
+            Expect.stringContains modelSource "HOST INPUT BOUNDARY" "Model.fs surfaces the input-wiring boundary at the input-wiring site"
+            Expect.stringContains (modelSource.ToLowerInvariant()) "keyboard-only" "the boundary states the play-input mapping (paddleForKey) is keyboard-only"
+            Expect.stringContains modelSource "runInteractiveApp" "the boundary names the pointer-aware interactive host the turnkey default now launches on"
+            Expect.stringContains modelSource "MapPointer" "the boundary names the pointer seam the interactive host adds"
 
             // A2 — accurate: the emitted ViewerKey has NO mouse/pointer case (keyboard keys only).
             let keyboardFsi = readAppRootFile [| "docs"; "api-surface"; "KeyboardInput"; "KeyboardInput.fsi" |]

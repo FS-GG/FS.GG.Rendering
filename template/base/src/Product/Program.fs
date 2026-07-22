@@ -25,7 +25,7 @@ let main args =
 open FS.GG.UI.SkiaViewer
 open System.IO
 open AppRoot.WindowOptions
-//#if (profile == "app")
+//#if (profile == "app" || profile == "game")
 open FS.GG.UI.Controls.Elmish
 //#endif
 
@@ -74,7 +74,7 @@ let appCommandName = AppRoot.EvidenceCommands.appCommandName
 let viewerEffectsForModel = AppRoot.EvidenceCommands.viewerEffectsForModel
 let interpretAtHostBoundary = AppRoot.EvidenceCommands.interpretAtHostBoundary
 let generatedHost = AppRoot.EvidenceCommands.generatedHost
-//#if (profile == "app")
+//#if (profile == "app" || profile == "game")
 let interactiveHost = AppRoot.EvidenceCommands.interactiveHost
 //#endif
 let defaultCommand = AppRoot.EvidenceCommands.defaultCommand
@@ -174,31 +174,32 @@ let main args =
         let audioSink = FS.GG.Audio.Host.Audio.play audioBackend
 
         // Per-family governed default launch (feature 086, FR-004/005/006, D6):
-        //#if (profile == "app")
-        // CONTROLS family: a pointer-aware persistent host — a mouse click on a live control
-        // dispatches that control's bound message (via MapPointer over the renderTree bounds). A
-        // window flag (e.g. --window-startup normal) threads the parsed behavior into the ACTUAL live
-        // launch (feature 122, FR-005), so the scaffold-map remedy is effective instead of inert;
-        // with no flag the default windowed-fullscreen path is preserved.
+        //#if (profile == "app" || profile == "game")
+        // POINTER-HOST family (CONTROLS + GAME): a pointer-aware persistent host — a mouse click on a
+        // live control dispatches that control's bound message (via MapPointer over the renderTree
+        // bounds). The GAME family joins it here (#991/#1000): its turnkey default boots the generic
+        // game shell (main menu / Esc pause / settings + rebinding), and a clickable menu needs the
+        // pointer host — the keyboard-only `generatedHost` cannot drive the menu buttons. A window flag
+        // (e.g. --window-startup normal) threads the parsed behavior into the ACTUAL live launch
+        // (feature 122, FR-005), so the scaffold-map remedy is effective instead of inert; with no flag
+        // the default windowed-fullscreen path is preserved.
         //
-        // #429/#436: both overloads now carry the audio sink. `runInteractiveAppWithAudio` is the
-        // same message->update->retained-step code path as the sinkless `runInteractiveApp` with the
-        // terminal viewer launcher swapped, so sound cannot drift away from the live loop.
+        // #429/#436: both overloads carry the audio sink. `runInteractiveAppWithAudio` is the same
+        // message->update->retained-step code path as the sinkless `runInteractiveApp` with the terminal
+        // viewer launcher swapped, so sound cannot drift away from the live loop.
         let launchResult =
             if AppRoot.WindowOptions.windowFlagSupplied args then
                 ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
             else
                 ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
         //#else
-        // GAME / SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). A
-        // window flag routes through the window-behavior overload; otherwise the durable default path
-        // stays reachable and inherits the framework windowed-fullscreen default.
+        // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). A window flag
+        // routes through the window-behavior overload; otherwise the durable default path stays
+        // reachable and inherits the framework windowed-fullscreen default.
         //
-        // #436 folded sample-pack into this branch rather than leaving it on the sinkless
-        // `Viewer.runApp`. It had referenced all four FS.GG.Audio packages since ADR-0024 and wired
-        // none of them — shipping the dependency and the silence together. The two families share one
-        // expression now because they always shared one host (`generatedHost`); only the audio
-        // argument was missing.
+        // #436 folded sample-pack onto this sink-carrying expression rather than leaving it on the
+        // sinkless `Viewer.runApp`. It had referenced all four FS.GG.Audio packages since ADR-0024 and
+        // wired none of them — shipping the dependency and the silence together.
         let launchResult =
             if AppRoot.WindowOptions.windowFlagSupplied args then
                 Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
