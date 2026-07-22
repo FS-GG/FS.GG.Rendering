@@ -137,6 +137,27 @@ together — the same coordinated edit persistence adoption needs). The product-
 with the field-by-field swap table and a full `Program.fs`, is in the generated product's
 `fs-gg-skiaviewer` skill under *Wiring a game onto the pointer-aware host*.
 
+### The generated-app launcher matrix is complete: `runAppWithWindowBehaviorAndAudioAndPersistence` (#979)
+
+<!-- skill-refs: closed-ok FS.GG.Rendering#979 — cited as history: the issue asking for the audio×window×persistence launcher -->
+<!-- skill-refs: closed-ok FS.GG.Rendering#980 — cited as history: the PR that implemented runAppWithWindowBehaviorAndAudioAndPersistence -->
+
+Separately from the pointer family, the non-interactive `GeneratedAppHost` launchers gained their **last
+matrix corner** (#979, implemented by #980): `Viewer.runAppWithWindowBehaviorAndAudioAndPersistence`
+threads all four of `behavior`, `audioSink`, `persistenceSink`, and `mapOutcome` through one
+generated-app launch. Before it, the two overloads that each carried only one of window-behavior
+(`runAppWithWindowBehaviorAndAudio`) or durable persistence (`runAppWithAudioAndPersistence`) forced a
+`--window-*` launch that *also* needed saves to silently drop one capability on whichever branch it took.
+The audio and persistence sinks behave exactly as in `runAppWithAudioAndPersistence`; the overload is
+purely additive, so the existing launchers keep their defaults.
+
+**This is a `src`-only surface for now.** It is not yet in a published `FS.GG.UI.SkiaViewer`
+(scaffolds pin `$(FsGgUiVersion)` = `0.15.0`), so the shipped product skill
+`template/product-skills/fs-gg-skiaviewer` deliberately does **not** name it yet — the doc-vs-pin rule
+(`TemplateConsumesPinnedApiTests`) forbids a shipped doc from naming an API a scaffolded product cannot
+restore. The product-skill launcher table gains this row once fs-gg-ui ships past `0.15.0` with the
+launcher and `template/base/Directory.Packages.props` bumps the pin.
+
 ## Common pitfalls
 
 - **`Result.Ok`/`Result.Error` shadowed by `ViewerDiagnosticLevel`.** `open
