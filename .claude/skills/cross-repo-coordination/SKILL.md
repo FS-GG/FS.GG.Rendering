@@ -159,6 +159,16 @@ ADRs answer *why*, the registry holds *contracts*, `specs/` hold *detail*; the b
 *when / in what order / who is blocked*. Use it instead of per-repo milestones for the
 cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release cuts only).
 
+> **Board owner kind — org, user, or viewer (#1344, #1349).** The `FS-GG` org board above is the
+> default and stays byte-identical, but the engine is owner-kind aware, selected by
+> `FSGG_COORD_OWNER_TYPE` (with `FSGG_COORD_OWNER` the login and `FSGG_COORD_PROJECT` the board
+> title, default `Coordination`, in every case):
+> - unset / `org` / `organization` → the org board, queried via `organization(login: $FSGG_COORD_OWNER)`; this is the FS-GG default.
+> - `user` **with** an explicit `FSGG_COORD_OWNER` → a named personal account's board, queried via `user(login: $FSGG_COORD_OWNER)`.
+> - `user` **with no** `FSGG_COORD_OWNER` → the authenticated token's **own** board, resolved through the argument-less `viewer` root — so a personal token drives its own board with **no** login in plaintext config (the CLI labels it `@me`).
+>
+> An unrecognised `FSGG_COORD_OWNER_TYPE` falls back to `org` — the safe direction that leaves the FS-GG board reachable.
+
 **Custom fields** (Projects v2 fields, distinct from org issue-fields):
 
 | Field | Type | Options / notes |
