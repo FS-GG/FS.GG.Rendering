@@ -258,7 +258,7 @@ let run target =
         if exitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" exitCode
     // Feature 212 (R3 / FR-007): pass-through build-graph targets over the single root .slnx. These
-    // shell to stock `dotnet` so the FAKE path and the stock root path build the SAME project set
+    // shell to stock `dotnet` so the governed script path and stock root path build the SAME project set
     // (FR-010, no divergence). Test/Verify below are FROZEN — their bodies are unchanged.
     | "Restore" -> runProcess "Restore" "dotnet" (sprintf "restore \"%s\"" (singleRootSolution ()))
     | "Build" -> runProcess "Build" "dotnet" (sprintf "build \"%s\"" (singleRootSolution ()))

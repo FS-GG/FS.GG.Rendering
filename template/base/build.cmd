@@ -1,6 +1,6 @@
 @echo off
 rem Feature 212: uniform product-root verb wrapper (parity with build.sh). Every verb delegates to
-rem the single FAKE entry (dotnet fsi build.fsx -t <Target>). Mirrors the existing fake.cmd style.
+rem the generated FSI script (dotnet fsi build.fsx -t <Target>). Mirrors the existing fake.cmd style.
 setlocal
 set "target="
 if /I "%~1"=="restore" set "target=Restore"

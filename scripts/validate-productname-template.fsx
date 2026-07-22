@@ -139,8 +139,9 @@ let private verifyVerdictCore () =
         "productNameTrimmed.parameters.source must be productName"
 
     // (3c) effectiveNameLower reproduces sourceName's CASE-AWARE lowercase content replace
-    //      ("product" -> lowercased name) WITHOUT fileRename (sourceName did not rename lowercase
-    //      `product` files such as load-product.fsx). Discovered via the T004 byte-diff oracle —
+    //      ("product" -> lowercased name) WITHOUT fileRename. Lowercase fileRename would also rename
+    //      unrelated paths such as docs/product.md; the loader deliberately uses the scoped uppercase
+    //      Product filename token instead. Discovered via the T004 byte-diff oracle —
     //      research/data-model had attributed the lowercase replace to projectSlug; it is in fact
     //      sourceName's case-aware content form (see readiness/rename-tokens.md addendum).
     let effLower =
@@ -157,7 +158,17 @@ let private verifyVerdictCore () =
     assertTrue (elemStr (effLower.GetProperty "replaces") = "product") "effectiveNameLower.replaces must be \"product\""
     assertTrue
         (match effLower.TryGetProperty "fileRename" with true, _ -> false | _ -> true)
-        "effectiveNameLower must NOT carry fileRename (sourceName left lowercase `product` filenames intact)"
+        "effectiveNameLower must NOT carry fileRename (lowercase product paths are not a rename contract)"
+
+    let loaderTemplate = repoPath "template/base/load-Product.fsx"
+    assertTrue (File.Exists loaderTemplate) "loader template must use the scoped uppercase Product filename token"
+    assertTrue
+        (not (File.Exists(repoPath "template/base/load-product.fsx")))
+        "lowercase load-product.fsx must not survive: its path is outside the Product fileRename contract"
+    for rel in [ "template/base/README.md"; "template/base/docs/product.md" ] do
+        let text = File.ReadAllText(repoPath rel)
+        assertTrue (text.Contains "load-Product.fsx") (sprintf "%s must document the scoped loader filename token" rel)
+        assertTrue (not (text.Contains "dotnet fsi load-product.fsx")) (sprintf "%s still documents the stale lowercase loader" rel)
 
     // (4) projectSlug casing source repointed name -> effectiveName.
     let projectSlug =
@@ -265,17 +276,21 @@ let private runLive () =
     if g1code <> 0 then failwithf "G1 FAIL: --productName Acme (no -n) exited %d (was exit 127):\n%s" g1code g1log
     let g1 = "instantiated=ok no-exit-127=ok"
     if not (namedAs acme "Acme") then failwithf "G2 FAIL: tree not named Acme (paths/leftover Product):\n%s" acme
+    let loader = Path.Combine(acme, "load-Acme.fsx")
+    if not (File.Exists loader) then failwithf "G2 FAIL: scoped loader filename missing: %s" loader
+    if File.Exists(Path.Combine(acme, "load-product.fsx")) then failwith "G2 FAIL: stale lowercase loader filename was emitted"
     let g2 = "named=Acme paths+namespaces+slug=ok"
 
-    // SC-002: build the Acme product in Release.
-    let acmeSln = Path.Combine(acme, "Acme.slnx")
-    let bcode, bout, berr = runProc acme "dotnet" [ "build"; acmeSln; "-c"; "Release" ]
+    // SC-002: execute the README's clean-checkout build + FSI sequence in its default Debug config.
+    let bcode, bout, berr = runProc acme "bash" [ "./build.sh"; "build" ]
     let buildLog = bout + berr
     let warnCount =
         buildLog.Split('\n') |> Array.filter (fun l -> l.Contains ": warning ") |> Array.length
-    if bcode <> 0 then failwithf "SC-002 FAIL: Acme Release build exited %d:\n%s" bcode (buildLog.Substring(max 0 (buildLog.Length - 2000)))
-    if warnCount > 0 then failwithf "SC-002 FAIL: Acme Release build had %d warning(s)" warnCount
-    let sc002 = "build=Release warn=0 err=0"
+    if bcode <> 0 then failwithf "SC-002 FAIL: README build command exited %d:\n%s" bcode (buildLog.Substring(max 0 (buildLog.Length - 2000)))
+    if warnCount > 0 then failwithf "SC-002 FAIL: README build command had %d warning(s)" warnCount
+    let fsiCode, fsiOut, fsiErr = runProc acme "dotnet" [ "fsi"; "load-Acme.fsx" ]
+    if fsiCode <> 0 then failwithf "SC-002 FAIL: dotnet fsi load-Acme.fsx exited %d:\n%s\n%s" fsiCode fsiOut fsiErr
+    let sc002 = "readme-build=Debug warn=0 err=0 loader=load-Acme.fsx fsi=ok"
 
     // G3 precedence: --productName Acme + -n Foo => named Acme, no half-rename.
     let g3code, g3dir, g3log =
@@ -339,7 +354,7 @@ let private synthResult () =
       G4 = "empty=fallback ok whitespace=fallback ok"
       G5 = "matrix=M1..M4 diffs=0"
       Sc004 = "productName-Acme==n-Acme diffs=0"
-      Sc002 = "build=Release warn=0 err=0" }
+      Sc002 = "readme-build=Debug warn=0 err=0 loader=load-Acme.fsx fsi=ok" }
 
 let private renderReport (provenance: string) (r: LiveResult) =
     let sb = StringBuilder()

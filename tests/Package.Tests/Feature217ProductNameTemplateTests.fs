@@ -176,6 +176,28 @@ let feature217ProductNameTemplateTests =
               Expect.isTrue a.ProjectSlugSourcesEffectiveName "projectSlug sources effectiveName"
           }
 
+          test "GV-1b FSI loader uses the scoped Product filename contract and truthful frontend guidance" {
+              let loader = repositoryPath "template/base/load-Product.fsx"
+              let staleLoader = repositoryPath "template/base/load-product.fsx"
+              Expect.isTrue (File.Exists loader) "loader template must use the uppercase Product filename token"
+              Expect.isFalse (File.Exists staleLoader) "lowercase loader path cannot be renamed by the scoped Product token"
+
+              let loaderText = File.ReadAllText loader
+              let references =
+                  loaderText.Split('\n')
+                  |> Array.filter (fun line -> line.TrimStart().StartsWith "#r ")
+              Expect.equal references.Length 1 "loader should reference only the built main assembly"
+              Expect.stringContains references[0] "src/Product/bin/Debug/net10.0/Product.dll" "loader references the renamed main assembly"
+              Expect.isFalse (loaderText.Contains "FS.GG.UI.") "transitive package references must not be hand-maintained"
+
+              for rel in [ "template/base/README.md"; "template/base/docs/product.md" ] do
+                  let guidance = File.ReadAllText(repositoryPath rel)
+                  Expect.stringContains guidance "dotnet fsi load-Product.fsx" (sprintf "%s documents the renameable loader" rel)
+                  Expect.isFalse (guidance.Contains "dotnet fsi load-product.fsx") (sprintf "%s does not document a path that stays lowercase" rel)
+                  Expect.isFalse (guidance.Contains "dotnet fake") (sprintf "%s does not advertise an absent CLI" rel)
+                  Expect.isFalse (guidance.Contains "FAKE-backed") (sprintf "%s calls the build script what it is" rel)
+          }
+
           // GV-2: the report records the template-contract fact.
           test "GV-2 report records the template-contract fact" {
               let report = readValidationReport ()
@@ -211,10 +233,10 @@ let feature217ProductNameTemplateTests =
               Expect.stringContains report "sc004-convergence: productName-Acme==n-Acme diffs=0" "SC-004 convergence"
           }
 
-          // GV-7 (G6/SC-002): the Acme product builds clean in Release.
-          test "GV-7 Acme product builds clean in Release" {
+          // GV-7 (G6/SC-002): the exact documented Debug build + renamed FSI loader path succeeds.
+          test "GV-7 Acme README build and renamed FSI loader succeed" {
               let report = readValidationReport ()
-              Expect.stringContains report "sc002-build: build=Release warn=0 err=0" "SC-002 0 warn / 0 err"
+              Expect.stringContains report "sc002-build: readme-build=Debug warn=0 err=0 loader=load-Acme.fsx fsi=ok" "SC-002 README sequence"
           }
 
           // GV-8 (Constitution V): provenance disclosed (verdict-core env-free OR live).
