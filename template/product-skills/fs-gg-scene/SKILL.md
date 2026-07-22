@@ -105,6 +105,11 @@ centers it, clips to it, and letterboxes the surplus axis — in the live window
 and on the offscreen evidence surface alike. Pointer input arrives already mapped back into
 logical coordinates.
 
+SkiaViewer is the sole owner of that fit and its inverse pointer mapping. For a runtime resolution
+change emit `ViewerEffect.ApplyLogicalCanvas nextSize`; do not add a scene transform or pointer
+division alongside it. Interactive Controls layout and hit tests receive the new logical size
+directly, while the viewer alone handles framebuffer scaling and letterboxing.
+
 This is why `GeneratedAppHost.View : 'model -> SceneNode` is handed no `Size`: with a
 `LogicalSize` there is nothing to derive from it, and without one your product should be
 resolution-independent anyway. Window-size arithmetic scattered through `view` is the thing

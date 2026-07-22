@@ -78,7 +78,8 @@ let update msg model =
 Route the three shell effects at the host boundary: an `ExitRequested` asks the
 host to shut the window; a `KeymapChanged keymap` is persisted with
 `GameShell.encodeKeymap`; a `DisplayChanged settings` re-applies
-`GameShell.windowBehavior` and `GameShell.logicalSize`.
+`GameShell.windowBehavior` as `ApplyWindowOptions` and `GameShell.logicalSize` as
+`ApplyLogicalCanvas`.
 
 ### The raw-key seam (rebind capture + held gameplay)
 
@@ -109,9 +110,15 @@ catalog's defaults and emits the same persistence effect.
 ### Display settings
 
 `GameShell.windowBehavior settings` yields a `ViewerWindowBehaviorRequest` and
-`GameShell.logicalSize settings` the `ViewerOptions.LogicalSize`, so the chosen
-resolution letterboxes onto any surface and the mode picks windowed / borderless /
-exclusive fullscreen. Re-apply them when `DisplayChanged` fires.
+`GameShell.logicalSize settings` the logical canvas. Seed `ViewerOptions.LogicalSize`
+with the initial value; when `DisplayChanged` fires, emit both `ApplyWindowOptions`
+and `ApplyLogicalCanvas`. The chosen resolution then letterboxes onto any surface and
+the mode picks windowed / borderless / exclusive fullscreen.
+
+SkiaViewer is the sole transform owner. It fits and centers the logical canvas and maps
+native pointer samples through the inverse fit before Controls lays out or hit-tests.
+Do not scale the Controls tree or pointer coordinates again. The policy is identical for
+windowed, borderless, and fullscreen requests.
 
 At default launch, make `ViewerOptions.InitialSize` exactly
 `config.InitialDisplay.Resolution` and use the same explicit window-behavior overload
@@ -136,6 +143,9 @@ the live integration. Also drive the generated `interactiveHost` headlessly: req
 `captureRespondsProof` to be `Responsive` for one menu button and one rebind row at
 the exact default surface, complete capture with the next raw key, and prove one
 movement key stays held over at least two fixed ticks and stops after key-up.
+Also change 1280x720 to 1920x1080 and activate the same semantic control through the
+corresponding physical point; this proves the visible fit and retained hit geometry use
+one policy rather than merely proving that the resolution value persisted.
 
 ## Evidence
 

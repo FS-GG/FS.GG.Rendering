@@ -25,6 +25,8 @@ let generatedInteractiveHostContract =
 
             Expect.stringContains program "shellConfig.InitialDisplay" "default launch derives behavior from the authored shell display"
             Expect.stringContains program "runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest" "default and flagged game launches select one explicit overload"
+            Expect.stringContains host "ApplyLogicalCanvas(AppRoot.GameShell.logicalSize settings)" "DisplayChanged reaches the dynamic viewer-owned logical canvas"
+            Expect.stringContains host "LogicalSize = Some { Width = 1280; Height = 720 }" "the generated game seeds the initial logical canvas"
         }
 
         test "generated-product behavior proves retained pointer and down-ticks-up through InteractiveAppHost" {
@@ -40,6 +42,12 @@ let generatedInteractiveHostContract =
               "raw (Letter 'W') false"
               "afterReleaseTick" ]
             |> List.iter (fun token -> Expect.stringContains behavior token $"generated test carries `{token}`")
+
+            [ "SetResolution resolution1080"
+              "ApplyLogicalCanvas size"
+              "LogicalCanvas.toLogicalPoint"
+              "corresponding physical point still activates Config" ]
+            |> List.iter (fun token -> Expect.stringContains behavior token $"generated resolution proof carries `{token}`")
         }
 
         test "release lane instantiates the packed game profile and runs its emitted tests" {

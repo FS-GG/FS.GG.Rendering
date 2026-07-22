@@ -203,6 +203,7 @@ FS.GG.UI.SkiaViewer.ViewerDiagnosticLevel+Tags
 FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions
 FS.GG.UI.SkiaViewer.ViewerDirtyState
 FS.GG.UI.SkiaViewer.ViewerEffect
+FS.GG.UI.SkiaViewer.ViewerEffect+ApplyLogicalCanvas
 FS.GG.UI.SkiaViewer.ViewerEffect+ApplyWindowOptions
 FS.GG.UI.SkiaViewer.ViewerEffect+CaptureImageEvidence
 FS.GG.UI.SkiaViewer.ViewerEffect+CaptureScreenshot

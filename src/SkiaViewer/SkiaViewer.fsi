@@ -65,6 +65,28 @@ module Viewer =
         effects: ViewerEffect list ->
             bool
 
+    /// Issue #1014: the effect fold with the live logical-canvas owner exposed as a deterministic
+    /// sink for headless contract tests.
+    val internal interpretViewerEffectsWithLogicalCanvas:
+        audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> unit) ->
+        onScene: (SceneNode -> unit) ->
+        onInputDispatch: (unit -> unit) ->
+        onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
+        evidenceSink: (ViewerEffect -> unit) ->
+        logicalCanvasSink: (Size -> unit) ->
+        effects: ViewerEffect list ->
+            bool
+
+    /// Issue #1014: the exact native-window -> framebuffer -> logical-product route used by the
+    /// interactive loop, exposed internally so retained Controls activation can be proven headlessly.
+    val internal pointerInProductSpace:
+        logicalSize: Size option ->
+        windowSize: Size ->
+        surfaceSize: Size ->
+        input: ViewerPointerInput ->
+            ViewerPointerInput
+
     /// Issue #444: the evidence sink both persistent loops hand to `interpretViewerEffects`. Writes the
     /// four evidence effects a product can emit — `CaptureScreenshot`, `CaptureImageEvidence`,
     /// `WriteVisualEvidence`, `WriteRunEvidence` — which the fold used to discard silently: no file, no

@@ -219,8 +219,10 @@ let windowBehavior (display: DisplaySettings) : ViewerWindowBehaviorRequest =
         ResizePolicy = resizePolicy
         StartupState = startupState }
 
-/// The fixed logical canvas size a game renders in for a display setting — feed it to
-/// `ViewerOptions.LogicalSize` so the chosen resolution letterboxes onto any surface (#246).
+/// The fixed logical canvas size a game renders in for a display setting. Seed
+/// `ViewerOptions.LogicalSize` with the initial value and emit `ApplyLogicalCanvas` for later
+/// `DisplayChanged` values. SkiaViewer owns both the presentation fit and inverse pointer mapping;
+/// Controls must not apply another coordinate transform.
 let logicalSize (display: DisplaySettings) : Size = display.Resolution
 
 /// The uniform, centered fit of the chosen resolution inside a given output surface — the pure

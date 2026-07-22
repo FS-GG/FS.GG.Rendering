@@ -708,6 +708,7 @@ FS.GG.UI.SkiaViewer.ViewerDirtyState.SceneDirty : System.Boolean [get]
 FS.GG.UI.SkiaViewer.ViewerDirtyState.SizeChanged : System.Boolean [get]
 FS.GG.UI.SkiaViewer.ViewerDirtyState.ThemeChanged : System.Boolean [get]
 FS.GG.UI.SkiaViewer.ViewerDirtyState.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerResponsivenessDirtyRegion>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.SkiaViewer.ViewerEffect+Tags.ApplyLogicalCanvas : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.ApplyWindowOptions : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CaptureImageEvidence : System.Int32
 FS.GG.UI.SkiaViewer.ViewerEffect+Tags.CaptureScreenshot : System.Int32
