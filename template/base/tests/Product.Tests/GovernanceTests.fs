@@ -85,7 +85,7 @@ let assertNoPreRebrandEngineIdentifier () =
 // pinning the exact launch-overload as a literal source substring. A suite whose purpose is to survive
 // a scaffold-model swap must equally survive a SANCTIONED LAUNCHER UPGRADE (a persistence/pointer-capable
 // runner rename): so it matches the EFFECT ARGUMENTS the launcher receives, never the launcher's NAME.
-// (Two products paid the substring pin: Rougue1 M9 edited 4 assertions across 2 files on a runner
+// (Two game titles paid the substring pin: Rougue1 M9 edited 4 assertions across 2 files on a runner
 // upgrade; TowerDefense1 M8's persistence-sink upgrade forced edits to a suite meant to survive swaps.)
 //
 // The persistent host VALUE a governed default launch threads into the launcher, per family (feature
