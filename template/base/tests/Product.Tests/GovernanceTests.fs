@@ -78,6 +78,48 @@ let assertNoPreRebrandEngineIdentifier () =
         (build.Contains("FS.Skia.UI", StringComparison.OrdinalIgnoreCase))
         "build.fsx carries no pre-rebrand FS.Skia.UI package name"
 
+// Governance#297 (adjudicated 2026-07-22), the model-agnostic launch-seam check (FR-005 intent). The
+// governed default launch is asserted by the BEHAVIOR the host honours — the PlayAudio effect reaches
+// its sink (the constructed audio sink is threaded into the launcher) and the Persist effect is
+// honoured (the persistent interactive host + viewer options are threaded into the launcher) — NOT by
+// pinning the exact launch-overload as a literal source substring. A suite whose purpose is to survive
+// a scaffold-model swap must equally survive a SANCTIONED LAUNCHER UPGRADE (a persistence/pointer-capable
+// runner rename): so it matches the EFFECT ARGUMENTS the launcher receives, never the launcher's NAME.
+// (Two game titles paid the substring pin: Rougue1 M9 edited 4 assertions across 2 files on a runner
+// upgrade; TowerDefense1 M8's persistence-sink upgrade forced edits to a suite meant to survive swaps.)
+//
+// The persistent host VALUE a governed default launch threads into the launcher, per family (feature
+// 086, FR-006): the controls family launches the pointer-aware `interactiveHost`, the game/sample-pack
+// family the keyboard-only `generatedHost`. This is a host value the product names, not a launcher
+// overload — a sanctioned launcher upgrade renames the runner, not the host it is handed.
+//#if (profile == "app")
+let persistentHostValue = "interactiveHost"
+//#else
+let persistentHostValue = "generatedHost"
+//#endif
+
+// A launch that HONOURS both effects: SOME launcher (any overload name) applied to `viewerOptions` and
+// — as its terminal arguments — the audio sink (PlayAudio -> its sink) followed by the persistent host
+// (Persist honoured). The launcher name is deliberately unpinned; only the effect arguments are. The
+// `[^\n]*` tolerates the window-behavior request argument the `--window-*` overload threads between
+// `viewerOptions` and the sink. This is exactly what a sanctioned launcher upgrade must keep satisfying.
+let effectHonouringLaunch =
+    System.Text.RegularExpressions.Regex(
+        $@"[A-Za-z_][\w.]*\s+viewerOptions\b[^\n]*\baudioSink\s+{persistentHostValue}\b")
+
+// The behavior contract for the governed default launch. Replaces the literal launch-overload substring
+// assertions (#297): a sanctioned launcher upgrade passes this WITHOUT editing the suite.
+let assertDefaultLaunchHonoursEffects (launchText: string) =
+    // PlayAudio has a REAL sink: the `AudioEffect list -> unit` the launcher is handed is built from the
+    // audio host's play seam. Without this, a no-op sink could satisfy the argument match below.
+    Expect.stringContains launchText "FS.GG.Audio.Host.Audio.play" "the governed launch builds the PlayAudio sink from the audio host play seam (the effect reaches a real sink)"
+    // Persist + PlayAudio honoured: the terminal launcher receives viewerOptions, the audio sink, and
+    // the persistent host — regardless of the launcher overload's NAME, so a sanctioned launcher upgrade
+    // (a persistence/pointer-capable runner) passes unedited.
+    Expect.isTrue
+        (effectHonouringLaunch.IsMatch launchText)
+        $"the governed default launch threads viewerOptions, the audio sink, and the persistent {persistentHostValue} into a launcher — the host honours PlayAudio (effect reaches its sink) and Persist (persistent interactive host), whatever the sanctioned launcher overload is named"
+
 //#if (profile == "governed" || profile == "headless-scene")
 [<Tests>]
 let governanceTests =
@@ -207,15 +249,12 @@ let governanceTests =
             Expect.stringContains source "Text.installPngRasterizer" "view-image uses the SkiaViewer-owned headless CPU rasterizer"
             Expect.stringContains source "SceneEvidence.renderPng" "view-image renders real pixels through the public Scene evidence pixel seam"
             Expect.stringContains source "{ Width = 1280; Height = 720 }" "view-image renders at logical resolution"
-            // FR-005 (086, D6): the host-lock assertion is generalized to the per-family
-            // persistent interactive host — controls → runInteractiveAppWithAudio, game/sample-pack →
-            // runAppWithAudio. #436: both carry the audio sink; no family launches through a
-            // sink-discarding overload any more.
-            //#if (profile == "app")
-            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family normal launch is the pointer-aware persistent interactive host, with the #429/#436 audio sink"
-            //#else
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack normal launch remains the keyboard-only persistent interactive path (with the #245 audio sink)"
-            //#endif
+            // FR-005 (086, D6) / Governance#297: the host-lock assertion is the per-family persistent
+            // interactive host BEHAVIOR — the normal launch honours PlayAudio (the audio sink reaches
+            // the launcher) and Persist (the persistent host reaches the launcher). Asserted by the
+            // effect arguments the launcher receives, NOT the launcher overload name, so a sanctioned
+            // launcher upgrade passes unedited. #436: the sink is carried on every family.
+            assertDefaultLaunchHonoursEffects defaultBranch
             Expect.isFalse (defaultBranch.Contains("mode=persistent-evidence")) "normal launch does not report bounded evidence mode"
             Expect.isFalse (defaultBranch.Contains("self-closed-for-evidence=true")) "normal launch does not claim evidence self-close"
             Expect.isFalse (defaultBranch.Contains("input-dispatch=not-required")) "normal launch does not reuse bounded evidence input-dispatch wording"
@@ -285,13 +324,10 @@ let governanceTests =
             Expect.stringContains source "let generatedHost" "generated product declares generated host"
             Expect.stringContains source "MapKey = mapKey" "generated host wires keyboard mapping"
             Expect.stringContains source "Tick = tick" "generated host wires tick mapping"
-            // FR-005 (086): default path runs the per-family persistent interactive host.
-            // #436: with the audio sink, on every family.
-            //#if (profile == "app")
-            Expect.stringContains source "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family default path runs the pointer-aware persistent host, with the #429/#436 audio sink"
-            //#else
-            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack default path runs the keyboard-only persistent generated app host (with the #245 audio sink)"
-            //#endif
+            // FR-005 (086) / Governance#297: default path runs the per-family persistent interactive
+            // host and honours the launch effects — the audio sink and the persistent host reach the
+            // launcher (#436: sink on every family). Behavior, not launcher-overload substring.
+            assertDefaultLaunchHonoursEffects source
             Expect.stringContains source "mode=interactive-window" "default path reports interactive mode"
             Expect.stringContains source "accessible-window=true" "successful default path reports accessible desktop window claim"
             Expect.stringContains source "window-visible=observed:true" "successful default path reports observed visible window"
@@ -371,14 +407,11 @@ let governanceTests =
             Expect.stringContains source "windowBehaviorArgsFromFile" "option files are parsed into launch flags"
             Expect.stringContains source "toViewerWindowBehavior windowBehavior" "parsed flags become the public viewer request"
             Expect.stringContains source "Viewer.validateWindowLaunchBehavior viewerOptions.InitialSize" "generated diagnostics use public launch behavior validation"
-            // FR-005 (086): the default launch applies the selected persistent viewer contract
-            // appropriate to the product family (controls → runInteractiveAppWithAudio,
-            // game/sample-pack → runAppWithAudio). #436: both carry the audio sink.
-            //#if (profile == "app")
-            Expect.stringContains source "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family default launch applies the pointer-aware persistent viewer contract, with the #429/#436 audio sink"
-            //#else
-            Expect.stringContains source "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack default launch applies the keyboard-only persistent viewer contract (with the #245 audio sink)"
-            //#endif
+            // FR-005 (086) / Governance#297: the default launch applies the selected persistent viewer
+            // contract for the family and honours the launch effects — the audio sink and the persistent
+            // host reach the launcher (#436: both carry the sink). Behavior, not launcher-overload
+            // substring, so a sanctioned launcher upgrade passes unedited.
+            assertDefaultLaunchHonoursEffects source
             Expect.stringContains source "manualWindowOptionResults windowBehaviorRequest" "normal launch validates parsed behavior request before calling SkiaViewer"
             Expect.stringContains source "window-options=%s" "normal launch reports option validation output"
             Expect.stringContains source "option=resize" "option report includes resize rows"
