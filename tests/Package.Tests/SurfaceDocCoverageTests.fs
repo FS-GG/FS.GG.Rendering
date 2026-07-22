@@ -423,6 +423,37 @@ let private ledger =
         if parts.Length >= 2 then Some(parts.[1], parts.[0]) else None)
     |> Map.ofArray
 
+/// The categories a ledger line may carry. Adding one is a DELIBERATE act — a line whose category is not here
+/// reds `every ledger category is a known disposition`, so a typo (`traked`, `owner-docmented`) is caught
+/// rather than silently minting a one-off category that no rule and no reader understands. That is the
+/// silent-append failure this whole file refuses, applied to the category column itself.
+///
+/// PENDING vs TERMINAL is the distinction that matters, and it is enforced by the RULES rather than by this
+/// set — every category satisfies coverage (rule 1), and they differ only in what makes a line stale:
+///
+///   PENDING   `tracked`          A real gap a product author wants and cannot find (#507). It RETIRES the day
+///                                a product skill HERE documents it — rule 2 is watching for exactly that.
+///   TERMINAL  `vocabulary`       Composed straight from the `.fsi`; a skill would be a worse copy of it.
+///             `owner-sourced`    Documented by an owner-sourced skill (`fs-gg-game-core` / `fs-gg-audio` /
+///                                `fs-gg-persistence`) whose local copy ADR-0063 (#965) retired from this
+///                                provider — the body still reaches the product, just not this corpus.
+///             `owner-documented` #998's addition. The 37 Ai/Ballistics/Dice/Effects vals VENDORED into this
+///                                mirror by #984 and documented in FS.GG.Game's `fs-gg-game-core` BODY
+///                                (FS.GG.Game#466/#472) — invisible to S-DOC here because ADR-0063 retired the
+///                                local copy and S-DOC reads only `template/product-skills/**`. No skill in
+///                                this repo's corpus can ever cite them, so the line is PERMANENTLY satisfied
+///                                by cross-repo owner documentation: never `undeclared` (it is listed), never
+///                                `tracked`-stale (rule 2 cannot fire — nothing local cites it). It retires
+///                                only if #984 un-vendors the surface (rule 3) or a Rendering-owned skill ever
+///                                documents one locally (rule 2). Adjudicated option 3 of #998, 2026-07-22.
+let private knownCategories =
+    set [ "tracked"; "vocabulary"; "owner-sourced"; "owner-documented" ]
+
+/// A public val is COVERED when a product skill documents it, or the ledger declares it under ANY category —
+/// the exemption side of S-DOC rule 1. Factored out so the guard tests can exercise the EXACT predicate the
+/// rule uses, rather than a paraphrase that could drift from it.
+let private isCovered (name: string) = isDocumented name || ledger.ContainsKey name
+
 let private commaSep (items: string seq) = String.Join(", ", Seq.sort items)
 
 [<Tests>]
@@ -501,7 +532,7 @@ let surfaceDocCoverageTests =
             let undeclared =
                 shippedSurface
                 |> Map.toList
-                |> List.filter (fun (name, _) -> not (isDocumented name) && not (ledger.ContainsKey name))
+                |> List.filter (fun (name, _) -> not (isCovered name))
                 |> List.map (fun (name, files) -> $"{name} ({commaSep files})")
 
             Expect.isEmpty
@@ -540,6 +571,89 @@ let surfaceDocCoverageTests =
                 phantom
                 $"these are listed in {ledgerRel} but are not public vals in the shipped api-surface — the \
                   surface moved and the exemption outlived it. Delete the line. Phantom: {commaSep phantom}"
+        }
+
+        // Every category is one the ledger's format legend and this file both KNOW. A category is a promise
+        // about a line's future — pending `tracked` vs terminal `vocabulary` / `owner-sourced` /
+        // `owner-documented` — so an invented or mistyped one is a line no rule and no reader can honour. That
+        // is the silent-append failure this file refuses, in the category column: adding a disposition must be
+        // a decision (a line in `knownCategories`, with the paragraph that says what it promises), not a typo.
+        test "every ledger category is a known disposition" {
+            let unknown =
+                ledger
+                |> Map.toList
+                |> List.filter (fun (_, category) -> not (knownCategories.Contains category))
+                |> List.map (fun (name, category) -> $"{name} ({category})")
+
+            Expect.isEmpty
+                unknown
+                $"these {ledgerRel} lines carry a category not in knownCategories ({commaSep knownCategories}) — \
+                  a typo, or a new disposition added without a decision. Fix the spelling, or add the category \
+                  to knownCategories with the paragraph that says what it promises. Unknown: {commaSep unknown}"
+        }
+
+        // #998 — the `owner-documented` TERMINAL disposition. The 37 Ai/Ballistics/Dice/Effects vals are
+        // VENDORED into this mirror (#984) but documented in FS.GG.Game's `fs-gg-game-core` BODY
+        // (FS.GG.Game#466/#472), a corpus S-DOC cannot read here because ADR-0063 (#965) retired the local
+        // copy. Adjudicated (option 3 of #998) as a PERMANENT category, distinct from the pending `tracked`
+        // gap they sat in through #984/#993. These two guards pin what the category PROMISES: that a val in it
+        // is covered and never stale, and — its mirror — that the exemption is not a blanket.
+        test "the `owner-documented` category satisfies coverage and is terminal (#998)" {
+            let ownerDocumented =
+                ledger
+                |> Map.toList
+                |> List.filter (fun (_, category) -> category = "owner-documented")
+                |> List.map fst
+
+            // Non-vacuous: the category must actually be populated, or this guard passes by checking nothing —
+            // the FS-GG/.github#266 failure. #998 moved 37 rows into it; if they were retired or renamed,
+            // retire this guard with them rather than letting it go quietly green.
+            Expect.isNonEmpty
+                ownerDocumented
+                $"no {ledgerRel} line carries the `owner-documented` category — #998 moved the 37 \
+                  Ai/Ballistics/Dice/Effects vals into it. If the category is genuinely empty now, delete this \
+                  guard; do not let it pass vacuously."
+
+            for name in ownerDocumented do
+                // Rule 1: COVERED. A product author is not left unable to find them — the ledger records the
+                // cross-repo documentation decision, so S-DOC does not report them undeclared.
+                Expect.isTrue
+                    (isCovered name)
+                    $"`{name}` is `owner-documented` but S-DOC does not count it as covered — the coverage \
+                      predicate and the ledger disagree, which would red rule 1 against a declared line."
+
+                // TERMINAL, not pending. The whole point: the citations live in FS.GG.Game's `fs-gg-game-core`,
+                // which this corpus cannot read, so NO local skill can cite these — rule 2 can never fire and
+                // the line is never `tracked`-stale. If one ever DID become locally documented, that is a real
+                // event (delete its line); this guard names it rather than letting rule 2 red cryptically.
+                Expect.isFalse
+                    (isDocumented name)
+                    $"`{name}` is `owner-documented` — permanently satisfied by cross-repo owner documentation — \
+                      yet a LOCAL product skill now cites it. The surface is documented HERE now: delete its \
+                      ledger line (rule 2 would otherwise red). `owner-documented` is for surfaces no local \
+                      skill can reach."
+
+                // ...and it still SHIPS, or it is a phantom (rule 3) and the category has outlived its subject.
+                Expect.isTrue
+                    (shippedSurface.ContainsKey name)
+                    $"`{name}` is `owner-documented` but the api-surface no longer ships it. #984's vendoring is \
+                      the reason the category exists; if the surface was un-vendored, retire the line (rule 3)."
+        }
+
+        // The MIRROR of the coverage guard, and the reason the exemption cannot be a blanket. A surface neither
+        // documented nor listed under ANY category — the #507 shape — must STILL red rule 1. #998 widened the
+        // set of terminal dispositions; it must not have widened what counts as covered to everything.
+        test "a val in NO category and documented by no skill still reds" {
+            let probe = "zzUnlistedSurfaceProbe998"
+
+            Expect.isFalse (ledger.ContainsKey probe) "the probe name is deliberately absent from the ledger"
+            Expect.isFalse (isDocumented probe) "...and cited by no product skill"
+
+            Expect.isFalse
+                (isCovered probe)
+                "a val in no ledger category and documented nowhere is NOT covered — S-DOC rule 1 must still \
+                 red for it, or the exemption has become a blanket that excuses every undocumented surface, \
+                 which is the #507 gap this gate exists to hold."
         }
 
         // The responsiveness self-contradiction, asserted where it can be seen. The skills MANDATE this
