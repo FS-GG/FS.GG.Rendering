@@ -127,6 +127,92 @@ fixed canvas to a window: that needs the window size, which `view` does not get,
 `LogicalSize` already does the job. For a plain offset, prefer `Scene.translate` — it says what
 it means.
 
+## Declarative motion — animation as data
+
+Motion is **data**, not a mutable timeline. Against an existing `Scene` you declare that
+opacity, an affine `Transform`, and/or a `Color` should travel from a start value to a target
+over a `Tween`'s duration and easing. Sampling is a **pure** function of an explicit
+`TimeSpan`, so identical inputs and identical time samples produce byte-identical output — and
+a settled animation lowers to the exact static render of the same widget (the identity-at-rest
+rule). The signatures are bundled at `docs/api-surface/Scene/Animation.fsi`; nothing here
+performs I/O.
+
+### The transform vocabulary
+
+A `Transform` carries motion-specific labels (`TranslateX/Y`, `ScaleX/Y`, `RotationDegrees`) —
+deliberately *not* Scene's `X`/`Y`, to avoid exactly the bare-literal record collisions the
+pitfalls section warns about. Start from `Transform.identity` (no translate, unit scale, no
+rotation) and lower a transform into the 3×3 matrix a `PerspectiveNode` wants with
+`Transform.toPerspectiveTransform`. `Transform.isIdentity` is the at-rest test the sampler uses
+to decide whether a node needs a `PerspectiveNode` wrapper at all — a settled transform stays
+byte-identical to the static node.
+
+```fsharp
+open FS.GG.UI.Scene
+
+let slideIn : Transform = { Transform.identity with TranslateX = -64.0 }
+let atRest : bool = Transform.isIdentity slideIn                 // false while sliding
+let matrix : PerspectiveTransform = Transform.toPerspectiveTransform slideIn
+```
+
+### Declare the animation, sample it as deterministic frames
+
+An `Animation` is three optional tweens (opacity / transform / colour); an absent property is
+its identity. `Tween.progress` gives the normalized, eased, clamped position in `[0,1]` for an
+elapsed time (`Duration ≤ 0 ⇒ 1.0`, so no divide-by-zero). Interpolate leaf values with the
+supplied interpolants — `Animation.lerpFloat` for opacity, `Animation.lerpColor` for colour.
+`Animation.applyAt` composes opacity + transform onto the target scene at one time sample (and,
+by the identity-at-rest rule, returns the target unwrapped once settled); `Animation.sampleColor`
+surfaces the sampled colour *separately*, because the frozen wire format has no scene-wide tint
+node — drive your own recolouring from it rather than expecting `applyAt` to tint. `Animation.isSettled`
+gates redraw (true once every present tween has run its `Duration`), and `Animation.sampleFrames`
+produces a deterministic `Scene list` at explicit times — the evidence a test asserts over.
+
+```fsharp
+open System
+open FS.GG.UI.Scene
+
+let fade : Animation =
+    { Animation.empty with
+        Opacity = Some { Start = 0.0; End = 1.0; Duration = TimeSpan.FromMilliseconds 200.0; Easing = EaseInOut } }
+
+let at = TimeSpan.FromMilliseconds 100.0
+
+let t : float = Tween.progress at fade.Opacity.Value          // eased progress in [0,1]
+let alpha : float = Animation.lerpFloat 0.0 1.0 t             // opacity leaf interpolant
+let tint : Color option = Animation.sampleColor at fade       // None here (no Color tween)
+let frame : SceneNode = Animation.applyAt at fade hud         // opacity + transform composed
+let finished : bool = Animation.isSettled (TimeSpan.FromMilliseconds 200.0) fade
+
+// One Scene per requested time sample — byte-identical across runs, so a snapshot test is stable.
+let frames : Scene list =
+    Animation.sampleFrames [ TimeSpan.Zero; at; TimeSpan.FromMilliseconds 200.0 ] fade hud
+
+// A direct colour interpolation (e.g. a damage flash you composite yourself):
+let flash : Color =
+    Animation.lerpColor
+        { Red = 255uy; Green = 0uy; Blue = 0uy; Alpha = 255uy }
+        { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy }
+        t
+```
+
+### Retarget without snapping — `AnimationState`
+
+When the target can **change mid-flight** (a health bar whose value updates while the last
+change is still animating), hold an `AnimationState<'a>` in your own model rather than a raw
+elapsed clock. `AnimationState.retarget` restarts from the *currently displayed* value
+(`Start = Current`, `Elapsed = 0`) so there is no snap-back, and `AnimationState.isActive` is
+true while the transition is still in flight (`Elapsed < Duration && Current <> Target`) — the
+redraw gate for the stateful case.
+
+```fsharp
+open FS.GG.UI.Scene
+
+// state : AnimationState<float> is held in the product model and advanced each tick.
+let retargeted = AnimationState.retarget 0.75 state
+let stillMoving : bool = AnimationState.isActive retargeted
+```
+
 ## Test Commands
 
 Run `./fake.sh build -t Test` to exercise product-owned scene examples.
