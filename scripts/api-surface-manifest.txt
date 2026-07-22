@@ -1655,6 +1655,7 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val Viewer.runAppWithWindowBehaviorAndAudio
 +      SkiaViewer.fsi val Viewer.runAppWithPersistence
 +      SkiaViewer.fsi val Viewer.runAppWithAudioAndPersistence
++      SkiaViewer.fsi val Viewer.runAppWithWindowBehaviorAndAudioAndPersistence
 +      SkiaViewer.fsi val Viewer.runInteractiveViewer
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithAudio
@@ -1682,6 +1683,35 @@ ns     FS.GG.UI.Symbology.Render
 pkg    FS.GG.UI.Symbology.Render
 open   FS.GG.UI.Scene
 +      Render.fsi val Render.toPng
+
+# ------------------------------------------------------------------------------------------
+file   Symbology/Catalog.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology
+pkg    FS.GG.UI.Symbology
++      Catalog.fsi type Catalog.Visual
++      Catalog.fsi type Catalog.Entry
++      Catalog.fsi type Catalog.Catalog
++      Catalog.fsi val Catalog.parse
++      Catalog.fsi val Catalog.render
++      Catalog.fsi val Catalog.tryFind
++      Catalog.fsi val Catalog.toRepresentation
++      Catalog.fsi val Catalog.declaredElements
++      Catalog.fsi val Catalog.coverage
++      Catalog.fsi val Catalog.validate
+
+# ------------------------------------------------------------------------------------------
+file   Symbology/Coverage.fsi
+skill  fs-gg-symbology
+ns     FS.GG.UI.Symbology
+pkg    FS.GG.UI.Symbology
++      Coverage.fsi type Coverage.Representation
++      Coverage.fsi type Coverage.Gap
++      Coverage.fsi type Coverage.Verdict
++      Coverage.fsi type Coverage.Report`1
++      Coverage.fsi type Coverage.Finding`1
++      Coverage.fsi val Coverage.checkMap
++      Coverage.fsi val Coverage.check
 
 # ------------------------------------------------------------------------------------------
 file   Symbology/LabelLayout.fsi
