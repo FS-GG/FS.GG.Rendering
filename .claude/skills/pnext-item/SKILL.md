@@ -155,9 +155,22 @@ over the words "nothing schedulable" and started editing with no claim and no to
 Gate on the code:
 
 ```sh
-scripts/fsgg-coord take --repo <r> || { rc=$?; echo "no item (exit $rc)"; exit "$rc"; }
-# only here do you hold a claim — read what it printed for the item id and worktree command.
+receipt="$(scripts/fsgg-coord take --repo <r> --json)" \
+  || { rc=$?; echo "no item (exit $rc)"; exit "$rc"; }
+jq -e '.markerObserved == true and .status == "In progress" and .converged == true' \
+  <<<"$receipt" >/dev/null \
+  || { echo "claim won but board readback is NOT converged — do not start or announce work" >&2; exit 1; }
+issue="$(jq -r '.ref' <<<"$receipt")"
+# Only here is the winning marker AND the user-visible board Status freshly confirmed.
 ```
+
+**The receipt is the start gate.** Exit 0 still means the lock was won — preserving the CAS safety
+contract — while `.converged` says whether a fresh read observed that marker and `Status=In progress`.
+`statusWrite` distinguishes `written`, `deferred`, `not-on-board`, and `failed`; `statusRead` distinguishes
+an observed column from a failed read; `pendingBoardWrites` exposes the queue depth. Never announce or
+implement the item before the predicate above passes. A lagged lock stays reserved and
+[`check-board`](../check-board/SKILL.md) retains its `CLAIM-STATUS-LAG` repair; do not release or double-claim
+merely because the projection lagged.
 
 **If `take` exits 75, a rate budget is exhausted — back off until the reset it names; do not loop.**
 **Read WHICH budget it named** ([#897](https://github.com/FS-GG/.github/issues/897)): they fail
@@ -969,6 +982,11 @@ the one worth a second look.
 
 Merge once — and only once — **every required check is green**:
 
+**Before merging, name every obligation that starts only after the merge**: a release tag, package
+publication, downstream dispatch, rollout, or deployment verification. A green PR proves the source
+change; it does not prove any of those effects. If the list is non-empty, the merge is an intermediate
+transition, not completion, and the live claim stays with you.
+
 ```sh
 # ONE COMMAND. Do NOT hand-roll this gate — see the box below for why that instruction is the whole
 # point. It polls until the verdict SETTLES and exits 0 ONLY on green.
@@ -982,6 +1000,27 @@ gh api -X PUT repos/FS-GG/<repo>/pulls/<pr>/merge \
 
 gh api -X DELETE repos/FS-GG/<repo>/git/refs/heads/item/<n>-<slug>    # the branch, explicitly
 ```
+
+GitHub may immediately close the issue from `Closes #<n>` and Projects may immediately project that
+close as `Done`. When post-merge obligations remain, **repair that projection before doing anything
+else**: reopen the issue and move the board to `In review`, then read the row back. Keep heartbeating the
+claim while the release/publish/deploy work runs.
+
+```sh
+# ONLY when the named post-merge obligation list is non-empty.
+gh api -X PATCH repos/FS-GG/<repo>/issues/<n> -f state=open
+scripts/fsgg-coord set-field <issue> Status "In review"
+scripts/fsgg-coord ready --repo <repo> --all --json \
+  | jq -e '.[] | select(.number == <n> and .status == "In review")' >/dev/null
+# Run and verify every named release/publication/dispatch/deployment obligation here.
+# Once all are verified, close the issue again; only then can `done --flip` earn FSGG-DONE below.
+gh api -X PATCH repos/FS-GG/<repo>/issues/<n> -f state=closed
+```
+
+Do not drop the closing linkage to avoid this cycle: `done` needs durable merged-PR provenance. Reopening
+preserves that provenance while making the user-visible ledger honest. A transient Projects auto-`Done`
+is not an earned stamp, and a worker must never report completion from it. If reopening or the `In review`
+write cannot be confirmed, stop the post-merge narration, report the drift, and reconcile it first.
 
 `landable` prints one word on stdout and puts the decision in the **exit code**, so a poll loop reads
 "keep waiting" from "stop" without parsing prose. Without `--wait` it answers once and returns; that is
@@ -1216,6 +1255,11 @@ Then earn the stamp:
 ```sh
 scripts/fsgg-coord done <issue> --flip      # green FSGG-DONE only if PR merged AND Status=Done
 ```
+
+Capture and report the exact `FSGG-DONE` line. The board's `Done` column is only a projection and may
+have arrived automatically at merge; the green command output is the worker's completion evidence. The
+host will independently re-run `done <issue>` and require the same green verdict before treating the item
+as terminal.
 
 `--flip` sets `Status: Done` once it confirms the PR merged, and rolls the completion up to any
 parent epic whose children are now all `Done`. A **red** stamp means a check failed — the item is
