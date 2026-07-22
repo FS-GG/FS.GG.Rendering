@@ -232,9 +232,21 @@ module Keymap =
         else
             keymap
 
-    // Upsert: the headline rebind — binds a fresh key, and overwrites an already-bound one.
-    let rebind key command (keymap: Keymap) =
+    // Key-indexed upsert: binds a fresh key, and overwrites an already-bound one. It deliberately
+    // leaves any OTHER key assigned to the same command intact.
+    let assignKey key command (keymap: Keymap) =
         { keymap with Bindings = Map.add key command keymap.Bindings }
+
+    let rebind key command keymap = assignKey key command keymap
+
+    // Player-facing command replacement uses a single-binding policy. Removing by command first
+    // also makes a formerly multiply-bound command converge to the documented invariant.
+    let replaceCommandBinding command key (keymap: Keymap) =
+        let withoutCommand =
+            keymap.Bindings
+            |> Map.filter (fun _ boundCommand -> boundCommand <> command)
+
+        { keymap with Bindings = Map.add key command withoutCommand }
 
     let clear (_: Keymap) = empty
 

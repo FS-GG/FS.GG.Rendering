@@ -371,6 +371,10 @@ let behaviorTests =
                 (Keymap.resolve captured.Shell.Keymap (ViewerKeyboard.toKeyId (Letter 'Q')))
                 (Some capturedCommand)
                 "the real host's raw-key seam installs the captured key"
+            Expect.equal
+                (Keymap.resolve captured.Shell.Keymap (ViewerKeyboard.toKeyId (Letter 'W')))
+                None
+                "the real retained-host capture replaces the command binding instead of adding a second key"
         }
 
         // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.

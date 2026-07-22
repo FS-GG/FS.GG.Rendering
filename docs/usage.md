@@ -34,7 +34,7 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 <!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.18.0`.
+The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.18.3`.
 <!-- END GENERATED: fsgg-doc:package-coordinates -->
 
 Every release **dual-publishes** the byte-identical

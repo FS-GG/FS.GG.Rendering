@@ -94,7 +94,6 @@ module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Calendar
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Carousel
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Collapse
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Interactive2.Rate
-module FS.GG.UI.Controls::FS.GG.UI.Controls.KeyRebind
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Affix
 module FS.GG.UI.Controls::FS.GG.UI.Controls.Navigation2.Anchor
@@ -185,9 +184,7 @@ module FS.GG.UI.Elmish::FS.GG.UI.Elmish.Animation
 type FS.GG.UI.Elmish::FS.GG.UI.Elmish.AnimationTick
 
 # FS.GG.UI.KeyboardInput (4)
-module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.Keymap
 module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodec
-type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.Keymap
 type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodecError
 
 # FS.GG.UI.Layout (16)
