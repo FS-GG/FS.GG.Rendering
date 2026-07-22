@@ -50,4 +50,16 @@ let generatedInteractiveHostContract =
             Expect.stringContains block "dotnet new fs-gg-ui --name GameProduct --profile game" "release lane instantiates the packed game profile"
             Expect.stringContains block "dotnet test \"$work/GameProduct\"" "release lane runs the emitted host acceptance tests"
         }
+
+        test "packed-template pre-publish probe restores the staged framework set" {
+            let release = read ".github/workflows/release.yml"
+            let probeStart = release.IndexOf("- name: Packed template clean-checkout FSI contract", System.StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual probeStart 0 "release workflow has the packed-template probe"
+            let block = release.Substring(probeStart, min 5000 (release.Length - probeStart))
+            let source = block.IndexOf("dotnet nuget add source \"$(pwd)/artifacts/packages\"", System.StringComparison.Ordinal)
+            let scaffold = block.IndexOf("dotnet new fs-gg-ui --name \"$name\"", System.StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual source 0 "the unpublished coherent set is exposed as a restore source"
+            Expect.isGreaterThan scaffold source "the staging source is configured before the generated product restores"
+            Expect.stringContains block "--configfile \"$HOME/.nuget/NuGet/NuGet.Config\"" "the /tmp product can see the staging source"
+        }
     ]

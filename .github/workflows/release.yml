@@ -393,6 +393,17 @@ jobs:
           test -f "$package"
           dotnet new install "$package" --force
 
+          # The product generated below pins the framework set being staged in
+          # artifacts/packages. At this point that version intentionally is not on
+          # nuget.org yet: this probe is the last gate before the push. Make the
+          # staged set visible through the user-level config because the product is
+          # created outside this checkout under /tmp and cannot inherit the repo's
+          # NuGet config. Without this source every real framework release fails
+          # NU1102 here before it can publish the packages the probe is asking for.
+          dotnet nuget add source "$(pwd)/artifacts/packages" \
+            --name release-staging \
+            --configfile "$HOME/.nuget/NuGet/NuGet.Config"
+
           name="FsiContractProbe"
           product="$work/$name"
           dotnet new fs-gg-ui --name "$name" --lifecycle none --output "$product"
