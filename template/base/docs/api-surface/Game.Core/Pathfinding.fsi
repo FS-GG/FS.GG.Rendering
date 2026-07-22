@@ -53,64 +53,6 @@ module Pathfinding =
           /// The subset of `Steps` that `canEndOn` admitted. The highlight set, and the only set from
           /// which a destination may be offered.
           Endable: Set<Cell> }
-    /// Public contract type exposed by the FS.GG.Game.Core package.
-    /// One settled cell of a `reachable` search: what it cost to get here, and which cell we came from.
-    /// `CameFrom` is `None` for exactly one cell — the `start` the search was seeded with.
-    type Step =
-        { /// Total cost of entering this cell from `start`, in the same `baseStep`-scaled units as
-          /// `reachableWithin`'s values (`baseStep` per orthogonal step, `baseStep * 14 / 10` per
-          /// diagonal, times `cost`) — *not* movement points. See `baseStep`.
-          Cost: int
-          /// The predecessor on the cheapest route from `start`. `None` only for `start` itself.
-          CameFrom: Cell option }
-
-    /// Public contract type exposed by the FS.GG.Game.Core package.
-    /// The result of a `reachable` search: **two sets, and they are deliberately not the same set.**
-    ///
-    /// `Steps` is every cell the search settled — *including* cells that may only be passed **through**.
-    /// `Endable` is the subset the unit may legally **stop** on. They differ by exactly the caller's
-    /// `canEndOn` predicate: a cell occupied by an ally is traversable (so it is in `Steps`) and is not
-    /// a legal destination (so it is not in `Endable`).
-    ///
-    /// `Endable` is the **highlight** set. `Steps` is what **reconstructs a path** (see `pathTo`), and it
-    /// must be the *unfiltered* map: a route through an ally passes through a cell that is deliberately
-    /// absent from `Endable`. Reconstruct from the filtered set and you dead-end on precisely the routes
-    /// `canEndOn` exists to allow.
-    type Reach =
-        { /// Every settled cell, including pass-through-only ones. The path source.
-          Steps: Map<Cell, Step>
-          /// The subset of `Steps` that `canEndOn` admitted. The highlight set, and the only set from
-          /// which a destination may be offered.
-          Endable: Set<Cell> }
-    /// Public contract type exposed by the FS.GG.Game.Core package.
-    /// One settled cell of a `reachable` search: what it cost to get here, and which cell we came from.
-    /// `CameFrom` is `None` for exactly one cell — the `start` the search was seeded with.
-    type Step =
-        { /// Total cost of entering this cell from `start`, in the same `baseStep`-scaled units as
-          /// `reachableWithin`'s values (`baseStep` per orthogonal step, `baseStep * 14 / 10` per
-          /// diagonal, times `cost`) — *not* movement points. See `baseStep`.
-          Cost: int
-          /// The predecessor on the cheapest route from `start`. `None` only for `start` itself.
-          CameFrom: Cell option }
-
-    /// Public contract type exposed by the FS.GG.Game.Core package.
-    /// The result of a `reachable` search: **two sets, and they are deliberately not the same set.**
-    ///
-    /// `Steps` is every cell the search settled — *including* cells that may only be passed **through**.
-    /// `Endable` is the subset the unit may legally **stop** on. They differ by exactly the caller's
-    /// `canEndOn` predicate: a cell occupied by an ally is traversable (so it is in `Steps`) and is not
-    /// a legal destination (so it is not in `Endable`).
-    ///
-    /// `Endable` is the **highlight** set. `Steps` is what **reconstructs a path** (see `pathTo`), and it
-    /// must be the *unfiltered* map: a route through an ally passes through a cell that is deliberately
-    /// absent from `Endable`. Reconstruct from the filtered set and you dead-end on precisely the routes
-    /// `canEndOn` exists to allow.
-    type Reach =
-        { /// Every settled cell, including pass-through-only ones. The path source.
-          Steps: Map<Cell, Step>
-          /// The subset of `Steps` that `canEndOn` admitted. The highlight set, and the only set from
-          /// which a destination may be offered.
-          Endable: Set<Cell> }
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// A* shortest path from `start` to `goal` over walkable cells. Returns `Some path` where `path` is

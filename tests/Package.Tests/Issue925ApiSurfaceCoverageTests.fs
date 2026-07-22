@@ -76,6 +76,53 @@ let coverageVerdictTests =
           } ]
 
 // -----------------------------------------------------------------------------------------------------
+// duplicateIncludes — the WELL-FORMEDNESS half (#982). The generator renders each `+` include verbatim, in
+// order, so a member listed twice in one stanza is rendered twice: the `Pathfinding.fsi` Step/Reach
+// TRIPLICATION TowerDefense1#4 saw. The #925 reconcile above is blind to it — `taughtSet` is a Set — so this
+// is a separate decision, pure and tested here for the same reason the reconcile is.
+// -----------------------------------------------------------------------------------------------------
+
+let private inc source kind path : Include = { Source = source; Kind = kind; Path = path }
+
+[<Tests>]
+let duplicateIncludeTests =
+    testList
+        "issue-982 duplicate-include well-formedness"
+        [ test "a member listed twice in one stanza is a duplicate — the triplication shape" {
+              // Exactly TowerDefense1#4: `+ type Pathfinding.Step` and `+ type Pathfinding.Reach` each thrice.
+              let includes =
+                  [ inc "Pathfinding.fsi" "type" "Neighbourhood"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Step"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Reach"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Step"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Reach"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Step"
+                    inc "Pathfinding.fsi" "type" "Pathfinding.Reach" ]
+              let dups = duplicateIncludes includes
+              Expect.equal
+                  (dups |> List.map (fun d -> d.Path))
+                  [ "Pathfinding.Reach"; "Pathfinding.Step" ]
+                  "both repeated members are reported once each, sorted"
+          }
+
+          test "each member reported ONCE however many times it repeats" {
+              let includes = List.replicate 3 (inc "F.fsi" "type" "Foo")
+              Expect.equal (duplicateIncludes includes) [ inc "F.fsi" "type" "Foo" ] "a member tripled is one duplicate, not two"
+          }
+
+          test "a member differing only in KIND is not a duplicate" {
+              // `type Foo` and `val Foo` are distinct declarations at the same path — both render, correctly.
+              let includes = [ inc "F.fsi" "type" "Foo"; inc "F.fsi" "val" "Foo" ]
+              Expect.isEmpty (duplicateIncludes includes) "kind is part of the identity"
+          }
+
+          test "distinct includes are clean" {
+              let includes =
+                  [ inc "F.fsi" "type" "Neighbourhood"; inc "F.fsi" "type" "Step"; inc "F.fsi" "val" "astar" ]
+              Expect.isEmpty (duplicateIncludes includes) "no repeat, no finding"
+          } ]
+
+// -----------------------------------------------------------------------------------------------------
 // publicMembers — the extraction decision, tested on synthetic trees. This is where the subtle bugs live
 // (internal-subtree pruning, `and`-group inheritance), so it is here and not only behind a live restore.
 // -----------------------------------------------------------------------------------------------------
@@ -189,4 +236,38 @@ let coverageWiringTests =
                   |> Array.filter (fun (_, n) -> n > 1)
                   |> Array.map fst
               Expect.isEmpty dups (sprintf "duplicate waiver line(s): %A" dups)
+          }
+
+          test "the generator loads the coverage module and fails on a duplicate include (#982)" {
+              Expect.stringContains generator "Coverage.duplicateIncludes" "the generator calls the well-formedness decision"
+              Expect.stringContains generator "duplicate include" "it fails, naming the malformed stanza"
+          }
+
+          test "no `file` stanza in the committed manifest repeats a `+` include (#982)" {
+              // The integration guard that would have caught TowerDefense1#4 at review time: parse the real
+              // manifest into (file -> its `+` includes) and assert `duplicateIncludes` is empty for each. A
+              // repeat here renders that many times in the mirror, and every other check agrees with itself
+              // about it (the drift check on identical tripled bytes, the Set-valued coverage reconcile).
+              let lines = manifest.Replace("\r\n", "\n").Split('\n')
+              let mutable current = ""
+              let perFile = System.Collections.Generic.Dictionary<string, ResizeArray<Include>>()
+
+              for raw in lines do
+                  let s = raw.Trim()
+                  if s.StartsWith "file " then
+                      current <- s.Substring(5).Trim()
+                      if not (perFile.ContainsKey current) then perFile.[current] <- ResizeArray<Include>()
+                  elif s.StartsWith "+ " && current <> "" then
+                      match Regex.Split(s.Substring(2).Trim(), @"\s+") |> Array.toList with
+                      | source :: kind :: rest when not (List.isEmpty rest) ->
+                          perFile.[current].Add(inc source kind (String.concat " " rest))
+                      | _ -> ()
+
+              let offenders =
+                  [ for kv in perFile do
+                        match duplicateIncludes (List.ofSeq kv.Value) with
+                        | [] -> ()
+                        | dups -> yield kv.Key, dups ]
+
+              Expect.isEmpty offenders (sprintf "stanza(s) with a repeated `+` include (renders N times): %A" (offenders |> List.map fst))
           } ]

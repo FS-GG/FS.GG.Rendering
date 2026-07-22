@@ -1037,10 +1037,6 @@ pkg    FS.GG.Game.Core
 +      Pathfinding.fsi type Neighbourhood
 +      Pathfinding.fsi type Pathfinding.Step
 +      Pathfinding.fsi type Pathfinding.Reach
-+      Pathfinding.fsi type Pathfinding.Step
-+      Pathfinding.fsi type Pathfinding.Reach
-+      Pathfinding.fsi type Pathfinding.Step
-+      Pathfinding.fsi type Pathfinding.Reach
 +      Pathfinding.fsi val Pathfinding.astar
 +      Pathfinding.fsi val Pathfinding.bfs
 +      Pathfinding.fsi val Pathfinding.distanceField
