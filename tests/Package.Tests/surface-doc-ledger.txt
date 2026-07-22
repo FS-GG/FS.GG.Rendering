@@ -29,11 +29,29 @@
 #
 # FORMAT:  <category>  <name>
 #
-#   tracked     A surface a product author would WANT and cannot find. A real gap, tracked by #507 / epic
-#               FS-GG/.github#423 — listed, NOT blessed. These are the ones to write next.
-#   vocabulary  A constructor or combinator in a type's own vocabulary (a scene shape, a colour, a design
-#               token, a geometry helper). A product composes it straight from the `.fsi`, and a skill that
-#               listed them would be a worse copy of the signature file.
+# Categories split into PENDING and TERMINAL — the distinction the anti-rot rules turn on. Every category
+# satisfies coverage (rule 1): a declared line is a decision somebody made. They differ in what the ledger
+# PROMISES about the line's future. `tracked` is PENDING — it retires the day a product skill HERE documents
+# it. The other three are TERMINAL — the surface is settled, so no local skill is EXPECTED to document it and
+# the line stays until the api-surface stops shipping it (rule 3).
+#
+#   tracked          A surface a product author would WANT and cannot find. A real gap, tracked by #507 / epic
+#                    FS-GG/.github#423 — listed, NOT blessed. These are the ones to write next. PENDING.
+#   vocabulary       A constructor or combinator in a type's own vocabulary (a scene shape, a colour, a design
+#                    token, a geometry helper). A product composes it straight from the `.fsi`, and a skill that
+#                    listed them would be a worse copy of the signature file. TERMINAL.
+#   owner-sourced    Documented by an owner-sourced skill (`fs-gg-game-core` / `fs-gg-audio` /
+#                    `fs-gg-persistence`) whose local copy ADR-0063 (#965) RETIRED from this provider — the
+#                    body still reaches every game/sample-pack product, it is just no longer checked out here,
+#                    so S-DOC (which reads only `template/product-skills/**`) can no longer see it. TERMINAL.
+#                    See the section note at the foot of this file.
+#   owner-documented Documented in FS.GG.Game's `fs-gg-game-core` skill BODY (canonical in FS.GG.Game,
+#                    `FS.GG.Game.Skills`, ADR-0063; FS.GG.Game#466/#472), for a surface VENDORED into this
+#                    mirror (#984) that no local skill copy ever carried. The citations live in a corpus this
+#                    repo cannot read, so no local skill can ever cite these vals: the line is PERMANENTLY
+#                    satisfied by cross-repo owner documentation — never pending, never stale by a local write,
+#                    terminal until #984 un-vendors the surface. Adjudicated as option 3 of #998
+#                    (@ehotwagner, 2026-07-22). TERMINAL. See the section note above the rows.
 #
 # The ledger keys on the NAME, so one line covers every `.fsi` that declares it. The `# ---- <file>` headers
 # are for readers; names carried by more than one signature file are gathered at the foot of this file, since
@@ -230,62 +248,70 @@ vocabulary  neutral
 # `lineOfSightBy` / `trace` -> `fs-gg-line-drawing` — are now cited AS CODE by those skills, so their rows
 # are GONE below (see the `# ---- Game.Core/Fov.fsi` and `# ---- Game.Core/Los.fsi` notes).
 #
-# THE 37 Ai/Difficulty/Ballistics/Dice/Effects VALS STAY `tracked` HERE — PERMANENTLY, until the api-surface
-# mirror or the S-DOC corpus changes. FS.GG.Game#466/#472 documented them in the `fs-gg-game-core` body
-# (CANONICAL in FS.GG.Game, `FS.GG.Game.Skills`, ADR-0063) — but ADR-0063 (#965) RETIRED the local
-# `fs-gg-game-core` SKILL copy from THIS provider, and S-DOC reads ONLY `template/product-skills/**`
-# (SurfaceDocCoverageTests.productSkillsRoot). So the FS.GG.Game#472 citations are invisible to S-DOC here:
-# the api-surface for these modules is vendored in (#984, so they are in `shippedSurface`), but no skill in
-# this repo's corpus can cite them, so rule 1 requires them LEDGERED and they can never go stale (rule 2).
-# #993's Ask 2 assumed the republish would surface the citations here; it does not, and retiring these 37 was
-# PROVEN to red rule 1 (all 37 -> undeclared). Routed to **FS-GG/FS.GG.Rendering#993 follow-up** — a real fix
-# needs either the `fs-gg-game-core` corpus vendored into `template/product-skills/` (so S-DOC can see the
-# owner-sourced citations) or the Ai/Ballistics/Dice/Effects api-surface un-vendored from this mirror.
+# THE 37 Ai/Difficulty/Ballistics/Dice/Effects VALS ARE `owner-documented` — a PERMANENT, TERMINAL
+# disposition, distinct from the pending `tracked` state they sat in through #984/#993. FS.GG.Game#466/#472
+# documented them in the `fs-gg-game-core` body (CANONICAL in FS.GG.Game, `FS.GG.Game.Skills`, ADR-0063) — but
+# ADR-0063 (#965) RETIRED the local `fs-gg-game-core` SKILL copy from THIS provider, and S-DOC reads ONLY
+# `template/product-skills/**` (SurfaceDocCoverageTests.productSkillsRoot). So the FS.GG.Game#472 citations are
+# invisible to S-DOC here: the api-surface for these modules is vendored in (#984, so they are in
+# `shippedSurface`), but no skill in this repo's corpus can cite them. #993's Ask 2 assumed the republish would
+# surface the citations here; it does not, and retiring these 37 was PROVEN to red rule 1 (all 37 ->
+# undeclared).
+#
+# THE DECISION — #998, option 3, adjudicated by @ehotwagner (2026-07-22). The surface stays VENDORED (respects
+# #984/#644) and the docs stay in FS.GG.Game's `fs-gg-game-core` skill (respects ADR-0063). Neither vendoring
+# the owner corpus into `template/product-skills/` (against ADR-0063) nor un-vendoring the surface (against
+# #984) is taken. Instead these 37 are recorded under a PERMANENT ledger category — `owner-documented`: the
+# documentation exists, cross-repo, owner-sourced, and this repo's ledger records exactly that. S-DOC accepts
+# `owner-documented` as a TERMINAL disposition — a val in it is neither `undeclared` (rule 1: it is declared)
+# nor `tracked`-stale (rule 2: no local skill can ever cite it, so the anti-rot rule can never fire against a
+# correct line). It retires only if #984 un-vendors the surface (rule 3 drops the .fsi, phantoms the line) or a
+# Rendering-owned skill ever documents one of these locally (delete that line). Both keep this section honest.
 
 # ---- Game.Core/Ai.fsi
-tracked     aimError
-tracked     best
-tracked     due
-tracked     easy
-tracked     fleeField
-tracked     ghosts
-tracked     hard
-tracked     influenceMap
-tracked     known
-tracked     normal
-tracked     spotted
-tracked     substream
-tracked     threatField
-tracked     tryFind
-tracked     viewTick
+owner-documented  aimError
+owner-documented  best
+owner-documented  due
+owner-documented  easy
+owner-documented  fleeField
+owner-documented  ghosts
+owner-documented  hard
+owner-documented  influenceMap
+owner-documented  known
+owner-documented  normal
+owner-documented  spotted
+owner-documented  substream
+owner-documented  threatField
+owner-documented  tryFind
+owner-documented  viewTick
 
 # ---- Game.Core/Ballistics.fsi
-tracked     intercept
-tracked     inverseSquareFalloff
-tracked     linearFalloff
-tracked     splash
+owner-documented  intercept
+owner-documented  inverseSquareFalloff
+owner-documented  linearFalloff
+owner-documented  splash
 
 # ---- Game.Core/Dice.fsi
-tracked     advantage
-tracked     constant
-tracked     convolve
-tracked     die
-tracked     disadvantage
-tracked     outcomes
-tracked     totalWeight
-tracked     uniform
-tracked     variance
+owner-documented  advantage
+owner-documented  constant
+owner-documented  convolve
+owner-documented  die
+owner-documented  disadvantage
+owner-documented  outcomes
+owner-documented  totalWeight
+owner-documented  uniform
+owner-documented  variance
 
 # ---- Game.Core/Effects.fsi
-tracked     amplify
-tracked     applyAll
-tracked     applyEffect
-tracked     floorAt
-tracked     gatedBy
-tracked     immuneWhen
-tracked     pipeline
-tracked     resist
-tracked     tickEffects
+owner-documented  amplify
+owner-documented  applyAll
+owner-documented  applyEffect
+owner-documented  floorAt
+owner-documented  gatedBy
+owner-documented  immuneWhen
+owner-documented  pipeline
+owner-documented  resist
+owner-documented  tickEffects
 
 # ---- Game.Core/Fov.fsi   (vendored by #984 — DOCUMENTED by #993; no rows remain here)
 # `fov` is now cited AS CODE by the Rendering-owned `fs-gg-visibility` skill's "Grid field-of-view —
