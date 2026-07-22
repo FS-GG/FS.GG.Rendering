@@ -52,7 +52,7 @@
     {
       "id": "fs-gg-line-drawing",
       "scope": "product",
-      "sha256": "959ae2ac1acc208294fb750b018f1f271ac43f521d02da143edbd71d23ad51e4",
+      "sha256": "b9b19b8d491f21972714ef0cb11b84dd078fb80cef6cc820dfb2945d1913dc22",
       "resolvablePath": ".agents/skills/fs-gg-line-drawing/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-line-drawing/"
@@ -132,7 +132,7 @@
     {
       "id": "fs-gg-visibility",
       "scope": "product",
-      "sha256": "df80304196af942470581d349273d5cb05a4bfb14cbf6fe501d9f28079fa3680",
+      "sha256": "53f2657f1463f43aab247691d49e36ce7856d8ef75a8658d82b734f0d65226f4",
       "resolvablePath": ".agents/skills/fs-gg-visibility/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-visibility/"

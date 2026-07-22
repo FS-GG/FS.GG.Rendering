@@ -88,10 +88,36 @@ inputs yield a byte-identical polygon across runs and platforms (safe under repl
 into a fog-of-war mask, or point-test against it. For a single yes/no query, `Visibility.isVisible
 source target walls` is the exact line-of-sight convenience built on the same `raySegment` core.
 
+## Grid field-of-view — the framework `Fov` module
+
+The angular sweep above is the **continuous** (float `Point`, wall-segment) answer to *"what can be seen
+from here?"*. For a **grid** field of view — the tiles visible from a viewpoint over an integer `Cell`
+space — the framework ships the canonical `FS.GG.Game.Core.Fov` module (promoted from the frozen game
+profile), and you should reach for it rather than ray-testing every cell in radius:
+
+```fsharp
+open FS.GG.Game.Core       // Cell, Fov
+
+let canSeeThrough (c: Cell) = not (Set.contains c walls)   // your opacity map; true = see through
+let seen = Fov.fov canSeeThrough eye 8                     // the Set<Cell> in view within radius 8
+```
+
+`Fov.fov canSeeThrough eye radius` returns the `Set<Cell>` in view from `eye` within `radius` by
+**symmetric shadowcasting** (Ford/Milazzo), not a ray per cell: for two see-through cells within range,
+`b ∈ Fov.fov p a r` ⇔ `a ∈ Fov.fov p b r`. It is `O(cells in radius)` — a line-of-sight-per-cell FOV is
+`O(radius³)` and produces asymmetric, artifact-ridden vision — the disc is an exact integer
+squared-distance clip (no jagged-circle rounding), and the result is ordered by `Cell`'s `(Col, Row)`
+order, so it is byte-identical across runs and safe inside a replayed `update`. Walls are deliberately
+**expansive** (a wall in view is revealed even though it blocks everything beyond it), so the symmetry
+guarantee is stated over *see-through* cells. The `eye` cell is always in the result when `radius >= 0`
+(even if opaque); `radius = 0` yields `Set.singleton eye` and `radius < 0` yields `Set.empty`. The
+discrete-grid line-of-sight sibling (`Los`) is documented in [[fs-gg-line-drawing]].
+
 ## Applications
 
 - **Line-of-sight** — `isVisible` (can an enemy see the player?).
-- **Field-of-view** — cone the sweep to an angular range (edit `polygon` to clamp ray directions).
+- **Field-of-view** — the grid `Fov.fov` above, or cone the sweep to an angular range (edit `polygon` to
+  clamp ray directions).
 - **Fog-of-war** — rasterize the polygon into a visited/visible mask each step.
 - **2D lighting / soft shadows** — fill the polygon as a light; layer several sources.
 
