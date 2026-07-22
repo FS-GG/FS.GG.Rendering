@@ -214,12 +214,20 @@ vocabulary  neutral
 # #984 — VENDORED BY #984, DOCUMENTED NOWHERE YET. The game-profile simulation modules
 # (Ai/Difficulty, Ballistics, Dice, Effects, Fov, Los, Visibility, Scene.Animation) were entirely
 # WAIVED out of the mirror; #984 un-waived them so a game scaffold carries the full surface. Their
-# vals are documented in NO shipped skill and NOT in the owner-sourced `fs-gg-game-core` (which covers
-# only fixed-step / RNG / pathfinding / spatial-grid / geometry / physics — NOT these), so they are
-# `tracked` gaps here: a game author WANTS them and cannot find them. The follow-up documents them in
-# the reach-matching skill (owner-sourced `fs-gg-game-core` for the sim modules; `fs-gg-visibility` /
-# `fs-gg-line-drawing` for Los/Fov/Visibility; `fs-gg-scene` for Animation), at which point S-DOC rule 2
-# takes each line the moment its skill cites it. Filed as FS-GG/FS.GG.Rendering follow-up to #984.
+# vals were documented in NO shipped skill and NOT in the owner-sourced `fs-gg-game-core` (which covers
+# only fixed-step / RNG / pathfinding / spatial-grid / geometry / physics — NOT these), so they were
+# `tracked` gaps here: a game author WANTS them and cannot find them. Each line is documented in the
+# reach-matching skill, at which point S-DOC rule 2 takes it the moment its skill cites it. Filed as
+# FS-GG/FS.GG.Rendering follow-up #986 to #984.
+#
+# SPLIT — #986 (2026-07-22). The **Scene.Animation** dozen is now documented in the shipped `fs-gg-scene`
+# skill (a game/base-profile skill whose reach carries the Scene package), so its rows are GONE below — see
+# the `# ---- Scene/Animation.fsi` note. The **Game.Core** half (Ai/Difficulty, Ballistics, Dice, Effects,
+# Fov, Los — 40 vals) stays `tracked`: its home is the owner-sourced `fs-gg-game-core` body, CANONICAL in
+# FS.GG.Game (`FS.GG.Game.Skills`, ADR-0063) and not editable from this repo, so #986 could not cite it here.
+# Routed to **FS-GG/FS.GG.Game#466**, which also carries the R-REACH nuance that #986's body mapped Los/Fov/
+# Visibility to the Rendering-owned `fs-gg-line-drawing` / `fs-gg-visibility` skills. Each Game.Core row below
+# is retired the moment its owning skill cites it (S-DOC rule 2 flags the stale line).
 
 # ---- Game.Core/Ai.fsi
 tracked     aimError
@@ -333,21 +341,14 @@ vocabulary  layoutSize
 vocabulary  pixelSnapPolicy
 vocabulary  stackConfig
 
-# ---- Scene/Animation.fsi   (vendored by #984 — see the Game.Core sim-module note above; `empty` /
-#                             `create` / `advance` / `value` / `apply` / `sample` / `lerp` are carried
-#                             by other files and already accounted for)
-tracked     applyAt
-tracked     identity
-tracked     isActive
-tracked     isIdentity
-tracked     isSettled
-tracked     lerpColor
-tracked     lerpFloat
-tracked     progress
-tracked     retarget
-tracked     sampleColor
-tracked     sampleFrames
-tracked     toPerspectiveTransform
+# ---- Scene/Animation.fsi   (vendored by #984 — DOCUMENTED by #986; no rows remain here)
+# The twelve `Transform` / `Tween` / `Animation` / `AnimationState` vals #984 left `tracked` here —
+# `applyAt`, `identity`, `isActive`, `isIdentity`, `isSettled`, `lerpColor`, `lerpFloat`, `progress`,
+# `retarget`, `sampleColor`, `sampleFrames`, `toPerspectiveTransform` — are now cited AS CODE by the
+# shipped `fs-gg-scene` skill's "Declarative motion — animation as data" section (qualified: `Transform.identity`,
+# `Animation.applyAt`, `AnimationState.retarget`, …), so S-DOC rule 2 requires their lines be GONE, not left to
+# imply the surface is still undocumented. (`empty` / `create` / `advance` / `value` / `apply` / `sample` /
+# `lerp` were carried by other files and already accounted for — they never had rows here.)
 
 # ---- Scene/Scene.fsi
 # `describe` has NO line here, and #692 is the record of why — because its absence has meant two different
