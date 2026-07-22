@@ -33,10 +33,11 @@ declares input messages — regardless of open order.
 
 To explore the built app interactively, load it and its transitive
 `FS.GG.UI.*` references into FSI in one step with no manual reference editing:
-build once (`./fake.sh build -t Dev`), then run `dotnet fsi load-product.fsx`.
-The generated `load-product.fsx` is derived from `Directory.Packages.props` and
-the built `Product` output (it is not a hand-maintained list — do not edit it),
-so it stays in sync as the assembly set changes. It only `#r`s and `open`s the
+build once (`./build.sh build`), then run `dotnet fsi load-Product.fsx`.
+The scaffolded `load-Product.fsx` is renamed with the product (for example,
+`load-Acme.fsx`) and references only the built product assembly; .NET resolves
+its transitive dependencies from the same output directory. Regenerate the
+scaffold after changing its project layout rather than maintaining a dependency list. It only `#r`s and `open`s the
 app; it launches nothing, so benign host-warning classification is unaffected and
 a missing assembly surfaces as a normal load failure.
 
@@ -217,13 +218,10 @@ layout or the scene, so the audited evidence reflects the current product — a 
 a `Verify` you cannot trust. This is the same render-and-look act the evidence gate exists to
 witness, which is why `Verify` does not silently create the baseline for you.
 
-Evidence graph and audit checks are exposed as generated FAKE targets:
+Evidence graph and audit checks are exposed as generated FSI-script targets:
 
-Generated FAKE-backed commands (`./fake.sh`, `fake.cmd`, or `dotnet fake`)
-share `.fake` state and are not safe to run concurrently. Run multiple
-FAKE-backed validation commands sequentially, preserve the command order in
-readiness notes, and parallelize only non-FAKE checks that do not invoke FAKE
-or depend on `.fake`.
+The legacy-named `fake.sh` / `fake.cmd` wrappers call `dotnet fsi build.fsx`
+directly. The scaffold does not install or invoke `fake-cli`.
 
 1. `./fake.sh build -t EvidenceGraph`
 2. `./fake.sh build -t EvidenceAudit`
@@ -236,8 +234,7 @@ part of normal evidence collection. Use
 review logs. The generated build writes redirected stdout/stderr as text,
 preserving command diagnostics and exit-code context without binary padding.
 
-If a generated FAKE-backed failure looks race-like or the concurrent FAKE
-context is unknown, record the failed command, suspected `.fake` race status,
+If a generated build-script failure looks race-like, record the failed command,
 sequential rerun order, and follow-up classification before product debugging.
 
 Generated evidence may report semantic scene facts such as lander, terrain,

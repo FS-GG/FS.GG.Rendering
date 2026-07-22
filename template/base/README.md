@@ -33,26 +33,26 @@ SDK).
 ### Uniform verb wrapper (`build.sh` / `build.cmd`)
 
 A `build.sh` (POSIX) / `build.cmd` (Windows) wrapper exposes one predictable verb surface; **every**
-verb delegates to the single governed FAKE entry (`dotnet fsi build.fsx -t <Target>`):
+verb delegates to the generated FSI build script (`dotnet fsi build.fsx -t <Target>`):
 
 ```bash
 ./build.sh restore     #  build.cmd restore   on Windows
 ./build.sh build
-./build.sh test        #  ≡ FAKE Test
+./build.sh test        #  ≡ build.fsx Test
 ./build.sh run
-./build.sh verify      #  ≡ FAKE Verify (full merge-gate evidence + tests)
+./build.sh verify      #  ≡ build.fsx Verify (full merge-gate evidence + tests)
 ./build.sh pack
 ```
 
 An unknown or missing verb prints the supported-verb list and exits non-zero. Reach for stock
 `dotnet build/test/run` for an ordinary build/test/run; use `./build.sh verify` for the governed
-evidence+audit path described in the FAKE quickstart below. (The shell wrappers need the executable
+evidence+audit path described in the governed quickstart below. (The shell wrappers need the executable
 bit — see *First-time setup* — but the stock `dotnet` commands above do not.)
 
 ## First-time setup (Git + executable scripts)
 
 This product was generated **side-effect-free**: no Git repository was created and the generated
-shell scripts may not carry the executable bit. Before the FAKE-backed commands below, either
+shell scripts may not carry the executable bit. Before the generated script commands below, either
 re-generate with `--initGit true --allow-scripts yes`, or run these steps once by hand from the
 project root (skip the `git` step if you are already inside a repository):
 
@@ -69,15 +69,13 @@ for you.
 
 Run the generated product governance checks:
 
-Generated FAKE-backed commands (`./fake.sh`, `fake.cmd`, or `dotnet fake`)
-share `.fake` state and are not safe to run concurrently. Run multiple
-FAKE-backed validation commands sequentially, and record that order in
-readiness evidence. Non-FAKE checks may still run in parallel when they do not
-invoke FAKE or depend on `.fake`.
+The legacy-named `fake.sh` / `fake.cmd` wrappers invoke `dotnet fsi build.fsx` directly; the
+generated product does not install or invoke `fake-cli`. Use the uniform wrapper for the ordinary
+governed sequence:
 
-1. `./fake.sh build -t Dev`
-2. `./fake.sh build -t Test`
-3. `./fake.sh build -t Verify`
+1. `./build.sh dev`
+2. `./build.sh test`
+3. `./build.sh verify`
 
 > **`Dev` is a completion-marker / log-writer target, not a compiler.** It only
 > records progress to `readiness/logs/Dev.txt` — it does **not** give you real
@@ -95,14 +93,10 @@ invoke FAKE or depend on `.fake`.
 > audit-free) for a green test run mid-implementation, and `-t Verify` for the full
 > merge-gate once the feature is complete.
 
-Run Spec Kit evidence checks through the generated FAKE targets:
+Run Spec Kit evidence checks through the generated FSI script:
 
 1. `./fake.sh build -t EvidenceGraph`
 2. `./fake.sh build -t EvidenceAudit`
-
-If a generated FAKE-backed command fails with race-like symptoms or unknown
-concurrent context, rerun the affected FAKE-backed commands sequentially before
-classifying the failure as a product regression.
 
 The generated targets run the evidence graph and merge-gate audit in-process
 through the packaged `FS.GG.UI.Build` engine (no Python or shell audit script
@@ -118,13 +112,14 @@ To load the built app and all its transitive `FS.GG.UI.*` references into FSI
 in a single step — with **zero manual reference edits** — build once, then run
 the generated load script:
 
-1. `./fake.sh build -t Dev`
-2. `dotnet fsi load-product.fsx`
+1. `./build.sh build`
+2. `dotnet fsi load-Product.fsx`
 
-`load-product.fsx` is **generated** and stays in sync with the product's
-assembly set: it is derived from `Directory.Packages.props` and the built
-`Product` output, not a hand-maintained reference list, so do not edit it. It
-only `#r`s the assemblies and `open`s `Product` — it launches nothing, so it
+`load-Product.fsx` is emitted with the scaffold and renamed with the product (for example,
+`load-Acme.fsx`). It references only the built product assembly; .NET resolves that assembly's
+transitive dependencies from the same build output, so there is no hand-maintained dependency
+list. Regenerate the scaffold after changing its project layout rather than editing this file. It
+only `#r`s the product assembly and `open`s `Product` — it launches nothing, so it
 neither emits nor suppresses host warnings, and a missing assembly surfaces as a
 normal load failure.
 

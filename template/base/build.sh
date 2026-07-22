@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Feature 212: uniform product-root verb wrapper. Every verb delegates to the single FAKE entry
-# (`dotnet fsi build.fsx -t <Target>`), so FAKE stays the one rich/governed path. Stock
+# Feature 212: uniform product-root verb wrapper. Every verb delegates to the generated FSI script
+# (`dotnet fsi build.fsx -t <Target>`), which is the rich/governed path. Stock
 # `dotnet build/test/run` at the product root remain independently usable via <Name>.slnx.
 # Mirrors the existing fake.sh style; parity with build.cmd.
 set -euo pipefail

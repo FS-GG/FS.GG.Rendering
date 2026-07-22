@@ -206,6 +206,10 @@ jobs:
           dotnet build "$PRODUCT_DIR"
           dotnet test "$PRODUCT_DIR"
           dotnet run --project "$PRODUCT_DIR/src/GeneratedProduct"
+          test -f "$PRODUCT_DIR/load-GeneratedProduct.fsx"
+          test ! -e "$PRODUCT_DIR/load-product.fsx"
+          chmod +x "$PRODUCT_DIR/build.sh"
+          (cd "$PRODUCT_DIR" && ./build.sh build && dotnet fsi load-GeneratedProduct.fsx)
       # ADR-0024 (.github#234): the game/sample-pack profiles are the FIRST CONSUMER EDGE of the
       # standalone FS.GG.Audio component ($(FsGgAudioVersion) axis) and of FS.GG.Game.Core
       # ($(FsGgGameVersion), ADR-0022 P5). The instantiation above takes the template's DEFAULT
@@ -372,6 +376,39 @@ jobs:
           dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$pin" -o artifacts/packages
           dotnet pack .template.package/FS.GG.UI.Template.fsproj -c Release -p:Version="$VER" -o artifacts/packages
           echo "Packed:"; ls -1 artifacts/packages/*.nupkg
+
+      # #1010 — prove the bytes about to be published, not the source template installed elsewhere
+      # in this workflow. This follows the generated README from a clean, non-default-name scaffold:
+      # the documented build command must produce the main assembly, the documented renamed loader
+      # must exist and execute, and no frontend may claim a FAKE CLI/.fake contract the package does
+      # not ship. A failure here happens before either package feed is mutated.
+      - name: Packed template clean-checkout FSI contract (#1010)
+        shell: bash
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          package="artifacts/packages/FS.GG.UI.Template.$VER.nupkg"
+          test -f "$package"
+          dotnet new install "$package" --force
+
+          name="FsiContractProbe"
+          product="$work/$name"
+          dotnet new fs-gg-ui --name "$name" --lifecycle none --output "$product"
+
+          test -f "$product/load-$name.fsx"
+          test ! -e "$product/load-product.fsx"
+          for frontend in build.fsx build.sh build.cmd fake.sh fake.cmd; do
+            test -f "$product/$frontend"
+          done
+          ! grep -R -E 'dotnet fake|share(s|d)? [`]?\.fake|FAKE-backed' \
+              "$product/README.md" "$product/docs/product.md" "$product/build.sh" "$product/build.cmd"
+          test ! -e "$product/.config/dotnet-tools.json" || ! grep -q 'fake-cli' "$product/.config/dotnet-tools.json"
+
+          chmod +x "$product/build.sh"
+          (cd "$product" && ./build.sh build && dotnet fsi "load-$name.fsx")
+          test -f "$product/src/$name/bin/Debug/net10.0/$name.dll"
 
       # #752 — the coherent set must carry its SIGNATURE FILES before it is pushed anywhere.
       #
