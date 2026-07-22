@@ -1328,12 +1328,34 @@ proseat KeyboardInput.fsi type KeyboardEffect ::: | RequestHostKeyCapture of Key
 +      KeyboardInput.fsi val Keyboard.init
 +      KeyboardInput.fsi val Keyboard.update
 +      KeyboardInput.fsi val Keyboard.stateDisplay
++      KeyboardInput.fsi type Keymap
++      KeyboardInput.fsi val Keymap.assignKey
++      KeyboardInput.fsi val Keymap.rebind
++      KeyboardInput.fsi val Keymap.replaceCommandBinding
 +      KeyboardInput.fsi type KeyModifiers
 +      KeyboardInput.fsi val ViewerKeyboard.normalize
 +      KeyboardInput.fsi val ViewerKeyboard.normalizeEvent
 +      KeyboardInput.fsi val ViewerKeyboard.toKeyId
 +      KeyboardInput.fsi val ViewerKeyboard.noModifiers
 +      KeyboardInput.fsi val ViewerKeyboard.normalizeEventWithModifiers
+
+# ------------------------------------------------------------------------------------------
+file   Controls/KeyRebind.fsi
+skill  fs-gg-keyboard-input
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.KeyboardInput
++      KeyRebind.fsi type KeyRebindAction
++      KeyRebind.fsi val KeyRebind.create
++      KeyRebind.fsi val KeyRebind.commands
++      KeyRebind.fsi val KeyRebind.actions
++      KeyRebind.fsi val KeyRebind.onRebind
++      KeyRebind.fsi val KeyRebind.onActionRebind
++      KeyRebind.fsi val KeyRebind.onReset
++      KeyRebind.fsi val KeyRebind.withBindings
++      KeyRebind.fsi val KeyRebind.restoreDefaults
++      KeyRebind.fsi val KeyRebind.ofActions
++      KeyRebind.fsi val KeyRebind.ofKeymap
 
 # ------------------------------------------------------------------------------------------
 file   Layout/Graph.fsi
@@ -2218,10 +2240,6 @@ waive FS.GG.UI.Controls Interactive2.fsi val Interactive2.Collapse.onChange
 waive FS.GG.UI.Controls Interactive2.fsi val Interactive2.Rate.create
 waive FS.GG.UI.Controls Interactive2.fsi val Interactive2.Rate.onChange
 waive FS.GG.UI.Controls Interactive2.fsi val Interactive2.Rate.value
-waive FS.GG.UI.Controls KeyRebind.fsi val KeyRebind.commands
-waive FS.GG.UI.Controls KeyRebind.fsi val KeyRebind.create
-waive FS.GG.UI.Controls KeyRebind.fsi val KeyRebind.ofKeymap
-waive FS.GG.UI.Controls KeyRebind.fsi val KeyRebind.onRebind
 waive FS.GG.UI.Controls Navigation2.fsi val Navigation2.Affix.create
 waive FS.GG.UI.Controls Navigation2.fsi val Navigation2.Affix.text
 waive FS.GG.UI.Controls Navigation2.fsi val Navigation2.Anchor.create
@@ -2391,13 +2409,11 @@ waive FS.GG.UI.DesignSystem StyleResolver.fsi val StyleResolver.baseStyleFor
 waive FS.GG.UI.DesignSystem StyleResolver.fsi val StyleResolver.resolve
 waive FS.GG.UI.Elmish AnimationTick.fsi val Animation.tickSubscription
 waive FS.GG.UI.Elmish AnimationTick.fsi type AnimationTick
-waive FS.GG.UI.KeyboardInput KeyboardInput.fsi type Keymap
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.add
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.clear
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.count
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.empty
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.ofBindings
-waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.rebind
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.remove
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.replace
 waive FS.GG.UI.KeyboardInput KeyboardInput.fsi val Keymap.resolve

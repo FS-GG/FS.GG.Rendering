@@ -26,6 +26,7 @@ module AppRootShellBehaviorTests
 // ================================================================================================
 
 open Expecto
+open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.SkiaViewer
 open AppRoot.GameShell
@@ -46,7 +47,9 @@ let private res1080: FS.GG.UI.Scene.Size = { Width = 1920; Height = 1080 }
 
 let private testConfig: Config =
     { Title = "Test Game"
-      DefaultKeymap = Keymap.ofBindings [ { Key = wKey; Command = jump }; { Key = fKey; Command = fire } ]
+      Actions =
+        [ { Command = jump; Label = "Jump"; Order = 10; Binding = None; DefaultBinding = Some wKey }
+          { Command = fire; Label = "Fire"; Order = 20; Binding = None; DefaultBinding = Some fKey } ]
       DisplayModes = [ Windowed; Borderless; Fullscreen ]
       Resolutions = [ res720; res1080 ]
       InitialDisplay = { Resolution = res720; Mode = Windowed } }
@@ -176,6 +179,7 @@ let shellRebindTests =
             let captured, capFx = update (CaptureKey qKey) armed
             Expect.equal captured.Rebinding None "the capture completes and clears the in-flight command"
             Expect.equal (Keymap.resolve captured.Keymap qKey) (Some jump) "the captured key now resolves to the rebound command (an upsert-by-key onto the keymap)"
+            Expect.equal (Keymap.resolve captured.Keymap wKey) None "command replacement removes the selected command's old binding"
             Expect.equal (Keymap.resolve captured.Keymap fKey) (Some fire) "an unrelated binding is left untouched by the rebind"
 
             match keymapEffects capFx with
@@ -213,6 +217,23 @@ let shellRebindTests =
             let m, fx = update (CaptureKey qKey) settings
             Expect.equal (Keymap.resolve m.Keymap qKey) None "a key press with nothing armed does not bind anything"
             Expect.isEmpty (keymapEffects fx) "and emits no KeymapChanged"
+        }
+
+        test "capturing another action's key displaces it but keeps its catalog row, and reset restores defaults" {
+            let armed, _ = update (ArmRebind jump) (atSettingsFromMenu ())
+            let displaced, _ = update (CaptureKey fKey) armed
+            Expect.equal (Keymap.resolve displaced.Keymap fKey) (Some jump) "the intended command owns the captured key"
+            Expect.equal (Keymap.resolve displaced.Keymap wKey) None "its previous key is removed"
+
+            let projected = KeyRebind.withBindings displaced.Keymap displaced.Actions
+            let fireRow = projected |> List.find (fun action -> action.Command = fire)
+            Expect.equal fireRow.Label "Fire" "the displaced action keeps its player-facing label"
+            Expect.equal fireRow.Binding None "the displaced action remains explicitly present and unbound"
+
+            let restored, fx = update ResetBindings displaced
+            Expect.equal (Keymap.resolve restored.Keymap wKey) (Some jump) "reset restores Jump"
+            Expect.equal (Keymap.resolve restored.Keymap fKey) (Some fire) "reset restores Fire"
+            Expect.equal (keymapEffects fx).Length 1 "reset emits persistence"
         }
     ]
 
@@ -312,6 +333,22 @@ let shellPersistenceTests =
             let m0 = init testConfig
             let kept = decodeKeymap [| 0uy; 1uy; 2uy; 3uy |] m0
             Expect.equal (Keymap.resolve kept.Keymap wKey) (Some jump) "a corrupt save is dropped and the current bindings are kept, not thrown away"
+        }
+
+        test "the pre-catalog v1 codec payload migrates into catalog-backed settings without losing actions" {
+            let legacy =
+                sprintf
+                    "{\"format\":\"fsgg.keymap\",\"version\":1,\"bindings\":[{\"key\":\"%s\",\"command\":\"jump\"}]}"
+                    qKey
+                |> System.Text.Encoding.UTF8.GetBytes
+
+            let restored = decodeKeymap legacy (init testConfig)
+            Expect.equal (Keymap.resolve restored.Keymap qKey) (Some jump) "the legacy runtime binding is retained"
+            let projected = KeyRebind.withBindings restored.Keymap restored.Actions
+            let jumpRow = projected |> List.find (fun action -> action.Command = jump)
+            let fireRow = projected |> List.find (fun action -> action.Command = fire)
+            Expect.equal jumpRow.Label "Jump" "catalog metadata supplies the player-facing label after migration"
+            Expect.equal fireRow.Binding None "an action absent from the legacy keymap remains visible as unbound"
         }
     ]
 //#endif

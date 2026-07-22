@@ -162,7 +162,9 @@ let update (Key(key, isDown)) model =
     | Some _ when key = "Escape" -> { model with Rebinding = None }, []          // your cancel policy
     | Some command ->
         { model with
-            Keymap = model.Keymap |> Keymap.rebind key command                   // the capture FIRES
+            // Player-facing rebinding is COMMAND replacement: remove the old key(s), displace
+            // this key's previous action, and leave exactly one binding for the chosen command.
+            Keymap = model.Keymap |> Keymap.replaceCommandBinding command key
             Rebinding = None }, []
     | None ->
         match Keymap.resolve model.Keymap key with                               // ordinary play
@@ -171,8 +173,17 @@ let update (Key(key, isDown)) model =
 ```
 
 A capture is then an ordinary model transition, and the rebound key routes on the very next press —
-same host, no reconstruction, no mutable closure. Pair it with the `KeyRebind` config-screen control
-(`KeyRebind.ofKeymap` / `KeyRebind.onRebind`) to arm `Rebinding` from the UI.
+same host, no reconstruction, no mutable closure. `Keymap.assignKey` (and its compatibility name
+`rebind`) are KEY-indexed upserts and deliberately preserve another key for the same command; do not
+use either for a "change this action's key" UI. Pair command replacement with a stable
+`KeyRebindAction` catalog and `KeyRebind.ofActions` / `KeyRebind.onActionRebind`: the catalog keeps
+unbound actions visible, owns player labels/order/defaults, and exposes `onReset` plus
+`restoreDefaults` rather than trying to recover UI state from `Keymap` lookup state. Use
+`KeyRebind.actions` when composing the catalog attribute directly, and
+`KeyRebind.withBindings` to project a live keymap onto the stable rows. `KeyRebind.ofKeymap`
+remains a compatibility projection for binding-only screens; it cannot show an action that is
+currently unbound or supply its player label, order, or default. Its matching compatibility
+event mapper is `KeyRebind.onRebind`, for rows whose payload already is a command id.
 
 ## Generated Product
 

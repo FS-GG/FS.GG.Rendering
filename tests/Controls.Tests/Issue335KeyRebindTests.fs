@@ -75,4 +75,48 @@ let tests =
                     Nav = Some(EditedText "MoveUp") }
 
               Expect.equal (Control.dispatch ev control) [ Command "MoveUp" ] "onRebind fires the activated command id"
+          }
+
+          test "action catalog keeps unbound rows visible with player labels and explicit order" {
+              let catalog =
+                  [ { Command = "fire"; Label = "Fire"; Order = 20; Binding = Some "Space"; DefaultBinding = Some "Space" }
+                    { Command = "move-up"; Label = "Move Up"; Order = 10; Binding = None; DefaultBinding = Some "W" } ]
+
+              let texts = renderedTexts (sz 300 200) (KeyRebind.ofActions catalog [])
+              let moveIndex = texts |> List.findIndex ((=) "Move Up — Unbound")
+              let fireIndex = texts |> List.findIndex ((=) "Fire — Space")
+              Expect.isLessThan moveIndex fireIndex "explicit order wins over command/key ordering"
+              Expect.contains texts "Reset controls to defaults" "defaults expose a reset affordance"
+          }
+
+          test "catalog projection and defaults preserve metadata while rebuilding bindings" {
+              let catalog =
+                  [ { Command = "move-up"; Label = "Move Up"; Order = 1; Binding = None; DefaultBinding = Some "W" }
+                    { Command = "fire"; Label = "Fire"; Order = 2; Binding = None; DefaultBinding = None } ]
+              let current = Keymap.empty |> Keymap.assignKey "Z" "move-up"
+              let projected = KeyRebind.withBindings current catalog
+              Expect.equal projected.Head.Binding (Some "Z") "the current binding projects onto stable metadata"
+              Expect.equal projected.Tail.Head.Binding None "an absent action remains explicitly unbound"
+              let defaults = KeyRebind.restoreDefaults projected
+              Expect.equal (Keymap.resolve defaults "W") (Some "move-up") "reset restores the declared default"
+              Expect.equal (Keymap.resolve defaults "Z") None "reset drops the player's previous binding"
+          }
+
+          test "onReset dispatches the fixed reset message" {
+              let control = KeyRebind.ofActions [] [ KeyRebind.onReset (Command "reset") ]
+              let ev: ControlEvent =
+                  { Kind = "reset"; ControlId = None; Origin = ControlEventOrigin.Pointer; Nav = None }
+              Expect.equal (Control.dispatch ev control) [ Command "reset" ] "reset event is addressable"
+          }
+
+          test "catalog-aware rebind maps the player label back to the stable command id" {
+              let catalog =
+                  [ { Command = "move-up"; Label = "Move Up"; Order = 1; Binding = None; DefaultBinding = Some "W" } ]
+              let control = KeyRebind.ofActions catalog [ KeyRebind.onActionRebind catalog Command ]
+              let ev: ControlEvent =
+                  { Kind = "rebind"
+                    ControlId = None
+                    Origin = ControlEventOrigin.Pointer
+                    Nav = Some(EditedText "Move Up — Unbound") }
+              Expect.equal (Control.dispatch ev control) [ Command "move-up" ] "display text never leaks into the runtime command id"
           } ]

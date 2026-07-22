@@ -16,10 +16,10 @@ PARAMETERIZE with your game; you do not re-author a menu per game.
 
 The shell **composes** framework mechanisms and rebuilds none of them:
 
-- **Key rebinding** — explicitly keyed clickable binding rows over the immutable
-  `Keymap`, with `KeymapCodec` for persistence and capture through the
-  `ViewerKeyboard.mapKeyRaw` seam. (`KeyRebind` remains available when a product
-  supplies a richer action catalog.) See [[fs-gg-keyboard-input]].
+- **Key rebinding** — explicitly keyed clickable rows from a stable `KeyRebindAction`
+  catalog (player labels/order/defaults remain present when an action is unbound), with
+  `KeymapCodec` for persistence, `Keymap.replaceCommandBinding` for capture, and the
+  `ViewerKeyboard.mapKeyRaw` seam. See [[fs-gg-keyboard-input]].
 - **Resolution / fullscreen** — a `DisplaySettings` mapped onto a
   `ViewerWindowBehaviorRequest` (window startup state) and `LogicalCanvas` (the
   fixed-logical-resolution letterbox). See [[fs-gg-skiaviewer]].
@@ -101,7 +101,10 @@ match outcome with
 
 Arm a rebind from the settings UI: a keyed binding row dispatches
 `GameShell.ArmRebind command`; the next key press then fires the capture
-(`Keymap.rebind` via `update`) and emits `KeymapChanged` for you to persist.
+(`Keymap.replaceCommandBinding` via `update`) and emits `KeymapChanged` for you to
+persist. The selected command has exactly one key; an action displaced from that key
+remains visible as `Unbound`. `GameShell.ResetBindings` rebuilds the keymap from the
+catalog's defaults and emits the same persistence effect.
 
 ### Display settings
 

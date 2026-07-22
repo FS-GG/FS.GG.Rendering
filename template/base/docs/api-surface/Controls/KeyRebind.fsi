@@ -1,3 +1,4 @@
+// See skill: fs-gg-keyboard-input
 namespace FS.GG.UI.Controls
 
 open FS.GG.UI.KeyboardInput

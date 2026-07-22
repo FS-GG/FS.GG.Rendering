@@ -78,6 +78,22 @@ let tests =
             Expect.equal (Keymap.tryFind "Digit1" keymap) (Some "Weapon1") "a fresh key is added"
         }
 
+        test "assignKey names the key-indexed upsert and preserves another key for the same command" {
+            let keymap = Keymap.empty |> Keymap.assignKey "w" "MoveUp" |> Keymap.assignKey "ArrowUp" "MoveUp"
+            expectBindings [ binding "w" "MoveUp"; binding "ArrowUp" "MoveUp" ] keymap "both command bindings remain"
+        }
+
+        test "replaceCommandBinding removes old command keys and displaces the intended key" {
+            let before =
+                Keymap.ofBindings
+                    [ binding "w" "MoveUp"
+                      binding "ArrowUp" "MoveUp"
+                      binding "z" "Fire" ]
+
+            let after = before |> Keymap.replaceCommandBinding "MoveUp" "z"
+            expectBindings [ binding "z" "MoveUp" ] after "the selected command has exactly one key and the prior owner is displaced"
+        }
+
         test "clear removes every binding" {
             let keymap =
                 Keymap.ofBindings [ binding "ArrowUp" "MoveUp"; binding "ArrowDown" "MoveDown" ]

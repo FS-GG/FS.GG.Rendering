@@ -7,7 +7,7 @@ module AppRoot.GameShell
 //   YOURS TO ADAPT, but game-AGNOSTIC by design. This module owns no gameplay: it is a pure
 //   Elmish state machine (a screen router) plus view helpers that COMPOSE the framework pieces
 //   the shell requirement names — it rebuilds none of them:
-//     * key rebinding  — explicitly keyed clickable rows over the immutable `Keymap`
+//     * key rebinding  — explicitly keyed clickable rows from a stable `KeyRebindAction` catalog
 //       with `KeymapCodec` for persistence, captured through the
 //       `ViewerKeyboard.mapKeyRaw` seam (the forwarding seam a rebind capture must use — see the
 //       fs-gg-keyboard-input skill's "capturing a key for a rebind" recipe);
@@ -16,7 +16,7 @@ module AppRoot.GameShell
 //     * UI — the typed `Controls` front door (Button / Stack / TextBlock).
 //
 //   A game parameterizes the shell with a `Config` (its NAME, its rebindable key→command
-//   `Keymap`, and the resolutions/modes it offers) and threads the shell `Msg`/`Effect` through
+//   action catalog, and the resolutions/modes it offers) and threads the shell `Msg`/`Effect` through
 //   its own Elmish loop. See the `fs-gg-game-shell` skill for the host wiring (the pointer-aware
 //   interactive host + the `mapKeyRaw` raw-key seam).
 //
@@ -66,8 +66,8 @@ type DisplaySettings =
 type Config =
     { /// The game's name — the title label on the main menu.
       Title: string
-      /// The rebindable key→command set and its default bindings.
-      DefaultKeymap: Keymap
+      /// Stable player-facing actions, including labels/order and optional default bindings.
+      Actions: KeyRebindAction list
       /// The display modes the settings screen offers, in menu order.
       DisplayModes: DisplayMode list
       /// The resolutions the settings screen offers, in menu order.
@@ -81,6 +81,8 @@ type Model =
     { Screen: Screen
       Display: DisplaySettings
       Keymap: Keymap
+      /// Stable action metadata retained so reset does not depend on runtime lookup state.
+      Actions: KeyRebindAction list
       /// The command currently awaiting its next key press (a rebind in flight), or `None`.
       Rebinding: CommandId option
       /// The screen `Back`/Esc returns to when leaving `Settings` (`MainMenu` or `Paused`).
@@ -110,6 +112,8 @@ type Msg =
     | CaptureKey of KeyId
     /// Abandon an in-flight capture without rebinding.
     | CancelRebind
+    /// Restore every action's declared default binding, leaving default-unbound actions unbound.
+    | ResetBindings
     /// The universal Esc route (pause / resume / back / cancel-capture).
     | EscapePressed
 
@@ -131,7 +135,8 @@ let menuKey: KeyId = ViewerKeyboard.toKeyId ViewerKey.Escape
 let init (config: Config) : Model =
     { Screen = MainMenu
       Display = config.InitialDisplay
-      Keymap = config.DefaultKeymap
+      Keymap = KeyRebind.restoreDefaults config.Actions
+      Actions = config.Actions
       Rebinding = None
       SettingsReturn = MainMenu }
 
@@ -189,10 +194,13 @@ let update (msg: Msg) (model: Model) : Model * Effect list =
         // Esc during a capture cancels it — a rebind never binds a command to the menu key.
         | Some _ when key = menuKey -> { model with Rebinding = None }, []
         | Some command ->
-            let keymap = Keymap.rebind key command model.Keymap
+            let keymap = Keymap.replaceCommandBinding command key model.Keymap
             { model with Keymap = keymap; Rebinding = None }, [ KeymapChanged keymap ]
         | None -> model, []
     | CancelRebind -> { model with Rebinding = None }, []
+    | ResetBindings ->
+        let keymap = KeyRebind.restoreDefaults model.Actions
+        { model with Keymap = keymap; Rebinding = None }, [ KeymapChanged keymap ]
     | EscapePressed -> routeEscape model
 
 // ---- display seams --------------------------------------------------------------------------
@@ -508,18 +516,18 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             let selectedMark = if model.Display.Resolution = size then "> " else ""
             button ("res-" + label) (selectedMark + label) (SetResolution size)
 
-        // Author each starter binding as an explicitly keyed, clickable row. The generic KeyRebind
-        // remains available for product-owned catalogs, but a generated shell's acceptance must be
-        // able to name and hit one real row through retained bounds (not infer a synthetic list row
-        // hidden inside one unkeyed control).
+        // Author every catalog action as an explicitly keyed, clickable row. Projecting the runtime
+        // keymap onto stable metadata keeps displaced/unbound actions visible and preserves the
+        // player-facing label/order independently of key ordering.
         let rebindRows =
-            model.Keymap
-            |> Keymap.toBindings
-            |> List.map (fun binding ->
+            model.Actions
+            |> KeyRebind.withBindings model.Keymap
+            |> List.sortBy (fun action -> action.Order, action.Command)
+            |> List.map (fun action ->
                 button
-                    ("rebind-" + binding.Command)
-                    (sprintf "%s — %s" binding.Command binding.Key)
-                    (ArmRebind binding.Command))
+                    ("rebind-" + action.Command)
+                    (sprintf "%s — %s" action.Label (action.Binding |> Option.defaultValue "Unbound"))
+                    (ArmRebind action.Command))
 
         let rebindHint =
             match model.Rebinding with
@@ -534,6 +542,7 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             @ (config.Resolutions |> List.map resButton)
             @ [ title "Controls"; title rebindHint ]
             @ rebindRows
+            @ [ button "reset-bindings" "Reset controls to defaults" ResetBindings ]
             @ [ button "back" "Back" LeaveSettings ]
 
         Some(stack children)

@@ -103,6 +103,32 @@ module Keyboard =
     /// Public contract function exposed by this FS.GG.UI package.
     val stateDisplay: model: KeyboardModel -> KeyboardStateDisplay
 
+/// Issue 331 (epic 330): an immutable key→command keymap — the **mechanism** layer for rebinding,
+/// Rendering-owned and command-id-agnostic (a `CommandId` is any string). Indexes `KeyboardBinding`s
+/// by `KeyId`, so a key binds to at most one command; the edit ops in the `Keymap` module each return
+/// a new value, and the representation is opaque so a keymap can only be built through them. Round-trips
+/// to/from `KeyboardBinding list`, the shape `Keyboard.init` already consumes.
+type Keymap
+
+/// Public contract module exposed by this FS.GG.UI package. Pure, total edit operations over `Keymap`;
+/// each returns a new keymap and never mutates its argument.
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Keymap =
+
+    /// Assign `key` to `command`, whether or not `key` was already bound (a key-indexed upsert).
+    /// This operation says nothing about other keys already assigned to the same command.
+    val assignKey: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Compatibility name for `assignKey`. Despite its historical name this is a KEY-indexed upsert:
+    /// assigning a fresh key does not remove another key already assigned to the same command. Use
+    /// `replaceCommandBinding` for the player-facing "change this action's key" operation.
+    val rebind: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Replace a command's binding using the single-binding policy used by player-facing controls.
+    /// Every existing key for `command` is removed, the requested `key` is displaced from any other
+    /// command, and the result contains exactly one binding for `command`: `key`.
+    val replaceCommandBinding: command: CommandId -> key: KeyId -> keymap: Keymap -> Keymap
+
 /// Feature 108 (US5, FR-016): the modifier state recovered at the key boundary. The raw key
 /// string can carry `Ctrl+`/`Alt+`/`Shift+`/`Meta+` prefixes that the plain `normalize` collapses
 /// into `Unknown "Ctrl+L"` and loses; parsing them here makes chords as dependable as plain keys,

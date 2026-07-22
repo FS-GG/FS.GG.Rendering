@@ -134,9 +134,19 @@ module Keymap =
     /// The update-only counterpart to `add` — use `rebind` to bind-or-update in one call.
     val replace: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
 
-    /// Bind `key` to `command`, whether or not `key` was already bound (an upsert). This is the headline
-    /// rebind: rebinding an already-bound key replaces its command; a fresh key is added.
+    /// Assign `key` to `command`, whether or not `key` was already bound (a key-indexed upsert).
+    /// This operation says nothing about other keys already assigned to the same command.
+    val assignKey: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Compatibility name for `assignKey`. Despite its historical name this is a KEY-indexed upsert:
+    /// assigning a fresh key does not remove another key already assigned to the same command. Use
+    /// `replaceCommandBinding` for the player-facing "change this action's key" operation.
     val rebind: key: KeyId -> command: CommandId -> keymap: Keymap -> Keymap
+
+    /// Replace a command's binding using the single-binding policy used by player-facing controls.
+    /// Every existing key for `command` is removed, the requested `key` is displaced from any other
+    /// command, and the result contains exactly one binding for `command`: `key`.
+    val replaceCommandBinding: command: CommandId -> key: KeyId -> keymap: Keymap -> Keymap
 
     /// The keymap with every binding removed (equal to `empty`).
     val clear: keymap: Keymap -> Keymap

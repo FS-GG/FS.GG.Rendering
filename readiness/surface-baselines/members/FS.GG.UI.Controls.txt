@@ -599,10 +599,22 @@ FS.GG.UI.Controls.Interactive2+Collapse.onChange<msg>(FSharpFunc<System.String, 
 FS.GG.UI.Controls.Interactive2+Rate.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
 FS.GG.UI.Controls.Interactive2+Rate.onChange<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
 FS.GG.UI.Controls.Interactive2+Rate.value<msg>(System.Double) : Attr<msg>
+FS.GG.UI.Controls.KeyRebind.actions<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>) : Attr<msg>
 FS.GG.UI.Controls.KeyRebind.commands<msg>(Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>) : Attr<msg>
 FS.GG.UI.Controls.KeyRebind.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.KeyRebind.ofActions<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>, FSharpList<Attr<msg>>) : Control<msg>
 FS.GG.UI.Controls.KeyRebind.ofKeymap<msg>(FS.GG.UI.KeyboardInput.Keymap, FSharpList<Attr<msg>>) : Control<msg>
+FS.GG.UI.Controls.KeyRebind.onActionRebind<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>, FSharpFunc<System.String, msg>) : Attr<msg>
 FS.GG.UI.Controls.KeyRebind.onRebind<msg>(FSharpFunc<System.String, msg>) : Attr<msg>
+FS.GG.UI.Controls.KeyRebind.onReset<msg>(msg) : Attr<msg>
+FS.GG.UI.Controls.KeyRebind.restoreDefaults(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>) : FS.GG.UI.KeyboardInput.Keymap
+FS.GG.UI.Controls.KeyRebind.withBindings(FS.GG.UI.KeyboardInput.Keymap, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.KeyRebindAction>
+FS.GG.UI.Controls.KeyRebindAction.Binding : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.KeyRebindAction.Command : System.String [get]
+FS.GG.UI.Controls.KeyRebindAction.DefaultBinding : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.KeyRebindAction.Label : System.String [get]
+FS.GG.UI.Controls.KeyRebindAction.Order : System.Int32 [get]
+FS.GG.UI.Controls.KeyRebindAction.new(System.String, System.String, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
 FS.GG.UI.Controls.KeyRouting+Tags.Activate : System.Int32
 FS.GG.UI.Controls.KeyRouting+Tags.Fallthrough : System.Int32
 FS.GG.UI.Controls.KeyRouting+Tags.Navigate : System.Int32

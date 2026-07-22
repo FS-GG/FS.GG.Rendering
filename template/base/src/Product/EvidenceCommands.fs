@@ -435,12 +435,11 @@ type ShellHostMsg =
 /// map (the play controls), and the resolutions/modes the settings screen offers.
 let shellConfig: AppRoot.GameShell.Config =
     { Title = "Generated Product"
-      DefaultKeymap =
-        Keymap.ofBindings
-            [ { Key = ViewerKeyboard.toKeyId (Letter 'W'); Command = "left-up" }
-              { Key = ViewerKeyboard.toKeyId (Letter 'S'); Command = "left-down" }
-              { Key = ViewerKeyboard.toKeyId ArrowUp; Command = "right-up" }
-              { Key = ViewerKeyboard.toKeyId ArrowDown; Command = "right-down" } ]
+      Actions =
+        [ { Command = "left-up"; Label = "Left paddle up"; Order = 10; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'W')) }
+          { Command = "left-down"; Label = "Left paddle down"; Order = 20; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'S')) }
+          { Command = "right-up"; Label = "Right paddle up"; Order = 30; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowUp) }
+          { Command = "right-down"; Label = "Right paddle down"; Order = 40; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowDown) } ]
       DisplayModes = [ AppRoot.GameShell.Windowed; AppRoot.GameShell.Borderless; AppRoot.GameShell.Fullscreen ]
       Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
       InitialDisplay = { Resolution = { Width = 1280; Height = 720 }; Mode = AppRoot.GameShell.Windowed } }
