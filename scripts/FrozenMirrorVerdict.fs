@@ -243,6 +243,8 @@ let foreignSkills: Foreign list =
       game "fs-gg-ai" NoCounterpart
       game "fs-gg-effects" NoCounterpart
       game "fs-gg-physics" NoCounterpart
+      game "fs-gg-mapgen" NoCounterpart
+      game "fs-gg-mapcraft" NoCounterpart
       // fs-gg-playtest: owner fs-gg-game, registry `mirrored: false` (#1194/.github#299). Authored
       // there, deliberately not vendored here — so NOT a game-scaffold skill in this repo and NOT a
       // Mirrored copy. Declaring `Mirrored` would hand-forge an obligation the owner never asserted

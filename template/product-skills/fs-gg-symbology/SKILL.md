@@ -130,6 +130,11 @@ Coverage/Catalog guidance follows — teach the format, never a dotted API the p
 once your pin advances to a package that carries them, the mirror can be swapped for the framework's own
 catalog parse-and-validate helpers with no change to the artifact or the assertion.
 
+On a pin that carries the catalog API, use `Catalog.declaredElements catalog` as the ordered declared
+set and `Catalog.coverage declared catalog` for the report. `Catalog.toRepresentation visual` is the
+bridge for callers that need to feed an individual persisted disposition into the lower-level
+`Coverage` API.
+
 ## Usage
 
 ```fsharp
