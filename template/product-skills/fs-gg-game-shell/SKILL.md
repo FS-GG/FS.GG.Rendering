@@ -16,15 +16,15 @@ PARAMETERIZE with your game; you do not re-author a menu per game.
 
 The shell **composes** framework mechanisms and rebuilds none of them:
 
-- **Key rebinding** — the `KeyRebind` config-screen control over the immutable
-  `Keymap` (rebind mechanism) with `KeymapCodec` for persistence, captured through
-  the `ViewerKeyboard.mapKeyRaw` seam. See [[fs-gg-keyboard-input]] for the
-  raw-key capture recipe the shell is built on.
+- **Key rebinding** — explicitly keyed clickable binding rows over the immutable
+  `Keymap`, with `KeymapCodec` for persistence and capture through the
+  `ViewerKeyboard.mapKeyRaw` seam. (`KeyRebind` remains available when a product
+  supplies a richer action catalog.) See [[fs-gg-keyboard-input]].
 - **Resolution / fullscreen** — a `DisplaySettings` mapped onto a
   `ViewerWindowBehaviorRequest` (window startup state) and `LogicalCanvas` (the
   fixed-logical-resolution letterbox). See [[fs-gg-skiaviewer]].
-- **UI** — the typed `Controls` front door (Button / Stack / TextBlock) plus the
-  `KeyRebind` control, over the pointer-aware interactive host. See [[fs-gg-ui-widgets]].
+- **UI** — the typed `Controls` front door (Button / Stack / TextBlock) over the
+  pointer-aware interactive host. See [[fs-gg-ui-widgets]].
 
 ## Public Contract
 
@@ -42,7 +42,8 @@ shape (a pure Elmish state machine plus view + host seams):
   host interprets (`ExitRequested`, `DisplayChanged`, `KeymapChanged`).
 - `init`, `update : Msg -> Model -> Model * Effect list` — deterministic, host-free.
 - `windowBehavior`, `logicalSize`, `logicalFit` — the display → viewer seams.
-- `routeKeyDown`, `encodeKeymap`, `decodeKeymap` — the raw-key + persistence seams.
+- `routeKeyEvent` (`routeKeyDown` compatibility helper), `encodeKeymap`, `decodeKeymap` —
+  the raw-key + persistence seams.
 
 ## Usage
 
@@ -79,25 +80,27 @@ host to shut the window; a `KeymapChanged keymap` is persisted with
 `GameShell.encodeKeymap`; a `DisplayChanged settings` re-applies
 `GameShell.windowBehavior` and `GameShell.logicalSize`.
 
-### The raw-key seam (rebind capture + Esc routing)
+### The raw-key seam (rebind capture + held gameplay)
 
 A rebind capture MUST forward the raw key — a `MapKey` that RESOLVES a key drops
 exactly the unbound key a capture waits for ([[fs-gg-keyboard-input]]). Wire the
-host's `mapKeyRaw` to `routeKeyDown`, which decides — from the shell state — whether
-the key completes a capture, routes menu chrome (Esc), or resolves to a live-play
-command:
+host's `mapKeyRaw` to `routeKeyEvent` for **both down and up**. It decides — from
+the shell state — whether a down completes capture/routes Esc, or whether either
+edge resolves a live-play command. Retain a resolved command on `GameEdge(_, true)`,
+apply that snapshot on fixed ticks, and clear it on `GameEdge(_, false)`:
 
 ```fsharp
 // toGame lifts a resolved live-play CommandId into your game's own Msg value.
-let outcome = GameShell.routeKeyDown (fun command -> commandToMsg command) key model.Shell
+let outcome = GameShell.routeKeyEvent (fun command -> commandToMsg command) key isDown model.Shell
 match outcome with
-| GameShell.ShellMsg m -> dispatch (Shell m)      // capture completion or Esc route
-| GameShell.Game gameMsg -> dispatch gameMsg      // live gameplay
-| GameShell.NoInput -> ()
+| GameShell.ShellEdge m -> dispatch (Shell m)       // down-only capture completion / Esc
+| GameShell.GameEdge(gameMsg, true) -> hold key gameMsg
+| GameShell.GameEdge(_, false) -> release key
+| GameShell.NoKeyEvent -> ()
 ```
 
-Arm a rebind from the settings UI: the `KeyRebind` control's row activation
-dispatches `GameShell.ArmRebind command`; the next key press then fires the capture
+Arm a rebind from the settings UI: a keyed binding row dispatches
+`GameShell.ArmRebind command`; the next key press then fires the capture
 (`Keymap.rebind` via `update`) and emits `KeymapChanged` for you to persist.
 
 ### Display settings
@@ -107,13 +110,17 @@ dispatches `GameShell.ArmRebind command`; the next key press then fires the capt
 resolution letterboxes onto any surface and the mode picks windowed / borderless /
 exclusive fullscreen. Re-apply them when `DisplayChanged` fires.
 
+At default launch, make `ViewerOptions.InitialSize` exactly
+`config.InitialDisplay.Resolution` and use the same explicit window-behavior overload
+for both flagged and unflagged launches. One native pointer coordinate must identify
+the same point in the authored Controls layout; do not rely on a different overload's
+implicit startup behavior.
+
 ## Capability boundary — the shell needs the pointer-aware host
 
-A menu needs a mouse, and the game family's DEFAULT host is keyboard-only
-([[fs-gg-keyboard-input]]). Driving the shell's buttons with a pointer means the
-`InteractiveAppHost` (`Controls.Elmish.runInteractiveApp`) — the same host the
-`app`/controls family uses — a durable host-wiring change in `Program.fs`,
-not an edit at your model. Plan for it up front.
+The generated game shell already launches through `InteractiveAppHost`
+(`Controls.Elmish.runInteractiveApp*`). Preserve that host when replacing the starter:
+the shell's authored buttons and key-rebind rows require its retained pointer route.
 
 ## Build Commands
 
@@ -121,12 +128,18 @@ Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this game.
 
 ## Test Commands
 
-Run `./fake.sh build -t Test`. The shell `update` is pure, so assert its routing,
-the rebind capture, and the display → window-behavior mapping with no window.
+Run `./fake.sh build -t Test`. Pure reducer assertions are necessary but do not prove
+the live integration. Also drive the generated `interactiveHost` headlessly: require
+`captureRespondsProof` to be `Responsive` for one menu button and one rebind row at
+the exact default surface, complete capture with the next raw key, and prove one
+movement key stays held over at least two fixed ticks and stops after key-up.
 
 ## Evidence
 
-Record menu/settings/rebind evidence under this game's `readiness/` paths.
+Record deterministic menu/settings/rebind **evidence** under this game's `readiness/`
+paths. Store runtime preferences under the platform per-user application-data location,
+not under `readiness/`; migrate any legacy readiness settings once and ignore/remove
+the legacy file only after the platform write succeeds.
 
 ## Related
 

@@ -7,14 +7,13 @@ module AppRoot.GameShell
 //   YOURS TO ADAPT, but game-AGNOSTIC by design. This module owns no gameplay: it is a pure
 //   Elmish state machine (a screen router) plus view helpers that COMPOSE the framework pieces
 //   the shell requirement names — it rebuilds none of them:
-//     * key rebinding  — `KeyRebind` (the config-screen control) over the immutable `Keymap`
-//       (rebind mechanism) with `KeymapCodec` for persistence, captured through the
+//     * key rebinding  — explicitly keyed clickable rows over the immutable `Keymap`
+//       with `KeymapCodec` for persistence, captured through the
 //       `ViewerKeyboard.mapKeyRaw` seam (the forwarding seam a rebind capture must use — see the
 //       fs-gg-keyboard-input skill's "capturing a key for a rebind" recipe);
 //     * resolution / fullscreen — a `DisplaySettings` mapped onto a `ViewerWindowBehaviorRequest`
 //       (window startup state) and `LogicalCanvas` (the fixed-logical-resolution letterbox, #246);
-//     * UI — the typed `Controls` front door (Button / Stack / TextBlock) plus the `KeyRebind`
-//       control, lifted into the same widget tree with `Widget.ofControl`.
+//     * UI — the typed `Controls` front door (Button / Stack / TextBlock).
 //
 //   A game parameterizes the shell with a `Config` (its NAME, its rebindable key→command
 //   `Keymap`, and the resolutions/modes it offers) and threads the shell `Msg`/`Effect` through
@@ -234,6 +233,15 @@ type KeyOutcome<'game> =
     /// The key means nothing right now.
     | NoInput
 
+/// One normalized native-key edge. `GameEdge(value, true)` begins a held gameplay control and
+/// `GameEdge(value, false)` ends it; shell chrome consumes only key-down edges. Keeping both edges
+/// on this seam prevents an interactive host from accidentally implementing capture with raw keys
+/// while translating gameplay into one-shot nudges that can never be released.
+type KeyEventOutcome<'game> =
+    | ShellEdge of Msg
+    | GameEdge of value: 'game * isDown: bool
+    | NoKeyEvent
+
 /// Route a raw key-DOWN. `toGame` lifts a resolved live-play `CommandId` into the game's own value
 /// (return `None` to decline). This is the whole raw-key contract the shell needs from the host:
 /// wire the host's `mapKeyRaw` to forward every key-down here, dispatch a `ShellMsg` through
@@ -258,6 +266,29 @@ let routeKeyDown (toGame: CommandId -> 'game option) (key: KeyId) (model: Model)
             | MainMenu
             | Paused
             | Settings -> NoInput
+
+/// Route both edges of one normalized native key event. Key-down preserves the shell's capture and
+/// Esc behavior; while playing, both down and up resolve through the same current keymap so the host
+/// can retain a control until its matching release. Chrome never reacts to key-up.
+let routeKeyEvent
+    (toGame: CommandId -> 'game option)
+    (key: KeyId)
+    (isDown: bool)
+    (model: Model)
+    : KeyEventOutcome<'game> =
+    if isDown then
+        match routeKeyDown toGame key model with
+        | ShellMsg msg -> ShellEdge msg
+        | Game value -> GameEdge(value, true)
+        | NoInput -> NoKeyEvent
+    else
+        match model.Rebinding, model.Screen with
+        | None, Playing ->
+            Keymap.resolve model.Keymap key
+            |> Option.bind toGame
+            |> Option.map (fun value -> GameEdge(value, false))
+            |> Option.defaultValue NoKeyEvent
+        | _ -> NoKeyEvent
 
 // ---- persistence ----------------------------------------------------------------------------
 
@@ -430,7 +461,7 @@ let decodeSettings (bytes: byte[]) (model: Model) : Model =
 /// The menu chrome for the current screen, as a typed widget tree, or `None` while `Playing` (the
 /// game owns the screen then — the shell draws nothing over it). `dispatch` embeds a shell `Msg`
 /// into the game's own message type. The settings screen wires the resolution + display-mode
-/// choices and the `KeyRebind` control (each command row's rebind affordance dispatches
+/// choices and explicitly keyed binding rows (each row's rebind affordance dispatches
 /// `ArmRebind`, which arms the `mapKeyRaw` capture).
 let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> option =
     let button (id: string) (label: string) (msg: Msg) =
@@ -477,12 +508,18 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             let selectedMark = if model.Display.Resolution = size then "> " else ""
             button ("res-" + label) (selectedMark + label) (SetResolution size)
 
-        // The KeyRebind config-screen control (a legacy `Control<'msg>`), lifted into the typed
-        // tree with `Widget.ofControl`. Activating a command's rebind affordance dispatches
-        // `ArmRebind` — the capture then fires on the next key via `routeKeyDown`.
-        let rebindWidget =
-            KeyRebind.ofKeymap model.Keymap [ KeyRebind.onRebind (fun command -> dispatch (ArmRebind command)) ]
-            |> Widget.ofControl
+        // Author each starter binding as an explicitly keyed, clickable row. The generic KeyRebind
+        // remains available for product-owned catalogs, but a generated shell's acceptance must be
+        // able to name and hit one real row through retained bounds (not infer a synthetic list row
+        // hidden inside one unkeyed control).
+        let rebindRows =
+            model.Keymap
+            |> Keymap.toBindings
+            |> List.map (fun binding ->
+                button
+                    ("rebind-" + binding.Command)
+                    (sprintf "%s — %s" binding.Command binding.Key)
+                    (ArmRebind binding.Command))
 
         let rebindHint =
             match model.Rebinding with
@@ -495,7 +532,8 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             @ (config.DisplayModes |> List.map modeButton)
             @ [ title "Resolution" ]
             @ (config.Resolutions |> List.map resButton)
-            @ [ title "Controls"; title rebindHint; rebindWidget ]
+            @ [ title "Controls"; title rebindHint ]
+            @ rebindRows
             @ [ button "back" "Back" LeaveSettings ]
 
         Some(stack children)

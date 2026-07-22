@@ -270,7 +270,13 @@ let tick (elapsed: TimeSpan) =
 // off-screen and presents a blank window (the ControlsShowcase4 scaffold defect).
 let viewerOptions =
     { Title = "Generated Product"
+      //#if (profile == "game")
+      // The turnkey shell authors its default layout at 1280x720. The live surface starts in that
+      // exact coordinate space too, so retained pointer samples and authored hit bounds agree.
+      InitialSize = { Width = 1280; Height = 720 }
+      //#else
       InitialSize = { Width = 1280; Height = 800 }
+      //#endif
       PresentMode = ViewerPresentMode.DirectToSwapchain
       FrameRateCap = None; LogicalSize = None }
 
@@ -411,7 +417,10 @@ let interactiveHost: InteractiveAppHost<Model, Msg> =
 /// `MainMenu`; `Start` routes into `Playing`, where the play model advances on `Tick`.
 type ShellHostModel =
     { Shell: AppRoot.GameShell.Model
-      Play: Model }
+      Play: Model
+      /// Raw keys retained from native down until the matching native up. Gameplay consumes this
+      /// snapshot on fixed ticks; shell chrome and rebind capture still consume the same raw seam.
+      HeldKeys: Set<KeyId> }
 
 /// The interactive host's message: a shell-chrome message, a live-play message, or a forwarded raw
 /// key-down. The raw key is FORWARDED (not resolved) in `MapKey` and routed in `Update`, where the
@@ -420,7 +429,7 @@ type ShellHostModel =
 type ShellHostMsg =
     | ShellDispatch of AppRoot.GameShell.Msg
     | PlayDispatch of Msg
-    | RawKeyDown of KeyId
+    | RawKeyChanged of key: KeyId * isDown: bool
 
 /// The game's parameterization of the shell: its name (the menu title), its rebindable key->command
 /// map (the play controls), and the resolutions/modes the settings screen offers.
@@ -446,21 +455,21 @@ let private playCommandToMsg (command: CommandId) : Msg option =
     | "right-down" -> Some(MovePaddle(RightSide, PaddleDown))
     | _ -> None
 
-// The turnkey shell persists the WHOLE settings screen (display + bindings) on ONE seam beside the
-// game (#1001): the shell's deterministic `encodeSettings`/`decodeSettings` envelope, under
-// `readiness/`. Total by construction — a corrupt or absent file degrades to the game's defaults, so
-// a bad save never throws at startup.
-let private shellSettingsPath = "readiness/game-shell-settings.json"
+// Runtime preferences belong beside the product's other per-user state, never in `readiness/`
+// (which evidence discovery owns). Existing generated games may have written the legacy path, so
+// startup migrates it once: decode totally, write the platform location, then delete the legacy
+// file only after the new write succeeds. A failed migration leaves defaults/data intact and retries
+// next launch; after success the readiness path is ignored.
+let private shellSettingsPath =
+    Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        shellConfig.Title,
+        "game-shell-settings.json"
+    )
 
-let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShell.Model =
-    try
-        if File.Exists shellSettingsPath then
-            AppRoot.GameShell.decodeSettings (File.ReadAllBytes shellSettingsPath) model
-        else
-            model
-    with _ -> model
+let private legacyShellSettingsPath = "readiness/game-shell-settings.json"
 
-let private persistShellSettings (model: AppRoot.GameShell.Model) =
+let private persistShellSettings (model: AppRoot.GameShell.Model) : bool =
     try
         let directory = Path.GetDirectoryName shellSettingsPath
 
@@ -468,7 +477,27 @@ let private persistShellSettings (model: AppRoot.GameShell.Model) =
             Directory.CreateDirectory(directory |> string) |> ignore
 
         File.WriteAllBytes(shellSettingsPath, AppRoot.GameShell.encodeSettings model)
-    with _ -> ()
+        true
+    with _ -> false
+
+let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShell.Model =
+    let decode path fallback =
+        try AppRoot.GameShell.decodeSettings (File.ReadAllBytes path) fallback
+        with _ -> fallback
+
+    try
+        if File.Exists shellSettingsPath then
+            decode shellSettingsPath model
+        elif File.Exists legacyShellSettingsPath then
+            let migrated = decode legacyShellSettingsPath model
+
+            if persistShellSettings migrated then
+                try File.Delete legacyShellSettingsPath with _ -> ()
+
+            migrated
+        else
+            model
+    with _ -> model
 
 /// Interpret one shell `Effect` at the host boundary: Exit closes the window; a display change
 /// re-applies the window behaviour AND persists; a keymap change persists. Persistence is
@@ -478,10 +507,10 @@ let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.G
     match effect with
     | AppRoot.GameShell.ExitRequested -> [ CloseWindow ]
     | AppRoot.GameShell.DisplayChanged settings ->
-        persistShellSettings shell
+        persistShellSettings shell |> ignore
         [ ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings) ]
     | AppRoot.GameShell.KeymapChanged _ ->
-        persistShellSettings shell
+        persistShellSettings shell |> ignore
         []
 
 // FR-004/FR-006 (086, D6) + #991/#1000: the game family's governed default is now the pointer-aware
@@ -494,7 +523,7 @@ let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
     { Init =
         fun () ->
             let shell = loadShellSettings (AppRoot.GameShell.init shellConfig)
-            let model = { Shell = shell; Play = initialModel }
+            let model = { Shell = shell; Play = initialModel; HeldKeys = Set.empty }
             // Issue #458: the LOADED initial state still reaches the audio sink. `Started` announces
             // the initial play model through the SAME cue seam every transition uses. The shell host is
             // the launch host now, so it owns this the way `generatedHost` did before the move.
@@ -506,31 +535,43 @@ let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
             match msg with
             | ShellDispatch shellMsg ->
                 let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
-                { model with Shell = nextShell }, (effects |> List.collect (applyShellEffect nextShell))
-            | RawKeyDown key ->
-                match AppRoot.GameShell.routeKeyDown playCommandToMsg key model.Shell with
-                | AppRoot.GameShell.ShellMsg shellMsg ->
+                let held = if nextShell.Screen = AppRoot.GameShell.Playing then model.HeldKeys else Set.empty
+                { model with Shell = nextShell; HeldKeys = held }, (effects |> List.collect (applyShellEffect nextShell))
+            | RawKeyChanged(key, isDown) ->
+                match AppRoot.GameShell.routeKeyEvent playCommandToMsg key isDown model.Shell with
+                | AppRoot.GameShell.ShellEdge shellMsg ->
                     let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
-                    { model with Shell = nextShell }, (effects |> List.collect (applyShellEffect nextShell))
-                | AppRoot.GameShell.Game playMsg ->
-                    let nextPlay, _ = AppRoot.Model.update playMsg model.Play
-                    let next = { model with Play = nextPlay }
-
-                    match AppRoot.AudioCues.forTransition playMsg model.Play nextPlay with
-                    | [] -> next, []
-                    | cues -> next, [ PlayAudio cues ]
-                | AppRoot.GameShell.NoInput -> model, []
+                    let held = if nextShell.Screen = AppRoot.GameShell.Playing then model.HeldKeys else Set.empty
+                    { model with Shell = nextShell; HeldKeys = held }, (effects |> List.collect (applyShellEffect nextShell))
+                | AppRoot.GameShell.GameEdge(_, true) ->
+                    { model with HeldKeys = Set.add key model.HeldKeys }, []
+                | AppRoot.GameShell.GameEdge(_, false) ->
+                    { model with HeldKeys = Set.remove key model.HeldKeys }, []
+                | AppRoot.GameShell.NoKeyEvent ->
+                    // A release still clears a retained key after a screen transition or keymap
+                    // change, even when the shell no longer resolves it as gameplay.
+                    if isDown then model, [] else { model with HeldKeys = Set.remove key model.HeldKeys }, []
             | PlayDispatch playMsg ->
                 // Live play only advances while the shell is on the `Playing` screen — the menu, the
                 // pause overlay and the settings screen freeze the world behind them.
                 match model.Shell.Screen with
                 | AppRoot.GameShell.Playing ->
-                    let nextPlay, _ = AppRoot.Model.update playMsg model.Play
-                    let next = { model with Play = nextPlay }
+                    let applyPlay (play, effects) msg =
+                        let nextPlay, _ = AppRoot.Model.update msg play
+                        let cues = AppRoot.AudioCues.forTransition msg play nextPlay
+                        nextPlay, (if List.isEmpty cues then effects else effects @ [ PlayAudio cues ])
 
-                    match AppRoot.AudioCues.forTransition playMsg model.Play nextPlay with
-                    | [] -> next, []
-                    | cues -> next, [ PlayAudio cues ]
+                    let afterHeld, heldEffects =
+                        model.HeldKeys
+                        |> Set.toList
+                        |> List.choose (fun key ->
+                            match AppRoot.GameShell.routeKeyEvent playCommandToMsg key true model.Shell with
+                            | AppRoot.GameShell.GameEdge(value, true) -> Some value
+                            | _ -> None)
+                        |> List.fold applyPlay (model.Play, [])
+
+                    let nextPlay, tickEffects = applyPlay (afterHeld, heldEffects) playMsg
+                    { model with Play = nextPlay }, tickEffects
                 | _ -> model, []
       View =
         fun _size model ->
@@ -539,14 +580,11 @@ let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
             | None -> Canvas.create [ Canvas.scene { Nodes = [ AppRoot.View.view model.Play ] } ]
       Theme = Theme.light
       MapKey =
-        // Forward EVERY key-down raw (do not resolve here): a rebind capture waits on exactly the
-        // unbound key a resolving `MapKey` would drop. `Update` routes it through the shell, where the
-        // capture state and keymap live (the fs-gg-keyboard-input `mapKeyRaw` recipe).
+        // Forward BOTH native edges raw (do not resolve here): rebind capture needs the unbound down,
+        // while held gameplay needs the matching up. `Update` routes one normalized seam through the
+        // shell/keymap and retains gameplay controls until release.
         fun key isDown ->
-            if isDown then
-                Some(RawKeyDown(ViewerKeyboard.toKeyId key))
-            else
-                None
+            Some(RawKeyChanged(ViewerKeyboard.toKeyId key, isDown))
       MapPointer =
         // The menu buttons carry their own authored `OnClick` bindings (the shell's `view`), and
         // `routeInteractivePointer` dispatches those directly — authored bindings win, and `MapPointer`

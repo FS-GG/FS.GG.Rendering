@@ -246,6 +246,13 @@ let shellKeyRoutingTests =
             Expect.equal (routeKeyDown toGame fKey armed) (ShellMsg(CaptureKey fKey)) "the next key is handed to the capture, not resolved as a command"
             Expect.equal (routeKeyDown toGame menuKey armed) (ShellMsg(CaptureKey menuKey)) "even the menu key is captured (the reducer turns that into a cancel)"
         }
+
+        test "routeKeyEvent preserves both gameplay edges on one normalized seam" {
+            let playing = atPlaying ()
+            Expect.equal (routeKeyEvent toGame wKey true playing) (GameEdge(jump, true)) "key-down begins the resolved gameplay control"
+            Expect.equal (routeKeyEvent toGame wKey false playing) (GameEdge(jump, false)) "key-up ends the same resolved gameplay control"
+            Expect.equal (routeKeyEvent toGame menuKey false playing) NoKeyEvent "shell chrome never reacts to key-up"
+        }
     ]
 
 // ---- display seams --------------------------------------------------------------------------

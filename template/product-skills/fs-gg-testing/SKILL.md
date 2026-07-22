@@ -45,19 +45,19 @@ control-bearing profiles (`app`, `sample-pack`, `game`) ship; a `headless-scene`
 or `governed` product has no controls to click, and this skill must not tell it to
 open a package it was never given.
 
-**A keyboard game drives a different host, and needs the same pairing.** The `game`
-family routes input through the keyboard **scene-host** `generatedHost`, not the
-Controls click path — so its real-route driver is `GeneratedAppHost.runKeyScriptToModel`
-(the sibling of `Perf.runScriptToModel`), which folds a raw key *script* through the
-host's own `mapKey -> update` fold. **Pure-`update` acceptance is necessary but not
-sufficient here too**: `update (ViewerInput …)` proves `update` handles a message it
-was HANDED; it never proves a pressed key PRODUCES that message. So an interactive
-product must pair its pure-`update` suite with **≥1 end-to-end "played through the
-host" scenario** — driven only through `runKeyScriptToModel` (no direct `Msg`
-injection), guarded by `auditKeyWiring` / `reachableMessages` for the handled-but-
-unwired case. This is the scene-host analogue of `BoundIds`, and it is the test that
-turns a green-but-unplayable ship red. **The runnable keyboard recipe is in
-[[fs-gg-elmish]]**, next to the click-path one it mirrors.
+**A generated shell game must prove the host it actually launches.** Its default is the
+pointer-aware `interactiveHost`, not the retained keyboard-only `generatedHost` used by
+some evidence commands. At the exact `ViewerOptions.InitialSize`, require a
+`captureRespondsProof` verdict of `Responsive` for one menu button and one rebind row,
+then complete capture through `interactiveHost.MapKey`. Also drive the same native key
+seam with down → fixed tick → fixed tick → up → fixed tick; gameplay must advance on both
+held ticks and stop on the final one. **Pure-`update` acceptance is necessary but not
+sufficient**: direct `Msg` injection cannot see a dropped key-up, a one-shot translation,
+the wrong launch overload, or a pointer/layout coordinate mismatch.
+
+For a profile that genuinely launches the keyboard scene host, retain the existing
+`GeneratedAppHost.runKeyScriptToModel` plus `auditKeyWiring` / `reachableMessages` pairing.
+The rule is one invariant at the production host boundary, not one favorite driver.
 
 ## Assert at the sink, not at the model
 

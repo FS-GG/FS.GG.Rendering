@@ -116,6 +116,7 @@
          restore. Must precede the test file that opens it. -->
     <Compile Include="..\..\scripts\ApiSurfaceCoverage.fs" Link="ApiSurfaceCoverage.fs" />
     <Compile Include="Issue925ApiSurfaceCoverageTests.fs" />
+    <Compile Include="Issue1012GeneratedInteractiveHostTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
