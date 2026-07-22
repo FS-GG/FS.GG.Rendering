@@ -74,6 +74,7 @@ module Viewer =
     let runAppWithWindowBehaviorAndAudio options behavior audioSink host = ViewerRuntime.runAppWithWindowBehaviorAndAudio options behavior audioSink host
     let runAppWithPersistence options persistenceSink mapOutcome host = ViewerRuntime.runAppWithPersistence options persistenceSink mapOutcome host
     let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host
+    let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host
     let runInteractiveViewer options host = ViewerRuntime.runInteractiveViewer options host
     let runInteractiveViewerWithWindowBehavior options behavior host = ViewerRuntime.runInteractiveViewerWithWindowBehavior options behavior host
     let runInteractiveViewerScript options script host = ViewerRuntime.runInteractiveViewerScript options script host

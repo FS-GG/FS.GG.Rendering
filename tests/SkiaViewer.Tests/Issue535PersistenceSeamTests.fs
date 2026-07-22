@@ -84,6 +84,61 @@ let issue535PersistenceSeamTests =
                   Expect.isEmpty written "no save is written when no window ever opened"
           }
 
+          // #979 — the four-capability corner: window behavior AND audio AND persistence at once. Mirrors
+          // the sibling above (a headless host cannot open a persistent window, so the composition itself
+          // is not drivable here — #365/#396), and asserts the contract that holds on EVERY host: the
+          // launcher classifies an unsupported host exactly as `runApp` does, and a launch that never
+          // happened hands NOTHING to either sink. Before this overload a windowed launch that also needed
+          // saves had to fall back to a variant that pinned `defaultWindowBehavior`, silently dropping the
+          // requested window behavior; the point of the test is that all four arguments are now threaded
+          // through the one generated-app launch its siblings use.
+          test "runAppWithWindowBehaviorAndAudioAndPersistence never reaches the audio or persistence sink on a host that cannot open a window" {
+              let saved = List<PersistenceEffect>()
+              let played = List<_>()
+
+              if Viewer.runtimeCapability().PersistentWindow then
+                  skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+              else
+                  let options =
+                      { Title = "Product"
+                        InitialSize = { Width = 640; Height = 480 }
+                        PresentMode = ViewerPresentMode.OffscreenReadback
+                        FrameRateCap = None
+                        LogicalSize = None }
+
+                  // A window behavior that is NOT the default — so the argument is genuinely threaded, not
+                  // defaulted away as the persistence-only fallback would have done.
+                  let behavior =
+                      { Viewer.defaultWindowBehavior with
+                          ResizePolicy = FixedSize
+                          StartupState = ViewerWindowStartupState.Normal }
+
+                  let audioSink batch = played.AddRange batch
+
+                  let persistenceSink batch =
+                      saved.AddRange batch
+                      batch |> List.map (fun e -> PersistenceOutcome.Failed(e, "no host"))
+
+                  match
+                      Viewer.runAppWithWindowBehaviorAndAudioAndPersistence
+                          options
+                          behavior
+                          audioSink
+                          persistenceSink
+                          (SaveAnswered >> Some)
+                          persistenceHost
+                  with
+                  | Result.Ok _ -> failtest "an unsupported host cannot report a successful launch"
+                  | Result.Error failure ->
+                      Expect.equal
+                          failure.Classification
+                          UnsupportedEnvironment
+                          "runAppWithWindowBehaviorAndAudioAndPersistence classifies an unsupported host exactly as runApp does"
+
+                  Expect.isEmpty saved "no save is written when no window ever opened"
+                  Expect.isEmpty played "no audio is played when no window ever opened"
+          }
+
           // THE BUG, DIRECTLY. A `Persist` batch must REACH a sink. If this fails, a product's save
           // requests are dropped on the floor by the framework and nothing anywhere says so.
           test "a Persist batch reaches the sink, in dispatch order" {

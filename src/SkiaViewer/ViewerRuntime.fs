@@ -1556,6 +1556,17 @@ module internal ViewerRuntime =
     let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
         runGeneratedApp options defaultWindowBehavior audioSink (Some persistenceSink) mapOutcome host
 
+    // Issue #979 — the last corner of the generated-app launcher matrix: window behavior AND audio AND
+    // persistence, all at once. Before this, `runAppWithWindowBehaviorAndAudio` was the only windowed
+    // variant, so a `--window-*` launch that also needed durable saves had to fall back to a persistence
+    // variant that pins `defaultWindowBehavior` — silently dropping the requested window behavior — or wire
+    // audio without saves. `runGeneratedApp` already composes all four capabilities (that is why the
+    // siblings are one-line wrappers), so this is a pure re-composition: no interpreter change, just the
+    // overload that threads the caller's `behavior`, `audioSink`, `persistenceSink` and `mapOutcome`
+    // together rather than defaulting one of them away.
+    let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
+        runGeneratedApp options behavior audioSink (Some persistenceSink) mapOutcome host
+
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
     // `runAppWithWindowBehavior` but routes native pointer events and resizes to the host,
     // and renders a size-aware `View`. `runApp`/`GeneratedAppHost` are untouched (FR-006).
