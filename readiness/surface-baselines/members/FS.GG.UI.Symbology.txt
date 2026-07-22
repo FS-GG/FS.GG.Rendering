@@ -8,6 +8,22 @@ FS.GG.UI.Symbology.AutoField+Tags.ThreatTier : System.Int32
 FS.GG.UI.Symbology.AutoLabelSpec.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField> [get]
 FS.GG.UI.Symbology.AutoLabelSpec.Separator : System.String [get]
 FS.GG.UI.Symbology.AutoLabelSpec.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>, System.String)
+FS.GG.UI.Symbology.Coverage+Finding`1.Element : element [get]
+FS.GG.UI.Symbology.Coverage+Finding`1.Gap : FS.GG.UI.Symbology.Coverage+Gap [get]
+FS.GG.UI.Symbology.Coverage+Finding`1.Message : System.String [get]
+FS.GG.UI.Symbology.Coverage+Finding`1.new(element, FS.GG.UI.Symbology.Coverage+Gap, System.String)
+FS.GG.UI.Symbology.Coverage+Gap+Tags.Missing : System.Int32
+FS.GG.UI.Symbology.Coverage+Gap+Tags.Unreasoned : System.Int32
+FS.GG.UI.Symbology.Coverage+Report`1.Findings : FSharpList<Finding<element>> [get]
+FS.GG.UI.Symbology.Coverage+Report`1.OptedOut : FSharpList<Tuple<element, System.String>> [get]
+FS.GG.UI.Symbology.Coverage+Report`1.Verdict : FS.GG.UI.Symbology.Coverage+Verdict [get]
+FS.GG.UI.Symbology.Coverage+Report`1.new(FSharpList<Finding<element>>, FSharpList<Tuple<element, System.String>>, FS.GG.UI.Symbology.Coverage+Verdict)
+FS.GG.UI.Symbology.Coverage+Representation+Tags.Hidden : System.Int32
+FS.GG.UI.Symbology.Coverage+Representation+Tags.Shown : System.Int32
+FS.GG.UI.Symbology.Coverage+Verdict+Tags.Covered : System.Int32
+FS.GG.UI.Symbology.Coverage+Verdict+Tags.HasGaps : System.Int32
+FS.GG.UI.Symbology.Coverage.check<element>(FSharpList<element>, FSharpFunc<element, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Symbology.Coverage+Representation>>) : Report<element>
+FS.GG.UI.Symbology.Coverage.checkMap<element>(FSharpList<element>, FSharpMap<element, FS.GG.UI.Symbology.Coverage+Representation>) : Report<element>
 FS.GG.UI.Symbology.Faction+Tags.Ally : System.Int32
 FS.GG.UI.Symbology.Faction+Tags.Custom : System.Int32
 FS.GG.UI.Symbology.Faction+Tags.Enemy : System.Int32

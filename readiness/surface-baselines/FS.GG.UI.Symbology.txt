@@ -1,6 +1,17 @@
 FS.GG.UI.Symbology.AutoField
 FS.GG.UI.Symbology.AutoField+Tags
 FS.GG.UI.Symbology.AutoLabelSpec
+FS.GG.UI.Symbology.Coverage
+FS.GG.UI.Symbology.Coverage+Finding`1
+FS.GG.UI.Symbology.Coverage+Gap
+FS.GG.UI.Symbology.Coverage+Gap+Tags
+FS.GG.UI.Symbology.Coverage+Report`1
+FS.GG.UI.Symbology.Coverage+Representation
+FS.GG.UI.Symbology.Coverage+Representation+Hidden
+FS.GG.UI.Symbology.Coverage+Representation+Shown
+FS.GG.UI.Symbology.Coverage+Representation+Tags
+FS.GG.UI.Symbology.Coverage+Verdict
+FS.GG.UI.Symbology.Coverage+Verdict+Tags
 FS.GG.UI.Symbology.Faction
 FS.GG.UI.Symbology.Faction+Custom
 FS.GG.UI.Symbology.Faction+Tags

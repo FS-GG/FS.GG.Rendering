@@ -64,6 +64,36 @@ The label check counts **hard line breaks only**. The drawn count also depends o
 needs a text measurer the pure linter does not have; wrapping only *adds* lines, so the check under-reports
 and never false-positives.
 
+`Coverage` is the pure package's coverage module — the **visual analog of match exhaustiveness**. Where
+`Legibility` scores the tokens you DID map, `Coverage` asks whether every gameplay element is mapped **at
+all**: a door/bomb/explosion/projectile/`EnemyKind` you add and forget to give a visual renders nothing,
+with no error, and only a human eyeballing a `Render.toPng` board would catch it. Same pure/deterministic/
+advisory contract. The element type is **yours** — the library owns the check and the opt-out, never your
+per-game list:
+
+```fsharp
+// A declared element's visual disposition — one visual "match arm".
+type Representation = Shown of token: Token | Hidden of reason: string
+type Gap            = Missing | Unreasoned                 // Missing = forgotten; Unreasoned = blank opt-out
+type Verdict        = Covered | HasGaps                    // Covered iff Findings is empty
+type Finding<'element> = { Element: 'element; Gap: Gap; Message: string }
+type Report<'element>  = { Findings: Finding<'element> list  // declared-element order (deterministic)
+                           OptedOut: ('element * string) list // the explicit hidden-by-mechanic ledger
+                           Verdict: Verdict }
+
+// Report every declared element with no Token AND no reasoned opt-out.
+val check: elements: 'element list -> resolve: ('element -> Representation option) -> Report<'element>
+// The canonical pattern: a forgotten element is an absent key. ≡ check elements (fun e -> Map.tryFind e table).
+val checkMap: elements: 'element list -> table: Map<'element, Representation> -> Report<'element>
+```
+
+An element passes coverage **iff** it maps to a `Shown` token **OR** carries an explicit `Hidden` opt-out
+with a non-blank reason. A hidden element (fog of war, stealth, an off-screen or internal marker) is legal
+— but it must be a **reasoned decision**, not silence: a `Hidden ""` is `Unreasoned` and rejected, and a
+`resolve` that returns `None` is `Missing`. The reasoned opt-outs collect in `report.OptedOut` as your
+audit trail. **Gate your product with `Expect.equal report.Verdict Coverage.Covered`** over your declared
+element set, so adding an element without a visual (or an explicit opt-out) reds before ship.
+
 ## Usage
 
 ```fsharp

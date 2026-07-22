@@ -25,6 +25,8 @@
     <Compile Include="Symbology.fs" />
     <Compile Include="Legibility.fsi" />
     <Compile Include="Legibility.fs" />
+    <Compile Include="Coverage.fsi" />
+    <Compile Include="Coverage.fs" />
   </ItemGroup>
 
   <ItemGroup>

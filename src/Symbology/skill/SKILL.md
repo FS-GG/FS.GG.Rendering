@@ -76,6 +76,37 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   The label check reads **hard line breaks only**: the drawn count also depends on greedy wrapping,
   which needs a text measurer, and the linter is measurement-free by contract. Wrapping only *adds*
   lines, so the check under-reports and never false-positives. It is a backstop, not a layout oracle.
+- Coverage check `FS.GG.UI.Symbology.Coverage` (`src/Symbology/Coverage.fsi`): the **visual analog of
+  match exhaustiveness** (#989). `Legibility` scores the tokens that ARE mapped; `Coverage` asks the
+  prior question — is every gameplay element mapped **at all**. Same pure/deterministic/advisory contract:
+  never mutates, never raises on valid input. The element type is **product-defined** (a game's own
+  `doors`/`bombs`/`explosions`/`projectiles`/`EnemyKind` DUs); the library owns the check and the opt-out,
+  never the per-game list.
+
+  ```fsharp
+  // A declared element's visual disposition — one visual "match arm".
+  type Representation = Shown of token: Token | Hidden of reason: string
+  type Gap            = Missing | Unreasoned                 // Missing = forgotten; Unreasoned = blank opt-out
+  type Verdict        = Covered | HasGaps                    // Covered iff Findings is empty
+  type Finding<'element> = { Element: 'element; Gap: Gap; Message: string }
+  type Report<'element>  = { Findings: Finding<'element> list  // declared-element order (deterministic)
+                             OptedOut: ('element * string) list // the explicit hidden-by-mechanic ledger
+                             Verdict: Verdict }
+
+  // Report every declared element with no Token AND no reasoned opt-out.
+  val check: elements: 'element list -> resolve: ('element -> Representation option) -> Report<'element>
+  // The canonical pattern: a forgotten element is an absent key. ≡ check elements (fun e -> Map.tryFind e table).
+  val checkMap: elements: 'element list -> table: Map<'element, Representation> -> Report<'element>
+  ```
+
+  An element passes coverage **iff** it maps to a `Shown` token **OR** carries an explicit `Hidden`
+  opt-out with a non-blank reason. A `resolve` that returns `None` for a case (e.g. a `Map.tryFind` miss
+  after someone added an `EnemyKind` and forgot the row) is a `Missing` finding — the silent-omission
+  defect a human previously only caught by eyeballing a `Render.toPng` board. A `Hidden ""` is
+  `Unreasoned`: a blank opt-out is indistinguishable from forgetting, so it is rejected, not trusted. The
+  reasoned opt-outs collect in `report.OptedOut` — the audit trail that a non-render was a **decision**.
+  Gate a product with `Expect.equal report.Verdict Coverage.Covered` over the game's declared element set;
+  the comprehensive element↔visual catalog the check consumes is authored by `fs-gg-symbol-design` (#990).
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
   `SceneCodec` round-trip and **fails loud** (raises with joined diagnostics) on any verdict that is
