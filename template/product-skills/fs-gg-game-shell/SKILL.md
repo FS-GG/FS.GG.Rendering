@@ -11,7 +11,7 @@ Use this skill to give your game the turnkey shell that every scaffolded game
 gets: a **main menu / start screen** (your game's name + Start / Config / Exit),
 **Esc-reachable pause routing**, a **settings screen** for resolution + fullscreen,
 and **in-game key rebinding** whose bindings persist. The shell is a game-agnostic
-module — `src/Product/GameShell.fs` (`module AppRoot.GameShell`) — that you
+module — `GameShell.fs` (`module AppRoot.GameShell`) — that you
 PARAMETERIZE with your game; you do not re-author a menu per game.
 
 The shell **composes** framework mechanisms and rebuilds none of them:
@@ -28,7 +28,7 @@ The shell **composes** framework mechanisms and rebuilds none of them:
 
 ## Public Contract
 
-The shell module lives at `src/Product/GameShell.fs` and is yours to adapt. Its
+The shell module lives at `GameShell.fs` and is yours to adapt. Its
 shape (a pure Elmish state machine plus view + host seams):
 
 - `Screen` = `MainMenu | Playing | Paused | Settings` — the router; `Playing` is
@@ -98,7 +98,7 @@ match outcome with
 
 Arm a rebind from the settings UI: the `KeyRebind` control's row activation
 dispatches `GameShell.ArmRebind command`; the next key press then fires the capture
-(`GameShell.Keymap.rebind` via `update`) and emits `KeymapChanged` for you to persist.
+(`Keymap.rebind` via `update`) and emits `KeymapChanged` for you to persist.
 
 ### Display settings
 
@@ -112,7 +112,7 @@ exclusive fullscreen. Re-apply them when `DisplayChanged` fires.
 A menu needs a mouse, and the game family's DEFAULT host is keyboard-only
 ([[fs-gg-keyboard-input]]). Driving the shell's buttons with a pointer means the
 `InteractiveAppHost` (`Controls.Elmish.runInteractiveApp`) — the same host the
-`app`/controls family uses — a durable host-wiring change in `src/Product/Program.fs`,
+`app`/controls family uses — a durable host-wiring change in `Program.fs`,
 not an edit at your model. Plan for it up front.
 
 ## Build Commands
