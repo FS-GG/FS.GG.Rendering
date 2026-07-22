@@ -292,18 +292,25 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `STALE-CLAIM` | `who` says `state == "stale"` | `reap --repo <r> --apply` |
 | `UNCLAIMED-IN-PROGRESS` | `who` says `state == "unclaimed"` | **ask** (§5) — someone is working outside the protocol; only a human knows who, and whether to park it |
 | `CLAIM-STATUS-LAG` | held claim, and board `status` is one of `Ready`/`Backlog`/*(no status)* — the columns a claim SHOULD have overwritten. A held `Blocked`/`In review` is the holder's own decision and is **deferred, not reconciled** (#331) | `set-field --batch <i> "Status=In progress"` |
+| `AUTO-DONE-LIVE-CLAIM` | held claim and board `status == Done` — merge/issue-close automation may have projected completion while the holder still owes release, publication, dispatch, or deployment verification | **report and message the holder; never count terminal** — the holder reopens the issue and freshly restores `In review`, or produces the exact green `FSGG-DONE` evidence and drops the claim |
 | `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **ask** (§5) — the fix is an *issue* edit, so it takes an answer |
 | `ON-BOARD-NO-STATUS` | open, **unclaimed**, on the board, with an empty `Status` column (`""` — `NoStatus`) | **report only** — a human must choose `Ready` vs `Backlog`; the reconciler cannot invent the missing fact (§5's *never guess*), so it names the drift and writes **nothing** |
 | `EPIC-*` (`error`) | from `lint --json` — an epic that **cannot** roll up | **report only** — a mechanical remedy, and no answer substitutes for it (§4) |
 | `EPIC-ROLLUP-READY` | from `lint --json` (`note`) — every precondition to roll up holds, epic still open | **ask** (§4/§5) — the close needs a `Discharge` judgement, and only a human has it |
 
+`claim --json` / `take --json` now catch this at mutation time by requiring a fresh `.converged`
+receipt before work is announced. Keep `CLAIM-STATUS-LAG` anyway: asynchronous failure, a stale client, or
+a worker that ignored the receipt can still produce real drift, and reconciliation remains the repair path.
+
 **AN ITEM YIELDS AT MOST ONE FINDING THAT WRITES ITS COLUMN, and the claim is what splits them.**
 That is `Chore.fs`'s structure, not a style note: it matches on the claim first, and the two halves
 never overlap.
 
-- **A live claim reserves the item**, and only the two rules that act on the MARKER may fire:
-  `STALE-CLAIM` (lapsed lease) and `CLAIM-STATUS-LAG` (live lease). They are mutually exclusive *on
-  the lease state*, so at most one. Neither writes a column the reserver did not already own.
+- **A live claim reserves the item.** `STALE-CLAIM` acts on a lapsed lease. A live lease may yield
+  `CLAIM-STATUS-LAG` (claim projection never landed) or `AUTO-DONE-LIVE-CLAIM` (close automation ran
+  ahead of post-merge obligations); their Status conditions are disjoint. The latter is report-only:
+  reconciliation does not invent that the holder finished, and it does not overwrite the holder's
+  chosen active column.
 - **No claim** — then, and only then, the three that write the column directly: `CLOSED-ISSUE-NOT-DONE`
   (needs `Closed`), `BLOCKER-CLEARED` (needs `Blocked`, every blocker resolved), `STATUS-NOT-BLOCKED`
   (needs `Ready`/`Backlog`, one blocker open). Pairwise disjoint on facts you can see, so at most one.
@@ -586,6 +593,15 @@ than an error for the reason: `Done` over an open issue is how a premature flip 
 both destructive, and only a human knows which happened — so this is a **question**, and one of the
 best-shaped in the pass. Both branches are one write, the evidence fits on a line, and the answer is
 something the person who flipped it knows instantly.
+
+The mirror-image live-claim case is less ambiguous: **`Done` plus a held claim is not terminal.** A
+merge closing keyword can close the issue and Projects can project `Done` before a release tag, package
+publication, downstream dispatch, or deployment verification completes. Join the fresh `who --all-repos`
+and scan reads and surface `AUTO-DONE-LIVE-CLAIM`; ask the holder for its named post-merge obligations and
+the exact `FSGG-DONE` output. Until those exist and the claim is gone, require the issue open and the board
+freshly `In review`. Do not run `done` on the holder's behalf: its merged-PR check cannot observe those
+external obligations, and doing so would manufacture precisely the false terminal state this finding
+detects.
 
 ## 3. Re-verify the blockers (this is the half people skip)
 

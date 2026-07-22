@@ -104,7 +104,9 @@ the shim resolves no engine it fails loudly with what to do — never a silent n
 
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
-scripts/fsgg-coord take --repo <this-repo>     # pick + claim the next SCHEDULABLE item, retrying a lost race
+receipt="$(scripts/fsgg-coord take --repo <this-repo> --json)"
+jq -e '.markerObserved and .status == "In progress" and .converged' <<<"$receipt" >/dev/null
+# Do not implement or announce before that fresh marker + board readback succeeds (#1369).
 git fetch origin                               # NOTHING else does — the base is otherwise the PAST (#622)
 git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # name the base (#319)
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
@@ -113,7 +115,9 @@ scripts/fsgg-coord done <issue> --flip         # earn the stamp
 
 `take` is the entry point. It asks `batch` what is schedulable *right now* (disjoint from
 everything in flight), claims it, and — on a lost race — **re-schedules** rather than going
-home. Use `claim <issue>` only when you must have a *specific* item.
+home. Its JSON receipt is the postcondition: winning the REST lock and observing the user-visible
+board column are separate facts, and work starts only when `.converged` proves both. Use
+`claim <issue> --json` when you must have a *specific* item, and apply the same predicate.
 
 ## 1. Declare the touch-set (on every parallelizable item)
 
@@ -240,7 +244,7 @@ item's touch-set is **reserved**, not merely skipped.
 ## 3. Claim, isolate, heartbeat
 
 ```sh
-scripts/fsgg-coord claim <issue>            # marker + assignee + Status=In progress; prints the worktree
+scripts/fsgg-coord claim <issue> --json     # marker + Status=In progress; emits the fresh receipt
 scripts/fsgg-coord claim <issue> --force    # steal an item another worker holds
 scripts/fsgg-coord heartbeat <issue>        # renew the lease on a long-running claim
 scripts/fsgg-coord release <issue>          # drop the lease; Status RESTORED to what the claim overwrote
