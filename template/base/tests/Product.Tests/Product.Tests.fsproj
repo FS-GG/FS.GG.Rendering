@@ -17,6 +17,14 @@
          compiles to an empty module and adds nothing on the other profiles. -->
     <Compile Include="CoverageGateTests.fs" />
     <Compile Include="BehaviorTests.fs" />
+    <!-- Issue #1002 (child of #991): release-lane BEHAVIOUR coverage for the generic game shell.
+         Drives GameShell.fs's pure `update` + host-free seams (router, Esc routing, rebind capture,
+         display->window-behaviour mapping, keymap persistence). Additive — it adds shell tests beside
+         the durable GovernanceTests and the replaceable BehaviorTests without touching either. The
+         shell module is emitted on `app`/`game` only, so the file body is `//#if (profile == "app" ||
+         profile == "game")` and compiles to an empty module on the other profiles (the CoverageGateTests
+         pattern), which is why it needs no compile Condition here. -->
+    <Compile Include="ShellBehaviorTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
