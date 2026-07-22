@@ -375,6 +375,14 @@
     },
     {
       "condition": "(profile == \"app\" || profile == \"game\")",
+      "source": "template/product-skills/fs-gg-game-shell/",
+      "target": ".agents/skills/fs-gg-game-shell/",
+      "copyOnly": [
+        "**/*"
+      ]
+    },
+    {
+      "condition": "(profile == \"app\" || profile == \"game\")",
       "source": "template/product-skills/fs-gg-ui-widgets/",
       "target": ".agents/skills/fs-gg-ui-widgets/",
       "copyOnly": [

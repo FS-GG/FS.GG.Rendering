@@ -31,6 +31,15 @@
          delete the file (Product.fsproj stays "durable"). -->
     <Compile Include="LineDrawing.fs" Condition="Exists('LineDrawing.fs')" />
     <!--#endif -->
+    <!--#if (profile == "app" || profile == "game") -->
+    <!-- Issue #991: the generic game-shell module (fs-gg-game-shell skill) — a reusable
+         menu/start screen + settings (resolution/fullscreen) + key rebinding that composes the
+         framework pieces (KeyRebind + Keymap/KeymapCodec, LogicalCanvas + window-behavior, the
+         typed Controls). Game-agnostic and opt-in: compiled before Model.fs so your update/view
+         can wire it, and Exists-guarded so deleting it keeps the build green (Product.fsproj stays
+         "durable"). See the fs-gg-game-shell skill for the host wiring. -->
+    <Compile Include="GameShell.fs" Condition="Exists('GameShell.fs')" />
+    <!--#endif -->
     <Compile Include="Model.fs" />
     <Compile Include="View.fs" />
     <Compile Include="LayoutEvidence.fs" />
