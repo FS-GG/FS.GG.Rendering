@@ -138,3 +138,26 @@ module Coverage =
     /// The manifest line that would waive a member — the token order the generator's `+` includes use
     /// (`waive <pkg> <source> <kind> <path>`), so a maintainer can paste an `Untaught` report straight in.
     let waiveLine (m: MemberKey) = sprintf "waive %s %s %s %s" m.Package m.Source m.Kind m.Path
+
+    /// One `+` include of a `file` stanza, addressed the way the manifest writes it — the `.fsi` it draws
+    /// from, the F# kind, and the dotted path within that file.
+    type Include = { Source: string; Kind: string; Path: string }
+
+    /// The `+` includes a single `file` stanza REPEATS. The generator emits each `+` line's member verbatim,
+    /// in list order, so a member named twice in ONE stanza is RENDERED twice — the `Pathfinding.fsi`
+    /// `Step`/`Reach` TRIPLICATION that TowerDefense1#4 saw was exactly this: three `+ type Pathfinding.Step`
+    /// / `+ type Pathfinding.Reach` lines in the manifest, three copies in the mirror. Nothing caught it: the
+    /// #925 coverage `taughtSet` is a `Set`, so the repeat COLLAPSES there and the reconcile stays green, and
+    /// the drift check compares the generator's (tripled) output against the committed (tripled) mirror and
+    /// agrees with itself. A member repeated inside one stanza is malformed, always — a type has one
+    /// declaration — so the generator fails closed on it (#266), and this is the pure decision that says so,
+    /// kept here rather than in the `.fsx` so it is tested without a package restore (the #925/#661 rule).
+    ///
+    /// Cross-stanza repeats are NOT duplicates: the same member legitimately taught in two mirror FILES is
+    /// two renders in two files, which is a curation choice, not a triplication. This is per-stanza only.
+    let duplicateIncludes (includes: Include list) : Include list =
+        includes
+        |> List.countBy id
+        |> List.filter (fun (_, n) -> n > 1)
+        |> List.map fst
+        |> List.sortBy (fun i -> i.Source, i.Path, i.Kind)

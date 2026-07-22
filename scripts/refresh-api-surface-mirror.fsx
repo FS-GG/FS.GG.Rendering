@@ -688,6 +688,33 @@ let stanzas, waivers = parseManifest manifestPath
 if stanzas.IsEmpty then
     fail $"the manifest at {manifestPath} declares no files"
 
+// #982 — a `+` include a stanza REPEATS is malformed, and it renders as many times as it is listed. This is
+// the `Pathfinding.fsi` `Step`/`Reach` TRIPLICATION TowerDefense1#4 saw: the manifest carried three
+// `+ type Pathfinding.Step` / `+ type Pathfinding.Reach` lines and the mirror rendered three copies of each,
+// inside `module Pathfinding`. Nothing else here caught it — `taughtSet` is a `Set`, so the #925 coverage
+// reconcile collapses the repeat and stays green, and the drift check compares the tripled output against the
+// tripled committed mirror and agrees. Well-formedness is a property of the manifest, not of a mode, so it is
+// checked in EVERY mode (like the coverage reconcile), before a single file is written. Fails closed (#266):
+// a type has ONE declaration, so a member named twice in one `file` stanza is never intended.
+let malformed =
+    stanzas
+    |> List.choose (fun st ->
+        let includes =
+            st.Includes
+            |> List.map (fun (inc: Include) -> ({ Source = inc.Source; Kind = inc.Kind; Path = inc.Path }: Coverage.Include))
+
+        match Coverage.duplicateIncludes includes with
+        | [] -> None
+        | dups -> Some(st.File, dups))
+
+if not (List.isEmpty malformed) then
+    for file, dups in malformed do
+        for d in dups do
+            eprintfn "duplicate include in %s: `+ %s %s %s` is listed more than once — it renders that many times (the Pathfinding Step/Reach triplication, TowerDefense1#4)." file d.Source d.Kind d.Path
+
+    let total = malformed |> List.sumBy (fun (_, dups) -> List.length dups)
+    fail $"{total} duplicate `+` include(s) across {List.length malformed} stanza(s) — delete the repeated line(s). Each `+` renders once, so a member listed N times appears N times in the mirror."
+
 // #925 — reconcile the pin's public surface against the manifest's teach + waive decisions. Computed in
 // every mode: you cannot "regenerate" your way out of an untaught member — it must be taught or waived, so
 // this is a validation like the orphan check below, not a generation step. `--emit-waivers` prints the
