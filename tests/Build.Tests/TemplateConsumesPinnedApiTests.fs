@@ -2562,6 +2562,48 @@ let private mirrorSurfaceKeys : Set<string> =
     Set.union types modules
 
 // ---------------------------------------------------------------------------------------------
+// The launch seam, as a BEHAVIOR contract (Governance#297, adjudicated 2026-07-22; #981).
+//
+// This file used to pin the launch seam by its exact overload NAMES (`Viewer.runAppWithAudio`, …). A
+// suite whose purpose is to survive a scaffold-model swap must also survive a SANCTIONED LAUNCHER UPGRADE
+// (a persistence/pointer-capable runner rename), so the seam is now asserted by the EFFECT ARGUMENTS the
+// launcher receives — the audio sink (PlayAudio -> its sink) and the persistent host (Persist honoured) —
+// NOT by the launcher's name. A rename passes this suite unedited. The pin-grounded proof below still
+// compiles WHATEVER launcher the template calls against the pin (the #429 class), because the generic
+// call-site extractor sees it whatever it is named.
+// ---------------------------------------------------------------------------------------------
+
+/// The persistent host VALUE each family threads into its launcher (feature 086, FR-006): the controls
+/// family the pointer-aware `interactiveHost`, the game/sample-pack family the keyboard-only
+/// `generatedHost`. A sanctioned launcher upgrade renames the RUNNER, not the host it is handed.
+let private persistentHostArg = @"(?:generatedHost|interactiveHost)"
+
+/// A launch that HONOURS both effects, capturing the launcher token (group 1): SOME launcher (any overload
+/// name) applied to `viewerOptions` and, as its terminal arguments, the audio sink then the persistent
+/// host. `[^\n]*` tolerates the window-behavior request the `--window-*` overload threads between them.
+let private effectHonouringLaunch =
+    Regex($@"([A-Za-z_][\w.]*)\s+viewerOptions\b[^\n]*\baudioSink\s+{persistentHostArg}\b")
+
+/// The SINKLESS launch shape #436 forbids: the persistent host threaded DIRECTLY after `viewerOptions`
+/// with NO audio sink between them. Launcher-name-agnostic, so a rename cannot disguise a silent launch.
+let private sinklessLaunch =
+    Regex($@"[A-Za-z_][\w.]*\s+viewerOptions\s+{persistentHostArg}\b")
+
+/// The live viewer entrypoint's default launch branch (from the LAST `| None ->`), comment-stripped so a
+/// launch NAMED in prose is not read as a call.
+let private programDefaultBranchText () =
+    let source = File.ReadAllText programPath
+
+    let sliced =
+        match source.LastIndexOf("| None ->", StringComparison.Ordinal) with
+        | -1 -> source
+        | i -> source.Substring i
+
+    sliced.Replace("\r\n", "\n").Split('\n')
+    |> Array.filter (fun line -> not ((line.TrimStart()).StartsWith "//"))
+    |> String.concat "\n"
+
+// ---------------------------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------------------------
 
@@ -2585,41 +2627,55 @@ let templateConsumesPinnedApiTests =
         }
 
         // The seam from #429 — the concrete API that existed in `src/`, shipped in no package the
-        // template pinned, and was unreachable from every scaffolded product for the life of 0.8.0.
-        // If a refactor ever stops the extractor from seeing the viewer launch calls, this is the
-        // test that says so out loud rather than quietly reducing the check to nothing.
+        // template pinned, and was unreachable from every scaffolded product for the life of 0.8.0. If a
+        // refactor ever stops the extractor from seeing the viewer launch calls, this test says so out
+        // loud rather than quietly reducing the check to nothing.
         //
-        // #436 completes that story, so the list below changed shape. `Viewer.runApp` and
-        // `ControlsElmish.runInteractiveApp` — the two SINKLESS overloads — are no longer called by
-        // the template at all: every profile that opens a window now launches through the
-        // audio-carrying sibling, because #429's seam existing in `src/` was only half the fix while
-        // the scaffold still launched past it. These four ARE the launch seam now, and asserting the
-        // sinkless pair here would be asserting the defect.
-        test "the viewer launch seam is among the extracted call sites" {
+        // #436 completes that story: `Viewer.runApp` and `ControlsElmish.runInteractiveApp` — the two
+        // SINKLESS overloads — are no longer called; every windowed profile launches through the
+        // audio-carrying sibling. Governance#297/#981 then moved this off the exact overload NAMES onto the
+        // launch BEHAVIOR: the launcher(s) the template calls are captured by the effect ARGUMENTS they
+        // receive (viewerOptions … audioSink … persistent host), each is asserted to be among the extracted
+        // call sites the pin proof compiles, and the sinkless shape is forbidden by argument shape — so a
+        // sanctioned launcher upgrade passes without editing this suite.
+        test "the viewer launch seam is present, extracted, and carries the audio sink (behavior, not overload name)" {
             let extracted = callSites |> List.map (fun c -> $"{c.Module}.{c.Member}") |> Set.ofList
             let rendered = extracted |> Set.toList |> String.concat ", "
+            let defaultBranch = programDefaultBranchText ()
 
-            [ "Viewer.runAppWithAudio" // game / sample-pack, default launch
-              "Viewer.runAppWithWindowBehaviorAndAudio" // game / sample-pack, --window-* launch
-              "ControlsElmish.runInteractiveAppWithAudio" // app, default launch
-              "ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio" ] // app, --window-* launch
-            |> List.iter (fun entryPoint ->
+            // The launcher(s) the default branch actually calls, WHATEVER they are named — captured by the
+            // effect arguments (viewerOptions … audioSink … persistent host), not a hardcoded overload
+            // name. A sanctioned launcher upgrade renames these and still matches.
+            let launchers =
+                effectHonouringLaunch.Matches defaultBranch
+                |> Seq.map (fun m -> m.Groups.[1].Value)
+                |> Set.ofSeq
+
+            // Non-vacuous: the default branch MUST thread the effects into a launcher, or the pin proof
+            // below would go vacuous the moment the launch seam disappeared (the #504 extractor guard).
+            Expect.isNonEmpty
+                (Set.toList launchers)
+                $"Program.fs default branch must thread `viewerOptions`, the audio sink, and the persistent \
+                  host into a launcher — the host honours PlayAudio and Persist, whatever the launcher is \
+                  named (extracted call sites: {rendered})"
+
+            // Every launcher the template calls is among the extracted framework call sites, so the
+            // pin-grounded proof below actually compiles the launch seam against the pin (the #429 class),
+            // whatever the launcher was renamed to.
+            for launcher in launchers do
                 Expect.isTrue
-                    (extracted.Contains entryPoint)
-                    $"'{entryPoint}' is one of the framework entry points the template's Program.fs calls \
-                      (extracted: {rendered})")
+                    (extracted.Contains launcher)
+                    $"the launcher `{launcher}` the template's Program.fs calls is among the extracted \
+                      framework entry points compiled against the pin (extracted: {rendered})"
 
-            // And the sinkless overloads are NOT called. This is the #436 invariant stated where it can
-            // be enforced against the real extractor: a scaffolded product that launches through
-            // `runApp`/`runInteractiveApp` discards every `PlayAudio` batch its cue seam produces, and
-            // does so silently — it compiles, it runs, it is simply mute. That is the exact defect, and
-            // it is invisible to every other check in this file.
-            [ "Viewer.runApp"; "ControlsElmish.runInteractiveApp" ]
-            |> List.iter (fun sinkless ->
-                Expect.isFalse
-                    (extracted.Contains sinkless)
-                    $"the template must not launch through the sink-discarding '{sinkless}' — every windowed \
-                      profile carries the audio sink (#436) (extracted: {rendered})")
+            // #436, by ARGUMENT shape: no profile launches through a sink-discarding overload — the host
+            // threaded directly after `viewerOptions` with no `audioSink` between them. Launcher-name-
+            // agnostic, so a rename cannot smuggle a silent launch past (which left `app`/`sample-pack`
+            // mute while every positive check stayed green).
+            Expect.isFalse
+                (sinklessLaunch.IsMatch defaultBranch)
+                "the template must not launch through a sink-discarding overload — every windowed profile \
+                 carries the audio sink (#436); matched by argument shape, so a launcher rename cannot hide one"
         }
 
         // Offline necessary-but-not-sufficient condition. It CANNOT catch #429 (the mirror tracks
