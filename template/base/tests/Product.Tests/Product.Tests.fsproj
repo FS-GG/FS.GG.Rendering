@@ -10,6 +10,12 @@
     <!-- Feature 060 (FR-005): durable model-agnostic governance scans compile first and
          survive a scaffold-model swap; replaceable scaffold-behavior tests compile after. -->
     <Compile Include="GovernanceTests.fs" />
+    <!-- Issue #994: the scaffold-emitted visual-COVERAGE gate — reads the product's element->visual
+         catalog (element-visuals.catalog) and reds when a declared gameplay element has no token and
+         no reasoned Hidden opt-out. Durable like GovernanceTests (it reads the catalog artifact, not
+         the product's model/view), and game-profile-only inside (`//#if profile == "game"`), so it
+         compiles to an empty module and adds nothing on the other profiles. -->
+    <Compile Include="CoverageGateTests.fs" />
     <Compile Include="BehaviorTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

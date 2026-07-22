@@ -1,0 +1,6 @@
+# fs-gg element-visual catalog v1
+Ball	shown	token/ball
+LeftPaddle	shown	token/paddle
+RightPaddle	shown	token/paddle
+Score	shown	token/score
+Playfield	hidden	scenery: the playfield is a flat background fill, not a per-element symbol

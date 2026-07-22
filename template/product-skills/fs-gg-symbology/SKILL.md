@@ -94,6 +94,42 @@ with a non-blank reason. A hidden element (fog of war, stealth, an off-screen or
 audit trail. **Gate your product with `Expect.equal report.Verdict Coverage.Covered`** over your declared
 element set, so adding an element without a visual (or an explicit opt-out) reds before ship.
 
+### The scaffold ships this gate for you (game profile)
+
+You don't hand-author that gate — a **game** product is scaffolded with it already wired. The scaffold
+emits an **element↔visual catalog** artifact and a coverage test that reads it:
+
+- **The catalog** lives at `tests/Product.Tests/element-visuals.catalog` — the machine-readable,
+  deterministic text form of your renderable-element set. It is a versioned header line followed by one
+  tab-separated row per gameplay element: `element<TAB>shown<TAB>token-handle`, or
+  `element<TAB>hidden<TAB>reason`. The `shown` handle is a **stable name** into your own symbol module
+  (the renderer resolves it — coverage only asks whether the element is shown *at all*). This is the
+  format the `FS.GG.UI.Symbology.Catalog` module renders and parses; the design loop that authors and
+  maintains it is the **`fs-gg-symbol-design`** skill. A starter catalog covering the Pong elements:
+
+  ```text
+  # fs-gg element-visual catalog v1
+  Ball	shown	token/ball
+  LeftPaddle	shown	token/paddle
+  RightPaddle	shown	token/paddle
+  Score	shown	token/score
+  Playfield	hidden	scenery: the playfield is a flat background fill, not a per-element symbol
+  ```
+
+- **The gate** is `tests/Product.Tests/CoverageGateTests.fs`. It reads the catalog and reds `dotnet test`
+  the moment a declared element is left undisposed or opted out with a blank reason — a `Covered` verdict
+  is exactly `Expect.equal report.Verdict Coverage.Covered` sourced from the artifact rather than a
+  hand-written map. **The catalog's rows ARE your declared element set**, so keeping it current is the
+  whole discipline: adding an element to your game is finished only when it has a catalog row — a
+  designed `shown` token, or a reasoned `hidden` opt-out. Edit `element-visuals.catalog`, not the test.
+
+The gate reads the catalog through a small, self-contained mirror of the published text format rather
+than the framework's `Catalog`/`Coverage` API, so it compiles against the `FsGgUiVersion` your product
+pins even before those modules ship in that package (the same release-safe precedent the sibling
+Coverage/Catalog guidance follows — teach the format, never a dotted API the pin cannot yet resolve);
+once your pin advances to a package that carries them, the mirror can be swapped for the framework's own
+catalog parse-and-validate helpers with no change to the artifact or the assertion.
+
 ## Usage
 
 ```fsharp
