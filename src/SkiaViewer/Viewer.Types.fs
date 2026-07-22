@@ -625,6 +625,10 @@ type ViewerRunMsg =
 type ViewerEffect =
     | OpenWindow of title: string * size: Size
     | ApplyWindowOptions of ViewerWindowBehaviorRequest
+    /// Select the logical coordinate space used by the live viewer. The viewer owns both the
+    /// logical-to-surface presentation fit and the inverse native-pointer mapping; products and
+    /// Controls hosts continue to author, lay out, and hit-test directly in this size.
+    | ApplyLogicalCanvas of Size
     | QueryNativeWindowState
     | RenderScene of SceneNode
     | CloseWindow

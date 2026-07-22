@@ -278,7 +278,15 @@ let viewerOptions =
       InitialSize = { Width = 1280; Height = 800 }
       //#endif
       PresentMode = ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = None; LogicalSize = None }
+      FrameRateCap = None
+      //#if (profile == "game")
+      // SkiaViewer is the sole logical-canvas owner: it fits this authored space onto the live
+      // framebuffer and maps native pointer samples back before Controls sees them.
+      LogicalSize = Some { Width = 1280; Height = 720 }
+      //#else
+      LogicalSize = None
+      //#endif
+    }
 
 // Evidence/screenshot-capture options: a small OffscreenReadback surface for deterministic pixel
 // readback. Used only by the bounded evidence commands below — never for the persistent launch.
@@ -502,15 +510,24 @@ let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShe
 /// re-applies the window behaviour AND persists; a keymap change persists. Persistence is
 /// best-effort (the host owns IO), so the settings screen survives a restart (the MUST persistence
 /// of #991/#1001).
-let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.GameShell.Effect) : ViewerEffect list =
+/// Pure shell-effect -> viewer-effect contract. Kept separate from persistence so generated-product
+/// tests can assert that a display selection reaches both owners without writing user preferences.
+let viewerEffectsForShellEffect (effect: AppRoot.GameShell.Effect) : ViewerEffect list =
     match effect with
     | AppRoot.GameShell.ExitRequested -> [ CloseWindow ]
     | AppRoot.GameShell.DisplayChanged settings ->
-        persistShellSettings shell |> ignore
-        [ ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings) ]
+        [ ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings)
+          ApplyLogicalCanvas(AppRoot.GameShell.logicalSize settings) ]
+    | AppRoot.GameShell.KeymapChanged _ -> []
+
+let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.GameShell.Effect) : ViewerEffect list =
+    match effect with
+    | AppRoot.GameShell.DisplayChanged _
     | AppRoot.GameShell.KeymapChanged _ ->
         persistShellSettings shell |> ignore
-        []
+    | AppRoot.GameShell.ExitRequested -> ()
+
+    viewerEffectsForShellEffect effect
 
 // FR-004/FR-006 (086, D6) + #991/#1000: the game family's governed default is now the pointer-aware
 // persistent host, booting the shell. It renders the shell menu chrome while not `Playing` (the typed
@@ -526,9 +543,11 @@ let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
             // Issue #458: the LOADED initial state still reaches the audio sink. `Started` announces
             // the initial play model through the SAME cue seam every transition uses. The shell host is
             // the launch host now, so it owns this the way `generatedHost` did before the move.
+            let canvas = ApplyLogicalCanvas(AppRoot.GameShell.logicalSize shell.Display)
+
             match AppRoot.AudioCues.forTransition Started initialModel initialModel with
-            | [] -> model, []
-            | cues -> model, [ PlayAudio cues ]
+            | [] -> model, [ canvas ]
+            | cues -> model, [ canvas; PlayAudio cues ]
       Update =
         fun msg model ->
             match msg with

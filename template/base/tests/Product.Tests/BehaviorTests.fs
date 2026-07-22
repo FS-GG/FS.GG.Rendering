@@ -288,6 +288,11 @@ let behaviorTests =
 
             Expect.equal defaultWindow.StartupState ViewerWindowStartupState.Normal "default launch explicitly uses the shell's Windowed behavior"
 
+            Expect.equal
+                AppRoot.Program.viewerOptions.LogicalSize
+                (Some AppRoot.EvidenceCommands.shellConfig.InitialDisplay.Resolution)
+                "the generated game seeds SkiaViewer with the shell's logical canvas"
+
             let pointer phase x y : ViewerPointerInput =
                 { Phase = phase
                   X = x
@@ -375,6 +380,75 @@ let behaviorTests =
                 (Keymap.resolve captured.Shell.Keymap (ViewerKeyboard.toKeyId (Letter 'W')))
                 None
                 "the real retained-host capture replaces the command binding instead of adding a second key"
+
+            // Issue #1014: change the selected logical canvas, prove the host-boundary effect, then
+            // click the same semantic Config control from its corresponding physical point on a
+            // deliberately differently-shaped surface. SkiaViewer's exact runtime inverse is gated
+            // in its package suite; this generated-product assertion proves the emitted host wiring
+            // and retained control compose with it.
+            let resolution1080: FS.GG.UI.Scene.Size = { Width = 1920; Height = 1080 }
+            let shell1080, shellEffects =
+                AppRoot.GameShell.update (AppRoot.GameShell.SetResolution resolution1080) model0.Shell
+
+            let viewerEffects =
+                shellEffects |> List.collect AppRoot.EvidenceCommands.viewerEffectsForShellEffect
+
+            Expect.exists
+                viewerEffects
+                (function ApplyLogicalCanvas size -> size = resolution1080 | _ -> false)
+                "DisplayChanged dynamically installs the selected logical canvas"
+
+            for mode in
+                [ AppRoot.GameShell.Windowed
+                  AppRoot.GameShell.Borderless
+                  AppRoot.GameShell.Fullscreen ] do
+                let _, modeEffects =
+                    AppRoot.GameShell.update (AppRoot.GameShell.SetDisplayMode mode) shell1080
+
+                let modeViewerEffects =
+                    modeEffects
+                    |> List.collect AppRoot.EvidenceCommands.viewerEffectsForShellEffect
+
+                Expect.exists
+                    modeViewerEffects
+                    (function ApplyWindowOptions _ -> true | _ -> false)
+                    $"{mode} emits its presentation request"
+
+                Expect.exists
+                    modeViewerEffects
+                    (function ApplyLogicalCanvas size -> size = resolution1080 | _ -> false)
+                    $"{mode} keeps the selected logical coordinate policy"
+
+            let model1080 = { model0 with Shell = shell1080 }
+            let surface: FS.GG.UI.Scene.Size = { Width = 1600; Height = 1000 }
+            let frame1080 = FS.GG.UI.Controls.Control.renderTree host.Theme resolution1080 (host.View resolution1080 model1080)
+            let available1080: FS.GG.UI.Layout.AvailableSpace =
+                { Width = float resolution1080.Width
+                  WidthMode = FS.GG.UI.Layout.Exactly
+                  Height = float resolution1080.Height
+                  HeightMode = FS.GG.UI.Layout.Exactly }
+            let layout1080 = FS.GG.UI.Layout.Layout.evaluate available1080 frame1080.Layout
+            let configBounds = (layout1080.Bounds |> List.find (fun b -> b.NodeId = "config")).Bounds
+            let logicalX = configBounds.X + configBounds.Width / 2.0
+            let logicalY = configBounds.Y + configBounds.Height / 2.0
+            let fit = LogicalCanvas.fit resolution1080 surface
+            let physicalX = logicalX * fit.Scale + fit.OffsetX
+            let physicalY = logicalY * fit.Scale + fit.OffsetY
+            let routedX, routedY = LogicalCanvas.toLogicalPoint resolution1080 surface physicalX physicalY
+            let state1080, down1080 =
+                FS.GG.UI.Controls.Elmish.ControlsElmish.routeInteractivePointer
+                    host (Pointer.init ()) resolution1080 model1080
+                    (pointer ViewerPointerPhaseKind.Pressed routedX routedY)
+            let afterDown1080 = foldMessages model1080 down1080
+            let _, up1080 =
+                FS.GG.UI.Controls.Elmish.ControlsElmish.routeInteractivePointer
+                    host state1080 resolution1080 afterDown1080
+                    (pointer ViewerPointerPhaseKind.Released routedX routedY)
+            let configured1080 = foldMessages afterDown1080 up1080
+            Expect.equal
+                configured1080.Shell.Screen
+                AppRoot.GameShell.Settings
+                "the corresponding physical point still activates Config after 1280x720 -> 1920x1080"
         }
 
         // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.

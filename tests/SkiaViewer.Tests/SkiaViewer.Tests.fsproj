@@ -85,6 +85,7 @@
     <Compile Include="Issue396FirstFrameFaultTests.fs" />
     <Compile Include="Issue444EvidenceEffectsTests.fs" />
     <Compile Include="Issue535PersistenceSeamTests.fs" />
+    <Compile Include="Issue1014LogicalCanvasOwnerTests.fs" />
     <Compile Include="FCore2TextResolveTests.fs" />
     <Compile Include="FCore3ShaperReuseTests.fs" />
     <Compile Include="FCore4RenderThreadTests.fs" />

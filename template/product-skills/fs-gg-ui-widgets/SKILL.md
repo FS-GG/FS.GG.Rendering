@@ -76,6 +76,11 @@ route is taught in [[fs-gg-elmish]] — `Pointer.replay` (the pure fold SC-005's
 `routeInteractivePointer`, and the `Perf.runScript*` drivers built on them. Go there for anything that
 drives a click rather than authors one.
 
+**Logical-canvas ownership also lives next door.** On an `InteractiveAppHost`, SkiaViewer supplies
+Controls with the selected logical size and a pointer sample already mapped through the inverse
+letterbox fit. Seed `ViewerOptions.LogicalSize` and emit `ApplyLogicalCanvas` for runtime changes;
+never scale the control tree or remap the pointer a second time. See [[fs-gg-skiaviewer]].
+
 ## No-new-dependency property tests
 
 When the product test project ships no FsCheck reference and the governance decision is

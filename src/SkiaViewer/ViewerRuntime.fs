@@ -1101,6 +1101,7 @@ module internal ViewerRuntime =
         | Persist _
         | OpenWindow _
         | ApplyWindowOptions _
+        | ApplyLogicalCanvas _
         | QueryNativeWindowState
         | StartBoundedRun _
         | CheckDesktopSession
@@ -1123,6 +1124,7 @@ module internal ViewerRuntime =
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
         (evidenceSink: ViewerEffect -> unit)
+        (logicalCanvasSink: Size -> unit)
         (effects: ViewerEffect list)
         : bool =
         effects
@@ -1150,6 +1152,9 @@ module internal ViewerRuntime =
                 | Persist batch ->
                     persistenceSink batch
                     closeRequested
+                | ApplyLogicalCanvas size ->
+                    logicalCanvasSink size
+                    closeRequested
                 // Issue #444: evidence is WRITTEN, not discarded. These four used to fall through to the
                 // group below and vanish — no file, no error, success. `productEvidenceSink` honors them
                 // and reports any failed write on the diagnostics channel.
@@ -1173,6 +1178,24 @@ module internal ViewerRuntime =
                 | CheckDesktopSession
                 | ReadPixels -> closeRequested)
             false
+
+    /// The one native-pointer -> product-space policy used by the interactive runner. Keeping the
+    /// two transforms in one seam makes a second Controls-side fit unnecessary and lets headless
+    /// tests prove the exact route the live loop uses.
+    let internal pointerInProductSpace
+        (logicalSize: Size option)
+        (windowSize: Size)
+        (surfaceSize: Size)
+        (input: ViewerPointerInput)
+        : ViewerPointerInput =
+        let physicalX, physicalY =
+            LogicalCanvas.toPhysicalPoint windowSize surfaceSize input.X input.Y
+
+        match logicalSize with
+        | Some logical ->
+            let x, y = LogicalCanvas.toLogicalPoint logical surfaceSize physicalX physicalY
+            { input with X = x; Y = y }
+        | None -> { input with X = physicalX; Y = physicalY }
 
     /// #535 — the outcome dispatch, EXTRACTED so it can be tested.
     ///
@@ -1255,7 +1278,10 @@ module internal ViewerRuntime =
           mutable InputDispatch: string
           mutable CurrentSurfaceSize: Size
           mutable CurrentWindowSize: Size
-          mutable CurrentSize: Size }
+          mutable CurrentSize: Size
+          /// The one logical-canvas policy for presentation, View sizing, and inverse pointer
+          /// routing. Mutable because a game-shell DisplayChanged effect can replace it at runtime.
+          mutable CurrentLogicalSize: Size option }
 
     // The seeded state plus the shared runtime closures. Both front-ends destructure this back into the
     // short local names their downstream code already uses, so extracting the bootstrap leaves the
@@ -1305,7 +1331,8 @@ module internal ViewerRuntime =
                   InputDispatch = "false"
                   CurrentSurfaceSize = initialSize
                   CurrentWindowSize = initialSize
-                  CurrentSize = initialViewSize }
+                  CurrentSize = initialViewSize
+                  CurrentLogicalSize = logicalSize }
 
             // Issue #365: guard the product `Update`/`View` so one throwing step drops that input and
             // keeps the persistent window on its last-good scene, rather than escaping to a teardown
@@ -1374,6 +1401,7 @@ module internal ViewerRuntime =
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
         (evidenceSink: ViewerEffect -> unit)
+        (logicalCanvasSink: Size -> unit)
         (persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) option)
         (mapOutcome: PersistenceOutcome -> 'msg option)
         (initEffects: ViewerEffect list)
@@ -1382,7 +1410,7 @@ module internal ViewerRuntime =
 
         let rec interpretEffects effects =
             let closeRequested =
-                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
+                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects
 
             // Sticky: a close is terminal, so an outcome-driven message that asked to close must
             // not be forgotten by the next batch that did not.
@@ -1476,7 +1504,21 @@ module internal ViewerRuntime =
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
 
-                let presentScene () = presentedFor options state.CurrentSurfaceSize state.CurrentScene
+                let presentScene () =
+                    presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
+
+                let applyLogicalCanvas (size: Size) =
+                    if size.Width > 0 && size.Height > 0 then
+                        state.CurrentLogicalSize <- Some size
+                        state.CurrentSize <- size
+                    else
+                        onDiagnostic
+                            { Level = ViewerDiagnosticLevel.Error
+                              Category = Frame
+                              Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
+                              FrameIndex = None
+                              Stage = None
+                              Elapsed = None }
 
                 let handleResize (size: Size) = state.CurrentSurfaceSize <- size
 
@@ -1495,6 +1537,7 @@ module internal ViewerRuntime =
                         onInputDispatch
                         onDiagnostic
                         evidenceSink
+                        applyLogicalCanvas
                         persistenceSink
                         mapOutcome
                         initEffects
@@ -1618,11 +1661,25 @@ module internal ViewerRuntime =
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
 
-                let presentScene () = presentedFor options state.CurrentSurfaceSize state.CurrentScene
+                let presentScene () =
+                    presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
 
                 // The space this host's `View` speaks: the fixed `LogicalSize` when set, else the live
                 // physical framebuffer. `handleFramebufferResize` re-derives `CurrentSize` from it.
-                let viewSize () = options.LogicalSize |> Option.defaultValue state.CurrentSurfaceSize
+                let viewSize () = state.CurrentLogicalSize |> Option.defaultValue state.CurrentSurfaceSize
+
+                let applyLogicalCanvas (size: Size) =
+                    if size.Width > 0 && size.Height > 0 then
+                        state.CurrentLogicalSize <- Some size
+                        state.CurrentSize <- size
+                    else
+                        onDiagnostic
+                            { Level = ViewerDiagnosticLevel.Error
+                              Category = Frame
+                              Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
+                              FrameIndex = None
+                              Stage = None
+                              Elapsed = None }
 
                 // #535 — the interactive (Controls) host family owns no persistence seam yet, and
                 // `InteractiveViewerHost.Update` returns `ViewerEffect list`, so a product on THIS host
@@ -1643,7 +1700,17 @@ module internal ViewerRuntime =
                           Elapsed = None }
 
                 let interpretEffects effects =
-                    interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink effects
+                    let before = state.CurrentLogicalSize
+                    let closeRequested =
+                        interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink applyLogicalCanvas effects
+
+                    // DisplayChanged is processed after Update. If it replaced the logical canvas,
+                    // re-author the retained Controls tree in the new coordinate space immediately;
+                    // presentation and inverse pointer routing read the same state on this frame.
+                    if state.CurrentLogicalSize <> before then
+                        state.CurrentScene <- safeView state.CurrentModel
+
+                    closeRequested
 
                 let initialCloseRequested = interpretEffects initEffects
 
@@ -1733,19 +1800,16 @@ module internal ViewerRuntime =
                     // (`IMouse.Position`), but the product now renders and hit-tests in the PHYSICAL
                     // framebuffer space (native resolution). Scale into physical FIRST, so every
                     // downstream mapping speaks the surface the scene was drawn onto.
-                    let physicalX, physicalY =
-                        LogicalCanvas.toPhysicalPoint state.CurrentWindowSize state.CurrentSurfaceSize input.X input.Y
-
                     // Issue #246: a `LogicalSize` product draws through the letterbox scale+offset,
                     // so route the inverse (now from the physical surface) or every hit test is wrong
                     // by exactly that transform. Without one, the physical coordinates ARE the
                     // product's space. `DeltaX/DeltaY` are wheel ticks, not positions, so unscaled.
                     let routed =
-                        match options.LogicalSize with
-                        | Some logical ->
-                            let x, y = LogicalCanvas.toLogicalPoint logical state.CurrentSurfaceSize physicalX physicalY
-                            { input with X = x; Y = y }
-                        | None -> { input with X = physicalX; Y = physicalY }
+                        pointerInProductSpace
+                            state.CurrentLogicalSize
+                            state.CurrentWindowSize
+                            state.CurrentSurfaceSize
+                            input
 
                     let msgs = host.MapPointer routed state.CurrentSize state.CurrentModel
                     pointerSw.Stop()
@@ -2159,6 +2223,3 @@ module internal ViewerRuntime =
         | EvidenceReportWritten path ->
             { model with OutputPath = Some path; Diagnostics = model.Diagnostics @ [ $"report-written={path}" ] },
             []
-
-
-

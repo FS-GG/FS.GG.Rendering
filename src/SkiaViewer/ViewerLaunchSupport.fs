@@ -54,10 +54,13 @@ module internal ViewerLaunchSupport =
     /// Every path that owns a surface routes through this, so `LogicalSize` cannot be honored by one
     /// launch entry point and silently dropped by the next. Inert when no logical size is set.
 
-    let presentedFor (options: ViewerOptions) (surfaceSize: Size) (scene: SceneNode) =
-        match options.LogicalSize with
+    let presentedForLogical (logicalSize: Size option) (surfaceSize: Size) (scene: SceneNode) =
+        match logicalSize with
         | Some logical -> LogicalCanvas.present logical surfaceSize scene
         | None -> scene
+
+    let presentedFor (options: ViewerOptions) (surfaceSize: Size) (scene: SceneNode) =
+        presentedForLogical options.LogicalSize surfaceSize scene
 
     // #363: the XWayland backend pin now lives in the host as `GlHost.withWindowBackendOverride`,
     // scoped to window `Create`/`Initialize` only. It used to wrap the entire run loop here, which

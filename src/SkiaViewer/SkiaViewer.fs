@@ -32,7 +32,14 @@ module Viewer =
     let defaultDiagnostics = ViewerRuntime.defaultDiagnostics
     let internal runtimeStateRepaint producedMessages current deriveScene = ViewerRuntime.runtimeStateRepaint producedMessages current deriveScene
     let internal dispatchPersistenceBatch sink mapOutcome dispatch batch = ViewerRuntime.dispatchPersistenceBatch sink mapOutcome dispatch batch
-    let internal interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink effects = ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink effects
+    let internal interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink effects =
+        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore effects
+
+    let internal interpretViewerEffectsWithLogicalCanvas audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects =
+        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects
+
+    let internal pointerInProductSpace logicalSize windowSize surfaceSize input =
+        ViewerRuntime.pointerInProductSpace logicalSize windowSize surfaceSize input
     let internal productEvidenceSink onDiagnostic sceneSize currentScene effect = ViewerRuntime.productEvidenceSink onDiagnostic sceneSize currentScene effect
     let internal traceStartCapture a0 = ViewerRuntime.traceStartCapture a0
     let internal traceDrainCapture a0 = ViewerRuntime.traceDrainCapture a0
@@ -277,4 +284,3 @@ module Text =
     /// Structured diagnostic lines for every non-authored character in the most recent render (FR-001).
     let fallbackDiagnostics () : string list =
         SceneRenderer.fallbackEvents |> List.ofSeq |> Fonts.diagnostics
-

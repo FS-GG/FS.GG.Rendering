@@ -178,6 +178,18 @@ type ViewerPointerInput =
 `ViewerPointerPhaseKind` and `ViewerPointerButtonKind` are `RequireQualifiedAccess`, so match them
 qualified (`ViewerPointerPhaseKind.Pressed`, `ViewerPointerButtonKind.Primary`).
 
+### Logical canvas: the viewer owns both directions
+
+For an interactive fixed-resolution product, seed `ViewerOptions.LogicalSize`. To switch at
+runtime, return `ViewerEffect.ApplyLogicalCanvas nextSize` from `Update`. SkiaViewer then performs
+both directions of the same fit: logical scene/Controls coordinates to the physical framebuffer for
+presentation, and native window coordinates through framebuffer scaling plus the inverse fit for
+pointer routing. `View` and `MapPointer` therefore receive the selected logical coordinate space.
+
+Do not fit the scene, scale Controls bounds, or invert the pointer in product code. Those are second
+transforms. `ApplyWindowOptions` is independent: windowed, borderless, and fullscreen presentation
+all retain the same logical-canvas policy.
+
 ### The swap, field by field: `GeneratedAppHost` -> `InteractiveViewerHost`
 
 `InteractiveViewerHost` mirrors `GeneratedAppHost` field-for-field, plus the pointer seam, with two
