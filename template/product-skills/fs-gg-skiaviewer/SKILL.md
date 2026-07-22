@@ -97,6 +97,7 @@ a launcher that was handed the matching sink. Every other launcher **drops** the
 | `runAppWithAudio` · `runAppWithWindowBehaviorAndAudio` | **played** | dropped, **diagnosed** |
 | `runAppWithPersistence` | dropped (silent) | **persisted** |
 | `runAppWithAudioAndPersistence` | **played** | **persisted** |
+| `runAppWithWindowBehaviorAndAudioAndPersistence` | **played** | **persisted** |
 
 A dropped `Persist` is **not silent** — the runtime emits a diagnostic naming the launcher and the one
 to switch to. A dropped `PlayAudio` is discarded quietly (its sink is `ignore`). So the rule is:
@@ -276,6 +277,10 @@ match Viewer.runAppWithPersistence viewerOptions saveToDisk PersistenceAnswered 
 
 Use `Viewer.runAppWithAudioAndPersistence` for sound *and* saves — adopting persistence should not
 cost you audio.
+
+When the product also supplies non-default window behavior, use
+`Viewer.runAppWithWindowBehaviorAndAudioAndPersistence`; it preserves the same audio and persistence
+sinks while applying the requested launch mode, size, and placement.
 
 **Do not emit a persistence effect from the handler for a persistence outcome.** That dispatch is
 synchronous recursion, not the Elmish queue: it recurses on one stack and dies in a

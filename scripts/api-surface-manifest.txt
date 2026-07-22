@@ -988,7 +988,7 @@ open   FS.GG.UI.SkiaViewer
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Ai.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Ai.fsi type AgentId
@@ -1016,7 +1016,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Ballistics.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Ballistics.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Ballistics.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Ballistics.fsi type Projectile
@@ -1030,7 +1030,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Dice.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Dice.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Dice.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Dice.fsi type Distribution
@@ -1050,7 +1050,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Effects.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Effects.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Effects.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Effects.fsi type Source
@@ -1074,7 +1074,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Fov.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Fov.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Fov.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Fov.fsi val Fov.fov
@@ -1082,7 +1082,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Los.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Los.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Los.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Los.fsi type LineMode
@@ -1095,7 +1095,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Visibility.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Visibility.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Visibility.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Visibility.fsi type Visibility.Segment
@@ -1108,7 +1108,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/FixedStep.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      FixedStep.fsi val FixedStep.defaultMaxFrameTime
@@ -1118,7 +1118,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Geometry.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Geometry.fsi val Geometry.intersects
@@ -1140,7 +1140,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Loop.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Loop.fsi type StepState`1
@@ -1151,7 +1151,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Pathfinding.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Pathfinding.fsi type Neighbourhood
@@ -1166,7 +1166,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Physics.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Physics.fsi type Physics.BodyKind
@@ -1189,7 +1189,7 @@ proseat Physics.fsi type Physics.Config ::: { Gravity: Point
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Primitives.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Primitives.fsi type Point
@@ -1204,7 +1204,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Resolution.fsi
 skill  fs-gg-collision
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Resolution.fsi val Resolution.pushOut
@@ -1218,7 +1218,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Rng.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Rng.fsi type Rng
@@ -1231,7 +1231,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/SpatialGrid.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.8.0 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      SpatialGrid.fsi type SpatialGrid`1
@@ -1240,6 +1240,66 @@ pkg    FS.GG.Game.Core
 +      SpatialGrid.fsi val SpatialGrid.query
 +      SpatialGrid.fsi val SpatialGrid.queryBounds
 +      SpatialGrid.fsi val SpatialGrid.queryRadius
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/MapAnalysis.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/MapAnalysis.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      MapAnalysis.fsi type Rule
++      MapAnalysis.fsi type Report
++      MapAnalysis.fsi val MapAnalysis.reachable
++      MapAnalysis.fsi val MapAnalysis.stranded
++      MapAnalysis.fsi val MapAnalysis.isConnected
++      MapAnalysis.fsi val MapAnalysis.componentCount
++      MapAnalysis.fsi val MapAnalysis.borderOpenings
++      MapAnalysis.fsi val MapAnalysis.deadEnds
++      MapAnalysis.fsi val MapAnalysis.articulationPoints
++      MapAnalysis.fsi val MapAnalysis.isolation
++      MapAnalysis.fsi val MapAnalysis.diameter
++      MapAnalysis.fsi val MapAnalysis.spacing
++      MapAnalysis.fsi val MapAnalysis.fairness
++      MapAnalysis.fsi val MapAnalysis.coverage
++      MapAnalysis.fsi val MapAnalysis.validate
++      MapAnalysis.fsi val MapAnalysis.exposureMap
++      MapAnalysis.fsi val MapAnalysis.coverMap
++      MapAnalysis.fsi val MapAnalysis.killzones
+
+# ------------------------------------------------------------------------------------------
+file   Game.Core/MapGen.fsi
+skill  fs-gg-game-core
+header // Mirrored from FS-GG/FS.GG.Game @ 0.9.0 (src/Game.Core/MapGen.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Core
+pkg    FS.GG.Game.Core
++      MapGen.fsi type Grid`1
++      MapGen.fsi type Tile
++      MapGen.fsi type TileMap
++      MapGen.fsi type Region
++      MapGen.fsi type CaveParams
++      MapGen.fsi type BspParams
++      MapGen.fsi type Room
++      MapGen.fsi type RoomGraph
++      MapGen.fsi type RoomKind
++      MapGen.fsi type FloorRoom
++      MapGen.fsi type FloorLayout
++      MapGen.fsi type FloorParams
++      MapGen.fsi type NoiseParams
++      MapGen.fsi val MapGen.filled
++      MapGen.fsi val MapGen.inBounds
++      MapGen.fsi val MapGen.get
++      MapGen.fsi val MapGen.set
++      MapGen.fsi val MapGen.regions
++      MapGen.fsi val MapGen.largestRegion
++      MapGen.fsi val MapGen.connect
++      MapGen.fsi val MapGen.caves
++      MapGen.fsi val MapGen.bspDungeon
++      MapGen.fsi val MapGen.floorLayout
++      MapGen.fsi val MapGen.floorSeed
++      MapGen.fsi val MapGen.maze
++      MapGen.fsi val MapGen.heightField
++      MapGen.fsi val MapGen.classify
++      MapGen.fsi val MapGen.poissonScatter
 
 # ------------------------------------------------------------------------------------------
 file   KeyboardInput/KeyboardInput.fsi

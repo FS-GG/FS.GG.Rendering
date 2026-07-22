@@ -350,6 +350,40 @@ vocabulary  nextBool
 tracked     buildBounds
 vocabulary  queryBounds
 
+# ---- Game.Core/MapAnalysis.fsi and Game.Core/MapGen.fsi
+# FS.GG.Game 0.9.0 added the map-construction and analysis surface. Every val below is cited AS CODE by
+# the owner-published `fs-gg-mapcraft` skill in FS.GG.Game.Skills 0.3.0. ADR-0063 keeps that owner corpus
+# out of `template/product-skills/**`, so S-DOC cannot observe those citations locally; this is the same
+# terminal cross-repo disposition adjudicated for the Ai/Ballistics/Dice/Effects surface above.
+owner-documented  articulationPoints
+owner-documented  borderOpenings
+owner-documented  bspDungeon
+owner-documented  caves
+owner-documented  classify
+owner-documented  componentCount
+owner-documented  connect
+owner-documented  coverMap
+owner-documented  deadEnds
+owner-documented  diameter
+owner-documented  exposureMap
+owner-documented  fairness
+owner-documented  filled
+owner-documented  floorLayout
+owner-documented  floorSeed
+owner-documented  get
+owner-documented  heightField
+owner-documented  inBounds
+owner-documented  isConnected
+owner-documented  isolation
+owner-documented  killzones
+owner-documented  largestRegion
+owner-documented  maze
+owner-documented  poissonScatter
+owner-documented  reachable
+owner-documented  regions
+owner-documented  set
+owner-documented  stranded
+
 # ---- KeyboardInput/KeyboardInput.fsi
 vocabulary  noModifiers
 vocabulary  normalize
