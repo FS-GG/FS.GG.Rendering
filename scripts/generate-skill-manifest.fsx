@@ -54,6 +54,7 @@ let catalog =
       // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
       // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", ""
+      "fs-gg-game-shell", "template/product-skills/fs-gg-game-shell/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
       "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"

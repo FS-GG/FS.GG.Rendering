@@ -435,7 +435,7 @@ let feature204LifecycleTemplateTests =
               // lifecycle-workspace sources (incl. the materialize step). product unchanged.
               // ADR-0063 (FS.GG.Rendering#965) retired the 4 game-owned copies (game-core/audio/persistence/
               // model-swap), now owner-sourced from FS.GG.Game.Skills, dropping the framework count 20 -> 16.
-              Expect.equal framework 16 (sprintf "expected exactly 16 framework product-skill sources (no twins; ADR-0063 retired the 4 game-owned copies), found %d" framework)
+              Expect.equal framework 17 (sprintf "expected exactly 17 framework product-skill sources (no twins; ADR-0063 retired the 4 game-owned copies; #991 added fs-gg-game-shell), found %d" framework)
               // #434 ungated it (`always`), which does NOT move this count: the category is the
               // off-convention, lifecycle-independent skill-body shape, and an ungated body still has it.
               Expect.equal capability 1 (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), found %d" capability)

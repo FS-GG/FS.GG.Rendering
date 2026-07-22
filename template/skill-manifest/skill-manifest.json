@@ -26,6 +26,14 @@
       "supplied-by": "template/feedback-report/skill/"
     },
     {
+      "id": "fs-gg-game-shell",
+      "scope": "product",
+      "sha256": "952ca19cda4ec5553898a79c1754026db843de5f24bf285cf7c279e5497e8025",
+      "resolvablePath": ".agents/skills/fs-gg-game-shell/SKILL.md",
+      "materializes-when": "profile in [app, game]",
+      "supplied-by": "template/product-skills/fs-gg-game-shell/"
+    },
+    {
       "id": "fs-gg-grids",
       "scope": "product",
       "sha256": "9b1b2bd0cdd4732ffaa0efb9434fae12b8e04e6a5c747239fee357faa0c118a0",
