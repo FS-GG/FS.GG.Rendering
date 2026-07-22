@@ -100,7 +100,7 @@
     {
       "id": "fs-gg-symbol-design",
       "scope": "product",
-      "sha256": "34053cf1b1bcc8fe8e9ebbe73f4e11f1fb527d146da8c40d34312e8cd349c4f4",
+      "sha256": "9f509aea99589cc08ebebf7918a56309685d00461ba5bc3d73233640f07bf53a",
       "resolvablePath": ".agents/skills/fs-gg-symbol-design/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-symbol-design/"

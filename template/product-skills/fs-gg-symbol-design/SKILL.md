@@ -110,43 +110,36 @@ AUTHORS it, `Coverage` ENFORCES it. The format is owned by `FS.GG.UI.Symbology.C
 never invents a second element-set source.
 
 **The format** (`FS.GG.UI.Symbology.Catalog`) is a flat, ordered, deterministic text artifact — a
-versioned header line followed by one tab-separated row per element (`element<TAB>shown<TAB>handle` or
-`element<TAB>hidden<TAB>reason`). The `Shown` handle is a **stable name** into your symbol-set module
-(the token the ChannelMap produces for that element), NOT inlined geometry — the actual `Token` lives
-in code, referenced by the handle. Build and check the catalog with the library, never a hand-rolled
-parser:
+versioned header line followed by one tab-separated row per element: `element`, then either
+`shown` + a token handle, or `hidden` + a reason. The `shown` handle is a **stable name** into your
+symbol-set module (the token the ChannelMap produces for that element), NOT inlined geometry — the
+actual `Token` lives in code, referenced by the handle. Blank lines and `#` comment lines are ignored.
+A complete catalog covering a mixed inventory (a unit `Grunt`, a projectile `Bullet`, an effect
+`Blast`, an interactable `Door`, a hazard `SpikeTrap`, and one deliberately-hidden `Sapper`):
 
-```fsharp
-open FS.GG.UI.Symbology
-
-// Author the catalog as the design loop converges each element — one row per INTAKE element.
-let catalog : Catalog.Catalog =
-    { Entries =
-        [ { Element = "Grunt";      Visual = Catalog.Shown "token/grunt" }        // a unit
-          { Element = "Bullet";     Visual = Catalog.Shown "token/projectile" }   // a projectile
-          { Element = "Blast";      Visual = Catalog.Shown "token/explosion" }    // an effect
-          { Element = "Door";       Visual = Catalog.Shown "token/door" }         // an interactable
-          { Element = "SpikeTrap";  Visual = Catalog.Shown "token/hazard" }       // a hazard
-          // A deliberate, reasoned opt-out — legal, and recorded on the audit ledger:
-          { Element = "Sapper";     Visual = Catalog.Hidden "stealth: cloaked until it detonates" } ] }
-
-// Persist it deterministically (the loop stamps the filename; Catalog.render carries no clock):
-let artifact = Catalog.render catalog          // -> the versioned tab-separated text to write out
-// Re-read a persisted catalog with the library parser (this is what #994's scaffold gate does):
-let reloaded = Catalog.parse artifact          // -> Result<Catalog.Catalog, string>
-
-// GATE the catalog against the product's DECLARED element set — the visual analog of match
-// exhaustiveness. An element in the declared set with NO row is a Missing gap (the silent omission);
-// a Hidden row with a blank reason is Unreasoned. `Coverage.Covered` iff every element is disposed.
-let declared = [ "Grunt"; "Bullet"; "Blast"; "Door"; "SpikeTrap"; "Sapper" ] // your product's DU cases
-let report = Catalog.coverage declared catalog
-// report.Verdict = Coverage.Covered  — ship-gate assertion (see #989's productCoverageGate pattern)
-// report.OptedOut = [ "Sapper", "stealth: cloaked until it detonates" ]  — the opt-out audit trail
+```text
+# fs-gg element-visual catalog v1
+Grunt	shown	token/grunt
+Bullet	shown	token/projectile
+Blast	shown	token/explosion
+Door	shown	token/door
+SpikeTrap	shown	token/hazard
+Sapper	hidden	stealth: cloaked until it detonates
 ```
 
+Build and check it with the library, never a hand-rolled parser. The `FS.GG.UI.Symbology.Catalog`
+module turns the in-memory catalog into that text and back — a deterministic `render` / `parse` pair
+(the loop stamps the filename; the render carries no clock) — and its coverage function **gates** the
+catalog against the product's DECLARED element set (its DU cases), reusing [[fs-gg-symbology]]'s
+`Coverage` check unchanged: an element with **no row** is a *missing* gap — the silent omission — and a
+`hidden` row with a **blank reason** is *unreasoned*. The verdict is *covered* iff every declared
+element is disposed, and the report's opt-out ledger records each deliberate `hidden` with its reason.
+This is the same `Coverage` enforcement #989 ships, sourced from the machine-readable artifact — and the
+intake #994's scaffold-emitted gate consumes.
+
 **Maintain it as the game grows.** A new `EnemyKind` / `RoomType` / `ProjectileKind` / `ObstacleKind`
-case is **a new catalog row** that must be *designed* to a `Shown` token or *explicitly opted out* with
-a reason — never left absent. `Catalog.coverage` (and #989's product gate / #994's scaffold-emitted
+case is **a new catalog row** that must be *designed* to a `shown` token or *explicitly opted out* with
+a reason — never left absent. The coverage gate (and #989's product gate / #994's scaffold-emitted
 gate) reds the moment a declared element has no row, so keeping the catalog in sync is a checked
 obligation, not a discipline you hope holds. Treat every new gameplay element as a design task that
 ends with a catalog row.
@@ -251,9 +244,9 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
              and the frame-eye check passes.
 
 8. APPROVE   emit the final symbol-set module (the winning ChannelMap + the placement projection), the
-             completed element↔visual CATALOG (`Catalog.render` — every INTAKE element a Shown token or
-             a reasoned Hidden opt-out, `Catalog.coverage` = Covered against the declared set), a
-             design rationale (channel assignments + the candidates that LOST and why), and a pinned
+             completed element↔visual CATALOG (rendered to its text artifact — every INTAKE element a
+             `shown` token or a reasoned `hidden` opt-out, coverage = covered against the declared set),
+             a design rationale (channel assignments + the candidates that LOST and why), and a pinned
              golden FRAME with a stable `SceneCodec` identity.
 ```
 
@@ -291,13 +284,13 @@ work around it inside a candidate.
 - **Every convergence** → the **direction chosen and the reason**, and the candidates eliminated with
   why. This is the design rationale; it is the durable artifact, more than any single image.
 - **On APPROVE** → the final symbol-set module (winning ChannelMap + placement projection), the
-  **completed element↔visual catalog** (`Catalog.render`, `Coverage.Covered` against the declared
-  element set), the rationale, and a **pinned golden frame** with a stable `SceneCodec` identity, so a
-  re-render is a byte comparison and a future regression is visible.
-- **Whenever an element is added** across milestones → the catalog gains a row (a designed `Shown`
-  token or a reasoned `Hidden` opt-out) in the SAME change, kept green by `Catalog.coverage` / the
-  product's `Coverage` gate. The catalog is the durable, machine-readable proof that no element ships
-  unrepresented by accident.
+  **completed element↔visual catalog** (rendered to its text artifact, coverage = covered against the
+  declared element set), the rationale, and a **pinned golden frame** with a stable `SceneCodec`
+  identity, so a re-render is a byte comparison and a future regression is visible.
+- **Whenever an element is added** across milestones → the catalog gains a row (a designed `shown`
+  token or a reasoned `hidden` opt-out) in the SAME change, kept green by the catalog's coverage gate /
+  the product's `Coverage` gate. The catalog is the durable, machine-readable proof that no element
+  ships unrepresented by accident.
 - Filenames/timestamps are stamped by the **loop**, never by library code (determinism — see above).
 
 ## FSI recipe (multi-candidate faithful-frame render)
@@ -362,8 +355,8 @@ See [`reference.fsx`](reference.fsx) for a runnable in-tree version, and
   `Coverage` visual-exhaustiveness check, and the single-mapping RENDER → LINT → TWEAK loop this skill
   orchestrates over. **Read it first.**
 - `FS.GG.UI.Symbology.Catalog` — the machine-readable element↔visual catalog FORMAT this skill authors
-  and `Coverage` consumes (#990/#989); designed once, shared by both. Its `Catalog.render` /
-  `Catalog.parse` / `Catalog.coverage` surface is the artifact contract.
+  and `Coverage` consumes (#990/#989); designed once, shared by both. Its `render` / `parse` / coverage
+  surface is the artifact contract (available once the `FS.GG.UI.Symbology` release ships it).
 - [[fs-gg-scene]] — the pure `Scene` / `Color` / `Point` primitives and `Scene.group` used to compose a frame.
 - [[fs-gg-skiaviewer]] — the `ReferenceRendering` path `Render.toPng` wraps.
 - [[fs-gg-game:fs-gg-game-core]] — the generic `'world` / `StepState` a captured frame is a snapshot of.
