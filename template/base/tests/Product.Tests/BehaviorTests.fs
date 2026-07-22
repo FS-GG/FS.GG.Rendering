@@ -141,6 +141,7 @@ let behaviorTests =
 //#if (profile == "game")
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.SkiaViewer
+open FS.GG.UI.Controls
 open AppRoot.Geometry // Vec2 (Vx/Vy) — the collision-safe positions the starter uses (feature 250)
 
 // One fixed sim step's worth of elapsed time — enough for `update (Tick oneStep)` to drain a step.
@@ -268,6 +269,108 @@ let behaviorTests =
                 cued
                 expected
                 "interactiveHost.Init routes the initial play model through AudioCues.forTransition Started — state that is LOADED rather than transitioned into must still reach the audio sink (#458)"
+        }
+
+        // Issue #1012: acceptance at the ACTUAL generated launch host. This is deliberately not a
+        // GameShell.update test: native pointer/key values enter InteractiveAppHost, retained hit
+        // bounds dispatch authored bindings, and held input advances only on fixed ticks.
+        test "interactive shell host proves default geometry, retained menu/rebind clicks, and key down -> ticks -> up (#1012)" {
+            let host = AppRoot.Program.interactiveHost
+            let size = AppRoot.Program.viewerOptions.InitialSize
+
+            Expect.equal
+                size
+                AppRoot.EvidenceCommands.shellConfig.InitialDisplay.Resolution
+                "the default native surface and authored shell resolution are one coordinate space"
+
+            let defaultWindow =
+                AppRoot.GameShell.windowBehavior AppRoot.EvidenceCommands.shellConfig.InitialDisplay
+
+            Expect.equal defaultWindow.StartupState ViewerWindowStartupState.Normal "default launch explicitly uses the shell's Windowed behavior"
+
+            let pointer phase x y : ViewerPointerInput =
+                { Phase = phase
+                  X = x
+                  Y = y
+                  Button = Some ViewerPointerButtonKind.Primary
+                  DeltaX = 0.0
+                  DeltaY = 0.0 }
+
+            let foldMessages model messages =
+                messages |> List.fold (fun current msg -> fst (host.Update msg current)) model
+
+            let rendered model =
+                FS.GG.UI.Controls.Control.renderTree host.Theme size (host.View size model)
+
+            let centre controlId model =
+                let frame = rendered model
+                Expect.isTrue (Set.contains controlId frame.BoundIds) $"{controlId} is an authored bound control, not a silent test target"
+
+                let available: FS.GG.UI.Layout.AvailableSpace =
+                    { Width = float size.Width
+                      WidthMode = FS.GG.UI.Layout.Exactly
+                      Height = float size.Height
+                      HeightMode = FS.GG.UI.Layout.Exactly }
+
+                let layout = FS.GG.UI.Layout.Layout.evaluate available frame.Layout
+                let bounds = (layout.Bounds |> List.find (fun b -> b.NodeId = controlId)).Bounds
+                bounds.X + bounds.Width / 2.0, bounds.Y + bounds.Height / 2.0
+
+            let clickWithProof controlId model =
+                let x, y = centre controlId model
+                let state, down =
+                    FS.GG.UI.Controls.Elmish.ControlsElmish.routeInteractivePointer
+                        host
+                        (Pointer.init ())
+                        size
+                        model
+                        (pointer ViewerPointerPhaseKind.Pressed x y)
+                let afterDown = foldMessages model down
+                let proof =
+                    FS.GG.UI.Controls.Elmish.ControlsElmish.captureRespondsProof
+                        host
+                        state
+                        size
+                        afterDown
+                        (pointer ViewerPointerPhaseKind.Released x y)
+                let _, up =
+                    FS.GG.UI.Controls.Elmish.ControlsElmish.routeInteractivePointer
+                        host state size afterDown (pointer ViewerPointerPhaseKind.Released x y)
+                proof, foldMessages afterDown up
+
+            let model0 = fst (host.Init())
+            let startProof, playing = clickWithProof "start" model0
+            Expect.equal startProof.Verdict FS.GG.UI.Controls.Elmish.Responsive "retained Start click visibly enters play"
+            Expect.equal playing.Shell.Screen AppRoot.GameShell.Playing "the native retained pointer route dispatches Start"
+
+            let raw key isDown = host.MapKey key isDown |> Option.get
+            let tickMessage () = host.Tick (TimeSpan.FromMilliseconds 16.0) |> Option.get
+            let keyDown = fst (host.Update (raw (Letter 'W') true) playing)
+            let afterTick1 = fst (host.Update (tickMessage ()) keyDown)
+            let afterTick2 = fst (host.Update (tickMessage ()) afterTick1)
+            let keyUp = fst (host.Update (raw (Letter 'W') false) afterTick2)
+            let afterReleaseTick = fst (host.Update (tickMessage ()) keyUp)
+
+            Expect.isTrue (afterTick1.Play.LeftPaddleY < keyDown.Play.LeftPaddleY) "held W advances on the first fixed tick"
+            Expect.isTrue (afterTick2.Play.LeftPaddleY < afterTick1.Play.LeftPaddleY) "held W remains active across a second fixed tick"
+            Expect.equal afterReleaseTick.Play.LeftPaddleY keyUp.Play.LeftPaddleY "key-up clears the held control before the next tick"
+
+            let configProof, settings = clickWithProof "config" model0
+            Expect.equal configProof.Verdict FS.GG.UI.Controls.Elmish.Responsive "retained Config click visibly opens settings"
+
+            let rebindId = "rebind-left-up"
+
+            let rebindProof, armed = clickWithProof rebindId settings
+            Expect.equal rebindProof.Verdict FS.GG.UI.Controls.Elmish.Responsive "retained rebind-row click visibly enters capture"
+            Expect.isSome armed.Shell.Rebinding "the clicked row arms the next raw key"
+            let capturedCommand = armed.Shell.Rebinding.Value
+
+            let captured = fst (host.Update (raw (Letter 'Q') true) armed)
+            Expect.equal captured.Shell.Rebinding None "the next native raw key completes capture"
+            Expect.equal
+                (Keymap.resolve captured.Shell.Keymap (ViewerKeyboard.toKeyId (Letter 'Q')))
+                (Some capturedCommand)
+                "the real host's raw-key seam installs the captured key"
         }
 
         // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.

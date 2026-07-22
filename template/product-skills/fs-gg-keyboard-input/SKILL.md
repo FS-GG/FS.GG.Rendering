@@ -71,22 +71,18 @@ seed it as the consumer path. If you do adopt it, read
   | _ -> ...
   ```
 
-## Capability boundary — the default host is keyboard-only
+## Capability boundary — choose the host the generated profile actually launches
 
-Know this **before** you design a control scheme. The game family's governed
-default persistent host is **`Viewer.runApp`** over **`GeneratedAppHost`**, and its **only**
-input seam is `MapKey: ViewerKey -> bool -> 'msg option` — **keyboard only**. `ViewerKey`
-enumerates keyboard keys (`ArrowLeft`/…/`Letter`/`Digit`/…) and has **no mouse or pointer
-case**; a key arrives at the host as `DispatchInput of ViewerKey * isDown`. There is therefore
-**no way to read the mouse** on the default host — a mouse-aimed scheme (e.g. twin-stick WASD +
-mouse aim) cannot be wired through `MapKey`.
+Know this **before** you design a control scheme. A generated game with the turnkey shell
+launches through **`InteractiveAppHost`**, because its menu and rebind rows need retained pointer
+routing. `MapKey: ViewerKey -> bool -> 'msg option` is still the keyboard seam, and the `bool`
+is load-bearing: forward both down and up through one normalized raw-key message. A down-only
+adapter can pass capture/reducer tests while turning held movement into a one-shot tap.
 
-Reading the mouse requires the **pointer-aware interactive host**: `InteractiveAppHost`, driven
-by `Controls.Elmish.runInteractiveApp`, which adds a
-`MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list` seam (this is the host the
-`app`/controls family already uses). Switching a game onto it is a **durable, governance-scanned
-host-wiring change in `Program.fs`** — not an edit at your `mapKey` / input-mapping site. Choose
-keyboard-only controls, or plan for that host change, up front.
+Profiles without the shell may still use the keyboard-only `GeneratedAppHost`. Mouse input requires
+the pointer-aware host driven by `Controls.Elmish.runInteractiveApp*`; preserve its `MapPointer`
+and retained routing when adapting a generated shell rather than silently switching back to the
+scene host.
 
 ## Build Commands
 
@@ -94,7 +90,9 @@ Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.
 
 ## Test Commands
 
-Run `./fake.sh build -t Test` to assert binding resolution and command effects.
+Run `./fake.sh build -t Test` to assert binding resolution and command effects. For an interactive
+game, add a host-level down → fixed tick → fixed tick → up → fixed tick script and assert the
+control advances on both held ticks and not after release. Direct reducer injection does not count.
 
 ## Evidence
 

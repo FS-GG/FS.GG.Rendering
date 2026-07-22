@@ -188,10 +188,23 @@ let main args =
         // message->update->retained-step code path as the sinkless `runInteractiveApp` with the terminal
         // viewer launcher swapped, so sound cannot drift away from the live loop.
         let launchResult =
+            //#if (profile == "game")
+            // One launch overload owns both paths. With no flags, the shell's authored default
+            // (1280x720, Windowed) is explicit rather than inheriting a viewer default that can select
+            // different surface/window behavior. Flagged launches replace that request, not the host.
+            let launchRequest =
+                if AppRoot.WindowOptions.windowFlagSupplied args then
+                    AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
+                else
+                    AppRoot.GameShell.windowBehavior AppRoot.EvidenceCommands.shellConfig.InitialDisplay
+
+            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest audioSink interactiveHost
+            //#else
             if AppRoot.WindowOptions.windowFlagSupplied args then
                 ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
             else
                 ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+            //#endif
         //#else
         // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). A window flag
         // routes through the window-behavior overload; otherwise the durable default path stays
