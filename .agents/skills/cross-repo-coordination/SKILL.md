@@ -1,6 +1,6 @@
 ---
 name: cross-repo-coordination
-description: Coordinate work across the FS-GG repos (FS.GG.SDD, FS.GG.Rendering, FS.GG.Governance, FS.GG.Templates, FS.GG.Game, FS.GG.Audio). Use when you need something from another FS-GG repo, are changing a versioned cross-repo contract, hit a cross-repo version/API incoherence, or need to place/sequence work on the org-level "Coordination" Projects v2 roadmap. File and answer requests as GitHub issues, track sequencing on the Coordination board, keep the contract/compatibility registry coherent, and record cross-repo decisions as ADRs. Canonical protocol lives in FS-GG/.github.
+description: Coordinate work across the FS-GG repos (FS.GG.SDD, FS.GG.Rendering, FS.GG.Governance, FS.GG.Templates, FS.GG.Game, FS.GG.Audio, FS.GG.Net). Use when you need something from another FS-GG repo, are changing a versioned cross-repo contract, hit a cross-repo version/API incoherence, or need to place/sequence work on the org-level "Coordination" Projects v2 roadmap. File and answer requests as GitHub issues, track sequencing on the Coordination board, keep the contract/compatibility registry coherent, and record cross-repo decisions as ADRs. Canonical protocol lives in FS-GG/.github.
 ---
 
 # Cross-repo coordination (FS-GG)
@@ -174,8 +174,8 @@ cross-repo roadmap (milestones are repo-scoped; keep them for repo-local release
 | Field | Type | Options / notes |
 |---|---|---|
 | `Status` | single-select | the board's six columns — **stated once**, with what each means and whether a scheduler hands it out, under [*The `Status` vocabulary*](#the-status-vocabulary) below |
-| `Phase` | single-select | `P0 Decisions`, `P1 Rendering`, `P2 SDD`, `P3 Governance`, `P4 Templates`, `P5 Versioning`, `P6 Game`, `P7 Audio` |
-| `Repo Scope` | single-select | `rendering`, `sdd`, `governance`, `templates`, `.github`, `cross-repo`, `game`, `audio` — **not** `Repository`, which is Projects' own built-in column |
+| `Phase` | single-select | `P0 Decisions`, `P1 Rendering`, `P2 SDD`, `P3 Governance`, `P4 Templates`, `P5 Versioning`, `P6 Game`, `P7 Audio`, `P8 Net` |
+| `Repo Scope` | single-select | `rendering`, `sdd`, `governance`, `templates`, `.github`, `cross-repo`, `game`, `audio`, `net` — **not** `Repository`, which is Projects' own built-in column |
 | `Workstream` | single-select | `Composition`, `Lifecycle`, `Governance`, `Versioning`, `Docs`, `Coordination` |
 | `Start` / `Target` | date | feed the Roadmap (timeline) view |
 | `Effort` | single-select | `S`, `M`, `L`, `XL` |
@@ -225,8 +225,9 @@ with it today.*
   `cross-repo`/`cross-repo:request` and live in the *target* repo.
 - Set `Phase`, `Repo Scope`, `Workstream`, `Target`, and (for cross-repo work) `Contract` on every
   item. `Blocked` status mirrors the `blocked` label. One phase per product repo: a `game` item is
-  `P6 Game`, an `audio` item `P7 Audio`. Do not reach for `P1 Rendering` because a `Game.Core` item
-  happens to do geometry — `Repo Scope` decides the phase, not the subject matter.
+  `P6 Game`, an `audio` item `P7 Audio`, and a `net` item `P8 Net`. Do not reach for
+  `P1 Rendering` because a `Game.Core` item happens to do geometry or a caller may render network
+  state — `Repo Scope` decides the phase, not the subject matter.
 - **`Blocked by` records the dependency edge, nothing else.** `fsgg-coord set-field` takes a
   comma-separated list of issue refs (`owner/repo#n`, `repo#n`, `#n`, or an issue URL) and
   canonicalizes each to `owner/repo#n`; anything else is refused before the write. It is not a
@@ -322,21 +323,20 @@ workflows are UI-driven.
 gh auth refresh -s project,read:project                       # token needs project scope
 P=$(gh project create --owner FS-GG --title "Coordination" --format json --jq '.number')
 gh project field-create $P --owner FS-GG --name "Phase" --data-type SINGLE_SELECT \
-  --single-select-options "P0 Decisions,P1 Rendering,P2 SDD,P3 Governance,P4 Templates,P5 Versioning,P6 Game,P7 Audio"
+  --single-select-options "P0 Decisions,P1 Rendering,P2 SDD,P3 Governance,P4 Templates,P5 Versioning,P6 Game,P7 Audio,P8 Net"
 # ...Repo Scope / Workstream / Effort single-selects; Start / Target dates; Contract / Blocked by text
 gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptance criteria>"
 ```
 
-> **Adding an option to an existing single-select is destructive — prefer the UI.** There is no
-> additive API: `field-create` only makes new fields, so the only scriptable route is the GraphQL
-> `updateProjectV2Field` mutation with a full `singleSelectOptions:[...]` list. Its option input
-> carries **no id**, so resending the existing options verbatim does not preserve them — GitHub
-> **recreates every option with a fresh id and clears the field on every item**. Adding `P6 Game` /
-> `P7 Audio` this way ([#303](https://github.com/FS-GG/.github/issues/303)) blanked `Phase` on all
-> **374** items that had it set. If you must script it: snapshot `itemId → option name` for every
-> item first, mutate, then restore with one `updateProjectV2ItemFieldValue` per item against the
-> **new** option ids, and diff the re-read against the snapshot before you trust the board. Any
-> `fsgg-coord` cache still holds the dead ids — `bootstrap --refresh` before the next `set-field`.
+> **Adding an option to an existing single-select is a guarded migration.** Never call
+> `updateProjectV2Field` directly. Adding `P6 Game` / `P7 Audio` that way
+> ([#303](https://github.com/FS-GG/.github/issues/303)) blanked `Phase` on all **374** assigned
+> items. Use `.github/scripts/project-field-options`: capture and push a complete snapshot first,
+> then run `add-option --field <field> --snapshot <file> ... --apply`. The tool sends every existing
+> option id and semantic value unchanged, restores any assignment GitHub clears, and refuses to
+> finish until a full re-read exactly matches every prior item. `P8 Net` was added this way with
+> **1,461** prior assignments verified and zero repair writes. If interrupted, run `restore --field
+> <field> --snapshot <file>`; then `fsgg-coord bootstrap --refresh` before the next field write.
 
 **Manual steps (need org-admin in the UI, not the `project` scope):**
 
