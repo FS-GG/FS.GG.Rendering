@@ -139,6 +139,64 @@ module Coverage =
     /// (`waive <pkg> <source> <kind> <path>`), so a maintainer can paste an `Untaught` report straight in.
     let waiveLine (m: MemberKey) = sprintf "waive %s %s %s %s" m.Package m.Source m.Kind m.Path
 
+    // #984 — THE PROFILE-COMPLETENESS HALF: a game-profile module may not be ENTIRELY waived.
+    //
+    // The #925 reconcile above closes "untaught by silence" MEMBER by member — every member taught or
+    // waived — but a maintainer can satisfy it while dropping a whole MODULE, by waiving every one of its
+    // members. That is exactly how the scaffold shipped for the whole pre-#984 window: `Effects`,
+    // `Ballistics`, `Dice`, `Los`, `Fov`, `Ai`/`Difficulty`, `Visibility` and `Scene.Animation` were each
+    // waived member-for-member, so a game scaffold carried NONE of the surface a game needs, and every gate
+    // was green — the reconcile because each member WAS a decision, the drift check because a fully-waived
+    // module and its (absent) mirror agree. This closes the module direction: a declared game-profile
+    // module must teach at least one member, so re-waiving the last one of them REDS here.
+    //
+    // Addressed by (package, source .fsi) — the whole module, not a member — because "the module is
+    // vendored at all" is the property, and a per-member list would just restate the waiver block. FAILS
+    // CLOSED (#266) the same way the stale-waiver check does: a declared module the pin ships no public
+    // member for at all is a ROTTED declaration (the module left the pin, or was renamed), reported so the
+    // list cannot decay into a vacuous green the way #259's unstamped Game.Core mirror did.
+    type ProfileModule = { Package: string; Source: string }
+
+    /// A declared game-profile module that is NOT fully vendored, with the reason. Empty is the only pass.
+    type ProfileGap =
+        { Package: string
+          Source: string
+          /// `AllWaived` — the pin ships public members but the manifest teaches none of them (the #984
+          /// regression). `Vanished` — the pin ships no public member under this source at all, so the
+          /// declaration has rotted and must be removed or corrected.
+          Reason: string }
+
+    /// The game-profile modules a scaffolded product must vendor in FULL — at least one taught member each,
+    /// never entirely waived (#984). These are the modules a game/sample-pack profile reaches for, that the
+    /// pre-#984 manifest had dropped wholesale. Editing this list is the deliberate act that adds or retires
+    /// a completeness guarantee; the reconcile below turns it into a merge-blocking check.
+    let gameProfileModules: ProfileModule list =
+        [ { Package = "FS.GG.Game.Core"; Source = "Ai.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Ballistics.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Dice.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Effects.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Fov.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Los.fsi" }
+          { Package = "FS.GG.Game.Core"; Source = "Visibility.fsi" }
+          { Package = "FS.GG.UI.Scene"; Source = "Animation.fsi" } ]
+
+    /// Reconcile the declared game-profile modules against the pin's surface and the manifest's taught set:
+    /// each declared module must have at least one public member the manifest teaches. Reported sorted so a
+    /// diff shows what regressed.
+    let profileGaps (universe: MemberKey list) (taught: Set<MemberKey>) (declared: ProfileModule list) : ProfileGap list =
+        let bySource =
+            universe
+            |> List.groupBy (fun m -> m.Package, m.Source)
+            |> Map.ofList
+
+        declared
+        |> List.choose (fun m ->
+            match bySource |> Map.tryFind (m.Package, m.Source) with
+            | None -> Some { Package = m.Package; Source = m.Source; Reason = "Vanished" }
+            | Some members when members |> List.exists taught.Contains -> None
+            | Some _ -> Some { Package = m.Package; Source = m.Source; Reason = "AllWaived" })
+        |> List.sortBy (fun g -> g.Package, g.Source)
+
     /// One `+` include of a `file` stanza, addressed the way the manifest writes it — the `.fsi` it draws
     /// from, the F# kind, and the dotted path within that file.
     type Include = { Source: string; Kind: string; Path: string }

@@ -796,6 +796,33 @@ if not (List.isEmpty coverage.Untaught) then
     fail
         $"{coverage.Untaught.Length} untaught public member(s) — TEACH each in {Path.GetRelativePath(repoRoot, manifestPath)} (a `+` in a file stanza) or WAIVE it deliberately (a `waive` line). Seed the waivers with: dotnet fsi scripts/refresh-api-surface-mirror.fsx --emit-waivers"
 
+// #984 — a game-profile module the scaffold must vendor that is ENTIRELY waived (zero taught members).
+// The member-level reconcile above stays green on this (each member IS a decision — waived), and the drift
+// check agrees a fully-waived module has no mirror file, so this is the only thing that reds when a future
+// edit re-drops a whole game-profile module. Computed in every mode, like the reconcile.
+let profileGaps = Coverage.profileGaps universe taught Coverage.gameProfileModules
+
+if not (List.isEmpty profileGaps) then
+    eprintfn
+        "%d declared game-profile module(s) are not fully vendored (a game scaffold would carry none of their surface):"
+        profileGaps.Length
+
+    for g in profileGaps do
+        match g.Reason with
+        | "Vanished" ->
+            eprintfn
+                "  %s/%s — the pin ships no public member under it; the Coverage.gameProfileModules declaration has rotted (module removed or renamed)."
+                g.Package
+                g.Source
+        | _ ->
+            eprintfn
+                "  %s/%s — every public member is waived; TEACH at least one (a `+` in a `file` stanza) so the scaffold vendors the module."
+                g.Package
+                g.Source
+
+    fail
+        $"{profileGaps.Length} game-profile module(s) entirely dropped — a declared game-profile module (Coverage.gameProfileModules) must teach at least one member."
+
 if checkOnly && drift > 0 then
     fail $"{drift} mirror file(s) differ from what the pin + manifest generate"
 
