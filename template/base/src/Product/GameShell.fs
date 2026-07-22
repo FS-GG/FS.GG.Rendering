@@ -27,6 +27,9 @@ module AppRoot.GameShell
 //   decomposed into child follow-ups; see the issue.
 // ============================================================================================
 
+open System
+open System.IO
+open System.Text.Json
 open FS.GG.UI.Scene
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.SkiaViewer
@@ -269,6 +272,158 @@ let decodeKeymap (bytes: byte[]) (model: Model) : Model =
     match KeymapCodec.decode bytes with
     | Ok keymap -> { model with Keymap = keymap }
     | Error _ -> model
+
+// The display half of settings persists on the SAME seam as the bindings (#1001): a small,
+// self-contained JSON envelope beside the keymap one — no framework codec, no package dependency,
+// so JSON stays the single contract format. Deterministic by construction: a fixed field order
+// and a `Utf8JsonWriter` with no formatting options give byte-identical output for equal state.
+
+/// The versioned format marker the display envelope carries — the first thing `decodeDisplay`
+/// validates, mirroring the keymap codec's `format`/`version` shape.
+let private displayFormatId = "fsgg.gameshell.display"
+
+/// The composed settings envelope's marker: the display object alongside the keymap object, so a
+/// host can save the WHOLE settings screen (display + bindings) as one blob on one seam.
+let private settingsFormatId = "fsgg.gameshell.settings"
+
+/// The one format version both envelopes are stamped with. A future field change bumps it, and an
+/// older/newer blob then degrades to the current model rather than mis-restoring.
+let private settingsFormatVersion = 1
+
+/// The stable on-disk token for a display mode. A closed round-trip with `modeOfToken`.
+let private modeToken (mode: DisplayMode) : string =
+    match mode with
+    | Windowed -> "windowed"
+    | Borderless -> "borderless"
+    | Fullscreen -> "fullscreen"
+
+/// The inverse of `modeToken` — an unknown token is `None` (an envelope from a newer game degrades).
+let private modeOfToken (token: string) : DisplayMode option =
+    match token with
+    | "windowed" -> Some Windowed
+    | "borderless" -> Some Borderless
+    | "fullscreen" -> Some Fullscreen
+    | _ -> None
+
+/// Write one self-contained display object (`format`/`version`/`width`/`height`/`mode`, in that
+/// fixed order) at the writer's current position — the standalone display blob AND the `display`
+/// member of the settings envelope, so both share the exact same shape and reader.
+let private writeDisplayObject (writer: Utf8JsonWriter) (display: DisplaySettings) =
+    writer.WriteStartObject()
+    writer.WriteString("format", displayFormatId)
+    writer.WriteNumber("version", settingsFormatVersion)
+    writer.WriteNumber("width", display.Resolution.Width)
+    writer.WriteNumber("height", display.Resolution.Height)
+    writer.WriteString("mode", modeToken display.Mode)
+    writer.WriteEndObject()
+
+/// Total parse of a display object written by `writeDisplayObject`. Any deviation — wrong kind,
+/// missing/mistyped field, wrong format/version, or an unknown mode — is `None`, so a caller keeps
+/// the model it already has rather than throwing.
+let private readDisplayObject (element: JsonElement) : DisplaySettings option =
+    if element.ValueKind <> JsonValueKind.Object then
+        None
+    else
+        let stringOf (name: string) =
+            match element.TryGetProperty name with
+            | true, value when value.ValueKind = JsonValueKind.String ->
+                match value.GetString() with
+                | null -> None
+                | text -> Some text
+            | _ -> None
+
+        let intOf (name: string) =
+            match element.TryGetProperty name with
+            | true, value when value.ValueKind = JsonValueKind.Number ->
+                match value.TryGetInt32() with
+                | true, number -> Some number
+                | _ -> None
+            | _ -> None
+
+        match stringOf "format", intOf "version", intOf "width", intOf "height", stringOf "mode" with
+        | Some format, Some version, Some width, Some height, Some mode when
+            format = displayFormatId && version = settingsFormatVersion ->
+            modeOfToken mode
+            |> Option.map (fun mode -> { Resolution = { Width = width; Height = height }; Mode = mode })
+        | _ -> None
+
+/// Re-serialize one parsed JSON element to its own byte blob — how the settings envelope hands its
+/// embedded `keymap` member back to `KeymapCodec` (via `decodeKeymap`) unchanged.
+let private elementToBytes (element: JsonElement) : byte[] =
+    use stream = new MemoryStream()
+    use writer = new Utf8JsonWriter(stream)
+    element.WriteTo writer
+    writer.Flush()
+    stream.ToArray()
+
+/// Serialize the current display settings to the versioned, deterministic JSON envelope — the
+/// display counterpart of `encodeKeymap`, so resolution + mode survive a restart on the same seam.
+let encodeDisplay (model: Model) : byte[] =
+    use stream = new MemoryStream()
+    use writer = new Utf8JsonWriter(stream)
+    writeDisplayObject writer model.Display
+    writer.Flush()
+    stream.ToArray()
+
+/// Restore display settings from a blob `encodeDisplay` produced. Like `decodeKeymap`, it is total:
+/// a corrupt, absent, or newer-format file keeps the model's current display, so a bad save degrades
+/// to the game's initial resolution/mode rather than throwing at startup.
+let decodeDisplay (bytes: byte[]) (model: Model) : Model =
+    try
+        use document = JsonDocument.Parse(ReadOnlyMemory bytes)
+        match readDisplayObject document.RootElement with
+        | Some display -> { model with Display = display }
+        | None -> model
+    with :? JsonException ->
+        model
+
+/// Serialize the WHOLE settings screen — display + bindings — to one deterministic envelope that
+/// COMPOSES the display codec and `KeymapCodec`: a fixed-order object with a `display` member
+/// (`writeDisplayObject`) and a `keymap` member (the embedded `KeymapCodec.encode` object). A host
+/// that wants a single settings file writes this instead of the two blobs separately.
+let encodeSettings (model: Model) : byte[] =
+    use stream = new MemoryStream()
+    use writer = new Utf8JsonWriter(stream)
+    writer.WriteStartObject()
+    writer.WriteString("format", settingsFormatId)
+    writer.WriteNumber("version", settingsFormatVersion)
+    writer.WritePropertyName("display")
+    writeDisplayObject writer model.Display
+    writer.WritePropertyName("keymap")
+    use keymap = JsonDocument.Parse(ReadOnlyMemory(KeymapCodec.encode model.Keymap))
+    keymap.RootElement.WriteTo writer
+    writer.WriteEndObject()
+    writer.Flush()
+    stream.ToArray()
+
+/// Restore the whole settings screen from a blob `encodeSettings` produced. Total and per-member:
+/// each of `display` and `keymap` is applied through its own total decode, so a member that is
+/// missing or corrupt leaves that half of the model at its current value while the other half still
+/// restores — a partial save never throws and never wholesale-resets the settings.
+let decodeSettings (bytes: byte[]) (model: Model) : Model =
+    try
+        use document = JsonDocument.Parse(ReadOnlyMemory bytes)
+        let root = document.RootElement
+
+        if root.ValueKind <> JsonValueKind.Object then
+            model
+        else
+            let withDisplay (current: Model) =
+                match root.TryGetProperty "display" with
+                | true, element ->
+                    match readDisplayObject element with
+                    | Some display -> { current with Display = display }
+                    | None -> current
+                | _ -> current
+
+            let withKeymap (current: Model) =
+                match root.TryGetProperty "keymap" with
+                | true, element -> decodeKeymap (elementToBytes element) current
+                | _ -> current
+
+            model |> withDisplay |> withKeymap
+    with :? JsonException ->
+        model
 
 // ---- view -----------------------------------------------------------------------------------
 
