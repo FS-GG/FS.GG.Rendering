@@ -223,11 +223,24 @@ vocabulary  neutral
 # SPLIT — #986 (2026-07-22). The **Scene.Animation** dozen is now documented in the shipped `fs-gg-scene`
 # skill (a game/base-profile skill whose reach carries the Scene package), so its rows are GONE below — see
 # the `# ---- Scene/Animation.fsi` note. The **Game.Core** half (Ai/Difficulty, Ballistics, Dice, Effects,
-# Fov, Los — 40 vals) stays `tracked`: its home is the owner-sourced `fs-gg-game-core` body, CANONICAL in
-# FS.GG.Game (`FS.GG.Game.Skills`, ADR-0063) and not editable from this repo, so #986 could not cite it here.
-# Routed to **FS-GG/FS.GG.Game#466**, which also carries the R-REACH nuance that #986's body mapped Los/Fov/
-# Visibility to the Rendering-owned `fs-gg-line-drawing` / `fs-gg-visibility` skills. Each Game.Core row below
-# is retired the moment its owning skill cites it (S-DOC rule 2 flags the stale line).
+# Fov, Los — 40 vals) split again by REACH: Los/Fov map to the Rendering-owned `fs-gg-line-drawing` /
+# `fs-gg-visibility` skills (editable HERE), the other 37 to the owner-sourced `fs-gg-game-core` body.
+#
+# LOS/FOV DONE — #993 (2026-07-22). The 3 R-REACH-Rendering vals — `fov` -> `fs-gg-visibility`,
+# `lineOfSightBy` / `trace` -> `fs-gg-line-drawing` — are now cited AS CODE by those skills, so their rows
+# are GONE below (see the `# ---- Game.Core/Fov.fsi` and `# ---- Game.Core/Los.fsi` notes).
+#
+# THE 37 Ai/Difficulty/Ballistics/Dice/Effects VALS STAY `tracked` HERE — PERMANENTLY, until the api-surface
+# mirror or the S-DOC corpus changes. FS.GG.Game#466/#472 documented them in the `fs-gg-game-core` body
+# (CANONICAL in FS.GG.Game, `FS.GG.Game.Skills`, ADR-0063) — but ADR-0063 (#965) RETIRED the local
+# `fs-gg-game-core` SKILL copy from THIS provider, and S-DOC reads ONLY `template/product-skills/**`
+# (SurfaceDocCoverageTests.productSkillsRoot). So the FS.GG.Game#472 citations are invisible to S-DOC here:
+# the api-surface for these modules is vendored in (#984, so they are in `shippedSurface`), but no skill in
+# this repo's corpus can cite them, so rule 1 requires them LEDGERED and they can never go stale (rule 2).
+# #993's Ask 2 assumed the republish would surface the citations here; it does not, and retiring these 37 was
+# PROVEN to red rule 1 (all 37 -> undeclared). Routed to **FS-GG/FS.GG.Rendering#993 follow-up** — a real fix
+# needs either the `fs-gg-game-core` corpus vendored into `template/product-skills/` (so S-DOC can see the
+# owner-sourced citations) or the Ai/Ballistics/Dice/Effects api-surface un-vendored from this mirror.
 
 # ---- Game.Core/Ai.fsi
 tracked     aimError
@@ -274,8 +287,12 @@ tracked     pipeline
 tracked     resist
 tracked     tickEffects
 
-# ---- Game.Core/Fov.fsi
-tracked     fov
+# ---- Game.Core/Fov.fsi   (vendored by #984 — DOCUMENTED by #993; no rows remain here)
+# `fov` is now cited AS CODE by the Rendering-owned `fs-gg-visibility` skill's "Grid field-of-view —
+# the framework `Fov` module" section (`Fov.fov canSeeThrough eye radius`, qualified). Per #986's
+# R-REACH note the Fov surface maps to `fs-gg-visibility` (gated to `game`/`sample-pack`, matching
+# `FS.GG.Game.Core`'s reach), NOT the owner-sourced `fs-gg-game-core` — so FS.GG.Game#466/#472 could not
+# touch it. S-DOC rule 2 requires the line be GONE.
 
 # ---- Game.Core/Geometry.fsi
 vocabulary  obbPolygon
@@ -286,10 +303,14 @@ vocabulary  segmentAabbHit
 vocabulary  segmentCircleHit
 vocabulary  segmentPolygonHit
 
-# ---- Game.Core/Los.fsi   (see the #984 note above; `line` / `supercover` / `lineOfSight` are carried
-#                           by other files and already accounted for — only these two are new here)
-tracked     lineOfSightBy
-tracked     trace
+# ---- Game.Core/Los.fsi   (vendored by #984 — DOCUMENTED by #993; no rows remain here)
+# `line` / `supercover` / `lineOfSight` are carried by other files and were already accounted for — they
+# never had rows here. The two that were new — `lineOfSightBy` and `trace` — are now cited AS CODE by the
+# Rendering-owned `fs-gg-line-drawing` skill's "The framework `Los` module" section (`Los.trace Thin a b`,
+# `Los.lineOfSightBy Supercover isTransparent a b`, qualified). Per #986's R-REACH note the Los surface
+# maps to `fs-gg-line-drawing` (gated to `game`/`sample-pack`, matching `FS.GG.Game.Core`'s reach), NOT the
+# owner-sourced `fs-gg-game-core` — so FS.GG.Game#466/#472 could not touch it. S-DOC rule 2 requires the
+# lines be GONE.
 
 # ---- Game.Core/Pathfinding.fsi
 tracked     distanceField

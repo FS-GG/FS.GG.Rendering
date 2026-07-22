@@ -81,6 +81,39 @@ let isTransparent (c: Cell) = c <> wall   // your fog/wall map
 LineDrawing.lineOfSight isTransparent a b // false — the wall tile blocks sight
 ```
 
+## The framework `Los` module — mode-selected and symmetric
+
+`LineDrawing.fs` is your adaptable copy of a contract the framework also ships **canonically**: the
+`FS.GG.Game.Core.Los` module, promoted from the frozen game profile's line-drawing fragment (where every
+game that wanted sight copied it and diverged). Reach for it directly when you want the promoted version
+rather than the editable one — it carries two entry points the thin `line` / `supercover` / `lineOfSight`
+trio does not, both keyed on a `LineMode` (`Thin` | `Supercover`):
+
+```fsharp
+open FS.GG.Game.Core       // Cell, Los, LineMode
+
+let beam  = Los.trace Thin a b          // diagonal-connected Bresenham — cuts corners
+let track = Los.trace Supercover a b    // 4-connected supercover — no diagonal gap
+```
+
+`Los.trace mode a b` is `line` or `supercover` selected by `mode` at the call site (both endpoints
+included, `a` first), so a caller switches the corner policy with a value instead of picking a function.
+
+`Los.lineOfSightBy mode isTransparent a b` is line-of-sight under an **explicit** `LineMode`, and — unlike
+the fixed-`Supercover` `lineOfSight` — it is **symmetric in every mode**:
+
+```fsharp
+let canSee = Los.lineOfSightBy Supercover isTransparent a b   // symmetric sight; the default policy
+```
+
+`Los.lineOfSightBy m p a b = Los.lineOfSightBy m p b a` because the tiles are traced over the *canonical*
+ordered endpoint pair (`min(a, b)` → `max(a, b)`), so both argument orders test one identical cell
+sequence. This is the invariant that makes combat fair — without it a unit can shoot one that cannot shoot
+back — and `Thin` does **not** get it for free: its fixed error-tie break visits different intermediate
+cells depending on which endpoint the walk starts from. The endpoint rule matches `lineOfSight` (endpoints
+never tested; `a = b` is `true`). The continuous (float `Point`) grid-FOV sibling `Fov` lives in
+[[fs-gg-visibility]].
+
 ## Applications
 
 - **Tile line-of-sight / FOV** — `lineOfSight` from the viewer to each candidate tile (roguelike sight,
