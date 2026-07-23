@@ -704,6 +704,12 @@ module Scene =
     val describe: scene: Scene -> SceneElementKind list
     /// Public contract function exposed by this FS.GG.UI package.
     val diagnostics: scene: Scene -> RenderDiagnostic list
+    /// Public contract function exposed by this FS.GG.UI package.
+    val renderReadbackEvidence: size: Size -> scene: Scene -> RenderReadbackEvidence
+    /// Public contract function exposed by this FS.GG.UI package.
+    val circleEvidence: outputSize: Size -> center: Point -> radius: float -> fill: Color -> CircleShapeEvidence
+    /// Public contract function exposed by this FS.GG.UI package.
+    val ellipseEvidence: outputSize: Size -> bounds: Rect -> fill: Color -> EllipseShapeEvidence
 
 /// Pure authored-scene bounds and hierarchy inspection. These deterministic early probes
 /// complement, but do not replace, final raster inspection.
@@ -716,12 +722,6 @@ module SceneInspection =
         subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
     /// Select contributing rows that are partly or wholly outside the inspection viewport.
     val outsideViewport: nodes: SceneInspectionNode list -> SceneInspectionNode list
-    /// Public contract function exposed by this FS.GG.UI package.
-    val renderReadbackEvidence: size: Size -> scene: Scene -> RenderReadbackEvidence
-    /// Public contract function exposed by this FS.GG.UI package.
-    val circleEvidence: outputSize: Size -> center: Point -> radius: float -> fill: Color -> CircleShapeEvidence
-    /// Public contract function exposed by this FS.GG.UI package.
-    val ellipseEvidence: outputSize: Size -> bounds: Rect -> fill: Color -> EllipseShapeEvidence
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidenceFormat =
