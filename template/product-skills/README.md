@@ -11,6 +11,7 @@ FS.GG.Game.Skills began delivering them owner-sourced. A scaffolded game/sample-
 receives them — from that package, not from here. Every body now under `template/product-skills/` is
 Rendering-owned. (`scripts/check-frozen-mirrors.fsx` still guards the mechanism should a mirror ever
 return.)
+<!-- skill-refs: closed-ok FS.GG.Rendering#965 — cited as the completed retirement milestone behind this ownership note; history, not live work. -->
 
 ## Declaring an instrument (`instruments:`)
 
