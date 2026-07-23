@@ -46,7 +46,9 @@ let generatedInteractiveHostContract =
             [ "SetResolution resolution1080"
               "ApplyLogicalCanvas size"
               "LogicalCanvas.toLogicalPoint"
-              "corresponding physical point still activates Config" ]
+              "corresponding physical point still activates Config"
+              "Live.runScriptWithWindowBehavior"
+              "Runtime window behavior applied: mode=fullscreen" ]
             |> List.iter (fun token -> Expect.stringContains behavior token $"generated resolution proof carries `{token}`")
         }
 

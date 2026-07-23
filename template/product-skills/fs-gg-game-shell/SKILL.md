@@ -115,6 +115,13 @@ with the initial value; when `DisplayChanged` fires, emit both `ApplyWindowOptio
 and `ApplyLogicalCanvas`. The chosen resolution then letterboxes onto any surface and
 the mode picks windowed / borderless / exclusive fullscreen.
 
+The persistent viewer applies `ApplyWindowOptions` to the live native window on its
+loop thread. Repeated identical requests are idempotent; returning to windowed mode
+restores the remembered windowed geometry. Observe `ViewerDiagnosticCategory.Window`
+to distinguish an applied transition from a rejected or failed request. In particular,
+the initialized rendering backend cannot be switched live, so such a request is
+diagnosed without partially mutating the window.
+
 SkiaViewer is the sole transform owner. It fits and centers the logical canvas and maps
 native pointer samples through the inverse fit before Controls lays out or hit-tests.
 Do not scale the Controls tree or pointer coordinates again. The policy is identical for

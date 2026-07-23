@@ -208,6 +208,7 @@ FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.PlatformCheck : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.ScreenshotCapture : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Shutdown : System.Int32
 FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.SkiaContext : System.Int32
+FS.GG.UI.SkiaViewer.Host.DiagnosticStage+Tags.Window : System.Int32
 FS.GG.UI.SkiaViewer.Host.Diagnostics.create(FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity, FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.damageScopedDecision(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
 FS.GG.UI.SkiaViewer.Host.Diagnostics.frameLoopAbandoned(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>) : FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
@@ -406,6 +407,16 @@ FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Message : System.String [get]
 FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Severity : FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity [get]
 FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.Stage : FS.GG.UI.SkiaViewer.Host.DiagnosticStage [get]
 FS.GG.UI.SkiaViewer.Host.RenderDiagnostic.new(FS.GG.UI.SkiaViewer.Host.DiagnosticSeverity, FS.GG.UI.SkiaViewer.Host.DiagnosticStage, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.Border : Silk.NET.Windowing.WindowBorder [get]
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.Mode : FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode [get]
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.Position : Microsoft.FSharp.Core.FSharpOption<System.Tuple<System.Int32, System.Int32>> [get]
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.Size : Microsoft.FSharp.Core.FSharpOption<System.Tuple<System.Int32, System.Int32>> [get]
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.Token : System.String [get]
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior.new(FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode, Silk.NET.Windowing.WindowBorder, Microsoft.FSharp.Core.FSharpOption<System.Tuple<System.Int32, System.Int32>>, Microsoft.FSharp.Core.FSharpOption<System.Tuple<System.Int32, System.Int32>>, System.String)
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode+Tags.Fullscreen : System.Int32
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode+Tags.Maximized : System.Int32
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode+Tags.Normal : System.Int32
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode+Tags.WindowedFullscreen : System.Int32
 FS.GG.UI.SkiaViewer.Host.ScreenshotFormat+Tags.Jpeg : System.Int32
 FS.GG.UI.SkiaViewer.Host.ScreenshotFormat+Tags.Png : System.Int32
 FS.GG.UI.SkiaViewer.Host.ScreenshotRequest.Destination : System.String [get]
@@ -426,6 +437,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.PresentMode : FS.GG.UI.SkiaViewer.V
 FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.TargetFrameRate : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
 FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.Title : System.String [get]
 FS.GG.UI.SkiaViewer.Host.ViewerConfiguration.new(System.String, FS.GG.UI.Scene.Size, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, FS.GG.UI.SkiaViewer.Host.DiagnosticOptions, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<Silk.NET.Windowing.WindowOptions, Silk.NET.Windowing.WindowOptions>>, FS.GG.UI.SkiaViewer.ViewerPresentMode)
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.ApplyWindowBehavior : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.CaptureScreenshot : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Dispatch : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.InitializeRenderer : System.Int32
@@ -682,6 +694,7 @@ FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Scene : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Screenshot : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Skia : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Startup : System.Int32
+FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory+Tags.Window : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Category : FS.GG.UI.SkiaViewer.ViewerDiagnosticCategory [get]
 FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.Elapsed : Microsoft.FSharp.Core.FSharpOption<System.TimeSpan> [get]
 FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent.FrameIndex : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]

@@ -135,6 +135,13 @@ and `Scene.path`. Default text is readable evidence text, not a typography
 contract; use `TextRun.Font` and explicit fonts for brand or typography
 guarantees.
 
+On a persistent host, `ApplyWindowOptions` is a live native-window transition rather
+than launch-only metadata: windowed, maximized, borderless, and exclusive-fullscreen
+requests are applied on the window loop thread. Applied, rejected, or failed requests
+are observable as `ViewerDiagnosticCategory.Window`; unsupported backend switches are
+rejected without partially changing the window. `ApplyLogicalCanvas` remains the
+separate owner of letterboxing and inverse pointer mapping.
+
 The authoritative readiness contract for a feature is the feature-scoped
 directory, for example `specs/032-sokoban-feedback-followups/readiness/`.
 Repository-level output such as package surface baselines or generated consumer

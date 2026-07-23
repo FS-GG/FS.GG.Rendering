@@ -33,10 +33,15 @@ module Viewer =
     let internal runtimeStateRepaint producedMessages current deriveScene = ViewerRuntime.runtimeStateRepaint producedMessages current deriveScene
     let internal dispatchPersistenceBatch sink mapOutcome dispatch batch = ViewerRuntime.dispatchPersistenceBatch sink mapOutcome dispatch batch
     let internal interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink effects =
-        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore effects
+        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore ignore effects
 
     let internal interpretViewerEffectsWithLogicalCanvas audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects =
-        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects
+        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore logicalCanvasSink effects
+
+    let internal interpretViewerEffectsWithRuntimeWindow audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects =
+        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects
+
+    let internal planRuntimeWindowBehavior behavior = ViewerRuntime.planRuntimeWindowBehavior behavior
 
     let internal pointerInProductSpace logicalSize windowSize surfaceSize input =
         ViewerRuntime.pointerInProductSpace logicalSize windowSize surfaceSize input

@@ -451,6 +451,46 @@ let behaviorTests =
                 "the corresponding physical point still activates Config after 1280x720 -> 1920x1080"
         }
 
+        // Issue #1022: this is intentionally capability-gated rather than replaced by another effect-
+        // emission assertion. On a desktop host it drives the generated shell's DisplayChanged path
+        // through ControlsElmish, the shared ViewerEffect interpreter, and the real native-window
+        // mutation boundary; on a headless host it records the irreducible native tier as skipped.
+        test "DisplayChanged reaches the live native window-mode boundary (#1022)" {
+            if not (Viewer.runtimeCapability().PersistentWindow) then
+                skiptest "SKIPPED(tier=T2 native-window/GL): no persistent desktop window is available"
+
+            let observed = ResizeArray<ViewerDiagnosticEvent>()
+            let host =
+                { AppRoot.Program.interactiveHost with
+                    Tick =
+                        fun _ ->
+                            Some(
+                                AppRoot.EvidenceCommands.ShellDispatch(
+                                    AppRoot.GameShell.SetDisplayMode AppRoot.GameShell.Fullscreen))
+                    Diagnostics =
+                        { Viewer.defaultDiagnostics with
+                            Categories = Set.add ViewerDiagnosticCategory.Window Viewer.defaultDiagnostics.Categories
+                            Sink = Some observed.Add } }
+
+            let result =
+                FS.GG.UI.Controls.Elmish.ControlsElmish.Live.runScriptWithWindowBehavior
+                    AppRoot.Program.viewerOptions
+                    (AppRoot.GameShell.windowBehavior AppRoot.EvidenceCommands.shellConfig.InitialDisplay)
+                    host
+                    [ FS.GG.UI.Controls.Elmish.FrameInput.Idle
+                      FS.GG.UI.Controls.Elmish.FrameInput.Idle ]
+
+            match result with
+            | Result.Error failure -> failtestf "live generated host failed: %s" failure.Message
+            | Result.Ok _ -> ()
+
+            Expect.exists observed
+                (fun diagnostic ->
+                    diagnostic.Category = ViewerDiagnosticCategory.Window
+                    && diagnostic.Message.Contains "Runtime window behavior applied: mode=fullscreen")
+                "the generated DisplayChanged request is observed after real native mutation, not only at emission"
+        }
+
         // Issue #912: PLAYED THROUGH THE HOST — the one altitude the host tests above never reach.
         //
         // They prove the halves in isolation: `MapKey ArrowUp true` returns SOME message, and

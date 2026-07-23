@@ -11,13 +11,13 @@ the owed tags equal the observed ones is checked live, on every run, and is what
 - feature: 209-version-staleness-guard
 - result: pass
 - provenance: verdict-core
-- single-version-source: 0.18.5 (`template/base/Directory.Packages.props:9 <FsGgUiVersion>`, occurrences=1)
-- snapshot-tag-for-pin: fs-gg-ui/v0.18.5
+- single-version-source: 0.18.6 (`template/base/Directory.Packages.props:9 <FsGgUiVersion>`, occurrences=1)
+- snapshot-tag-for-pin: fs-gg-ui/v0.18.6
 - published-members: 16 · bom-deps: 16 · template-consumed-pins: 14
 - runtime-regex-resolves: true
-- template-package-version: 0.18.5 (`.template.package/FS.GG.UI.Template.fsproj:9 <Version>`)
-- release-tag-for-package: v0.18.5 · template-tag-for-package: fs-gg-ui-template/v0.18.5
-- framework-pin-vs-package: 0.18.5 <= 0.18.5 = true
+- template-package-version: 0.18.6 (`.template.package/FS.GG.UI.Template.fsproj:9 <Version>`)
+- release-tag-for-package: v0.18.6 · template-tag-for-package: fs-gg-ui-template/v0.18.6
+- framework-pin-vs-package: 0.18.6 <= 0.18.6 = true
 - resolved-members-at-version: pending-live (run FS_GG_RUN_VERSION_COHERENCE_SMOKE=1)
 
 All lockstep conjuncts hold for the layers that ran.

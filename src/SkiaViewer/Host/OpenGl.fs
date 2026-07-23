@@ -292,6 +292,122 @@ module GlHost =
     /// label from here, so a self-report can never drift from what really initialized (#135).
     let backendLabel = "OpenGL"
 
+    [<NoEquality; NoComparison>]
+    type internal RuntimeWindowTarget =
+        { GetState: unit -> WindowState
+          SetState: WindowState -> unit
+          GetBorder: unit -> WindowBorder
+          SetBorder: WindowBorder -> unit
+          GetPosition: unit -> Vector2D<int>
+          SetPosition: Vector2D<int> -> unit
+          GetSize: unit -> Vector2D<int>
+          SetSize: Vector2D<int> -> unit }
+
+    type private RuntimeWindowSnapshot =
+        { State: WindowState
+          Border: WindowBorder
+          Position: Vector2D<int>
+          Size: Vector2D<int> }
+
+    type internal RuntimeWindowController =
+        { mutable WindowedPosition: Vector2D<int> option
+          mutable WindowedSize: Vector2D<int>
+          mutable CurrentMode: RuntimeWindowMode option }
+
+    let internal createRuntimeWindowController (initialWindowedSize: Size) =
+        { WindowedPosition = None
+          WindowedSize = Vector2D<int>(initialWindowedSize.Width, initialWindowedSize.Height)
+          CurrentMode = None }
+
+    let private snapshotRuntimeWindow (target: RuntimeWindowTarget) =
+        { State = target.GetState()
+          Border = target.GetBorder()
+          Position = target.GetPosition()
+          Size = target.GetSize() }
+
+    let private inferredRuntimeWindowMode snapshot =
+        if snapshot.State = WindowState.Fullscreen then
+            RuntimeWindowMode.Fullscreen
+        elif snapshot.Border = WindowBorder.Hidden then
+            RuntimeWindowMode.WindowedFullscreen
+        elif snapshot.State = WindowState.Maximized then
+            RuntimeWindowMode.Maximized
+        else
+            RuntimeWindowMode.Normal
+
+    let private restoreRuntimeWindowSnapshot (target: RuntimeWindowTarget) snapshot =
+        try target.SetState snapshot.State with _ -> ()
+        try target.SetBorder snapshot.Border with _ -> ()
+        try target.SetPosition snapshot.Position with _ -> ()
+        try target.SetSize snapshot.Size with _ -> ()
+
+    /// Apply one behavior on the native loop thread. Every property write is conditional, making a
+    /// repeated request a stable no-op; on failure the captured state is restored best-effort and an
+    /// explicit Window-stage diagnostic leaves the host instead of a silently half-applied mode.
+    let internal applyRuntimeWindowBehavior
+        (controller: RuntimeWindowController)
+        (target: RuntimeWindowTarget)
+        (behavior: RuntimeWindowBehavior)
+        : Result<bool, RenderDiagnostic> =
+        let before = snapshotRuntimeWindow target
+        let currentMode = controller.CurrentMode |> Option.defaultValue (inferredRuntimeWindowMode before)
+        let enteringPresentation =
+            (behavior.Mode = RuntimeWindowMode.Fullscreen || behavior.Mode = RuntimeWindowMode.WindowedFullscreen)
+            && currentMode <> RuntimeWindowMode.Fullscreen
+            && currentMode <> RuntimeWindowMode.WindowedFullscreen
+
+        if enteringPresentation then
+            controller.WindowedPosition <- Some before.Position
+            controller.WindowedSize <- before.Size
+
+        let requestedPosition =
+            behavior.Position |> Option.map (fun (x, y) -> Vector2D<int>(x, y))
+
+        let requestedSize =
+            behavior.Size |> Option.map (fun (width, height) -> Vector2D<int>(width, height))
+
+        let desiredPosition, desiredSize =
+            match behavior.Mode with
+            | RuntimeWindowMode.Normal ->
+                requestedPosition |> Option.orElse controller.WindowedPosition,
+                requestedSize |> Option.orElse (Some controller.WindowedSize)
+            | _ -> requestedPosition, requestedSize
+
+        let desiredState =
+            match behavior.Mode with
+            | RuntimeWindowMode.Normal
+            | RuntimeWindowMode.WindowedFullscreen -> WindowState.Normal
+            | RuntimeWindowMode.Maximized -> WindowState.Maximized
+            | RuntimeWindowMode.Fullscreen -> WindowState.Fullscreen
+
+        let mutable changed = false
+
+        let setIfDifferent getValue setValue desired =
+            if getValue() <> desired then
+                setValue desired
+                changed <- true
+
+        try
+            // Leave exclusive mode before changing border/geometry; enter a requested final state last.
+            if before.State = WindowState.Fullscreen && desiredState <> WindowState.Fullscreen then
+                target.SetState WindowState.Normal
+                changed <- true
+
+            setIfDifferent target.GetBorder target.SetBorder behavior.Border
+            desiredPosition |> Option.iter (setIfDifferent target.GetPosition target.SetPosition)
+            desiredSize |> Option.iter (setIfDifferent target.GetSize target.SetSize)
+            setIfDifferent target.GetState target.SetState desiredState
+            controller.CurrentMode <- Some behavior.Mode
+            Ok changed
+        with ex ->
+            restoreRuntimeWindowSnapshot target before
+            Result.Error(
+                Diagnostics.create
+                    DiagnosticSeverity.Error
+                    DiagnosticStage.Window
+                    $"Runtime window behavior '{behavior.Token}' failed; the previous native-window state was restored."
+                    (Some ex.Message))
+
     // #363: a process-global env override that pins GLFW to the GLX/X11 backend on an XWayland
     // session (where both `DISPLAY` and `WAYLAND_DISPLAY` are advertised and GLFW would otherwise
     // prefer Wayland, which this host's GL/Skia interop path is not validated against).
@@ -1445,6 +1561,7 @@ module GlHost =
         let dispatchGate = LoopDispatch.forCurrentThread ()
         let mutable currentModel = Unchecked.defaultof<_>
         let mutable window: IWindow option = None
+        let runtimeWindowController = createRuntimeWindowController program.Configuration.InitialSize
         let mutable windowEventMapping: IDisposable option = None
         let mutable inputEventMapping: IDisposable option = None
         let mutable activeSubscriptions: IDisposable list = []
@@ -1661,6 +1778,43 @@ module GlHost =
                     Console.Error.WriteLine($"FS.GG.UI diagnostic: {diagnostic.Stage}: {diagnostic.Message}")
 
                 Ok()
+            | ApplyWindowBehavior behavior ->
+                match window with
+                | None ->
+                    let diagnostic =
+                        Diagnostics.create
+                            DiagnosticSeverity.Error
+                            DiagnosticStage.Window
+                            $"Runtime window behavior '{behavior.Token}' was requested before the native window existed."
+                            None
+
+                    dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
+                    Result.Error diagnostic
+                | Some activeWindow ->
+                    let target: RuntimeWindowTarget =
+                        { GetState = fun () -> activeWindow.WindowState
+                          SetState = fun value -> activeWindow.WindowState <- value
+                          GetBorder = fun () -> activeWindow.WindowBorder
+                          SetBorder = fun value -> activeWindow.WindowBorder <- value
+                          GetPosition = fun () -> activeWindow.Position
+                          SetPosition = fun value -> activeWindow.Position <- value
+                          GetSize = fun () -> activeWindow.Size
+                          SetSize = fun value -> activeWindow.Size <- value }
+
+                    match applyRuntimeWindowBehavior runtimeWindowController target behavior with
+                    | Ok changed ->
+                        let diagnostic =
+                            Diagnostics.create
+                                DiagnosticSeverity.Info
+                                DiagnosticStage.Window
+                                $"Runtime window behavior applied: mode={behavior.Token}; changed={changed.ToString().ToLowerInvariant()}."
+                                None
+
+                        dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
+                        Ok()
+                    | Result.Error diagnostic ->
+                        dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
+                        Result.Error diagnostic
             | Dispatch msg ->
                 dispatch msg
                 Ok()

@@ -138,6 +138,33 @@ module GlHost =
     /// from what really initialized (#135).
     val backendLabel: string
 
+    [<NoEquality; NoComparison>]
+    /// Testable native-window mutation boundary. The live host binds these members to its `IWindow`;
+    /// tests bind them to an in-memory target and therefore exercise the exact transition policy.
+    type internal RuntimeWindowTarget =
+        { GetState: unit -> Silk.NET.Windowing.WindowState
+          SetState: Silk.NET.Windowing.WindowState -> unit
+          GetBorder: unit -> Silk.NET.Windowing.WindowBorder
+          SetBorder: Silk.NET.Windowing.WindowBorder -> unit
+          GetPosition: unit -> Silk.NET.Maths.Vector2D<int>
+          SetPosition: Silk.NET.Maths.Vector2D<int> -> unit
+          GetSize: unit -> Silk.NET.Maths.Vector2D<int>
+          SetSize: Silk.NET.Maths.Vector2D<int> -> unit }
+
+    /// Per-window state that remembers normal-window geometry across fullscreen/borderless modes.
+    type internal RuntimeWindowController
+
+    val internal createRuntimeWindowController:
+        initialWindowedSize: FS.GG.UI.Scene.Size -> RuntimeWindowController
+
+    /// Apply one validated request idempotently. `Ok true` means native state changed, `Ok false`
+    /// means the request already held, and `Error` is an observable Window-stage host failure.
+    val internal applyRuntimeWindowBehavior:
+        controller: RuntimeWindowController ->
+        target: RuntimeWindowTarget ->
+        behavior: RuntimeWindowBehavior ->
+            Result<bool, RenderDiagnostic>
+
     /// #363: run a Silk window `Create`/`Initialize` with `WAYLAND_DISPLAY` nulled so GLFW picks the
     /// GLX/X11 backend on an XWayland session, restoring it immediately afterwards. Scoped to window
     /// creation only — never held across the render loop — and serialized against concurrent windows.

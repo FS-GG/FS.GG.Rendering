@@ -157,6 +157,7 @@ module internal ViewerLaunchSupport =
         let stage =
             match diagnostic.Stage with
             | Host.DiagnosticStage.PlatformCheck -> ViewerRunBlockedStage.Window
+            | Host.DiagnosticStage.Window -> ViewerRunBlockedStage.Window
             | Host.DiagnosticStage.GlSurface -> ViewerRunBlockedStage.Surface
             | Host.DiagnosticStage.GlContext
             | Host.DiagnosticStage.GlRenderer -> ViewerRunBlockedStage.Renderer
@@ -170,6 +171,7 @@ module internal ViewerLaunchSupport =
 
         let category =
             match diagnostic.Stage with
+            | Host.DiagnosticStage.Window -> ViewerDiagnosticCategory.Window
             | Host.DiagnosticStage.GlContext
             | Host.DiagnosticStage.GlRenderer
             | Host.DiagnosticStage.GlSurface

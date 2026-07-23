@@ -176,6 +176,8 @@ type ViewerDiagnosticLevel =
 type ViewerDiagnosticCategory =
     | Startup
     | EnvironmentSession
+    /// Runtime native-window behavior changes and their observable outcomes.
+    | Window
     | Input
     | Frame
     | Renderer
@@ -702,6 +704,8 @@ type ViewerRunMsg =
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerEffect =
     | OpenWindow of title: string * size: Size
+    /// Apply a live windowed, borderless, maximized, or fullscreen transition on the persistent
+    /// native host. Unsupported live changes are reported through Window diagnostics.
     | ApplyWindowOptions of ViewerWindowBehaviorRequest
     /// Select the logical coordinate space used by the live viewer. The viewer owns both the
     /// logical-to-surface presentation fit and the inverse native-pointer mapping; products and
