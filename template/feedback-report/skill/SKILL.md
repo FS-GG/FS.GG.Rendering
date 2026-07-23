@@ -1,202 +1,240 @@
 ---
 name: fs-gg-feedback-report
-description: Write one comprehensive retrospective report on the development experience — what worked, what did not, problems hit, improvements proposed — into a dated file under feedback/ at the end of a development cycle.
-compatibility: Agent-invoked authoring skill, shipped in EVERY generated workspace — every profile and every lifecycle lane; no product runtime.
-metadata:
-  author: fs-gg-ui
+description: Capture and synthesize evidence-backed feedback about the complete scaffolded FS.GG development experience. Use during a feature or milestone to checkpoint friction, rework, capability gaps, and unexpectedly effective patterns, and at cycle end to write and validate a durable report covering scaffolding, guidance, skills, SDD, implementation APIs, build, testing, evidence, runtime quality, performance, documentation, packaging/upgrades, and worker/PR orchestration.
 ---
 
 # fs-gg-feedback-report
 
-An authoring skill that synthesizes **one retrospective report per development cycle** and
-writes it to `feedback/<date>-<workspace>.md`. It reads whatever evidence exists and produces a
-single durable document.
+Preserve development experience while it is fresh, then turn it into one comparable report per
+cycle. Use two modes:
 
-This skill is agent-invoked, reads only optional and guarded evidence, and therefore ships
-**unconditionally** — every profile, every lane (spec-kit, sdd, none). Among the evidence it may
-read are per-phase capture records under `specs/<feature>/feedback/`, but nothing produces those
-in a current scaffold: the per-phase capture machinery (the fs-gg-feedback-capture skill and its
-Spec Kit after_* feedback hooks) was retired with the spec-kit lane under ADR-0056.
-Grandfathered spec-kit trees may still carry such records, so this skill reads them **if present**;
-a lane with no capture records is a supported case, not a broken one.
+- **Checkpoint:** append a small structured event when something materially helps or hinders work.
+- **Finalize:** synthesize checkpoints and repository evidence into a schema-v2 report.
 
-## When to use
+Do not recreate the retired Spec Kit hook fabric. Checkpoints are lifecycle-independent and
+agent-invoked. Do not checkpoint routine success; capture events that teach the scaffold provider,
+tooling, package owner, skill author, or orchestrator something reusable.
 
-- **Agent-invoked at cycle end** — when a feature, milestone, or scaffold evaluation is
-  finished and you are about to hand the workspace back. It is not hook-invoked; nothing
-  fires it automatically.
-- Not mid-cycle. A report written before the work is exercised produces a "did not
-  exercise" list longer than its findings, which is noise.
+## Checkpoint mode
 
-## Driven-library API
+Checkpoint immediately after:
 
-A process/authoring skill — **no backing library**. It reads evidence and writes Markdown;
-it calls no shipped `.fsi` surface.
+1. scaffold/onboarding and the first build;
+2. lifecycle authoring, before implementation;
+3. the first implementation/test/evidence loop;
+4. verify, ship, and PR orchestration;
+5. any misleading instruction, avoidable retry, workaround, missing capability, or unusually
+   effective composition that would be hard to reconstruct later.
 
-## Evidence sources — every one optional
+Run the bundled tool from the product root:
 
-Read what exists; never fail because a source is absent. A source that is missing is a
-fact about the lane, not an error, and belongs in §1.
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- checkpoint \
+  --cycle <cycle-id> \
+  --phase <phase> \
+  --surface <surface-id> \
+  --kind <kind> \
+  --summary "<one observed fact>" \
+  --evidence "<command, artifact, diff, screenshot, source location, timing, or interaction>" \
+  --cost "<avoidable retries, edits, or elapsed time; use none when zero>" \
+  --owner "<repo/component likely able to improve it>"
+```
 
-| Source | Carries | Absent when |
-|---|---|---|
-| `scaffold-provenance.json` | effective parameters, lifecycle lane, package pins | the scaffold predates provenance, or was hand-assembled |
-| the `.fsgg/` work-item store | what was planned vs what shipped | the SDD lane owner did not supply one |
-| git history | ordering, churn, revert-shaped commits | a fresh, uncommitted tree |
-| per-phase capture records | phase-local friction, severity | a current scaffold (the per-phase capture skill was retired under ADR-0056); present only in grandfathered spec-kit trees |
+The tool appends one JSON object to `feedback/checkpoints/<cycle-id>.jsonl`. Use a stable,
+lowercase cycle id such as `018-map-motion-m5-interpolation-scene-cost`.
 
-Per-phase records live at `specs/<feature>/feedback/<phase>-<date>.md`. When they exist,
-this report **synthesizes** them — it does not restate them; cite the phase and date.
+Allowed kinds:
+
+- `positive-pattern`
+- `defect`
+- `friction`
+- `capability-gap`
+- `quality-gap`
+- `documentation`
+- `orchestration`
+
+Allowed surface ids:
+
+- `scaffolding`
+- `onboarding-guidance`
+- `skills`
+- `sdd-authoring`
+- `implementation-apis`
+- `dependencies-build`
+- `testing`
+- `evidence`
+- `runtime-playtest`
+- `performance`
+- `documentation`
+- `packaging-upgrade`
+- `worker-git-pr`
+
+Strip secrets, customer data, personal data, internal hostnames, and absolute paths outside the
+workspace before recording evidence. Checkpoints are committed.
+
+## Finalize mode
+
+Finalize only after the cycle has exercised its intended acceptance surface. Read:
+
+1. the current cycle's checkpoint JSONL, if present;
+2. all earlier `feedback/*.md` reports for recurrence and prior dispositions;
+3. `scaffold-provenance.json`, package pins, and the skill manifest;
+4. `.fsgg/`, `work/`, `readiness/`, or equivalent lifecycle artifacts;
+5. git history and diff for churn, reverts, generated-file replacement, and workarounds;
+6. build/test/TRX/evidence outputs, screenshots, playtest notes, timing artifacts, docs, and PR
+   history that exist for this cycle.
+
+Missing checkpoints reduce confidence; they do not block finalization. State the missing evidence
+in §1 and do not reconstruct precise elapsed time or abandoned approaches without evidence.
 
 ## Output contract
 
-- **Path:** `feedback/<YYYY-MM-DD>-<workspace>.md`, where `<workspace>` is the product
-  directory name. Create `feedback/` at the repository root if it does not exist.
-- **One file per run, append-only as a set.** Never overwrite a prior report and never
-  rename one. Two runs on the same day get a `-2` suffix. Reports are only comparable
-  across time if they accumulate.
-- **Section numbers are stable and are never renumbered.** Findings get cited from
-  immutable records as `feedback §3.2`. If a section does not apply, keep its heading and
-  write "none observed" underneath. Adding a section means taking the next free number,
-  never inserting.
+Write `feedback/<YYYY-MM-DD>-<workspace>.md`. Never overwrite or rename an earlier report; add
+`-2`, `-3`, and so on for multiple runs on one day.
+
+Use this frontmatter:
+
+```yaml
+---
+feedbackSchema: 2
+date: <YYYY-MM-DD>
+workspace: <directory name>
+cycle: <stable cycle id>
+lane: <sdd | none | legacy-spec-kit | other>
+toolVersion: <fsgg-sdd version or n/a>
+commit: <described commit>
+---
+```
+
+Keep sections §1 through §12 in order. Write `None observed.` when a section has no content.
 
 ## Report structure
 
-`§1 Provenance` — the lane, the effective parameters, the package pins, the **toolchain
-version**, and the commit the report describes. A finding is unattributable without it; if
-`scaffold-provenance.json` is absent, say so explicitly and record what you could recover
-instead.
+### §1 Provenance and confidence
 
-Record the toolchain version as `fsgg-sdd --version`, or lift the `toolVersion` field that
-any stage report already carries — prefer lifting it; the artifact has it. This is the field a
-stale finding is adjudicated from, so never leave it unstated. A lane that runs no SDD
-lifecycle may have no stage report and no `fsgg-sdd` at all: say so, and version the findings
-against the package pins instead — exactly the degradation an absent `scaffold-provenance.json`
-already gets. An absent toolchain is a fact about the lane; an unstated one is a hole in the
-report. See **Check before you file**.
+Record scaffold parameters, package pins, lifecycle/tool versions, commit, cycle boundaries,
+checkpoint path and count, missing evidence, and confidence limits. Prefer versions embedded in
+artifacts over rerunning a tool.
 
-`§2 What worked` / `§3 What did not` — prose, not a list of adjectives. Name the component.
+### §2 What worked
 
-`§4 Findings` — the load-bearing section. Every finding is a **structured record**:
+Name concrete components and the outcome they enabled. Preserve reusable positive patterns, not
+generic praise.
+
+### §3 What did not
+
+Describe failed approaches, rework, local product corrections, and scope changes even when fixed
+before ship. A fixed product problem can still reveal whether the scaffold prevented, detected, or
+cheaply repaired it.
+
+### §4 Findings
+
+Use a structured record for every finding:
 
 ```markdown
-#### §4.1 <one-line statement of the defect>
+#### §4.1 <one-line finding>
 
-- **Expected:** <what the docs, the signature, or the skill said would happen>
+- **Kind:** positive-pattern | defect | friction | capability-gap | quality-gap | documentation | orchestration
+- **Impact:** <who/what was affected and severity>
+- **Expected:** <documented, designed, or reasonably required behavior>
 - **Observed:** <what happened>
-- **Evidence:** the command, and its output, verbatim
-- **Version:** <the toolchain version this was reproduced on, and the latest tag you checked it against>
-- **Component:** <the owning module / skill / script>
-- **Disposition:** issue | ADR | doc fix | won't-fix — and why
+- **Evidence:** <command/output, artifact, diff, screenshot, source location, timing, or interaction>
+- **Version:** <reproduced package/tool version and current version checked, or n/a>
+- **Owner:** <FS-GG repo plus component/change surface>
+- **Recurrence:** new | first seen <report/ref> | seen again <report/ref>; <existing issue/ref>
+- **Avoidable cost:** <retries, manual edits, lifecycle reruns, elapsed time, or none>
+- **Disposition:** issue | existing issue | ADR | doc fix | skill fix | product fix | accepted
 ```
 
-A finding without expected-vs-observed is an opinion. A finding without a command and its
-output is unreproducible and will be closed as such by whoever triages it. A finding without
-a version cannot be told apart from one that was fixed and tagged before your run began, and
-costs every reader a full re-verification pass against `main` to find that out.
+Evidence need not be a command, but it must let another person inspect or reproduce the observation.
+For versioned defects, check the latest available release and say when re-verification was not
+possible. Search prior reports and open/closed issues before filing. Add new evidence to an existing
+issue instead of duplicating it.
 
-`§5 Did not exercise` — an explicit list of what this cycle never ran. Silence is otherwise
-read as endorsement, and a report that omits this section quietly claims full coverage.
+Separate the observation from the proposed remedy. Route ownership to the repository that can fix
+the root cause, not automatically to the product where it was observed.
 
-`§6 Doc-versus-behavior contradictions` — where a doc, a skill body, or a parameter
-description says one thing and the code does another. Quote both sides.
+### §5 Did not exercise
 
-`§7 Workarounds still in the tree` — anything you did to get moving that should not
-survive. Name the file. An unlisted workaround becomes load-bearing by accident.
+List intended or relevant surfaces not exercised. This is distinct from the complete §12 matrix.
 
-`§8 Friction log` — the small costs: a confusing error, a missing default, a flag that had
-to be discovered. Individually trivial, collectively the reason a lane feels bad.
+### §6 Doc-versus-behavior contradictions
 
-`§9 Negative space on the skill set` — which vendored skills were **never invoked**, and
-which were **wanted and absent**. Both directions are signal: the first is surface that is
-not paying for itself, the second is the next skill to write.
+Quote both sides and identify the owning documentation or skill.
 
-`§10 Time-to-X markers` — time to first build, first render, first passing test, first
-green validation. Rough is fine; the trend across reports is the point.
+### §7 Workarounds still in the tree
 
-`§11 Falsifiable improvements` — each proposal must name **what it would have prevented in
-this run**, citing a section above. A proposal that prevents nothing observed here is a
-preference, and belongs in an issue rather than a report.
+Name files, removal conditions, and the risk of allowing each workaround to become permanent.
 
-## Check before you file
+### §8 Friction and avoidable cost
 
-A defect reproduced on a stale toolchain is not a finding. It is rediscovery, and it costs
-every reader of this report a re-verification pass against `main` to establish that.
+Aggregate retries, manual YAML/code edits, lifecycle reruns, generated files replaced, worker
+restarts, and elapsed developer time. Keep command duration separate from wall-clock time.
 
-Before writing §4, establish two versions and record both:
+### §9 Skill value and gaps
 
-- **What you ran.** `fsgg-sdd --version`, or the `toolVersion` field carried by any stage
-  report. Prefer lifting it out of the artifact over re-running the CLI — the artifact
-  cannot disagree with itself about what produced it. If the lane has neither, fall back to
-  the package pins recorded in §1 and say that is what you are versioning against.
-- **What is current.** The latest released tag of whatever you versioned against. Check each
-  candidate defect against *that*, not against whatever happens to be installed in this
-  workspace.
+Use the scaffolded skill manifest as the inventory. Record skills invoked with evidence, relevant
+skills not invoked and why, wanted skills that were absent, misleading skill guidance, and overlap
+between skills. Do not list unrelated globally available tools or connectors.
 
-Then state, per finding, which version it was reproduced on. A defect that survives on the
-latest tag is live; one that does not is already fixed, and filing it as though it were live
-is how a report stops being usable as signal — a reader who cannot tell the two apart has to
-re-verify all of them.
+### §10 Outcome markers
 
-If you cannot upgrade to re-check, file the finding anyway and say so: *"reproduced on 0.8.1;
-not re-checked against 0.9.0"* is honest and still triageable. Silence is not. Where the
-toolchain is pinned (`.config/dotnet-tools.json`), name the pin — it explains a version gap
-that would otherwise read as carelessness.
+Record comparable outcomes: time to first build, first meaningful test, first render/playable
+state, first green verification, ship readiness, and merge. Mark estimates as estimates. Include
+test counts and command duration only as supporting measures, not substitutes for elapsed time.
 
-## Redaction
+### §11 Falsifiable improvements
 
-These reports are **committed**. Before writing, strip absolute paths outside the
-workspace, tokens, credentials, licence keys, internal hostnames, and customer or personal
-data. Quote command output only after checking it for the same. When a finding cannot be
-stated without a secret, state the shape of it and reference where the secret lives.
+For each proposal, cite the observed finding or friction it would have prevented, name the owner and
+change surface, and state a measurable acceptance condition. Do not propose unrelated preferences.
 
-## Runnable example
+### §12 Development-surface coverage
+
+Include every row exactly once:
 
 ```markdown
----
-date: 2026-07-10
-workspace: AcmeGame
-lane: sdd
-toolVersion: 0.9.0
----
-
-## §1 Provenance
-Scaffolded from fs-gg-ui 0.4.2, `--profile game --lifecycle sdd`.
-Pins: FS.GG.UI 0.2.0. Toolchain: fsgg-sdd 0.9.0 (`toolVersion` lifted from the stage report;
-latest tag at time of writing, so findings below are checked against current).
-Report describes commit a1b2c3d.
-
-## §2 What worked
-The fixed-step loop and the seeded RNG composed with no glue.
-
-## §3 What did not
-`ViewerEffect` has no audio case, so the audio skill's examples do not run.
-
-## §4 Findings
-
-#### §4.1 fs-gg-audio documents an effect the viewer cannot dispatch
-- **Expected:** `ViewerEffect.Audio` per the skill body
-- **Observed:** no such case; the union has four cases
-- **Evidence:** `dotnet fsi scripts/print-effects.fsx` → `Render | Resize | Close | Quit`
-- **Version:** reproduced on fsgg-sdd 0.9.0, the latest tag — live, not already fixed
-- **Component:** src/SkiaViewer
-- **Disposition:** issue — filed as FS.GG.Rendering#245
-<!-- skill-refs: closed-ok FS.GG.Rendering#245 — a worked EXAMPLE of a finished report, citing the issue it filed; closed is what a filed-and-fixed finding looks like. Not somewhere to go. -->
-
-
-## §5 Did not exercise
-Persistence, collision narrow-phase, the sample pack.
-
-...
+| Surface | Status | Evidence and result |
+|---|---|---|
+| scaffolding | exercised | ... |
+| onboarding-guidance | partial | ... |
+| skills | exercised | ... |
+| sdd-authoring | exercised | ... |
+| implementation-apis | exercised | ... |
+| dependencies-build | exercised | ... |
+| testing | exercised | ... |
+| evidence | exercised | ... |
+| runtime-playtest | not-exercised | ... |
+| performance | partial | ... |
+| documentation | exercised | ... |
+| packaging-upgrade | not-exercised | ... |
+| worker-git-pr | exercised | ... |
 ```
 
-## Related
+Allowed statuses are `exercised`, `partial`, and `not-exercised`. Evaluate the development process,
+not merely whether a file or command existed.
 
-[[fs-gg-project]]. This skill ships on every lane and reads only optional evidence. There is no
-longer a per-phase capture counterpart — the fs-gg-feedback-capture skill and its Spec Kit after_*
-feedback hooks were retired with the spec-kit lane under ADR-0056 — which is why every evidence source
-above is read "if present": the per-phase records exist only in grandfathered spec-kit trees.
+## Validate before handoff
 
-## Sources / links
+Run:
 
-- F# docs: <https://learn.microsoft.com/en-us/dotnet/fsharp/>
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- \
+  validate feedback/<report>.md
+```
+
+Fix every reported error. The validator checks schema-v2 frontmatter, stable sections, finding
+fields, finding numbering, and complete surface coverage. It intentionally does not validate old
+schema-v1 reports.
+
+## Final roll-up
+
+When a roadmap contains multiple cycle reports, aggregate rather than concatenate:
+
+- count recurrence by root cause and owner;
+- distinguish new findings from known findings with new evidence;
+- rank improvements by recurrence, avoidable cost, and affected surfaces;
+- preserve positive patterns worth promoting into templates or skills;
+- state coverage gaps that no cycle exercised.
+
+The cycle report remains immutable. Put cross-cycle synthesis in the roadmap completion report or a
+separate timestamped report.

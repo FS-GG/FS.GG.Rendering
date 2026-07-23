@@ -59,6 +59,8 @@
     <Compile Include="Feature219EmitFrameworkSkillsTests.fs" />
     <Compile Include="Feature224SkillCatalogCurrencyTests.fs" />
     <Compile Include="Feature225ProductSkillVocabularyTests.fs" />
+    <Compile Include="..\..\template\feedback-report\skill\scripts\FeedbackReportTool.fs" Link="FeedbackReportTool.fs" />
+    <Compile Include="FeatureFeedbackReportSkillTests.fs" />
     <!-- Feature 231: the vendored standalone materialize algorithm (template CONTENT, compiled
          here solely so the G-PARITY gate can compare it against the published FS.GG.Contracts
          library — ADR-0014 / roadmap §6 "two lanes, one algorithm"). -->
