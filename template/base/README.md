@@ -106,6 +106,20 @@ checkout is copied. Redirected `Verify` output is written as plain text under
 `readiness/logs/`; pass and fail diagnostics should remain readable and must not
 contain embedded NUL byte blocks.
 
+Capture the complete initial view through the deterministic, window-free CPU renderer:
+
+```bash
+dotnet run --project src/<Name> -- --view-image readiness/view-image.png
+dotnet run --project src/<Name> -- --view-image readiness/view-image-wide.png 1600 900
+```
+
+The one-path form uses the deterministic `1280x720` default. The explicit form accepts positive
+integer width and height, renders that logical canvas without scaling or letterboxing, and records
+both requested and PNG-header dimensions in the adjacent `.metadata.txt` report. Invalid or
+non-positive dimensions fail with a nonzero, classified diagnostic rather than falling back.
+Requests above the safe CPU-raster budget (8192 on either axis or 16,777,216 pixels) are rejected
+before allocation with `diagnostic-category=resource-limit`.
+
 ## Explore the app in FSI
 
 To load the built app and all its transitive `FS.GG.UI.*` references into FSI

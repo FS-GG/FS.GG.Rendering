@@ -70,6 +70,13 @@ product-owned and should not write readiness artifacts. Evidence collection is
 explicit: commands such as `--launch-evidence`, `--image-evidence`,
 `--screenshot-evidence`, `--pixel-readback-evidence`, and `--scene-evidence`
 live behind opt-in command dispatch in `Product.EvidenceCommands`.
+Use `--view-image <path>` for the deterministic 1280x720 full-view CPU readback, or
+`--view-image <path> <width> <height>` when the authored logical canvas has another
+positive-integer size. Its metadata records `requested-size`, PNG-header `actual-size`,
+and `dimensions-match`; malformed or non-positive dimensions return a classified
+nonzero result instead of silently using the default. The command rejects dimensions above
+8192 on either axis or 16,777,216 total pixels before CPU-raster allocation and reports
+`diagnostic-category=resource-limit`.
 Deterministic scene evidence, persistent launch evidence, and screenshot
 evidence are separate report kinds: scene evidence does not prove a persistent
 window, and unsupported screenshot capture must report
