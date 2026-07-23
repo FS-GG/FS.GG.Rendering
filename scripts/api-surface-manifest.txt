@@ -1527,6 +1527,10 @@ pkg    FS.GG.UI.Scene
 +      Types.fsi type Vertex
 +      Types.fsi type VertexMode
 +      Types.fsi type SceneElementKind
++      Types.fsi type SceneBoundsUnknownReason
++      Types.fsi type SceneDrawableBounds
++      Types.fsi type SceneViewportRelation
++      Types.fsi type SceneInspectionNode
 +      Types.fsi type RenderReadbackEvidence
 +      Types.fsi type ShapePlacement
 +      Types.fsi type CircleShapeEvidence
@@ -1628,6 +1632,9 @@ proseat Types.fsi type SceneNode ::: | SizedText of position: (float * float) * 
 +      Scene.fsi val Scene.sizedText
 +      Scene.fsi val Scene.describe
 +      Scene.fsi val Scene.diagnostics
++      Inspection.fsi val SceneInspection.inspect
++      Inspection.fsi val SceneInspection.contributingDescendants
++      Inspection.fsi val SceneInspection.outsideViewport
 +      Scene.fsi val Scene.renderReadbackEvidence
 +      Scene.fsi val Scene.circleEvidence
 +      Scene.fsi val Scene.ellipseEvidence

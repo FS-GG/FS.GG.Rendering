@@ -98,3 +98,15 @@ module RetainedInspection =
     val artifactDiagnostics: artifact: RetainedInspectionArtifact -> string list
     /// Sort retained nodes, damage facts, findings, and unsupported facts deterministically.
     val normalizeArtifact: artifact: RetainedInspectionArtifact -> RetainedInspectionArtifact
+
+/// Pure authored-scene bounds and hierarchy inspection. These deterministic early probes
+/// complement, but do not replace, final raster inspection.
+module SceneInspection =
+    /// Walk every authored node in stable scene-path order and report its effective transformed,
+    /// clipped drawable bounds relative to `viewport`.
+    val inspect: viewport: Rect -> scene: Scene -> SceneInspectionNode list
+    /// Select contributing rows at or below `subtreePath`.
+    val contributingDescendants:
+        subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
+    /// Select contributing rows that are partly or wholly outside the inspection viewport.
+    val outsideViewport: nodes: SceneInspectionNode list -> SceneInspectionNode list

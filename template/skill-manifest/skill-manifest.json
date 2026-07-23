@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "ad13aaf069bee1af6cd600c875118150934ddade7d4bc246aab0591b2c2799bb",
+      "sha256": "7b29e4979e531459dd3e7ff569980f18c5acc1ce6972f42a9049d92c216fc6b4",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-scene/"

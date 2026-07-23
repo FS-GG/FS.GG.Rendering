@@ -39,7 +39,7 @@ For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
 ## Consume it
 
 <!-- BEGIN GENERATED: fsgg-doc:consume-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-Published as `FS.GG.UI.*` packages on `net10.0` — 16 libraries plus the `FS.GG.UI` BOM metapackage (current framework version `0.18.6`).
+Published as `FS.GG.UI.*` packages on `net10.0` — 16 libraries plus the `FS.GG.UI` BOM metapackage (current framework version `0.19.0`).
 <!-- END GENERATED: fsgg-doc:consume-coordinates -->
 
 Each release **dual-publishes**

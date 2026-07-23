@@ -234,6 +234,41 @@ type SceneElementKind =
     | SizedTextElement
     | GlyphRunElement
 
+/// Why a scene node cannot expose a trustworthy deterministic drawable bound.
+[<RequireQualifiedAccess>]
+type SceneBoundsUnknownReason =
+    | EmptyGeometry
+    | NonFiniteGeometry
+    | PerspectiveHorizon
+    | UnsupportedClipGeometry
+
+/// A drawable bound is either known, absent because the node contributes no pixels, or explicitly
+/// unknown. Keeping "unknown" distinct from "empty" prevents inspection from reporting false safety.
+[<RequireQualifiedAccess>]
+type SceneDrawableBounds =
+    | Known of Rect
+    | NoDrawableContent
+    | Unknown of SceneBoundsUnknownReason
+
+/// Relationship between a node's effective (transformed and clipped) drawable bound and a viewport.
+[<RequireQualifiedAccess>]
+type SceneViewportRelation =
+    | Inside
+    | PartiallyOutside
+    | Outside
+    | NotDrawable
+    | Unknown
+
+/// One deterministic authored-hierarchy row from `SceneInspection.inspect`.
+type SceneInspectionNode =
+    { Path: string
+      ParentPath: string option
+      Kind: SceneElementKind
+      Bounds: SceneDrawableBounds
+      ViewportRelation: SceneViewportRelation
+      Contributes: bool
+      Children: string list }
+
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderReadbackEvidence =
     { Size: Size
@@ -669,6 +704,18 @@ module Scene =
     val describe: scene: Scene -> SceneElementKind list
     /// Public contract function exposed by this FS.GG.UI package.
     val diagnostics: scene: Scene -> RenderDiagnostic list
+
+/// Pure authored-scene bounds and hierarchy inspection. These deterministic early probes
+/// complement, but do not replace, final raster inspection.
+module SceneInspection =
+    /// Walk every authored node in stable scene-path order and report its effective transformed,
+    /// clipped drawable bounds relative to `viewport`.
+    val inspect: viewport: Rect -> scene: Scene -> SceneInspectionNode list
+    /// Select contributing rows at or below `subtreePath`.
+    val contributingDescendants:
+        subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
+    /// Select contributing rows that are partly or wholly outside the inspection viewport.
+    val outsideViewport: nodes: SceneInspectionNode list -> SceneInspectionNode list
     /// Public contract function exposed by this FS.GG.UI package.
     val renderReadbackEvidence: size: Size -> scene: Scene -> RenderReadbackEvidence
     /// Public contract function exposed by this FS.GG.UI package.
