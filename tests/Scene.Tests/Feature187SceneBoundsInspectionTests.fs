@@ -127,4 +127,74 @@ let tests =
                 (SceneDrawableBounds.Unknown SceneBoundsUnknownReason.PerspectiveHorizon)
                 "a projective horizon crossing reports typed unknown instead of a finite corner box"
         }
+
+        test "paint effects and joins conservatively expose viewport bleed" {
+            let bounds = { X = 180.0; Y = 30.0; Width = 10.0; Height = 20.0 }
+            let blurred =
+                Paint.fill Colors.white
+                |> Paint.withMaskFilter (Blur 4.0)
+                |> Scene.rectangleWithPaint bounds
+            let shadowed =
+                Paint.fill Colors.white
+                |> Paint.withImageFilter (DropShadow(25.0, 0.0, 0.0, Colors.black))
+                |> Scene.rectangleWithPaint { bounds with X = 170.0 }
+            let mitered =
+                Paint.stroke Colors.white 8.0
+                |> Paint.withMiter 4.0
+                |> Scene.path
+                    (Path.create Winding
+                        [ Path.moveTo 180.0 20.0
+                          Path.lineTo 195.0 30.0
+                          Path.lineTo 180.0 40.0 ])
+            let discrete =
+                Paint.stroke Colors.white 2.0
+                |> Paint.withPathEffect (Discrete(4.0, 10.0))
+                |> Scene.path
+                    (Path.create Winding
+                        [ Path.moveTo 180.0 55.0
+                          Path.lineTo 195.0 55.0 ])
+
+            let rows =
+                Scene.group [ blurred; shadowed; mitered; discrete ]
+                |> SceneInspection.inspect viewport
+
+            for kind, fragment in
+                [ RectangleElement, "/group/0/"
+                  RectangleElement, "/group/1/"
+                  PathElement, "/group/2/"
+                  PathElement, "/group/3/" ] do
+                let row =
+                    rows
+                    |> List.find (fun row -> row.Kind = kind && row.Path.Contains fragment)
+                Expect.equal
+                    row.ViewportRelation
+                    SceneViewportRelation.PartiallyOutside
+                    $"{fragment} paint extent must not be reported false-safe inside"
+                Expect.isGreaterThan
+                    ((knownBounds row).X + (knownBounds row).Width)
+                    viewport.Width
+                    $"{fragment} effective bound reaches beyond the viewport"
+        }
+
+        test "chart bounds union only bars that the renderer actually draws" {
+            let chart = Scene.chart [ 1.0; 0.0; -2.0 ]
+            let row = SceneInspection.inspect { viewport with Width = 300.0; Height = 500.0 } chart |> List.exactlyOne
+            let bounds = knownBounds row
+
+            Expect.floatClose Accuracy.high bounds.X 32.0 "first positive bar sets the left edge"
+            Expect.floatClose Accuracy.high bounds.Width 32.0 "trailing zero/negative values add no pixels"
+            Expect.floatClose Accuracy.high bounds.Y 180.0 "the maximum positive bar reaches chart top"
+            Expect.floatClose Accuracy.high bounds.Height 220.0 "the maximum positive bar reaches chart bottom"
+
+            let shifted =
+                Scene.chart [ 0.0; 2.0; 0.0 ]
+                |> SceneInspection.inspect { viewport with Width = 300.0; Height = 500.0 }
+                |> List.exactlyOne
+                |> knownBounds
+            Expect.floatClose Accuracy.high shifted.X 76.0 "a leading zero does not create a drawable bar"
+            Expect.floatClose Accuracy.high shifted.Width 32.0 "only the positive bar contributes"
+
+            let empty = Scene.chart [ 0.0; -1.0 ] |> SceneInspection.inspect viewport |> List.exactlyOne
+            Expect.equal empty.Bounds SceneDrawableBounds.NoDrawableContent "non-positive charts draw nothing"
+        }
     ]

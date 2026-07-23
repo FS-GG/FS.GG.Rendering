@@ -481,21 +481,57 @@ module SceneInspection =
                 SceneDrawableBounds.Known
                     { X = minX; Y = minY; Width = maxX - minX; Height = maxY - minY }
 
-    let private expandByPaint paint rect =
-        let amount =
-            paint.Stroke
-            |> Option.map (fun stroke -> max 0.0 stroke.Width / 2.0)
-            |> Option.defaultValue 0.0
-        { X = rect.X - amount
-          Y = rect.Y - amount
-          Width = rect.Width + 2.0 * amount
-          Height = rect.Height + 2.0 * amount }
-
     let private expand amount rect =
         { X = rect.X - amount
           Y = rect.Y - amount
           Width = rect.Width + 2.0 * amount
           Height = rect.Height + 2.0 * amount }
+
+    let private unionRects left right =
+        let minX = min left.X right.X
+        let minY = min left.Y right.Y
+        let maxX = max (left.X + left.Width) (right.X + right.Width)
+        let maxY = max (left.Y + left.Height) (right.Y + right.Height)
+        { X = minX; Y = minY; Width = maxX - minX; Height = maxY - minY }
+
+    let private expandByPaint paint rect =
+        let strokeExtent =
+            paint.Stroke
+            |> Option.map (fun stroke ->
+                let radius = max 0.0 stroke.Width / 2.0
+                match stroke.Join with
+                | StrokeJoin.Miter -> radius * max 1.0 stroke.Miter
+                | RoundJoin
+                | Bevel -> radius)
+            |> Option.defaultValue 0.0
+        let pathEffectExtent =
+            match paint.PathEffect with
+            | Discrete(segmentLength, deviation) when segmentLength > 0.0 -> abs deviation
+            | _ -> 0.0
+        let maskExtent =
+            match paint.MaskFilter with
+            // Skia's Gaussian mask kernel has finite raster support at three sigma.
+            | Blur sigma when sigma > 0.0 -> 3.0 * sigma
+            | _ -> 0.0
+        let finitePaint =
+            [ strokeExtent; pathEffectExtent; maskExtent ]
+            |> List.forall finite
+
+        if not finitePaint then
+            SceneDrawableBounds.Unknown SceneBoundsUnknownReason.NonFiniteGeometry
+        else
+            let source = expand (strokeExtent + pathEffectExtent + maskExtent) rect
+            match paint.ImageFilter with
+            | DropShadow(dx, dy, blur, _) when blur >= 0.0 ->
+                if [ dx; dy; blur ] |> List.forall finite then
+                    let shadowExtent = 3.0 * blur
+                    let shadow = expand shadowExtent source
+                    let translatedShadow =
+                        { shadow with X = shadow.X + dx; Y = shadow.Y + dy }
+                    SceneDrawableBounds.Known (unionRects source translatedShadow)
+                else
+                    SceneDrawableBounds.Unknown SceneBoundsUnknownReason.NonFiniteGeometry
+            | _ -> SceneDrawableBounds.Known source
 
     let private pointGeometry minimumRadius (points: Point list) paint =
         match points with
@@ -503,11 +539,8 @@ module SceneInspection =
         | _ ->
             match boundsOfPoints points with
             | SceneDrawableBounds.Known rect ->
-                let strokeRadius =
-                    paint.Stroke
-                    |> Option.map (fun stroke -> max 0.0 stroke.Width / 2.0)
-                    |> Option.defaultValue 0.0
-                SceneDrawableBounds.Known (expand (max minimumRadius strokeRadius) rect)
+                let hairlineRadius = if paint.Stroke.IsSome then 0.0 else minimumRadius
+                expand hairlineRadius rect |> expandByPaint paint
             | value -> value
 
     let private textBounds (position: Point) text font =
@@ -594,7 +627,7 @@ module SceneInspection =
                 | PaintedRectangle(bounds, paint)
                 | Ellipse(bounds, paint)
                 | Arc(bounds, _, _, paint) ->
-                    [], SceneDrawableBounds.Known (expandByPaint paint bounds)
+                    [], expandByPaint paint bounds
                 | Circle(center, radius, _) ->
                     [], SceneDrawableBounds.Known
                         { X = center.X - radius; Y = center.Y - radius
@@ -603,7 +636,7 @@ module SceneInspection =
                 | Line(startPoint, endPoint, paint) -> [], pointGeometry 0.5 [ startPoint; endPoint ] paint
                 | SceneNode.Path(pathSpec, paint) ->
                     [], Path.bounds pathSpec
-                        |> Option.map (expandByPaint paint >> SceneDrawableBounds.Known)
+                        |> Option.map (expandByPaint paint)
                         |> Option.defaultValue (SceneDrawableBounds.Unknown SceneBoundsUnknownReason.EmptyGeometry)
                 | Points(points, paint) -> [], pointGeometry 0.5 points paint
                 | Vertices(_, vertices, paint) ->
@@ -640,7 +673,7 @@ module SceneInspection =
                     nested, nested |> List.map snd |> union
                 | RegionNode(region, paint) ->
                     [], region.Bounds
-                        |> List.map (expandByPaint paint >> SceneDrawableBounds.Known)
+                        |> List.map (expandByPaint paint)
                         |> union
                 | ColorSpaceNode(_, childScene) ->
                     let nested = walkChildScene "color-space" matrix clip childScene
@@ -655,12 +688,24 @@ module SceneInspection =
                 | Chart values ->
                     if values |> List.exists (finite >> not) then
                         [], SceneDrawableBounds.Unknown SceneBoundsUnknownReason.NonFiniteGeometry
-                    elif values.IsEmpty || List.max values <= 0.0 then
-                        [], SceneDrawableBounds.NoDrawableContent
                     else
-                        [], SceneDrawableBounds.Known
-                            { X = 32.0; Y = 180.0
-                              Width = float values.Length * 44.0 - 12.0; Height = 220.0 }
+                        let maxValue =
+                            match values with
+                            | [] -> 0.0
+                            | _ -> List.max values
+                        values
+                        |> List.mapi (fun index value ->
+                            if maxValue <= 0.0 || value <= 0.0 then
+                                SceneDrawableBounds.NoDrawableContent
+                            else
+                                let height = value / maxValue * 220.0
+                                SceneDrawableBounds.Known
+                                    { X = 32.0 + float index * 44.0
+                                      Y = 400.0 - height
+                                      Width = 32.0
+                                      Height = height })
+                        |> union
+                        |> fun bounds -> [], bounds
                 | Translate((dx, dy), childScene) ->
                     let nested =
                         walkChildScene "translate" (multiply matrix (translation dx dy)) clip childScene
