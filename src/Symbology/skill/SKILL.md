@@ -76,6 +76,7 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   The label check reads **hard line breaks only**: the drawn count also depends on greedy wrapping,
   which needs a text measurer, and the linter is measurement-free by contract. Wrapping only *adds*
   lines, so the check under-reports and never false-positives. It is a backstop, not a layout oracle.
+<!-- skill-refs: closed-ok FS.GG.Rendering#989 — cited as the completed issue that introduced the Coverage check described here; history, not live work. -->
 - Coverage check `FS.GG.UI.Symbology.Coverage` (`src/Symbology/Coverage.fsi`): the **visual analog of
   match exhaustiveness** (#989). `Legibility` scores the tokens that ARE mapped; `Coverage` asks the
   prior question — is every gameplay element mapped **at all**. Same pure/deterministic/advisory contract:
@@ -106,6 +107,7 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   `Unreasoned`: a blank opt-out is indistinguishable from forgetting, so it is rejected, not trusted. The
   reasoned opt-outs collect in `report.OptedOut` — the audit trail that a non-render was a **decision**.
   Gate a product with `Expect.equal report.Verdict Coverage.Covered` over the game's declared element set;
+  <!-- skill-refs: closed-ok FS.GG.Rendering#990 — cited as the completed issue that established the symbol-design catalog consumed by Coverage; history, not live work. -->
   the comprehensive element↔visual catalog the check consumes is authored by `fs-gg-symbol-design` (#990).
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
