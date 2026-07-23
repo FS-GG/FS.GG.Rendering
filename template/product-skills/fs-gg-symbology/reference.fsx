@@ -8,10 +8,10 @@
 // in step with FsGgUiVersion by scripts/validate-version-coherence.fsx (rule `symbology-recipe-pin-skew`);
 // in a scaffolded product, bump these to your FsGgUiVersion when you upgrade. SkiaSharp and its native
 // assets arrive transitively behind FS.GG.UI.SkiaViewer.
-#r "nuget: FS.GG.UI.Scene, 0.18.6"
-#r "nuget: FS.GG.UI.SkiaViewer, 0.18.6"
-#r "nuget: FS.GG.UI.Symbology, 0.18.6"
-#r "nuget: FS.GG.UI.Symbology.Render, 0.18.6"
+#r "nuget: FS.GG.UI.Scene, 0.19.0"
+#r "nuget: FS.GG.UI.SkiaViewer, 0.19.0"
+#r "nuget: FS.GG.UI.Symbology, 0.19.0"
+#r "nuget: FS.GG.UI.Symbology.Render, 0.19.0"
 
 open System.IO
 open FS.GG.UI.Scene

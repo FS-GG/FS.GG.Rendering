@@ -307,6 +307,41 @@ type SceneElementKind =
     | SizedTextElement
     | GlyphRunElement
 
+/// Why a scene node cannot expose a trustworthy deterministic drawable bound.
+[<RequireQualifiedAccess>]
+type SceneBoundsUnknownReason =
+    | EmptyGeometry
+    | NonFiniteGeometry
+    | PerspectiveHorizon
+    | UnsupportedClipGeometry
+
+/// A drawable bound is either known, absent because the node contributes no pixels, or explicitly
+/// unknown. Keeping "unknown" distinct from "empty" prevents inspection from reporting false safety.
+[<RequireQualifiedAccess>]
+type SceneDrawableBounds =
+    | Known of Rect
+    | NoDrawableContent
+    | Unknown of SceneBoundsUnknownReason
+
+/// Relationship between a node's effective (transformed and clipped) drawable bound and a viewport.
+[<RequireQualifiedAccess>]
+type SceneViewportRelation =
+    | Inside
+    | PartiallyOutside
+    | Outside
+    | NotDrawable
+    | Unknown
+
+/// One deterministic authored-hierarchy row from `SceneInspection.inspect`.
+type SceneInspectionNode =
+    { Path: string
+      ParentPath: string option
+      Kind: SceneElementKind
+      Bounds: SceneDrawableBounds
+      ViewportRelation: SceneViewportRelation
+      Contributes: bool
+      Children: string list }
+
 type RenderReadbackEvidence =
     { Size: Size
       CapabilityCount: int

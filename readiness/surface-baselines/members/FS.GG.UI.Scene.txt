@@ -514,6 +514,10 @@ FS.GG.UI.Scene.Scene.translate(System.Double, System.Double, FS.GG.UI.Scene.Scen
 FS.GG.UI.Scene.Scene.vertices(FS.GG.UI.Scene.VertexMode, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Vertex>, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
 FS.GG.UI.Scene.Scene.withColorSpace(FS.GG.UI.Scene.ColorSpace, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
 FS.GG.UI.Scene.Scene.withPerspective(FS.GG.UI.Scene.PerspectiveTransform, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.SceneBoundsUnknownReason+Tags.EmptyGeometry : System.Int32
+FS.GG.UI.Scene.SceneBoundsUnknownReason+Tags.NonFiniteGeometry : System.Int32
+FS.GG.UI.Scene.SceneBoundsUnknownReason+Tags.PerspectiveHorizon : System.Int32
+FS.GG.UI.Scene.SceneBoundsUnknownReason+Tags.UnsupportedClipGeometry : System.Int32
 FS.GG.UI.Scene.SceneCodec.compareScenes(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Scene) : FS.GG.UI.Scene.SemanticComparison
 FS.GG.UI.Scene.SceneCodec.defaultExportOptions : FS.GG.UI.Scene.PackageExportOptions [get]
 FS.GG.UI.Scene.SceneCodec.defaultInspectionOptions : FS.GG.UI.Scene.PackageInspectionOptions [get]
@@ -526,6 +530,9 @@ FS.GG.UI.Scene.SceneCodec.inspectWith(FS.GG.UI.Scene.PackageInspectionOptions, S
 FS.GG.UI.Scene.SceneCodec.magicHeader : System.String [get]
 FS.GG.UI.Scene.SceneCodec.packageIdentity(System.Byte[]) : System.String
 FS.GG.UI.Scene.SceneCodec.supportedVersion : FS.GG.UI.Scene.ProtocolVersion [get]
+FS.GG.UI.Scene.SceneDrawableBounds+Tags.Known : System.Int32
+FS.GG.UI.Scene.SceneDrawableBounds+Tags.NoDrawableContent : System.Int32
+FS.GG.UI.Scene.SceneDrawableBounds+Tags.Unknown : System.Int32
 FS.GG.UI.Scene.SceneElementKind+Tags.ArcElement : System.Int32
 FS.GG.UI.Scene.SceneElementKind+Tags.ChartElement : System.Int32
 FS.GG.UI.Scene.SceneElementKind+Tags.CircleElement : System.Int32
@@ -574,6 +581,17 @@ FS.GG.UI.Scene.SceneEvidenceRequest.OutputSize : FS.GG.UI.Scene.Size [get]
 FS.GG.UI.Scene.SceneEvidenceRequest.RendererMode : System.String [get]
 FS.GG.UI.Scene.SceneEvidenceRequest.Scene : FS.GG.UI.Scene.Scene [get]
 FS.GG.UI.Scene.SceneEvidenceRequest.new(FS.GG.UI.Scene.Scene, FS.GG.UI.Scene.Size, FS.GG.UI.Scene.SceneEvidenceFormat, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.SceneInspection.contributingDescendants(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneInspectionNode>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneInspectionNode>
+FS.GG.UI.Scene.SceneInspection.inspect(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneInspectionNode>
+FS.GG.UI.Scene.SceneInspection.outsideViewport(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneInspectionNode>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneInspectionNode>
+FS.GG.UI.Scene.SceneInspectionNode.Bounds : FS.GG.UI.Scene.SceneDrawableBounds [get]
+FS.GG.UI.Scene.SceneInspectionNode.Children : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.SceneInspectionNode.Contributes : System.Boolean [get]
+FS.GG.UI.Scene.SceneInspectionNode.Kind : FS.GG.UI.Scene.SceneElementKind [get]
+FS.GG.UI.Scene.SceneInspectionNode.ParentPath : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SceneInspectionNode.Path : System.String [get]
+FS.GG.UI.Scene.SceneInspectionNode.ViewportRelation : FS.GG.UI.Scene.SceneViewportRelation [get]
+FS.GG.UI.Scene.SceneInspectionNode.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.SceneElementKind, FS.GG.UI.Scene.SceneDrawableBounds, FS.GG.UI.Scene.SceneViewportRelation, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
 FS.GG.UI.Scene.SceneNode+Tags.Arc : System.Int32
 FS.GG.UI.Scene.SceneNode+Tags.CachedSubtree : System.Int32
 FS.GG.UI.Scene.SceneNode+Tags.Chart : System.Int32
@@ -599,6 +617,11 @@ FS.GG.UI.Scene.SceneNode+Tags.Text : System.Int32
 FS.GG.UI.Scene.SceneNode+Tags.TextRun : System.Int32
 FS.GG.UI.Scene.SceneNode+Tags.Translate : System.Int32
 FS.GG.UI.Scene.SceneNode+Tags.Vertices : System.Int32
+FS.GG.UI.Scene.SceneViewportRelation+Tags.Inside : System.Int32
+FS.GG.UI.Scene.SceneViewportRelation+Tags.NotDrawable : System.Int32
+FS.GG.UI.Scene.SceneViewportRelation+Tags.Outside : System.Int32
+FS.GG.UI.Scene.SceneViewportRelation+Tags.PartiallyOutside : System.Int32
+FS.GG.UI.Scene.SceneViewportRelation+Tags.Unknown : System.Int32
 FS.GG.UI.Scene.SemanticComparison.ActualCapabilities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind> [get]
 FS.GG.UI.Scene.SemanticComparison.Diagnostics : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic> [get]
 FS.GG.UI.Scene.SemanticComparison.Equivalent : System.Boolean [get]

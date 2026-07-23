@@ -119,7 +119,13 @@ FS.GG.UI.Scene.RetainedNodeInspection
 FS.GG.UI.Scene.RetainedNodeStatus
 FS.GG.UI.Scene.RetainedNodeStatus+Tags
 FS.GG.UI.Scene.Scene
+FS.GG.UI.Scene.SceneBoundsUnknownReason
+FS.GG.UI.Scene.SceneBoundsUnknownReason+Tags
 FS.GG.UI.Scene.SceneCodec
+FS.GG.UI.Scene.SceneDrawableBounds
+FS.GG.UI.Scene.SceneDrawableBounds+Known
+FS.GG.UI.Scene.SceneDrawableBounds+Tags
+FS.GG.UI.Scene.SceneDrawableBounds+Unknown
 FS.GG.UI.Scene.SceneElementKind
 FS.GG.UI.Scene.SceneElementKind+Tags
 FS.GG.UI.Scene.SceneEvidence
@@ -129,6 +135,8 @@ FS.GG.UI.Scene.SceneEvidenceFailureClassification+Tags
 FS.GG.UI.Scene.SceneEvidenceFormat
 FS.GG.UI.Scene.SceneEvidenceFormat+Tags
 FS.GG.UI.Scene.SceneEvidenceRequest
+FS.GG.UI.Scene.SceneInspection
+FS.GG.UI.Scene.SceneInspectionNode
 FS.GG.UI.Scene.SceneNode
 FS.GG.UI.Scene.SceneNode+Arc
 FS.GG.UI.Scene.SceneNode+CachedSubtree
@@ -155,6 +163,8 @@ FS.GG.UI.Scene.SceneNode+Text
 FS.GG.UI.Scene.SceneNode+TextRun
 FS.GG.UI.Scene.SceneNode+Translate
 FS.GG.UI.Scene.SceneNode+Vertices
+FS.GG.UI.Scene.SceneViewportRelation
+FS.GG.UI.Scene.SceneViewportRelation+Tags
 FS.GG.UI.Scene.SemanticComparison
 FS.GG.UI.Scene.Shader
 FS.GG.UI.Scene.Shader+LinearGradient

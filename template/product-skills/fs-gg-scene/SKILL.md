@@ -68,6 +68,32 @@ in a test over a scene your `view` produced: a scene that renders to a blank fra
 indistinguishable from one that renders correctly to a frame you have not looked at, and the diagnostic
 list is the cheapest thing that can tell them apart.
 
+### Catch clipping and background bleed before the screenshot
+
+`SceneInspection.inspect` walks the authored hierarchy without a renderer and returns one stable
+path row per node. Each row carries its parent/children, effective bounds after translation,
+3×3 transforms and clips, and its relation to the viewport. Text, sized text, text runs and shaped
+glyph runs use their explicit deterministic metrics. Geometry that cannot be bounded is
+`SceneDrawableBounds.Unknown reason`, never a false-safe empty rectangle.
+
+```fsharp
+let viewport : Rect = { X = 0.0; Y = 0.0; Width = 320.0; Height = 180.0 }
+let rows = SceneInspection.inspect viewport hud
+
+// Product policy: no authored drawable may leave the logical canvas.
+let overflow = SceneInspection.outsideViewport rows
+Expect.isEmpty overflow "HUD content stays inside the logical viewport"
+
+// Page policy: this stable authored slot must contribute nothing behind a deep screen.
+let background = SceneInspection.contributingDescendants "/nodes/0/group/0/nodes/0" rows
+Expect.isEmpty background "the background page slot is excluded"
+```
+
+Keep page slots stable (use `Scene.empty` for an excluded slot) when a test treats a path as a
+semantic boundary. These structural probes are an earlier red signal for clipping and bleed;
+they **complement, not replace, final raster inspection**, which remains the authority for pixels,
+font realization, antialiasing and visual quality.
+
 ## Common pitfalls
 
 - **Consumer geometry records colliding with framework `Point`/`Rect`.** Scene exposes
