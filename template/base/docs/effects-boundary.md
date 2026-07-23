@@ -18,7 +18,12 @@ There are two distinct kinds of effect, on two sides of one boundary:
    `Viewer.runApp` executes those requested values against the real desktop host.
    These are the host-boundary effects, expressed as `ViewerEffect` cases:
    - `OpenWindow (title, size)` — create the native window.
-   - `ApplyWindowOptions behavior` — resize/maximize/startup-state/backend.
+   - `ApplyWindowOptions behavior` — apply a live windowed, maximized, borderless,
+     or exclusive-fullscreen transition on the persistent native window. The host
+     preserves/restores windowed geometry, repeated requests are idempotent, and
+     reports applied or rejected outcomes through `ViewerDiagnosticCategory.Window`.
+     A live backend/context switch is unsupported and is diagnosed instead of
+     partially applying the request.
    - `RenderScene scene` — draw the current `View model` scene.
    - `CaptureScreenshot path` / `CaptureImageEvidence path` — write visual evidence.
    - `EmitDiagnostic event` — record a diagnostic.
@@ -63,6 +68,12 @@ match Viewer.runApp viewerOptions generatedHost with
 `Tick`, and interprets every `ViewerEffect` your `Update` returns at the host
 boundary. For bounded evidence runs the same host is used with
 `Viewer.runAppEvidence request viewerOptions generatedHost`.
+
+Window-mode requests remain real after launch. A `DisplayChanged` update can emit
+`ApplyWindowOptions`; the shared interpreter validates it, carries the native mutation
+onto the window loop thread, and emits a `Window` diagnostic for success or failure.
+This is independent of `ApplyLogicalCanvas`, which owns presentation fitting and
+inverse pointer mapping rather than the native window state.
 
 On the game/sample-pack profiles the scaffold launches through
 `Viewer.runAppWithAudio viewerOptions (Audio.play backend) generatedHost` instead:

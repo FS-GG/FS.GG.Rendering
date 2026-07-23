@@ -2635,6 +2635,8 @@ waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi val Diagnostics.unavailableFont
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi val Diagnostics.unmappedPointerButton
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi val Diagnostics.unsupportedPlatform
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type RenderDiagnostic
+waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type RuntimeWindowBehavior
+waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type RuntimeWindowMode
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type ScreenshotFormat
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type ScreenshotRequest
 waive FS.GG.UI.SkiaViewer Host/Diagnostics.fsi type ViewerConfiguration

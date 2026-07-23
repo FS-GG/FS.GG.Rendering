@@ -36,6 +36,8 @@ type DiagnosticSeverity =
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type DiagnosticStage =
     | PlatformCheck
+    /// Runtime mutation of an already-created native window.
+    | Window
     | GlContext
     | GlRenderer
     | GlSurface
@@ -100,6 +102,22 @@ type ScreenshotRequest =
     { Destination: string
       Format: ScreenshotFormat }
 
+[<RequireQualifiedAccess>]
+/// Native presentation mode for a runtime window mutation.
+type RuntimeWindowMode =
+    | Normal
+    | Maximized
+    | Fullscreen
+    | WindowedFullscreen
+
+/// Validated native-window mutation carried onto the loop thread.
+type RuntimeWindowBehavior =
+    { Mode: RuntimeWindowMode
+      Border: Silk.NET.Windowing.WindowBorder
+      Position: (int * int) option
+      Size: (int * int) option
+      Token: string }
+
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerEffect<'msg> =
     | InitializeRenderer
@@ -107,6 +125,8 @@ type ViewerEffect<'msg> =
     | CaptureScreenshot of ScreenshotRequest
     | Shutdown
     | ReportDiagnostic of RenderDiagnostic
+    /// Apply a validated behavior to the already-created native window on its owning loop thread.
+    | ApplyWindowBehavior of RuntimeWindowBehavior
     | Dispatch of 'msg
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).

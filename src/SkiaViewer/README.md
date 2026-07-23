@@ -46,6 +46,14 @@ For an Elmish-style application, build a `GeneratedAppHost` (with `Init` / `Upda
 `MapKey` / `Tick` / `Diagnostics`) and run it with `Viewer.runApp options host`, which returns the
 same `Result<ViewerLaunchOutcome, ViewerRunFailure>`.
 
+During a persistent run, an `ApplyWindowOptions` effect performs a real native-window
+transition for windowed, maximized, borderless, or exclusive-fullscreen mode. The
+mutation runs on the window loop thread, preserves windowed geometry across fullscreen
+transitions, and treats repeated requests idempotently. Applied, rejected, and failed
+requests are observable through `ViewerDiagnosticCategory.Window`; unsupported live
+backend switches are rejected without a partial window mutation. `ApplyLogicalCanvas`
+is independent and continues to own letterboxing plus inverse pointer mapping.
+
 Portable scene packages from `FS.GG.UI.Scene.SceneCodec` can be rendered through the
 `ReferenceRendering` oracle to produce a PNG artifact plus protocol, capability, resource, and
 renderer metadata. Unsupported host conditions return `ReferenceEnvironmentLimited` rather than a

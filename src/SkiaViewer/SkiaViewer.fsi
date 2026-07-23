@@ -78,6 +78,27 @@ module Viewer =
         effects: ViewerEffect list ->
             bool
 
+    /// Issue #1022: the shared persistent interpreter with both live presentation owners exposed.
+    /// `ApplyWindowOptions` reaches `windowBehaviorSink`; `ApplyLogicalCanvas` independently reaches
+    /// `logicalCanvasSink`, preserving effect order and preventing either request from being dropped.
+    val internal interpretViewerEffectsWithRuntimeWindow:
+        audioSink: (AudioEffect list -> unit) ->
+        persistenceSink: (PersistenceEffect list -> unit) ->
+        onScene: (SceneNode -> unit) ->
+        onInputDispatch: (unit -> unit) ->
+        onDiagnostic: (ViewerDiagnosticEvent -> unit) ->
+        evidenceSink: (ViewerEffect -> unit) ->
+        windowBehaviorSink: (ViewerWindowBehaviorRequest -> unit) ->
+        logicalCanvasSink: (Size -> unit) ->
+        effects: ViewerEffect list ->
+            bool
+
+    /// Validate and translate a public runtime window request into the native loop-thread command.
+    /// Unsupported modes/backends yield no plan and explicit Window diagnostics.
+    val internal planRuntimeWindowBehavior:
+        behavior: ViewerWindowBehaviorRequest ->
+            Host.RuntimeWindowBehavior option * ViewerDiagnosticEvent list
+
     /// Issue #1014: the exact native-window -> framebuffer -> logical-product route used by the
     /// interactive loop, exposed internally so retained Controls activation can be proven headlessly.
     val internal pointerInProductSpace:

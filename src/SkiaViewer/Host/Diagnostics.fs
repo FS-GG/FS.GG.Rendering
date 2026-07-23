@@ -31,6 +31,7 @@ type DiagnosticSeverity =
 
 type DiagnosticStage =
     | PlatformCheck
+    | Window
     | GlContext
     | GlRenderer
     | GlSurface
@@ -82,12 +83,27 @@ type ScreenshotRequest =
     { Destination: string
       Format: ScreenshotFormat }
 
+[<RequireQualifiedAccess>]
+type RuntimeWindowMode =
+    | Normal
+    | Maximized
+    | Fullscreen
+    | WindowedFullscreen
+
+type RuntimeWindowBehavior =
+    { Mode: RuntimeWindowMode
+      Border: Silk.NET.Windowing.WindowBorder
+      Position: (int * int) option
+      Size: (int * int) option
+      Token: string }
+
 type ViewerEffect<'msg> =
     | InitializeRenderer
     | RenderFrame of Scene
     | CaptureScreenshot of ScreenshotRequest
     | Shutdown
     | ReportDiagnostic of RenderDiagnostic
+    | ApplyWindowBehavior of RuntimeWindowBehavior
     | Dispatch of 'msg
 
 type ViewerProgram<'model, 'msg> =
@@ -167,6 +183,7 @@ module Diagnostics =
     let private runtimeCategory diagnostic =
         match diagnostic.Stage with
         | DiagnosticStage.PlatformCheck
+        | DiagnosticStage.Window
         | DiagnosticStage.GlContext
         | DiagnosticStage.GlRenderer
         | DiagnosticStage.GlSurface

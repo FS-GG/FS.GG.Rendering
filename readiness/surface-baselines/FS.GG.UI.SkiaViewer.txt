@@ -122,12 +122,16 @@ FS.GG.UI.SkiaViewer.Host.GlStartup
 FS.GG.UI.SkiaViewer.Host.GlStartup+StartupFailureCase
 FS.GG.UI.SkiaViewer.Host.GlStartup+StartupStage
 FS.GG.UI.SkiaViewer.Host.RenderDiagnostic
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowBehavior
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode
+FS.GG.UI.SkiaViewer.Host.RuntimeWindowMode+Tags
 FS.GG.UI.SkiaViewer.Host.ScreenshotFormat
 FS.GG.UI.SkiaViewer.Host.ScreenshotFormat+Tags
 FS.GG.UI.SkiaViewer.Host.ScreenshotRequest
 FS.GG.UI.SkiaViewer.Host.Viewer
 FS.GG.UI.SkiaViewer.Host.ViewerConfiguration
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1
+FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+ApplyWindowBehavior
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+CaptureScreenshot
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Dispatch
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+RenderFrame

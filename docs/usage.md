@@ -34,7 +34,7 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 <!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.18.5`.
+The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.18.6`.
 <!-- END GENERATED: fsgg-doc:package-coordinates -->
 
 Every release **dual-publishes** the byte-identical
@@ -145,6 +145,14 @@ let options : ViewerOptions =
 `GeneratedAppHost.View` is handed no `Size` on purpose: with a `LogicalSize` there is nothing to
 derive from it, and without one your product should be resolution-independent anyway. Reach for
 `PerspectiveNode` only when you need a transform this seam does not express.
+
+For a persistent application, emitting `ApplyWindowOptions` after launch changes the live native
+window: windowed, maximized, borderless, and exclusive-fullscreen transitions are applied on the
+window loop thread. The host remembers windowed geometry for a later return, and repeated identical
+requests make no native writes. Subscribe to `ViewerDiagnosticCategory.Window` to observe applied,
+rejected, or failed transitions. Rendering-backend changes cannot be performed on an initialized
+context and are rejected without partially applying the remaining request. This native-window seam
+is separate from `ApplyLogicalCanvas`, which owns fitting, letterboxing, and inverse pointer mapping.
 
 Use this for splash content, fixed visuals, or to sanity-check your GL setup.
 

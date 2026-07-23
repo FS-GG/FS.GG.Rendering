@@ -87,6 +87,7 @@ module internal ViewerRuntime =
                 [ ViewerDiagnosticCategory.Startup
                   ViewerDiagnosticCategory.Input
                   ViewerDiagnosticCategory.EnvironmentSession
+                  ViewerDiagnosticCategory.Window
                   ViewerDiagnosticCategory.Renderer
                   ViewerDiagnosticCategory.OpenGl
                   ViewerDiagnosticCategory.Skia
@@ -189,6 +190,97 @@ module internal ViewerRuntime =
 
         applied
 
+    let private windowBehaviorDiagnostic level message =
+        { Level = level
+          Category = ViewerDiagnosticCategory.Window
+          Message = message
+          FrameIndex = None
+          Stage = Some ViewerRunBlockedStage.Window
+          Elapsed = None }
+
+    /// Turn the public request into the immutable native mutation consumed on the GL loop thread.
+    /// Unsupported choices produce diagnostics and no plan, so a request is never partially applied.
+    let internal planRuntimeWindowBehavior (behavior: ViewerWindowBehaviorRequest) =
+        let unsupported = ResizeArray<ViewerDiagnosticEvent>()
+
+        match behavior.StartupState with
+        | ViewerWindowStartupState.Minimized ->
+            unsupported.Add(
+                windowBehaviorDiagnostic
+                    ViewerDiagnosticLevel.Error
+                    "Runtime ApplyWindowOptions rejected minimized mode: a persistent visible host cannot apply it as a live display mode.")
+        | _ -> ()
+
+        match behavior.BackendPreference with
+        | Some ViewerBackendPreference.Vulkan
+        | Some ViewerBackendPreference.Software ->
+            unsupported.Add(
+                windowBehaviorDiagnostic
+                    ViewerDiagnosticLevel.Error
+                    $"Runtime ApplyWindowOptions rejected backend '{behavior.BackendPreference.Value}': an initialized OpenGL context cannot switch backend in place.")
+        | _ -> ()
+
+        match behavior.StartupPosition with
+        | Some(Coordinates(x, y)) when x < 0 || y < 0 ->
+            unsupported.Add(
+                windowBehaviorDiagnostic
+                    ViewerDiagnosticLevel.Error
+                    $"Runtime ApplyWindowOptions rejected negative window coordinates {x},{y}.")
+        | _ -> ()
+
+        match behavior.MaximizePolicy with
+        | NotMaximizable ->
+            unsupported.Add(
+                windowBehaviorDiagnostic
+                    ViewerDiagnosticLevel.Error
+                    "Runtime ApplyWindowOptions rejected NotMaximizable: the active Silk.NET host exposes no live maximize-capability mutation.")
+        | Maximizable -> ()
+
+        if unsupported.Count > 0 then
+            None, List.ofSeq unsupported
+        else
+            let mode, token =
+                match behavior.StartupState with
+                | ViewerWindowStartupState.Normal -> Host.RuntimeWindowMode.Normal, "windowed"
+                | ViewerWindowStartupState.Maximized -> Host.RuntimeWindowMode.Maximized, "maximized"
+                | ViewerWindowStartupState.Fullscreen -> Host.RuntimeWindowMode.Fullscreen, "fullscreen"
+                | ViewerWindowStartupState.WindowedFullscreen -> Host.RuntimeWindowMode.WindowedFullscreen, "borderless"
+                | ViewerWindowStartupState.Minimized -> failwith "validated above"
+
+            let border =
+                match mode, behavior.ResizePolicy with
+                | Host.RuntimeWindowMode.WindowedFullscreen, _
+                | Host.RuntimeWindowMode.Fullscreen, _ -> WindowBorder.Hidden
+                | _, Resizable -> WindowBorder.Resizable
+                | _, FixedSize -> WindowBorder.Fixed
+
+            let workArea =
+                if mode = Host.RuntimeWindowMode.WindowedFullscreen then tryResolveWorkArea () else None
+
+            let position =
+                match behavior.StartupPosition, workArea with
+                | Some(Coordinates(x, y)), _ -> Some(x, y)
+                | _, Some(origin, _) -> Some(origin.X, origin.Y)
+                | _ -> None
+
+            let size = workArea |> Option.map (fun (_, extent) -> extent.X, extent.Y)
+            let diagnostics = ResizeArray<ViewerDiagnosticEvent>()
+
+            if mode = Host.RuntimeWindowMode.WindowedFullscreen && workArea.IsNone then
+                diagnostics.Add(
+                    windowBehaviorDiagnostic
+                        ViewerDiagnosticLevel.Warning
+                        "Runtime borderless mode could not resolve a monitor work area; chrome is hidden, but work-area geometry is unchanged.")
+
+            let plan: Host.RuntimeWindowBehavior =
+                { Mode = mode
+                  Border = border
+                  Position = position
+                  Size = size
+                  Token = token }
+
+            Some plan, List.ofSeq diagnostics
+
     let windowStateDiagnostic message failureClass (window: IWindow) renderableSurface inputAvailable =
         let sizeText =
             try
@@ -229,7 +321,7 @@ module internal ViewerRuntime =
           FailureClass = failureClass
           Message = message }
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize inputVerified scriptInputs =
+    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
@@ -239,6 +331,19 @@ module internal ViewerRuntime =
         let scriptedInputs = scriptInputs |> Option.map List.toArray
         let mutable scriptedIndex = 0
         let mutable scriptedCompletionFrames = 0
+
+        let appendPendingWindowBehaviors (model, command) =
+            let commands = ResizeArray<Cmd<LegacyHostMsg<'msg>>>()
+            commands.Add command
+
+            while pendingWindowBehaviors.Count > 0 do
+                pendingWindowBehaviors.Dequeue()
+                |> Host.ViewerEffect.ApplyWindowBehavior
+                |> LegacyHostEffect
+                |> Cmd.ofMsg
+                |> commands.Add
+
+            model, Cmd.batch (List.ofSeq commands)
 
         let configuration =
             { Host.Viewer.defaultConfiguration options.Title options.InitialSize with
@@ -398,7 +503,7 @@ module internal ViewerRuntime =
             (), Cmd.none
 
         let updateLegacy msg () =
-            match msg with
+            (match msg with
             | LegacyLoaded ->
                 windowOpened := true
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
@@ -467,6 +572,7 @@ module internal ViewerRuntime =
                       // Swapchain (or Frame), not Renderer. All other stages keep Renderer.
                       Category =
                         match diagnostic.Stage with
+                        | Host.DiagnosticStage.Window -> ViewerDiagnosticCategory.Window
                         | Host.DiagnosticStage.Framebuffer -> ViewerDiagnosticCategory.Framebuffer
                         | Host.DiagnosticStage.FrameRender -> ViewerDiagnosticCategory.Frame
                         | _ -> ViewerDiagnosticCategory.Renderer
@@ -478,7 +584,8 @@ module internal ViewerRuntime =
 
                 (), Cmd.none
             | LegacyHostEffect _
-            | LegacyAppMsg _ -> (), Cmd.none
+            | LegacyAppMsg _ -> (), Cmd.none)
+            |> appendPendingWindowBehaviors
 
         let eventMapper event =
             match event with
@@ -1020,6 +1127,7 @@ module internal ViewerRuntime =
                     // Issue #400: the non-interactive generated-app path authors in the logical window and
                     // lets the present-time fit scale up — it does not advertise native resolution.
                     None
+                    (System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>())
                     (fun () -> true)
                     None
 
@@ -1124,6 +1232,7 @@ module internal ViewerRuntime =
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
         (evidenceSink: ViewerEffect -> unit)
+        (windowBehaviorSink: ViewerWindowBehaviorRequest -> unit)
         (logicalCanvasSink: Size -> unit)
         (effects: ViewerEffect list)
         : bool =
@@ -1155,6 +1264,9 @@ module internal ViewerRuntime =
                 | ApplyLogicalCanvas size ->
                     logicalCanvasSink size
                     closeRequested
+                | ApplyWindowOptions behavior ->
+                    windowBehaviorSink behavior
+                    closeRequested
                 // Issue #444: evidence is WRITTEN, not discarded. These four used to fall through to the
                 // group below and vanish — no file, no error, success. `productEvidenceSink` honors them
                 // and reports any failed write on the diagnostics channel.
@@ -1166,13 +1278,13 @@ module internal ViewerRuntime =
                     closeRequested
                 // Structurally inapplicable INSIDE a running persistent loop, and that is why they are
                 // dropped — the honesty the interactive loop's sibling comment already had and this fold
-                // did not (#444). `OpenWindow`/`ApplyWindowOptions`/`StartBoundedRun`/`CheckDesktopSession`
-                // are launch-time lifecycle steps: the loop is past them, holding the window they ask for.
+                // did not (#444). `OpenWindow`/`StartBoundedRun`/`CheckDesktopSession` are launch-time
+                // lifecycle steps: the loop is past them, holding the window they ask for. Runtime
+                // `ApplyWindowOptions` is handled above and carried to the native loop thread (#1022).
                 // `QueryNativeWindowState` and `ReadPixels` are queries, and a fold returning `bool` has no
                 // channel to answer on — a product cannot observe a reply that has nowhere to go. None of
-                // the six names a path, so none of them can silently fail to write one.
+                // the five names a path, so none of them can silently fail to write one.
                 | OpenWindow _
-                | ApplyWindowOptions _
                 | QueryNativeWindowState
                 | StartBoundedRun _
                 | CheckDesktopSession
@@ -1401,6 +1513,7 @@ module internal ViewerRuntime =
         (onInputDispatch: unit -> unit)
         (onDiagnostic: ViewerDiagnosticEvent -> unit)
         (evidenceSink: ViewerEffect -> unit)
+        (windowBehaviorSink: ViewerWindowBehaviorRequest -> unit)
         (logicalCanvasSink: Size -> unit)
         (persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) option)
         (mapOutcome: PersistenceOutcome -> 'msg option)
@@ -1410,7 +1523,7 @@ module internal ViewerRuntime =
 
         let rec interpretEffects effects =
             let closeRequested =
-                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects
+                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects
 
             // Sticky: a close is terminal, so an outcome-driven message that asked to close must
             // not be forgotten by the next batch that did not.
@@ -1465,6 +1578,16 @@ module internal ViewerRuntime =
     let private makeInputVerified (state: ProductRunState<'model>) =
         fun () -> not (requireInputDispatchVerification ()) || state.InputDispatch = "true"
 
+    let private runtimeWindowBehaviorQueue (onDiagnostic: ViewerDiagnosticEvent -> unit) =
+        let pending = System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>()
+
+        let enqueue behavior =
+            let plan, diagnostics = planRuntimeWindowBehavior behavior
+            diagnostics |> List.iter onDiagnostic
+            plan |> Option.iter pending.Enqueue
+
+        pending, enqueue
+
     let private runGeneratedApp
         options
         behavior
@@ -1503,6 +1626,7 @@ module internal ViewerRuntime =
                 let onInputDispatch = runtime.OnInputDispatch
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
+                let pendingWindowBehaviors, applyWindowBehavior = runtimeWindowBehaviorQueue onDiagnostic
 
                 let presentScene () =
                     presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
@@ -1537,6 +1661,7 @@ module internal ViewerRuntime =
                         onInputDispatch
                         onDiagnostic
                         evidenceSink
+                        applyWindowBehavior
                         applyLogicalCanvas
                         persistenceSink
                         mapOutcome
@@ -1568,7 +1693,7 @@ module internal ViewerRuntime =
 
                 let inputVerified = makeInputVerified state
 
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None inputVerified None
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
@@ -1660,6 +1785,7 @@ module internal ViewerRuntime =
                 let onInputDispatch = runtime.OnInputDispatch
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
+                let pendingWindowBehaviors, applyWindowBehavior = runtimeWindowBehaviorQueue onDiagnostic
 
                 let presentScene () =
                     presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
@@ -1702,7 +1828,7 @@ module internal ViewerRuntime =
                 let interpretEffects effects =
                     let before = state.CurrentLogicalSize
                     let closeRequested =
-                        interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink applyLogicalCanvas effects
+                        interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink applyWindowBehavior applyLogicalCanvas effects
 
                     // DisplayChanged is processed after Update. If it replaced the logical canvas,
                     // re-author the retained Controls tree in the new coordinate space immediately;
@@ -1859,7 +1985,7 @@ module internal ViewerRuntime =
 
                 let inputVerified = makeInputVerified state
 
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) inputVerified script
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
