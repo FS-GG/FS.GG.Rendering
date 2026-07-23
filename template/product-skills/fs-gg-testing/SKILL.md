@@ -366,6 +366,12 @@ report is not evidence. Do not copy framework readiness reports into the product
 - Prefer real screenshot evidence, disclose degraded capture, require reviewer
   accepted readiness, and keep manual caveats outside generated summary or
   managed section rewrites.
+- Use `--view-image <path> <width> <height>` when the product's authored logical
+  canvas differs from the deterministic 1280x720 default. Require positive integer
+  dimensions and verify the report's requested size, PNG-header actual size, and
+  `dimensions-match=true`; never treat an invalid-size fallback as evidence. Requests
+  above 8192 on either axis or 16,777,216 total pixels are a typed resource-limit
+  failure before CPU-raster allocation, not a capture attempt to retry.
 - Responsiveness evidence must validate pointer and keyboard activation
   separately from screenshot readiness and separate routing from update, render,
   and present latency.

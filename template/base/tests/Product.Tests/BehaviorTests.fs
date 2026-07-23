@@ -642,34 +642,54 @@ let behaviorTests =
                 Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
         }
 
-        // #901: the --view-image probe renders the FULL product view at logical resolution to a
-        // real, eyeballable PNG through the window-free CPU readback. It must survive a headless
-        // host (real pixels) OR report an honest UnsupportedEnvironment — never a bare failure —
-        // and it renders at 1280x720, not the 640x480 surface the windowed probes use.
-        test "view-image probe renders the full view at logical resolution to a headless PNG (#901)" {
-            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
-            let path = System.IO.Path.Combine(dir, "view-image.png")
-            let exitCode = AppRoot.EvidenceCommands.viewImage path
-            // Read every fact off disk BEFORE deleting, then assert — so a failing assertion cannot
-            // leak the temp dir (the read-then-delete-then-assert pattern the windowDiagnostics test uses).
-            let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
-            let pngExists = System.IO.File.Exists path
-            let pngHead = if pngExists then System.IO.File.ReadAllBytes path |> Array.truncate 8 else [||]
-            System.IO.Directory.Delete(dir, true)
+        // #901/#1030: the --view-image probe renders the FULL product view at an explicit logical
+        // size through the window-free CPU readback. Two non-default sizes prove the command does
+        // not merely relabel a fixed PNG, and invalid dimensions must fail instead of falling back.
+        test "view-image probe renders requested logical sizes and rejects invalid dimensions (#901/#1030)" {
             let pngSignature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
 
-            Expect.equal exitCode 0 "view-image is never a failure: real pixels on a supported host, honest unsupported otherwise"
-            Expect.stringContains metadata "command=--view-image" "records the evidence command"
-            Expect.stringContains metadata "output-size=1280x720" "renders at logical resolution, not the evidence surface size"
-            Expect.isFalse (metadata.Contains "status=failed") "the readback never reports a failure it did not observe"
+            let readBigEndianInt32 (bytes: byte array) offset =
+                (int bytes[offset] <<< 24)
+                ||| (int bytes[offset + 1] <<< 16)
+                ||| (int bytes[offset + 2] <<< 8)
+                ||| int bytes[offset + 3]
 
-            if metadata.Contains "status=ok" then
-                Expect.isTrue pngExists "a supported host writes the PNG file"
-                Expect.equal pngHead pngSignature "the readback is a decodable PNG"
-                Expect.stringContains metadata "image-decodable=True" "a supported host reports a decodable image"
-                Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
-            else
-                Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never failed) — the honest fail-closed path"
+            for width, height in [ 320, 200; 901, 507 ] do
+                let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
+                let path = System.IO.Path.Combine(dir, "view-image.png")
+                let exitCode = AppRoot.EvidenceCommands.viewImageAtSize path width height
+                let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
+                let pngExists = System.IO.File.Exists path
+                let pngBytes = if pngExists then System.IO.File.ReadAllBytes path else [||]
+                System.IO.Directory.Delete(dir, true)
+
+                Expect.equal exitCode 0 "valid view-image dimensions produce pixels or an honest unsupported result"
+                Expect.stringContains metadata "command=--view-image" "records the evidence command"
+                Expect.stringContains metadata $"requested-size={width}x{height}" "records the requested logical size"
+                Expect.stringContains metadata $"output-size={width}x{height}" "records the render surface size"
+
+                if metadata.Contains "status=ok" then
+                    Expect.isTrue pngExists "a supported host writes the PNG file"
+                    Expect.equal (pngBytes |> Array.truncate 8) pngSignature "the readback is a decodable PNG"
+                    Expect.equal (readBigEndianInt32 pngBytes 16) width "the PNG IHDR width matches the request"
+                    Expect.equal (readBigEndianInt32 pngBytes 20) height "the PNG IHDR height matches the request"
+                    Expect.stringContains metadata $"actual-size={width}x{height}" "metadata records the PNG-header size"
+                    Expect.stringContains metadata "dimensions-match=True" "metadata proves requested and actual dimensions agree"
+                    Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
+                else
+                    Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never fabricated pixels)"
+
+            let invalidPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-invalid-" + System.Guid.NewGuid().ToString("N") + ".png")
+            let invalid = AppRoot.EvidenceCommands.tryRunEvidenceCommand [ "--view-image"; invalidPath; "0"; "720" ]
+            Expect.equal invalid (Some 1) "non-positive explicit dimensions return a nonzero command result"
+            Expect.isFalse (System.IO.File.Exists invalidPath) "invalid dimensions never fall back to a default-size image"
+
+            let oversizedPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-oversized-" + System.Guid.NewGuid().ToString("N") + ".png")
+            let oversized =
+                AppRoot.EvidenceCommands.tryRunEvidenceCommand
+                    [ "--view-image"; oversizedPath; "2000000000"; "2000000000" ]
+            Expect.equal oversized (Some 1) "oversized dimensions fail before attempting a CPU raster allocation"
+            Expect.isFalse (System.IO.File.Exists oversizedPath) "an oversized request writes no image"
         }
 
         // #139 (revised for #991/#1000): the input boundary must be SURFACED where a game author first
@@ -1099,34 +1119,54 @@ let behaviorTests =
                 Expect.stringContains output "status=unsupported" "an unsupported host is reported unsupported (matching the real launch), not failed"
         }
 
-        // #901: the --view-image probe renders the FULL product view at logical resolution to a
-        // real, eyeballable PNG through the window-free CPU readback. It must survive a headless
-        // host (real pixels) OR report an honest UnsupportedEnvironment — never a bare failure —
-        // and it renders at 1280x720, not the 640x480 surface the windowed probes use.
-        test "view-image probe renders the full view at logical resolution to a headless PNG (#901)" {
-            let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
-            let path = System.IO.Path.Combine(dir, "view-image.png")
-            let exitCode = AppRoot.EvidenceCommands.viewImage path
-            // Read every fact off disk BEFORE deleting, then assert — so a failing assertion cannot
-            // leak the temp dir (the read-then-delete-then-assert pattern the windowDiagnostics test uses).
-            let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
-            let pngExists = System.IO.File.Exists path
-            let pngHead = if pngExists then System.IO.File.ReadAllBytes path |> Array.truncate 8 else [||]
-            System.IO.Directory.Delete(dir, true)
+        // #901/#1030: the --view-image probe renders the FULL product view at an explicit logical
+        // size through the window-free CPU readback. Two non-default sizes prove the command does
+        // not merely relabel a fixed PNG, and invalid dimensions must fail instead of falling back.
+        test "view-image probe renders requested logical sizes and rejects invalid dimensions (#901/#1030)" {
             let pngSignature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
 
-            Expect.equal exitCode 0 "view-image is never a failure: real pixels on a supported host, honest unsupported otherwise"
-            Expect.stringContains metadata "command=--view-image" "records the evidence command"
-            Expect.stringContains metadata "output-size=1280x720" "renders at logical resolution, not the evidence surface size"
-            Expect.isFalse (metadata.Contains "status=failed") "the readback never reports a failure it did not observe"
+            let readBigEndianInt32 (bytes: byte array) offset =
+                (int bytes[offset] <<< 24)
+                ||| (int bytes[offset + 1] <<< 16)
+                ||| (int bytes[offset + 2] <<< 8)
+                ||| int bytes[offset + 3]
 
-            if metadata.Contains "status=ok" then
-                Expect.isTrue pngExists "a supported host writes the PNG file"
-                Expect.equal pngHead pngSignature "the readback is a decodable PNG"
-                Expect.stringContains metadata "image-decodable=True" "a supported host reports a decodable image"
-                Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
-            else
-                Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never failed) — the honest fail-closed path"
+            for width, height in [ 320, 200; 901, 507 ] do
+                let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-" + System.Guid.NewGuid().ToString("N"))
+                let path = System.IO.Path.Combine(dir, "view-image.png")
+                let exitCode = AppRoot.EvidenceCommands.viewImageAtSize path width height
+                let metadata = System.IO.File.ReadAllText(path + ".metadata.txt")
+                let pngExists = System.IO.File.Exists path
+                let pngBytes = if pngExists then System.IO.File.ReadAllBytes path else [||]
+                System.IO.Directory.Delete(dir, true)
+
+                Expect.equal exitCode 0 "valid view-image dimensions produce pixels or an honest unsupported result"
+                Expect.stringContains metadata "command=--view-image" "records the evidence command"
+                Expect.stringContains metadata $"requested-size={width}x{height}" "records the requested logical size"
+                Expect.stringContains metadata $"output-size={width}x{height}" "records the render surface size"
+
+                if metadata.Contains "status=ok" then
+                    Expect.isTrue pngExists "a supported host writes the PNG file"
+                    Expect.equal (pngBytes |> Array.truncate 8) pngSignature "the readback is a decodable PNG"
+                    Expect.equal (readBigEndianInt32 pngBytes 16) width "the PNG IHDR width matches the request"
+                    Expect.equal (readBigEndianInt32 pngBytes 20) height "the PNG IHDR height matches the request"
+                    Expect.stringContains metadata $"actual-size={width}x{height}" "metadata records the PNG-header size"
+                    Expect.stringContains metadata "dimensions-match=True" "metadata proves requested and actual dimensions agree"
+                    Expect.stringContains metadata "renders-full-view=true" "the probe renders the full product view"
+                else
+                    Expect.stringContains metadata "status=unsupported" "an unsupported host reports unsupported (never fabricated pixels)"
+
+            let invalidPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-invalid-" + System.Guid.NewGuid().ToString("N") + ".png")
+            let invalid = AppRoot.EvidenceCommands.tryRunEvidenceCommand [ "--view-image"; invalidPath; "0"; "720" ]
+            Expect.equal invalid (Some 1) "non-positive explicit dimensions return a nonzero command result"
+            Expect.isFalse (System.IO.File.Exists invalidPath) "invalid dimensions never fall back to a default-size image"
+
+            let oversizedPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "view-image-oversized-" + System.Guid.NewGuid().ToString("N") + ".png")
+            let oversized =
+                AppRoot.EvidenceCommands.tryRunEvidenceCommand
+                    [ "--view-image"; oversizedPath; "2000000000"; "2000000000" ]
+            Expect.equal oversized (Some 1) "oversized dimensions fail before attempting a CPU raster allocation"
+            Expect.isFalse (System.IO.File.Exists oversizedPath) "an oversized request writes no image"
         }
     ]
 //#endif

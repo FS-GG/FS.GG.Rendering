@@ -816,13 +816,32 @@ let imageEvidence evidencePath =
 // no GPU/GL/display — so this path survives CI where the windowed one is unsupported.
 //
 // The frame IS the logical canvas (#885's LogicalSize=None contract): content the view authors
-// beyond 1280x720 is clipped 1:1 with no scale or letterbox and no runtime diagnostic. The size
-// is therefore a CONTRACT the product owns — widen it here if the product's view is authored
-// larger. `renderPng` returns a typed `UnsupportedEnvironment` failure (not a stub) when the CPU
-// rasterizer cannot run, which maps to exit 0 exactly like the other visual probes.
-let viewImage (evidencePath: string) =
+// beyond the requested size is clipped 1:1 with no scale or letterbox. The optional CLI dimensions
+// make that logical-canvas contract explicit; the one-argument form remains a deterministic 1280x720.
+// `renderPng` returns a typed `UnsupportedEnvironment` failure (not a stub) when the CPU rasterizer
+// cannot run, which maps to exit 0 exactly like the other visual probes.
+let private tryPngDimensions (pngBytes: byte array) =
+    let signature = [| 0x89uy; 0x50uy; 0x4Euy; 0x47uy; 0x0Duy; 0x0Auy; 0x1Auy; 0x0Auy |]
+
+    let readBigEndianInt32 offset =
+        (int pngBytes[offset] <<< 24)
+        ||| (int pngBytes[offset + 1] <<< 16)
+        ||| (int pngBytes[offset + 2] <<< 8)
+        ||| int pngBytes[offset + 3]
+
+    if pngBytes.Length >= 24 && pngBytes[..7] = signature then
+        Some
+            { Width = readBigEndianInt32 16
+              Height = readBigEndianInt32 20 }
+    else
+        None
+
+let private maxViewImageDimension = 8192
+let private maxViewImagePixels = 16_777_216L
+
+let private renderViewImageAtSize (evidencePath: string) width height =
     Text.installPngRasterizer ()
-    let size = { Width = 1280; Height = 720 }
+    let size = { Width = width; Height = height }
     let scene = { Nodes = [ view initialModel ] }
 
     match SceneEvidence.renderPng size scene with
@@ -834,15 +853,29 @@ let viewImage (evidencePath: string) =
 
         File.WriteAllBytes(evidencePath, pngBytes)
         let decodable = isPngFile evidencePath
+        let actualSize = tryPngDimensions pngBytes
+        let dimensionsMatch = actualSize = Some size
+        let status =
+            if decodable && dimensionsMatch then
+                GeneratedEvidenceOk
+            else
+                GeneratedEvidenceFailed
 
         writeEvidenceReport
             (evidencePath + ".metadata.txt")
-            GeneratedEvidenceOk
+            status
             "--view-image"
             [ evidenceField "mode" "headless-readback"
               evidenceField "evidence-kind" "view-image"
               evidenceField "path" evidencePath
+              evidenceField "requested-size" $"{size.Width}x{size.Height}"
               evidenceField "output-size" $"{size.Width}x{size.Height}"
+              evidenceField
+                  "actual-size"
+                  (actualSize
+                   |> Option.map (fun actual -> $"{actual.Width}x{actual.Height}")
+                   |> Option.defaultValue "unreadable")
+              evidenceField "dimensions-match" $"{dimensionsMatch}"
               evidenceField "image-decodable" $"{decodable}"
               evidenceField "png-bytes" $"{pngBytes.Length}"
               evidenceField "renders-full-view" "true"
@@ -871,11 +904,44 @@ let viewImage (evidencePath: string) =
             [ evidenceField "mode" "headless-readback"
               evidenceField "evidence-kind" evidenceKind
               evidenceField "path" evidencePath
+              evidenceField "requested-size" $"{size.Width}x{size.Height}"
               evidenceField "output-size" $"{size.Width}x{size.Height}"
+              evidenceField "actual-size" "unavailable"
+              evidenceField "dimensions-match" "false"
               evidenceField "blocked-stage" $"{failure.BlockedStage}"
               evidenceField "classification" $"{failure.Classification}"
               evidenceField "category" $"{failure.DiagnosticCategory}"
               evidenceField "message" failure.Message ]
+
+let viewImageAtSize (evidencePath: string) width height =
+    let requestedPixels = int64 width * int64 height
+
+    if width <= 0 || height <= 0 then
+        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be positive integers"
+        1
+    elif width > maxViewImageDimension
+         || height > maxViewImageDimension
+         || requestedPixels > maxViewImagePixels then
+        printfn
+            "status=failed command=--view-image diagnostic-category=resource-limit requested-size=%dx%d requested-pixels=%d max-dimension=%d max-pixels=%d diagnostics=request exceeds the safe CPU raster budget"
+            width
+            height
+            requestedPixels
+            maxViewImageDimension
+            maxViewImagePixels
+        1
+    else
+        renderViewImageAtSize evidencePath width height
+
+let viewImage (evidencePath: string) =
+    viewImageAtSize evidencePath 1280 720
+
+let private tryRunViewImage evidencePath (width: string) (height: string) =
+    match Int32.TryParse width, Int32.TryParse height with
+    | (true, parsedWidth), (true, parsedHeight) -> viewImageAtSize evidencePath parsedWidth parsedHeight
+    | _ ->
+        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be integers"
+        1
 
 let screenshotEvidence evidencePath =
     let deterministicFallback = "deterministic-scene-evidence"
@@ -1101,6 +1167,10 @@ let tryRunEvidenceCommand args =
     | "--window-options" :: _ -> Some(windowOptionsReport "readiness/window-options.txt" (parseWindowBehavior []))
     | "--image-evidence" :: path :: _ -> Some(imageEvidence path)
     | "--image-evidence" :: _ -> Some(imageEvidence "readiness/game-image-evidence.png")
+    | "--view-image" :: path :: width :: height :: _ -> Some(tryRunViewImage path width height)
+    | "--view-image" :: _path :: _width :: [] ->
+        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=provide both width and height"
+        Some 1
     | "--view-image" :: path :: _ -> Some(viewImage path)
     | "--view-image" :: _ -> Some(viewImage "readiness/view-image.png")
     | "--screenshot-evidence" :: path :: _ -> Some(screenshotEvidence path)

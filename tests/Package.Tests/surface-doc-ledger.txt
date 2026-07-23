@@ -460,7 +460,6 @@ vocabulary  ellipseEvidence
 vocabulary  fill
 vocabulary  filledEllipse
 vocabulary  fromRenderEvidence
-vocabulary  image
 vocabulary  lineTo
 vocabulary  moveTo
 vocabulary  picture

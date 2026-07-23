@@ -245,12 +245,17 @@ let governanceTests =
             Expect.stringContains source "\"--screenshot-evidence\"" "screenshot evidence records the evidence command"
             Expect.stringContains source "\"--pixel-readback-evidence\"" "pixel-readback evidence records the evidence command"
             Expect.stringContains source "Viewer.runBounded" "generated evidence commands use bounded viewer evidence entry points"
-            // #901: --view-image is the FULL-view logical-resolution readback. It must use the
-            // window-free CPU path (so it survives a headless host, unlike the windowed probes) and
-            // render at logical resolution, not the 640x480 evidence surface.
+            // #901/#1030: --view-image is the FULL-view logical-resolution readback. It must use the
+            // window-free CPU path (so it survives a headless host, unlike the windowed probes), take
+            // explicit positive dimensions, and retain 1280x720 as the deterministic default.
             Expect.stringContains source "Text.installPngRasterizer" "view-image uses the SkiaViewer-owned headless CPU rasterizer"
             Expect.stringContains source "SceneEvidence.renderPng" "view-image renders real pixels through the public Scene evidence pixel seam"
-            Expect.stringContains source "{ Width = 1280; Height = 720 }" "view-image renders at logical resolution"
+            Expect.stringContains source "viewImageAtSize evidencePath 1280 720" "view-image retains the deterministic default logical resolution"
+            Expect.stringContains source "width <= 0 || height <= 0" "view-image accepts only positive explicit dimensions"
+            Expect.stringContains source "requestedPixels > maxViewImagePixels" "view-image rejects an unsafe CPU raster before allocation"
+            Expect.stringContains source "diagnostic-category=resource-limit" "oversized requests receive a typed resource-limit diagnostic"
+            Expect.stringContains source "tryPngDimensions pngBytes" "view-image reads actual dimensions from the PNG header"
+            Expect.stringContains source "evidenceField \"dimensions-match\"" "view-image records whether requested and actual dimensions agree"
             // FR-005 (086, D6) / Governance#297: the host-lock assertion is the per-family persistent
             // interactive host BEHAVIOR — the normal launch honours PlayAudio (the audio sink reaches
             // the launcher) and Persist (the persistent host reaches the launcher). Asserted by the
