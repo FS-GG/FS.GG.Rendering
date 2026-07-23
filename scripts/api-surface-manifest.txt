@@ -1632,12 +1632,12 @@ proseat Types.fsi type SceneNode ::: | SizedText of position: (float * float) * 
 +      Scene.fsi val Scene.sizedText
 +      Scene.fsi val Scene.describe
 +      Scene.fsi val Scene.diagnostics
-+      Inspection.fsi val SceneInspection.inspect
-+      Inspection.fsi val SceneInspection.contributingDescendants
-+      Inspection.fsi val SceneInspection.outsideViewport
 +      Scene.fsi val Scene.renderReadbackEvidence
 +      Scene.fsi val Scene.circleEvidence
 +      Scene.fsi val Scene.ellipseEvidence
++      Inspection.fsi val SceneInspection.inspect
++      Inspection.fsi val SceneInspection.contributingDescendants
++      Inspection.fsi val SceneInspection.outsideViewport
 +      Evidence.fsi type SceneEvidenceFormat
 +      Evidence.fsi type SceneEvidenceFailureClassification
 +      Evidence.fsi type SceneEvidenceFailure
