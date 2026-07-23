@@ -176,6 +176,32 @@ let tests =
                     $"{fragment} effective bound reaches beyond the viewport"
         }
 
+        test "zero-width strokes preserve line hairlines and short-vertex marker footprints" {
+            let zeroStroke = Paint.stroke Colors.white 0.0
+            let line =
+                Scene.line
+                    { X = 40.0; Y = 10.0 }
+                    { X = 40.0; Y = 50.0 }
+                    zeroStroke
+                |> SceneInspection.inspect viewport
+                |> List.exactlyOne
+                |> knownBounds
+            Expect.isGreaterThan line.Width 0.0 "Skia's zero-width line still renders a hairline"
+
+            let vertices =
+                Scene.vertices
+                    VertexMode.Triangles
+                    [ { Position = { X = 60.0; Y = 20.0 }; Color = None }
+                      { Position = { X = 70.0; Y = 20.0 }; Color = None } ]
+                    zeroStroke
+                |> SceneInspection.inspect viewport
+                |> List.exactlyOne
+                |> knownBounds
+            Expect.floatClose Accuracy.high vertices.X 58.0 "short vertices retain the renderer's radius-two marker"
+            Expect.floatClose Accuracy.high vertices.Width 14.0 "both marker circles contribute even with a zero stroke"
+            Expect.floatClose Accuracy.high vertices.Height 4.0 "marker diameter is preserved"
+        }
+
         test "chart bounds union only bars that the renderer actually draws" {
             let chart = Scene.chart [ 1.0; 0.0; -2.0 ]
             let row = SceneInspection.inspect { viewport with Width = 300.0; Height = 500.0 } chart |> List.exactlyOne

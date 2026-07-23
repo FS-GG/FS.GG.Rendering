@@ -539,8 +539,10 @@ module SceneInspection =
         | _ ->
             match boundsOfPoints points with
             | SceneDrawableBounds.Known rect ->
-                let hairlineRadius = if paint.Stroke.IsSome then 0.0 else minimumRadius
-                expand hairlineRadius rect |> expandByPaint paint
+                // The renderer gives lines/points a hairline footprint and <3 vertices an explicit
+                // radius-two circle even when the supplied stroke width is zero. Preserve that primitive
+                // footprint, then compose the paint's own stroke/effect extent around it.
+                expand minimumRadius rect |> expandByPaint paint
             | value -> value
 
     let private textBounds (position: Point) text font =
