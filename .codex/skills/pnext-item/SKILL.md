@@ -353,11 +353,12 @@ scripts/fsgg-coord claim <issue>                              # 1. win the lock
 scripts/fsgg-coord widen <issue> --paths "src/Scene/**, tests/Scene/**"   # 2. then declare
 ```
 
-`widen` re-checks the touch-set against every live claim and notifies whoever it now collides with;
-it exits non-zero on a collision. Despite the name it is a **re-declare, not an append**: it sets
-`Paths:` to exactly what you pass, so it hands paths back as readily as it takes them (§3). Declare
-**narrowly and honestly** — `Paths:` is not a glob language (exact paths, directory prefixes, and a
-*trailing* `/**` or `/*`; a leading `**/` matches nothing and is refused).
+`widen` adds the supplied tokens to the declaration's normalized union, re-checks that proposed union
+against every live claim, and notifies whoever it now collides with; it exits non-zero on a collision.
+Repeated calls preserve earlier paths and are idempotent. Use the deliberately named `set-paths` when
+you mean to replace the declaration or give paths back (§3). Declare **narrowly and honestly** —
+`Paths:` is not a glob language (exact paths, directory prefixes, and a *trailing* `/**` or `/*`; a
+leading `**/` matches nothing and is refused).
 
 **And do not reserve a generated artifact** (`.github#309`). If a checked-in generator produces the file
 and a CI **regeneration gate** fails on any diff in it, nobody *authors* it — a collision there is a
@@ -421,16 +422,16 @@ discipline, managed for you. Fetch anyway: whatever cuts the worktree can only c
   Leave it undeclared: `verify-paths` asks the generators what they emit and reports it under
   `regenerated (expected):`, apart from the drift you are being asked to act on (ADR-0044, #498).
 - **And the mirror of that rule: if the work turns out NARROWER than declared, re-declare it
-  narrower — the moment you know.** `widen` sets the touch-set rather than extending it, so the same
-  command gives paths back:
+  narrower — the moment you know.** Replacement is explicit so an additive `widen` cannot silently
+  hand away paths declared by an earlier call:
 
   ```sh
-  scripts/fsgg-coord widen <issue> --paths "<what you are ACTUALLY touching>"
+  scripts/fsgg-coord set-paths <issue> --paths "<what you are ACTUALLY touching>"
   ```
 
   **A narrowing can never collide** — a subset reserves nothing its superset did not — so it will
   never cost you an `OVERLAP`, and there is never a reason to sit on one. (It can still exit
-  non-zero for a reason that is not yours: `widen` refuses to report `DISJOINT` when some *other*
+  non-zero for a reason that is not yours: `set-paths` refuses to report `DISJOINT` when some *other*
   live claim declares unmatchable tokens, because it cannot see that claim's files to check against.
   That fires in either direction and means "fix theirs", not "your narrowing was rejected" — your
   re-declaration has already landed.) Two triggers fire in practice:
@@ -445,8 +446,8 @@ discipline, managed for you. Fetch anyway: whatever cuts the worktree can only c
   `Directory.Build.props src/ .github/workflows/`, merged a **one-file** diff, and never touched
   `Directory.Build.props` (a distributed file a consumer may not edit) or `src/` (the whole source
   tree). That unused `src/` alone held #619 off the board for the life of the claim — an entire
-  source tree reserved, colliding on **one `.fsi` file** — and #618's holder had `widen` in hand the
-  whole time with no reason to think of it
+  source tree reserved, colliding on **one `.fsi` file** — and #618's holder had `set-paths` in hand
+  the whole time with no reason to think of it
   ([#601](https://github.com/FS-GG/.github/issues/601)).
 - **Heartbeat long work.** The lease is the *claim-lease* rule in the block above (§0) — a live claim
   goes stale after `FSGG_CLAIM_LEASE_MIN` without a heartbeat, and once it has EXPIRED it cannot be
@@ -775,7 +776,7 @@ are naming files in a repo whose layout you are reading from the outside, and ev
 held out of those paths for the life of the claim. So declaring a wide touch-set "to be safe" is not
 safe — it is a lock you took on somebody else's behalf. Declare what you can defend, and know that
 **the claimant is expected to correct you**: when they find the declaration over-reserves, §3 tells
-them to `widen` it narrower on the spot rather than inherit the guess
+them to `set-paths` to the narrower set on the spot rather than inherit the guess
 ([#601](https://github.com/FS-GG/.github/issues/601)).
 
 Declare it **narrowly and honestly**: exact paths, directory prefixes, and a *trailing* `/**` or
@@ -1425,7 +1426,7 @@ scripts/fsgg-coord inbox --repo <r>         # anything arrive while you were hea
 # (#266/#585). Only 0 hands you a ref.
 next="$(scripts/fsgg-coord followup pop)"; rc=$?
 case "$rc" in
-  0) echo "follow-up -> $next" ;;                 # then: /pnext-item $next (CLAIMS), then widen
+  0) echo "follow-up -> $next" ;;                 # then: /pnext-item $next (CLAIMS), then set-paths
   5) echo "queue empty -> the board" ;;           # then: /pnext-item
   *) echo "queue UNREADABLE (exit $rc) — NOT empty; fix it before you walk away"; exit "$rc" ;;
 esac
@@ -1433,11 +1434,11 @@ esac
 
 **Then do EXACTLY ONE of these — the `case` is the whole point, and it is not decoration:**
 
-| the queue had one (exit 0) | `/pnext-item <that ref>` — which CLAIMS it — **then** `scripts/fsgg-coord widen <that ref> --paths <your set>`, and believe a non-zero widen |
+| the queue had one (exit 0) | `/pnext-item <that ref>` — which CLAIMS it — **then** `scripts/fsgg-coord set-paths <that ref> --paths <your set>`, and believe a non-zero set-paths |
 | the queue was empty (exit 5) | `/pnext-item` — back to the board |
 
-**Claim FIRST, then `widen` — and that order is not interchangeable.** `/pnext-item <ref>` uses `claim`,
-and **`widen` rewrites the touch-set of a lock you must be holding, so it refuses an item you do not
+**Claim FIRST, then `set-paths` — and that order is not interchangeable.** `/pnext-item <ref>` uses `claim`,
+and **`set-paths` rewrites the touch-set of a lock you must be holding, so it refuses an item you do not
 hold** ([#706](https://github.com/FS-GG/.github/issues/706)). This step told you to `widen` *before* the
 claim for a day, and that cannot run: the refusal is a non-zero exit, and "believe a non-zero exit" then
 reads it as a phantom `OVERLAP` and drops a follow-up nothing was colliding with
@@ -1447,7 +1448,7 @@ same reason — *claim, then declare* — and this is that order.
 **The collision check is still real; it just runs one step later.** `claim` does **not** check
 disjointness — only `take` does — and your follow-up's paths are, by construction, the ones you *just*
 released, so another worker's `take` may have been handed them the moment your claim dropped. So after
-the claim, `widen` is the only collision check left. On a non-zero widen — an `OVERLAP`, or a `75` (§1
+the claim, `set-paths` is the only collision check left. On a non-zero set-paths — an `OVERLAP`, or a `75` (§1
 tells you to *expect* a budget by this point) — it is not yours to work right now: `release --status
 Ready`, `say` the holder, and **put the promise back** —
 `scripts/fsgg-coord followup add <that ref>` re-queues it at the BACK, so a blocked head does not stall
@@ -1493,11 +1494,11 @@ the four guards that stop a loop from becoming the churn §4's own box warns abo
   same disease one level down.
 - **2. `claim` does NOT check disjointness — and this loop aims straight at that.** `/pnext-item <n>`
   claims by number, and **only `take` checks a touch-set against live claims.** So the scheduler's
-  overlap guarantee is simply absent here, and your `widen` exit code is the only collision check you
+  overlap guarantee is simply absent here, and your `set-paths` exit code is the only collision check you
   get. That is not a general caution: it is pointed. Your follow-up's paths are, by construction, the
   paths you *just* released — the ones §6 above says are the likeliest in the repo to collide, because
-  another worker's `take` may have been offered them the moment your claim dropped. **So `widen` right
-  after the claim — never before it, because `widen` refuses an item you do not hold ([#706](https://github.com/FS-GG/.github/issues/706)/[#1094](https://github.com/FS-GG/.github/issues/1094))**
+  another worker's `take` may have been offered them the moment your claim dropped. **So `set-paths` right
+  after the claim — never before it, because `set-paths` refuses an item you do not hold ([#706](https://github.com/FS-GG/.github/issues/706)/[#1094](https://github.com/FS-GG/.github/issues/1094))**
   — and believe a non-zero exit: it means somebody took the files while you were merging, and the
   answer is `say`, not a second claim.
 - **3. It must terminate, and the done-stamp is the bound.** One landed item per hop. A hop that cannot

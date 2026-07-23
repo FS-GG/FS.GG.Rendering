@@ -351,9 +351,9 @@ scripts/fsgg-coord say <issue> --to <worker> 'I own src/Audio until this lands.'
 scripts/fsgg-coord inbox --repo <r>          # what is new for me, across every live claim
 ```
 
-`widen` **re-declares** a touch-set mid-flight. It sets `Paths:` to exactly what you pass — it does
-not union with what was there — then re-checks the result against every live claim **and notifies
-whoever it now collides with**:
+`widen` **extends** a touch-set mid-flight. It writes the normalized union of the current declaration
+and the supplied tokens, then re-checks the result against every live claim **and notifies whoever it
+now collides with**. Repeated calls preserve earlier paths and are idempotent:
 
 ```sh
 scripts/fsgg-coord widen <issue> --paths "src/Scene/**, src/Audio/**"   # non-zero on a collision
@@ -361,12 +361,17 @@ scripts/fsgg-coord widen <issue> --paths "src/Scene/**, src/Audio/**"   # non-ze
 
 Stop editing the shared paths until the collision is resolved.
 
-**So it narrows, too — and narrowing is the direction nobody ever uses.** Pass a smaller set and the
-reservation genuinely shrinks. A narrowing can never be refused for collision, because a subset
-collides with nothing its superset did not; the capability is already there and it is safe. The name
-says "widen" and only the *growth* direction is ever taught, so an over-reservation is **never handed
-back** — it holds for the full lease, against files nobody is touching, and the workers it locks out
-see only a dead queue ([#601](https://github.com/FS-GG/.github/issues/601)).
+**Narrow with the explicit replacement operation.** Pass the complete smaller set to `set-paths`:
+
+```sh
+scripts/fsgg-coord set-paths <issue> --paths "src/Scene/**"
+```
+
+A narrowing can never collide, because a subset reserves nothing its superset did not; the command
+still re-checks and reports the fresh verdict. Keeping replacement behind a separate name prevents a
+late additive `widen` from silently handing away every path declared earlier (#1377). Without an
+explicit narrowing, an over-reservation holds for the full lease and workers it locks out see only a
+dead queue ([#601](https://github.com/FS-GG/.github/issues/601)).
 
 **When you learn your declaration over-reserves, re-declare it smaller — at once, not at merge.**
 [pnext-item §3](../pnext-item/SKILL.md) names the two triggers that actually fire.
