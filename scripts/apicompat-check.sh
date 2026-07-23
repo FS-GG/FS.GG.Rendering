@@ -78,8 +78,8 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-FEED_URL="https://nuget.pkg.github.com/FS-GG/index.json"
-FEED_DL="https://nuget.pkg.github.com/FS-GG/download"
+FEED_URL="${APICOMPAT_TEST_FEED_URL:-https://nuget.pkg.github.com/FS-GG/index.json}"
+FEED_DL="${APICOMPAT_TEST_FEED_DL:-https://nuget.pkg.github.com/FS-GG/download}"
 FORCE_BASELINE=""
 SELF_TEST=""
 while [ $# -gt 0 ]; do
@@ -243,6 +243,16 @@ feed_user="${NUGET_FEED_USER:-${GITHUB_ACTOR:-x-access-token}}"
 
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
+
+# Baseline VERSION discovery is feed-backed, and baseline PACKAGE resolution must be too. NuGet
+# otherwise reuses a same-ID/version entry from the caller's ambient global-packages or HTTP cache,
+# even when that entry came from a temporary/local feed and differs from the configured feed. Keep
+# both caches under the gate-owned work directory so every baseline restore starts from empty,
+# resolves the configured-feed bytes, and is removed by the cleanup trap above (#1033).
+export NUGET_PACKAGES="$workdir/packages"
+export NUGET_HTTP_CACHE_PATH="$workdir/http-cache"
+mkdir -p "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
+
 cfg="$workdir/nuget.config"
 cat > "$cfg" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
@@ -331,7 +341,13 @@ check_version() {
   printf '%s.%s.%s' "${major:-0}" "${minor:-0}" "$(( ${patch:-0} + 1 ))"
 }
 
-mapfile -t projects < <(grep -rl '<IsPackable>true</IsPackable>' src --include='*.fsproj' | sort)
+# The single-project override is an internal functional-test seam: the regression drives this exact
+# script against deliberately conflicting local packages without changing the production project set.
+if [ -n "${APICOMPAT_TEST_PROJECT:-}" ]; then
+  projects=("$APICOMPAT_TEST_PROJECT")
+else
+  mapfile -t projects < <(grep -rl '<IsPackable>true</IsPackable>' src --include='*.fsproj' | sort)
+fi
 
 echo "apicompat-check — ApiCompat/Package Validation vs the org feed baseline (REQUIRED check on main)"
 echo "feed: $FEED_URL   packables: ${#projects[@]}"
