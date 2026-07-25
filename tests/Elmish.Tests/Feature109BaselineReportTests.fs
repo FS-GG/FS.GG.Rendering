@@ -8,8 +8,8 @@ module Feature109BaselineReportTests
 // thresholds are defined COUNTS-FIRST, timing-second (FR-018). None of these fields appears in any
 // deterministic golden (SC-009 — the goldens carry counts + booleans only).
 //
-// The committed baselines are regenerated with PERF_BASELINE_REGEN=1; the always-on test asserts the
-// committed evidence exists and is well-formed (so the baseline is present and honest, FR-016/017/019).
+// The scheduled baselines are regenerated with PERF_BASELINE_REGEN=1, validated here, and uploaded by
+// pending-tests.yml. They are evidence artifacts rather than source-controlled regression thresholds.
 
 open System
 open System.IO
@@ -33,6 +33,7 @@ let private baselineRoot =
 let private beforePath = Path.Combine(baselineRoot, "2026-06-12-controls-corpus-before.md")
 let private afterPath = Path.Combine(baselineRoot, "2026-06-12-controls-corpus-after.md")
 let private regen = not (String.IsNullOrEmpty(Environment.GetEnvironmentVariable "PERF_BASELINE_REGEN"))
+let private scheduled = Environment.GetEnvironmentVariable("FSGG_SCHEDULED_PENDING_TESTS") = "1"
 
 // A button grid host whose pointer hover produces no product message (the coalescing target).
 let private buttonsHost (n: int) : InteractiveAppHost<int, Msg> =
@@ -139,7 +140,7 @@ let private writeAfter (n: int) (afterMs: float) (afterAlloc: int64) (beforeMs: 
           ""
           "## Corpus scenarios (current path)"
           ""
-          "Each corpus scenario's deterministic count/boolean snapshot is its committed golden; the"
+          "Each corpus scenario's deterministic count/boolean snapshot is its scheduled artifact; the"
           "timing/allocation below is the non-gating wall-clock the report generator captured."
           "" ]
 
@@ -147,9 +148,9 @@ let private writeAfter (n: int) (afterMs: float) (afterAlloc: int64) (beforeMs: 
 
 [<Tests>]
 let tests =
-    ptestList "Feature 109 non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009)" [
+    let cases = [
 
-        test "the before/after coalescing baselines are generated and committed (FR-019 / SC-007)" {
+        test "the before/after coalescing baselines are generated as scheduled evidence (FR-019 / SC-007)" {
             if regen then
                 Directory.CreateDirectory baselineRoot |> ignore
                 let n = 300
@@ -162,8 +163,8 @@ let tests =
                 writeBefore n beforeMs beforeAlloc
                 writeAfter n afterMs afterAlloc beforeMs
 
-            Expect.isTrue (File.Exists beforePath) "the before-coalescing hover-burst baseline is committed (FR-019)"
-            Expect.isTrue (File.Exists afterPath) "the after-coalescing hover-burst baseline is committed (FR-019)"
+            Expect.isTrue (File.Exists beforePath) "the before-coalescing hover-burst baseline was generated (FR-019)"
+            Expect.isTrue (File.Exists afterPath) "the after-coalescing hover-burst baseline was generated (FR-019)"
         }
 
         test "the baselines carry timing+allocation, count-first thresholds, and an explicit MissingCounters line (FR-015/018)" {
@@ -193,3 +194,10 @@ let tests =
                     Expect.isFalse (text.Contains "FrameDuration") (sprintf "%s carries no FrameDuration field" (Path.GetFileName f))
         }
     ]
+
+    if scheduled then
+        testSequenced
+        <| testList "Feature 109 scheduled non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009)" cases
+    else
+        // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-10-26
+        ptestList "Feature 109 timing/allocation baselines — runs in pending-tests.yml scheduled cadence" cases

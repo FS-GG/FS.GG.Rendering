@@ -68,17 +68,15 @@ let typedControlContractTests =
                 Expect.stringContains combined required $"schema diagnostics expose {required}")
         }
 
-        // R4 SKIP (Principle V, FR-009): depends on `specs/028-agent-validation-framework/readiness/
-        // fsi-session.txt`, an old-repo feature-workflow/readiness artifact deliberately NOT imported.
-        // Pending until a current FSI transcript fixture is added. Not weakened, not marked passing.
-        ptest "FSI transcript expectations cover typed front doors and custom escape hatch" {
-            let transcriptPath = "specs/028-agent-validation-framework/readiness/fsi-session.txt"
-            Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, transcriptPath))) "draft FSI transcript exists"
+        test "current FSI transcript covers typed front doors and custom escape hatch" {
+            let transcriptPath = "scripts/controls-prelude.fsx"
+            Expect.isTrue (File.Exists(Path.Combine(repositoryRoot, transcriptPath))) "current Controls FSI transcript exists"
 
             let transcript = read transcriptPath
 
             [ "StandardControlKind"
               "StandardEventKind"
+              "StandardAttributeName"
               "Button"
               "DataGrid"
               "LineChart"

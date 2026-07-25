@@ -14,6 +14,7 @@
     <Compile Include="SpecLifecycleTests.fs" />
     <Compile Include="TemplateConsumesPinnedApiTests.fs" />
     <Compile Include="RepositoryRootSingleFinderTests.fs" />
+    <Compile Include="PendingTestOwnershipTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

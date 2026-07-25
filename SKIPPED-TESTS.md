@@ -3,47 +3,40 @@
 Per constitution Principles V & VI and FR-011, a test that cannot pass for an **out-of-scope**
 or **host-capability** reason is recorded as an explicit skip with written rationale — **never
 marked passing, never weakened, never a vacuous green**. This ledger is the single index of every
-such skip. Two kinds live here:
+such skip. Three kinds live here:
 
 - **Unconditional skips** — always skipped in this repo until an import/artifact lands. Fixed count.
+- **Scheduled-only skips** — excluded from the PR tier but active in a named evidence cadence.
 - **Host-capability skips** — skipped only when the host lacks a capability (offscreen raster, a
   live window/GL context, a Linux desktop session); they run and **fail loudly** on a capable host.
   Conditional, so no fixed count.
 
-## 1. Performance corpus / baselines → Stage R5 (harness) — unconditional
+## 1. Performance corpus / baselines → scheduled evidence cadence
 
 - `tests/Elmish.Tests/Feature109CorpusTests.fs` — "performance-scenario corpus, deterministic
-  metrics goldens" (`ptestList`).
+  metrics goldens" (`ptestList` in the default tier, active on the scheduled tier).
 - `tests/Elmish.Tests/Feature109BaselineReportTests.fs` — "non-golden timing/allocation
-  baselines" (`ptestList`).
+  baselines" (`ptestList` in the default tier, active on the scheduled tier).
 
-**Why**: these depend on committed perf-golden fixtures, `docs/reports/_baselines/**`, and
-byte-identical perf determinism — exactly the performance-evidence tier that R3 routed to the
-**Stage R5 rendering/perf harness**. They are not product-behavior unit tests and were not
-part of the import-now behavior surface. The honest-FrameMetrics fidelity tests in the same
-feature (not golden-dependent) remain **active and passing**.
+**Owner/review**: `FS-GG/FS.GG.Rendering#1047`, review by **2026-10-26**. The
+`pending-tests.yml` Monday cadence sets `FSGG_SCHEDULED_PENDING_TESTS=1`, regenerates the
+environment-dependent evidence in an isolated job, asserts both suites, and uploads the result.
+The default PR tier keeps them pending so wall-clock/allocation evidence cannot become a merge gate.
+`PendingTestOwnershipTests` fails once the review date expires.
 
-**Un-skip when**: the R5 harness lands with its committed perf goldens and a deterministic
-perf-capture path.
+**Review when**: the scheduled evidence should be promoted, split, or retired. A capable
+faithful-vsync runner may justify a separate host cadence, but is not required for this
+deterministic offscreen/count evidence.
 
-**R5 status (2026-06-14)**: the harness T3 perf tier now provides a **headless offscreen
-render-throughput** mode (`harness perf --mode throughput`) with real per-frame timing +
-percentiles, honestly scoped (`offscreen-render-throughput`, **not** vsync-faithful). The
-**faithful vsync/present-timing** perf path these Feature109 tests want still depends on the
-live present loop (blocked headlessly in this container — see
-`docs/harness/capability-baseline.md`), so they remain `ptest`/`ptestList` until that tier
-lands.
+## 2. Documentation-fence whole-corpus drive → compilation-model decision
 
-## 2. FSI transcript fixture → excluded old-repo artifact — unconditional — 1
+- `tests/DocFences.Tests/DriveTests.fs` — full published-skill fence compilation (`ptestList`).
 
-- `tests/Controls.Tests/TypedControlContractTests.fs` — "FSI transcript expectations …"
-  (`ptest`).
+**Owner/review**: `FS-GG/FS.GG.Rendering#1050`, review by **2026-10-26**. That decision owns
+the choice between per-document concatenation, a shared product prelude, and an explicitly
+self-contained corpus. `PendingTestOwnershipTests` fails once the review date expires.
 
-**Why**: it asserts on `specs/028-agent-validation-framework/readiness/fsi-session.txt`, an
-old-repo feature-workflow/readiness artifact deliberately **not imported** (FR-009). The rest
-of that test file (typed front-door contract checks) is active and passing.
-
-**Un-skip when**: a current FSI transcript fixture is added under this repo.
+**Un-skip when**: Rendering#1050 chooses and implements the compilation model.
 
 ## 3. Parity samples not imported → Stage R4 — unconditional — 4
 
