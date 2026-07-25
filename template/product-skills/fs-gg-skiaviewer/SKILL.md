@@ -178,6 +178,28 @@ type ViewerPointerInput =
 `ViewerPointerPhaseKind` and `ViewerPointerButtonKind` are `RequireQualifiedAccess`, so match them
 qualified (`ViewerPointerPhaseKind.Pressed`, `ViewerPointerButtonKind.Primary`).
 
+### Frame-paced continuous pointer input
+
+Use `Viewer.runInteractiveViewerWithPointerPacing` when aim/hover must see continuous movement without
+letting a high-polling-rate mouse drive one model update and repaint per native sample. Start from
+`Viewer.defaultPointerPacingOptions`, set `ContinuousPolicy =
+ViewerContinuousPointerPolicy.CoalesceLatestPerFrame`, and replace `OnMetrics` with your production
+metrics sink. The host keeps the newest `Moved` sample at each presentation boundary; press, release,
+wheel, exit, and the click sequence derived from them remain ordered and lossless.
+
+Assert the receipt, not just visual smoothness: under 1,000 synthetic moves across 60 presented-frame
+boundaries, `RawSamplesReceived` totals 1,000, `FoldedSamplesApplied` is at most 60, and the product's
+move-driven update count is at most 60. Also inject one press/release/click sequence and require it
+exactly once. Record `CoalescedSamples`, `ModelUpdates`, `PresentedFrames`, `RepaintCause`, and
+`FullRenderFallbacks`; a launch that replaces `OnMetrics` with `ignore` is not performance evidence.
+Use `runInteractiveViewerWithPointerPacingAndAudio` (and its window-behavior sibling) when the same
+launch also owns audio or explicit window behavior—do not wrap the native host and duplicate logical
+coordinate inversion.
+
+Keep the synthetic stream separate from normal movement+aiming evidence. The normal case must report
+p95 below 16.67 ms, p99 below 25 ms, and no sustained catch-up; the 1,000-sample case proves bounded
+folding, not ordinary-play latency.
+
 ### Logical canvas: the viewer owns both directions
 
 For an interactive fixed-resolution product, seed `ViewerOptions.LogicalSize`. To switch at

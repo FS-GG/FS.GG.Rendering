@@ -112,3 +112,11 @@
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
+
+# FS.GG.Rendering#1040 adds the retained pointer-pacing API and teaches it in the shipped product
+# skills in the same change. Delete these five lines when the package release carrying #1040 is pinned.
+template/product-skills/fs-gg-elmish/SKILL.md::Viewer.enqueueInputWithPointerPolicy
+template/product-skills/fs-gg-elmish/SKILL.md::Viewer.runInteractiveViewerWithPointerPacing
+template/product-skills/fs-gg-skiaviewer/SKILL.md::Viewer.runInteractiveViewerWithPointerPacing
+template/product-skills/fs-gg-skiaviewer/SKILL.md::Viewer.defaultPointerPacingOptions
+template/product-skills/fs-gg-testing/SKILL.md::Viewer.enqueueInputWithPointerPolicy

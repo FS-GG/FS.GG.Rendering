@@ -153,6 +153,14 @@ module Viewer =
         payload: string ->
         queue: ViewerInputQueue ->
             ViewerInputEnvelope * ViewerInputQueue
+    /// Enqueue using the same explicit continuous-pointer policy as the interactive live host.
+    val enqueueInputWithPointerPolicy:
+        policy: ViewerContinuousPointerPolicy ->
+        receivedAt: DateTimeOffset ->
+        inputKind: ViewerResponsivenessInputKind ->
+        payload: string ->
+        queue: ViewerInputQueue ->
+            ViewerInputEnvelope * ViewerInputQueue
     /// Drain pending inputs for one frame/update pass.
     val drainInputQueue: batchId: int64 -> drainReason: string -> queue: ViewerInputQueue -> ViewerFrameDrain * ViewerInputQueue
     /// Build the dirty-state decision from product/runtime/size/theme change facts.
@@ -315,6 +323,22 @@ module Viewer =
     val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// As `runInteractiveViewer` with an explicit window behavior.
     val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Default retained pointer policy: latest `Moved` sample per presented-frame boundary; discrete
+    /// events are lossless. The callback is `ignore`.
+    val defaultPointerPacingOptions: ViewerPointerPacingOptions
+    /// `runInteractiveViewer` with an explicit continuous-pointer policy and live pacing counters.
+    val runInteractiveViewerWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Pointer pacing plus explicit window behavior on the same retained launch path.
+    val runInteractiveViewerWithWindowBehaviorAndPointerPacing:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Launch `host` in the live persistent viewer, deliver a bounded script through the viewer input queue,
     /// wait for the final scripted response to present, then close.
     val runInteractiveViewerScript:
@@ -326,6 +350,12 @@ module Viewer =
     val runInteractiveViewerScriptWithWindowBehavior:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
+        script: ViewerScriptInput list ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerScriptWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
         script: ViewerScriptInput list ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
@@ -344,6 +374,21 @@ module Viewer =
     val runInteractiveViewerWithWindowBehaviorAndAudio:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Pointer pacing and audio share the same interactive launch fold.
+    val runInteractiveViewerWithPointerPacingAndAudio:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Full interactive launch: explicit window behavior, pointer pacing metrics, and audio.
+    val runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        pointerPacing: ViewerPointerPacingOptions ->
         audioSink: (AudioEffect list -> unit) ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>

@@ -105,6 +105,9 @@ module internal ViewerRuntime =
     let enqueueInput receivedAt inputKind payload queue =
         ViewerInputQueueOps.enqueueInput receivedAt inputKind payload queue
 
+    let enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue =
+        ViewerInputQueueOps.enqueueInputWithPolicy policy receivedAt inputKind payload queue
+
     let drainInputQueue batchId drainReason queue =
         ViewerInputQueueOps.drainInputQueue batchId drainReason queue
 
@@ -321,7 +324,7 @@ module internal ViewerRuntime =
           FailureClass = failureClass
           Message = message }
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs =
+    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs pointerPacing getModelUpdateCount =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
@@ -331,6 +334,12 @@ module internal ViewerRuntime =
         let scriptedInputs = scriptInputs |> Option.map List.toArray
         let mutable scriptedIndex = 0
         let mutable scriptedCompletionFrames = 0
+        let mutable presentedFrames = 0L
+
+        let continuousPolicy =
+            pointerPacing
+            |> Option.map _.ContinuousPolicy
+            |> Option.defaultValue ViewerContinuousPointerPolicy.CoalesceLatestPerFrame
 
         let appendPendingWindowBehaviors (model, command) =
             let commands = ResizeArray<Cmd<LegacyHostMsg<'msg>>>()
@@ -381,7 +390,8 @@ module internal ViewerRuntime =
             | ViewerPointerPhaseKind.Exited -> "pointer-exited"
 
         let enqueueQueuedInput kind payloadText payload =
-            let envelope, nextQueue = enqueueInput DateTimeOffset.UtcNow kind payloadText inputQueue
+            let envelope, nextQueue =
+                enqueueInputWithPointerPolicy continuousPolicy DateTimeOffset.UtcNow kind payloadText inputQueue
             inputQueue <- nextQueue
             queuedPayloads[envelope.SequenceId] <- payload
             RenderLagTrace.emit
@@ -446,6 +456,13 @@ module internal ViewerRuntime =
                 false
             else
                 let drainStarted = DateTimeOffset.UtcNow
+                let modelUpdatesBefore = getModelUpdateCount ()
+                let rawPointerSamples =
+                    queuedPayloads.Values
+                    |> Seq.filter (function
+                        | QueuedLegacyPointer _ -> true
+                        | _ -> false)
+                    |> Seq.length
                 let drain, nextQueue = drainInputQueue nextDrainBatchId "frame-update" inputQueue
                 inputQueue <- nextQueue
                 nextDrainBatchId <- nextDrainBatchId + 1L
@@ -460,11 +477,12 @@ module internal ViewerRuntime =
                     |> List.partition (fun envelope -> envelope.PriorityLane = Discrete)
 
                 let orderedInputs =
-                    discreteInputs
-                    @ (match drain.CoalescedPointer with
-                       | Some pointer -> [ pointer ]
-                       | None -> [])
-                    @ deferredInputs
+                    (discreteInputs
+                     @ (match drain.CoalescedPointer with
+                        | Some pointer -> [ pointer ]
+                        | None -> [])
+                     @ deferredInputs)
+                    |> List.sortBy _.SequenceId
 
                 let closeRequested =
                     orderedInputs
@@ -492,6 +510,41 @@ module internal ViewerRuntime =
                         false
 
                 queuedPayloads.Clear()
+                match pointerPacing with
+                | Some pacing when rawPointerSamples > 0 ->
+                    let appliedPointerEnvelopes =
+                        orderedInputs
+                        |> List.filter (fun envelope ->
+                            match envelope.InputKind with
+                            | ViewerResponsivenessInputKind.PointerMove
+                            | ViewerResponsivenessInputKind.PointerDiscrete
+                            | ViewerResponsivenessInputKind.Wheel
+                            | ViewerResponsivenessInputKind.Lifecycle -> true
+                            | _ -> false)
+
+                    let hasContinuous =
+                        appliedPointerEnvelopes
+                        |> List.exists (fun envelope -> envelope.InputKind = ViewerResponsivenessInputKind.PointerMove)
+
+                    let hasDiscrete =
+                        appliedPointerEnvelopes
+                        |> List.exists (fun envelope -> envelope.InputKind <> ViewerResponsivenessInputKind.PointerMove)
+
+                    let cause =
+                        match hasContinuous, hasDiscrete with
+                        | true, true -> ViewerPointerRepaintCause.MixedPointer
+                        | true, false -> ViewerPointerRepaintCause.ContinuousPointer
+                        | _ -> ViewerPointerRepaintCause.DiscretePointer
+
+                    pacing.OnMetrics
+                        { RawSamplesReceived = rawPointerSamples
+                          FoldedSamplesApplied = appliedPointerEnvelopes.Length
+                          CoalescedSamples = drain.CoalescedMovementCount
+                          ModelUpdates = getModelUpdateCount () - modelUpdatesBefore
+                          PresentedFrames = presentedFrames
+                          RepaintCause = cause
+                          FullRenderFallbacks = 0 }
+                | _ -> ()
                 RenderLagTrace.emit
                     "input-drain-end"
                     [ "batch", string drain.BatchId
@@ -519,6 +572,7 @@ module internal ViewerRuntime =
                     (), Cmd.none
             | LegacyRenderTick _ ->
                 framePresented := true
+                presentedFrames <- presentedFrames + 1L
                 match scriptedInputs with
                 | Some inputs when scriptedIndex >= inputs.Length ->
                     scriptedCompletionFrames <- scriptedCompletionFrames + 1
@@ -1130,6 +1184,8 @@ module internal ViewerRuntime =
                     (System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>())
                     (fun () -> true)
                     None
+                    None
+                    (fun () -> 0)
 
     /// Issue #444: the evidence effects a product emits from a persistent loop. The highest-severity
     /// member of the silent-no-op family (#416) — `CaptureScreenshot`, `CaptureImageEvidence`,
@@ -1693,7 +1749,7 @@ module internal ViewerRuntime =
 
                 let inputVerified = makeInputVerified state
 
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None None (fun () -> 0)
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
@@ -1748,6 +1804,7 @@ module internal ViewerRuntime =
         behavior
         script
         (audioSink: AudioEffect list -> unit)
+        pointerPacing
         (host: InteractiveViewerHost<'model,'msg>)
         =
         match validateLaunch options behavior with
@@ -1839,6 +1896,7 @@ module internal ViewerRuntime =
                     closeRequested
 
                 let initialCloseRequested = interpretEffects initEffects
+                let mutable modelUpdateCount = 0
 
                 let dispatchHostMsg msg =
                     let msgText = (sprintf "%A" msg).Replace(" ", "_").Replace(Environment.NewLine, "_")
@@ -1858,6 +1916,7 @@ module internal ViewerRuntime =
 
                         false
                     | Some(next, effects) ->
+                        modelUpdateCount <- modelUpdateCount + 1
                         updateSw.Stop()
                         RenderLagTrace.emit
                             "model-update-end"
@@ -1984,27 +2043,45 @@ module internal ViewerRuntime =
                         state.CurrentScene <- safeView state.CurrentModel
 
                 let inputVerified = makeInputVerified state
-
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script pointerPacing (fun () -> modelUpdateCount)
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore None host
 
     let runInteractiveViewer options host =
         runInteractiveViewerWithWindowBehavior options defaultWindowBehavior host
 
+    let defaultPointerPacingOptions =
+        { ContinuousPolicy = ViewerContinuousPointerPolicy.CoalesceLatestPerFrame
+          OnMetrics = ignore }
+
+    let runInteractiveViewerWithPointerPacing options pointerPacing host =
+        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore (Some pointerPacing) host
+
+    let runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host =
+        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore (Some pointerPacing) host
+
     let runInteractiveViewerScriptWithWindowBehavior options behavior script host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) ignore host
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) ignore None host
 
     let runInteractiveViewerScript options script host =
         runInteractiveViewerScriptWithWindowBehavior options defaultWindowBehavior script host
 
+    let runInteractiveViewerScriptWithPointerPacing options pointerPacing script host =
+        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior (Some script) ignore (Some pointerPacing) host
+
     let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink (host: InteractiveViewerHost<'model,'msg>) =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink None host
 
     let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
+
+    let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
+        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink (Some pointerPacing) host
+
+    let runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
+        runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options defaultWindowBehavior pointerPacing audioSink host
 
     // Issue #438: the scripted siblings of the two above. #429 threaded an `audioSink` through
     // `runInteractiveViewerWithWindowBehaviorCore`, but the SCRIPTED entry points kept handing it
@@ -2019,7 +2096,7 @@ module internal ViewerRuntime =
         audioSink
         (host: InteractiveViewerHost<'model,'msg>)
         =
-        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink host
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink None host
 
     let runInteractiveViewerScriptWithAudio options script audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerScriptWithWindowBehaviorAndAudio options defaultWindowBehavior script audioSink host

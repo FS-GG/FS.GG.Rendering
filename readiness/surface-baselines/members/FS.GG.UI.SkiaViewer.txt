@@ -600,6 +600,7 @@ FS.GG.UI.SkiaViewer.Viewer.classifyWindowState(FS.GG.UI.SkiaViewer.ViewerWindowS
 FS.GG.UI.SkiaViewer.Viewer.createResponsivenessRunId() : System.String
 FS.GG.UI.SkiaViewer.Viewer.damageDecisionToken(FS.GG.UI.SkiaViewer.ViewerDamageDecision) : System.String
 FS.GG.UI.SkiaViewer.Viewer.defaultDiagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
+FS.GG.UI.SkiaViewer.Viewer.defaultPointerPacingOptions : FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions [get]
 FS.GG.UI.SkiaViewer.Viewer.defaultResponsivenessBudget : FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget [get]
 FS.GG.UI.SkiaViewer.Viewer.defaultResponsivenessOptions : FS.GG.UI.SkiaViewer.ViewerResponsivenessOptions [get]
 FS.GG.UI.SkiaViewer.Viewer.defaultWindowBehavior : FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest [get]
@@ -609,6 +610,7 @@ FS.GG.UI.SkiaViewer.Viewer.dirtyStateRequiresRecompose(FS.GG.UI.SkiaViewer.Viewe
 FS.GG.UI.SkiaViewer.Viewer.drainInputQueue(System.Int64, System.String, FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerFrameDrain, FS.GG.UI.SkiaViewer.ViewerInputQueue>
 FS.GG.UI.SkiaViewer.Viewer.emptyInputQueue : FS.GG.UI.SkiaViewer.ViewerInputQueue [get]
 FS.GG.UI.SkiaViewer.Viewer.enqueueInput(System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, System.String, FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerInputEnvelope, FS.GG.UI.SkiaViewer.ViewerInputQueue>
+FS.GG.UI.SkiaViewer.Viewer.enqueueInputWithPointerPolicy(FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy, System.DateTimeOffset, FS.GG.UI.SkiaViewer.ViewerResponsivenessInputKind, System.String, FS.GG.UI.SkiaViewer.ViewerInputQueue) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerInputEnvelope, FS.GG.UI.SkiaViewer.ViewerInputQueue>
 FS.GG.UI.SkiaViewer.Viewer.failureFromDiagnostic(FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent) : FS.GG.UI.SkiaViewer.ViewerRunFailure
 FS.GG.UI.SkiaViewer.Viewer.init(FS.GG.UI.SkiaViewer.ViewerOptions) : System.Tuple<FS.GG.UI.SkiaViewer.ViewerModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
 FS.GG.UI.SkiaViewer.Viewer.initEvidenceWorkflow(FS.GG.UI.SkiaViewer.ScreenshotEvidenceRequest) : System.Tuple<FS.GG.UI.SkiaViewer.EvidenceWorkflowModel, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.EvidenceWorkflowEffect>>
@@ -637,11 +639,16 @@ FS.GG.UI.SkiaViewer.Viewer.runForFrames(System.Int32, FS.GG.UI.SkiaViewer.Viewer
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewer<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScript<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithPointerPacing<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithPointerPacing<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithPointerPacingAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehaviorAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacing<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runUntilFirstFrame(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.Scene.SceneNode) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerRunEvidence, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runtimeCapability() : FS.GG.UI.SkiaViewer.ViewerRuntimeCapability
 FS.GG.UI.SkiaViewer.Viewer.shouldCaptureDiagnostic(FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions, FS.GG.UI.SkiaViewer.ViewerDiagnosticEvent) : System.Boolean
@@ -666,6 +673,8 @@ FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.FrameworkRequestedClose : System.Int3
 FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.HostSystemClose : System.Int32
 FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.TimeoutClose : System.Int32
 FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags.UserClose : System.Int32
+FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy+Tags.CoalesceLatestPerFrame : System.Int32
+FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy+Tags.Immediate : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.DamageScopedAccepted : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.EnvironmentLimited : System.Int32
 FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags.FullRedraw : System.Int32
@@ -892,11 +901,25 @@ FS.GG.UI.SkiaViewer.ViewerPointerInput.Phase : FS.GG.UI.SkiaViewer.ViewerPointer
 FS.GG.UI.SkiaViewer.ViewerPointerInput.X : System.Double [get]
 FS.GG.UI.SkiaViewer.ViewerPointerInput.Y : System.Double [get]
 FS.GG.UI.SkiaViewer.ViewerPointerInput.new(FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind, System.Double, System.Double, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.ViewerPointerButtonKind>, System.Double, System.Double)
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.CoalescedSamples : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.FoldedSamplesApplied : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.FullRenderFallbacks : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.ModelUpdates : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.PresentedFrames : System.Int64 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.RawSamplesReceived : System.Int32 [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.RepaintCause : FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics.new(System.Int32, System.Int32, System.Int32, System.Int32, System.Int64, FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause, System.Int32)
+FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions.ContinuousPolicy : FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions.OnMetrics : Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions.new(FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics, Microsoft.FSharp.Core.Unit>)
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Exited : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Moved : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Pressed : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Released : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags.Wheel : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause+Tags.ContinuousPointer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause+Tags.DiscretePointer : System.Int32
+FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause+Tags.MixedPointer : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPresentMode+Tags.DirectToSwapchain : System.Int32
 FS.GG.UI.SkiaViewer.ViewerPresentMode+Tags.OffscreenReadback : System.Int32
 FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget.InputReceiptMax : System.TimeSpan [get]

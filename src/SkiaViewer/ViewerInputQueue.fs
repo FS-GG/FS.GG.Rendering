@@ -34,14 +34,19 @@ module internal ViewerInputQueueOps =
         | ViewerResponsivenessInputKind.KeyUp
         | ViewerResponsivenessInputKind.Wheel -> Discrete
 
-    let enqueueInput receivedAt inputKind payload queue =
+    let enqueueInputWithPolicy continuousPolicy receivedAt inputKind payload queue =
         let depthBefore = inputQueueDepth queue
+
+        let priority =
+            match continuousPolicy, inputKind with
+            | ViewerContinuousPointerPolicy.Immediate, ViewerResponsivenessInputKind.PointerMove -> Discrete
+            | _ -> priorityForInput inputKind
 
         let envelope =
             { SequenceId = queue.NextSequenceId
               ReceivedAt = receivedAt
               InputKind = inputKind
-              PriorityLane = priorityForInput inputKind
+              PriorityLane = priority
               ReceiptQueueDepth = depthBefore
               Payload = payload }
 
@@ -65,6 +70,9 @@ module internal ViewerInputQueueOps =
         { next with
             NextSequenceId = queue.NextSequenceId + 1L
             MaxObservedDepth = max queue.MaxObservedDepth observedDepth }
+
+    let enqueueInput receivedAt inputKind payload queue =
+        enqueueInputWithPolicy ViewerContinuousPointerPolicy.CoalesceLatestPerFrame receivedAt inputKind payload queue
 
     let drainInputQueue batchId drainReason queue =
         let before = inputQueueDepth queue
