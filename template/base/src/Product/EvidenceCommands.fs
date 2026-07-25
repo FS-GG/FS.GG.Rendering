@@ -1175,6 +1175,8 @@ let tryRunEvidenceCommand args =
     | "--view-image" :: _ -> Some(viewImage "readiness/view-image.png")
     | "--screenshot-evidence" :: path :: _ -> Some(screenshotEvidence path)
     | "--screenshot-evidence" :: _ -> Some(screenshotEvidence "readiness/game-screenshot-evidence.txt")
+    | "--performance-evidence" :: path :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence path)
+    | "--performance-evidence" :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence "readiness/performance-evidence.json")
     | "--pixel-readback-evidence" :: path :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" path)
     | "--pixel-readback-evidence" :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" "readiness/game-pixel-readback-evidence.txt")
     | _ -> None

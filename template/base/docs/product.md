@@ -197,7 +197,8 @@ worked idiom.
 log-writer target — it records progress to `readiness/logs/Dev.txt` and does
 **not** surface real compiler or test feedback. The authoritative compile/test
 path is `./fake.sh build -t Test` / `./fake.sh build -t Verify` (which run
-`dotnet test`), or `dotnet build` / `dotnet test` directly; use those when you
+`dotnet test` plus Release expected-workload performance evidence), or
+`dotnet build` / `dotnet test` directly; use those when you
 need actual compiler errors and test results. `Dev` **does not compile** the
 product, so a green `Dev` is not evidence that the product builds. (This is the
 same wording the build entry's `help` banner surfaces — see
@@ -208,7 +209,7 @@ same wording the build entry's `help` banner surfaces — see
 `EvidenceAudit`) **before** it runs the tests, and that audit **hard-blocks until
 the feature is complete** (every task `[X]`). So `Verify` cannot give you a green
 test run while tasks are still open — it will fail at the audit step first. The
-**mid-implementation green-test path is `./fake.sh build -t Test`** (the first real
+**mid-implementation test-and-performance path is `./fake.sh build -t Test`** (the first real
 compile, audit-free): use `-t Test` while iterating, and `-t Verify` only when the
 feature is complete and you want the full merge-gate. The documented
 `Dev → Test → Verify` order does **not** mean the audit is a separate later step —

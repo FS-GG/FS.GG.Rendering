@@ -380,6 +380,14 @@ report is not evidence. Do not copy framework readiness reports into the product
 
 ## Package Boundary
 
+## Expected-workload performance gate
+
+On `game`, declare idle, movement+aiming, firing, effects/fog, and maximum-content cases in
+`PerformanceEvidence.expectedWorkloads`. Run `./fake.sh build -t PerformanceEvidence`; `Verify`
+repeats it in Release and fails closed on the active normal-play budget. Keep stress and throughput
+rows separately classified, and link blocking debt when intentionally committing an over-budget
+baseline. This is bounded headless update + scene-route evidence, not live compositor or vsync proof.
+
 Keep assertion and evidence logic pure over value records; let your test runner
 and `Verify` target perform the actual file and process I/O.
 

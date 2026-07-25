@@ -255,6 +255,14 @@ copy framework readiness reports into the product.
 
 ## Package Boundary
 
+## Expected-workload performance
+
+For game performance evidence, count the production `view` result rather than a synthetic scene.
+`./fake.sh build -t PerformanceEvidence` records nodes by layer alongside p50/p95/p99 and fails the
+normal-play node/timing target. A 64x64 world with thousands of repeated fog or minimap nodes should
+fail before row-run/static-subtree remediation and pass afterward. The command is bounded headless
+scene-route evidence; live compositor and swapchain proof remain host work.
+
 Scene must not reference Elmish, the viewer host, layout, or widgets. Keep host
 wiring in `fs-gg-skiaviewer` and control authoring in `fs-gg-ui-widgets`.
 

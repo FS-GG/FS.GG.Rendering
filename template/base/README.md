@@ -81,16 +81,17 @@ governed sequence:
 > records progress to `readiness/logs/Dev.txt` — it does **not** give you real
 > compiler or test feedback. The authoritative compile/test path is
 > `./fake.sh build -t Test` / `./fake.sh build -t Verify` (which run
-> `dotnet test`); use those (or `dotnet build` / `dotnet test` directly) when you
+> `dotnet test`; `Test`/`Verify` also run Release expected-workload performance evidence);
+> use those (or `dotnet build` / `dotnet test` directly) when you
 > need actual compiler errors and test results. Do not infer "it compiles" from a
 > green `Dev`.
 
 > **`Verify` embeds the merge-gate audit; `-t Test` is the mid-implementation
-> green-test path.** `./fake.sh build -t Verify` runs `EvidenceGraph` then
+> test-and-performance path.** `./fake.sh build -t Verify` runs `EvidenceGraph` then
 > `EvidenceAudit` **before** the tests, and that audit **hard-blocks until every
 > task is `[X]`** — so `Verify` cannot produce a green test run while the feature is
 > still in progress. Use `./fake.sh build -t Test` (the first real compile,
-> audit-free) for a green test run mid-implementation, and `-t Verify` for the full
+> audit-free) for tests plus the fail-closed normal-play performance gate, and `-t Verify` for the full
 > merge-gate once the feature is complete.
 
 Run Spec Kit evidence checks through the generated FSI script:

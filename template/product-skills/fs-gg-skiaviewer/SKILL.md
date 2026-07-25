@@ -328,6 +328,13 @@ Record window-visibility and screenshot evidence under this product's
 
 ## Package Boundary
 
+## Performance evidence boundary
+
+Run `./fake.sh build -t PerformanceEvidence` for the generated product's expected-workload gate.
+It measures the real update + scene route in Release and records zero bounded presents honestly.
+Do not relabel that bounded headless result as live compositor, swapchain/vblank, or vsync evidence.
+Use a separate live-compositor workload on an actual presentation host for those claims.
+
 Keep window, render, and screenshot I/O inside the `Viewer.runApp` interpreter.
 Your `update` and `View` stay pure; never perform host I/O inside them.
 
