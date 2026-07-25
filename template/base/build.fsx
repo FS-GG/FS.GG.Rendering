@@ -244,6 +244,10 @@ let private singleSrcProject () =
     | [||] -> failwith "No src/<project> directory found in the product root."
     | many -> failwithf "Expected exactly one src/<project>; found %d." many.Length
 
+let runPerformanceEvidence () =
+    let project = singleSrcProject ()
+    runProcess "PerformanceEvidence" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-evidence readiness/performance-evidence.json" project)
+
 let run target =
     match target with
     | "Dev"
@@ -264,7 +268,10 @@ let run target =
     | "Build" -> runProcess "Build" "dotnet" (sprintf "build \"%s\"" (singleRootSolution ()))
     | "Run" -> runProcess "Run" "dotnet" (sprintf "run --project src/%s" (singleSrcProject ()))
     | "Pack" -> runProcess "Pack" "dotnet" (sprintf "pack \"%s\" -c Release" (singleRootSolution ()))
-    | "Test" -> runGeneratedTests ()
+    | "Test" ->
+        runGeneratedTests ()
+        runPerformanceEvidence ()
+    | "PerformanceEvidence" -> runPerformanceEvidence ()
     | "Verify" ->
         // ADR-0056 §Decision.2: fail closed BEFORE any other audit work — a lifecycle-less sdd tree
         // is not a completable feature, so the merge-gate audit must not even begin.
@@ -278,6 +285,7 @@ let run target =
         if auditExitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" auditExitCode
         runGeneratedTests ()
+        runPerformanceEvidence ()
         writeLog "Verify"
         printfn "Verify completed for generated product"
     | other ->
@@ -294,7 +302,7 @@ let helpBanner =
     + "  Invoke: ./build.sh <verb> | dotnet fsi build.fsx -t <Target> | ./fake.sh -t <Target>\n\n"
     + "  Dev      A completion-marker / log-writer only — writes readiness/logs/Dev.txt. It does not compile\n"
     + "           your code; a green Dev is not evidence the build passes. Use Test for real feedback.\n"
-    + "  Test     The first real compile + `dotnet test` (audit-free). Use this mid-implementation.\n"
+    + "  Test     The first real compile: `dotnet test` + Release expected-workload performance evidence (audit-free).\n"
     + "  Verify   Runs the merge-gate audit (EvidenceGraph -> EvidenceAudit) first — the audit hard-blocks\n"
     + "           until every task is [X] — then runs the tests. Use only when the feature is complete.\n"
     + "           The first Verify on a fresh scaffold fails until you generate the headless evidence baseline\n"

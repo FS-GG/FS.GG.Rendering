@@ -56,6 +56,20 @@ module Perf =
           ConfidenceDecision: string
           Reasons: string list }
 
+    type ExpectedWorkloadClass =
+        | NormalPlay
+        | Stress
+        | ThroughputWorkload
+        | LiveCompositor
+
+    type ExpectedWorkloadBudget =
+        { P95Ms: float
+          P99Ms: float
+          MaximumSceneNodes: int
+          AllowSustainedCatchUp: bool }
+
+    type ExpectedWorkloadVerdict = { Passed: bool; Reasons: string list }
+
     type MeasurementPolicy =
         | ReadbackFree
         | ReadbackOutsideMeasurement
@@ -163,3 +177,15 @@ module Perf =
         fullRedraw: SampleDistribution option ->
         damageScoped: SampleDistribution option ->
             ScenarioTimingDecision
+
+    /// Fail-closed expected-workload semantics shared by scaffold evidence. Only normal-play
+    /// workloads are gates; other classes remain explicitly classified evidence.
+    val evaluateExpectedWorkload:
+        classification: ExpectedWorkloadClass ->
+        budget: ExpectedWorkloadBudget option ->
+        blockingDebt: string option ->
+        p95Ms: float ->
+        p99Ms: float ->
+        catchUpFrames: int ->
+        sceneNodes: int ->
+            ExpectedWorkloadVerdict
