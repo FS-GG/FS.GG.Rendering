@@ -196,6 +196,8 @@ FS.GG.UI.SkiaViewer.ViewerBackendPreference
 FS.GG.UI.SkiaViewer.ViewerBackendPreference+Tags
 FS.GG.UI.SkiaViewer.ViewerCloseReason
 FS.GG.UI.SkiaViewer.ViewerCloseReason+Tags
+FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy
+FS.GG.UI.SkiaViewer.ViewerContinuousPointerPolicy+Tags
 FS.GG.UI.SkiaViewer.ViewerDamageDecision
 FS.GG.UI.SkiaViewer.ViewerDamageDecision+Tags
 FS.GG.UI.SkiaViewer.ViewerDesktopSessionDiagnostic
@@ -262,8 +264,12 @@ FS.GG.UI.SkiaViewer.ViewerOptions
 FS.GG.UI.SkiaViewer.ViewerPointerButtonKind
 FS.GG.UI.SkiaViewer.ViewerPointerButtonKind+Tags
 FS.GG.UI.SkiaViewer.ViewerPointerInput
+FS.GG.UI.SkiaViewer.ViewerPointerPacingMetrics
+FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind
 FS.GG.UI.SkiaViewer.ViewerPointerPhaseKind+Tags
+FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause
+FS.GG.UI.SkiaViewer.ViewerPointerRepaintCause+Tags
 FS.GG.UI.SkiaViewer.ViewerPresentMode
 FS.GG.UI.SkiaViewer.ViewerPresentMode+Tags
 FS.GG.UI.SkiaViewer.ViewerResponsivenessBudget

@@ -730,6 +730,36 @@ type ViewerPointerInput =
       DeltaX: float
       DeltaY: float }
 
+[<RequireQualifiedAccess>]
+/// Policy for replaceable continuous pointer samples at the interactive viewer boundary.
+/// Discrete pointer input is lossless under every policy.
+type ViewerContinuousPointerPolicy =
+    | CoalesceLatestPerFrame
+    | Immediate
+
+[<RequireQualifiedAccess>]
+/// Why the interactive viewer requested the repaint associated with a pointer pacing receipt.
+type ViewerPointerRepaintCause =
+    | ContinuousPointer
+    | DiscretePointer
+    | MixedPointer
+
+/// One live pointer-pacing receipt. Counts describe the input batch drained at a presentation
+/// boundary; `PresentedFrames` is the cumulative number of frames presented by this launch.
+type ViewerPointerPacingMetrics =
+    { RawSamplesReceived: int
+      FoldedSamplesApplied: int
+      CoalescedSamples: int
+      ModelUpdates: int
+      PresentedFrames: int64
+      RepaintCause: ViewerPointerRepaintCause
+      FullRenderFallbacks: int }
+
+/// Public policy and observability seam for continuous pointer input.
+type ViewerPointerPacingOptions =
+    { ContinuousPolicy: ViewerContinuousPointerPolicy
+      OnMetrics: ViewerPointerPacingMetrics -> unit }
+
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`,
 /// so the existing `GeneratedAppHost` construction sites and the durable

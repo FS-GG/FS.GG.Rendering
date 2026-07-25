@@ -12,7 +12,7 @@
     {
       "id": "fs-gg-elmish",
       "scope": "product",
-      "sha256": "2d48e721837c571cd13e073c54787350cb59c4bd5e3cf9cc928c3d2c96303a23",
+      "sha256": "de59b399f60ce62b34f128c17b39f69c1c9783f0be790de201051de74ebbb9c1",
       "resolvablePath": ".agents/skills/fs-gg-elmish/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-elmish/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "f7f54a12caeff7a5dccb87d9518f15630f988db823fdd69d55d5a81a07a480c1",
+      "sha256": "b30a532df9d7a51ad35576bb7efc397b24cc420c43bb4c964fc20a646fcc4225",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"
@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "de26e3fd27ed61b85c490a47a029a23250abb3990ff92b99bdf8eb40666dc396",
+      "sha256": "2061791908bfb2da1a3e537fff66b18fa760b0a50f6946fef68b4dcdc00dc812",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"

@@ -388,6 +388,15 @@ repeats it in Release and fails closed on the active normal-play budget. Keep st
 rows separately classified, and link blocking debt when intentionally committing an over-budget
 baseline. This is bounded headless update + scene-route evidence, not live compositor or vsync proof.
 
+For continuous pointer pacing, keep two distinct gates. First, distribute 1,000 `PointerMove`
+samples across 60 `Viewer.drainInputQueue` presentation boundaries using
+`Viewer.enqueueInputWithPointerPolicy ViewerContinuousPointerPolicy.CoalesceLatestPerFrame`; require
+at most 60 applied moves and inject one press/release/click sequence that arrives exactly once in
+order. Second, measure normal movement+aiming separately and require p95 below 16.67 ms, p99 below
+25 ms, and zero sustained catch-up. Production evidence comes from a non-ignored
+`ViewerPointerPacingOptions.OnMetrics` sink and records raw/folded/coalesced samples, model updates,
+presented frames, repaint causes, and full-render fallbacks.
+
 Keep assertion and evidence logic pure over value records; let your test runner
 and `Verify` target perform the actual file and process I/O.
 

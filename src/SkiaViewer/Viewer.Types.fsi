@@ -827,6 +827,34 @@ type ViewerPointerInput =
       DeltaX: float
       DeltaY: float }
 
+[<RequireQualifiedAccess>]
+/// Policy for replaceable continuous pointer samples at the interactive viewer boundary.
+/// `CoalesceLatestPerFrame` retains only the newest `Moved` sample for each presentation boundary;
+/// `Immediate` applies every move. Press/release/wheel/exit remain lossless in both modes.
+type ViewerContinuousPointerPolicy =
+    | CoalesceLatestPerFrame
+    | Immediate
+
+[<RequireQualifiedAccess>]
+type ViewerPointerRepaintCause =
+    | ContinuousPointer
+    | DiscretePointer
+    | MixedPointer
+
+/// Live counters emitted after each pointer-input batch is drained.
+type ViewerPointerPacingMetrics =
+    { RawSamplesReceived: int
+      FoldedSamplesApplied: int
+      CoalescedSamples: int
+      ModelUpdates: int
+      PresentedFrames: int64
+      RepaintCause: ViewerPointerRepaintCause
+      FullRenderFallbacks: int }
+
+type ViewerPointerPacingOptions =
+    { ContinuousPolicy: ViewerContinuousPointerPolicy
+      OnMetrics: ViewerPointerPacingMetrics -> unit }
+
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`.
 /// Controls-free lower runner; the Control/PointerInteraction-aware `InteractiveAppHost`

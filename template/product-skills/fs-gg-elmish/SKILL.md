@@ -189,6 +189,15 @@ Expect.equal finalModel.Count 1 "the scripted click incremented the counter"
 final model) — reach for it when you are asserting frame/coalescing behaviour, and
 for `runScriptToModel` whenever you care what the interaction *did*.
 
+For a scene/game host that maps raw `ViewerPointerInput`, test high-rate movement at the retained
+viewer boundary with `Viewer.enqueueInputWithPointerPolicy` and launch production through
+`Viewer.runInteractiveViewerWithPointerPacing`. A useful acceptance fixture distributes 1,000
+`PointerMove` samples over 60 drains and requires at most 60 folded move updates, while a
+`PointerDiscrete` press/release/click sequence is observed exactly once and in order. In production,
+wire `ViewerPointerPacingOptions.OnMetrics`; totals for raw samples, folded samples, coalesced samples,
+model updates, presented frames, repaint causes, and full-render fallbacks are the evidence. An
+`OnMetrics = ignore` launch deliberately supplies no pacing evidence.
+
 ### When the model cannot answer, ask what the script REQUESTED
 
 `Perf.runScriptToEffects` is the same fold once more, returning the final model, **every
