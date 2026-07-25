@@ -6,7 +6,7 @@ open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
-open Elmish
+open global.Elmish
 open FS.GG.UI.DesignSystem
 
 /// Public contract type exposed by this FS.GG.UI package.

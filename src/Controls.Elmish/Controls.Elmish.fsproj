@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="FrameLoopLifecycle.fs" />
     <Compile Include="ControlsElmish.fsi" />
     <Compile Include="ControlsElmish.fs" />
     <Compile Include="Authoring.fsi" />

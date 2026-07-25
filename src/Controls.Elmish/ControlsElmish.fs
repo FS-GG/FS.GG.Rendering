@@ -6,7 +6,7 @@ open FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
-open Elmish
+open global.Elmish
 open FS.GG.UI.DesignSystem
 
 module private RenderLagTrace =
@@ -1647,41 +1647,6 @@ module ControlsElmish =
         | Space -> Some(InsertText " ")
         | _ -> None
 
-    /// Feature 182 (US6): the interactive frame-loop's mutable interpreter-edge state, promoted from
-    /// ~12 ad-hoc `ref` cells to one typed record. This is NOT the Elmish `Model` (constitution IV) —
-    /// `update` stays pure and I/O stays at the edge; mutation is retained per-frame (constitution III).
-    /// Internal (`type private`): absent from `ControlsElmish.fsi` and the public surface.
-    type private FrameLoopState<'model, 'msg> =
-        { /// Durable pointer coordination state (hover/press/4px-fold), threaded across samples.
-          mutable PointerState: PointerState
-          /// Feature 092/094: the single focus identity (stable `RetainedId`); the E1 text seam,
-          /// `routeFocusedKey` activation/navigation, and Tab-traversal all read/write this.
-          mutable Focused: RetainedId option
-          /// The retained render structure (wired keyed reconciler, 067) — the single home of
-          /// per-control UI state; mutation confined to the interpreter edge (constitution III).
-          mutable Retained: RetainedRender<'msg> option
-          /// Feature 110: the most recent retained frame's `ControlRenderResult` so pointer routing
-          /// reads the frame's bindings WITHOUT a fresh `Control.renderTree`.
-          mutable LastRender: ControlRenderResult<'msg> option
-          /// Feature 111: cached un-stamped `host.View size model` so a model-unchanged repaint reuses
-          /// it and SKIPS `host.View` (byte-identical; keyed by model reference identity).
-          mutable LastView: (Size * 'model * Control<'msg>) option // mutable: hot path / per frame
-          /// Feature 112: the previous frame's runtime model, so a model-unchanged repaint re-stamps
-          /// only the identities that changed hover/focus/press (the targeted stamp).
-          mutable LastRuntimeModel: ControlRuntimeModel option // mutable: hot path / per frame
-          /// Feature 175: persistent per-`scroll-viewer` offset, surviving across frames.
-          mutable ScrollOffsets: Map<ControlId, ScrollState> // mutable: hot path / per frame
-          /// Diff/first-frame diagnostics surfaced once through the host's stderr channel (de-duped).
-          mutable SurfacedDiagnostics: Set<string>
-          /// Feature 108 (US4): per-frame pointer-move coalescing accumulator (latest wins), processed
-          /// at the next sample boundary; discrete interactions are never coalesced.
-          mutable PendingMove: ViewerPointerInput option // mutable: hot path / per frame
-          mutable PointerSampleCount: int // mutable: hot path / per frame
-          /// Feature 108 (US2): the most recent retained-step work record for `OnFrameMetrics`.
-          mutable LastWorkReduction: WorkReductionRecord option
-          /// Feature 120 (US1): most recent backend present timing (paint-walk, flush+swap), live-only.
-          mutable LastPresentTiming: TimeSpan * TimeSpan } // mutable: hot path / per frame
-
     // Feature 122 (FR-005): the shared interactive-host body, parameterized by the terminal viewer
     // launcher so `runInteractiveApp` (default windowed-fullscreen) and
     // `runInteractiveAppWithWindowBehavior` (explicit window behavior) reuse the EXACT same
@@ -1691,30 +1656,14 @@ module ControlsElmish =
         (options: ViewerOptions)
         (host: InteractiveAppHost<'model, 'msg>)
         =
-        // Feature 182 (US6): the ~12 ad-hoc `ref` cells above are promoted to one typed
-        // `FrameLoopState` record (per-field docs on the type). Same heap-mutable-cell semantics as the
-        // refs (`loopState.X <- …` ≡ `x.Value <- …`), so frame-loop behavior is byte-identical; this is
-        // interpreter-edge state, NOT the Elmish `Model` (constitution IV).
-        let loopState: FrameLoopState<'model, 'msg> =
-            { PointerState = Pointer.init ()
-              Focused = None
-              Retained = None
-              LastRender = None
-              LastView = None
-              LastRuntimeModel = None
-              ScrollOffsets = Map.empty
-              SurfacedDiagnostics = Set.empty
-              PendingMove = None
-              PointerSampleCount = 0
-              LastWorkReduction = None
-              LastPresentTiming = (TimeSpan.Zero, TimeSpan.Zero) }
+        // Feature 182/issue #1046: the interpreter-edge cells and their pointer/diagnostic transitions
+        // live behind the typed `FrameLoopLifecycle` seam. This remains runtime state, NOT the Elmish
+        // `Model` (constitution IV).
+        let loopState = FrameLoopLifecycle.create<'model, 'msg> ()
 
         let surface (diags: ControlDiagnostic list) =
             for d in diags do
-                let key = sprintf "%A|%A|%s" d.Code d.ControlId d.Message
-
-                if not (Set.contains key loopState.SurfacedDiagnostics) then
-                    loopState.SurfacedDiagnostics <- Set.add key loopState.SurfacedDiagnostics
+                if FrameLoopLifecycle.surfaceDiagnosticOnce d loopState then
                     eprintfn "[ControlDiagnostic %A] %s" d.Severity d.Message
 
         // Feature 096 (R1): assemble a READ-ONLY `ControlRuntimeModel` from the host's live pointer +
@@ -2010,7 +1959,7 @@ module ControlsElmish =
         // already-derived interactions and therefore needs the stricter `isSupersedablePosition` rule;
         // `Coalescing.Parity` in Elmish.Tests gates the two against each other.
         let mapPointer (input: ViewerPointerInput) (size: Size) (model: 'model) : 'msg list =
-            loopState.PointerSampleCount <- loopState.PointerSampleCount + 1
+            FrameLoopLifecycle.recordPointerSample loopState
 
             match pointerPhaseOf input.Phase with
             | phase when Coalescing.isCoalescibleSample phase ->
@@ -2021,18 +1970,16 @@ module ControlsElmish =
                 let sw = System.Diagnostics.Stopwatch.StartNew()
 
                 let flushedMsgs, flushedFallbacks =
-                    match loopState.PendingMove with
+                    match FrameLoopLifecycle.takePendingMove loopState with
                     | Some prev ->
-                        loopState.PendingMove <- None
                         processInput prev size model
                     | None -> [], 0
 
                 sw.Stop()
-                loopState.PendingMove <- Some input
+                FrameLoopLifecycle.deferMove input loopState
 
                 // This Moved sample carries into the next frame's count; report the flushed move now.
-                let samples = loopState.PointerSampleCount - 1
-                loopState.PointerSampleCount <- 1
+                let samples = FrameLoopLifecycle.completeMoveBoundary loopState
 
                 if samples > 0 then
                     emitFrameMetrics FrameCause.PointerMove samples 1 (not (List.isEmpty flushedMsgs)) flushedFallbacks sw.Elapsed
@@ -2046,16 +1993,14 @@ module ControlsElmish =
                 let sw = System.Diagnostics.Stopwatch.StartNew()
 
                 let moveFlushed, (moveMsgs, moveFallbacks) =
-                    match loopState.PendingMove with
+                    match FrameLoopLifecycle.takePendingMove loopState with
                     | Some prev ->
-                        loopState.PendingMove <- None
                         true, processInput prev size model
                     | None -> false, ([], 0)
 
                 let discreteMsgs, discreteFallbacks = processInput input size model
                 sw.Stop()
-                let samples = loopState.PointerSampleCount
-                loopState.PointerSampleCount <- 0
+                let samples = FrameLoopLifecycle.completeDiscreteBoundary loopState
                 let msgs = moveMsgs @ discreteMsgs
                 let fallbackCount = moveFallbacks + discreteFallbacks
                 emitFrameMetrics FrameCause.PointerDiscrete samples (if moveFlushed then 1 else 0) (not (List.isEmpty msgs)) fallbackCount sw.Elapsed

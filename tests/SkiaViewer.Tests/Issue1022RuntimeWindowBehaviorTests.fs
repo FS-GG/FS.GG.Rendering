@@ -115,6 +115,24 @@ let runtimeWindowBehaviorTests =
                     $"{requested} has no validation failure")
         }
 
+        test "runtime lifecycle planning is deterministic behind the injected work-area seam" {
+            let origin = Vector2D<int>(12, 34)
+            let extent = Vector2D<int>(1600, 900)
+            let resolveWorkArea () = Some(origin, extent)
+
+            let plan, diagnostics =
+                ViewerRuntimeLifecycle.planRuntimeWindowBehavior
+                    resolveWorkArea
+                    (request ViewerWindowStartupState.WindowedFullscreen)
+
+            Expect.isSome plan "the lifecycle planner returns one immutable native transition"
+            Expect.equal plan.Value.Mode RuntimeWindowMode.WindowedFullscreen "the requested lifecycle mode is preserved"
+            Expect.equal plan.Value.Border WindowBorder.Hidden "borderless mode owns the native border decision"
+            Expect.equal plan.Value.Position (Some(origin.X, origin.Y)) "the injected work-area origin is captured"
+            Expect.equal plan.Value.Size (Some(extent.X, extent.Y)) "the injected work-area extent is captured"
+            Expect.isEmpty diagnostics "a resolved work area needs no degradation diagnostic"
+        }
+
         test "native transitions are idempotent and restore prior windowed geometry" {
             let fake = initialFake ()
             let controller = GlHost.createRuntimeWindowController { Width = 1280; Height = 720 }

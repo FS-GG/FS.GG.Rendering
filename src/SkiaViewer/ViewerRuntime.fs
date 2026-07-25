@@ -155,134 +155,13 @@ module internal ViewerRuntime =
     let runtimeCapability () =
         HostCapability.runtimeCapability ()
 
-    let applyWindowBehaviorToOptions behavior (windowOptions: WindowOptions) =
-        let mutable applied = windowOptions
-
-        match behavior.ResizePolicy with
-        | Resizable -> applied.WindowBorder <- WindowBorder.Resizable
-        | FixedSize -> applied.WindowBorder <- WindowBorder.Fixed
-
-        match behavior.StartupState with
-        | ViewerWindowStartupState.Normal -> applied.WindowState <- WindowState.Normal
-        | ViewerWindowStartupState.Maximized -> applied.WindowState <- WindowState.Maximized
-        | ViewerWindowStartupState.Minimized -> applied.WindowState <- WindowState.Minimized
-        | ViewerWindowStartupState.Fullscreen -> applied.WindowState <- WindowState.Fullscreen
-        | ViewerWindowStartupState.WindowedFullscreen ->
-            // Borderless coverage of the monitor work area: hidden chrome + work-area
-            // geometry, no exclusive-mode resolution change (WindowState stays Normal).
-            applied.WindowBorder <- WindowBorder.Hidden
-            applied.WindowState <- WindowState.Normal
-
-            match tryResolveWorkArea () with
-            | Some(origin, size) ->
-                applied.Position <- origin
-                applied.Size <- size
-            | None -> ()
-
-        match behavior.StartupPosition with
-        | Some(Coordinates(x, y)) -> applied.Position <- Vector2D<int>(x, y)
-        | Some Centered
-        | None -> ()
-
-        match behavior.BackendPreference with
-        | Some ViewerBackendPreference.DefaultBackend
-        | Some ViewerBackendPreference.OpenGL
-        | None -> applied.API <- GraphicsAPI.Default
-        | Some ViewerBackendPreference.Vulkan
-        | Some ViewerBackendPreference.Software -> ()
-
-        applied
-
-    let private windowBehaviorDiagnostic level message =
-        { Level = level
-          Category = ViewerDiagnosticCategory.Window
-          Message = message
-          FrameIndex = None
-          Stage = Some ViewerRunBlockedStage.Window
-          Elapsed = None }
+    let applyWindowBehaviorToOptions behavior windowOptions =
+        ViewerRuntimeLifecycle.applyWindowBehaviorToOptions tryResolveWorkArea behavior windowOptions
 
     /// Turn the public request into the immutable native mutation consumed on the GL loop thread.
     /// Unsupported choices produce diagnostics and no plan, so a request is never partially applied.
-    let internal planRuntimeWindowBehavior (behavior: ViewerWindowBehaviorRequest) =
-        let unsupported = ResizeArray<ViewerDiagnosticEvent>()
-
-        match behavior.StartupState with
-        | ViewerWindowStartupState.Minimized ->
-            unsupported.Add(
-                windowBehaviorDiagnostic
-                    ViewerDiagnosticLevel.Error
-                    "Runtime ApplyWindowOptions rejected minimized mode: a persistent visible host cannot apply it as a live display mode.")
-        | _ -> ()
-
-        match behavior.BackendPreference with
-        | Some ViewerBackendPreference.Vulkan
-        | Some ViewerBackendPreference.Software ->
-            unsupported.Add(
-                windowBehaviorDiagnostic
-                    ViewerDiagnosticLevel.Error
-                    $"Runtime ApplyWindowOptions rejected backend '{behavior.BackendPreference.Value}': an initialized OpenGL context cannot switch backend in place.")
-        | _ -> ()
-
-        match behavior.StartupPosition with
-        | Some(Coordinates(x, y)) when x < 0 || y < 0 ->
-            unsupported.Add(
-                windowBehaviorDiagnostic
-                    ViewerDiagnosticLevel.Error
-                    $"Runtime ApplyWindowOptions rejected negative window coordinates {x},{y}.")
-        | _ -> ()
-
-        match behavior.MaximizePolicy with
-        | NotMaximizable ->
-            unsupported.Add(
-                windowBehaviorDiagnostic
-                    ViewerDiagnosticLevel.Error
-                    "Runtime ApplyWindowOptions rejected NotMaximizable: the active Silk.NET host exposes no live maximize-capability mutation.")
-        | Maximizable -> ()
-
-        if unsupported.Count > 0 then
-            None, List.ofSeq unsupported
-        else
-            let mode, token =
-                match behavior.StartupState with
-                | ViewerWindowStartupState.Normal -> Host.RuntimeWindowMode.Normal, "windowed"
-                | ViewerWindowStartupState.Maximized -> Host.RuntimeWindowMode.Maximized, "maximized"
-                | ViewerWindowStartupState.Fullscreen -> Host.RuntimeWindowMode.Fullscreen, "fullscreen"
-                | ViewerWindowStartupState.WindowedFullscreen -> Host.RuntimeWindowMode.WindowedFullscreen, "borderless"
-                | ViewerWindowStartupState.Minimized -> failwith "validated above"
-
-            let border =
-                match mode, behavior.ResizePolicy with
-                | Host.RuntimeWindowMode.WindowedFullscreen, _
-                | Host.RuntimeWindowMode.Fullscreen, _ -> WindowBorder.Hidden
-                | _, Resizable -> WindowBorder.Resizable
-                | _, FixedSize -> WindowBorder.Fixed
-
-            let workArea =
-                if mode = Host.RuntimeWindowMode.WindowedFullscreen then tryResolveWorkArea () else None
-
-            let position =
-                match behavior.StartupPosition, workArea with
-                | Some(Coordinates(x, y)), _ -> Some(x, y)
-                | _, Some(origin, _) -> Some(origin.X, origin.Y)
-                | _ -> None
-
-            let size = workArea |> Option.map (fun (_, extent) -> extent.X, extent.Y)
-            let diagnostics = ResizeArray<ViewerDiagnosticEvent>()
-
-            if mode = Host.RuntimeWindowMode.WindowedFullscreen && workArea.IsNone then
-                diagnostics.Add(
-                    windowBehaviorDiagnostic
-                        ViewerDiagnosticLevel.Warning
-                        "Runtime borderless mode could not resolve a monitor work area; chrome is hidden, but work-area geometry is unchanged.")
-
-            let plan: Host.RuntimeWindowBehavior =
-                { Mode = mode
-                  Border = border
-                  Position = position
-                  Size = size
-                  Token = token }
-
-            Some plan, List.ofSeq diagnostics
+    let internal planRuntimeWindowBehavior behavior =
+        ViewerRuntimeLifecycle.planRuntimeWindowBehavior tryResolveWorkArea behavior
 
     let windowStateDiagnostic message failureClass (window: IWindow) renderableSurface inputAvailable =
         let sizeText =
