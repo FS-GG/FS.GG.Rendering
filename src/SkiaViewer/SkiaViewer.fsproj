@@ -47,6 +47,8 @@
     <Compile Include="ViewerHostCapability.fs" />
     <Compile Include="ViewerEvidence.fs" />
     <Compile Include="ViewerLaunchSupport.fs" />
+    <Compile Include="ViewerRuntimeLifecycle.fsi" />
+    <Compile Include="ViewerRuntimeLifecycle.fs" />
     <Compile Include="ViewerWindowClassify.fs" />
     <Compile Include="ViewerResponsivenessReport.fs" />
     <Compile Include="RenderLagTrace.fs" />
