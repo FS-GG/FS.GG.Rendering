@@ -24,46 +24,42 @@ let private disclosure (rc: Fonts.ResolvedChar) = rc.Original, rc.Rendered, rc.R
 
 [<Tests>]
 let tests =
-    testList "F-CORE-2 text resolution reuse" [
+    testSequenced
+    <| testList "F-CORE-2 text resolution reuse" [
         test "buildShapedGlyphRunDataResolved reuses the same resolution resolveText produces" {
-            Text.installShapingProvider () |> ignore
+            Fonts.withInstalledShapingProvider (fun () ->
+                let shaped, resolved = Fonts.buildShapedGlyphRunDataResolved mixedText font
+                let standalone = Fonts.resolveText font mixedText
 
-            let shaped, resolved = Fonts.buildShapedGlyphRunDataResolved mixedText font
-            let standalone = Fonts.resolveText font mixedText
+                // Non-vacuity floor: the resolution must actually exercise non-authored disclosure, else this
+                // proves nothing about the fallback-event path the dedup replaced.
+                Expect.equal shaped.Provider.Availability ProviderInstalled "installed path under test"
+                Expect.isTrue
+                    (resolved |> List.exists (fun rc ->
+                        match rc.Resolution with
+                        | Fonts.FallbackResolution.Authored _ -> false
+                        | _ -> true))
+                    "fixture carries substituted/tofu disclosure (guard is non-vacuous)"
 
-            // Non-vacuity floor: the resolution must actually exercise non-authored disclosure, else this
-            // proves nothing about the fallback-event path the dedup replaced.
-            Expect.equal shaped.Provider.Availability ProviderInstalled "installed path under test"
-            Expect.isTrue
-                (resolved |> List.exists (fun rc ->
-                    match rc.Resolution with
-                    | Fonts.FallbackResolution.Authored _ -> false
-                    | _ -> true))
-                "fixture carries substituted/tofu disclosure (guard is non-vacuous)"
-
-            Expect.equal
-                (resolved |> List.map disclosure)
-                (standalone |> List.map disclosure)
-                "reused resolution equals a standalone resolveText, so fallback events are unchanged"
+                Expect.equal
+                    (resolved |> List.map disclosure)
+                    (standalone |> List.map disclosure)
+                    "reused resolution equals a standalone resolveText, so fallback events are unchanged")
         }
 
         test "the resolved builder returns the same glyph run as the non-deduped builder" {
-            Text.installShapingProvider () |> ignore
+            Fonts.withInstalledShapingProvider (fun () ->
+                let deduped, _ = Fonts.buildShapedGlyphRunDataResolved mixedText font
+                let plain = Fonts.buildShapedGlyphRunData mixedText font
 
-            let deduped, _ = Fonts.buildShapedGlyphRunDataResolved mixedText font
-            let plain = Fonts.buildShapedGlyphRunData mixedText font
-
-            Expect.equal deduped plain "dedup does not change the drawable glyph run"
+                Expect.equal deduped plain "dedup does not change the drawable glyph run")
         }
 
         test "the fallback path returns an empty resolution and does not resolve" {
-            Text.clearShapingProvider () |> ignore
+            Fonts.withClearedShapingProvider (fun () ->
+                let shaped, resolved = Fonts.buildShapedGlyphRunDataResolved mixedText font
 
-            let shaped, resolved = Fonts.buildShapedGlyphRunDataResolved mixedText font
-
-            Expect.notEqual shaped.Provider.Availability ProviderInstalled "provider is cleared"
-            Expect.isEmpty resolved "no resolution is computed on the non-installed fallback path"
-
-            Text.installShapingProvider () |> ignore
+                Expect.notEqual shaped.Provider.Availability ProviderInstalled "provider is cleared"
+                Expect.isEmpty resolved "no resolution is computed on the non-installed fallback path")
         }
     ]

@@ -22,60 +22,58 @@ let private longText = "The quick brown fox jumps over the lazy dog 0123456789 t
 
 [<Tests>]
 let tests =
-    testList "F-CORE-3 shaper reuse and O(1) glyph assembly" [
+    testSequenced
+    <| testList "F-CORE-3 shaper reuse and O(1) glyph assembly" [
         test "shaping reuses one cached shaper per typeface, not one per call" {
-            Fonts.disposeCaches ()
-            Text.installShapingProvider () |> ignore
+            Fonts.withInstalledShapingProvider (fun () ->
+                Fonts.disposeCaches ()
 
-            // Many shape calls over a single font must not grow the shaper cache past that font's one
-            // typeface — proving the shaper is reused, not `new`-ed per call.
-            for _ in 1..50 do
-                Text.shapeText longText sans |> ignore
+                // Many shape calls over a single font must not grow the shaper cache past that font's one
+                // typeface — proving the shaper is reused, not `new`-ed per call.
+                for _ in 1..50 do
+                    Text.shapeText longText sans |> ignore
 
-            Expect.equal (Fonts.shaperCacheCount ()) 1 "one shaper is cached and reused across 50 shape calls"
+                Expect.equal (Fonts.shaperCacheCount ()) 1 "one shaper is cached and reused across 50 shape calls"
 
-            // A second, distinct typeface adds exactly one more shaper; further reuse does not grow it.
-            for _ in 1..50 do
-                Text.shapeText longText mono |> ignore
+                // A second, distinct typeface adds exactly one more shaper; further reuse does not grow it.
+                for _ in 1..50 do
+                    Text.shapeText longText mono |> ignore
 
-            Expect.equal (Fonts.shaperCacheCount ()) 2 "a distinct typeface adds exactly one shaper (still bounded by typefaces)"
+                Expect.equal (Fonts.shaperCacheCount ()) 2 "a distinct typeface adds exactly one shaper (still bounded by typefaces)"
 
-            // Non-vacuity: the cache-count helper is not stuck at a constant — teardown empties it.
-            Fonts.disposeCaches ()
-            Expect.equal (Fonts.shaperCacheCount ()) 0 "disposeCaches empties the shaper cache"
-
-            Text.installShapingProvider () |> ignore
+                // Non-vacuity: the cache-count helper is not stuck at a constant — teardown empties it.
+                Fonts.disposeCaches ()
+                Expect.equal (Fonts.shaperCacheCount ()) 0 "disposeCaches empties the shaper cache")
         }
 
         test "array-indexed glyph assembly stays boundary-consistent on a long string" {
-            Text.installShapingProvider () |> ignore
+            Fonts.withInstalledShapingProvider (fun () ->
+                let shaped = Text.shapeText longText sans
 
-            let shaped = Text.shapeText longText sans
+                Expect.equal shaped.Provider.Availability ProviderInstalled "installed shaping path under test"
+                Expect.isNonEmpty shaped.Glyphs "the long string produces glyphs"
 
-            Expect.equal shaped.Provider.Availability ProviderInstalled "installed shaping path under test"
-            Expect.isNonEmpty shaped.Glyphs "the long string produces glyphs"
+                // Every glyph's source cluster indexes into the source text (an off-by-one in the array
+                // indexing that replaced `List.tryItem` would push a cluster out of range).
+                Expect.isTrue
+                    (shaped.Glyphs |> List.forall (fun g -> g.SourceCluster >= 0 && g.SourceCluster < longText.Length))
+                    "every glyph cluster indexes into the source text"
 
-            // Every glyph's source cluster indexes into the source text (an off-by-one in the array
-            // indexing that replaced `List.tryItem` would push a cluster out of range).
-            Expect.isTrue
-                (shaped.Glyphs |> List.forall (fun g -> g.SourceCluster >= 0 && g.SourceCluster < longText.Length))
-                "every glyph cluster indexes into the source text"
+                // LTR shaping: clusters never move backwards, and advances are non-negative.
+                let clusters = shaped.Glyphs |> List.map (fun g -> g.SourceCluster)
+                Expect.equal clusters (List.sort clusters) "clusters are non-decreasing across the run (LTR)"
+                Expect.isTrue
+                    (shaped.Glyphs |> List.forall (fun g -> g.Advance >= 0.0))
+                    "all glyph advances are non-negative"
 
-            // LTR shaping: clusters never move backwards, and advances are non-negative.
-            let clusters = shaped.Glyphs |> List.map (fun g -> g.SourceCluster)
-            Expect.equal clusters (List.sort clusters) "clusters are non-decreasing across the run (LTR)"
-            Expect.isTrue
-                (shaped.Glyphs |> List.forall (fun g -> g.Advance >= 0.0))
-                "all glyph advances are non-negative"
-
-            // Boundary case: the last glyph's advance falls back to the run width (index+1 == count).
-            // If the array boundary handling were wrong, the trailing advance would be negative or the
-            // run would not reach the total width.
-            let last = List.last shaped.Glyphs
-            Expect.floatClose
-                Accuracy.medium
-                (last.Position.X + last.Advance)
-                shaped.Metrics.Advance
-                "the run reaches its total advance at the final glyph (width boundary)"
+                // Boundary case: the last glyph's advance falls back to the run width (index+1 == count).
+                // If the array boundary handling were wrong, the trailing advance would be negative or the
+                // run would not reach the total width.
+                let last = List.last shaped.Glyphs
+                Expect.floatClose
+                    Accuracy.medium
+                    (last.Position.X + last.Advance)
+                    shaped.Metrics.Advance
+                    "the run reaches its total advance at the final glyph (width boundary)")
         }
     ]
