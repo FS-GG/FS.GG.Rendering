@@ -30,6 +30,21 @@ let rows =
 let grid : Control<unit> =
     DataGrid.create columns [ DataGrid.columns columns; DataGrid.rows rows ]
 
+let standardButton : Control<string> =
+    Control.standard
+        StandardControlKind.Button
+        [ Attr.standardAttribute StandardAttributeName.Text (StandardText "Save")
+          Attr.standardEvent StandardEventKind.Click "saved" ]
+
+let customWidget : Control<string> =
+    Control.customControl
+        "vendor-widget"
+        [ Attr.customAttribute "vendor-mode" ("compact" :> obj)
+          Attr.customEvent "vendor-activated" "activated" ]
+
+let standardDiagnostics = Catalog.validateStandardControl standardButton
+let customDiagnostics = Catalog.validateStandardControl customWidget
+
 let anchor =
     { AnchorId = "date-trigger"
       AnchorBounds = Some { X = 12.0; Y = 24.0; Width = 140.0; Height = 32.0 }
@@ -70,3 +85,5 @@ printfn "open effects: %A" effects1
 printfn "selection effects: %A" effects2
 printfn "replay entries: %d" (OverlayState.replayLog state2).OverlayTransitions.Length
 printfn "controls: %A %A %A" chart graph grid
+printfn "typed front doors: %A %A" standardButton customWidget
+printfn "schema diagnostics: %A %A" standardDiagnostics customDiagnostics

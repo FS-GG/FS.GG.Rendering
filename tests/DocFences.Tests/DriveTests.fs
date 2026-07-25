@@ -24,8 +24,9 @@ open FS.GG.DocFences
 [<Tests>]
 let tests =
     testSequenced
+    // PendingTest: owner=FS-GG/FS.GG.Rendering#1050 review-by=2026-10-26
     <| ptestList
-        "DocFences.Drive (PENDING — corpus not yet all-compilable, design decision open)"
+        "DocFences.Drive (PENDING — compilation-model decision tracked by Rendering#1050)"
         [ test "every non-skipped skill fence compiles against the published pin" {
               let fences = Corpus.productSkillFences ()
               let units, skipped = Harness.unitsFor fences

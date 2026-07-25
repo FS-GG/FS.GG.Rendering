@@ -1,0 +1,44 @@
+name: pending test cadence
+
+on:
+  schedule:
+    - cron: '15 5 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: pending-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  feature-109:
+    name: Feature 109 performance and timing evidence
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FSGG_SCHEDULED_PENDING_TESTS: '1'
+      PERF_CORPUS_REGEN: '1'
+      PERF_BASELINE_REGEN: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore locked dependencies
+        run: dotnet restore FS.GG.Rendering.slnx --locked-mode
+      - name: Run Feature 109 scheduled suites
+        run: dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj -c Release --no-restore
+      - name: Upload generated performance evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: feature-109-performance-evidence
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            specs/109-perf-metrics-baseline/readiness/perf-corpus/*.golden.txt
+            docs/reports/_baselines/2026-06-12-controls-corpus-before.md
+            docs/reports/_baselines/2026-06-12-controls-corpus-after.md
