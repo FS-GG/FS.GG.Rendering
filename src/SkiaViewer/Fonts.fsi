@@ -79,6 +79,12 @@ module Fonts =
     /// Read the active shaping provider state.
     val shapingProviderStatus: unit -> TextShapingProviderStatus
 
+    /// Run an action with HarfBuzz shaping selected and restore the exact prior provider state.
+    val internal withInstalledShapingProvider: action: (unit -> 'T) -> 'T
+
+    /// Run an action with fallback shaping selected and restore the exact prior provider state.
+    val internal withClearedShapingProvider: action: (unit -> 'T) -> 'T
+
     /// Shape text when the provider is installed, otherwise return explicit fallback evidence.
     val shapeText: text: string -> font: FontSpec -> ShapedTextResult
 

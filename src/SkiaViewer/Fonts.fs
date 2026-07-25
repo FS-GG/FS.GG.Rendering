@@ -647,6 +647,39 @@ module Fonts =
         { Evidence = evidence
           Diagnostics = providerDiagnostics evidence }
 
+    let private restoreShapingProvider evidence =
+        lock providerGate (fun () -> providerEvidence <- evidence)
+
+        match evidence.Availability with
+        | ProviderInstalled -> Scene.setRealTextMeasurer (Some shapedMeasure)
+        | _ -> Scene.setRealTextMeasurer (Some realMeasure)
+
+        Scene.setTextMeasurementVersionBucket evidence.VersionBucket
+
+    /// Run an action with the HarfBuzz provider selected, excluding other scoped provider changes and
+    /// restoring the exact provider evidence and measurement seam that preceded the action.
+    let internal withInstalledShapingProvider action =
+        lock providerGate (fun () ->
+            let previous = providerEvidence
+
+            try
+                installShapingProvider () |> ignore
+                action ()
+            finally
+                restoreShapingProvider previous)
+
+    /// Run an action with fallback shaping selected, excluding other scoped provider changes and
+    /// restoring the exact provider evidence and measurement seam that preceded the action.
+    let internal withClearedShapingProvider action =
+        lock providerGate (fun () ->
+            let previous = providerEvidence
+
+            try
+                clearShapingProvider () |> ignore
+                action ()
+            finally
+                restoreShapingProvider previous)
+
     /// Build drawable glyph-run data and return the per-character resolution alongside it, computing the
     /// resolution once (F-CORE-2). The draw path reuses this list for fallback-event disclosure instead
     /// of re-resolving the same string.
