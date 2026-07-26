@@ -29,6 +29,7 @@
          both, a bug in both copies agreed with itself and the gate stayed green while recording
          something other than the public surface (#657). One definition, two consumers, no drift. -->
     <Compile Include="..\..\scripts\SurfaceRenderer.fs" Link="SurfaceRenderer.fs" />
+    <Compile Include="..\..\scripts\ApiSurfaceRestore.fs" Link="ApiSurfaceRestore.fs" />
     <!-- #674 — the single reading of "what actually packs" (it wraps the harness's own
          PackageFeed.discoverPackablePackages). Compiled FIRST because three suites below consume it:
          Feature163PackageFeedValidationTests, Feature207BomMembershipTests, and Tests.fs, each of which
@@ -121,6 +122,7 @@
     <Compile Include="Issue1012GeneratedInteractiveHostTests.fs" />
     <Compile Include="Issue1030ViewImageSizeTests.fs" />
     <Compile Include="Issue1039PerformanceEvidenceTests.fs" />
+    <Compile Include="Issue1069ApiSurfaceRestoreIsolationTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -81,6 +81,9 @@ open System.Diagnostics
 open System.Text
 open System.Text.RegularExpressions
 
+#load "ApiSurfaceRestore.fs"
+open FsGg
+
 #load "lib/FsiSurface.fsx"
 open FsiSurface
 
@@ -227,8 +230,13 @@ let restorePins () =
 """
         )
 
+        // Pass this path explicitly below. NuGet's implicit config discovery is filename/casing
+        // sensitive on Linux; relying on it allowed an enclosing hostile package-source mapping to
+        // win even though this probe had authored an isolated source list (#1069).
+        let nugetConfigPath = Path.Combine(work, "NuGet.Config")
+
         File.WriteAllText(
-            Path.Combine(work, "NuGet.config"),
+            nugetConfigPath,
             """<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
@@ -239,10 +247,8 @@ let restorePins () =
 """
         )
 
-        let psi = ProcessStartInfo("dotnet", $"restore probe.fsproj --packages \"{probePackagesDir}\"")
-        psi.WorkingDirectory <- work
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
+        let psi =
+            ApiSurfaceRestore.startInfo work "probe.fsproj" probePackagesDir nugetConfigPath
 
         use p = Process.Start psi
         let out = p.StandardOutput.ReadToEnd()
