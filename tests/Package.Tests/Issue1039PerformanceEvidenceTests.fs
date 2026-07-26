@@ -108,6 +108,56 @@ let private performanceIntentBindings artifactPath =
     |> Seq.map (Option.ofObj >> Option.defaultWith (fun () -> failwith "performance intent binding was null"))
     |> List.ofSeq
 
+let private representativeReady artifactPath =
+    use document = JsonDocument.Parse(File.ReadAllText artifactPath)
+    document.RootElement.GetProperty("critic").GetProperty("representativeReady").GetBoolean()
+
+let private rewriteWorkloadBlock id rewrite (source: string) =
+    let beginMarker = $"// WORKLOAD-SOURCE-BEGIN {id}"
+    let endMarker = $"// WORKLOAD-SOURCE-END {id}"
+    let start = source.IndexOf(beginMarker, StringComparison.Ordinal)
+    let finish = source.IndexOf(endMarker, start + beginMarker.Length, StringComparison.Ordinal)
+
+    if start < 0 || finish < 0 then
+        failwith $"generated workload source block was missing for {id}"
+
+    let length = finish + endMarker.Length - start
+    source.Substring(0, start) + rewrite (source.Substring(start, length)) + source.Substring(start + length)
+
+let private machineJourneyHelper =
+    """
+let private machineIssuedJourneyReceipt () =
+    let adapter: FS.GG.Game.Harness.ProductionJourney<Model, char, unit, unit, unit, Msg, string> =
+        { RouteId = "WorkloadFixture/performance"
+          ScenarioId = "fixed-tick"
+          TestId = "PERF-JOURNEY-001"
+          MaxSteps = 4
+          Boot = (fun () -> initialModel)
+          MapEvent =
+            (fun event _ ->
+                match event with
+                | FS.GG.Game.Harness.JourneyEvent.FixedTick ->
+                    FS.GG.Game.Harness.JourneyDispatch.Mapped [ Tick(1.0 / 60.0) ]
+                | FS.GG.Game.Harness.JourneyEvent.KeyInput(key, pressed) ->
+                    FS.GG.Game.Harness.JourneyDispatch.Mapped [ ViewerInput(Letter key, pressed) ]
+                | _ -> FS.GG.Game.Harness.JourneyDispatch.Mapped [ NoOp ])
+          Update = (fun message model -> fst (update message model))
+          FixedTick = (fun model -> fst (update (Tick(1.0 / 60.0)) model))
+          ApplyEffectResult = (fun _ model -> model)
+          IsTerminal = (fun model -> model.Ball.Pos <> initialModel.Ball.Pos)
+          Fingerprint = (fun model -> sprintf "%A" model)
+          EncodeEvent = sprintf "%A"
+          EncodeFingerprint = id }
+
+    (FS.GG.Game.Harness.Journey.runScriptWithIdentity
+        "performance-fixed-tick-v1"
+        "ball-position-changed-v1"
+        adapter
+        [ FS.GG.Game.Harness.JourneyEvent.FixedTick ])
+        .Receipt
+
+"""
+
 let private authorWorkloads (digests: Map<string, string>) (source: string) =
     digests
     |> Map.fold (fun (authored: string) (id: string) (digest: string) ->
@@ -178,7 +228,7 @@ let performanceEvidenceContract =
                 "\"firing\""
                 "\"effects-fog\""
                 "\"maximum-content\""
-                "\"schemaVersion\", 2"
+                "\"schemaVersion\", 3"
                 "\"definitionDigest\""
                 "\"authorship\""
                 "\"requiredAuthoringWork\""
@@ -193,8 +243,11 @@ let performanceEvidenceContract =
                 "\"presentCount\""
                 "\"catchUpFrames\""
                 "\"droppedFrames\""
-                "\"eventCount\""
-                "\"pointerEventCount\""
+                "\"declaredEventCount\""
+                "\"observedEventCount\""
+                "\"declaredPointerEventCount\""
+                "\"observedPointerEventCount\""
+                "\"rawInputSampleCount\""
                 "\"sceneNodesByLayer\""
                 "\"allocatedBytes\""
                 "\"packageVersions\""
@@ -265,7 +318,7 @@ let performanceEvidenceContract =
 
               Expect.stringContains
                   source
-                  "Passed = authorshipVerdict.Passed && budgetVerdict.Passed"
+                  "authorshipVerdict.Passed"
                   "budget success cannot hide an unauthored workload"
           }
 
@@ -315,6 +368,7 @@ let performanceEvidenceContract =
               let dotnetHome = Path.Combine(fixtureRoot, "dotnet-home")
               let productRoot = Path.Combine(fixtureRoot, "WorkloadFixture")
               let artifactPath = Path.Combine(productRoot, "readiness", "performance-evidence.json")
+              let criticRequestPath = Path.Combine(productRoot, "readiness", "performance-critic-request.json")
               let intentPath = Path.Combine(productRoot, "readiness", "performance-intent.yml")
 
               let evidenceSourcePath =
@@ -345,6 +399,19 @@ let performanceEvidenceContract =
                         "--"
                         "--performance-intent"
                         "readiness/performance-intent.yml" ]
+
+              let runCriticRequest () =
+                  runDotnet
+                      productRoot
+                      dotnetHome
+                      [ "run"
+                        "-c"
+                        "Release"
+                        "--project"
+                        "src/WorkloadFixture"
+                        "--"
+                        "--performance-critic-request"
+                        "readiness/performance-critic-request.json" ]
 
               Directory.CreateDirectory fixtureRoot |> ignore
               writeConsumerNugetConfig fixtureRoot
@@ -380,7 +447,9 @@ let performanceEvidenceContract =
 
                   let untouchedIntent = runIntent ()
                   Expect.equal untouchedIntent.ExitCode 1 "untouched placeholders also fail the early intent command"
-                  Expect.isTrue (File.Exists intentPath) "failed early intent still emits the declaration for authoring"
+                  Expect.isTrue
+                      (File.Exists intentPath)
+                      $"failed early intent still emits the declaration for authoring:{Environment.NewLine}{untouchedIntent.Output}"
 
                   [ "idle"
                     "movement-aiming"
@@ -401,8 +470,74 @@ let performanceEvidenceContract =
                   let authored = runEvidence ()
                   Expect.equal
                       authored.ExitCode
+                      1
+                      "authorship alone cannot pass the machine gate without routed facts"
+                  Expect.stringContains authored.Output "observed routed count" "declared stimulus must traverse production"
+                  Expect.stringContains
+                      authored.Output
+                      "synthetic-constructed"
+                      "direct state construction cannot mint normal-play provenance"
+
+                  let representativePlaceholderSource =
+                      placeholderSource
+                      |> fun source ->
+                          source.Replace(
+                              "let expectedWorkloads =",
+                              machineJourneyHelper + "let expectedWorkloads =",
+                              StringComparison.Ordinal
+                          )
+                      |> fun source ->
+                          Regex.Replace(
+                              source,
+                              @"Provenance = SyntheticConstructed ""[^""]*""",
+                              "Provenance = RunnerIssuedJourney(machineIssuedJourneyReceipt ())",
+                              RegexOptions.CultureInvariant
+                          )
+                      |> rewriteWorkloadBlock
+                          "movement-aiming"
+                          (fun block ->
+                              block
+                                  .Replace("PointerEventsPerFrame = 1", "PointerEventsPerFrame = 0")
+                                  .Replace("frame % 2 = 0", "frame % 1 = 0"))
+                      |> rewriteWorkloadBlock
+                          "firing"
+                          (fun block ->
+                              block
+                                  .Replace("PointerEventsPerFrame = 1", "PointerEventsPerFrame = 0")
+                                  .Replace("MessageAt = (fun _ -> NoOp)", "MessageAt = (fun _ -> ViewerInput(Letter 'F', true))"))
+
+                  File.WriteAllText(evidenceSourcePath, representativePlaceholderSource)
+                  let representativePendingAuthorship = runEvidence ()
+                  Expect.equal representativePendingAuthorship.ExitCode 1 "representative routes remain red while unauthored"
+                  let representativeDigests = workloadDigests artifactPath
+                  let representativeAuthoredSource = authorWorkloads representativeDigests representativePlaceholderSource
+                  File.WriteAllText(evidenceSourcePath, representativeAuthoredSource)
+                  let representativeMachineGreen = runEvidence ()
+                  Expect.equal
+                      representativeMachineGreen.ExitCode
                       0
-                      $"reviewed exact-digest declarations pass:{Environment.NewLine}{authored.Output}"
+                      $"factory routes, complete coverage, matching observed routing and budget pass the machine gate:{Environment.NewLine}{representativeMachineGreen.Output}"
+                  Expect.isFalse
+                      (representativeReady artifactPath)
+                      "authored source cannot self-attest fresh-context critic independence or representative readiness"
+
+                  let criticRequest = runCriticRequest ()
+                  Expect.equal criticRequest.ExitCode 0 "critic request preserves the green machine verdict"
+                  use request = JsonDocument.Parse(File.ReadAllText criticRequestPath)
+                  let declaredArtifactDigest =
+                      request.RootElement.GetProperty("evidenceArtifactDigest").GetString()
+                      |> Option.ofObj
+                      |> Option.defaultWith (fun () -> failwith "critic request artifact digest was null")
+                  let actualArtifactDigest =
+                      File.ReadAllBytes artifactPath
+                      |> System.Security.Cryptography.SHA256.HashData
+                      |> Convert.ToHexString
+                      |> _.ToLowerInvariant()
+                      |> fun digest -> $"sha256:{digest}"
+                  Expect.equal
+                      declaredArtifactDigest
+                      actualArtifactDigest
+                      "critic request binds the exact timing/verdict/capability/package evidence artifact bytes"
 
                   let authoredIntent = runIntent ()
                   Expect.equal

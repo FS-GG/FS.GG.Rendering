@@ -77,6 +77,19 @@ readiness evidence into the product.
 
 ## Package Boundary
 
+## Expected-workload performance
+
+For a `game` profile, run the Release `PerformanceEvidence` machine gate before judgment. Normal-play
+workloads must carry opaque FS.GG.Game runner-issued journey receipts; a canonical factory belongs at
+the journey boot seam and caller-authored labels/hashes are not provenance. Synthetic construction remains explicitly
+narrow evidence. Keep `performanceCostDrivers` independent from workload declarations, cross-check
+every gameplay visual, bind maximum scale to production configuration plus observed counters, compare
+declared input with observed routing, and serialize unsupported headless present/drop facts honestly.
+Then run `PerformanceCriticRequest` and record a fresh-context `supported` verdict in an attributable
+external review system at the exact landing commit. In-repo JSON, author-entered reviewer identity,
+and same-context mode strings cannot establish independence. The critic cannot waive provenance,
+coverage, capability, or budget failures.
+
 Reference selected capability packages. Do not copy framework implementation
 projects into consumer-mode products.
 

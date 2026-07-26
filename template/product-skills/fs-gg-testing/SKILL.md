@@ -394,6 +394,18 @@ play, stress, throughput, and live-compositor workloads separately classified. A
 deliberate baseline capture, but that baseline never satisfies acceptance. This is bounded headless
 update + scene-route evidence, not live compositor or vsync proof.
 
+Run the machine gate before the representativeness critic. Each normal-play row must carry an opaque
+FS.GG.Game runner-issued journey receipt. Put a canonical factory at that journey's boot seam;
+caller-authored labels/hashes are not provenance. Disclose direct assembly as
+`synthetic-constructed`. Keep the independent `performanceCostDrivers` inventory complete, including
+every gameplay visual and an inspectable maximum-scale source, and compare declared stimulus with
+observed production routing. Present/drop facts from bounded headless runs are **unsupported**, never
+zero. Then run `PerformanceCriticRequest` and give its exact digest package to a fresh-context
+subagent, or disclose the separated-pass fallback. Record `supported` only in an attributable external
+review system at the exact landing commit; in-repo JSON, author-entered reviewer identity, and
+same-context mode strings prove no independence. Critic approval cannot waive provenance, coverage,
+route, capability, or budget failures.
+
 For continuous pointer pacing, keep two distinct gates. First, distribute 1,000 `PointerMove`
 samples across 60 `Viewer.drainInputQueue` presentation boundaries using
 `Viewer.enqueueInputWithPointerPolicy ViewerContinuousPointerPolicy.CoalesceLatestPerFrame`; require

@@ -87,6 +87,29 @@ vocabulary  polyline
 # ---- Canvas/Persistence.fsi
 vocabulary  clampVersion
 
+# ---- Game.Harness/Journey.fsi
+# The opaque receipt accessors are the vocabulary for inspecting a runner-issued proof. The producer's
+# fs-gg-playtest skill teaches Journey.runScriptWithIdentity at the game-only package reach; citing it
+# from this provider's all-profile fs-gg-testing skill would violate R-REACH.
+vocabulary  compositionAuthority
+vocabulary  initialFingerprintDigest
+vocabulary  inputDigest
+vocabulary  inputIdentity
+vocabulary  inputKind
+vocabulary  maxSteps
+vocabulary  routeId
+owner-documented  runScriptWithIdentity
+vocabulary  runnerIdentity
+vocabulary  runnerVersion
+vocabulary  scenarioId
+vocabulary  schemaVersion
+vocabulary  scriptDigest
+vocabulary  terminalFingerprintDigest
+vocabulary  terminalPredicateIdentity
+vocabulary  terminalPredicateReached
+vocabulary  testId
+vocabulary  traceDigest
+
 # ---- Controls.Elmish/ControlsElmish.fsi
 vocabulary  adapterDiagnosticToRuntimeDiagnostic
 vocabulary  diagnostic
