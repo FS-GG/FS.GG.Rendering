@@ -227,8 +227,13 @@ let restorePins () =
 """
         )
 
+        // Pass this path explicitly below. NuGet's implicit config discovery is filename/casing
+        // sensitive on Linux; relying on it allowed an enclosing hostile package-source mapping to
+        // win even though this probe had authored an isolated source list (#1069).
+        let nugetConfigPath = Path.Combine(work, "NuGet.Config")
+
         File.WriteAllText(
-            Path.Combine(work, "NuGet.config"),
+            nugetConfigPath,
             """<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
@@ -239,10 +244,17 @@ let restorePins () =
 """
         )
 
-        let psi = ProcessStartInfo("dotnet", $"restore probe.fsproj --packages \"{probePackagesDir}\"")
+        let psi = ProcessStartInfo("dotnet")
         psi.WorkingDirectory <- work
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
+        [ "restore"
+          "probe.fsproj"
+          "--packages"
+          probePackagesDir
+          "--configfile"
+          nugetConfigPath ]
+        |> List.iter psi.ArgumentList.Add
 
         use p = Process.Start psi
         let out = p.StandardOutput.ReadToEnd()
