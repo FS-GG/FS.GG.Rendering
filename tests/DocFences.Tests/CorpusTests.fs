@@ -122,6 +122,7 @@ let tests =
 
               Expect.equal plan.Length 84 "the reviewed whole-corpus inventory remains exact"
               Expect.equal selfContained.Length 15 "the positive compiler corpus remains explicit"
+              Expect.all selfContained (fun fence -> fence.Skip.IsNone) "positive compiler members cannot be skipped"
               Expect.equal contextualReasons.Length 69 "every remaining teaching fragment is accounted for"
               Expect.all contextualReasons (System.String.IsNullOrWhiteSpace >> not) "contextual reasons are never blank"
           } ]

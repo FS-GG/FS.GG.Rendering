@@ -310,6 +310,22 @@ module Harness =
         if not stalePositiveKeys.IsEmpty then
             failwithf "self-contained fence keys no longer exist: %A" (Set.toList stalePositiveKeys)
 
+        let skippedPositiveFences =
+            fences
+            |> List.choose (fun fence ->
+                if
+                    Set.contains (fence.Doc, fence.StartLine) selfContainedProductSkillFences
+                    && fence.Skip.IsSome
+                then
+                    Some(fence.Doc, fence.StartLine, fence.Skip.Value)
+                else
+                    None)
+
+        if not skippedPositiveFences.IsEmpty then
+            failwithf
+                "self-contained fences cannot carry docfences:skip (they must compile actively): %A"
+                skippedPositiveFences
+
         fences
         |> List.map (fun fence ->
             if Set.contains (fence.Doc, fence.StartLine) selfContainedProductSkillFences then
