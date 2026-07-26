@@ -2,6 +2,7 @@ module FeatureFeedbackReportSkillTests
 
 open System
 open System.IO
+open System.Text.Json
 open Expecto
 open FS.GG.TestSupport
 open FsGgFeedbackReportTool
@@ -36,7 +37,7 @@ One retry.
 - **Impact:** one avoidable retry
 - **Expected:** one pass
 - **Observed:** two passes
-- **Evidence:** build.log
+- **Evidence:** file:readiness/build.log
 - **Version:** 0.23.0
 - **Owner:** FS-GG/FS.GG.Rendering template
 - **Recurrence:** new
@@ -61,6 +62,23 @@ Remove the retry.
 |---|---|---|
 {coverage}
 """
+
+let private auditJson root reportPath reportText status evidence =
+    let report = Path.GetRelativePath(root, reportPath).Replace(Path.DirectorySeparatorChar, '/')
+
+    JsonSerializer.Serialize(
+        {| auditSchema = 1
+           report = report
+           reportSha256 = sha256Text reportText
+           criticMode = "fresh-context-subagent"
+           criticPromptVersion = "actionability-v1"
+           findings =
+            [ {| id = "§4.1"
+                 status = status
+                 missingFacts = [||]
+                 checkedEvidence = evidence
+                 confidenceLimits = [||] |} ] |}
+    )
 
 [<Tests>]
 let feedbackReportSkillTests =
@@ -89,6 +107,385 @@ let feedbackReportSkillTests =
               Expect.isEmpty (validateReportText validReport) "valid report has no errors"
           }
 
+          test "complete actionable audit binds every finding and verified evidence digest" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-audit-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let evidencePath = Path.Combine(root, "readiness", "build.log")
+                  File.WriteAllText(reportPath, validReport)
+                  File.WriteAllText(evidencePath, "green")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/build.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "green") |} |]
+
+                  let audit = auditJson root reportPath validReport "actionable" evidence
+
+                  Expect.isEmpty
+                      (validateActionabilityAudit root reportPath validReport audit)
+                      "bound actionable audit validates"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "scheme-prefixed absolute paths and secret arguments fail closed" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let locator =
+                  "command:dotnet test --results-directory /home/user/private --token=secret-value"
+
+              let report =
+                  validReport.Replace("file:readiness/build.log", locator)
+
+              let evidence =
+                  [| {| locator = locator
+                        result = "verified"
+                        sha256 = None |} |]
+
+              let errors =
+                  auditJson root reportPath report "actionable" evidence
+                  |> validateActionabilityAudit root reportPath report
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("absolute path or secret material"))
+                  "a scheme prefix cannot hide private paths or credentials"
+          }
+
+          test "workspace-relative evidence cannot escape through a symlink" {
+              if not (OperatingSystem.IsLinux()) then
+                  skiptest "Linux regression for realpath containment"
+
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-symlink-" + Guid.NewGuid().ToString "N"
+                  )
+
+              let external =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-external-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory external |> ignore
+                  let externalEvidence = Path.Combine(external, "outside.log")
+                  File.WriteAllText(externalEvidence, "outside")
+
+                  Directory.CreateSymbolicLink(Path.Combine(root, "readiness"), external)
+                  |> ignore
+
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/outside.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "outside") |} |]
+
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "file:readiness/outside.log"
+                      )
+
+                  let errors =
+                      auditJson root reportPath report "actionable" evidence
+                      |> validateActionabilityAudit root reportPath report
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("workspace-relative file"))
+                      "an in-workspace symlink cannot validate bytes outside the workspace"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+
+                  if Directory.Exists external then
+                      Directory.Delete(external, true)
+          }
+
+          test "null evidence locator is a validation error rather than an exception" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let evidence =
+                  [| {| locator = "file:readiness/build.log"
+                        result = "verified"
+                        sha256 = None |} |]
+
+              let audit =
+                  (auditJson root reportPath validReport "actionable" evidence)
+                      .Replace("\"locator\":\"file:readiness/build.log\"", "\"locator\":null")
+
+              let errors =
+                  validateActionabilityAudit root reportPath validReport audit
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("evidence locator must not be empty"))
+                  "malformed JSON fields fail closed without throwing"
+          }
+
+          test "null finding id is a validation error rather than an exception" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let evidence =
+                  [| {| locator = "file:readiness/build.log"
+                        result = "verified"
+                        sha256 = Some(sha256Text "green") |} |]
+
+              let audit =
+                  (auditJson root reportPath validReport "actionable" evidence)
+                      .Replace("\"id\":\"\\u00A74.1\"", "\"id\":null")
+
+              let errors =
+                  validateActionabilityAudit root reportPath validReport audit
+
+              Expect.contains
+                  errors
+                  "audit: finding id must not be empty"
+                  "a null finding identity cannot bypass coverage or throw"
+          }
+
+          test "null status and result plus malformed digest all fail closed" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-malformed-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  File.WriteAllText(Path.Combine(root, "readiness", "build.log"), "green")
+
+                  let expectedDigest = sha256Text "green"
+
+                  let evidence =
+                      [| {| locator = "file:readiness/build.log"
+                            result = "verified"
+                            sha256 = Some expectedDigest |} |]
+
+                  let audit =
+                      (auditJson root reportPath validReport "actionable" evidence)
+                          .Replace("\"status\":\"actionable\"", "\"status\":null")
+                          .Replace("\"result\":\"verified\"", "\"result\":null")
+                          .Replace(
+                              $"\"sha256\":\"{expectedDigest}\"",
+                              "\"sha256\":\"not-a-digest\""
+                          )
+
+                  let errors =
+                      validateActionabilityAudit root reportPath validReport audit
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("unknown status ''"))
+                      "a null critic status is invalid"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("unknown result ''"))
+                      "a null evidence result is invalid"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("sha256 must be 64 lowercase hex"))
+                      "a malformed evidence digest is invalid"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "polished fact-free and circular finding stays incomplete" {
+              let report =
+                  validReport
+                      .Replace("one pass", "the behavior should work")
+                      .Replace("two passes", "the behavior should work")
+                      .Replace(
+                          "file:readiness/build.log",
+                          "claim-only:no inspectable evidence"
+                      )
+
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+              let evidence =
+                  [| {| locator = "claim-only:no inspectable evidence"
+                        result = "claim-only"
+                        sha256 = None |} |]
+
+              let errors =
+                  auditJson root reportPath report "incomplete" evidence
+                  |> validateActionabilityAudit root reportPath report
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("remains incomplete"))
+                  "an incomplete critic result blocks actionable handoff"
+          }
+
+          test "dead source locator and stale digest invalidate an actionable audit" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-dead-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/dead.log"
+                            result = "verified"
+                            sha256 = Some(String.replicate 64 "0") |} |]
+
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "file:readiness/dead.log"
+                      )
+
+                  let errors =
+                      auditJson root reportPath report "actionable" evidence
+                      |> validateActionabilityAudit root reportPath report
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("evidence file is missing"))
+                      "a dead locator is not evidence"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "an unrelated live audit locator cannot green the report's dead evidence" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-substitution-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let livePath = Path.Combine(root, "readiness", "green.log")
+                  File.WriteAllText(livePath, "green")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/green.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "green") |} |]
+
+                  let errors =
+                      auditJson root reportPath validReport "actionable" evidence
+                      |> validateActionabilityAudit root reportPath validReport
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("report evidence has no matching check"))
+                      "the dead report locator remains unchecked"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("checked evidence is not declared"))
+                      "the unrelated live locator is an unexplained substitution"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "non-reproducing command cannot support actionable disposition" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+              let report =
+                  validReport.Replace(
+                      "file:readiness/build.log",
+                      "command:dotnet test"
+                  )
+
+              let evidence =
+                  [| {| locator = "command:dotnet test"
+                        result = "non-reproducing"
+                        sha256 = None |} |]
+
+              let errors =
+                  auditJson root reportPath report "actionable" evidence
+                  |> validateActionabilityAudit root reportPath report
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("cannot be actionable"))
+                  "non-reproduction blocks actionable"
+          }
+
+          test "critic dispositions preserve invented-root-cause and missed-dedupe findings honestly" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              for status, result in
+                  [ "unsupported", "claim-only"; "duplicate", "verified" ] do
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "issue:FS-GG/FS.GG.Rendering#24"
+                      )
+
+                  let evidence =
+                      [| {| locator = "issue:FS-GG/FS.GG.Rendering#24"
+                            result = result
+                            sha256 = None |} |]
+
+                  let errors =
+                      auditJson root reportPath report status evidence
+                      |> validateActionabilityAudit root reportPath report
+
+                  if status = "unsupported" then
+                      Expect.exists
+                          errors
+                          (fun error -> error.Contains("remains unsupported"))
+                          "invented root cause cannot become actionable"
+                  else
+                      Expect.isEmpty errors "existing issue can carry the duplicate"
+          }
+
+          test "well-grounded positive pattern requires positive-pattern disposition" {
+              let report =
+                  validReport
+                      .Replace("**Kind:** friction", "**Kind:** positive-pattern")
+                      .Replace(
+                          "file:readiness/build.log",
+                          "command:dotnet test"
+                      )
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+              let evidence =
+                  [| {| locator = "command:dotnet test"
+                        result = "verified"
+                        sha256 = None |} |]
+
+              let audit = auditJson root reportPath report "positive-pattern" evidence
+
+              Expect.isEmpty
+                  (validateActionabilityAudit root reportPath report audit)
+                  "verified positive pattern remains distinct"
+          }
+
           test "loose finding and incomplete coverage fail" {
               let malformed =
                   validReport
@@ -109,6 +506,60 @@ let feedbackReportSkillTests =
                   errors
                   "coverage: missing surface 'worker-git-pr'"
                   "missing coverage is rejected"
+          }
+
+          test "expected and observed fields that say the same thing fail" {
+              let circular =
+                  validReport.Replace(
+                      "- **Expected:** one pass",
+                      "- **Expected:** two passes"
+                  )
+
+              Expect.contains
+                  (validateReportText circular)
+                  "findings: §4.1 Expected and Observed must describe a delta"
+                  "a circular expected/observed pair is not actionable"
+          }
+
+          test "Rogue2 green-testing claim without production route stays incomplete" {
+              let rogue2 =
+                  validReport
+                      .Replace("Example friction", "Testing was green")
+                      .Replace("one pass", "the player can leave the first room")
+                      .Replace("two passes", "the test suite was green")
+                      .Replace("file:readiness/build.log", "command:dotnet test")
+
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "rogue2.md")
+              let report = Path.GetRelativePath(root, reportPath).Replace(Path.DirectorySeparatorChar, '/')
+
+              let audit =
+                  JsonSerializer.Serialize(
+                      {| auditSchema = 1
+                         report = report
+                         reportSha256 = sha256Text rogue2
+                         criticMode = "fresh-context-subagent"
+                         criticPromptVersion = "actionability-v1"
+                         findings =
+                          [ {| id = "§4.1"
+                               status = "incomplete"
+                               missingFacts =
+                                [| "user input/reproduction path"
+                                   "production route wiring evidence" |]
+                               checkedEvidence =
+                                [| {| locator = "command:dotnet test"
+                                      result = "verified"
+                                      sha256 = None |} |]
+                               confidenceLimits =
+                                [| "green tests do not establish production reachability" |] |} ] |}
+                  )
+
+              let errors = validateActionabilityAudit root reportPath rogue2 audit
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("remains incomplete"))
+                  "the missing user route and production wiring prevent actionable handoff"
           }
 
           test "checkpoint append is valid JSONL and preserves the complete event" {
@@ -140,4 +591,3 @@ let feedbackReportSkillTests =
                   if Directory.Exists root then
                       Directory.Delete(root, true)
           } ]
-

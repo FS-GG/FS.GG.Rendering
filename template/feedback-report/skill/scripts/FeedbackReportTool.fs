@@ -2,6 +2,7 @@ module FsGgFeedbackReportTool
 
 open System
 open System.IO
+open System.Security.Cryptography
 open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
@@ -29,6 +30,12 @@ let kinds =
       "quality-gap"
       "documentation"
       "orchestration" ]
+
+let criticStatuses =
+    [ "actionable"; "incomplete"; "unsupported"; "duplicate"; "positive-pattern" ]
+
+let evidenceResults =
+    [ "verified"; "missing"; "stale"; "non-reproducing"; "contradictory"; "claim-only" ]
 
 let private requiredFrontmatter =
     [ "feedbackSchema"; "date"; "workspace"; "cycle"; "lane"; "toolVersion"; "commit" ]
@@ -63,6 +70,16 @@ let private requiredFindingFields =
 
 let private normalizeNewlines (text: string) =
     text.Replace("\r\n", "\n").Replace("\r", "\n")
+
+let sha256Text (text: string) =
+    use sha = SHA256.Create()
+
+    text
+    |> normalizeNewlines
+    |> Encoding.UTF8.GetBytes
+    |> sha.ComputeHash
+    |> Convert.ToHexString
+    |> fun value -> value.ToLowerInvariant()
 
 let private frontmatter (text: string) =
     let lines = normalizeNewlines text |> fun value -> value.Split '\n'
@@ -168,6 +185,26 @@ let validateReportText (rawText: string) =
                 if not (Regex.IsMatch(chunk, fieldPattern)) then
                     errors.Add(sprintf "findings: §4.%s is missing '%s'" findingNumber field)
 
+            let fieldValue name =
+                let matched =
+                    Regex.Match(
+                        chunk,
+                        @"(?m)^- \*\*" + Regex.Escape name + @":\*\*\s+(.+?)\s*$"
+                    )
+
+                if matched.Success then matched.Groups.[1].Value.Trim() else ""
+
+            let expected = fieldValue "Expected"
+            let observed = fieldValue "Observed"
+
+            if
+                not (String.IsNullOrWhiteSpace expected)
+                && expected.Equals(observed, StringComparison.OrdinalIgnoreCase)
+            then
+                errors.Add(
+                    sprintf "findings: §4.%s Expected and Observed must describe a delta" findingNumber
+                )
+
             let kindPattern =
                 @"(?m)^- \*\*Kind:\*\*\s+(" + String.concat "|" (List.map Regex.Escape kinds) + @")\s*$"
 
@@ -198,6 +235,356 @@ let validateReportText (rawText: string) =
     for surface in observed do
         if not (List.contains surface surfaces) then
             errors.Add(sprintf "coverage: unknown surface '%s'" surface)
+
+    List.ofSeq errors
+
+type EvidenceCheck =
+    { locator: string
+      result: string
+      sha256: string option }
+
+type FindingAudit =
+    { id: string
+      status: string
+      missingFacts: string list
+      checkedEvidence: EvidenceCheck list
+      confidenceLimits: string list }
+
+type ActionabilityAudit =
+    { auditSchema: int
+      report: string
+      reportSha256: string
+      criticMode: string
+      criticPromptVersion: string
+      findings: FindingAudit list }
+
+let private findingContracts (reportText: string) =
+    let findings = sectionText reportText requiredSections.[3] requiredSections.[4]
+    let matches = Regex.Matches(findings, @"(?m)^#### (§4\.\d+) .+$")
+
+    [ for index in 0 .. matches.Count - 1 do
+          let chunkStart = matches.[index].Index
+
+          let chunkEnd =
+              if index + 1 < matches.Count then matches.[index + 1].Index else findings.Length
+
+          let chunk = findings.Substring(chunkStart, chunkEnd - chunkStart)
+          let kindMatch = Regex.Match(chunk, @"(?m)^- \*\*Kind:\*\*\s+(\S+)\s*$")
+          let evidenceMatch = Regex.Match(chunk, @"(?m)^- \*\*Evidence:\*\*\s+(.+?)\s*$")
+
+          let evidence =
+              if evidenceMatch.Success then
+                  evidenceMatch.Groups.[1].Value.Split(';')
+                  |> Array.map _.Trim()
+                  |> Array.filter (String.IsNullOrWhiteSpace >> not)
+                  |> Set.ofArray
+              else
+                  Set.empty
+
+          yield
+              matches.[index].Groups.[1].Value,
+              (if kindMatch.Success then kindMatch.Groups.[1].Value else ""),
+              evidence ]
+
+let private pathComparison =
+    if OperatingSystem.IsWindows() then
+        StringComparison.OrdinalIgnoreCase
+    else
+        StringComparison.Ordinal
+
+let private isInside root candidate =
+    let normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)
+    let normalizedCandidate = Path.GetFullPath candidate
+    let prefix = normalizedRoot + string Path.DirectorySeparatorChar
+
+    normalizedCandidate.Equals(normalizedRoot, pathComparison)
+    || normalizedCandidate.StartsWith(prefix, pathComparison)
+
+let private canonicalizeExistingSegments path =
+    let fullPath = Path.GetFullPath path
+
+    match Path.GetPathRoot fullPath |> Option.ofObj with
+    | None ->
+        fullPath
+    | Some root ->
+        let separators = [| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |]
+        let relative = Path.GetRelativePath(root, fullPath)
+
+        relative.Split(separators, StringSplitOptions.RemoveEmptyEntries)
+        |> Array.fold
+            (fun current segment ->
+                let next = Path.Combine(current, segment)
+
+                let entry: FileSystemInfo =
+                    if Directory.Exists next then
+                        DirectoryInfo next
+                    else
+                        FileInfo next
+
+                if entry.Exists && not (String.IsNullOrWhiteSpace entry.LinkTarget) then
+                    match entry.ResolveLinkTarget(true) |> Option.ofObj with
+                    | None -> next
+                    | Some target -> target.FullName
+                else
+                    next)
+            root
+        |> Path.GetFullPath
+
+let private containsPrivateLocatorMaterial (locator: string) =
+    let absolutePath =
+        Regex.IsMatch(locator, @"(^|[\s=:(""'])/(?!/)")
+        || Regex.IsMatch(locator, @"(^|[\s=:(""'])([A-Za-z]:[\\/]|\\\\)")
+
+    let secret =
+        Regex.IsMatch(
+            locator,
+            @"(?i)(--?(token|password|secret|api[-_]?key)\b|(?:token|password|secret|api[-_]?key)\s*=)"
+        )
+
+    absolutePath || secret
+
+let private normalizedJsonString value =
+    match box value with
+    | null -> ""
+    | text -> (unbox<string> text).Trim()
+
+let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
+    if
+        String.IsNullOrWhiteSpace locator
+        || not (locator.StartsWith("file:", StringComparison.Ordinal))
+    then
+        None
+    else
+        let relative = locator.Substring("file:".Length).Trim()
+
+        if String.IsNullOrWhiteSpace relative || Path.IsPathRooted relative then
+            None
+        else
+            let root = Path.GetFullPath workspaceRoot
+            let candidate = Path.GetFullPath(Path.Combine(root, relative))
+
+            if not (isInside root candidate) then
+                None
+            else
+                let canonicalRoot = canonicalizeExistingSegments root
+                let canonicalCandidate = canonicalizeExistingSegments candidate
+
+                if isInside canonicalRoot canonicalCandidate then
+                    Some canonicalCandidate
+                else
+                    None
+
+let validateActionabilityAudit
+    (workspaceRoot: string)
+    (reportPath: string)
+    (reportText: string)
+    (auditText: string)
+    =
+    let errors = ResizeArray<string>()
+
+    let audit =
+        try
+            let parsed = JsonSerializer.Deserialize<ActionabilityAudit>(auditText)
+
+            if obj.ReferenceEquals(parsed, null) then
+                invalidArg "auditText" "expected a JSON object"
+
+            Some(unbox<ActionabilityAudit> (box parsed))
+        with ex ->
+            errors.Add(sprintf "audit: invalid JSON: %s" ex.Message)
+            None
+
+    match audit with
+    | None -> ()
+    | Some audit ->
+        if audit.auditSchema <> 1 then
+            errors.Add(sprintf "audit: auditSchema must be 1, got %d" audit.auditSchema)
+
+        let expectedReport =
+            Path.GetRelativePath(workspaceRoot, Path.GetFullPath reportPath)
+                .Replace(Path.DirectorySeparatorChar, '/')
+
+        if expectedReport.StartsWith("../", StringComparison.Ordinal) then
+            errors.Add "audit: report must be inside the workspace"
+
+        if audit.report <> expectedReport then
+            errors.Add(sprintf "audit: report binding must be '%s'" expectedReport)
+
+        let expectedDigest = sha256Text reportText
+
+        if audit.reportSha256 <> expectedDigest then
+            errors.Add "audit: reportSha256 does not bind the current report bytes"
+
+        if
+            audit.criticMode <> "fresh-context-subagent"
+            && audit.criticMode <> "separated-critic-pass"
+        then
+            errors.Add
+                "audit: criticMode must be fresh-context-subagent or separated-critic-pass"
+
+        if String.IsNullOrWhiteSpace audit.criticPromptVersion then
+            errors.Add "audit: criticPromptVersion must not be empty"
+
+        let expectedFindings = findingContracts reportText
+
+        let audits =
+            (if isNull (box audit.findings) then [] else audit.findings)
+            |> List.choose (fun finding ->
+                if obj.ReferenceEquals(box finding, null) then
+                    errors.Add "audit: findings must not contain null entries"
+                    None
+                else
+                    Some finding)
+
+        for id, kind, declaredEvidence in expectedFindings do
+            let matches =
+                audits
+                |> List.filter (fun finding -> normalizedJsonString finding.id = id)
+
+            if List.isEmpty matches then
+                errors.Add(sprintf "audit: missing finding '%s'" id)
+            elif matches.Length > 1 then
+                errors.Add(sprintf "audit: duplicate finding '%s'" id)
+            else
+                let finding = matches.Head
+                let status = normalizedJsonString finding.status
+
+                if not (List.contains status criticStatuses) then
+                    errors.Add(sprintf "audit: %s has unknown status '%s'" id status)
+
+                if kind = "positive-pattern" && status <> "positive-pattern" then
+                    errors.Add(sprintf "audit: %s positive-pattern must keep that disposition" id)
+
+                if kind <> "positive-pattern" && status = "positive-pattern" then
+                    errors.Add(sprintf "audit: %s is not a positive-pattern finding" id)
+
+                if status = "incomplete" || status = "unsupported" then
+                    errors.Add(
+                        sprintf
+                            "actionability: %s remains %s and cannot be handed off as actionable"
+                            id
+                            status
+                    )
+
+                let missingFacts =
+                    if isNull (box finding.missingFacts) then [] else finding.missingFacts
+
+                if
+                    (status = "actionable" || status = "positive-pattern")
+                    && not (List.isEmpty missingFacts)
+                then
+                    errors.Add(
+                        sprintf
+                            "audit: %s cannot be %s while missing facts are recorded"
+                            id
+                            status
+                    )
+
+                let checks =
+                    (if isNull (box finding.checkedEvidence) then
+                         []
+                     else
+                         finding.checkedEvidence)
+                    |> List.choose (fun check ->
+                        if obj.ReferenceEquals(box check, null) then
+                            errors.Add(sprintf "audit: %s checkedEvidence must not contain null entries" id)
+                            None
+                        else
+                            Some check)
+
+                if List.isEmpty checks then
+                    errors.Add(sprintf "audit: %s has no checked evidence" id)
+
+                let checkedLocators =
+                    checks |> List.map (fun check -> normalizedJsonString check.locator) |> Set.ofList
+
+                for locator in Set.difference declaredEvidence checkedLocators do
+                    errors.Add(
+                        sprintf
+                            "audit: %s report evidence has no matching check: %s"
+                            id
+                            locator
+                    )
+
+                for locator in Set.difference checkedLocators declaredEvidence do
+                    errors.Add(
+                        sprintf
+                            "audit: %s checked evidence is not declared by the report: %s"
+                            id
+                            locator
+                    )
+
+                for check in checks do
+                    let locator = normalizedJsonString check.locator
+                    let result = normalizedJsonString check.result
+
+                    let digest =
+                        check.sha256
+                        |> Option.map normalizedJsonString
+
+                    if String.IsNullOrWhiteSpace locator then
+                        errors.Add(sprintf "audit: %s evidence locator must not be empty" id)
+                    elif containsPrivateLocatorMaterial locator then
+                        errors.Add(
+                            sprintf
+                                "audit: %s evidence locator exposes an absolute path or secret material"
+                                id
+                        )
+
+                    match digest with
+                    | Some value when not (Regex.IsMatch(value, "^[0-9a-f]{64}$")) ->
+                        errors.Add(sprintf "audit: %s evidence sha256 must be 64 lowercase hex characters" id)
+                    | _ -> ()
+
+                    if not (List.contains result evidenceResults) then
+                        errors.Add(
+                            sprintf "audit: %s evidence has unknown result '%s'" id result
+                        )
+
+                    if
+                        (status = "actionable" || status = "positive-pattern")
+                        && result <> "verified"
+                    then
+                        errors.Add(
+                            sprintf
+                                "audit: %s cannot be %s with evidence result '%s'"
+                                id
+                                status
+                                result
+                        )
+
+                    if locator.StartsWith("file:", StringComparison.Ordinal) then
+                        match resolveEvidencePath workspaceRoot locator with
+                        | None ->
+                            errors.Add(
+                                sprintf
+                                    "audit: %s evidence locator must be a workspace-relative file: path"
+                                    id
+                            )
+                        | Some path when not (File.Exists path) ->
+                            errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
+                        | Some path ->
+                            match digest with
+                            | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
+                            | Some digest ->
+                                let actual = File.ReadAllText path |> sha256Text
+
+                                if digest <> actual then
+                                    errors.Add(
+                                        sprintf "audit: %s evidence digest is stale: %s" id locator
+                                    )
+                    elif not (String.IsNullOrWhiteSpace locator) && Path.IsPathRooted locator then
+                        errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
+
+        let expectedIds = expectedFindings |> List.map (fun (id, _, _) -> id) |> Set.ofList
+
+        for finding in audits do
+            let findingId = normalizedJsonString finding.id
+
+            if String.IsNullOrWhiteSpace findingId then
+                errors.Add "audit: finding id must not be empty"
+            elif not (Set.contains findingId expectedIds) then
+                errors.Add(sprintf "audit: unknown finding '%s'" findingId)
 
     List.ofSeq errors
 

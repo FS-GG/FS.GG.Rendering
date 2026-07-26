@@ -9,7 +9,7 @@ Preserve development experience while it is fresh, then turn it into one compara
 cycle. Use two modes:
 
 - **Checkpoint:** append a small structured event when something materially helps or hinders work.
-- **Finalize:** synthesize checkpoints and repository evidence into a schema-v2 report.
+- **Finalize:** draft, independently critique, verify, then preserve a schema-v2 report and bound audit.
 
 Do not recreate the retired Spec Kit hook fabric. Checkpoints are lifecycle-independent and
 agent-invoked. Do not checkpoint routine success; capture events that teach the scaffold provider,
@@ -84,8 +84,76 @@ Finalize only after the cycle has exercised its intended acceptance surface. Rea
 6. build/test/TRX/evidence outputs, screenshots, playtest notes, timing artifacts, docs, and PR
    history that exist for this cycle.
 
-Missing checkpoints reduce confidence; they do not block finalization. State the missing evidence
-in §1 and do not reconstruct precise elapsed time or abandoned approaches without evidence.
+Missing checkpoints are themselves an evidence gap. Record one candidate finding per material claim
+whose facts cannot be reconstructed; the critic decides whether it is incomplete or unsupported.
+Never reconstruct precise elapsed time, commands, versions, ownership, root causes, or abandoned
+approaches without evidence.
+
+## Independent actionability critic
+
+Finalization is an explicit `draft → cold critique → evidence verification → resolution → durable
+report + audit` sequence. Write the draft outside `feedback/` (for example under a temporary
+workspace directory); the immutable `feedback/<date>-<workspace>.md` does not exist until every
+critic result has been dispositioned.
+
+When subagents are available, spawn a fresh-context critic that did not author the checkpoint or
+draft. Give it only the draft, the workspace root, and this rubric initially—not the author's
+rationale, root-cause theory, or proposed fixes. When subagents are unavailable, clear the prior
+drafting context as far as the host permits, perform the same two passes separately, and record
+`separated-critic-pass`; never describe that mode as independent.
+
+The critic performs two passes:
+
+1. **Cold read.** For every `§4.n`, decide whether the report alone identifies affected behavior,
+   expected/observed delta, impact, owner/change surface, reproduction or inspection route,
+   version/commit/cycle boundary, recurrence/dedupe result, and known unknowns. Judge the observation
+   before any proposed remedy.
+2. **Evidence verification.** Resolve each cited file inside the workspace, run safe cited
+   reproduction commands, compare versions and artifacts, and search prior reports plus open/closed
+   issues for recurrence. A missing file, stale digest/version, non-reproducing command,
+   contradictory artifact, or citation that only repeats the claim is not verified evidence.
+
+The critic must not invent facts or upgrade a claim by confidence. It returns each stable finding id
+as exactly one of `actionable`, `incomplete`, `unsupported`, `duplicate`, or `positive-pattern`.
+While the collector is live, request missing facts at most twice per finding, then preserve the
+honest reduced disposition. A required finding left `incomplete` or `unsupported` may remain as an
+observation, but the skill and driver must not claim an actionable handoff.
+
+After resolving the audit, write `feedback/audits/<report-stem>.audit.json`:
+
+```json
+{
+  "auditSchema": 1,
+  "report": "feedback/2026-07-26-example.md",
+  "reportSha256": "<lowercase SHA-256 of LF-normalized report text>",
+  "criticMode": "fresh-context-subagent",
+  "criticPromptVersion": "actionability-v1",
+  "findings": [{
+    "id": "§4.1",
+    "status": "actionable",
+    "missingFacts": [],
+    "checkedEvidence": [{
+      "locator": "file:readiness/build.log",
+      "result": "verified",
+      "sha256": "<lowercase SHA-256 of LF-normalized file text>"
+    }],
+    "confidenceLimits": []
+  }]
+}
+```
+
+Use workspace-relative `file:` locators and strip secrets, customer data, personal data, internal
+hostnames, and excluded absolute paths from critic prompts and audits. For non-file evidence, use a
+specific locator such as `command:dotnet test ...` or `issue:<owner>/<repo>#<number>`, record the checked
+result, and omit `sha256`. Evidence result vocabulary is `verified`, `missing`, `stale`,
+`non-reproducing`, `contradictory`, or `claim-only`.
+
+Compute the report and text-evidence digests with the bundled helper so newline normalization is
+identical to validation:
+
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- digest <text-file>
+```
 
 ## Output contract
 
@@ -138,7 +206,7 @@ Use a structured record for every finding:
 - **Impact:** <who/what was affected and severity>
 - **Expected:** <documented, designed, or reasonably required behavior>
 - **Observed:** <what happened>
-- **Evidence:** <command/output, artifact, diff, screenshot, source location, timing, or interaction>
+- **Evidence:** <exact locator; separate multiple locators with `;`>
 - **Version:** <reproduced package/tool version and current version checked, or n/a>
 - **Owner:** <FS-GG repo plus component/change surface>
 - **Recurrence:** new | first seen <report/ref> | seen again <report/ref>; <existing issue/ref>
@@ -147,6 +215,8 @@ Use a structured record for every finding:
 ```
 
 Evidence need not be a command, but it must let another person inspect or reproduce the observation.
+Each semicolon-separated value is an exact locator copied into the audit's `checkedEvidence`; the
+validator rejects an unchecked report locator or a substituted audit locator.
 For versioned defects, check the latest available release and say when re-verification was not
 possible. Search prior reports and open/closed issues before filing. Add new evidence to an existing
 issue instead of duplicating it.
@@ -219,12 +289,13 @@ Run:
 
 ```sh
 dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- \
-  validate feedback/<report>.md
+  validate feedback/<report>.md --audit feedback/audits/<report>.audit.json
 ```
 
-Fix every reported error. The validator checks schema-v2 frontmatter, stable sections, finding
-fields, finding numbering, and complete surface coverage. It intentionally does not validate old
-schema-v1 reports.
+Fix every reported error. The validator checks schema-v2 structure plus exact audit/report binding,
+complete stable finding coverage, critic vocabulary/mode, unresolved actionability, file existence
+and evidence digests. Changing or deleting cited evidence invalidates a previously green audit.
+It intentionally does not validate old schema-v1 reports.
 
 ## Final roll-up
 
