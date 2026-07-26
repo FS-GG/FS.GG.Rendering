@@ -137,6 +137,107 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "scheme-prefixed absolute paths and secret arguments fail closed" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let locator =
+                  "command:dotnet test --results-directory /home/user/private --token=secret-value"
+
+              let report =
+                  validReport.Replace("file:readiness/build.log", locator)
+
+              let evidence =
+                  [| {| locator = locator
+                        result = "verified"
+                        sha256 = None |} |]
+
+              let errors =
+                  auditJson root reportPath report "actionable" evidence
+                  |> validateActionabilityAudit root reportPath report
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("absolute path or secret material"))
+                  "a scheme prefix cannot hide private paths or credentials"
+          }
+
+          test "workspace-relative evidence cannot escape through a symlink" {
+              if not (OperatingSystem.IsLinux()) then
+                  skiptest "Linux regression for realpath containment"
+
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-symlink-" + Guid.NewGuid().ToString "N"
+                  )
+
+              let external =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-external-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory external |> ignore
+                  let externalEvidence = Path.Combine(external, "outside.log")
+                  File.WriteAllText(externalEvidence, "outside")
+
+                  Directory.CreateSymbolicLink(Path.Combine(root, "readiness"), external)
+                  |> ignore
+
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/outside.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "outside") |} |]
+
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "file:readiness/outside.log"
+                      )
+
+                  let errors =
+                      auditJson root reportPath report "actionable" evidence
+                      |> validateActionabilityAudit root reportPath report
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("workspace-relative file"))
+                      "an in-workspace symlink cannot validate bytes outside the workspace"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+
+                  if Directory.Exists external then
+                      Directory.Delete(external, true)
+          }
+
+          test "null evidence locator is a validation error rather than an exception" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let evidence =
+                  [| {| locator = "file:readiness/build.log"
+                        result = "verified"
+                        sha256 = None |} |]
+
+              let audit =
+                  (auditJson root reportPath validReport "actionable" evidence)
+                      .Replace("\"locator\":\"file:readiness/build.log\"", "\"locator\":null")
+
+              let errors =
+                  validateActionabilityAudit root reportPath validReport audit
+
+              Expect.exists
+                  errors
+                  (fun error -> error.Contains("evidence locator must not be empty"))
+                  "malformed JSON fields fail closed without throwing"
+          }
+
           test "polished fact-free and circular finding stays incomplete" {
               let report =
                   validReport

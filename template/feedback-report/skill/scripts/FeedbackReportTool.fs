@@ -286,8 +286,68 @@ let private findingContracts (reportText: string) =
               (if kindMatch.Success then kindMatch.Groups.[1].Value else ""),
               evidence ]
 
+let private pathComparison =
+    if OperatingSystem.IsWindows() then
+        StringComparison.OrdinalIgnoreCase
+    else
+        StringComparison.Ordinal
+
+let private isInside root candidate =
+    let normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)
+    let normalizedCandidate = Path.GetFullPath candidate
+    let prefix = normalizedRoot + string Path.DirectorySeparatorChar
+
+    normalizedCandidate.Equals(normalizedRoot, pathComparison)
+    || normalizedCandidate.StartsWith(prefix, pathComparison)
+
+let private canonicalizeExistingSegments path =
+    let fullPath = Path.GetFullPath path
+
+    match Path.GetPathRoot fullPath |> Option.ofObj with
+    | None ->
+        fullPath
+    | Some root ->
+        let separators = [| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |]
+        let relative = Path.GetRelativePath(root, fullPath)
+
+        relative.Split(separators, StringSplitOptions.RemoveEmptyEntries)
+        |> Array.fold
+            (fun current segment ->
+                let next = Path.Combine(current, segment)
+
+                let entry: FileSystemInfo =
+                    if Directory.Exists next then
+                        DirectoryInfo next
+                    else
+                        FileInfo next
+
+                if entry.Exists && not (String.IsNullOrWhiteSpace entry.LinkTarget) then
+                    match entry.ResolveLinkTarget(true) |> Option.ofObj with
+                    | None -> next
+                    | Some target -> target.FullName
+                else
+                    next)
+            root
+        |> Path.GetFullPath
+
+let private containsPrivateLocatorMaterial (locator: string) =
+    let absolutePath =
+        Regex.IsMatch(locator, @"(^|[\s=:(""'])/(?!/)")
+        || Regex.IsMatch(locator, @"(^|[\s=:(""'])([A-Za-z]:[\\/]|\\\\)")
+
+    let secret =
+        Regex.IsMatch(
+            locator,
+            @"(?i)(--?(token|password|secret|api[-_]?key)\b|(?:token|password|secret|api[-_]?key)\s*=)"
+        )
+
+    absolutePath || secret
+
 let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
-    if not (locator.StartsWith("file:", StringComparison.Ordinal)) then
+    if
+        String.IsNullOrWhiteSpace locator
+        || not (locator.StartsWith("file:", StringComparison.Ordinal))
+    then
         None
     else
         let relative = locator.Substring("file:".Length).Trim()
@@ -297,9 +357,17 @@ let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
         else
             let root = Path.GetFullPath workspaceRoot
             let candidate = Path.GetFullPath(Path.Combine(root, relative))
-            let prefix = root.TrimEnd(Path.DirectorySeparatorChar) + string Path.DirectorySeparatorChar
 
-            if candidate.StartsWith(prefix, StringComparison.Ordinal) then Some candidate else None
+            if not (isInside root candidate) then
+                None
+            else
+                let canonicalRoot = canonicalizeExistingSegments root
+                let canonicalCandidate = canonicalizeExistingSegments candidate
+
+                if isInside canonicalRoot canonicalCandidate then
+                    Some canonicalCandidate
+                else
+                    None
 
 let validateActionabilityAudit
     (workspaceRoot: string)
@@ -421,25 +489,44 @@ let validateActionabilityAudit
                     )
 
                 for check in checks do
-                    if not (List.contains check.result evidenceResults) then
+                    let locator =
+                        match box check.locator with
+                        | null -> ""
+                        | value -> (unbox<string> value).Trim()
+
+                    let result =
+                        match box check.result with
+                        | null -> ""
+                        | value -> (unbox<string> value).Trim()
+
+                    if String.IsNullOrWhiteSpace locator then
+                        errors.Add(sprintf "audit: %s evidence locator must not be empty" id)
+                    elif containsPrivateLocatorMaterial locator then
                         errors.Add(
-                            sprintf "audit: %s evidence has unknown result '%s'" id check.result
+                            sprintf
+                                "audit: %s evidence locator exposes an absolute path or secret material"
+                                id
+                        )
+
+                    if not (List.contains result evidenceResults) then
+                        errors.Add(
+                            sprintf "audit: %s evidence has unknown result '%s'" id result
                         )
 
                     if
                         (finding.status = "actionable" || finding.status = "positive-pattern")
-                        && check.result <> "verified"
+                        && result <> "verified"
                     then
                         errors.Add(
                             sprintf
                                 "audit: %s cannot be %s with evidence result '%s'"
                                 id
                                 finding.status
-                                check.result
+                                result
                         )
 
-                    if check.locator.StartsWith("file:", StringComparison.Ordinal) then
-                        match resolveEvidencePath workspaceRoot check.locator with
+                    if locator.StartsWith("file:", StringComparison.Ordinal) then
+                        match resolveEvidencePath workspaceRoot locator with
                         | None ->
                             errors.Add(
                                 sprintf
@@ -447,7 +534,7 @@ let validateActionabilityAudit
                                     id
                             )
                         | Some path when not (File.Exists path) ->
-                            errors.Add(sprintf "audit: %s evidence file is missing: %s" id check.locator)
+                            errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
                         | Some path ->
                             match check.sha256 with
                             | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
@@ -456,9 +543,9 @@ let validateActionabilityAudit
 
                                 if digest <> actual then
                                     errors.Add(
-                                        sprintf "audit: %s evidence digest is stale: %s" id check.locator
+                                        sprintf "audit: %s evidence digest is stale: %s" id locator
                                     )
-                    elif Path.IsPathRooted check.locator then
+                    elif not (String.IsNullOrWhiteSpace locator) && Path.IsPathRooted locator then
                         errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
 
         let expectedIds = expectedFindings |> List.map (fun (id, _, _) -> id) |> Set.ofList
