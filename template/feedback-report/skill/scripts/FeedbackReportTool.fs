@@ -343,6 +343,11 @@ let private containsPrivateLocatorMaterial (locator: string) =
 
     absolutePath || secret
 
+let private normalizedJsonString value =
+    match box value with
+    | null -> ""
+    | text -> (unbox<string> text).Trim()
+
 let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
     if
         String.IsNullOrWhiteSpace locator
@@ -421,10 +426,20 @@ let validateActionabilityAudit
             errors.Add "audit: criticPromptVersion must not be empty"
 
         let expectedFindings = findingContracts reportText
-        let audits = if isNull (box audit.findings) then [] else audit.findings
+
+        let audits =
+            (if isNull (box audit.findings) then [] else audit.findings)
+            |> List.choose (fun finding ->
+                if obj.ReferenceEquals(box finding, null) then
+                    errors.Add "audit: findings must not contain null entries"
+                    None
+                else
+                    Some finding)
 
         for id, kind, declaredEvidence in expectedFindings do
-            let matches = audits |> List.filter (fun finding -> finding.id = id)
+            let matches =
+                audits
+                |> List.filter (fun finding -> normalizedJsonString finding.id = id)
 
             if List.isEmpty matches then
                 errors.Add(sprintf "audit: missing finding '%s'" id)
@@ -432,45 +447,56 @@ let validateActionabilityAudit
                 errors.Add(sprintf "audit: duplicate finding '%s'" id)
             else
                 let finding = matches.Head
+                let status = normalizedJsonString finding.status
 
-                if not (List.contains finding.status criticStatuses) then
-                    errors.Add(sprintf "audit: %s has unknown status '%s'" id finding.status)
+                if not (List.contains status criticStatuses) then
+                    errors.Add(sprintf "audit: %s has unknown status '%s'" id status)
 
-                if kind = "positive-pattern" && finding.status <> "positive-pattern" then
+                if kind = "positive-pattern" && status <> "positive-pattern" then
                     errors.Add(sprintf "audit: %s positive-pattern must keep that disposition" id)
 
-                if kind <> "positive-pattern" && finding.status = "positive-pattern" then
+                if kind <> "positive-pattern" && status = "positive-pattern" then
                     errors.Add(sprintf "audit: %s is not a positive-pattern finding" id)
 
-                if finding.status = "incomplete" || finding.status = "unsupported" then
+                if status = "incomplete" || status = "unsupported" then
                     errors.Add(
                         sprintf
                             "actionability: %s remains %s and cannot be handed off as actionable"
                             id
-                            finding.status
+                            status
                     )
 
                 let missingFacts =
                     if isNull (box finding.missingFacts) then [] else finding.missingFacts
 
                 if
-                    (finding.status = "actionable" || finding.status = "positive-pattern")
+                    (status = "actionable" || status = "positive-pattern")
                     && not (List.isEmpty missingFacts)
                 then
                     errors.Add(
                         sprintf
                             "audit: %s cannot be %s while missing facts are recorded"
                             id
-                            finding.status
+                            status
                     )
 
                 let checks =
-                    if isNull (box finding.checkedEvidence) then [] else finding.checkedEvidence
+                    (if isNull (box finding.checkedEvidence) then
+                         []
+                     else
+                         finding.checkedEvidence)
+                    |> List.choose (fun check ->
+                        if obj.ReferenceEquals(box check, null) then
+                            errors.Add(sprintf "audit: %s checkedEvidence must not contain null entries" id)
+                            None
+                        else
+                            Some check)
 
                 if List.isEmpty checks then
                     errors.Add(sprintf "audit: %s has no checked evidence" id)
 
-                let checkedLocators = checks |> List.map _.locator |> Set.ofList
+                let checkedLocators =
+                    checks |> List.map (fun check -> normalizedJsonString check.locator) |> Set.ofList
 
                 for locator in Set.difference declaredEvidence checkedLocators do
                     errors.Add(
@@ -489,15 +515,12 @@ let validateActionabilityAudit
                     )
 
                 for check in checks do
-                    let locator =
-                        match box check.locator with
-                        | null -> ""
-                        | value -> (unbox<string> value).Trim()
+                    let locator = normalizedJsonString check.locator
+                    let result = normalizedJsonString check.result
 
-                    let result =
-                        match box check.result with
-                        | null -> ""
-                        | value -> (unbox<string> value).Trim()
+                    let digest =
+                        check.sha256
+                        |> Option.map normalizedJsonString
 
                     if String.IsNullOrWhiteSpace locator then
                         errors.Add(sprintf "audit: %s evidence locator must not be empty" id)
@@ -508,20 +531,25 @@ let validateActionabilityAudit
                                 id
                         )
 
+                    match digest with
+                    | Some value when not (Regex.IsMatch(value, "^[0-9a-f]{64}$")) ->
+                        errors.Add(sprintf "audit: %s evidence sha256 must be 64 lowercase hex characters" id)
+                    | _ -> ()
+
                     if not (List.contains result evidenceResults) then
                         errors.Add(
                             sprintf "audit: %s evidence has unknown result '%s'" id result
                         )
 
                     if
-                        (finding.status = "actionable" || finding.status = "positive-pattern")
+                        (status = "actionable" || status = "positive-pattern")
                         && result <> "verified"
                     then
                         errors.Add(
                             sprintf
                                 "audit: %s cannot be %s with evidence result '%s'"
                                 id
-                                finding.status
+                                status
                                 result
                         )
 
@@ -536,7 +564,7 @@ let validateActionabilityAudit
                         | Some path when not (File.Exists path) ->
                             errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
                         | Some path ->
-                            match check.sha256 with
+                            match digest with
                             | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
                             | Some digest ->
                                 let actual = File.ReadAllText path |> sha256Text
@@ -551,8 +579,12 @@ let validateActionabilityAudit
         let expectedIds = expectedFindings |> List.map (fun (id, _, _) -> id) |> Set.ofList
 
         for finding in audits do
-            if not (Set.contains finding.id expectedIds) then
-                errors.Add(sprintf "audit: unknown finding '%s'" finding.id)
+            let findingId = normalizedJsonString finding.id
+
+            if String.IsNullOrWhiteSpace findingId then
+                errors.Add "audit: finding id must not be empty"
+            elif not (Set.contains findingId expectedIds) then
+                errors.Add(sprintf "audit: unknown finding '%s'" findingId)
 
     List.ofSeq errors
 

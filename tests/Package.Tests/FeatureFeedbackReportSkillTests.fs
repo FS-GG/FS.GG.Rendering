@@ -238,6 +238,79 @@ let feedbackReportSkillTests =
                   "malformed JSON fields fail closed without throwing"
           }
 
+          test "null finding id is a validation error rather than an exception" {
+              let root = Path.GetTempPath()
+              let reportPath = Path.Combine(root, "feedback", "report.md")
+
+              let evidence =
+                  [| {| locator = "file:readiness/build.log"
+                        result = "verified"
+                        sha256 = Some(sha256Text "green") |} |]
+
+              let audit =
+                  (auditJson root reportPath validReport "actionable" evidence)
+                      .Replace("\"id\":\"\\u00A74.1\"", "\"id\":null")
+
+              let errors =
+                  validateActionabilityAudit root reportPath validReport audit
+
+              Expect.contains
+                  errors
+                  "audit: finding id must not be empty"
+                  "a null finding identity cannot bypass coverage or throw"
+          }
+
+          test "null status and result plus malformed digest all fail closed" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-malformed-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  File.WriteAllText(Path.Combine(root, "readiness", "build.log"), "green")
+
+                  let expectedDigest = sha256Text "green"
+
+                  let evidence =
+                      [| {| locator = "file:readiness/build.log"
+                            result = "verified"
+                            sha256 = Some expectedDigest |} |]
+
+                  let audit =
+                      (auditJson root reportPath validReport "actionable" evidence)
+                          .Replace("\"status\":\"actionable\"", "\"status\":null")
+                          .Replace("\"result\":\"verified\"", "\"result\":null")
+                          .Replace(
+                              $"\"sha256\":\"{expectedDigest}\"",
+                              "\"sha256\":\"not-a-digest\""
+                          )
+
+                  let errors =
+                      validateActionabilityAudit root reportPath validReport audit
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("unknown status ''"))
+                      "a null critic status is invalid"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("unknown result ''"))
+                      "a null evidence result is invalid"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("sha256 must be 64 lowercase hex"))
+                      "a malformed evidence digest is invalid"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "polished fact-free and circular finding stays incomplete" {
               let report =
                   validReport
