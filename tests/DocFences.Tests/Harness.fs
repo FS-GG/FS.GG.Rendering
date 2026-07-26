@@ -36,6 +36,14 @@ module Harness =
           RawOutput: string
           Diagnostics: Diagnostic list }
 
+    /// The chosen whole-corpus model (Rendering#1050). A fence is either a positive member of the
+    /// published-pin compilation corpus, or a contextual teaching fragment whose reader/product-owned
+    /// inputs make standalone compilation dishonest. Contextual is an explicit classification, not a
+    /// compiler waiver: the inventory digest below forces every corpus edit back through this decision.
+    type FenceDisposition =
+        | SelfContained
+        | Contextual of reason: string
+
     /// Isolated packages folder OUTSIDE any work dir, so a cold restore of the published pin is paid once
     /// per machine and reused. Nothing this repo `pack`s locally can seed it — only nuget.org can — so reuse
     /// is safe (a published (id, version) is immutable). Same reasoning as the probe it descends from.
@@ -199,6 +207,133 @@ module Harness =
                   Body = f.Body })
 
         units, skipped
+
+    /// Frozen identity of the 84-fence product-skill inventory reviewed for Rendering#1050. It covers
+    /// origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
+    /// classification/compilation and must be deliberately re-audited.
+    let private expectedProductSkillInventory =
+        "e4e364bf78adc2ff6ad85c4f113d7527f28d6b77f8dd1f4d20990cfb15e4b0fc"
+
+    /// Positive corpus members proven individually self-contained against the published pins. Everything
+    /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
+    /// types merely to make a compiler probe green.
+    let private selfContainedProductSkillFences =
+        Set.ofList
+            [ "template/product-skills/fs-gg-symbology/SKILL.md", 209
+              "template/product-skills/fs-gg-symbology/SKILL.md", 221
+              "template/product-skills/fs-gg-testing/SKILL.md", 209
+              "template/product-skills/fs-gg-testing/SKILL.md", 234
+              "template/product-skills/fs-gg-testing/SKILL.md", 300
+              "template/product-skills/fs-gg-grids/SKILL.md", 61
+              "template/product-skills/fs-gg-collision/SKILL.md", 104
+              "template/product-skills/fs-gg-layout/SKILL.md", 44
+              "template/product-skills/fs-gg-ui-widgets/SKILL.md", 97
+              "template/product-skills/fs-gg-scene/SKILL.md", 25
+              "template/product-skills/fs-gg-scene/SKILL.md", 47
+              "template/product-skills/fs-gg-scene/SKILL.md", 108
+              "template/product-skills/fs-gg-scene/SKILL.md", 182
+              "template/product-skills/fs-gg-styling/SKILL.md", 83
+              "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
+
+    /// Why the remaining fences in each document are contextual. Reasons describe the document's actual
+    /// teaching shape; they are never used to reinterpret compiler errors.
+    let private contextualReasonByDoc =
+        Map.ofList
+            [ "template/product-skills/fs-gg-line-drawing/SKILL.md",
+              "uses product-owned LineDrawing helpers and values introduced by earlier examples"
+              "template/product-skills/fs-gg-symbology/SKILL.md",
+              "mixes signature fragments with reader-owned unit/roster values"
+              "template/product-skills/fs-gg-elmish/SKILL.md",
+              "composes the reader's Model, Msg, host, update, view, and earlier bindings"
+              "template/product-skills/fs-gg-testing/SKILL.md",
+              "uses product-owned domain types, fixtures, and helpers introduced by earlier examples"
+              "template/product-skills/fs-gg-game-shell/SKILL.md",
+              "shows product configuration fragments and a product-owned GameShell wrapper"
+              "template/product-skills/fs-gg-grids/SKILL.md",
+              "continues with a cell value introduced by the preceding example"
+              "template/product-skills/fs-gg-collision/SKILL.md",
+              "uses product-owned body wrappers, targets, and Collision composition"
+              "template/product-skills/fs-gg-layout/SKILL.md",
+              "uses product-owned responsive-layout helper functions"
+              "template/product-skills/fs-gg-ui-widgets/SKILL.md",
+              "continues from a reader-owned control value"
+              "template/product-skills/fs-gg-scene/SKILL.md",
+              "uses reader-owned scenes/animation state or intentionally ambient record labels"
+              "template/product-skills/fs-gg-skiaviewer/SKILL.md",
+              "assembles the reader's Model, Msg, host functions, effects, and launch options"
+              "template/product-skills/fs-gg-visibility/SKILL.md",
+              "uses product-owned world inputs and intentionally ambient geometry record labels"
+              "template/product-skills/fs-gg-styling/SKILL.md",
+              "uses product theme/model values and surrounding control-host context"
+              "template/product-skills/fs-gg-symbol-design/SKILL.md",
+              "contains walkthrough fragments, product frame state, and an FSI script"
+              "template/product-skills/fs-gg-keyboard-input/SKILL.md",
+              "contains expression fragments and the reader's Msg/keymap host"
+              "template/product-skills/fs-gg-symbology/reference/labels.md",
+              "projects labels from the reader's unit value" ]
+
+    let private productSkillInventoryDigest (fences: Corpus.FenceBlock list) =
+        let payload =
+            fences
+            |> List.sortBy (fun fence -> fence.Doc, fence.StartLine)
+            |> List.map (fun fence ->
+                String.Join(
+                    "\u001f",
+                    [| fence.Doc
+                       string fence.StartLine
+                       String.Join("\n", fence.Body)
+                       (fence.Skip |> Option.defaultValue "")
+                       String.Join("\n", fence.ExtraOpens) |]))
+            |> fun entries -> String.Join("\u001e", entries)
+
+        payload
+        |> Encoding.UTF8.GetBytes
+        |> Security.Cryptography.SHA256.HashData
+        |> Convert.ToHexString
+        |> fun value -> value.ToLowerInvariant()
+
+    /// Classify the complete live product-skill inventory. This is deliberately fail-closed: corpus drift,
+    /// a stale positive key, or an unknown document has no default classification.
+    let productSkillCompilationPlan () : (Corpus.FenceBlock * FenceDisposition) list =
+        let fences = Corpus.productSkillFences ()
+        let actualInventory = productSkillInventoryDigest fences
+
+        if actualInventory <> expectedProductSkillInventory then
+            failwithf
+                "product-skill fence inventory changed (expected %s, actual %s); re-audit every changed fence for Rendering#1050 classification"
+                expectedProductSkillInventory
+                actualInventory
+
+        let liveKeys = fences |> List.map (fun fence -> fence.Doc, fence.StartLine) |> Set.ofList
+        let stalePositiveKeys = Set.difference selfContainedProductSkillFences liveKeys
+
+        if not stalePositiveKeys.IsEmpty then
+            failwithf "self-contained fence keys no longer exist: %A" (Set.toList stalePositiveKeys)
+
+        let skippedPositiveFences =
+            fences
+            |> List.choose (fun fence ->
+                if
+                    Set.contains (fence.Doc, fence.StartLine) selfContainedProductSkillFences
+                    && fence.Skip.IsSome
+                then
+                    Some(fence.Doc, fence.StartLine, fence.Skip.Value)
+                else
+                    None)
+
+        if not skippedPositiveFences.IsEmpty then
+            failwithf
+                "self-contained fences cannot carry docfences:skip (they must compile actively): %A"
+                skippedPositiveFences
+
+        fences
+        |> List.map (fun fence ->
+            if Set.contains (fence.Doc, fence.StartLine) selfContainedProductSkillFences then
+                fence, SelfContained
+            else
+                match Map.tryFind fence.Doc contextualReasonByDoc with
+                | Some reason -> fence, Contextual reason
+                | None -> failwithf "no contextual classification for product-skill document %s" fence.Doc)
 
     /// Was a build failure caused by the PIN being unpublished (release window: NU1101/NU1102), rather than
     /// by a fence? Then the harness must skip, not fail — the `PinPending` waiver at the restore boundary
