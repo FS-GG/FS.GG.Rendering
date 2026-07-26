@@ -65,7 +65,7 @@
 #
 # Every entry that stood here is RETIRED BY A RELEASE, which is the only thing that could retire any of
 # them: each named a symbol that `src/` declared and published 0.9.0 did not carry, so there was no
-# spelling to rewrite them TO. The 0.9.2 release published all four, and `$(FsGgUiVersion)` is now 0.19.0,
+# spelling to rewrite them TO. The 0.9.2 release published all four, and `$(FsGgUiVersion)` is now 0.20.0,
 # which carries them still — so the STALE rule ("the pin NOW exports the symbol -> delete the line") is what
 # deleted them:
 #
@@ -112,11 +112,3 @@
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
-
-# FS.GG.Rendering#1040 adds the retained pointer-pacing API and teaches it in the shipped product
-# skills in the same change. Delete these five lines when the package release carrying #1040 is pinned.
-template/product-skills/fs-gg-elmish/SKILL.md::Viewer.enqueueInputWithPointerPolicy
-template/product-skills/fs-gg-elmish/SKILL.md::Viewer.runInteractiveViewerWithPointerPacing
-template/product-skills/fs-gg-skiaviewer/SKILL.md::Viewer.runInteractiveViewerWithPointerPacing
-template/product-skills/fs-gg-skiaviewer/SKILL.md::Viewer.defaultPointerPacingOptions
-template/product-skills/fs-gg-testing/SKILL.md::Viewer.enqueueInputWithPointerPolicy

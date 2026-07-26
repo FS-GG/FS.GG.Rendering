@@ -141,6 +141,15 @@ jobs:
       - name: Build solution (net10.0)
         run: dotnet build FS.GG.Rendering.slnx -c Debug --no-restore
 
+      # #1064 — Package.Tests includes a generated-game execution test. On an ordinary commit the
+      # generated product can restore the current FS.GG.UI.* pin from nuget.org; on the release PR
+      # the new pin is unpublished by construction. Give that test the same canonical tree-under-test
+      # feed as the generated-product job below, so the required gate remains meaningful and green
+      # during the one commit that causes the packages to be published.
+      - name: Pack the framework set for generated consumers in Package.Tests
+        id: package-tests-feed
+        uses: ./.github/actions/product-local-feed
+
       # T013 (US2, FR-005/FR-010) — classify the runner (display? GL?) up front; the GL-dependent
       # steps key off this output rather than guessing. Informational: probe never gates.
       - name: Probe runner capability
@@ -164,6 +173,8 @@ jobs:
       # CadenceCoverageTests meta-guard asserts this coverage holds. A project that genuinely needs
       # GL fails LOUDLY here (never a silent skip) until it is added to GL_TEST_PROJECTS.
       - name: Default local tier (deterministic, slnx-derived)
+        env:
+          FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}
         run: |
           set -euo pipefail
           for proj in $(grep -oE 'tests/[^"]+\.Tests\.fsproj' FS.GG.Rendering.slnx | sort -u); do
