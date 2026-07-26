@@ -2552,8 +2552,13 @@ let private omissionLedger =
 /// were un-waived in scripts/api-surface-manifest.txt and are now MIRRORED, so their 36 module/type
 /// omission entries were paid off and deleted here (the ratchet only shrinks). This is the debt #984
 /// paid, reconciling this ledger to the same manifest change that added the mirror files.
+///
+/// Raised 417 -> 456 by #1072: the generated performance gate now consumes FS.GG.Game.Harness, but
+/// mirrors only its opaque production-journey receipt boundary. The 41 producer-owned bot,
+/// exploration, law, property, trace, and legacy workload module/type omissions are deliberately
+/// reconciled with the matching manifest waivers; the prior ledger contained 415 live unique entries.
 [<Literal>]
-let private OmissionLedgerCeiling = 417
+let private OmissionLedgerCeiling = 456
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

@@ -363,6 +363,15 @@ separate from normal-play, stress, and throughput routes. Do not relabel that bo
 swapchain/vblank, or vsync evidence. Use a separate live-compositor workload on an actual presentation
 host for those claims.
 
+Separate declared input from observed routing receipts. A workload claiming 120 pointer events with
+one observed raw input is red and names the missing seam. Bounded headless evidence serializes
+present/drop/swapchain/vsync as **unsupported** with a reason, never measured zero. Run the machine gate
+before `PerformanceCriticRequest`; its sidecar binds the exact evidence artifact bytes. The
+fresh-context critic may narrow a claim but cannot promote
+unsupported host capability, synthetic provenance, missing cost coverage, or a red budget.
+Its verdict belongs in an attributable external review system at the exact landing commit; an in-repo
+receipt or author-entered identity/mode string cannot establish independence.
+
 Keep window, render, and screenshot I/O inside the `Viewer.runApp` interpreter.
 Your `update` and `View` stay pure; never perform host I/O inside them.
 

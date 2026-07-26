@@ -117,6 +117,50 @@ type FS.GG.Game.Core::FS.GG.Game.Core.EdgeOrientation
 type FS.GG.Game.Core::FS.GG.Game.Core.GridSpec
 type FS.GG.Game.Core::FS.GG.Game.Core.Vertex
 
+# FS.GG.Game.Harness (41 — #1072 mirrors only the opaque production-journey receipt boundary used by
+# PerformanceEvidence; bots, exploration, laws, properties and legacy workload APIs remain producer-owned.)
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Bots
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Driver
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Explore
+module FS.GG.Game.Harness::FS.GG.Game.Harness.LawReport
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Laws
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Matrix
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Playable
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Properties
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Synthetic
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Trace
+module FS.GG.Game.Harness::FS.GG.Game.Harness.VisibilityPolygon
+module FS.GG.Game.Harness::FS.GG.Game.Harness.Workload
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Bot`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Counterexample
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ExpectedWorkload`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ExploreConfig
+type FS.GG.Game.Harness::FS.GG.Game.Harness.FindResult
+type FS.GG.Game.Harness::FS.GG.Game.Harness.IProductionJourneyProof
+type FS.GG.Game.Harness::FS.GG.Game.Harness.IProductionJourneyProofV1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.JourneyPolicy`2
+type FS.GG.Game.Harness::FS.GG.Game.Harness.LawReport
+type FS.GG.Game.Harness::FS.GG.Game.Harness.LawResult
+type FS.GG.Game.Harness::FS.GG.Game.Harness.MatchSetup`2
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Match`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Origin
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Playable`2
+type FS.GG.Game.Harness::FS.GG.Game.Harness.PropertyConfig
+type FS.GG.Game.Harness::FS.GG.Game.Harness.PropertyResult
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ReachResult`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Run`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Seat
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Trace`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.Witness
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadAdapter`3
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadBudget
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadClass
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadCost
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadKind
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadObservation
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadRun`1
+type FS.GG.Game.Harness::FS.GG.Game.Harness.WorkloadVerdict
+
 # FS.GG.UI.Canvas (1)
 type FS.GG.UI.Canvas::FS.GG.UI.Canvas.PersistenceOutcome
 

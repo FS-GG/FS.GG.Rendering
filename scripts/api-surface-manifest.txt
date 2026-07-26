@@ -996,6 +996,42 @@ open   FS.GG.UI.SkiaViewer
 +      Elmish.fsi val ElmishAdapter.update
 
 # ------------------------------------------------------------------------------------------
+file   Game.Harness/Journey.fsi
+skill  fs-gg-testing
+header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Harness/Journey.fsi); regenerate when $(FsGgGameVersion) moves.
+ns     FS.GG.Game.Harness
+pkg    FS.GG.Game.Harness
+open   FS.GG.Game.Core
++      Journey.fsi type JourneyEvent`4
++      Journey.fsi type JourneyDispatch`1
++      Journey.fsi type ProductionJourney`7
++      Journey.fsi type JourneyResult
++      Journey.fsi type JourneyInputKind
++      Journey.fsi type JourneyReceipt
++      Journey.fsi val JourneyReceipt.schemaVersion
++      Journey.fsi val JourneyReceipt.runnerIdentity
++      Journey.fsi val JourneyReceipt.runnerVersion
++      Journey.fsi val JourneyReceipt.compositionAuthority
++      Journey.fsi val JourneyReceipt.origin
++      Journey.fsi val JourneyReceipt.routeId
++      Journey.fsi val JourneyReceipt.scenarioId
++      Journey.fsi val JourneyReceipt.testId
++      Journey.fsi val JourneyReceipt.inputKind
++      Journey.fsi val JourneyReceipt.inputIdentity
++      Journey.fsi val JourneyReceipt.inputDigest
++      Journey.fsi val JourneyReceipt.scriptDigest
++      Journey.fsi val JourneyReceipt.traceDigest
++      Journey.fsi val JourneyReceipt.initialFingerprintDigest
++      Journey.fsi val JourneyReceipt.terminalFingerprintDigest
++      Journey.fsi val JourneyReceipt.terminalPredicateIdentity
++      Journey.fsi val JourneyReceipt.terminalPredicateReached
++      Journey.fsi val JourneyReceipt.result
++      Journey.fsi val JourneyReceipt.steps
++      Journey.fsi val JourneyReceipt.maxSteps
++      Journey.fsi type JourneyRun`3
++      Journey.fsi val Journey.runScriptWithIdentity
+
+# ------------------------------------------------------------------------------------------
 file   Game.Core/Ai.fsi
 skill  fs-gg-game-core
 header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
@@ -2122,6 +2158,76 @@ waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.jps
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.pathTo
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.reachable
 waive FS.GG.Game.Core Pathfinding.fsi val Pathfinding.smooth
+waive FS.GG.Game.Harness Bots.fsi val Bots.chase
+waive FS.GG.Game.Harness Bots.fsi val Bots.greedyToward
+waive FS.GG.Game.Harness Bots.fsi val Bots.on
+waive FS.GG.Game.Harness Bots.fsi val Bots.random
+waive FS.GG.Game.Harness Bots.fsi val Bots.scripted
+waive FS.GG.Game.Harness Bots.fsi val Bots.sitter`1
+waive FS.GG.Game.Harness Driver.fsi val Driver.identityFingerprint
+waive FS.GG.Game.Harness Driver.fsi val Driver.runBot
+waive FS.GG.Game.Harness Driver.fsi val Driver.runCommands
+waive FS.GG.Game.Harness Driver.fsi val Driver.runScript
+waive FS.GG.Game.Harness Driver.fsi type Run`1
+waive FS.GG.Game.Harness Explore.fsi val Explore.defaultConfig
+waive FS.GG.Game.Harness Explore.fsi val Explore.defaultMoves
+waive FS.GG.Game.Harness Explore.fsi val Explore.findScript
+waive FS.GG.Game.Harness Explore.fsi val Explore.findScriptWith
+waive FS.GG.Game.Harness Explore.fsi val Explore.reachable
+waive FS.GG.Game.Harness Explore.fsi val Explore.reachableWith
+waive FS.GG.Game.Harness Explore.fsi type ExploreConfig
+waive FS.GG.Game.Harness Explore.fsi type FindResult
+waive FS.GG.Game.Harness Explore.fsi type ReachResult`1
+waive FS.GG.Game.Harness Explore.fsi type Witness
+waive FS.GG.Game.Harness Journey.fsi type IProductionJourneyProof
+waive FS.GG.Game.Harness Journey.fsi type IProductionJourneyProofV1
+waive FS.GG.Game.Harness Journey.fsi val Journey.runPolicy
+waive FS.GG.Game.Harness Journey.fsi val Journey.runPolicyWithIdentity
+waive FS.GG.Game.Harness Journey.fsi val Journey.runScript
+waive FS.GG.Game.Harness Journey.fsi type JourneyPolicy`2
+waive FS.GG.Game.Harness Laws.fsi type LawReport
+waive FS.GG.Game.Harness Laws.fsi val LawReport.allPassed
+waive FS.GG.Game.Harness Laws.fsi val LawReport.failures
+waive FS.GG.Game.Harness Laws.fsi type LawResult
+waive FS.GG.Game.Harness Laws.fsi val Laws.check
+waive FS.GG.Game.Harness Laws.fsi val Laws.matrixOrderIndependent
+waive FS.GG.Game.Harness Matrix.fsi type MatchSetup`2
+waive FS.GG.Game.Harness Matrix.fsi type Match`1
+waive FS.GG.Game.Harness Matrix.fsi val Matrix.runMatch
+waive FS.GG.Game.Harness Matrix.fsi val Matrix.runMatrix
+waive FS.GG.Game.Harness Matrix.fsi val Matrix.winRate
+waive FS.GG.Game.Harness Matrix.fsi type Seat
+waive FS.GG.Game.Harness Playable.fsi type Bot`1
+waive FS.GG.Game.Harness Playable.fsi val Playable.resolve
+waive FS.GG.Game.Harness Playable.fsi type Playable`2
+waive FS.GG.Game.Harness Properties.fsi type Counterexample
+waive FS.GG.Game.Harness Properties.fsi val Properties.check
+waive FS.GG.Game.Harness Properties.fsi val Properties.checkWith
+waive FS.GG.Game.Harness Properties.fsi val Properties.defaultConfig
+waive FS.GG.Game.Harness Properties.fsi type PropertyConfig
+waive FS.GG.Game.Harness Properties.fsi type PropertyResult
+waive FS.GG.Game.Harness Synthetic.fsi val Synthetic.trace
+waive FS.GG.Game.Harness Trace.fsi type Origin
+waive FS.GG.Game.Harness Trace.fsi val Trace.equalFrames
+waive FS.GG.Game.Harness Trace.fsi val Trace.firstDivergence
+waive FS.GG.Game.Harness Trace.fsi val Trace.frames
+waive FS.GG.Game.Harness Trace.fsi val Trace.isSynthetic
+waive FS.GG.Game.Harness Trace.fsi val Trace.origin
+waive FS.GG.Game.Harness Trace.fsi val Trace.render
+waive FS.GG.Game.Harness Trace.fsi type Trace`1
+waive FS.GG.Game.Harness VisibilityPolygon.fsi val VisibilityPolygon.polygon
+waive FS.GG.Game.Harness Workload.fsi type ExpectedWorkload`1
+waive FS.GG.Game.Harness Workload.fsi val Workload.evaluateCost
+waive FS.GG.Game.Harness Workload.fsi val Workload.renderArtifact
+waive FS.GG.Game.Harness Workload.fsi val Workload.run
+waive FS.GG.Game.Harness Workload.fsi type WorkloadAdapter`3
+waive FS.GG.Game.Harness Workload.fsi type WorkloadBudget
+waive FS.GG.Game.Harness Workload.fsi type WorkloadClass
+waive FS.GG.Game.Harness Workload.fsi type WorkloadCost
+waive FS.GG.Game.Harness Workload.fsi type WorkloadKind
+waive FS.GG.Game.Harness Workload.fsi type WorkloadObservation
+waive FS.GG.Game.Harness Workload.fsi type WorkloadRun`1
+waive FS.GG.Game.Harness Workload.fsi type WorkloadVerdict
 waive FS.GG.UI.Build Evidence.fsi val Audit.evaluate
 waive FS.GG.UI.Build Evidence.fsi val Audit.render
 waive FS.GG.UI.Build Evidence.fsi type EvidenceNode

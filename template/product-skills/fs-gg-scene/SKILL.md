@@ -272,6 +272,16 @@ A 64x64 world with thousands of repeated fog or minimap nodes should fail before
 row-run/static-subtree remediation and pass afterward. The command is bounded headless scene-route
 evidence; live compositor and swapchain proof remain host work.
 
+Keep the product-owned `performanceCostDrivers` inventory independent from workload declarations.
+Every `GameplayVisualInventory` element must bind to a workload or carry a reasoned non-performance
+disposition, and maximum scale must cite production configuration plus observed counters. Run this
+machine coverage gate first. Next, run `PerformanceCriticRequest` for a fresh-context critic over the
+exact opaque runner receipts, byte-digested evidence artifact, inventory, raw samples, host facts, and
+rubric; an unresolved underrepresentative,
+synthetic-only, unmeasured, misclassified, or ambiguous result blocks representative readiness.
+Record its verdict in an attributable external review system at the exact landing commit. In-repo JSON
+or an author-entered identity/mode string cannot establish independence.
+
 Scene must not reference Elmish, the viewer host, layout, or widgets. Keep host
 wiring in `fs-gg-skiaviewer` and control authoring in `fs-gg-ui-widgets`.
 

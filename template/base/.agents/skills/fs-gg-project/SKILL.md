@@ -93,6 +93,16 @@ performance-debt issue permits deliberate baseline capture, but the baseline rem
 and never satisfies acceptance. The artifact is bounded headless update + scene-route evidence; it is
 never live compositor, swapchain, or vsync proof.
 
+Representative readiness adds two gates after the machine gate and budget. Bind each normal-play
+workload to an opaque FS.GG.Game runner-issued journey receipt (a canonical factory belongs at that
+journey's boot seam; caller-authored labels/hashes are not provenance), keep `performanceCostDrivers` independent from the workloads,
+cross-check every gameplay visual, compare declared stimulus with observed routing, and emit
+unsupported host metrics as unsupported. Then run `PerformanceCriticRequest` and obtain a
+fresh-context `supported` verdict in an attributable external review system at the exact landing
+commit. A separated-pass fallback must disclose its lack of independence. In-repo JSON,
+author-entered reviewer identity, and same-context mode strings are not independence evidence; no
+critic verdict can waive provenance, coverage, capability, or budget.
+
 Reference selected capability packages. Do not copy framework implementation
 projects into consumer-mode products.
 

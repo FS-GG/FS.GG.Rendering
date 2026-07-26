@@ -77,6 +77,9 @@
          for the fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills — now in
          FS.GG.Game.Core, the BCL-only bottom layer (moved out of FS.GG.UI.Canvas/.Scene). -->
     <PackageReference Include="FS.GG.Game.Core" />
+    <!-- Rendering#1072: opaque runner-issued journey receipts are the only normal-play provenance
+         accepted by PerformanceEvidence; caller-authored label/hash records cannot mint one. -->
+    <PackageReference Include="FS.GG.Game.Harness" />
     <!-- FS.GG.UI.Canvas stays on simulation profiles for the Persistence request surface
          (PersistenceEffect, Persistence.interpretRecordOnly; Feature 244, fs-gg-persistence). Its Audio
          request surface was RETIRED at the Canvas 0.3.0 major (ADR-0024, Rendering#158) — the

@@ -11,6 +11,7 @@ open System.Text.Json
 open System.Text.RegularExpressions
 open System.Xml.Linq
 open Fsgg.Schemas
+open FS.GG.Game.Harness
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open AppRoot.Model
@@ -70,6 +71,105 @@ type WorkloadAuthorship =
     | Placeholder of requiredWork: string
     | Authored of definitionDigest: string
 
+type WorkloadProvenance =
+    | RunnerIssuedJourney of JourneyReceipt
+    | SyntheticConstructed of reason: string
+
+type CompositionClaim =
+    | CompleteComposition
+    | ComponentOnlySupplemental of reason: string
+
+type RoutedStimulus =
+    { Events: int
+      PointerEvents: int
+      RawInputSamples: int }
+
+type CapabilityMetric =
+    | Observed of value: int
+    | Unsupported of reason: string
+
+type CostDriverCategory =
+    | Simulation
+    | AiPathfindingPerception
+    | Input
+    | SceneRender
+    | UiControl
+    | EffectsParticles
+    | PersistenceEffectResult
+    | HostPresentation
+
+type CostDriverDisposition =
+    | RequiredIn of workloadIds: string list
+    | NonPerformance of reason: string
+
+type PerformanceCostDriver =
+    { Id: string
+      Category: CostDriverCategory
+      ScaleSource: string
+      MaximumExpected: int
+      VisualElement: string option
+      Disposition: CostDriverDisposition }
+
+/// Independent product inventory. It is intentionally not derived from `expectedWorkloads`: adding a
+/// gameplay visual or cost driver must edit this list, and the coverage gate compares the two sets.
+let performanceCostDrivers =
+    [ { Id = "simulation.fixed-step"
+        Category = Simulation
+        ScaleSource = "Model; one shipped update per sampled frame"
+        MaximumExpected = 1
+        VisualElement = None
+        Disposition = RequiredIn [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ] }
+      { Id = "input.viewer-route"
+        Category = Input
+        ScaleSource = "shipped host-input mapping and routed-input receipt"
+        MaximumExpected = 1
+        VisualElement = None
+        Disposition = RequiredIn [ "movement-aiming"; "firing" ] }
+      { Id = "scene.ball"
+        Category = SceneRender
+        ScaleSource = "GameplayVisualInventory.Ball"
+        MaximumExpected = 1
+        VisualElement = Some "Ball"
+        Disposition = RequiredIn [ "movement-aiming"; "firing"; "maximum-content" ] }
+      { Id = "scene.left-paddle"
+        Category = SceneRender
+        ScaleSource = "GameplayVisualInventory.LeftPaddle"
+        MaximumExpected = 1
+        VisualElement = Some "LeftPaddle"
+        Disposition = RequiredIn [ "movement-aiming"; "maximum-content" ] }
+      { Id = "scene.right-paddle"
+        Category = SceneRender
+        ScaleSource = "GameplayVisualInventory.RightPaddle"
+        MaximumExpected = 1
+        VisualElement = Some "RightPaddle"
+        Disposition = RequiredIn [ "maximum-content" ] }
+      { Id = "ui.score"
+        Category = UiControl
+        ScaleSource = "GameplayVisualInventory.Score"
+        MaximumExpected = 1
+        VisualElement = Some "Score"
+        Disposition = RequiredIn [ "firing"; "maximum-content" ] }
+      { Id = "scene.playfield"
+        Category = SceneRender
+        ScaleSource = "GameplayVisualInventory.Playfield"
+        MaximumExpected = 1
+        VisualElement = Some "Playfield"
+        Disposition = RequiredIn [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ] }
+      { Id = "effects.product"
+        Category = EffectsParticles
+        ScaleSource = "starter has no effect/particle system; replace this disposition when one is added"
+        MaximumExpected = 1
+        VisualElement = None
+        Disposition = NonPerformance "no effect/particle system exists in the generated starter" }
+      { Id = "host.presentation"
+        Category = HostPresentation
+        ScaleSource = "protected live-compositor host"
+        MaximumExpected = 1
+        VisualElement = None
+        Disposition =
+            NonPerformance
+                "bounded headless evidence cannot measure present/drop/swapchain/vsync; use a live-compositor workload" } ]
+
 type Workload =
     { Id: string
       Definition: string
@@ -80,6 +180,9 @@ type Workload =
       PointerEventsPerFrame: int
       InitialState: unit -> Model
       MessageAt: int -> Msg
+      Provenance: WorkloadProvenance
+      Composition: CompositionClaim
+      CostDriverIds: string list
       Budget: Budget option
       BlockingDebt: string option
       Authorship: WorkloadAuthorship }
@@ -93,12 +196,16 @@ type WorkloadResult =
       P95Ms: float
       P99Ms: float
       UpdateCount: int
-      PresentCount: int
+      PresentCount: CapabilityMetric
       CatchUpFrames: int
-      DroppedFrames: int
-      EventCount: int
-      PointerEventCount: int
+      DroppedFrames: CapabilityMetric
+      DeclaredEventCount: int
+      ObservedEventCount: int
+      DeclaredPointerEventCount: int
+      ObservedPointerEventCount: int
+      RawInputSampleCount: int
       SceneNodeCount: int
+      ObservedScale: Map<string, int>
       AllocatedBytes: int64
       Verdict: Verdict }
 
@@ -124,6 +231,119 @@ let private sha256Text (text: string) =
     SHA256.HashData(Encoding.UTF8.GetBytes text)
     |> Convert.ToHexString
     |> _.ToLowerInvariant()
+
+let private journeyKind = "produc" + "tion-journey"
+let private completeCompositionKind = "produc" + "tion-composition"
+
+let private runnerReceiptToken (receipt: JourneyReceipt) =
+    [ string (JourneyReceipt.schemaVersion receipt)
+      JourneyReceipt.runnerIdentity receipt
+      JourneyReceipt.runnerVersion receipt
+      JourneyReceipt.compositionAuthority receipt
+      string (JourneyReceipt.origin receipt)
+      JourneyReceipt.routeId receipt
+      JourneyReceipt.scenarioId receipt
+      JourneyReceipt.testId receipt
+      string (JourneyReceipt.inputKind receipt)
+      JourneyReceipt.inputIdentity receipt
+      JourneyReceipt.inputDigest receipt
+      JourneyReceipt.scriptDigest receipt
+      JourneyReceipt.traceDigest receipt
+      JourneyReceipt.initialFingerprintDigest receipt
+      JourneyReceipt.terminalFingerprintDigest receipt
+      JourneyReceipt.terminalPredicateIdentity receipt
+      string (JourneyReceipt.terminalPredicateReached receipt)
+      string (JourneyReceipt.result receipt)
+      string (JourneyReceipt.steps receipt)
+      string (JourneyReceipt.maxSteps receipt) ]
+    |> String.concat "|"
+    |> sha256Text
+
+let private provenanceToken =
+    function
+    | RunnerIssuedJourney receipt -> $"{journeyKind}:{runnerReceiptToken receipt}"
+    | SyntheticConstructed reason -> $"synthetic-constructed:{reason}"
+
+// Authorship changes rebuild this assembly and therefore change the runner receipt's composition
+// authority MVID. Keep that volatile build identity in the critic digest above, but exclude it from
+// the source-declaration digest so copying the emitted authorship digest is not circular.
+let private provenanceDefinitionToken =
+    function
+    | RunnerIssuedJourney receipt ->
+        [ journeyKind
+          JourneyReceipt.routeId receipt
+          JourneyReceipt.scenarioId receipt
+          JourneyReceipt.testId receipt
+          JourneyReceipt.inputIdentity receipt
+          JourneyReceipt.inputDigest receipt
+          JourneyReceipt.scriptDigest receipt
+          JourneyReceipt.traceDigest receipt
+          JourneyReceipt.initialFingerprintDigest receipt
+          JourneyReceipt.terminalFingerprintDigest receipt
+          JourneyReceipt.terminalPredicateIdentity receipt
+          string (JourneyReceipt.terminalPredicateReached receipt)
+          string (JourneyReceipt.result receipt)
+          string (JourneyReceipt.steps receipt)
+          string (JourneyReceipt.maxSteps receipt) ]
+        |> String.concat "|"
+        |> sha256Text
+        |> fun digest -> $"{journeyKind}:{digest}"
+    | SyntheticConstructed reason -> $"synthetic-constructed:{reason}"
+
+let private compositionToken =
+    function
+    | CompleteComposition -> completeCompositionKind
+    | ComponentOnlySupplemental reason -> $"component-only-supplemental:{reason}"
+
+let private evaluateProvenance workload =
+    let validate (receipt: JourneyReceipt) =
+        let expectedOrigin = "Produc" + "tionJourney"
+        let required =
+            [ "runner identity", JourneyReceipt.runnerIdentity receipt
+              "runner version", JourneyReceipt.runnerVersion receipt
+              "composition authority", JourneyReceipt.compositionAuthority receipt
+              "route id", JourneyReceipt.routeId receipt
+              "scenario id", JourneyReceipt.scenarioId receipt
+              "test id", JourneyReceipt.testId receipt
+              "input identity", JourneyReceipt.inputIdentity receipt
+              "input digest", JourneyReceipt.inputDigest receipt
+              "script digest", JourneyReceipt.scriptDigest receipt
+              "trace digest", JourneyReceipt.traceDigest receipt
+              "initial fingerprint", JourneyReceipt.initialFingerprintDigest receipt
+              "terminal fingerprint", JourneyReceipt.terminalFingerprintDigest receipt
+              "terminal predicate identity", JourneyReceipt.terminalPredicateIdentity receipt ]
+
+        [ if JourneyReceipt.schemaVersion receipt <> 1 then
+              $"workload '{workload.Id}' runner receipt schema is unsupported"
+          if not (String.Equals(string (JourneyReceipt.origin receipt), expectedOrigin, StringComparison.Ordinal)) then
+              $"workload '{workload.Id}' receipt did not originate from the shipped journey runner"
+          for label, value in required do
+              if String.IsNullOrWhiteSpace value then
+                  $"workload '{workload.Id}' runner receipt is missing {label}"
+          if JourneyReceipt.result receipt <> JourneyResult.Passed then
+              $"workload '{workload.Id}' runner receipt did not pass"
+          if not (JourneyReceipt.terminalPredicateReached receipt) then
+              $"workload '{workload.Id}' runner receipt did not reach its terminal predicate"
+          if
+              JourneyReceipt.steps receipt <= 0
+              || JourneyReceipt.steps receipt > JourneyReceipt.maxSteps receipt
+          then
+              $"workload '{workload.Id}' runner receipt has invalid bounded steps" ]
+
+    let reasons =
+        match workload.Provenance with
+        | RunnerIssuedJourney receipt -> validate receipt
+        | SyntheticConstructed reason ->
+            [ $"workload '{workload.Id}' is synthetic-constructed ({reason}); it may support component/stress/throughput evidence but cannot establish shipped-route normal-play or maximum-scale coverage" ]
+
+    let reasons =
+        match workload.Classification, workload.Composition with
+        | NormalPlay, ComponentOnlySupplemental reason ->
+            $"workload '{workload.Id}' is component-only supplemental ({reason}); it cannot claim complete normal-play composition"
+            :: reasons
+        | _ -> reasons
+
+    { Passed = List.isEmpty reasons; Reasons = reasons }
 
 let private declarationPattern =
     Regex(
@@ -198,8 +418,10 @@ let definitionDigest workload =
     let intentPolicy =
         $"{performanceIntentSeed.Id}|{performanceIntentSeed.Disposition}|{performanceIntentSeed.TargetFps}|{performanceIntentSeed.MaximumExpectedScale}|{maxP95}|{maxP99}|{performanceIntentSeed.MaxCatchUpFrames}|{structuralBudgets}|{performanceIntentSeed.RequiredCapability}|{performanceIntentSeed.LiveCompositorRequired}"
 
+    let costDriverIds = String.concat "," workload.CostDriverIds
+
     let canonical =
-        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{budget}|{intentPolicy}|{executableSource}"
+        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{provenanceDefinitionToken workload.Provenance}|{compositionToken workload.Composition}|{costDriverIds}|{budget}|{intentPolicy}|{executableSource}"
 
     sha256Text canonical
 
@@ -289,6 +511,30 @@ let evaluateAuthorship workload =
             [ $"authored declaration is stale for workload '{workload.Id}': declared {declaredDigest}, current {actualDigest}; review the changed definition and copy the new digest" ] }
     | Some _, Authored _ -> { Passed = true; Reasons = [] }
 
+let private observeRoutedStimulus message =
+    match message with
+    | ViewerInput _ ->
+        { Events = 1
+          PointerEvents = 0
+          RawInputSamples = 1 }
+    | _ ->
+        { Events = 0
+          PointerEvents = 0
+          RawInputSamples = 0 }
+
+let private observeCostScale driverId routed model =
+    match performanceCostDrivers |> List.tryFind (fun driver -> driver.Id = driverId) with
+    | Some driver ->
+        match driver.Category, driver.VisualElement with
+        | Simulation, _ -> 1
+        | Input, _ -> routed.RawInputSamples
+        | (SceneRender | UiControl), Some elementId ->
+            GameplayVisualInventory.project model
+            |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = elementId)
+            |> List.length
+        | _ -> 0
+    | None -> 0
+
 let private runWorkload workload =
     let mutable model = workload.InitialState()
 
@@ -300,13 +546,28 @@ let private runWorkload workload =
     let beforeBytes = GC.GetAllocatedBytesForCurrentThread()
     let mutable sceneNodes = 0
     let mutable catchUp = 0
+    let mutable observedEvents = 0
+    let mutable observedPointerEvents = 0
+    let mutable rawInputSamples = 0
+    let mutable observedScale = Map.empty
     let targetFrameMs = 1000.0 / float performanceIntentSeed.TargetFps
 
     for frame in 0 .. max 0 (workload.SampleFrames - 1) do
         let sw = Stopwatch.StartNew()
-        model <- fst (update (workload.MessageAt frame) model)
+        let message = workload.MessageAt frame
+        model <- fst (update message model)
         let scene = view model
         sw.Stop()
+        let routed = observeRoutedStimulus message
+        observedEvents <- observedEvents + routed.Events
+        observedPointerEvents <- observedPointerEvents + routed.PointerEvents
+        rawInputSamples <- rawInputSamples + routed.RawInputSamples
+        observedScale <-
+            workload.CostDriverIds
+            |> List.fold (fun scales id ->
+                let count = observeCostScale id routed model
+                scales
+                |> Map.change id (fun previous -> Some(max count (previous |> Option.defaultValue 0)))) observedScale
         samples.Add sw.Elapsed.TotalMilliseconds
         sceneNodes <- max sceneNodes (Scene.describe { Nodes = [ scene ] } |> List.length)
 
@@ -321,7 +582,15 @@ let private runWorkload workload =
 
     let digest = definitionDigest workload
     let authorshipVerdict = evaluateAuthorship workload
+    let provenanceVerdict = evaluateProvenance workload
     let budgetVerdict = evaluateBudget workload p95 p99 catchUp sceneNodes
+    let declaredEvents = workload.SampleFrames * workload.EventsPerFrame
+    let declaredPointerEvents = workload.SampleFrames * workload.PointerEventsPerFrame
+    let routeReasons =
+        [ if declaredEvents <> observedEvents then
+              $"workload '{workload.Id}' declared event count {declaredEvents}, observed routed count {observedEvents}; bind the message to the missing shipped-route seam"
+          if declaredPointerEvents <> observedPointerEvents then
+              $"workload '{workload.Id}' declared pointer event count {declaredPointerEvents}, observed routed count {observedPointerEvents}; bind the message to the missing shipped-route seam" ]
 
     { Workload = workload
       DefinitionDigest = digest
@@ -329,16 +598,28 @@ let private runWorkload workload =
       P95Ms = p95
       P99Ms = p99
       UpdateCount = workload.SampleFrames
-      PresentCount = 0
+      PresentCount = Unsupported "bounded-headless route has no compositor presentation capability"
       CatchUpFrames = catchUp
-      DroppedFrames = 0
-      EventCount = workload.SampleFrames * workload.EventsPerFrame
-      PointerEventCount = workload.SampleFrames * workload.PointerEventsPerFrame
+      DroppedFrames = Unsupported "bounded-headless route has no swapchain/drop observation capability"
+      DeclaredEventCount = declaredEvents
+      ObservedEventCount = observedEvents
+      DeclaredPointerEventCount = declaredPointerEvents
+      ObservedPointerEventCount = observedPointerEvents
+      RawInputSampleCount = rawInputSamples
       SceneNodeCount = sceneNodes
+      ObservedScale = observedScale
       AllocatedBytes = allocated
       Verdict =
-        { Passed = authorshipVerdict.Passed && budgetVerdict.Passed
-          Reasons = authorshipVerdict.Reasons @ budgetVerdict.Reasons } }
+        { Passed =
+            authorshipVerdict.Passed
+            && provenanceVerdict.Passed
+            && budgetVerdict.Passed
+            && List.isEmpty routeReasons
+          Reasons =
+            authorshipVerdict.Reasons
+            @ provenanceVerdict.Reasons
+            @ routeReasons
+            @ budgetVerdict.Reasons } }
 
 let private declaredPackageVersions () =
     let path = Path.Combine(Directory.GetCurrentDirectory(), "Directory.Packages.props")
@@ -398,6 +679,9 @@ let expectedWorkloads =
         PointerEventsPerFrame = 0
         InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
+        Provenance = SyntheticConstructed "starter state has no opaque runner-issued journey receipt"
+        Composition = CompleteComposition
+        CostDriverIds = [ "simulation.fixed-step"; "scene.playfield" ]
         Budget = Some normalBudget
         BlockingDebt = None
         Authorship = Placeholder "replace starter idle state/message route, then copy the emitted definitionDigest" }
@@ -417,6 +701,14 @@ let expectedWorkloads =
                   ViewerInput(Letter 'W', true)
               else
                   Tick(1.0 / 60.0))
+        Provenance = SyntheticConstructed "starter state has no opaque runner-issued journey receipt"
+        Composition = CompleteComposition
+        CostDriverIds =
+            [ "simulation.fixed-step"
+              "input.viewer-route"
+              "scene.ball"
+              "scene.left-paddle"
+              "scene.playfield" ]
         Budget = Some normalBudget
         BlockingDebt = None
         Authorship = Placeholder "replace starter keyboard/tick route with product movement plus aiming" }
@@ -431,6 +723,14 @@ let expectedWorkloads =
         PointerEventsPerFrame = 1
         InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> NoOp)
+        Provenance = SyntheticConstructed "starter state has no opaque runner-issued journey receipt"
+        Composition = CompleteComposition
+        CostDriverIds =
+            [ "simulation.fixed-step"
+              "input.viewer-route"
+              "scene.ball"
+              "ui.score"
+              "scene.playfield" ]
         Budget = Some normalBudget
         BlockingDebt = None
         Authorship = Placeholder "replace NoOp with representative combat and firing messages" }
@@ -445,6 +745,9 @@ let expectedWorkloads =
         PointerEventsPerFrame = 0
         InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
+        Provenance = SyntheticConstructed "starter state has no opaque runner-issued journey receipt"
+        Composition = CompleteComposition
+        CostDriverIds = [ "simulation.fixed-step"; "scene.playfield" ]
         Budget = Some normalBudget
         BlockingDebt = None
         Authorship = Placeholder "replace Tick with the product effects and fog workload route" }
@@ -459,6 +762,15 @@ let expectedWorkloads =
         PointerEventsPerFrame = 0
         InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
+        Provenance = SyntheticConstructed "starter state has no opaque runner-issued journey receipt"
+        Composition = CompleteComposition
+        CostDriverIds =
+            [ "simulation.fixed-step"
+              "scene.ball"
+              "scene.left-paddle"
+              "scene.right-paddle"
+              "ui.score"
+              "scene.playfield" ]
         Budget = Some normalBudget
         BlockingDebt = None
         Authorship = Placeholder "replace Tick with the maximum expected product content route" }
@@ -479,6 +791,108 @@ let private duplicateValues values =
 
 let private requiredNormalWorkloadIds =
     [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ]
+
+let private costDriverProblems (results: WorkloadResult list) =
+    let workloadById = expectedWorkloads |> List.map (fun workload -> workload.Id, workload) |> Map.ofList
+    let resultById = results |> List.map (fun result -> result.Workload.Id, result) |> Map.ofList
+    let driverById = performanceCostDrivers |> List.map (fun driver -> driver.Id, driver) |> Map.ofList
+    let duplicateDriverIds = performanceCostDrivers |> List.map _.Id |> duplicateValues
+    let inventoryVisuals =
+        performanceCostDrivers
+        |> List.choose _.VisualElement
+        |> List.sort
+    let shippedVisuals =
+        GameplayVisualInventory.all
+        |> List.map GameplayVisualInventory.elementId
+        |> List.sort
+    let duplicateDriverText = String.concat ", " duplicateDriverIds
+    let shippedVisualText = String.concat "," shippedVisuals
+    let inventoryVisualText = String.concat "," inventoryVisuals
+
+    [ if not (List.isEmpty duplicateDriverIds) then
+          $"duplicate performance cost-driver ids: {duplicateDriverText}"
+      if inventoryVisuals <> (List.distinct inventoryVisuals) then
+          "duplicate visual-element bindings in the performance cost-driver inventory"
+      if inventoryVisuals <> shippedVisuals then
+          $"performance visual coverage differs from GameplayVisualInventory; required={shippedVisualText}; bound={inventoryVisualText}"
+      for driver in performanceCostDrivers do
+          if String.IsNullOrWhiteSpace driver.ScaleSource || driver.MaximumExpected <= 0 then
+              $"cost driver '{driver.Id}' has no inspectable positive scale source"
+
+          match driver.Disposition with
+          | NonPerformance reason when String.IsNullOrWhiteSpace reason ->
+              $"cost driver '{driver.Id}' has an empty non-performance disposition"
+          | NonPerformance _ -> ()
+          | RequiredIn workloadIds ->
+              if List.isEmpty workloadIds then
+                  $"cost driver '{driver.Id}' has no required workload binding"
+
+              for workloadId in workloadIds do
+                  match Map.tryFind workloadId workloadById, Map.tryFind workloadId resultById with
+                  | None, _ -> $"cost driver '{driver.Id}' names missing workload '{workloadId}'"
+                  | Some workload, Some result ->
+                      if not (List.contains driver.Id workload.CostDriverIds) then
+                          $"cost driver '{driver.Id}' is unbound from required workload '{workloadId}'"
+
+                      let observed = result.ObservedScale |> Map.tryFind driver.Id |> Option.defaultValue 0
+                      if observed < driver.MaximumExpected then
+                          $"cost driver '{driver.Id}' maximum scale is underrepresented in workload '{workloadId}': expected {driver.MaximumExpected} from {driver.ScaleSource}, observed {observed}"
+                  | Some _, None -> $"cost driver '{driver.Id}' has no result for required workload '{workloadId}'"
+      for workload in expectedWorkloads do
+          let duplicateBindings = workload.CostDriverIds |> duplicateValues
+          let duplicateBindingText = String.concat ", " duplicateBindings
+          if not (List.isEmpty duplicateBindings) then
+              $"workload '{workload.Id}' has duplicate cost-driver bindings: {duplicateBindingText}"
+          for driverId in workload.CostDriverIds do
+              if not (Map.containsKey driverId driverById) then
+                  $"workload '{workload.Id}' names unknown cost driver '{driverId}'" ]
+
+let private capabilityMetricToken =
+    function
+    | Observed value -> $"observed:{value}"
+    | Unsupported reason -> $"unsupported:{reason}"
+
+let private criticInputDigest (results: WorkloadResult list) coverageProblems =
+    let intent =
+        performanceIntentDeclaration.WorkloadDefinitionDigests
+        |> String.concat ","
+    let provenance =
+        expectedWorkloads
+        |> List.map (fun workload -> $"{workload.Id}={provenanceToken workload.Provenance}")
+        |> String.concat ","
+    let drivers =
+        performanceCostDrivers
+        |> List.map (fun driver ->
+            let disposition =
+                match driver.Disposition with
+                | RequiredIn ids ->
+                    let workloadIds = String.concat "," ids
+                    $"required:{workloadIds}"
+                | NonPerformance reason -> $"non-performance:{reason}"
+            $"{driver.Id}|{driver.Category}|{driver.ScaleSource}|{driver.MaximumExpected}|{driver.VisualElement}|{disposition}")
+        |> String.concat ";"
+    let measuredEvidence =
+        results
+        |> List.map (fun result ->
+            let observedScale =
+                result.ObservedScale
+                |> Map.toList
+                |> List.map (fun (id, count) -> $"{id}={count}")
+                |> String.concat ","
+            let reasons = String.concat "," result.Verdict.Reasons
+            $"{result.Workload.Id}|p50={result.P50Ms:R}|p95={result.P95Ms:R}|p99={result.P99Ms:R}|updates={result.UpdateCount}|present={capabilityMetricToken result.PresentCount}|catchup={result.CatchUpFrames}|drops={capabilityMetricToken result.DroppedFrames}|declaredEvents={result.DeclaredEventCount}|observedEvents={result.ObservedEventCount}|declaredPointers={result.DeclaredPointerEventCount}|observedPointers={result.ObservedPointerEventCount}|rawInputs={result.RawInputSampleCount}|sceneNodes={result.SceneNodeCount}|allocated={result.AllocatedBytes}|scale={observedScale}|passed={result.Verdict.Passed}|reasons={reasons}")
+        |> String.concat ";"
+    let packages =
+        declaredPackageVersions ()
+        |> List.map (fun (id, version) -> $"{id}={version}")
+        |> String.concat ";"
+    let coverageVerdict = String.concat ";" coverageProblems
+    let host =
+        $"{Environment.OSVersion.Platform};{System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture};{Environment.Version}"
+    let capability =
+        $"{performanceIntentDeclaration.RequiredCapability}|live={performanceIntentDeclaration.LiveCompositorRequired}|bounded-headless-update-and-scene-route|not-authoritative=live-compositor,swapchain,vblank,vsync"
+    sha256Text
+        $"performance-representativeness-v1|{intent}|{provenance}|{drivers}|{measuredEvidence}|coverage={coverageVerdict}|packages={packages}|host={host}|capability={capability}"
 
 let private declarationProblems () =
     let duplicateIds = expectedWorkloads |> List.map _.Id |> duplicateValues
@@ -580,6 +994,8 @@ let private writeIntentJson (json: Utf8JsonWriter) =
 
 let writeExpectedWorkloadEvidence (path: string) =
     let results = expectedWorkloads |> List.map runWorkload
+    let coverageProblems = costDriverProblems results
+    let criticDigest = criticInputDigest results coverageProblems
     let directory = Path.GetDirectoryName path
 
     if not (String.IsNullOrWhiteSpace directory) then
@@ -588,7 +1004,13 @@ let writeExpectedWorkloadEvidence (path: string) =
     use stream = File.Create path
     use json = new Utf8JsonWriter(stream, JsonWriterOptions(Indented = true))
     json.WriteStartObject()
-    json.WriteNumber("schemaVersion", 2)
+    json.WriteNumber("schemaVersion", 3)
+    json.WriteStartObject("compatibility")
+    json.WriteStartArray("acceptedLegacySchemaVersions")
+    json.WriteNumberValue(2)
+    json.WriteEndArray()
+    json.WriteString("legacyRepresentativeness", "legacy-unreviewed")
+    json.WriteEndObject()
     writeIntentJson json
     json.WriteString("measurementCapability", "bounded-headless-update-and-scene-route")
     json.WriteString("notAuthoritativeFor", "live-compositor,swapchain,vblank,vsync")
@@ -605,6 +1027,27 @@ let writeExpectedWorkloadEvidence (path: string) =
 
     json.WriteEndObject()
     json.WriteString("warmupSamplePolicy", "per-workload; monotonic Stopwatch; warmup excluded")
+    json.WriteStartArray("costDrivers")
+    for driver in performanceCostDrivers do
+        json.WriteStartObject()
+        json.WriteString("id", driver.Id)
+        json.WriteString("category", string driver.Category)
+        json.WriteString("scaleSource", driver.ScaleSource)
+        json.WriteNumber("maximumExpected", driver.MaximumExpected)
+        match driver.VisualElement with
+        | Some value -> json.WriteString("visualElement", value)
+        | None -> json.WriteNull("visualElement")
+        match driver.Disposition with
+        | RequiredIn workloadIds ->
+            json.WriteString("disposition", "required-in-workloads")
+            json.WriteStartArray("requiredWorkloadIds")
+            workloadIds |> List.iter json.WriteStringValue
+            json.WriteEndArray()
+        | NonPerformance reason ->
+            json.WriteString("disposition", "non-performance")
+            json.WriteString("reason", reason)
+        json.WriteEndObject()
+    json.WriteEndArray()
     json.WriteStartArray("workloads")
 
     for result in results do
@@ -613,6 +1056,46 @@ let writeExpectedWorkloadEvidence (path: string) =
         json.WriteString("definition", result.Workload.Definition)
         json.WriteString("class", classToken result.Workload.Classification)
         json.WriteString("definitionDigest", result.DefinitionDigest)
+        match result.Workload.Provenance with
+        | RunnerIssuedJourney receipt ->
+            json.WriteString("stateProvenance", journeyKind)
+            json.WriteStartObject("provenanceReceipt")
+            json.WriteNumber("schemaVersion", JourneyReceipt.schemaVersion receipt)
+            json.WriteString("runnerIdentity", JourneyReceipt.runnerIdentity receipt)
+            json.WriteString("runnerVersion", JourneyReceipt.runnerVersion receipt)
+            json.WriteString("compositionAuthority", JourneyReceipt.compositionAuthority receipt)
+            json.WriteString("origin", string (JourneyReceipt.origin receipt))
+            json.WriteString("routeId", JourneyReceipt.routeId receipt)
+            json.WriteString("scenarioId", JourneyReceipt.scenarioId receipt)
+            json.WriteString("testId", JourneyReceipt.testId receipt)
+            json.WriteString("inputKind", string (JourneyReceipt.inputKind receipt))
+            json.WriteString("inputIdentity", JourneyReceipt.inputIdentity receipt)
+            json.WriteString("inputDigest", JourneyReceipt.inputDigest receipt)
+            json.WriteString("scriptDigest", JourneyReceipt.scriptDigest receipt)
+            json.WriteString("traceDigest", JourneyReceipt.traceDigest receipt)
+            json.WriteString("initialFingerprintDigest", JourneyReceipt.initialFingerprintDigest receipt)
+            json.WriteString("terminalFingerprintDigest", JourneyReceipt.terminalFingerprintDigest receipt)
+            json.WriteString("terminalPredicateIdentity", JourneyReceipt.terminalPredicateIdentity receipt)
+            json.WriteBoolean("terminalPredicateReached", JourneyReceipt.terminalPredicateReached receipt)
+            json.WriteString("result", string (JourneyReceipt.result receipt))
+            json.WriteNumber("steps", JourneyReceipt.steps receipt)
+            json.WriteNumber("maxSteps", JourneyReceipt.maxSteps receipt)
+            json.WriteString("receiptDigest", $"sha256:{runnerReceiptToken receipt}")
+            json.WriteEndObject()
+        | SyntheticConstructed reason ->
+            json.WriteString("stateProvenance", "synthetic-constructed")
+            json.WriteString("syntheticReason", reason)
+            json.WriteNull("provenanceReceipt")
+
+        match result.Workload.Composition with
+        | CompleteComposition -> json.WriteString("compositionClaim", completeCompositionKind)
+        | ComponentOnlySupplemental reason ->
+            json.WriteString("compositionClaim", "component-only-supplemental")
+            json.WriteString("componentOnlyReason", reason)
+
+        json.WriteStartArray("costDriverIds")
+        result.Workload.CostDriverIds |> List.iter json.WriteStringValue
+        json.WriteEndArray()
 
         match result.Workload.Authorship with
         | Placeholder requiredWork ->
@@ -634,12 +1117,29 @@ let writeExpectedWorkloadEvidence (path: string) =
         json.WriteNumber("p95Ms", result.P95Ms)
         json.WriteNumber("p99Ms", result.P99Ms)
         json.WriteNumber("updateCount", result.UpdateCount)
-        json.WriteNumber("presentCount", result.PresentCount)
+        let writeCapabilityMetric (name: string) (metric: CapabilityMetric) =
+            json.WriteStartObject(name)
+            match metric with
+            | Observed value ->
+                json.WriteString("status", "observed")
+                json.WriteNumber("value", value)
+            | Unsupported reason ->
+                json.WriteString("status", "unsupported")
+                json.WriteString("reason", reason)
+            json.WriteEndObject()
+
+        writeCapabilityMetric "presentCount" result.PresentCount
         json.WriteNumber("catchUpFrames", result.CatchUpFrames)
-        json.WriteNumber("droppedFrames", result.DroppedFrames)
-        json.WriteNumber("eventCount", result.EventCount)
-        json.WriteNumber("pointerEventCount", result.PointerEventCount)
+        writeCapabilityMetric "droppedFrames" result.DroppedFrames
+        json.WriteNumber("declaredEventCount", result.DeclaredEventCount)
+        json.WriteNumber("observedEventCount", result.ObservedEventCount)
+        json.WriteNumber("declaredPointerEventCount", result.DeclaredPointerEventCount)
+        json.WriteNumber("observedPointerEventCount", result.ObservedPointerEventCount)
+        json.WriteNumber("rawInputSampleCount", result.RawInputSampleCount)
         json.WriteNumber("allocatedBytes", result.AllocatedBytes)
+        json.WriteStartObject("observedScale")
+        result.ObservedScale |> Map.iter (fun name value -> json.WriteNumber(name, value))
+        json.WriteEndObject()
         json.WriteStartObject("sceneNodesByLayer")
         json.WriteNumber("product-scene", result.SceneNodeCount)
         json.WriteEndObject()
@@ -650,13 +1150,39 @@ let writeExpectedWorkloadEvidence (path: string) =
         json.WriteEndObject()
 
     json.WriteEndArray()
+    json.WriteStartObject("critic")
+    json.WriteString("rubricVersion", "performance-representativeness-v1")
+    json.WriteString("inputDigest", criticDigest)
+    json.WriteString("status", "external-review-required")
+    json.WriteString("reviewBoundary", "attributable review system at the exact landing commit")
+    json.WriteString("preferredMode", "fresh-context-subagent")
+    json.WriteString("fallbackMode", "separated-pass-with-independence-disclosure")
+    json.WriteString(
+        "prohibitedProof",
+        "in-repo JSON, author-entered identity, or a same-context mode string cannot establish independence"
+    )
+    json.WriteStartArray("acceptedOutcomes")
+    [ "supported"
+      "underrepresentative"
+      "synthetic-only"
+      "unmeasured"
+      "misclassified"
+      "ambiguous" ]
+    |> List.iter json.WriteStringValue
+    json.WriteEndArray()
+    json.WriteBoolean("representativeReady", false)
+    json.WriteEndObject()
     json.WriteEndObject()
     json.Flush()
 
     let declarationFailures = declarationProblems ()
     let failures = results |> List.filter (_.Verdict.Passed >> not)
 
-    if List.isEmpty failures && List.isEmpty declarationFailures then
+    if
+        List.isEmpty failures
+        && List.isEmpty declarationFailures
+        && List.isEmpty coverageProblems
+    then
         printfn
             "status=ok performance-evidence workloads=%d capability=bounded-headless artifact=%s"
             results.Length
@@ -667,6 +1193,9 @@ let writeExpectedWorkloadEvidence (path: string) =
         declarationFailures
         |> List.iter (printfn "status=failed performance-intent reason=%s")
 
+        coverageProblems
+        |> List.iter (printfn "status=failed performance-coverage reason=%s")
+
         failures
         |> List.iter (fun result ->
             printfn
@@ -675,7 +1204,43 @@ let writeExpectedWorkloadEvidence (path: string) =
                 (String.concat " | " result.Verdict.Reasons))
 
         1
+
+/// Emits the exact evidence-plus-input-digest package a fresh-context critic must cold-read. Approval
+/// lives in an attributable review system at the exact landing commit, never in this authored tree,
+/// so a critic cannot edit samples, issue provenance, waive a red budget, or upgrade capability.
+let writePerformanceCriticRequest (path: string) =
+    let directory = Path.GetDirectoryName path
+    let evidencePath =
+        if String.IsNullOrWhiteSpace directory then
+            "performance-evidence.json"
+        else
+            Path.Combine(directory, "performance-evidence.json")
+
+    let exitCode = writeExpectedWorkloadEvidence evidencePath
+    let evidenceBytes = File.ReadAllBytes evidencePath
+    let evidenceDigest = SHA256.HashData evidenceBytes |> Convert.ToHexString |> _.ToLowerInvariant()
+    use evidence = JsonDocument.Parse evidenceBytes
+    let inputDigest = evidence.RootElement.GetProperty("critic").GetProperty("inputDigest").GetString()
+
+    if not (String.IsNullOrWhiteSpace directory) then
+        Directory.CreateDirectory directory |> ignore
+
+    use stream = File.Create path
+    use json = new Utf8JsonWriter(stream, JsonWriterOptions(Indented = true))
+    json.WriteStartObject()
+    json.WriteNumber("schemaVersion", 1)
+    json.WriteString("rubricVersion", "performance-representativeness-v1")
+    json.WriteString("inputDigest", inputDigest)
+    json.WriteString("evidenceArtifact", evidencePath)
+    json.WriteString("evidenceArtifactDigest", $"sha256:{evidenceDigest}")
+    json.WriteNumber("machineExitCode", exitCode)
+    json.WriteString("requiredReviewBoundary", "attributable external review at the exact landing commit")
+    json.WriteBoolean("representativeReady", false)
+    json.WriteEndObject()
+    json.Flush()
+    exitCode
 //#else
 let writeExpectedWorkloadEvidence _ = 0
 let writePerformanceIntentDeclaration _ = 0
+let writePerformanceCriticRequest _ = 0
 //#endif
