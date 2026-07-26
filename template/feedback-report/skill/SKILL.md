@@ -144,7 +144,7 @@ After resolving the audit, write `feedback/audits/<report-stem>.audit.json`:
 
 Use workspace-relative `file:` locators and strip secrets, customer data, personal data, internal
 hostnames, and excluded absolute paths from critic prompts and audits. For non-file evidence, use a
-specific locator such as `command:dotnet test ...` or `issue:FS-GG/repo#123`, record the checked
+specific locator such as `command:dotnet test ...` or `issue:<owner>/<repo>#<number>`, record the checked
 result, and omit `sha256`. Evidence result vocabulary is `verified`, `missing`, `stale`,
 `non-reproducing`, `contradictory`, or `claim-only`.
 
