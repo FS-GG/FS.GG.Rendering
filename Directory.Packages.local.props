@@ -38,7 +38,7 @@
        Package.Tests parity gate compares the vendored template/lifecycle copy against
        (ADR-0014 / roadmap §6). Exact pin; test-only; NOT shipped in any product. -->
   <ItemGroup>
-    <PackageVersion Include="FS.GG.Contracts" Version="[4.0.0]" />
+    <PackageVersion Include="FS.GG.Contracts" Version="[6.0.0]" />
     <!-- ADR-0022 P5: the game-sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) moved
          to the FS.GG.Game.Core bottom layer. Canvas.Tests compiles the re-homed game-profile fragment
          sources (collision/visibility/grids/line-drawing), which now `open FS.GG.Game.Core`, so the
