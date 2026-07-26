@@ -25,6 +25,11 @@ let private sampleCatalog: Catalog.Catalog =
           { Element = "StealthAmbusher"
             Visual = Catalog.Hidden "stealth: invisible to the player until it attacks (fog-of-war mechanic)" } ] }
 
+let private evidence: Catalog.EvidenceDigests =
+    { Inventory = "inventory"
+      Catalog = "catalog"
+      Render = "render" }
+
 [<Tests>]
 let catalogTests =
     testList
@@ -128,4 +133,57 @@ let catalogTests =
           test "tryFind resolves a catalogued element and misses an un-catalogued one" {
               Expect.equal (Catalog.tryFind "Door" sampleCatalog) (Some(Catalog.Shown "token/door")) "found"
               Expect.equal (Catalog.tryFind "Nope" sampleCatalog) None "an absent element resolves to None"
+          }
+
+          test "audit derives subjects from production inventory and distinguishes missing, stale, unbound, and unobserved" {
+              let catalog: Catalog.Catalog =
+                  { Entries =
+                      [ { Element = "Door"; Visual = Catalog.Shown "token/door" }
+                        { Element = "Trapdoor"; Visual = Catalog.Shown "token/trapdoor" }
+                        { Element = "Ball"; Visual = Catalog.Shown "token/ball" } ] }
+
+              let report =
+                  Catalog.audit
+                      [ "Door"; "Trapdoor"; "Hazard" ]
+                      catalog
+                      [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
+                      [ "Door", "token/door" ]
+                      evidence
+
+              let gaps =
+                  report.Findings
+                  |> List.map (fun finding -> finding.Element, finding.Gap)
+
+              Expect.contains gaps ("Trapdoor", Catalog.BindingGap.Unobserved) "registered but unseen is distinct"
+              Expect.contains gaps ("Hazard", Catalog.BindingGap.Missing) "production inventory omission is named"
+              Expect.contains gaps ("Ball", Catalog.BindingGap.Stale) "catalog-only starter row is stale"
+              Expect.equal report.Verdict Catalog.BindingVerdict.Incomplete "any binding gap blocks completeness"
+
+              let swapped =
+                  Catalog.audit
+                      [ "Door"; "Trapdoor" ]
+                      { Entries =
+                          [ { Element = "Door"; Visual = Catalog.Shown "token/door" }
+                            { Element = "Trapdoor"; Visual = Catalog.Shown "token/trapdoor" } ] }
+                      [ "Door", "token/trapdoor"; "Trapdoor", "token/door" ]
+                      [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
+                      evidence
+
+              Expect.equal swapped.Findings.Head.Gap Catalog.BindingGap.Unbound "swapped element/handle pairs fail"
+          }
+
+          test "audit rejects empty/duplicate inventories, orphan handles, and generic hidden reasons" {
+              let empty = Catalog.audit [] { Entries = [] } [] [] evidence
+              Expect.equal empty.Findings.Head.Gap Catalog.BindingGap.EmptyInventory "empty game inventory fails closed"
+
+              let catalog: Catalog.Catalog =
+                  { Entries =
+                      [ { Element = "Door"; Visual = Catalog.Shown "token/orphan" }
+                        { Element = "Fog"; Visual = Catalog.Hidden "other: not shown" } ] }
+
+              let report = Catalog.audit [ "Door"; "Door"; "Fog" ] catalog [] [] evidence
+              let gaps = report.Findings |> List.map _.Gap
+              Expect.contains gaps Catalog.BindingGap.DuplicateDeclared "duplicate inventory is refused"
+              Expect.contains gaps Catalog.BindingGap.Unbound "a nonblank orphan handle is not a binding"
+              Expect.contains gaps Catalog.BindingGap.UnsupportedHidden "generic hidden prose is not a mechanic"
           } ]

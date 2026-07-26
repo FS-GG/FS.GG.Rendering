@@ -18,22 +18,12 @@ let view model =
 // GAME family (feature 220): draw the Pong playfield as a pure Scene. REPLACE ME alongside
 // Model.fs when you swap in your own game (see docs/scaffold-map.md). `Viewer.runApp` renders
 // this live via `generatedHost.View`.
-let private foreground: Color = { Red = 240uy; Green = 240uy; Blue = 240uy; Alpha = 255uy }
-let private accent: Color = { Red = 120uy; Green = 200uy; Blue = 255uy; Alpha = 255uy }
-let private playfieldFill: Color = { Red = 18uy; Green = 22uy; Blue = 30uy; Alpha = 255uy }
-
 let view (model: Model) : SceneNode =
-    // Feature 250: positions are Geometry.Vec2 — read Vx/Vy (playfield extent, ball centre).
-    let ball = model.Ball.Pos
-    let w = model.Playfield.Vx
-    let h = model.Playfield.Vy
-
-    Group
-        [ { Nodes = [ Rectangle((0.0, 0.0, w, h), playfieldFill) ] }
-          { Nodes = [ Rectangle((ball.Vx - 6.0, ball.Vy - 6.0, 12.0, 12.0), accent) ] }
-          { Nodes = [ Rectangle((16.0, model.LeftPaddleY, 8.0, model.PaddleHeight), foreground) ] }
-          { Nodes = [ Rectangle((w - 24.0, model.RightPaddleY, 8.0, model.PaddleHeight), foreground) ] }
-          { Nodes = [ Text((w / 2.0 - 28.0, 28.0), $"{model.LeftScore} : {model.RightScore}", foreground) ] } ]
+    // Rendering#1071: this is the SAME product-owned projection the coverage gate audits. A catalog
+    // handle that is absent from this route is Unobserved and cannot establish runtime evidence.
+    AppRoot.GameplayVisualInventory.project model
+    |> List.map (fun projected -> projected.Scene)
+    |> Group
 
 //#else
 open FS.GG.UI.Controls

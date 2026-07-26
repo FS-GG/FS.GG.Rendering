@@ -109,31 +109,36 @@ emits an **element↔visual catalog** artifact and a coverage test that reads it
 
   ```text
   # fs-gg element-visual catalog v1
-  Ball	shown	token/ball
-  LeftPaddle	shown	token/paddle
-  RightPaddle	shown	token/paddle
-  Score	shown	token/score
-  Playfield	hidden	scenery: the playfield is a flat background fill, not a per-element symbol
+  Ball	shown	scene/ball
+  LeftPaddle	shown	scene/left-paddle
+  RightPaddle	shown	scene/right-paddle
+  Score	shown	scene/score
+  Playfield	shown	scene/playfield
   ```
 
-- **The gate** is `tests/Product.Tests/CoverageGateTests.fs`. It reads the catalog and reds `dotnet test`
-  the moment a declared element is left undisposed or opted out with a blank reason — a `Covered` verdict
-  is exactly `Expect.equal report.Verdict Coverage.Covered` sourced from the artifact rather than a
-  hand-written map. **The catalog's rows ARE your declared element set**, so keeping it current is the
-  whole discipline: adding an element to your game is finished only when it has a catalog row — a
-  designed `shown` token, or a reasoned `hidden` opt-out. Edit `element-visuals.catalog`, not the test.
+- **The gate** is `tests/Product.Tests/CoverageGateTests.fs`. Its subject set comes from the game
+  profile's typed, production-owned gameplay-visual inventory source, never from the catalog's own
+  rows. It calls
+  `Catalog.audit` with that inventory, the element-bound registry, observed bindings, and computed
+  inventory/catalog/runtime-render digests from the projection consumed by `View.view`, and reds on
+  `Missing`, `Stale`, `Unbound`, `Unobserved`, or
+  `UnsupportedHidden`. Adding a gameplay element is finished only when production declares it, the
+  catalog disposes it, and representative production rendering exercises its binding.
 
-The gate reads the catalog through a small, self-contained mirror of the published text format rather
-than the framework's `Catalog`/`Coverage` API, so it compiles against the `FsGgUiVersion` your product
-pins even before those modules ship in that package (the same release-safe precedent the sibling
-Coverage/Catalog guidance follows — teach the format, never a dotted API the pin cannot yet resolve);
-once your pin advances to a package that carries them, the mirror can be swapped for the framework's own
-catalog parse-and-validate helpers with no change to the artifact or the assertion.
+The v1 text format stays compatible. `Catalog.validate` remains a catalog self-consistency check, but it
+cannot establish product completeness because deleting a row deletes its own subject. Use
+`Catalog.audit productionIds catalog registeredBindings observedBindings evidenceDigests` for the ship gate.
+For compatibility, `Catalog.declaredElements` still exposes row order, `Catalog.coverage` still checks
+an explicitly supplied set without binding evidence, and `Catalog.toRepresentation` still bridges one
+persisted disposition to the lower-level `Coverage` API.
 
-On a pin that carries the catalog API, use `Catalog.declaredElements catalog` as the ordered declared
-set and `Catalog.coverage declared catalog` for the report. `Catalog.toRepresentation visual` is the
-bridge for callers that need to feed an individual persisted disposition into the lower-level
-`Coverage` API.
+Before visual evidence is finalized, run a fresh-context visual-coverage critic over gameplay
+types/inventory, catalog, production projection, representative states, and candidate frames at the
+exact commit proposed for landing. Persist the verdict outside the authored tree as an independently
+attributable PR review or equivalent immutable review-system receipt. An in-repo JSON file,
+author-entered reviewer name, or same-context fallback does not prove independence. A missing, unbound,
+unsupported-hidden, or unresolved ambiguous status blocks, and `Catalog.audit` must independently be
+`Complete`; neither line of defense can manufacture the other.
 
 ## Usage
 

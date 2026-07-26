@@ -232,15 +232,15 @@ module Harness =
     /// origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "e4e364bf78adc2ff6ad85c4f113d7527f28d6b77f8dd1f4d20990cfb15e4b0fc"
+        "13c122416e45422f985228f899b0180885a5e9b5979320504122aa1a19782266"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
     /// types merely to make a compiler probe green.
     let private selfContainedProductSkillFences =
         Set.ofList
-            [ "template/product-skills/fs-gg-symbology/SKILL.md", 209
-              "template/product-skills/fs-gg-symbology/SKILL.md", 221
+            [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
+              "template/product-skills/fs-gg-symbology/SKILL.md", 226
               "template/product-skills/fs-gg-testing/SKILL.md", 209
               "template/product-skills/fs-gg-testing/SKILL.md", 234
               "template/product-skills/fs-gg-testing/SKILL.md", 300

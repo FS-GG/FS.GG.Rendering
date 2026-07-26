@@ -1,5 +1,5 @@
 // See skill: fs-gg-game-core
-// Mirrored from FS-GG/FS.GG.Game @ 0.10.1 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.11.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// Public contract module exposed by the FS.GG.Game.Core package.

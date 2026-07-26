@@ -16,6 +16,37 @@ module Catalog =
 
     type Catalog = { Entries: Entry list }
 
+    [<RequireQualifiedAccess>]
+    type BindingGap =
+        | EmptyInventory
+        | DuplicateDeclared
+        | Missing
+        | Stale
+        | Unbound
+        | Unobserved
+        | UnsupportedHidden
+
+    type BindingFinding =
+        { Element: string
+          Gap: BindingGap
+          Message: string }
+
+    type BindingVerdict =
+        | Complete
+        | Incomplete
+
+    type EvidenceDigests =
+        { Inventory: string
+          Catalog: string
+          Render: string }
+
+    type BindingReport =
+        { DeclaredElements: string list
+          EvidenceDigests: EvidenceDigests
+          Findings: BindingFinding list
+          OptedOut: (string * string) list
+          Verdict: BindingVerdict }
+
     /// The versioned header line every artifact carries — a machine-readable format marker #994's gate
     /// can key on, and the first thing `parse` validates.
     [<Literal>]
@@ -40,6 +71,119 @@ module Catalog =
 
     let validate (catalog: Catalog) : Coverage.Report<string> =
         coverage (declaredElements catalog) catalog
+
+    let private hiddenReasonIsMechanical (reason: string) =
+        let value = reason.Trim()
+        let colon = value.IndexOf(':')
+
+        if colon <= 0 || colon = value.Length - 1 then
+            false
+        else
+            let mechanic = value.Substring(0, colon).Trim().ToLowerInvariant()
+            let explanation = value.Substring(colon + 1).Trim()
+
+            explanation.Length >= 4
+            && not (
+                Set.ofList [ "hidden"; "none"; "n/a"; "other"; "scenery"; "visual"; "not shown" ]
+                |> Set.contains mechanic
+            )
+
+    let audit
+        (declared: string list)
+        (catalog: Catalog)
+        (registeredBindings: (string * string) list)
+        (observedBindings: (string * string) list)
+        (evidenceDigests: EvidenceDigests)
+        : BindingReport =
+        let registered = Set.ofList registeredBindings
+        let observed = Set.ofList observedBindings
+        let declaredSet = Set.ofList declared
+        let duplicateDeclared =
+            declared
+            |> List.countBy id
+            |> List.choose (fun (element, count) -> if count > 1 then Some element else None)
+
+        let findings = ResizeArray<BindingFinding>()
+        let optedOut = ResizeArray<string * string>()
+
+        if List.isEmpty declared then
+            findings.Add
+                { Element = "<inventory>"
+                  Gap = BindingGap.EmptyInventory
+                  Message =
+                    "the production gameplay-visual inventory is empty — declare every gameplay-relevant element before assessing visual coverage" }
+
+        for element in duplicateDeclared do
+            findings.Add
+                { Element = element
+                  Gap = BindingGap.DuplicateDeclared
+                  Message = sprintf "gameplay element %s occurs more than once in the production inventory" element }
+
+        for element in declared |> List.distinct do
+            match tryFind element catalog with
+            | None ->
+                findings.Add
+                    { Element = element
+                      Gap = BindingGap.Missing
+                      Message = sprintf "gameplay element %s is declared by production but missing from the visual catalog" element }
+            | Some(Shown handle) when not (registered.Contains(element, handle)) ->
+                findings.Add
+                    { Element = element
+                      Gap = BindingGap.Unbound
+                      Message =
+                        sprintf
+                            "gameplay element %s names visual handle %s, but the production visual registry cannot resolve it"
+                            element
+                            handle }
+            | Some(Shown handle) when not (observed.Contains(element, handle)) ->
+                findings.Add
+                    { Element = element
+                      Gap = BindingGap.Unobserved
+                      Message =
+                        sprintf
+                            "gameplay element %s resolves visual handle %s, but representative production rendering never exercised it"
+                            element
+                            handle }
+            | Some(Shown _) -> ()
+            | Some(Hidden reason) when hiddenReasonIsMechanical reason ->
+                optedOut.Add(element, reason.Trim())
+            | Some(Hidden reason) ->
+                findings.Add
+                    { Element = element
+                      Gap = BindingGap.UnsupportedHidden
+                      Message =
+                        sprintf
+                            "gameplay element %s has an unsupported hidden disposition %A — use '<mechanic>: <why it suppresses the visual>'"
+                            element
+                            reason }
+
+        for entry in catalog.Entries do
+            if not (declaredSet.Contains entry.Element) then
+                findings.Add
+                    { Element = entry.Element
+                      Gap = BindingGap.Stale
+                      Message =
+                        sprintf
+                            "visual catalog row %s is stale: production does not declare that gameplay element"
+                            entry.Element }
+
+        let digestsBound =
+            [ evidenceDigests.Inventory; evidenceDigests.Catalog; evidenceDigests.Render ]
+            |> List.forall (String.IsNullOrWhiteSpace >> not)
+
+        if not digestsBound then
+            findings.Add
+                { Element = "<evidence>"
+                  Gap = BindingGap.Unobserved
+                  Message = "inventory, catalog, and runtime-render evidence digests must all be bound" }
+
+        let result = List.ofSeq findings
+
+        { DeclaredElements = declared |> List.distinct
+          EvidenceDigests = evidenceDigests
+          Findings = result
+          OptedOut = List.ofSeq optedOut
+          Verdict = if List.isEmpty result then Complete else Incomplete }
 
     let render (catalog: Catalog) : string =
         let sb = StringBuilder()

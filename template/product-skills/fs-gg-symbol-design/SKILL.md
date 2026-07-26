@@ -1,6 +1,6 @@
 ---
 name: fs-gg-symbol-design
-description: Design a game's visual language iteratively, in situ, over the WHOLE renderable-element set — not just the unit roster, but doors/interactables, projectiles, explosions & effects, terrain & obstacles, pickups, hazards, and status/marker overlays. You hand the agent the game structure (world / unit / stats types), the FULL element inventory with stats, and a captured gamestate frame (element positions + terrain); it drafts SEVERAL competing visual directions, renders each as a FAITHFUL frame — real symbols at their real positions over the real board via `Symbology.Render` — screens them with the `Legibility` linter and the eye, presents a contact sheet, and converges with you to one approved symbol language. It PRODUCES AND MAINTAINS the machine-readable element↔visual CATALOG (`FS.GG.UI.Symbology.Catalog`) — the single source of truth #989's `Coverage` check consumes — so every gameplay element resolves to a `Shown` token or an explicit `Hidden`-by-mechanic opt-out, never silent omission. The divergent, whole-frame, whole-inventory exploration loop on top of the single-mapping mechanics of [[fs-gg-symbology]].
+description: Design a game's visual language over the WHOLE production-owned gameplay-visual inventory. Explore competing faithful-frame directions, maintain the element↔visual catalog, prove each shown handle resolves and is exercised by the production view, and obtain an independent visual-coverage critic before finalization.
 ---
 
 # Symbol-Design Loop
@@ -18,8 +18,8 @@ gameplay is far more than units: **doors and interactables, projectiles, explosi
 & obstacles, pickups/items, hazards, and status/marker overlays** are all, in principle, visible — and
 each is a visual-language decision. This skill's INTAKE enumerates the **complete** element inventory
 (see *"What you feed it"*), converges **every** element (not only units) through the loop, and its
-first-class output is a **comprehensive, machine-readable element↔visual CATALOG** — the single source
-of truth that [[fs-gg-symbology]]'s `Coverage` check consumes. An element that never gets a visual is
+first-class output is a **comprehensive, machine-readable element↔visual CATALOG** reconciled against
+the independent inventory owned by production source. An element that never gets a visual is
 the **silent-omission** defect the catalog + `Coverage` exist to catch (#989/#990); this skill's job is
 to make sure it never happens by DESIGN.
 
@@ -104,10 +104,10 @@ Three inputs, all supplied by the consuming product — none invented here:
 The **durable output** of this skill is not just the winning ChannelMap — it is the
 **comprehensive, machine-readable element↔visual CATALOG**: one row per element in the INTAKE
 inventory, each recording the element's approved visual as **either** a `Shown` token handle **or** an
-explicit `Hidden`-by-mechanic opt-out with a reason. This is the **single source of truth** that
-[[fs-gg-symbology]]'s `Coverage` check consumes (#989) — designed **once**, shared by both: this skill
-AUTHORS it, `Coverage` ENFORCES it. The format is owned by `FS.GG.UI.Symbology.Catalog`, so the skill
-never invents a second element-set source.
+explicit `Hidden`-by-mechanic opt-out with a reason. The catalog is the disposition ledger, not its
+own subject set: the product's production-owned `GameplayVisualInventory` is the independent authority
+for what must be covered. This skill AUTHORS the ledger; `Catalog.audit productionInventory ...`
+ENFORCES it. The format remains owned by `FS.GG.UI.Symbology.Catalog`.
 
 **The format** (`FS.GG.UI.Symbology.Catalog`) is a flat, ordered, deterministic text artifact — a
 versioned header line followed by one tab-separated row per element: `element`, then either
@@ -130,12 +130,28 @@ Sapper	hidden	stealth: cloaked until it detonates
 Build and check it with the library, never a hand-rolled parser. The `FS.GG.UI.Symbology.Catalog`
 module turns the in-memory catalog into that text and back — a deterministic `render` / `parse` pair
 (the loop stamps the filename; the render carries no clock) — and its coverage function **gates** the
-catalog against the product's DECLARED element set (its DU cases), reusing [[fs-gg-symbology]]'s
+catalog against the product's independently DECLARED production element set (its DU cases), reusing [[fs-gg-symbology]]'s
 `Coverage` check unchanged: an element with **no row** is a *missing* gap — the silent omission — and a
 `hidden` row with a **blank reason** is *unreasoned*. The verdict is *covered* iff every declared
 element is disposed, and the report's opt-out ledger records each deliberate `hidden` with its reason.
 This is the same `Coverage` enforcement #989 ships, sourced from the machine-readable artifact — and the
 intake #994's scaffold-emitted gate consumes.
+
+### Production binding and independent critic
+
+Before APPROVE, run `Catalog.audit` with four independently sourced values: production inventory ids,
+the parsed catalog, handles in the product-owned visual registry, and handles observed while rendering
+bounded representative states through the production view projection. Report `Missing`, `Stale`,
+`Unbound`, `Unobserved`, and `UnsupportedHidden` separately. A gallery or test-only scene cannot supply
+the observed set.
+
+Then run a fresh-context visual-coverage critic. Use a separate subagent when supported; otherwise
+use a separate reviewer through a system that exposes reviewer identity and the exact commit reviewed.
+Give it the gameplay types/inventory, catalog, production projection, representative states, and
+candidate frames. Its status vocabulary is: supported, missing, unbound, unsupported-hidden, or
+ambiguous. Record the verdict outside the authored tree as a PR review or equivalent immutable
+review-system receipt. An in-repo receipt or same-context fallback cannot attest independence. Approval
+requires both a `Complete` mechanical audit and a clean external critic; neither overrides the other.
 
 **Maintain it as the game grows.** A new `EnemyKind` / `RoomType` / `ProjectileKind` / `ObstacleKind`
 case is **a new catalog row** that must be *designed* to a `shown` token or *explicitly opted out* with
@@ -243,7 +259,12 @@ candidate over an unchanged frame re-renders **byte-identically**. Timestamps an
              [[fs-gg-symbology]]: adjust the ChannelMap / Token params ONLY until the linter is `Clean`
              and the frame-eye check passes.
 
-8. APPROVE   emit the final symbol-set module (the winning ChannelMap + the placement projection), the
+8. AUDIT     run `Catalog.audit` from runtime inventory through element-bound registered + observed
+             handles. Have a fresh-context reviewer cold-read the exact commit through a review system
+             that records its identity and revision outside the authored tree.
+
+9. APPROVE   require a `Complete` mechanical audit and a clean external exact-commit review; then emit
+             the final symbol-set module (the winning ChannelMap + the placement projection), the
              completed element↔visual CATALOG (rendered to its text artifact — every INTAKE element a
              `shown` token or a reasoned `hidden` opt-out, coverage = covered against the declared set),
              a design rationale (channel assignments + the candidates that LOST and why), and a pinned

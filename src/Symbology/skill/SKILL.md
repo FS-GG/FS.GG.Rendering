@@ -109,6 +109,20 @@ unit roster into legible abstract vector symbols. The per-game stat-to-channel m
   Gate a product with `Expect.equal report.Verdict Coverage.Covered` over the game's declared element set;
   <!-- skill-refs: closed-ok FS.GG.Rendering#990 — cited as the completed issue that established the symbol-design catalog consumed by Coverage; history, not live work. -->
   the comprehensive element↔visual catalog the check consumes is authored by `fs-gg-symbol-design` (#990).
+
+  `Catalog.validate` checks only catalog self-consistency and therefore cannot prove product
+  completeness: deleting a row deletes its own subject. A game ship gate uses the additive
+  `Catalog.audit productionIds catalog registeredBindings observedBindings evidenceDigests` contract instead. Its subject
+  set comes from a non-empty, typed production inventory; shown handles must resolve through the
+  product registry and be observed through representative production rendering. It distinguishes
+  `Missing`, `Stale`, `Unbound`, `Unobserved`, and `UnsupportedHidden`.
+
+  Before final visual evidence, a fresh-context critic cold-reads the inventory, catalog, production
+  projection, representative states, and frames at the exact commit proposed for landing. Record the
+  verdict outside the authored tree as an independently attributable PR review or equivalent immutable
+  review-system receipt. An in-repo JSON file, author-entered reviewer name, or same-context fallback
+  cannot prove independence. The mechanical `Catalog.audit` must be complete and the external critic
+  must approve; neither can manufacture the other.
 - Render bridge `FS.GG.UI.Symbology.Render` (`src/Symbology.Render/Render.fsi`): `Render.toPng : Size
   -> Scene -> dir:string -> string`. Wraps the public `SkiaViewer.ReferenceRendering.run` via a
   `SceneCodec` round-trip and **fails loud** (raises with joined diagnostics) on any verdict that is

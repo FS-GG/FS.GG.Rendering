@@ -2,8 +2,15 @@ FS.GG.UI.Symbology.AutoField
 FS.GG.UI.Symbology.AutoField+Tags
 FS.GG.UI.Symbology.AutoLabelSpec
 FS.GG.UI.Symbology.Catalog
+FS.GG.UI.Symbology.Catalog+BindingFinding
+FS.GG.UI.Symbology.Catalog+BindingGap
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags
+FS.GG.UI.Symbology.Catalog+BindingReport
+FS.GG.UI.Symbology.Catalog+BindingVerdict
+FS.GG.UI.Symbology.Catalog+BindingVerdict+Tags
 FS.GG.UI.Symbology.Catalog+Catalog
 FS.GG.UI.Symbology.Catalog+Entry
+FS.GG.UI.Symbology.Catalog+EvidenceDigests
 FS.GG.UI.Symbology.Catalog+Visual
 FS.GG.UI.Symbology.Catalog+Visual+Hidden
 FS.GG.UI.Symbology.Catalog+Visual+Shown
