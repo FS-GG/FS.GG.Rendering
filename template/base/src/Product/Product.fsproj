@@ -41,6 +41,10 @@
     <Compile Include="GameShell.fs" Condition="Exists('GameShell.fs')" />
     <!--#endif -->
     <Compile Include="Model.fs" />
+    <!-- Rendering#1071: the independent, runtime-owned gameplay-visual inventory and handle
+         registry. Compiles after Model (its projections read gameplay state) and before View, which
+         consumes the same projection the visual-coverage gate audits. Game-only inside the file. -->
+    <Compile Include="GameplayVisualInventory.fs" />
     <Compile Include="View.fs" />
     <Compile Include="PerformanceEvidence.fs" />
     <Compile Include="LayoutEvidence.fs" />

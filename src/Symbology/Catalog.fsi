@@ -44,6 +44,45 @@ module Catalog =
     /// comparison and a diff shows exactly which element changed disposition.
     type Catalog = { Entries: Entry list }
 
+    /// Why the independent inventory/catalog/runtime-binding audit failed.
+    [<RequireQualifiedAccess>]
+    type BindingGap =
+        | EmptyInventory
+        | DuplicateDeclared
+        | Missing
+        | Stale
+        | Unbound
+        | Unobserved
+        | UnsupportedHidden
+
+    /// One independently derived visual binding problem.
+    type BindingFinding =
+        { Element: string
+          Gap: BindingGap
+          Message: string }
+
+    type BindingVerdict =
+        | Complete
+        | Incomplete
+
+    /// Digests computed by the caller from the exact inventory declaration, catalog bytes, and
+    /// representative runtime-render evidence that produced the mechanical report.
+    type EvidenceDigests =
+        { Inventory: string
+          Catalog: string
+          Render: string }
+
+    /// Mechanical coverage kept separate from the independent critic. `Complete` means the runtime
+    /// inventory is non-empty and unique, catalog rows exactly match it, shown handles resolve through
+    /// the runtime registry and were observed through representative runtime rendering, and every
+    /// hidden row uses the explicit `<mechanic>: <explanation>` form.
+    type BindingReport =
+        { DeclaredElements: string list
+          EvidenceDigests: EvidenceDigests
+          Findings: BindingFinding list
+          OptedOut: (string * string) list
+          Verdict: BindingVerdict }
+
     /// The element ids the catalog declares, in row order — the "renderable-element set" `Coverage.check`
     /// runs against when the catalog is checked against ITSELF (`validate`).
     val declaredElements: catalog: Catalog -> string list
@@ -73,6 +112,18 @@ module Catalog =
     /// proves the catalog ARTIFACT is itself well-formed, independent of any product's DU. `Covered` iff
     /// no opt-out is blank-reasoned.
     val validate: catalog: Catalog -> Coverage.Report<string>
+
+    /// Compare a runtime-owned gameplay inventory to the catalog, then require every shown handle to
+    /// resolve through the runtime visual registry and appear in representative runtime rendering.
+    /// The catalog never supplies its own subject set to this check.
+    val audit:
+        declared: string list ->
+        catalog: Catalog ->
+        registeredBindings: (string * string) list ->
+        observedBindings: (string * string) list ->
+        evidenceDigests: EvidenceDigests ->
+            BindingReport
+
 
     /// Serialize a catalog to its canonical, deterministic text form — a versioned header line
     /// (`# fs-gg element-visual catalog v1`) followed by one tab-separated row per entry, in order:

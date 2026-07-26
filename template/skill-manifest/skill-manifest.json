@@ -108,7 +108,7 @@
     {
       "id": "fs-gg-symbol-design",
       "scope": "product",
-      "sha256": "9f509aea99589cc08ebebf7918a56309685d00461ba5bc3d73233640f07bf53a",
+      "sha256": "1a28af97d907265344ce65a5458de2f74395c29be347fd16e5404908aa98803e",
       "resolvablePath": ".agents/skills/fs-gg-symbol-design/SKILL.md",
       "materializes-when": "profile in [game, sample-pack]",
       "supplied-by": "template/product-skills/fs-gg-symbol-design/"
@@ -116,7 +116,7 @@
     {
       "id": "fs-gg-symbology",
       "scope": "product",
-      "sha256": "c0bb42cb5c64576c534414ef55870b4bc80a591b389f70ea7e5909e2dc36c140",
+      "sha256": "d927539dd50df2e04a56945cd39e7bb87349cdc8976edfe2b0a4304377c91262",
       "resolvablePath": ".agents/skills/fs-gg-symbology/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-symbology/"

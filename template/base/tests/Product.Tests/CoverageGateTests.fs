@@ -1,193 +1,270 @@
 module AppRootCoverageGateTests
 
 //#if (profile == "game")
-// ================================================================================================
-// The scaffold-emitted VISUAL-COVERAGE gate (FS.GG.Rendering#994, the follow-up to #989/#990).
-//
-// WHAT IT GUARDS. Every gameplay element your game draws must resolve to SOME visual — a shown
-// symbol, or a deliberate, REASONED "hidden by a mechanic" opt-out. An element you add and forget
-// to give a visual renders nothing, with no error, and only a human eyeballing a frame would catch
-// it — the silent-omission defect. This gate turns that into a red build: it reads your product's
-// element->visual CATALOG (`element-visuals.catalog`, beside this file) and reds the moment a
-// declared element is left undisposed or opted out without a reason.
-//
-// THE CATALOG IS THE DECLARED ELEMENT SET. Per the #990 design, the catalog's rows ARE your
-// renderable-element set — one row per element, each carrying its approved visual. Adding an
-// element to your game is finished only when it has a catalog row (a `shown` token handle, or a
-// reasoned `hidden` opt-out); the design loop is documented in the fs-gg-symbol-design skill, and
-// the format in fs-gg-symbology. Edit the catalog, not this file, as your element set grows.
-//
-// RELEASE-SAFE INTAKE (the #992/#996 precedent). The framework owns the machine-readable format
-// and its check — the `Catalog`/`Coverage` modules in `FS.GG.UI.Symbology`. Those modules are not
-// yet in the `FsGgUiVersion` this product pins, so naming their dotted API here (or in a copyable
-// skill fence) would hard-break the build against the pinned package. So this gate reads the
-// catalog through a SMALL, self-contained mirror of the published TEXT FORMAT — no framework API,
-// compiles against any pin. When the pin advances to a package that ships `Catalog`, swap this
-// mirror for `Catalog.parse` + `Catalog.validate` (a `Covered` verdict is the same assertion); the
-// catalog artifact and the intent are unchanged.
-// ================================================================================================
+// Two independent witnesses fail closed:
+//   1. AppRoot.GameplayVisualInventory is the runtime-owned subject set and element-bound registry.
+//   2. element-visuals.catalog records each subject's shown/hidden disposition.
+// View.view consumes the same projection audited here. Representative states must yield non-empty,
+// deterministic SceneCodec evidence before a handle counts as observed.
 
 open System
+open System.IO
+open System.Security.Cryptography
+open System.Text
 open Expecto
+open FS.GG.UI.Scene
+open FS.GG.UI.Symbology
+open AppRoot
 
-// The versioned header line every catalog artifact carries — the format marker, and the first
-// thing the reader validates. Mirrors `FS.GG.UI.Symbology.Catalog.header`.
-[<Literal>]
-let private catalogHeader = "# fs-gg element-visual catalog v1"
-
-/// One element's disposition in the catalog: a shown token (named by a stable HANDLE into your
-/// symbol module, never inlined geometry) or a reasoned hidden opt-out. Mirror of
-/// `Catalog.Visual` / `Coverage.Representation`.
-type private Disposition =
-    | Shown of handle: string
-    | Hidden of reason: string
-
-type private Row = { Element: string; Disposition: Disposition }
-
-/// The gate's verdict over a catalog. `Covered` iff the artifact is well-formed AND every declared
-/// element resolves to a shown token or a reasoned hidden opt-out — the exact condition
-/// `Coverage.check` reports as `Covered`.
-type private Verdict =
-    /// The artifact is not a well-formed catalog: a wrong/missing header, a row with no
-    /// disposition, a `shown` row with a blank handle (a shown-as-nothing row), an unknown
-    /// disposition, or a duplicate element id. Carries the located reason.
-    | Malformed of reason: string
-    /// Well-formed, but one or more declared elements are opted out with a BLANK reason — an
-    /// unreasoned opt-out, indistinguishable from forgetting the element. Carries the offending ids
-    /// in declared order.
-    | HasGaps of unreasoned: string list
-    | Covered
-
-/// Parse the canonical text form. Deterministic and IO-free: normalise line endings, validate the
-/// header, then fold the rows, rejecting the first malformed one. Blank lines and `#` comment lines
-/// after the header are ignored. A `hidden` row with a blank reason PARSES (structure is
-/// well-formed) — its reason-quality is the coverage check's business, keeping FORMAT and POLICY
-/// separate, exactly as the framework's `parse`/`validate` split does.
-let private parse (text: string) : Result<Row list, string> =
-    let lines =
-        text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n') |> Array.toList
-
-    let rec skipBlanks =
-        function
-        | (l: string) :: rest when String.IsNullOrWhiteSpace l -> skipBlanks rest
-        | rest -> rest
-
-    match skipBlanks lines with
-    | [] -> Error(sprintf "empty catalog: expected the version header \"%s\"" catalogHeader)
-    | first :: body when first.Trim() = catalogHeader ->
-        let rec loop acc (seen: Set<string>) rows =
-            match rows with
-            | [] -> Ok(List.rev acc)
-            | (line: string) :: rest ->
-                if String.IsNullOrWhiteSpace line || line.TrimStart().StartsWith("#") then
-                    loop acc seen rest
-                else
-                    let firstTab = line.IndexOf('\t')
-
-                    if firstTab < 0 then
-                        Error(sprintf "malformed row (no tab): %s" line)
-                    else
-                        let element = line.Substring(0, firstTab).Trim()
-                        let afterElement = line.Substring(firstTab + 1)
-                        let secondTab = afterElement.IndexOf('\t')
-
-                        let disposition, payload =
-                            if secondTab < 0 then
-                                afterElement.Trim(), ""
-                            else
-                                afterElement.Substring(0, secondTab).Trim(), afterElement.Substring(secondTab + 1)
-
-                        if element = "" then
-                            Error(sprintf "malformed row (blank element id): %s" line)
-                        elif seen.Contains element then
-                            Error(sprintf "duplicate element id: %s" element)
-                        else
-                            match disposition with
-                            | "shown" ->
-                                let handle = payload.Trim()
-
-                                if handle = "" then
-                                    Error(
-                                        sprintf
-                                            "element %s is 'shown' with a blank token handle — name the approved token, or mark it 'hidden' with a reason"
-                                            element
-                                    )
-                                else
-                                    loop ({ Element = element; Disposition = Shown handle } :: acc) (seen.Add element) rest
-                            | "hidden" -> loop ({ Element = element; Disposition = Hidden(payload.Trim()) } :: acc) (seen.Add element) rest
-                            | other ->
-                                Error(sprintf "element %s has an unknown disposition '%s' (expected 'shown' or 'hidden')" element other)
-
-        loop [] Set.empty body
-    | first :: _ -> Error(sprintf "expected the version header \"%s\", got: %s" catalogHeader first)
-
-/// The whole gate over a catalog artifact's text — the release-safe mirror of `Catalog.validate`:
-/// well-formed AND no unreasoned opt-out => `Covered`.
-let private assess (text: string) : Verdict =
-    match parse text with
-    | Error reason -> Malformed reason
-    | Ok rows ->
-        let unreasoned =
-            rows
-            |> List.choose (fun r ->
-                match r.Disposition with
-                | Hidden reason when String.IsNullOrWhiteSpace reason -> Some r.Element
-                | _ -> None)
-
-        if List.isEmpty unreasoned then Covered else HasGaps unreasoned
-
-/// The catalog artifact ships beside this test in the generated product; `__SOURCE_DIRECTORY__` is
-/// this file's own directory, so the gate finds the catalog wherever the product is scaffolded.
 let private catalogPath =
-    System.IO.Path.Combine(__SOURCE_DIRECTORY__, "element-visuals.catalog")
+    Path.Combine(__SOURCE_DIRECTORY__, "element-visuals.catalog")
+
+let private sha256 (bytes: byte[]) =
+    SHA256.HashData bytes |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
+
+let private textBytes (value: string) =
+    Encoding.UTF8.GetBytes value
+
+let private declared =
+    GameplayVisualInventory.all
+    |> List.map GameplayVisualInventory.elementId
+
+let private readCatalog () =
+    Catalog.parse (File.ReadAllText catalogPath)
+
+let private runtimeFrames =
+    GameplayVisualInventory.representativeModels
+    |> List.map (fun model ->
+        let projected = GameplayVisualInventory.project model
+        let actualView = View.view model
+        let expectedView = projected |> List.map _.Scene |> Group
+        let frame = { Nodes = [ actualView ] }
+        model, projected, actualView, expectedView, (SceneCodec.export frame).CanonicalBytes)
+
+let private bindingEvidence =
+    GameplayVisualInventory.bindings
+    |> List.collect (fun binding ->
+        binding.RequiredStates
+        |> List.map (fun (state, model) ->
+            let scene = binding.Project model
+            let bytes = (SceneCodec.export scene).CanonicalBytes
+            binding.Element, binding.Handle, state, scene, bytes))
+
+let private evidenceDigests (catalog: Catalog.Catalog) : Catalog.EvidenceDigests =
+    { Inventory = declared |> String.concat "\n" |> (+) "\n" |> textBytes |> sha256
+      Catalog = Catalog.render catalog |> textBytes |> sha256
+      Render =
+        bindingEvidence
+        |> List.map (fun (element, handle, state, _, bytes) ->
+            String.concat
+                "|"
+                [ GameplayVisualInventory.elementId element
+                  handle
+                  state
+                  sha256 bytes ])
+        |> String.concat "\n"
+        |> textBytes
+        |> sha256 }
+
+let private observedBindings =
+    bindingEvidence
+    |> List.choose (fun (element, handle, _, scene, _) ->
+        if List.isEmpty scene.Nodes then
+            None
+        else
+            Some(GameplayVisualInventory.elementId element, handle))
+    |> List.distinct
+
+let private runtimeAudit (catalog: Catalog.Catalog) =
+    Catalog.audit
+        declared
+        catalog
+        GameplayVisualInventory.registeredBindings
+        observedBindings
+        (evidenceDigests catalog)
+
+let private finding gap element (report: Catalog.BindingReport) =
+    report.Findings
+    |> List.exists (fun item -> item.Gap = gap && item.Element = element)
+
+let private mkCatalog (entries: Catalog.Entry list) : Catalog.Catalog =
+    { Entries = entries }
+
+let private syntheticEvidence: Catalog.EvidenceDigests =
+    { Inventory = "fixture-inventory"
+      Catalog = "fixture-catalog"
+      Render = "fixture-render" }
+
+type private RogueVisualElement =
+    | DoorOpen
+    | DoorLocked
+    | Trapdoor
+
+type private RogueState =
+    { Locked: bool
+      Descending: bool }
+
+let private rogueElements =
+    [ DoorOpen; DoorLocked; Trapdoor ]
+
+let private rogueId =
+    function
+    | DoorOpen -> "DoorOpen"
+    | DoorLocked -> "DoorLocked"
+    | Trapdoor -> "Trapdoor"
+
+let private rogueHandle =
+    function
+    | DoorOpen -> "scene/door-open"
+    | DoorLocked -> "scene/door-locked"
+    | Trapdoor -> "scene/trapdoor"
+
+let private rogueProjection state =
+    let color red green blue =
+        { Red = red; Green = green; Blue = blue; Alpha = 255uy }
+
+    let element =
+        if state.Descending then Trapdoor
+        elif state.Locked then DoorLocked
+        else DoorOpen
+
+    let scene =
+        match element with
+        | DoorOpen -> { Nodes = [ Rectangle((8.0, 8.0, 8.0, 32.0), color 80uy 180uy 110uy) ] }
+        | DoorLocked -> { Nodes = [ Rectangle((8.0, 8.0, 24.0, 32.0), color 210uy 90uy 70uy) ] }
+        | Trapdoor -> { Nodes = [ Rectangle((8.0, 24.0, 32.0, 8.0), color 150uy 100uy 60uy) ] }
+
+    element, rogueHandle element, scene
 
 [<Tests>]
 let coverageGateTests =
     testList "visual-coverage-gate" [
-        test "the generated product ships an element-visual catalog the gate can read" {
-            Expect.isTrue (System.IO.File.Exists catalogPath) "element-visuals.catalog ships beside the coverage gate"
-
-            match parse (System.IO.File.ReadAllText catalogPath) with
-            | Ok rows -> Expect.isNonEmpty rows "the catalog declares at least one gameplay element"
-            | Error reason -> failtestf "the shipped catalog is not a well-formed element-visual catalog: %s" reason
+        test "the typed runtime inventory is exhaustive, readable, non-empty, and unique" {
+            Expect.isNonEmpty declared "a game profile must declare its gameplay-visual inventory in runtime source"
+            Expect.equal (List.distinct declared) declared "the runtime gameplay-visual inventory must not contain duplicates"
+            Expect.equal GameplayVisualInventory.bindings.Length declared.Length "every reflected union case has an exhaustive binding"
         }
 
-        test "every declared gameplay element resolves to a shown token or a reasoned hidden opt-out (Coverage is Covered)" {
-            // THE GATE. Adding a gameplay element without a visual (or an explicit, reasoned opt-out)
-            // leaves an undisposed / unreasoned row here and reds this build before ship — the
-            // silent-omission protection #989 targets, wired to the product's declared element set.
-            match assess (System.IO.File.ReadAllText catalogPath) with
-            | Covered -> ()
-            | Malformed reason -> failtestf "element-visuals.catalog is malformed: %s" reason
-            | HasGaps unreasoned ->
-                failtestf
-                    "these declared elements are opted out with no reason (name the hiding mechanic, or give them a shown token): %s"
-                    (String.concat ", " unreasoned)
+        test "representative states traverse View.view and yield non-empty runtime frames" {
+            for _, projected, actual, expected, _ in runtimeFrames do
+                Expect.equal actual expected "View.view must consume the audited projection without a parallel renderer"
+
+                for item in projected do
+                    Expect.isNonEmpty item.Scene.Nodes $"{GameplayVisualInventory.elementId item.Element} must produce real Scene nodes"
+
         }
 
-        test "the gate has teeth — it reds on silent omission, not just passes vacuously" {
-            // Guard the guard (the #111 pattern): prove each silent-omission class is actually caught,
-            // so the green gate above means something. A stub that only ever returns `Covered` fails HERE.
-            let bad name expectedIsCovered text =
-                let covered =
-                    match assess text with
-                    | Covered -> true
-                    | _ -> false
+        test "required states differ per element and distinct elements cannot share byte-identical evidence" {
+            for binding in GameplayVisualInventory.bindings do
+                Expect.isNonEmpty binding.RequiredStates $"{GameplayVisualInventory.elementId binding.Element} must declare evidence states"
 
-                Expect.equal covered expectedIsCovered name
+                let labels = binding.RequiredStates |> List.map fst
+                Expect.equal (List.distinct labels) labels "evidence-state labels must be unique per element"
 
-            // a forgotten disposition: the element has a row but no token and no opt-out
-            bad "an element with no disposition is a gap" false (catalogHeader + "\nGhost\n")
-            // an unreasoned opt-out: hidden, but the mechanic is not named
-            bad "an unreasoned (blank-reason) hidden opt-out is a gap" false (catalogHeader + "\nGhost\thidden\t")
-            // a shown-as-nothing row: shown, but no token handle
-            bad "a shown row with a blank token handle is malformed" false (catalogHeader + "\nGhost\tshown\t")
-            // a wrong header is not this format at all
-            bad "a catalog with the wrong header is malformed" false "not a catalog\nGhost\tshown\ttoken/x"
-            // a duplicate element id is malformed
-            bad "a duplicate element id is malformed" false (catalogHeader + "\nGhost\tshown\ttoken/x\nGhost\tshown\ttoken/y")
-            // and the covered case genuinely passes: a shown token and a reasoned opt-out
-            bad "a shown token plus a reasoned opt-out is covered" true (catalogHeader + "\nDoor\tshown\ttoken/door\nFog\thidden\tstealth: cloaked until it moves")
+                let digests =
+                    binding.RequiredStates
+                    |> List.map (fun (state, model) ->
+                        let scene = binding.Project model
+                        Expect.isNonEmpty scene.Nodes $"{GameplayVisualInventory.elementId binding.Element}/{state} must emit Scene nodes"
+                        (SceneCodec.export scene).CanonicalBytes |> sha256)
+
+                Expect.equal
+                    (List.distinct digests).Length
+                    digests.Length
+                    $"{GameplayVisualInventory.elementId binding.Element} required states must be visually distinct"
+
+            let elementBaselines =
+                GameplayVisualInventory.bindings
+                |> List.map (fun binding ->
+                    let _, model = binding.RequiredStates.Head
+                    let exported = binding.Project model |> SceneCodec.export
+                    sha256 exported.CanonicalBytes)
+
+            Expect.equal
+                (List.distinct elementBaselines).Length
+                elementBaselines.Length
+                "distinct gameplay elements cannot use byte-identical baseline Scene evidence"
         }
+
+        test "catalog, element-bound registry, and representative runtime rendering are complete" {
+            match readCatalog () with
+            | Error reason -> failtestf "element-visuals.catalog is malformed: %s" reason
+            | Ok catalog ->
+                let report = runtimeAudit catalog
+
+                Expect.equal
+                    report.Verdict
+                    Catalog.BindingVerdict.Complete
+                    (report.Findings |> List.map _.Message |> String.concat "\n")
+        }
+
+        test "Rogue2 old self-declared control stays green while typed runtime inventory names Door and Trapdoor omissions" {
+            let staleStarter =
+                mkCatalog
+                    [ { Element = "Ball"; Visual = Catalog.Visual.Shown "scene/ball" }
+                      { Element = "LeftPaddle"; Visual = Catalog.Visual.Shown "scene/paddle" } ]
+
+            Expect.equal (Catalog.validate staleStarter).Verdict Coverage.Verdict.Covered "old control remains green"
+
+            let report =
+                Catalog.audit
+                    (rogueElements |> List.map rogueId)
+                    staleStarter
+                    []
+                    []
+                    syntheticEvidence
+
+            for element in [ "DoorOpen"; "DoorLocked"; "Trapdoor" ] do
+                Expect.isTrue (finding Catalog.BindingGap.Missing element report) $"typed fixture names omitted {element}"
+
+            for stale in [ "Ball"; "LeftPaddle" ] do
+                Expect.isTrue (finding Catalog.BindingGap.Stale stale report) $"dungeon fixture rejects stale {stale}"
+        }
+
+        test "Rogue2 open, locked/sealed, and trapdoor states are element-bound, rendered, and visually distinct" {
+            let catalog =
+                rogueElements
+                |> List.map (fun element ->
+                    ({ Element = rogueId element
+                       Visual = Catalog.Visual.Shown(rogueHandle element) }: Catalog.Entry))
+                |> mkCatalog
+
+            let registry =
+                rogueElements |> List.map (fun element -> rogueId element, rogueHandle element)
+
+            let projections =
+                [ { Locked = false; Descending = false }
+                  { Locked = true; Descending = false }
+                  { Locked = false; Descending = true } ]
+                |> List.map rogueProjection
+
+            let observed =
+                projections
+                |> List.map (fun (element, handle, scene) ->
+                    Expect.isNonEmpty scene.Nodes $"{rogueId element} emits Scene nodes"
+                    rogueId element, handle)
+
+            let sceneDigests =
+                projections
+                |> List.map (fun (_, _, scene) -> (SceneCodec.export scene).CanonicalBytes |> sha256)
+
+            Expect.equal (List.distinct sceneDigests).Length 3 "open, locked/sealed, and trapdoor scenes differ"
+
+            let complete =
+                Catalog.audit (rogueElements |> List.map rogueId) catalog registry observed syntheticEvidence
+
+            Expect.equal complete.Verdict Catalog.BindingVerdict.Complete "all typed Rogue2 states are bound and observed"
+
+            let swapped =
+                Catalog.audit
+                    (rogueElements |> List.map rogueId)
+                    catalog
+                    [ "DoorOpen", "scene/door-locked"; "DoorLocked", "scene/door-open"; "Trapdoor", "scene/trapdoor" ]
+                    observed
+                    syntheticEvidence
+
+            Expect.isTrue (finding Catalog.BindingGap.Unbound "DoorOpen" swapped) "swapped element/handle pairs cannot pass"
+        }
+
     ]
 //#endif

@@ -8,13 +8,37 @@ FS.GG.UI.Symbology.AutoField+Tags.ThreatTier : System.Int32
 FS.GG.UI.Symbology.AutoLabelSpec.Fields : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField> [get]
 FS.GG.UI.Symbology.AutoLabelSpec.Separator : System.String [get]
 FS.GG.UI.Symbology.AutoLabelSpec.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.AutoField>, System.String)
+FS.GG.UI.Symbology.Catalog+BindingFinding.Element : System.String [get]
+FS.GG.UI.Symbology.Catalog+BindingFinding.Gap : FS.GG.UI.Symbology.Catalog+BindingGap [get]
+FS.GG.UI.Symbology.Catalog+BindingFinding.Message : System.String [get]
+FS.GG.UI.Symbology.Catalog+BindingFinding.new(System.String, FS.GG.UI.Symbology.Catalog+BindingGap, System.String)
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.DuplicateDeclared : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.EmptyInventory : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.Missing : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.Stale : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.Unbound : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.Unobserved : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingGap+Tags.UnsupportedHidden : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingReport.DeclaredElements : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Symbology.Catalog+BindingReport.EvidenceDigests : FS.GG.UI.Symbology.Catalog+EvidenceDigests [get]
+FS.GG.UI.Symbology.Catalog+BindingReport.Findings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+BindingFinding> [get]
+FS.GG.UI.Symbology.Catalog+BindingReport.OptedOut : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>> [get]
+FS.GG.UI.Symbology.Catalog+BindingReport.Verdict : FS.GG.UI.Symbology.Catalog+BindingVerdict [get]
+FS.GG.UI.Symbology.Catalog+BindingReport.new(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Symbology.Catalog+EvidenceDigests, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+BindingFinding>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, FS.GG.UI.Symbology.Catalog+BindingVerdict)
+FS.GG.UI.Symbology.Catalog+BindingVerdict+Tags.Complete : System.Int32
+FS.GG.UI.Symbology.Catalog+BindingVerdict+Tags.Incomplete : System.Int32
 FS.GG.UI.Symbology.Catalog+Catalog.Entries : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+Entry> [get]
 FS.GG.UI.Symbology.Catalog+Catalog.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Symbology.Catalog+Entry>)
 FS.GG.UI.Symbology.Catalog+Entry.Element : System.String [get]
 FS.GG.UI.Symbology.Catalog+Entry.Visual : FS.GG.UI.Symbology.Catalog+Visual [get]
 FS.GG.UI.Symbology.Catalog+Entry.new(System.String, FS.GG.UI.Symbology.Catalog+Visual)
+FS.GG.UI.Symbology.Catalog+EvidenceDigests.Catalog : System.String [get]
+FS.GG.UI.Symbology.Catalog+EvidenceDigests.Inventory : System.String [get]
+FS.GG.UI.Symbology.Catalog+EvidenceDigests.Render : System.String [get]
+FS.GG.UI.Symbology.Catalog+EvidenceDigests.new(System.String, System.String, System.String)
 FS.GG.UI.Symbology.Catalog+Visual+Tags.Hidden : System.Int32
 FS.GG.UI.Symbology.Catalog+Visual+Tags.Shown : System.Int32
+FS.GG.UI.Symbology.Catalog.audit(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Symbology.Catalog+Catalog, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, FS.GG.UI.Symbology.Catalog+EvidenceDigests) : FS.GG.UI.Symbology.Catalog+BindingReport
 FS.GG.UI.Symbology.Catalog.coverage(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Symbology.Catalog+Catalog) : FS.GG.UI.Symbology.Coverage+Report<System.String>
 FS.GG.UI.Symbology.Catalog.declaredElements(FS.GG.UI.Symbology.Catalog+Catalog) : Microsoft.FSharp.Collections.FSharpList<System.String>
 FS.GG.UI.Symbology.Catalog.parse(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Symbology.Catalog+Catalog, System.String>
