@@ -81,6 +81,9 @@ open System.Diagnostics
 open System.Text
 open System.Text.RegularExpressions
 
+#load "ApiSurfaceRestore.fs"
+open FsGg
+
 #load "lib/FsiSurface.fsx"
 open FsiSurface
 
@@ -244,17 +247,8 @@ let restorePins () =
 """
         )
 
-        let psi = ProcessStartInfo("dotnet")
-        psi.WorkingDirectory <- work
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        [ "restore"
-          "probe.fsproj"
-          "--packages"
-          probePackagesDir
-          "--configfile"
-          nugetConfigPath ]
-        |> List.iter psi.ArgumentList.Add
+        let psi =
+            ApiSurfaceRestore.startInfo work "probe.fsproj" probePackagesDir nugetConfigPath
 
         use p = Process.Start psi
         let out = p.StandardOutput.ReadToEnd()
