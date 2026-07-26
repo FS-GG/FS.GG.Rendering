@@ -1,0 +1,4 @@
+interface:
+  display_name: "Check Board"
+  short_description: "Reconcile board state with live GitHub issues"
+  default_prompt: "Use $check-board to reconcile the FS-GG Coordination board against live issue state."
