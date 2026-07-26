@@ -1,0 +1,4 @@
+interface:
+  display_name: "PNext Item"
+  short_description: "Claim and complete one schedulable FS-GG item"
+  default_prompt: "Use $pnext-item to claim and complete the next schedulable item in one FS-GG repository."
