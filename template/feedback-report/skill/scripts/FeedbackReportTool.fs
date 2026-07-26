@@ -599,9 +599,33 @@ type Checkpoint =
       cost: string
       owner: string }
 
+type ZeroEventActivationReceipt =
+    { activationSchema: int
+      receiptKind: string
+      timestampUtc: string
+      cycle: string
+      exercisedPhases: string list
+      evidence: string list
+      reasonNoEventQualified: string }
+
 let private requireValue name value =
     if String.IsNullOrWhiteSpace value then
         invalidArg name (sprintf "%s must not be empty" name)
+
+let private requireCycle cycle =
+    requireValue "cycle" cycle
+
+    if not (Regex.IsMatch(cycle, "^[a-z0-9][a-z0-9-]*$")) then
+        invalidArg "cycle" "cycle must be lowercase letters, digits, and hyphens"
+
+let private checkpointDirectory root =
+    Path.Combine(root, "feedback", "checkpoints")
+
+let private checkpointEventPath root cycle =
+    Path.Combine(checkpointDirectory root, cycle + ".jsonl")
+
+let activationReceiptPath root cycle =
+    Path.Combine(checkpointDirectory root, cycle + ".activation.json")
 
 let appendCheckpoint root cycle phase surface kind summary evidence cost owner =
     for name, value in
@@ -615,14 +639,22 @@ let appendCheckpoint root cycle phase surface kind summary evidence cost owner =
           "owner", owner ] do
         requireValue name value
 
-    if not (Regex.IsMatch(cycle, "^[a-z0-9][a-z0-9-]*$")) then
-        invalidArg "cycle" "cycle must be lowercase letters, digits, and hyphens"
+    requireCycle cycle
 
     if not (List.contains surface surfaces) then
         invalidArg "surface" (sprintf "unknown surface '%s'" surface)
 
     if not (List.contains kind kinds) then
         invalidArg "kind" (sprintf "unknown kind '%s'" kind)
+
+    let receiptPath = activationReceiptPath root cycle
+
+    if File.Exists receiptPath || Directory.Exists receiptPath then
+        invalidArg
+            "cycle"
+            (sprintf
+                "cycle '%s' already has a zero-event activation receipt; remove the contradiction before recording an event"
+                cycle)
 
     let checkpoint =
         { timestampUtc = DateTimeOffset.UtcNow.ToString "O"
@@ -635,79 +667,336 @@ let appendCheckpoint root cycle phase surface kind summary evidence cost owner =
           cost = cost
           owner = owner }
 
-    let directory = Path.Combine(root, "feedback", "checkpoints")
+    let directory = checkpointDirectory root
     Directory.CreateDirectory directory |> ignore
-    let path = Path.Combine(directory, cycle + ".jsonl")
+    let path = checkpointEventPath root cycle
     let line = JsonSerializer.Serialize checkpoint + Environment.NewLine
     File.AppendAllText(path, line, UTF8Encoding(false))
     path
 
-let validateCheckpointFile path =
+let appendZeroEventActivation root cycle exercisedPhases evidence reasonNoEventQualified =
+    requireCycle cycle
+    requireValue "reason" reasonNoEventQualified
+
+    let requireNonEmptyValues name values =
+        if List.isEmpty values then
+            invalidArg name (sprintf "%s must contain at least one value" name)
+
+        for value in values do
+            requireValue name value
+
+    requireNonEmptyValues "phases" exercisedPhases
+    requireNonEmptyValues "evidence" evidence
+
+    if exercisedPhases |> List.distinct |> List.length <> List.length exercisedPhases then
+        invalidArg "phases" "phases must not contain duplicates"
+
+    if evidence |> List.exists containsPrivateLocatorMaterial then
+        invalidArg "evidence" "evidence must not expose an absolute path or secret material"
+
+    let eventPath = checkpointEventPath root cycle
+
+    if File.Exists eventPath || Directory.Exists eventPath then
+        invalidArg
+            "cycle"
+            (sprintf
+                "cycle '%s' already has checkpoint event state; a zero-event receipt would contradict it"
+                cycle)
+
+    let directory = checkpointDirectory root
+    Directory.CreateDirectory directory |> ignore
+    let path = activationReceiptPath root cycle
+
+    let receipt =
+        { activationSchema = 1
+          receiptKind = "zero-event-activation"
+          timestampUtc = DateTimeOffset.UtcNow.ToString "O"
+          cycle = cycle
+          exercisedPhases = exercisedPhases
+          evidence = evidence
+          reasonNoEventQualified = reasonNoEventQualified }
+
+    use stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None)
+    use writer = new StreamWriter(stream, UTF8Encoding(false))
+    writer.Write(JsonSerializer.Serialize receipt)
+    writer.Write Environment.NewLine
+    path
+
+let private validateCheckpointFileForCycle (expectedCycle: string) (path: string) =
     let errors = ResizeArray<string>()
 
     if not (File.Exists path) then
         [ sprintf "checkpoints: file not found: %s" path ]
     else
-        for index, line in File.ReadLines path |> Seq.indexed do
-            if String.IsNullOrWhiteSpace line then
-                errors.Add(sprintf "checkpoints: line %d is empty" (index + 1))
-            else
-                try
-                    use document = JsonDocument.Parse line
-                    let root = document.RootElement
+        try
+            let mutable lineCount = 0
 
-                    let readProperty (name: string) =
-                        match root.TryGetProperty name with
-                        | true, value when value.ValueKind = JsonValueKind.String ->
-                            value.GetString() |> Option.ofObj |> Option.defaultValue ""
-                        | _ ->
+            for index, line in File.ReadLines path |> Seq.indexed do
+                lineCount <- lineCount + 1
+
+                if String.IsNullOrWhiteSpace line then
+                    errors.Add(sprintf "checkpoints: line %d is empty" (index + 1))
+                else
+                    try
+                        use document = JsonDocument.Parse line
+                        let root = document.RootElement
+
+                        let readProperty (name: string) =
+                            match root.TryGetProperty name with
+                            | true, value when value.ValueKind = JsonValueKind.String ->
+                                value.GetString() |> Option.ofObj |> Option.defaultValue ""
+                            | _ ->
+                                errors.Add(
+                                    sprintf "checkpoints: line %d is missing %s" (index + 1) name
+                                )
+
+                                ""
+
+                        let values =
+                            [ for name in
+                                  [ "timestampUtc"
+                                    "cycle"
+                                    "phase"
+                                    "surface"
+                                    "kind"
+                                    "summary"
+                                    "evidence"
+                                    "cost"
+                                    "owner" ] do
+                                  yield name, readProperty name ]
+
+                        for name, value in values do
+                            if String.IsNullOrWhiteSpace value then
+                                errors.Add(
+                                    sprintf "checkpoints: line %d has empty %s" (index + 1) name
+                                )
+
+                        let valueOf name = values |> List.find (fst >> (=) name) |> snd
+                        let cycle = valueOf "cycle"
+                        let surface = valueOf "surface"
+                        let kind = valueOf "kind"
+
+                        if cycle <> expectedCycle then
                             errors.Add(
-                                sprintf "checkpoints: line %d is missing %s" (index + 1) name
+                                sprintf
+                                    "checkpoints: line %d cycle must be '%s', got '%s'"
+                                    (index + 1)
+                                    expectedCycle
+                                    cycle
                             )
 
-                            ""
-
-                    let values =
-                        [ for name in
-                              [ "timestampUtc"
-                                "cycle"
-                                "phase"
-                                "surface"
-                                "kind"
-                                "summary"
-                                "evidence"
-                                "cost"
-                                "owner" ] do
-                              yield name, readProperty name ]
-
-                    for name, value in values do
-                        if String.IsNullOrWhiteSpace value then
+                        if not (List.contains surface surfaces) then
                             errors.Add(
-                                sprintf "checkpoints: line %d has empty %s" (index + 1) name
+                                sprintf
+                                    "checkpoints: line %d has unknown surface '%s'"
+                                    (index + 1)
+                                    surface
                             )
 
-                    let valueOf name = values |> List.find (fst >> (=) name) |> snd
-                    let surface = valueOf "surface"
-                    let kind = valueOf "kind"
-
-                    if not (List.contains surface surfaces) then
+                        if not (List.contains kind kinds) then
+                            errors.Add(
+                                sprintf
+                                    "checkpoints: line %d has unknown kind '%s'"
+                                    (index + 1)
+                                    kind
+                            )
+                    with ex ->
                         errors.Add(
                             sprintf
-                                "checkpoints: line %d has unknown surface '%s'"
+                                "checkpoints: line %d is invalid JSON: %s"
                                 (index + 1)
-                                surface
+                                ex.Message
                         )
 
-                    if not (List.contains kind kinds) then
-                        errors.Add(
-                            sprintf
-                                "checkpoints: line %d has unknown kind '%s'"
-                                (index + 1)
-                                kind
-                        )
-                with ex ->
+            if lineCount = 0 then
+                errors.Add(
+                    "checkpoints: event file contains no events; record a zero-event activation receipt"
+                )
+
+            List.ofSeq errors
+        with ex ->
+            [ sprintf "checkpoints: state is unreadable: %s" ex.Message ]
+
+let validateCheckpointFile (path: string) =
+    let expectedCycle =
+        Path.GetFileNameWithoutExtension path |> Option.ofObj |> Option.defaultValue ""
+
+    validateCheckpointFileForCycle expectedCycle path
+
+let validateZeroEventActivationFile (workspaceRoot: string) (expectedCycle: string) (path: string) =
+    if Directory.Exists path then
+        [ sprintf "checkpoints: zero-event activation receipt is unreadable: %s" path ]
+    elif not (File.Exists path) then
+        [ sprintf "checkpoints: zero-event activation receipt not found: %s" path ]
+    else
+        let errors = ResizeArray<string>()
+
+        try
+            let canonicalRoot = canonicalizeExistingSegments workspaceRoot
+            let canonicalPath = canonicalizeExistingSegments path
+
+            if not (isInside canonicalRoot canonicalPath) then
+                raise (
+                    InvalidDataException(
+                        "zero-event activation receipt resolves outside the workspace"
+                    )
+                )
+
+            use document = JsonDocument.Parse(File.ReadAllText canonicalPath)
+            let root = document.RootElement
+
+            if root.ValueKind <> JsonValueKind.Object then
+                raise (JsonException "activation receipt root must be a JSON object")
+
+            let allowedProperties =
+                set
+                    [ "activationSchema"
+                      "receiptKind"
+                      "timestampUtc"
+                      "cycle"
+                      "exercisedPhases"
+                      "evidence"
+                      "reasonNoEventQualified" ]
+
+            let properties = root.EnumerateObject() |> Seq.toList
+
+            for property in properties do
+                if not (Set.contains property.Name allowedProperties) then
                     errors.Add(
-                        sprintf "checkpoints: line %d is invalid JSON: %s" (index + 1) ex.Message
+                        sprintf
+                            "checkpoints: activation receipt contains unknown property '%s'"
+                            property.Name
                     )
 
+            for name, count in
+                properties
+                |> List.countBy (fun property -> property.Name)
+                |> List.filter (fun (_, count) -> count > 1) do
+                errors.Add(
+                    sprintf "checkpoints: activation receipt contains duplicate property '%s'" name
+                )
+
+            let readString (name: string) =
+                match root.TryGetProperty name with
+                | true, value when value.ValueKind = JsonValueKind.String ->
+                    value.GetString() |> Option.ofObj |> Option.defaultValue ""
+                | _ ->
+                    errors.Add(sprintf "checkpoints: activation receipt is missing %s" name)
+                    ""
+
+            let readStringArray (name: string) =
+                match root.TryGetProperty name with
+                | true, value when value.ValueKind = JsonValueKind.Array ->
+                    [ for item in value.EnumerateArray() do
+                          if item.ValueKind = JsonValueKind.String then
+                              yield item.GetString() |> Option.ofObj |> Option.defaultValue ""
+                          else
+                              errors.Add(
+                                  sprintf
+                                      "checkpoints: activation receipt %s must contain only strings"
+                                      name
+                              ) ]
+                | _ ->
+                    errors.Add(sprintf "checkpoints: activation receipt is missing %s" name)
+                    []
+
+            match root.TryGetProperty "activationSchema" with
+            | true, value when value.ValueKind = JsonValueKind.Number ->
+                match value.TryGetInt32() with
+                | true, 1 -> ()
+                | _ -> errors.Add "checkpoints: activationSchema must be 1"
+            | _ -> errors.Add "checkpoints: activation receipt is missing activationSchema"
+
+            let receiptKind = readString "receiptKind"
+            let timestampUtc = readString "timestampUtc"
+            let cycle = readString "cycle"
+            let phases = readStringArray "exercisedPhases"
+            let evidence = readStringArray "evidence"
+            let reason = readString "reasonNoEventQualified"
+
+            if receiptKind <> "zero-event-activation" then
+                errors.Add "checkpoints: receiptKind must be zero-event-activation"
+
+            match DateTimeOffset.TryParse timestampUtc with
+            | true, timestamp when timestamp.Offset = TimeSpan.Zero -> ()
+            | _ -> errors.Add "checkpoints: timestampUtc must be a UTC timestamp"
+
+            if cycle <> expectedCycle then
+                errors.Add(
+                    sprintf
+                        "checkpoints: activation receipt cycle must be '%s', got '%s'"
+                        expectedCycle
+                        cycle
+                )
+
+            for name, values in [ "exercisedPhases", phases; "evidence", evidence ] do
+                if List.isEmpty values then
+                    errors.Add(sprintf "checkpoints: activation receipt %s must not be empty" name)
+
+                if values |> List.exists String.IsNullOrWhiteSpace then
+                    errors.Add(
+                        sprintf
+                            "checkpoints: activation receipt %s must not contain empty values"
+                            name
+                    )
+
+            if phases |> List.distinct |> List.length <> List.length phases then
+                errors.Add "checkpoints: activation receipt exercisedPhases must not contain duplicates"
+
+            if evidence |> List.exists containsPrivateLocatorMaterial then
+                errors.Add(
+                    "checkpoints: activation receipt evidence exposes an absolute path or secret material"
+                )
+
+            if String.IsNullOrWhiteSpace reason then
+                errors.Add "checkpoints: activation receipt reasonNoEventQualified must not be empty"
+
+            List.ofSeq errors
+        with
+        | :? JsonException as ex ->
+            [ sprintf "checkpoints: activation receipt is malformed JSON: %s" ex.Message ]
+        | :? InvalidDataException as ex ->
+            [ sprintf "checkpoints: zero-event activation receipt is unreadable: %s" ex.Message ]
+        | ex ->
+            [ sprintf "checkpoints: zero-event activation receipt is unreadable: %s" ex.Message ]
+
+let validateCheckpointState (root: string) (cycle: string) =
+    let errors = ResizeArray<string>()
+
+    try
+        requireCycle cycle
+    with :? ArgumentException as ex ->
+        errors.Add(sprintf "checkpoints: %s" ex.Message)
+
+    if errors.Count > 0 then
         List.ofSeq errors
+    else
+        let eventPath = checkpointEventPath root cycle
+        let receiptPath = activationReceiptPath root cycle
+        let hasEvents = File.Exists eventPath || Directory.Exists eventPath
+        let hasReceipt = File.Exists receiptPath || Directory.Exists receiptPath
+
+        match hasEvents, hasReceipt with
+        | true, true ->
+            [ sprintf
+                  "checkpoints: cycle '%s' has both checkpoint events and a zero-event activation receipt"
+                  cycle ]
+        | true, false when Directory.Exists eventPath ->
+            [ sprintf "checkpoints: checkpoint event state is unreadable: %s" eventPath ]
+        | true, false ->
+            try
+                let canonicalRoot = canonicalizeExistingSegments root
+                let canonicalEventPath = canonicalizeExistingSegments eventPath
+
+                if not (isInside canonicalRoot canonicalEventPath) then
+                    [ sprintf
+                          "checkpoints: checkpoint event state is unreadable: event file resolves outside the workspace" ]
+                else
+                    validateCheckpointFileForCycle cycle canonicalEventPath
+            with ex ->
+                [ sprintf "checkpoints: checkpoint event state is unreadable: %s" ex.Message ]
+        | false, true -> validateZeroEventActivationFile root cycle receiptPath
+        | false, false ->
+            [ sprintf
+                  "checkpoints: cycle '%s' is missing both checkpoint events and a zero-event activation receipt"
+                  cycle ]

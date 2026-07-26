@@ -28,6 +28,12 @@ let required options name =
     | Some value when not (String.IsNullOrWhiteSpace value) -> value
     | _ -> fail [ sprintf "missing --%s" name ]
 
+let requiredList options name =
+    required options name
+    |> fun value -> value.Split(';')
+    |> Array.map (fun value -> value.Trim())
+    |> Array.toList
+
 let argv = fsi.CommandLineArgs |> Array.skip 1
 
 match argv with
@@ -66,6 +72,32 @@ match argv with
         printfn "feedback-tool: valid checkpoint file: %s" path
     else
         fail errors
+| args when args.Length > 0 && args.[0] = "validate-checkpoint-state" ->
+    let options = parseOptions args.[1..]
+    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+    let cycle = required options "cycle"
+    let errors = validateCheckpointState root cycle
+
+    if List.isEmpty errors then
+        printfn "feedback-tool: valid checkpoint state for cycle %s" cycle
+    else
+        fail errors
+| args when args.Length > 0 && args.[0] = "activate" ->
+    let options = parseOptions args.[1..]
+    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+
+    try
+        let path =
+            appendZeroEventActivation
+                root
+                (required options "cycle")
+                (requiredList options "phases")
+                (requiredList options "evidence")
+                (required options "reason")
+
+        printfn "feedback-tool: recorded zero-event activation: %s" path
+    with ex ->
+        fail [ ex.Message ]
 | args when args.Length > 0 && args.[0] = "checkpoint" ->
     let options = parseOptions args.[1..]
     let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
@@ -90,6 +122,8 @@ match argv with
     fail
         [ "usage:"
           "  feedback-tool.fsx -- checkpoint --cycle ID --phase PHASE --surface ID --kind KIND --summary TEXT --evidence TEXT --cost TEXT --owner TEXT [--root PATH]"
+          "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
           "  feedback-tool.fsx -- digest <text-file>"
           "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
-          "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl" ]
+          "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
+          "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]
