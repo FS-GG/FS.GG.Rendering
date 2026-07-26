@@ -7,6 +7,7 @@ open System.IO
 open System.Security.Cryptography
 open System.Text
 open System.Text.Json
+open System.Text.RegularExpressions
 open System.Xml.Linq
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
@@ -25,6 +26,16 @@ type Budget =
       MaximumSceneNodes: int
       AllowSustainedCatchUp: bool }
 
+/// A deliberate acknowledgement that a representative workload is product-authored.
+///
+/// Start in `Placeholder`, run `PerformanceEvidence`, then copy the emitted `definitionDigest`
+/// into `Authored` only after replacing the starter state/message route. The digest covers the
+/// authored definition and measurement policy. Changing either invalidates the acknowledgement
+/// and fails closed until the new digest is reviewed and copied.
+type WorkloadAuthorship =
+    | Placeholder of requiredWork: string
+    | Authored of definitionDigest: string
+
 type Workload =
     { Id: string
       Definition: string
@@ -33,9 +44,11 @@ type Workload =
       SampleFrames: int
       EventsPerFrame: int
       PointerEventsPerFrame: int
+      InitialState: unit -> Model
       MessageAt: int -> Msg
       Budget: Budget option
-      BlockingDebt: string option }
+      BlockingDebt: string option
+      Authorship: WorkloadAuthorship }
 
 type Verdict = { Passed: bool; Reasons: string list }
 
@@ -73,57 +86,169 @@ let private percentile value samples =
 
         sorted.[index]
 
+let private sha256Text (text: string) =
+    SHA256.HashData(Encoding.UTF8.GetBytes text)
+    |> Convert.ToHexString
+    |> _.ToLowerInvariant()
+
+let private declarationPattern =
+    Regex(
+        @"Authorship\s*=\s*(?:Placeholder\s+""[^""]*""|Authored\s+""[^""]*"")",
+        RegexOptions.CultureInvariant
+    )
+
+let private debtPattern =
+    Regex(
+        @"BlockingDebt\s*=\s*(?:None|Some\s+""[^""]*"")",
+        RegexOptions.CultureInvariant
+    )
+
+let private countOccurrences (needle: string) (text: string) =
+    let rec loop start count =
+        let found = text.IndexOf(needle, start, StringComparison.Ordinal)
+
+        if found < 0 then
+            count
+        else
+            loop (found + needle.Length) (count + 1)
+
+    loop 0 0
+
+/// Fingerprint the executable source block for one workload. This binds the declaration to the
+/// actual InitialState/MessageAt code rather than trusting its prose. The declaration itself is
+/// normalized to a sentinel so copying the emitted digest into `Authored` is not circular.
+let private workloadSourceFingerprint id =
+    let sourcePath = Path.Combine(__SOURCE_DIRECTORY__, "PerformanceEvidence.fs")
+
+    if not (File.Exists sourcePath) then
+        None
+    else
+        let source = File.ReadAllText sourcePath
+        let beginMarker = $"// WORKLOAD-SOURCE-BEGIN {id}"
+        let endMarker = $"// WORKLOAD-SOURCE-END {id}"
+        let start = source.IndexOf(beginMarker, StringComparison.Ordinal)
+        let finish = source.IndexOf(endMarker, max 0 (start + beginMarker.Length), StringComparison.Ordinal)
+
+        if
+            countOccurrences beginMarker source <> 1
+            || countOccurrences endMarker source <> 1
+            || start < 0
+            || finish < 0
+            || finish <= start
+        then
+            None
+        else
+            source.Substring(start, finish + endMarker.Length - start)
+            |> fun block -> declarationPattern.Replace(block, "Authorship = <declaration>")
+            |> fun block -> debtPattern.Replace(block, "BlockingDebt = <debt>")
+            |> _.Replace("\r\n", "\n")
+            |> _.Trim()
+            |> sha256Text
+            |> Some
+
 let definitionDigest workload =
     let budget =
         workload.Budget
         |> Option.map (fun b -> $"{b.P95Ms:R}|{b.P99Ms:R}|{b.MaximumSceneNodes}|{b.AllowSustainedCatchUp}")
         |> Option.defaultValue "none"
 
+    let executableSource =
+        workloadSourceFingerprint workload.Id
+        |> Option.defaultValue "missing-workload-source-block"
+
     let canonical =
-        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{budget}"
+        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{budget}|{executableSource}"
 
-    SHA256.HashData(Encoding.UTF8.GetBytes canonical)
-    |> Convert.ToHexString
-    |> _.ToLowerInvariant()
+    sha256Text canonical
 
-/// Shared expected-workload verdict semantics. Only normal-play workloads are release gates:
-/// stress/throughput/live-compositor results remain separately classified evidence.
+let private ownerRepoIssue =
+    Regex(
+        @"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[1-9][0-9]*$",
+        RegexOptions.CultureInvariant
+    )
+
+let private linkedDebtReference (debt: string) =
+    let isGitHubIssueUrl =
+        match Uri.TryCreate(debt, UriKind.Absolute) with
+        | true, uri when uri.Scheme = Uri.UriSchemeHttps && uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ->
+            let segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries)
+            segments.Length = 4
+            && segments.[0] <> ""
+            && segments.[1] <> ""
+            && segments.[2].Equals("issues", StringComparison.OrdinalIgnoreCase)
+            && (match Int32.TryParse segments.[3] with
+                | true, number -> number > 0
+                | _ -> false)
+        | _ -> false
+
+    not (String.IsNullOrWhiteSpace debt)
+    && (ownerRepoIssue.IsMatch debt || isGitHubIssueUrl)
+
+/// Expected-workload budget semantics. A linked debt permits deliberate BASELINE CAPTURE, not
+/// acceptance: its artifact is retained, but Test/Verify still fail until the active target passes.
+/// Only normal-play workloads are budget gates; other classes remain separately classified evidence.
 let evaluateBudget workload p95 p99 catchUpFrames sceneNodes =
-    let linkedDebt =
-        workload.BlockingDebt
-        |> Option.exists (fun debt ->
-            not (String.IsNullOrWhiteSpace debt)
-            && (debt.Contains('#') || Uri.TryCreate(debt, UriKind.Absolute) |> fst))
-
-    match workload.Classification, workload.Budget with
-    | NormalPlay, None ->
-        { Passed = false
-          Reasons = [ "normal-play workload has no declared budget" ] }
-    | NormalPlay, Some budget ->
-        let reasons =
-            [ if p95 > budget.P95Ms then
-                  $"p95 {p95:F3} ms exceeds {budget.P95Ms:F3} ms"
-              if p99 > budget.P99Ms then
-                  $"p99 {p99:F3} ms exceeds {budget.P99Ms:F3} ms"
-              if sceneNodes > budget.MaximumSceneNodes then
-                  $"scene nodes {sceneNodes} exceed {budget.MaximumSceneNodes}"
-              if catchUpFrames > 0 && not budget.AllowSustainedCatchUp then
-                  $"sustained catch-up observed in {catchUpFrames} frame(s)" ]
-
-        if List.isEmpty reasons then
-            { Passed = true; Reasons = [] }
-        elif linkedDebt then
-            { Passed = true
-              Reasons = "baseline-over-budget-with-linked-debt" :: reasons }
-        else
+    let budgetVerdict =
+        match workload.Classification, workload.Budget with
+        | NormalPlay, None ->
             { Passed = false
-              Reasons = "active normal-play target failed without a blocking debt reference" :: reasons }
-    | _, _ ->
-        { Passed = true
-          Reasons = [ "informational non-normal workload; not used as the normal-play gate" ] }
+              Reasons = [ "normal-play workload has no declared budget" ] }
+        | NormalPlay, Some budget ->
+            let reasons =
+                [ if p95 > budget.P95Ms then
+                      $"p95 {p95:F3} ms exceeds {budget.P95Ms:F3} ms"
+                  if p99 > budget.P99Ms then
+                      $"p99 {p99:F3} ms exceeds {budget.P99Ms:F3} ms"
+                  if sceneNodes > budget.MaximumSceneNodes then
+                      $"scene nodes {sceneNodes} exceed {budget.MaximumSceneNodes}"
+                  if catchUpFrames > 0 && not budget.AllowSustainedCatchUp then
+                      $"sustained catch-up observed in {catchUpFrames} frame(s)" ]
+
+            { Passed = List.isEmpty reasons
+              Reasons =
+                if List.isEmpty reasons then
+                    []
+                else
+                    "active normal-play target failed; a linked blocking debt permits baseline capture only, never acceptance"
+                    :: reasons }
+        | _, _ ->
+            { Passed = true
+              Reasons = [ "informational non-normal workload; not used as the normal-play budget gate" ] }
+
+    match workload.BlockingDebt with
+    | None -> budgetVerdict
+    | Some debt when not (linkedDebtReference debt) ->
+        { Passed = false
+          Reasons =
+            "baseline capture requires a linked blocking performance-debt issue (owner/repo#number or https://github.com/owner/repo/issues/number); open/blocking state is validated by the governance network edge"
+            :: budgetVerdict.Reasons }
+    | Some debt ->
+        { Passed = false
+          Reasons =
+            $"baseline-only-with-linked-debt {debt}; captured evidence does not satisfy acceptance"
+            :: budgetVerdict.Reasons }
+
+let evaluateAuthorship workload =
+    let actualDigest = definitionDigest workload
+
+    match workloadSourceFingerprint workload.Id, workload.Authorship with
+    | None, _ ->
+        { Passed = false
+          Reasons =
+            [ $"workload '{workload.Id}' has no readable WORKLOAD-SOURCE block; executable state/message authorship cannot be verified" ] }
+    | Some _, Placeholder requiredWork ->
+        { Passed = false
+          Reasons = [ $"required workload '{workload.Id}' is still a placeholder: {requiredWork}" ] }
+    | Some _, Authored declaredDigest when
+        not (String.Equals(declaredDigest, actualDigest, StringComparison.OrdinalIgnoreCase))
+        ->
+        { Passed = false
+          Reasons =
+            [ $"authored declaration is stale for workload '{workload.Id}': declared {declaredDigest}, current {actualDigest}; review the changed definition and copy the new digest" ] }
+    | Some _, Authored _ -> { Passed = true; Reasons = [] }
 
 let private runWorkload workload =
-    let mutable model = initialModel
+    let mutable model = workload.InitialState()
 
     for frame in 0 .. max 0 (workload.WarmupFrames - 1) do
         model <- fst (update (workload.MessageAt frame) model)
@@ -151,8 +276,12 @@ let private runWorkload workload =
     let p50, p95, p99 =
         percentile 50.0 values, percentile 95.0 values, percentile 99.0 values
 
+    let digest = definitionDigest workload
+    let authorshipVerdict = evaluateAuthorship workload
+    let budgetVerdict = evaluateBudget workload p95 p99 catchUp sceneNodes
+
     { Workload = workload
-      DefinitionDigest = definitionDigest workload
+      DefinitionDigest = digest
       P50Ms = p50
       P95Ms = p95
       P99Ms = p99
@@ -164,7 +293,9 @@ let private runWorkload workload =
       PointerEventCount = workload.SampleFrames * workload.PointerEventsPerFrame
       SceneNodeCount = sceneNodes
       AllocatedBytes = allocated
-      Verdict = evaluateBudget workload p95 p99 catchUp sceneNodes }
+      Verdict =
+        { Passed = authorshipVerdict.Passed && budgetVerdict.Passed
+          Reasons = authorshipVerdict.Reasons @ budgetVerdict.Reasons } }
 
 let private declaredPackageVersions () =
     let path = Path.Combine(Directory.GetCurrentDirectory(), "Directory.Packages.props")
@@ -207,26 +338,36 @@ let private normalBudget =
       MaximumSceneNodes = 4096
       AllowSustainedCatchUp = false }
 
-/// Replace or extend these named representative workloads as the product grows. Each one drives
-/// the real `update` and scene `view` route; no local statistics framework is needed.
+/// REQUIRED PRODUCT AUTHORING. Every untouched row is deliberately a failing placeholder.
+///
+/// For each row: replace `InitialState` and `MessageAt` with representative product state/messages,
+/// rewrite `Definition` to name that route, run PerformanceEvidence once, review the emitted
+/// `definitionDigest`, then change `Placeholder` to `Authored "<digest>"`. The measurement always
+/// drives the real `update` + scene `view` route; there is no local statistics-only escape hatch.
 let expectedWorkloads =
-    [ { Id = "idle"
-        Definition = "fixed 60 Hz update and real scene route with no authored input"
+    [ // WORKLOAD-SOURCE-BEGIN idle
+      { Id = "idle"
+        Definition = "PLACEHOLDER: author representative idle state and messages through update + view"
         Classification = NormalPlay
         WarmupFrames = 20
         SampleFrames = 120
         EventsPerFrame = 0
         PointerEventsPerFrame = 0
+        InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
         Budget = Some normalBudget
-        BlockingDebt = None }
+        BlockingDebt = None
+        Authorship = Placeholder "replace starter idle state/message route, then copy the emitted definitionDigest" }
+      // WORKLOAD-SOURCE-END idle
+      // WORKLOAD-SOURCE-BEGIN movement-aiming
       { Id = "movement-aiming"
-        Definition = "alternating movement input and fixed 60 Hz update through the real route"
+        Definition = "PLACEHOLDER: author simultaneous movement and aiming state/messages through update + view"
         Classification = NormalPlay
         WarmupFrames = 20
         SampleFrames = 120
         EventsPerFrame = 1
         PointerEventsPerFrame = 1
+        InitialState = (fun () -> initialModel)
         MessageAt =
           (fun frame ->
               if frame % 2 = 0 then
@@ -234,37 +375,52 @@ let expectedWorkloads =
               else
                   Tick(1.0 / 60.0))
         Budget = Some normalBudget
-        BlockingDebt = None }
+        BlockingDebt = None
+        Authorship = Placeholder "replace starter keyboard/tick route with product movement plus aiming" }
+      // WORKLOAD-SOURCE-END movement-aiming
+      // WORKLOAD-SOURCE-BEGIN firing
       { Id = "firing"
-        Definition = "replace NoOp with the product firing message; pointer and event facts retained"
+        Definition = "PLACEHOLDER: author combat/firing state and messages through update + view"
         Classification = NormalPlay
         WarmupFrames = 20
         SampleFrames = 120
         EventsPerFrame = 1
         PointerEventsPerFrame = 1
+        InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> NoOp)
         Budget = Some normalBudget
-        BlockingDebt = None }
+        BlockingDebt = None
+        Authorship = Placeholder "replace NoOp with representative combat and firing messages" }
+      // WORKLOAD-SOURCE-END firing
+      // WORKLOAD-SOURCE-BEGIN effects-fog
       { Id = "effects-fog"
-        Definition = "replace Tick with the product effects/fog workload message sequence"
+        Definition = "PLACEHOLDER: author effects/fog state and messages through update + view"
         Classification = NormalPlay
         WarmupFrames = 20
         SampleFrames = 120
         EventsPerFrame = 0
         PointerEventsPerFrame = 0
+        InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
         Budget = Some normalBudget
-        BlockingDebt = None }
+        BlockingDebt = None
+        Authorship = Placeholder "replace Tick with the product effects and fog workload route" }
+      // WORKLOAD-SOURCE-END effects-fog
+      // WORKLOAD-SOURCE-BEGIN maximum-content
       { Id = "maximum-content"
-        Definition = "replace Tick with the product maximum-content workload message sequence"
+        Definition = "PLACEHOLDER: author maximum-expected-content state and messages through update + view"
         Classification = NormalPlay
         WarmupFrames = 20
         SampleFrames = 120
         EventsPerFrame = 0
         PointerEventsPerFrame = 0
+        InitialState = (fun () -> initialModel)
         MessageAt = (fun _ -> Tick(1.0 / 60.0))
         Budget = Some normalBudget
-        BlockingDebt = None } ]
+        BlockingDebt = None
+        Authorship = Placeholder "replace Tick with the maximum expected product content route" }
+      // WORKLOAD-SOURCE-END maximum-content
+      ]
 
 let writeExpectedWorkloadEvidence (path: string) =
     let results = expectedWorkloads |> List.map runWorkload
@@ -276,7 +432,7 @@ let writeExpectedWorkloadEvidence (path: string) =
     use stream = File.Create path
     use json = new Utf8JsonWriter(stream, JsonWriterOptions(Indented = true))
     json.WriteStartObject()
-    json.WriteNumber("schemaVersion", 1)
+    json.WriteNumber("schemaVersion", 2)
     json.WriteString("measurementCapability", "bounded-headless-update-and-scene-route")
     json.WriteString("notAuthoritativeFor", "live-compositor,swapchain,vblank,vsync")
 
@@ -300,6 +456,21 @@ let writeExpectedWorkloadEvidence (path: string) =
         json.WriteString("definition", result.Workload.Definition)
         json.WriteString("class", classToken result.Workload.Classification)
         json.WriteString("definitionDigest", result.DefinitionDigest)
+
+        match result.Workload.Authorship with
+        | Placeholder requiredWork ->
+            json.WriteString("authorship", "placeholder")
+            json.WriteString("requiredAuthoringWork", requiredWork)
+            json.WriteNull("declaredDefinitionDigest")
+        | Authored declaredDigest ->
+            json.WriteString("authorship", "authored")
+            json.WriteNull("requiredAuthoringWork")
+            json.WriteString("declaredDefinitionDigest", declaredDigest)
+
+        match result.Workload.BlockingDebt with
+        | Some debt -> json.WriteString("blockingDebt", debt)
+        | None -> json.WriteNull("blockingDebt")
+
         json.WriteNumber("warmupFrames", result.Workload.WarmupFrames)
         json.WriteNumber("sampleFrames", result.Workload.SampleFrames)
         json.WriteNumber("p50Ms", result.P50Ms)

@@ -257,11 +257,16 @@ copy framework readiness reports into the product.
 
 ## Expected-workload performance
 
-For game performance evidence, count the production `view` result rather than a synthetic scene.
-`./fake.sh build -t PerformanceEvidence` records nodes by layer alongside p50/p95/p99 and fails the
-normal-play node/timing target. A 64x64 world with thousands of repeated fog or minimap nodes should
-fail before row-run/static-subtree remediation and pass afterward. The command is bounded headless
-scene-route evidence; live compositor and swapchain proof remain host work.
+For game performance evidence, define representative state and scene density **before feature
+implementation**, and count the production `view` result rather than a synthetic scene. Each required
+row begins as `Placeholder`; run `./fake.sh build -t PerformanceEvidence`, review the emitted
+`definitionDigest`, and mark it `Authored` only after its product state/messages traverse the real
+`update` + `view` route. A changed definition invalidates the acknowledgement. The command records nodes
+by layer alongside p50/p95/p99 and fails Placeholder/stale rows and the normal-play node/timing target.
+A linked blocking performance-debt issue allows a baseline artifact but never makes acceptance green.
+A 64x64 world with thousands of repeated fog or minimap nodes should fail before
+row-run/static-subtree remediation and pass afterward. The command is bounded headless scene-route
+evidence; live compositor and swapchain proof remain host work.
 
 Scene must not reference Elmish, the viewer host, layout, or widgets. Keep host
 wiring in `fs-gg-skiaviewer` and control authoring in `fs-gg-ui-widgets`.

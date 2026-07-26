@@ -68,7 +68,7 @@
     {
       "id": "fs-gg-project",
       "scope": "product",
-      "sha256": "b6aef9d9792068c6466c2b528ea291d83b1a5e1f30db93d5f222bef00f70e5ae",
+      "sha256": "c98c61273e7271746fc2737f2ada101a2b51dda3c3f9ad7d9c5550e4007ea7da",
       "resolvablePath": ".agents/skills/fs-gg-project/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/base/.agents/skills/fs-gg-project/"
@@ -84,7 +84,7 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "4b7251b68f42005f5bc1defebab9bc0750adb4846a0b2f7980e199da6ac35224",
+      "sha256": "7c98822f2e07b059422b9c5d66d647216332913045df4df4ffb4647c0c942293",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-scene/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "b30a532df9d7a51ad35576bb7efc397b24cc420c43bb4c964fc20a646fcc4225",
+      "sha256": "ce7ba45dc07d9bf50c234578ab51a6250a97046ab87eeef0b088f0c625fa1cb8",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"
@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "2061791908bfb2da1a3e537fff66b18fa760b0a50f6946fef68b4dcdc00dc812",
+      "sha256": "f463b0d1418074663eb551772aca04b6fe3d2aca5b169eee3add4d1214dd232f",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"
