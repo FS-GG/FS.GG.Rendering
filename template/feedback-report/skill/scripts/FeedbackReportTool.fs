@@ -2,6 +2,7 @@ module FsGgFeedbackReportTool
 
 open System
 open System.IO
+open System.Security.Cryptography
 open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
@@ -29,6 +30,12 @@ let kinds =
       "quality-gap"
       "documentation"
       "orchestration" ]
+
+let criticStatuses =
+    [ "actionable"; "incomplete"; "unsupported"; "duplicate"; "positive-pattern" ]
+
+let evidenceResults =
+    [ "verified"; "missing"; "stale"; "non-reproducing"; "contradictory"; "claim-only" ]
 
 let private requiredFrontmatter =
     [ "feedbackSchema"; "date"; "workspace"; "cycle"; "lane"; "toolVersion"; "commit" ]
@@ -63,6 +70,16 @@ let private requiredFindingFields =
 
 let private normalizeNewlines (text: string) =
     text.Replace("\r\n", "\n").Replace("\r", "\n")
+
+let sha256Text (text: string) =
+    use sha = SHA256.Create()
+
+    text
+    |> normalizeNewlines
+    |> Encoding.UTF8.GetBytes
+    |> sha.ComputeHash
+    |> Convert.ToHexString
+    |> fun value -> value.ToLowerInvariant()
 
 let private frontmatter (text: string) =
     let lines = normalizeNewlines text |> fun value -> value.Split '\n'
@@ -168,6 +185,26 @@ let validateReportText (rawText: string) =
                 if not (Regex.IsMatch(chunk, fieldPattern)) then
                     errors.Add(sprintf "findings: §4.%s is missing '%s'" findingNumber field)
 
+            let fieldValue name =
+                let matched =
+                    Regex.Match(
+                        chunk,
+                        @"(?m)^- \*\*" + Regex.Escape name + @":\*\*\s+(.+?)\s*$"
+                    )
+
+                if matched.Success then matched.Groups.[1].Value.Trim() else ""
+
+            let expected = fieldValue "Expected"
+            let observed = fieldValue "Observed"
+
+            if
+                not (String.IsNullOrWhiteSpace expected)
+                && expected.Equals(observed, StringComparison.OrdinalIgnoreCase)
+            then
+                errors.Add(
+                    sprintf "findings: §4.%s Expected and Observed must describe a delta" findingNumber
+                )
+
             let kindPattern =
                 @"(?m)^- \*\*Kind:\*\*\s+(" + String.concat "|" (List.map Regex.Escape kinds) + @")\s*$"
 
@@ -198,6 +235,205 @@ let validateReportText (rawText: string) =
     for surface in observed do
         if not (List.contains surface surfaces) then
             errors.Add(sprintf "coverage: unknown surface '%s'" surface)
+
+    List.ofSeq errors
+
+type EvidenceCheck =
+    { locator: string
+      result: string
+      sha256: string option }
+
+type FindingAudit =
+    { id: string
+      status: string
+      missingFacts: string list
+      checkedEvidence: EvidenceCheck list
+      confidenceLimits: string list }
+
+type ActionabilityAudit =
+    { auditSchema: int
+      report: string
+      reportSha256: string
+      criticMode: string
+      criticPromptVersion: string
+      findings: FindingAudit list }
+
+let private findingIdsAndKinds (reportText: string) =
+    let findings = sectionText reportText requiredSections.[3] requiredSections.[4]
+    let matches = Regex.Matches(findings, @"(?m)^#### (§4\.\d+) .+$")
+
+    [ for index in 0 .. matches.Count - 1 do
+          let chunkStart = matches.[index].Index
+
+          let chunkEnd =
+              if index + 1 < matches.Count then matches.[index + 1].Index else findings.Length
+
+          let chunk = findings.Substring(chunkStart, chunkEnd - chunkStart)
+          let kindMatch = Regex.Match(chunk, @"(?m)^- \*\*Kind:\*\*\s+(\S+)\s*$")
+          yield matches.[index].Groups.[1].Value, if kindMatch.Success then kindMatch.Groups.[1].Value else "" ]
+
+let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
+    if not (locator.StartsWith("file:", StringComparison.Ordinal)) then
+        None
+    else
+        let relative = locator.Substring("file:".Length).Trim()
+
+        if String.IsNullOrWhiteSpace relative || Path.IsPathRooted relative then
+            None
+        else
+            let root = Path.GetFullPath workspaceRoot
+            let candidate = Path.GetFullPath(Path.Combine(root, relative))
+            let prefix = root.TrimEnd(Path.DirectorySeparatorChar) + string Path.DirectorySeparatorChar
+
+            if candidate.StartsWith(prefix, StringComparison.Ordinal) then Some candidate else None
+
+let validateActionabilityAudit
+    (workspaceRoot: string)
+    (reportPath: string)
+    (reportText: string)
+    (auditText: string)
+    =
+    let errors = ResizeArray<string>()
+
+    let audit =
+        try
+            let parsed = JsonSerializer.Deserialize<ActionabilityAudit>(auditText)
+
+            if obj.ReferenceEquals(parsed, null) then
+                invalidArg "auditText" "expected a JSON object"
+
+            Some(unbox<ActionabilityAudit> (box parsed))
+        with ex ->
+            errors.Add(sprintf "audit: invalid JSON: %s" ex.Message)
+            None
+
+    match audit with
+    | None -> ()
+    | Some audit ->
+        if audit.auditSchema <> 1 then
+            errors.Add(sprintf "audit: auditSchema must be 1, got %d" audit.auditSchema)
+
+        let expectedReport =
+            Path.GetRelativePath(workspaceRoot, Path.GetFullPath reportPath)
+                .Replace(Path.DirectorySeparatorChar, '/')
+
+        if expectedReport.StartsWith("../", StringComparison.Ordinal) then
+            errors.Add "audit: report must be inside the workspace"
+
+        if audit.report <> expectedReport then
+            errors.Add(sprintf "audit: report binding must be '%s'" expectedReport)
+
+        let expectedDigest = sha256Text reportText
+
+        if audit.reportSha256 <> expectedDigest then
+            errors.Add "audit: reportSha256 does not bind the current report bytes"
+
+        if
+            audit.criticMode <> "fresh-context-subagent"
+            && audit.criticMode <> "separated-critic-pass"
+        then
+            errors.Add
+                "audit: criticMode must be fresh-context-subagent or separated-critic-pass"
+
+        if String.IsNullOrWhiteSpace audit.criticPromptVersion then
+            errors.Add "audit: criticPromptVersion must not be empty"
+
+        let expectedFindings = findingIdsAndKinds reportText
+        let audits = if isNull (box audit.findings) then [] else audit.findings
+
+        for id, kind in expectedFindings do
+            let matches = audits |> List.filter (fun finding -> finding.id = id)
+
+            if List.isEmpty matches then
+                errors.Add(sprintf "audit: missing finding '%s'" id)
+            elif matches.Length > 1 then
+                errors.Add(sprintf "audit: duplicate finding '%s'" id)
+            else
+                let finding = matches.Head
+
+                if not (List.contains finding.status criticStatuses) then
+                    errors.Add(sprintf "audit: %s has unknown status '%s'" id finding.status)
+
+                if kind = "positive-pattern" && finding.status <> "positive-pattern" then
+                    errors.Add(sprintf "audit: %s positive-pattern must keep that disposition" id)
+
+                if kind <> "positive-pattern" && finding.status = "positive-pattern" then
+                    errors.Add(sprintf "audit: %s is not a positive-pattern finding" id)
+
+                if finding.status = "incomplete" || finding.status = "unsupported" then
+                    errors.Add(
+                        sprintf
+                            "actionability: %s remains %s and cannot be handed off as actionable"
+                            id
+                            finding.status
+                    )
+
+                let missingFacts =
+                    if isNull (box finding.missingFacts) then [] else finding.missingFacts
+
+                if
+                    (finding.status = "actionable" || finding.status = "positive-pattern")
+                    && not (List.isEmpty missingFacts)
+                then
+                    errors.Add(
+                        sprintf
+                            "audit: %s cannot be %s while missing facts are recorded"
+                            id
+                            finding.status
+                    )
+
+                let checks =
+                    if isNull (box finding.checkedEvidence) then [] else finding.checkedEvidence
+
+                if List.isEmpty checks then
+                    errors.Add(sprintf "audit: %s has no checked evidence" id)
+
+                for check in checks do
+                    if not (List.contains check.result evidenceResults) then
+                        errors.Add(
+                            sprintf "audit: %s evidence has unknown result '%s'" id check.result
+                        )
+
+                    if
+                        (finding.status = "actionable" || finding.status = "positive-pattern")
+                        && check.result <> "verified"
+                    then
+                        errors.Add(
+                            sprintf
+                                "audit: %s cannot be %s with evidence result '%s'"
+                                id
+                                finding.status
+                                check.result
+                        )
+
+                    if check.locator.StartsWith("file:", StringComparison.Ordinal) then
+                        match resolveEvidencePath workspaceRoot check.locator with
+                        | None ->
+                            errors.Add(
+                                sprintf
+                                    "audit: %s evidence locator must be a workspace-relative file: path"
+                                    id
+                            )
+                        | Some path when not (File.Exists path) ->
+                            errors.Add(sprintf "audit: %s evidence file is missing: %s" id check.locator)
+                        | Some path ->
+                            match check.sha256 with
+                            | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
+                            | Some digest ->
+                                let actual = File.ReadAllText path |> sha256Text
+
+                                if digest <> actual then
+                                    errors.Add(
+                                        sprintf "audit: %s evidence digest is stale: %s" id check.locator
+                                    )
+                    elif Path.IsPathRooted check.locator then
+                        errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
+
+        let expectedIds = expectedFindings |> List.map fst |> Set.ofList
+
+        for finding in audits do
+            if not (Set.contains finding.id expectedIds) then
+                errors.Add(sprintf "audit: unknown finding '%s'" finding.id)
 
     List.ofSeq errors
 

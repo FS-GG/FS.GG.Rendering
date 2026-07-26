@@ -31,16 +31,34 @@ let required options name =
 let argv = fsi.CommandLineArgs |> Array.skip 1
 
 match argv with
-| [| "validate"; path |] ->
+| [| "digest"; path |] ->
+    if not (File.Exists path) then
+        fail [ sprintf "file not found: %s" path ]
+
+    File.ReadAllText path |> sha256Text |> printfn "%s"
+| [| "validate"; path; "--audit"; auditPath |] ->
     if not (File.Exists path) then
         fail [ sprintf "report not found: %s" path ]
 
-    let errors = File.ReadAllText path |> validateReportText
+    if not (File.Exists auditPath) then
+        fail [ sprintf "audit not found: %s" auditPath ]
+
+    let reportText = File.ReadAllText path
+
+    let errors =
+        validateReportText reportText
+        @ validateActionabilityAudit
+            (Directory.GetCurrentDirectory())
+            (Path.GetFullPath path)
+            reportText
+            (File.ReadAllText auditPath)
 
     if List.isEmpty errors then
-        printfn "feedback-tool: valid schema-v2 report: %s" path
+        printfn "feedback-tool: valid actionability-bound schema-v2 report: %s" path
     else
         fail errors
+| [| "validate"; _ |] ->
+    fail [ "validate requires --audit <feedback/audits/report.audit.json>" ]
 | [| "validate-checkpoints"; path |] ->
     let errors = validateCheckpointFile path
 
@@ -72,6 +90,6 @@ match argv with
     fail
         [ "usage:"
           "  feedback-tool.fsx -- checkpoint --cycle ID --phase PHASE --surface ID --kind KIND --summary TEXT --evidence TEXT --cost TEXT --owner TEXT [--root PATH]"
-          "  feedback-tool.fsx -- validate feedback/<report>.md"
+          "  feedback-tool.fsx -- digest <text-file>"
+          "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
           "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl" ]
-
