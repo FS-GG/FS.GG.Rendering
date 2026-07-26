@@ -38,8 +38,9 @@ touch-set before editing. Heartbeat during long work.
 ## 3. Implement and verify
 
 Change only the declared paths. If scope must grow, use `widen` before touching it; stop on overlap.
-Fix causes, add focused regression coverage, and run proportionate build/test/format gates. Poll inbox
-at phase boundaries.
+Before implementing interactive/game work, run the
+[performance-first planning gate](references/performance-first.md). Then fix causes, add focused
+regression coverage, and run proportionate build/test/format gates. Poll inbox at phase boundaries.
 
 ## 4. Route findings
 
