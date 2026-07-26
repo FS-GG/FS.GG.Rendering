@@ -67,6 +67,17 @@ let private workloadDigests artifactPath =
         Option.ofObj digest |> Option.defaultWith (fun () -> failwith "workload digest was null"))
     |> Map.ofSeq
 
+let private performanceIntentBindings artifactPath =
+    use document = JsonDocument.Parse(File.ReadAllText artifactPath)
+
+    document.RootElement
+        .GetProperty("performanceIntent")
+        .GetProperty("workloadDefinitionDigests")
+        .EnumerateArray()
+    |> Seq.map (fun binding -> binding.GetString())
+    |> Seq.map (Option.ofObj >> Option.defaultWith (fun () -> failwith "performance intent binding was null"))
+    |> List.ofSeq
+
 let private authorWorkloads (digests: Map<string, string>) (source: string) =
     digests
     |> Map.fold (fun (authored: string) (id: string) (digest: string) ->
@@ -172,6 +183,35 @@ let performanceEvidenceContract =
                   "Verify invokes the fail-closed Release measurement"
           }
 
+          test "generated declaration uses the published Contracts 7.x performance-intent shape" {
+              let source = read "template/base/src/Product/PerformanceEvidence.fs"
+              let packages = read "template/base/Directory.Packages.props"
+              let project = read "template/base/src/Product/Product.fsproj"
+              let commands = read "template/base/src/Product/EvidenceCommands.fs"
+              let build = read "template/base/build.fsx"
+
+              Expect.stringContains source "open Fsgg.Schemas" "generated source imports the producer contract"
+
+              Expect.stringContains
+                  source
+                  "performanceIntentSeed: PerformanceIntentDeclaration"
+                  "the authoring source is the published record"
+
+              Expect.isFalse
+                  (source.Contains("type PerformanceIntentDeclaration", StringComparison.Ordinal))
+                  "the template does not invent a parallel intent contract"
+
+              Expect.stringContains packages "<FsGgContractsVersion>7.0.0</FsGgContractsVersion>" "producer version is exact"
+              Expect.stringContains
+                  project
+                  "<PackageReference Include=\"FS.GG.Contracts\" />"
+                  "generated game consumes the exact producer pin"
+              Expect.stringContains commands "\"--performance-intent\"" "the SDD-ready declaration command is routed"
+              Expect.stringContains build "\"PerformanceIntent\"" "the generated build exposes the declaration target"
+              Expect.stringContains source "writeIntentJson json" "evidence embeds the same projected declaration"
+              Expect.stringContains source "let writePerformanceIntentDeclaration _ = 0" "non-game profiles retain a compilable no-op"
+          }
+
           test "untouched game scaffold names all five required authoring jobs and cannot pass" {
               let source = read "template/base/src/Product/PerformanceEvidence.fs"
 
@@ -245,6 +285,7 @@ let performanceEvidenceContract =
               let dotnetHome = Path.Combine(fixtureRoot, "dotnet-home")
               let productRoot = Path.Combine(fixtureRoot, "WorkloadFixture")
               let artifactPath = Path.Combine(productRoot, "readiness", "performance-evidence.json")
+              let intentPath = Path.Combine(productRoot, "readiness", "performance-intent.yml")
 
               let evidenceSourcePath =
                   Path.Combine(productRoot, "src", "WorkloadFixture", "PerformanceEvidence.fs")
@@ -261,6 +302,19 @@ let performanceEvidenceContract =
                         "--"
                         "--performance-evidence"
                         "readiness/performance-evidence.json" ]
+
+              let runIntent () =
+                  runDotnet
+                      productRoot
+                      dotnetHome
+                      [ "run"
+                        "-c"
+                        "Release"
+                        "--project"
+                        "src/WorkloadFixture"
+                        "--"
+                        "--performance-intent"
+                        "readiness/performance-intent.yml" ]
 
               Directory.CreateDirectory fixtureRoot |> ignore
 
@@ -293,6 +347,10 @@ let performanceEvidenceContract =
                   let untouched = runEvidence ()
                   Expect.equal untouched.ExitCode 1 "untouched placeholders fail the executable product command"
 
+                  let untouchedIntent = runIntent ()
+                  Expect.equal untouchedIntent.ExitCode 1 "untouched placeholders also fail the early intent command"
+                  Expect.isTrue (File.Exists intentPath) "failed early intent still emits the declaration for authoring"
+
                   [ "idle"
                     "movement-aiming"
                     "firing"
@@ -314,6 +372,37 @@ let performanceEvidenceContract =
                       authored.ExitCode
                       0
                       $"reviewed exact-digest declarations pass:{Environment.NewLine}{authored.Output}"
+
+                  let authoredIntent = runIntent ()
+                  Expect.equal
+                      authoredIntent.ExitCode
+                      0
+                      $"the same authored rows populate SDD early intent:{Environment.NewLine}{authoredIntent.Output}"
+
+                  let authoredBindings = performanceIntentBindings artifactPath
+                  let authoredIntentYaml = File.ReadAllText intentPath
+
+                  Expect.equal authoredBindings.Length 5 "intent binds all five required normal-play workloads"
+                  Expect.equal (authoredBindings |> List.distinct).Length 5 "intent digest bindings are unique"
+
+                  authoredBindings
+                  |> List.iter (fun binding ->
+                      Expect.stringContains
+                          authoredIntentYaml
+                          (JsonSerializer.Serialize binding)
+                          $"SDD YAML and evidence carry the exact same binding: {binding}")
+
+                  [ "performanceIntent:"
+                    "targetFps: 60"
+                    "maximumExpectedScale:"
+                    "maxP95Ms: 16.67"
+                    "maxP99Ms: 25.0"
+                    "maxCatchUpFrames: 0"
+                    "structuralCostBudgets:"
+                    "requiredCapability:"
+                    "liveCompositorRequired: false" ]
+                  |> List.iter (fun token ->
+                      Expect.stringContains authoredIntentYaml token $"published Contracts 7.x field is projected: {token}")
 
                   File.WriteAllText(
                       evidenceSourcePath,
@@ -344,6 +433,19 @@ let performanceEvidenceContract =
                       "workload 'idle' has no readable WORKLOAD-SOURCE block"
                       "unbounded executable source cannot retain an authored acknowledgement"
 
+                  let duplicateIdSource =
+                      authoredSource.Replace(
+                          "// WORKLOAD-SOURCE-BEGIN firing\n      { Id = \"firing\"",
+                          "// WORKLOAD-SOURCE-BEGIN firing\n      { Id = \"idle\"",
+                          StringComparison.Ordinal
+                      )
+
+                  Expect.notEqual duplicateIdSource authoredSource "fixture duplicates a workload identity"
+                  File.WriteAllText(evidenceSourcePath, duplicateIdSource)
+                  let duplicateId = runEvidence ()
+                  Expect.equal duplicateId.ExitCode 1 "duplicate workload identities fail closed"
+                  Expect.stringContains duplicateId.Output "duplicate workload ids: idle" "duplicate id is diagnosed"
+
                   let staleSource =
                       authoredSource.Replace(
                           "MessageAt = (fun _ -> Tick(1.0 / 60.0))",
@@ -358,6 +460,21 @@ let performanceEvidenceContract =
                   Expect.equal stale.ExitCode 1 "route change with the old declaration digest fails closed"
                   Expect.stringContains stale.Output "authored declaration is stale" "stale route is diagnosed"
                   Expect.stringContains stale.Output "workload 'idle'" "changed workload is identified"
+
+                  let staleIntent = runIntent ()
+                  Expect.equal staleIntent.ExitCode 1 "route changes invalidate the old early intent acknowledgement"
+
+                  let changedIntentYaml = File.ReadAllText intentPath
+                  let changedBindings = performanceIntentBindings artifactPath
+                  Expect.notEqual changedIntentYaml authoredIntentYaml "route change invalidates stale SDD intent"
+                  Expect.notEqual changedBindings authoredBindings "route change invalidates stale evidence bindings"
+
+                  changedBindings
+                  |> List.iter (fun binding ->
+                      Expect.stringContains
+                          changedIntentYaml
+                          (JsonSerializer.Serialize binding)
+                          "fresh failing evidence and fresh intent still agree on the changed executable route")
 
                   let linkedDebtSource =
                       authoredSource.Replace(

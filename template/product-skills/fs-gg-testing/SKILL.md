@@ -387,8 +387,10 @@ feature implementation** in `PerformanceEvidence.expectedWorkloads`. Every untou
 `Placeholder`. Replace its initial state and messages with representative product routes, run
 `./fake.sh build -t PerformanceEvidence`, review its `definitionDigest`, and copy that digest into
 `Authored`; changing the definition makes the declaration stale and red. `Test` and `Verify` repeat the
-Release measurement and fail closed on Placeholder/stale rows and the active normal-play budget. Keep
-stress and throughput separately classified. A linked blocking performance-debt issue permits
+Release measurement and fail closed on Placeholder/duplicate/stale rows and the active normal-play
+budget. `./fake.sh build -t PerformanceIntent` projects the exact workload ids/digests and policy into
+the Contracts 7.x SDD `performanceIntent` block; do not stale-copy those fields by hand. Keep normal
+play, stress, throughput, and live-compositor workloads separately classified. A linked blocking performance-debt issue permits
 deliberate baseline capture, but that baseline never satisfies acceptance. This is bounded headless
 update + scene-route evidence, not live compositor or vsync proof.
 

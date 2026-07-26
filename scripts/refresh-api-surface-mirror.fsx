@@ -94,6 +94,14 @@ let manifestPath = Path.Combine(repoRoot, "scripts", "api-surface-manifest.txt")
 let mirrorRoot = Path.Combine(repoRoot, "template", "base", "docs", "api-surface")
 let pinsProps = Path.Combine(repoRoot, "template", "base", "Directory.Packages.props")
 
+// Contracts 7.0.0 shipped the producer-owned performance-intent type before the package learned to
+// carry api-surface/*.fsi (#782). Keep the exact producer signature as a narrow, version-keyed bridge;
+// any Contracts bump stops matching and returns to the normal package-owned surface path.
+let legacyPre782Surfaces =
+    Map
+        [ (("FS.GG.Contracts", "7.0.0"),
+           Path.Combine(repoRoot, "scripts", "legacy-api-surfaces", "FS.GG.Contracts")) ]
+
 let argv = fsi.CommandLineArgs |> Array.toList |> List.tail
 let checkOnly = argv |> List.contains "--check"
 // Print the pin's currently-untaught public members as `waive` lines and exit — the seed for, and the
@@ -268,13 +276,19 @@ let loadPinSurface () =
                 let dir =
                     Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
 
-                if not (Directory.Exists dir) then
-                    fail
-                        $"{id} {version} carries no api-surface/ — it predates #782. Bump the pin to a release that packs its .fsi."
+                let surfaceDir =
+                    if Directory.Exists dir then
+                        dir
+                    else
+                        legacyPre782Surfaces
+                        |> Map.tryFind (id, version)
+                        |> Option.defaultWith (fun () ->
+                            fail
+                                $"{id} {version} carries no api-surface/ — it predates #782. Bump the pin to a release that packs its .fsi.")
 
-                Directory.GetFiles(dir, "*.fsi", SearchOption.AllDirectories)
+                Directory.GetFiles(surfaceDir, "*.fsi", SearchOption.AllDirectories)
                 |> Array.toList
-                |> List.map (fun f -> Path.GetRelativePath(dir, f).Replace('\\', '/'), f)
+                |> List.map (fun f -> Path.GetRelativePath(surfaceDir, f).Replace('\\', '/'), f)
 
         let files =
             sources

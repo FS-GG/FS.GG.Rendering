@@ -462,13 +462,14 @@ let private readAxis (axis: string) =
     let m = Regex.Match(props, $"<{axis}>([^<]+)</{axis}>")
     if m.Success then m.Groups.[1].Value else failwith $"<{axis}> not found in {packagesPropsPath}"
 
-/// A package id derives its version from the axis its family is released on — the same three axes
+/// A package id derives its version from the axis its family is released on — the same four axes
 /// `Directory.Packages.props` declares. Getting this wrong would restore a version the template
 /// never pins, and the probe would then prove nothing about the real product.
 let private pinFor (packageId: string) =
     if packageId.StartsWith("FS.GG.UI.", StringComparison.Ordinal) then readAxis "FsGgUiVersion"
     elif packageId.StartsWith("FS.GG.Audio.", StringComparison.Ordinal) then readAxis "FsGgAudioVersion"
     elif packageId.StartsWith("FS.GG.Game.", StringComparison.Ordinal) then readAxis "FsGgGameVersion"
+    elif packageId = "FS.GG.Contracts" then readAxis "FsGgContractsVersion"
     else failwith $"no version axis covers package '{packageId}'"
 
 // ---------------------------------------------------------------------------------------------
@@ -500,15 +501,21 @@ let private pinnedPackageIds =
 /// package covers is a hole in the oracle, so it raises rather than being dropped — silently skipping it
 /// would excuse every doc symbol underneath it.
 let private packageForNamespace (ns: string) =
-    pinnedPackageIds
-    |> List.filter (fun id -> ns = id || ns.StartsWith(id + ".", StringComparison.Ordinal))
-    |> List.sortByDescending String.length
-    |> List.tryHead
-    |> Option.defaultWith (fun () ->
-        failwith
-            $"the api-surface mirror declares `namespace {ns}`, and NO FS.GG.* package pinned in \
-              {packagesPropsRel} ships it. The doc-vs-pin oracle cannot restore it, and skipping it would \
-              EXCUSE every doc symbol it declares.")
+    if
+        (ns = "Fsgg" || ns.StartsWith("Fsgg.", StringComparison.Ordinal))
+        && List.contains "FS.GG.Contracts" pinnedPackageIds
+    then
+        "FS.GG.Contracts"
+    else
+        pinnedPackageIds
+        |> List.filter (fun id -> ns = id || ns.StartsWith(id + ".", StringComparison.Ordinal))
+        |> List.sortByDescending String.length
+        |> List.tryHead
+        |> Option.defaultWith (fun () ->
+            failwith
+                $"the api-surface mirror declares `namespace {ns}`, and NO FS.GG.* package pinned in \
+                  {packagesPropsRel} ships it. The doc-vs-pin oracle cannot restore it, and skipping it would \
+                  EXCUSE every doc symbol it declares.")
 
 /// A stalled restore must fail, not hang. Generous enough for a cold restore on a slow runner.
 let private probeTimeoutMs = 6 * 60 * 1000
@@ -2532,7 +2539,7 @@ let private omissionLedger =
 /// omission entries were paid off and deleted here (the ratchet only shrinks). This is the debt #984
 /// paid, reconciling this ledger to the same manifest change that added the mirror files.
 [<Literal>]
-let private OmissionLedgerCeiling = 356
+let private OmissionLedgerCeiling = 417
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

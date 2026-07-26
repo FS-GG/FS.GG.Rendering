@@ -39,6 +39,73 @@
 # `OmissionLedgerCeiling` literal in TemplateConsumesPinnedApiTests.fs is what enforces that.
 # ------------------------------------------------------------------------------------------------
 
+# FS.GG.Contracts 7.0.0 (61) — Rendering#1060 deliberately vendors only the producer-owned
+# Schemas.PerformanceIntentDeclaration needed by generated workload authoring. Contracts 7.0.0
+# predates packed api-surface files, so exposing the package's unrelated registry/provider/schema
+# implementation surface would turn this narrow compatibility bridge into a second Contracts manual.
+module FS.GG.Contracts::Fsgg.ContractVersion
+module FS.GG.Contracts::Fsgg.Provider
+module FS.GG.Contracts::Fsgg.Registry
+module FS.GG.Contracts::Fsgg.SkillMirror
+module FS.GG.Contracts::Fsgg.Version
+type FS.GG.Contracts::Fsgg.ActualCopy
+type FS.GG.Contracts::Fsgg.AgentGuidanceTargetEntry
+type FS.GG.Contracts::Fsgg.AgentsSchema
+type FS.GG.Contracts::Fsgg.CapabilitiesSchema
+type FS.GG.Contracts::Fsgg.CoherenceEntry
+type FS.GG.Contracts::Fsgg.ConsumerDeclaration
+type FS.GG.Contracts::Fsgg.ContractEntry
+type FS.GG.Contracts::Fsgg.DeclaredCommand
+type FS.GG.Contracts::Fsgg.DependencyEdge
+type FS.GG.Contracts::Fsgg.DependencyEdge2
+type FS.GG.Contracts::Fsgg.ExpectedSkill
+type FS.GG.Contracts::Fsgg.GeneratorRef
+type FS.GG.Contracts::Fsgg.GovernanceHandoffConfigPresence
+type FS.GG.Contracts::Fsgg.GovernanceHandoffEvidence
+type FS.GG.Contracts::Fsgg.GovernanceHandoffEvidenceEdge
+type FS.GG.Contracts::Fsgg.GovernanceHandoffEvidenceNode
+type FS.GG.Contracts::Fsgg.GovernanceHandoffPerformanceEvidence
+type FS.GG.Contracts::Fsgg.GovernanceHandoffReadiness
+type FS.GG.Contracts::Fsgg.GovernanceHandoffReference
+type FS.GG.Contracts::Fsgg.GovernanceHandoffSchema
+type FS.GG.Contracts::Fsgg.GovernanceSchema
+type FS.GG.Contracts::Fsgg.MirrorDeclaration
+type FS.GG.Contracts::Fsgg.MirrorWrite
+type FS.GG.Contracts::Fsgg.PerformanceEvidenceArtifact
+type FS.GG.Contracts::Fsgg.PerformanceEvidenceMeasurement
+type FS.GG.Contracts::Fsgg.PerformanceEvidenceSampleSet
+type FS.GG.Contracts::Fsgg.PolicySchema
+type FS.GG.Contracts::Fsgg.ProjectSchema
+type FS.GG.Contracts::Fsgg.ProviderDescriptor
+type FS.GG.Contracts::Fsgg.ProviderParameterEntry
+type FS.GG.Contracts::Fsgg.ProviderParameterSpec
+type FS.GG.Contracts::Fsgg.ProviderRegistryEntry
+type FS.GG.Contracts::Fsgg.ProvidersSchema
+type FS.GG.Contracts::Fsgg.RegistryComponent
+type FS.GG.Contracts::Fsgg.RegistryDiagnostic
+type FS.GG.Contracts::Fsgg.RegistryDocument
+type FS.GG.Contracts::Fsgg.RegistryModel
+type FS.GG.Contracts::Fsgg.RegistryRepo
+type FS.GG.Contracts::Fsgg.RegistryRule
+type FS.GG.Contracts::Fsgg.ScaffoldProducedPathEntry
+type FS.GG.Contracts::Fsgg.ScaffoldProvenanceSchema
+type FS.GG.Contracts::Fsgg.SchemaContractEntry
+type FS.GG.Contracts::Fsgg.SchemaDiagnostic
+type FS.GG.Contracts::Fsgg.SchemaOwner
+type FS.GG.Contracts::Fsgg.SchemaSourceIdentity
+type FS.GG.Contracts::Fsgg.SddSchema
+type FS.GG.Contracts::Fsgg.SkillDrift
+type FS.GG.Contracts::Fsgg.SkillManifest
+type FS.GG.Contracts::Fsgg.SkillManifestEntry
+type FS.GG.Contracts::Fsgg.SkillRegistryDocument
+type FS.GG.Contracts::Fsgg.SkillRegistryEntry
+type FS.GG.Contracts::Fsgg.SkillScope
+type FS.GG.Contracts::Fsgg.ToolingSchema
+type FS.GG.Contracts::Fsgg.ValidationResult
+type FS.GG.Contracts::Fsgg.Version
+type FS.GG.Contracts::Fsgg.WireContract
+type FS.GG.Contracts::Fsgg.WireContractDeclaration
+
 # FS.GG.Game.Core (7 — was 38; #767 paid off `Physics` + its six types, #984 paid off the game-profile
 #                  simulation modules Ai/Difficulty, Ballistics, Effects, Fov, Los, Visibility + their
 #                  types by MIRRORING them. Only the Command / Grids surface remains waived here.)

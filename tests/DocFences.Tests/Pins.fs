@@ -28,12 +28,14 @@ module Pins =
     let uiVersion = lazy (axis "FsGgUiVersion")
     let gameVersion = lazy (axis "FsGgGameVersion")
     let audioVersion = lazy (axis "FsGgAudioVersion")
+    let contractsVersion = lazy (axis "FsGgContractsVersion")
 
     let private versionForAxisToken (token: string) =
         match token with
         | "FsGgUiVersion" -> uiVersion.Value
         | "FsGgGameVersion" -> gameVersion.Value
         | "FsGgAudioVersion" -> audioVersion.Value
+        | "FsGgContractsVersion" -> contractsVersion.Value
         | other -> failwithf "unknown version axis '%s' in %s" other propsPath
 
     /// Every pinned FS.GG.* package, paired with the version its axis resolves to. This is the reference set
