@@ -1177,6 +1177,8 @@ let tryRunEvidenceCommand args =
     | "--screenshot-evidence" :: _ -> Some(screenshotEvidence "readiness/game-screenshot-evidence.txt")
     | "--performance-evidence" :: path :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence path)
     | "--performance-evidence" :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence "readiness/performance-evidence.json")
+    | "--performance-intent" :: path :: _ -> Some(AppRoot.PerformanceEvidence.writePerformanceIntentDeclaration path)
+    | "--performance-intent" :: _ -> Some(AppRoot.PerformanceEvidence.writePerformanceIntentDeclaration "readiness/performance-intent.yml")
     | "--pixel-readback-evidence" :: path :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" path)
     | "--pixel-readback-evidence" :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" "readiness/game-pixel-readback-evidence.txt")
     | _ -> None

@@ -66,6 +66,9 @@
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />
     <!--#if (profile == "game" || profile == "sample-pack") -->
+    <!-- Rendering#1060: use the producer-owned PerformanceIntentDeclaration directly; the
+         generated workload/evidence surface must not maintain a lookalike contract. -->
+    <PackageReference Include="FS.GG.Contracts" />
     <!-- ADR-0022 P5: simulation primitives (FixedStep.drain, Rng, Pathfinding, SpatialGrid, Geometry)
          for the fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills — now in
          FS.GG.Game.Core, the BCL-only bottom layer (moved out of FS.GG.UI.Canvas/.Scene). -->

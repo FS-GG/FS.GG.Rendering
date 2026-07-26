@@ -97,6 +97,7 @@ let private crossRepoMirrors =
           "Audio.Host", ("FS.GG.Audio", "FsGgAudioVersion")
           "Audio.Engine", ("FS.GG.Audio", "FsGgAudioVersion")
           "Audio.Elmish", ("FS.GG.Audio", "FsGgAudioVersion")
+          "Contracts", ("FS.GG.SDD", "FsGgContractsVersion")
           "Game.Core", ("FS.GG.Game", "FsGgGameVersion") ]
 
 /// A bundled directory is cross-repo exactly when this repo has no `src/<dir>` to have copied it from.

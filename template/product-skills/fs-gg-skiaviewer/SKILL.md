@@ -357,7 +357,9 @@ Define the expected host-facing routes **before feature implementation**, then r
 product state/messages through the real `update` + scene route, review its `definitionDigest`, and mark
 it `Authored`. Placeholder and stale-digest rows fail `Test`/`Verify`. A linked blocking
 performance-debt issue permits baseline capture but never acceptance. The Release measurement records
-zero bounded presents honestly. Do not relabel that bounded headless result as live compositor,
+zero bounded presents honestly. `./fake.sh build -t PerformanceIntent` emits the same Contracts 7.x
+declaration consumed by SDD and evidence; set `liveCompositorRequired` there and keep its workload
+separate from normal-play, stress, and throughput routes. Do not relabel that bounded headless result as live compositor,
 swapchain/vblank, or vsync evidence. Use a separate live-compositor workload on an actual presentation
 host for those claims.
 

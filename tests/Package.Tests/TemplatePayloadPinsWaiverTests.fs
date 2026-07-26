@@ -63,6 +63,7 @@ let private squashedSource = squash guardSource
 let private uiAxis = "FsGgUiVersion"
 let private gameAxis = "FsGgGameVersion"
 let private audioAxis = "FsGgAudioVersion"
+let private contractsAxis = "FsGgContractsVersion"
 
 type private World =
     { /// FS.GG.UI.* ids the feed does NOT carry at $(FsGgUiVersion). Empty is the normal state.
@@ -148,8 +149,8 @@ let tests =
           // that package ships from its own repo — so an absent Game/Audio pin is a real defect on every
           // commit, release window or not. A waiver that keyed on the axis being bumped would sail past
           // it: #235, the defect this script was written for.
-          test "a bumped-but-unpublished Game/Audio axis is NEVER waived, even inside the release window" {
-            for axis in [ gameAxis; audioAxis ] do
+          test "a bumped-but-unpublished Game/Audio/Contracts axis is NEVER waived, even inside the release window" {
+            for axis in [ gameAxis; audioAxis; contractsAxis ] do
                 let w =
                     { clean with
                         PendingUi = [ "FS.GG.UI.Scene" ] // a genuine UI release IS in flight...

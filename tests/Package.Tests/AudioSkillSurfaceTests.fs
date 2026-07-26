@@ -31,6 +31,11 @@ let private repositoryPath (relativePath: string) =
 
 let private apiSurfaceRoot = repositoryPath "template/base/docs/api-surface"
 
+// Published package ids normally appear in their namespace. FS.GG.Contracts is the intentional
+// exception: its producer-owned public namespace is `Fsgg`, so preserve that exact authority instead
+// of renaming the mirrored signature to satisfy the directory convention.
+let private namespaceComponentsByPackage = Map [ "Contracts", "Fsgg" ]
+
 /// The first `namespace` declaration in a signature file, if any.
 let private declaredNamespace (fsiText: string) =
     let m = Regex.Match(fsiText, @"^namespace\s+(\S+)", RegexOptions.Multiline)
@@ -56,7 +61,10 @@ let audioSkillSurfaceTests =
                           match declaredNamespace text with
                           | None -> Some(file, "<no namespace declaration>")
                           | Some ns ->
-                              let pattern = sprintf @"(^|\.)%s(\.|$)" (Regex.Escape pkg)
+                              let namespaceComponent =
+                                  namespaceComponentsByPackage |> Map.tryFind pkg |> Option.defaultValue pkg
+
+                              let pattern = sprintf @"(^|\.)%s(\.|$)" (Regex.Escape namespaceComponent)
                               if Regex.IsMatch(ns, pattern) then None else Some(file, ns)))
                   |> Seq.toList
 

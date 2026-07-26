@@ -22,6 +22,9 @@
          backend is deferred". Every profile that opens a viewer window (issue #436), not the
          simulation profiles only. See ADR-0024. -->
     <FsGgAudioVersion>0.5.0</FsGgAudioVersion>
+    <!-- Rendering#1060: producer-owned early performance intent. Keep this on the Contracts
+         release axis rather than the FS.GG.UI coherent-set axis. -->
+    <FsGgContractsVersion>7.0.0</FsGgContractsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the
@@ -30,6 +33,7 @@
     <PackageVersion Include="FS.GG.UI.Build" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="FS.GG.UI.Scene" Version="$(FsGgUiVersion)" />
     <!--#if (profile == "game" || profile == "sample-pack") -->
+    <PackageVersion Include="FS.GG.Contracts" Version="$(FsGgContractsVersion)" />
     <!-- ADR-0022 P5: the sim primitives (FixedStep/Rng/Pathfinding/SpatialGrid/Geometry) that the
          fs-gg-game-core / -collision / -visibility / -line-drawing / -grids skills use now live in
          FS.GG.Game.Core (the BCL-only bottom layer), consumed on its own $(FsGgGameVersion) axis. -->

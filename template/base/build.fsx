@@ -248,6 +248,10 @@ let runPerformanceEvidence () =
     let project = singleSrcProject ()
     runProcess "PerformanceEvidence" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-evidence readiness/performance-evidence.json" project)
 
+let runPerformanceIntent () =
+    let project = singleSrcProject ()
+    runProcess "PerformanceIntent" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-intent readiness/performance-intent.yml" project)
+
 let run target =
     match target with
     | "Dev"
@@ -270,7 +274,9 @@ let run target =
     | "Pack" -> runProcess "Pack" "dotnet" (sprintf "pack \"%s\" -c Release" (singleRootSolution ()))
     | "Test" ->
         runGeneratedTests ()
+        runPerformanceIntent ()
         runPerformanceEvidence ()
+    | "PerformanceIntent" -> runPerformanceIntent ()
     | "PerformanceEvidence" -> runPerformanceEvidence ()
     | "Verify" ->
         // ADR-0056 §Decision.2: fail closed BEFORE any other audit work — a lifecycle-less sdd tree
@@ -285,6 +291,7 @@ let run target =
         if auditExitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" auditExitCode
         runGeneratedTests ()
+        runPerformanceIntent ()
         runPerformanceEvidence ()
         writeLog "Verify"
         printfn "Verify completed for generated product"
@@ -305,6 +312,7 @@ let helpBanner =
     + "  Test     The first real compile: `dotnet test` + Release expected-workload performance evidence (audit-free).\n"
     + "           A fresh game scaffold fails until all five Placeholder workloads drive product-authored state/messages;\n"
     + "           run PerformanceEvidence, review each definitionDigest, then acknowledge it as Authored.\n"
+    + "  PerformanceIntent emits the Contracts 7.x declaration for the SDD performanceIntent block.\n"
     + "  Verify   Runs the merge-gate audit (EvidenceGraph -> EvidenceAudit) first — the audit hard-blocks\n"
     + "           until every task is [X] — then runs the tests. Use only when the feature is complete.\n"
     + "           The first Verify on a fresh scaffold fails until you generate the headless evidence baseline\n"

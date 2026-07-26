@@ -83,7 +83,11 @@ For a `game` profile, author `PerformanceEvidence.expectedWorkloads` **before fe
 as soon as normal play is defined. Every required row starts as `Placeholder`: replace its initial state
 and messages with product-owned routes, run `./fake.sh build -t PerformanceEvidence`, review the emitted
 `definitionDigest`, then copy that digest into `Authored`. A changed definition invalidates a stale
-acknowledgement. `Test` and `Verify` fail closed on Placeholder/stale rows and when a normal workload
+acknowledgement. Run `./fake.sh build -t PerformanceIntent` to emit the SDD-ready `performanceIntent`
+block. It is the same published Contracts 7.x declaration embedded in performance evidence: edit its
+target FPS, maximum scale, p95/p99/catch-up thresholds, structural budgets, required measurement
+capability, and live-compositor posture at the generated declaration source, never in a second SDD
+copy. `Test` and `Verify` fail closed on Placeholder/duplicate/stale rows and when a normal workload
 exceeds p95 16.67 ms, p99 25 ms, sustained catch-up, or its scene-node budget. A linked blocking
 performance-debt issue permits deliberate baseline capture, but the baseline remains failing evidence
 and never satisfies acceptance. The artifact is bounded headless update + scene-route evidence; it is

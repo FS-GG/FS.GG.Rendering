@@ -1,7 +1,8 @@
 // #241 — template payload pin restore gate.
 //
-// `template/base/Directory.Packages.props` declares three version axes — $(FsGgUiVersion),
-// $(FsGgGameVersion), $(FsGgAudioVersion) — that become a SCAFFOLDED PRODUCT's package pins.
+// `template/base/Directory.Packages.props` declares four version axes — $(FsGgUiVersion),
+// $(FsGgGameVersion), $(FsGgAudioVersion), $(FsGgContractsVersion) — that become a SCAFFOLDED
+// PRODUCT's package pins.
 // Nothing in CI ever restored them. Package.Tests reads the file as TEXT: AudioProfileWiringTests
 // asserts axis STRUCTURE (one literal per axis, the four FS.GG.Audio.* deriving through
 // $(FsGgAudioVersion), the `game || sample-pack` gate) and explicitly disclaims the VALUE. Template
@@ -271,12 +272,13 @@ let profiles = [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
 /// and — for the same reason — the only one exempt from the staleness rule. See the header.
 let uiAxis = "FsGgUiVersion"
 
-/// The three axes, and which feed package's newest version each is compared against for staleness.
+/// The four axes, and which feed package's newest version each is compared against for staleness.
 /// `None` = exempt from the staleness rule (see the header note on $(FsGgUiVersion)).
 let axes =
     [ uiAxis, None
       "FsGgGameVersion", Some "FS.GG.Game.Core"
-      "FsGgAudioVersion", Some "FS.GG.Audio.Core" ]
+      "FsGgAudioVersion", Some "FS.GG.Audio.Core"
+      "FsGgContractsVersion", Some "FS.GG.Contracts" ]
 
 /// The `dotnet new` gate opened for the line at `lineIndex`, or None if the line is ungated. Walks
 /// upward to the nearest `<!--#if ... -->` not already closed by an intervening `<!--#endif -->`
@@ -391,7 +393,7 @@ let structuralFailures (i: Inputs) : Failure list =
           yield
               { Rule = "pin-not-axis-derived"
                 Location = sprintf "%s (%s)" propsRel id
-                Expected = "Version=\"$(FsGgUiVersion|FsGgGameVersion|FsGgAudioVersion)\""
+                Expected = "Version=\"$(FsGgUiVersion|FsGgGameVersion|FsGgAudioVersion|FsGgContractsVersion)\""
                 Actual = sprintf "Version=\"%s\"" ver
                 Fix = sprintf "derive %s through its component's axis — a bare literal is invisible to an axis bump and to this guard's staleness rule" id }
 
@@ -719,7 +721,7 @@ let printReleasePending (i: Inputs) (pending: string list) =
     printfn "    - the resolved graph of all %d scaffold profiles — the TRANSITIVE half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`" profiles.Length
     printfn "  STILL CHECKED (this bump does not publish these, so the window excuses nothing about them):"
     printfn "    - the structural verdict-core"
-    printfn "    - $(FsGgGameVersion) / $(FsGgAudioVersion) existence + staleness"
+    printfn "    - $(FsGgGameVersion) / $(FsGgAudioVersion) / $(FsGgContractsVersion) existence + staleness"
     printfn "    - the DIRECT half of `prerelease-in-scaffolded-graph` — a pinned prerelease needs no graph to see"
     printfn "  Those still decide the exit code: a failure in any of them reds this run, waiver or no waiver."
     printfn "  If the publish never lands, the next commit to main does not bump the pin, the waiver is OFF, and this gate reds on `pin-not-published`."
@@ -729,7 +731,7 @@ let printReleasePending (i: Inputs) (pending: string list) =
           ""
           sprintf "- **awaiting publish @ %s:** %s" version (String.concat ", " pending)
           sprintf "- **not checked:** the resolved graph of all %d scaffold profiles — the transitive half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`. Skipped, not passed." profiles.Length
-          "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` existence + staleness; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
+          "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` / `$(FsGgContractsVersion)` existence + staleness; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
           ""
           "If the publish never lands, the next commit to `main` reds this gate on `pin-not-published`." ]
 

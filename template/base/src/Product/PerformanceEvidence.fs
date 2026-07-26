@@ -3,12 +3,14 @@ module AppRoot.PerformanceEvidence
 //#if (profile == "game")
 open System
 open System.Diagnostics
+open System.Globalization
 open System.IO
 open System.Security.Cryptography
 open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
 open System.Xml.Linq
+open Fsgg.Schemas
 open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open AppRoot.Model
@@ -25,6 +27,38 @@ type Budget =
       P99Ms: float
       MaximumSceneNodes: int
       AllowSustainedCatchUp: bool }
+
+/// The one product-authored performance policy. This is the published Contracts 7.x shape used by
+/// SDD, not a template-local mirror. Workload identities and executable definition digests are
+/// projected into the completed value below after the workload rows are declared.
+let private performanceIntentSeed: PerformanceIntentDeclaration =
+    { Id = "PI-GENERATED-GAME"
+      Disposition = "active"
+      TargetFps = 60
+      WorkloadIds = []
+      WorkloadDefinitionDigests = []
+      MaximumExpectedScale = "maximum-content workload"
+      MaxP95Ms = 16.67m
+      MaxP99Ms = 25.0m
+      MaxCatchUpFrames = 0
+      StructuralCostBudgets = [ "scene-nodes<=4096" ]
+      RequiredCapability = "bounded-headless-update-and-scene-route"
+      LiveCompositorRequired = false
+      DeferralIssue = None
+      EvidenceRefs = [ "readiness/performance-evidence.json" ]
+      Rationale = Some "Generated normal-play declaration; live-compositor evidence remains a separate workload." }
+
+let private maximumSceneNodes =
+    performanceIntentSeed.StructuralCostBudgets
+    |> List.tryPick (fun entry ->
+        match entry.Split("<=", StringSplitOptions.TrimEntries) with
+        | [| "scene-nodes"; value |] ->
+            match Int32.TryParse value with
+            | true, parsed when parsed > 0 -> Some parsed
+            | _ -> None
+        | _ -> None)
+    |> Option.defaultWith (fun () ->
+        invalidOp "performance intent must declare structuralCostBudgets entry 'scene-nodes<=<positive integer>'")
 
 /// A deliberate acknowledgement that a representative workload is product-authored.
 ///
@@ -156,8 +190,16 @@ let definitionDigest workload =
         workloadSourceFingerprint workload.Id
         |> Option.defaultValue "missing-workload-source-block"
 
+    let structuralBudgets = String.concat "," performanceIntentSeed.StructuralCostBudgets
+
+    let maxP95 = performanceIntentSeed.MaxP95Ms.ToString(CultureInfo.InvariantCulture)
+    let maxP99 = performanceIntentSeed.MaxP99Ms.ToString(CultureInfo.InvariantCulture)
+
+    let intentPolicy =
+        $"{performanceIntentSeed.Id}|{performanceIntentSeed.Disposition}|{performanceIntentSeed.TargetFps}|{performanceIntentSeed.MaximumExpectedScale}|{maxP95}|{maxP99}|{performanceIntentSeed.MaxCatchUpFrames}|{structuralBudgets}|{performanceIntentSeed.RequiredCapability}|{performanceIntentSeed.LiveCompositorRequired}"
+
     let canonical =
-        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{budget}|{executableSource}"
+        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{budget}|{intentPolicy}|{executableSource}"
 
     sha256Text canonical
 
@@ -201,8 +243,8 @@ let evaluateBudget workload p95 p99 catchUpFrames sceneNodes =
                       $"p99 {p99:F3} ms exceeds {budget.P99Ms:F3} ms"
                   if sceneNodes > budget.MaximumSceneNodes then
                       $"scene nodes {sceneNodes} exceed {budget.MaximumSceneNodes}"
-                  if catchUpFrames > 0 && not budget.AllowSustainedCatchUp then
-                      $"sustained catch-up observed in {catchUpFrames} frame(s)" ]
+                  if catchUpFrames > performanceIntentSeed.MaxCatchUpFrames then
+                      $"sustained catch-up observed in {catchUpFrames} frame(s), exceeding declared maximum {performanceIntentSeed.MaxCatchUpFrames}" ]
 
             { Passed = List.isEmpty reasons
               Reasons =
@@ -258,6 +300,7 @@ let private runWorkload workload =
     let beforeBytes = GC.GetAllocatedBytesForCurrentThread()
     let mutable sceneNodes = 0
     let mutable catchUp = 0
+    let targetFrameMs = 1000.0 / float performanceIntentSeed.TargetFps
 
     for frame in 0 .. max 0 (workload.SampleFrames - 1) do
         let sw = Stopwatch.StartNew()
@@ -267,7 +310,7 @@ let private runWorkload workload =
         samples.Add sw.Elapsed.TotalMilliseconds
         sceneNodes <- max sceneNodes (Scene.describe { Nodes = [ scene ] } |> List.length)
 
-        if sw.Elapsed.TotalMilliseconds > 16.67 then
+        if sw.Elapsed.TotalMilliseconds > targetFrameMs then
             catchUp <- catchUp + 1
 
     let allocated = GC.GetAllocatedBytesForCurrentThread() - beforeBytes
@@ -333,10 +376,10 @@ let private declaredPackageVersions () =
         |> List.ofSeq
 
 let private normalBudget =
-    { P95Ms = 16.67
-      P99Ms = 25.0
-      MaximumSceneNodes = 4096
-      AllowSustainedCatchUp = false }
+    { P95Ms = float performanceIntentSeed.MaxP95Ms
+      P99Ms = float performanceIntentSeed.MaxP99Ms
+      MaximumSceneNodes = maximumSceneNodes
+      AllowSustainedCatchUp = performanceIntentSeed.MaxCatchUpFrames > 0 }
 
 /// REQUIRED PRODUCT AUTHORING. Every untouched row is deliberately a failing placeholder.
 ///
@@ -422,6 +465,119 @@ let expectedWorkloads =
       // WORKLOAD-SOURCE-END maximum-content
       ]
 
+let performanceIntentDeclaration =
+    { performanceIntentSeed with
+        WorkloadIds = expectedWorkloads |> List.map _.Id
+        WorkloadDefinitionDigests =
+            expectedWorkloads
+            |> List.map (fun workload -> $"{workload.Id}=sha256:{definitionDigest workload}") }
+
+let private duplicateValues values =
+    values
+    |> List.countBy id
+    |> List.choose (fun (value, count) -> if count > 1 then Some value else None)
+
+let private requiredNormalWorkloadIds =
+    [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ]
+
+let private declarationProblems () =
+    let duplicateIds = expectedWorkloads |> List.map _.Id |> duplicateValues
+    let duplicateBindings = performanceIntentDeclaration.WorkloadDefinitionDigests |> duplicateValues
+    let duplicateIdText = String.concat ", " duplicateIds
+    let requiredIdText = String.concat ", " requiredNormalWorkloadIds
+    let duplicateBindingText = String.concat ", " duplicateBindings
+    let authoredProblems =
+        expectedWorkloads
+        |> List.collect (fun workload ->
+            let verdict = evaluateAuthorship workload
+            verdict.Reasons)
+
+    [ if not (List.isEmpty duplicateIds) then
+          $"duplicate workload ids: {duplicateIdText}"
+      if performanceIntentDeclaration.WorkloadIds <> requiredNormalWorkloadIds then
+          $"normal-play workload ids must be exactly: {requiredIdText}"
+      if not (List.isEmpty duplicateBindings) then
+          $"duplicate workload digest bindings: {duplicateBindingText}"
+      if performanceIntentDeclaration.TargetFps <= 0 then
+          "performance intent target FPS must be positive"
+      if String.IsNullOrWhiteSpace performanceIntentDeclaration.MaximumExpectedScale then
+          "performance intent maximum expected scale is required"
+      if String.IsNullOrWhiteSpace performanceIntentDeclaration.RequiredCapability then
+          "performance intent measurement capability is required"
+      yield! authoredProblems ]
+
+let private yamlScalar (value: string) = JsonSerializer.Serialize value
+
+let private yamlList values =
+    values |> List.map yamlScalar |> String.concat ", " |> fun values -> $"[{values}]"
+
+let writePerformanceIntentDeclaration (path: string) =
+    let intent = performanceIntentDeclaration
+    let directory = Path.GetDirectoryName path
+
+    if not (String.IsNullOrWhiteSpace directory) then
+        Directory.CreateDirectory directory |> ignore
+
+    let optional name value =
+        value |> Option.map (fun actual -> $"  {name}: {yamlScalar actual}") |> Option.toList
+
+    let maxP95 = intent.MaxP95Ms.ToString(CultureInfo.InvariantCulture)
+    let maxP99 = intent.MaxP99Ms.ToString(CultureInfo.InvariantCulture)
+
+    [ "performanceIntent:"
+      $"  id: {yamlScalar intent.Id}"
+      $"  disposition: {yamlScalar intent.Disposition}"
+      $"  targetFps: {intent.TargetFps}"
+      $"  workloadIds: {yamlList intent.WorkloadIds}"
+      $"  workloadDefinitionDigests: {yamlList intent.WorkloadDefinitionDigests}"
+      $"  maximumExpectedScale: {yamlScalar intent.MaximumExpectedScale}"
+      $"  maxP95Ms: {maxP95}"
+      $"  maxP99Ms: {maxP99}"
+      $"  maxCatchUpFrames: {intent.MaxCatchUpFrames}"
+      $"  structuralCostBudgets: {yamlList intent.StructuralCostBudgets}"
+      $"  requiredCapability: {yamlScalar intent.RequiredCapability}"
+      $"  liveCompositorRequired: {intent.LiveCompositorRequired.ToString().ToLowerInvariant()}"
+      yield! optional "deferralIssue" intent.DeferralIssue
+      $"  evidenceRefs: {yamlList intent.EvidenceRefs}"
+      yield! optional "rationale" intent.Rationale ]
+    |> fun lines -> File.WriteAllLines(path, lines)
+
+    match declarationProblems () with
+    | [] ->
+        printfn "status=ok performance-intent=%s workloads=%d" path intent.WorkloadIds.Length
+        0
+    | problems ->
+        problems |> List.iter (printfn "status=failed performance-intent reason=%s")
+        1
+
+let private writeIntentJson (json: Utf8JsonWriter) =
+    let intent = performanceIntentDeclaration
+    json.WriteStartObject("performanceIntent")
+    json.WriteString("id", intent.Id)
+    json.WriteString("disposition", intent.Disposition)
+    json.WriteNumber("targetFps", intent.TargetFps)
+    json.WriteStartArray("workloadIds")
+    intent.WorkloadIds |> List.iter json.WriteStringValue
+    json.WriteEndArray()
+    json.WriteStartArray("workloadDefinitionDigests")
+    intent.WorkloadDefinitionDigests |> List.iter json.WriteStringValue
+    json.WriteEndArray()
+    json.WriteString("maximumExpectedScale", intent.MaximumExpectedScale)
+    json.WriteNumber("maxP95Ms", intent.MaxP95Ms)
+    json.WriteNumber("maxP99Ms", intent.MaxP99Ms)
+    json.WriteNumber("maxCatchUpFrames", intent.MaxCatchUpFrames)
+    json.WriteStartArray("structuralCostBudgets")
+    intent.StructuralCostBudgets |> List.iter json.WriteStringValue
+    json.WriteEndArray()
+    json.WriteString("requiredCapability", intent.RequiredCapability)
+    json.WriteBoolean("liveCompositorRequired", intent.LiveCompositorRequired)
+    intent.DeferralIssue |> Option.iter (fun value -> json.WriteString("deferralIssue", value))
+    json.WriteStartArray("evidenceRefs")
+    intent.EvidenceRefs |> List.iter json.WriteStringValue
+    json.WriteEndArray()
+    intent.Rationale |> Option.iter (fun value -> json.WriteString("rationale", value))
+    json.WriteEndObject()
+
 let writeExpectedWorkloadEvidence (path: string) =
     let results = expectedWorkloads |> List.map runWorkload
     let directory = Path.GetDirectoryName path
@@ -433,6 +589,7 @@ let writeExpectedWorkloadEvidence (path: string) =
     use json = new Utf8JsonWriter(stream, JsonWriterOptions(Indented = true))
     json.WriteStartObject()
     json.WriteNumber("schemaVersion", 2)
+    writeIntentJson json
     json.WriteString("measurementCapability", "bounded-headless-update-and-scene-route")
     json.WriteString("notAuthoritativeFor", "live-compositor,swapchain,vblank,vsync")
 
@@ -496,9 +653,10 @@ let writeExpectedWorkloadEvidence (path: string) =
     json.WriteEndObject()
     json.Flush()
 
+    let declarationFailures = declarationProblems ()
     let failures = results |> List.filter (_.Verdict.Passed >> not)
 
-    if List.isEmpty failures then
+    if List.isEmpty failures && List.isEmpty declarationFailures then
         printfn
             "status=ok performance-evidence workloads=%d capability=bounded-headless artifact=%s"
             results.Length
@@ -506,6 +664,9 @@ let writeExpectedWorkloadEvidence (path: string) =
 
         0
     else
+        declarationFailures
+        |> List.iter (printfn "status=failed performance-intent reason=%s")
+
         failures
         |> List.iter (fun result ->
             printfn
@@ -516,4 +677,5 @@ let writeExpectedWorkloadEvidence (path: string) =
         1
 //#else
 let writeExpectedWorkloadEvidence _ = 0
+let writePerformanceIntentDeclaration _ = 0
 //#endif

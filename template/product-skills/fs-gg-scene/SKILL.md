@@ -263,6 +263,10 @@ row begins as `Placeholder`; run `./fake.sh build -t PerformanceEvidence`, revie
 `definitionDigest`, and mark it `Authored` only after its product state/messages traverse the real
 `update` + `view` route. A changed definition invalidates the acknowledgement. The command records nodes
 by layer alongside p50/p95/p99 and fails Placeholder/stale rows and the normal-play node/timing target.
+`./fake.sh build -t PerformanceIntent` projects those same executable digests plus the target FPS,
+maximum expected scale, timing/catch-up limits, structural scene-cost budget, measurement capability,
+and live-compositor posture into the published Contracts 7.x shape used by SDD. Never maintain a second
+scene-performance declaration.
 A linked blocking performance-debt issue allows a baseline artifact but never makes acceptance green.
 A 64x64 world with thousands of repeated fog or minimap nodes should fail before
 row-run/static-subtree remediation and pass afterward. The command is bounded headless scene-route
