@@ -382,11 +382,15 @@ report is not evidence. Do not copy framework readiness reports into the product
 
 ## Expected-workload performance gate
 
-On `game`, declare idle, movement+aiming, firing, effects/fog, and maximum-content cases in
-`PerformanceEvidence.expectedWorkloads`. Run `./fake.sh build -t PerformanceEvidence`; `Verify`
-repeats it in Release and fails closed on the active normal-play budget. Keep stress and throughput
-rows separately classified, and link blocking debt when intentionally committing an over-budget
-baseline. This is bounded headless update + scene-route evidence, not live compositor or vsync proof.
+On `game`, declare idle, movement+aiming, firing, effects/fog, and maximum-content cases **before
+feature implementation** in `PerformanceEvidence.expectedWorkloads`. Every untouched row is a failing
+`Placeholder`. Replace its initial state and messages with representative product routes, run
+`./fake.sh build -t PerformanceEvidence`, review its `definitionDigest`, and copy that digest into
+`Authored`; changing the definition makes the declaration stale and red. `Test` and `Verify` repeat the
+Release measurement and fail closed on Placeholder/stale rows and the active normal-play budget. Keep
+stress and throughput separately classified. A linked blocking performance-debt issue permits
+deliberate baseline capture, but that baseline never satisfies acceptance. This is bounded headless
+update + scene-route evidence, not live compositor or vsync proof.
 
 For continuous pointer pacing, keep two distinct gates. First, distribute 1,000 `PointerMove`
 samples across 60 `Viewer.drainInputQueue` presentation boundaries using

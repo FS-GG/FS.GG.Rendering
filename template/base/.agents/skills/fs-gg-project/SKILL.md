@@ -79,11 +79,15 @@ readiness evidence into the product.
 
 ## Expected-workload performance
 
-For a `game` profile, edit `PerformanceEvidence.expectedWorkloads` as soon as normal play is known,
-then run `./fake.sh build -t PerformanceEvidence`. `Verify` runs the same command in Release and fails
-closed when a normal workload exceeds p95 16.67 ms, p99 25 ms, sustained catch-up, or its scene-node
-budget. An over-budget baseline is accepted only with a linked blocking debt reference. The artifact
-is bounded headless update + scene-route evidence; it is never live compositor, swapchain, or vsync proof.
+For a `game` profile, author `PerformanceEvidence.expectedWorkloads` **before feature implementation**,
+as soon as normal play is defined. Every required row starts as `Placeholder`: replace its initial state
+and messages with product-owned routes, run `./fake.sh build -t PerformanceEvidence`, review the emitted
+`definitionDigest`, then copy that digest into `Authored`. A changed definition invalidates a stale
+acknowledgement. `Test` and `Verify` fail closed on Placeholder/stale rows and when a normal workload
+exceeds p95 16.67 ms, p99 25 ms, sustained catch-up, or its scene-node budget. A linked blocking
+performance-debt issue permits deliberate baseline capture, but the baseline remains failing evidence
+and never satisfies acceptance. The artifact is bounded headless update + scene-route evidence; it is
+never live compositor, swapchain, or vsync proof.
 
 Reference selected capability packages. Do not copy framework implementation
 projects into consumer-mode products.
