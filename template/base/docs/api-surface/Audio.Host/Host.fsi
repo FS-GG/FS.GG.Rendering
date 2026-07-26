@@ -1,5 +1,5 @@
 // See skill: fs-gg-audio
-// Mirrored from FS-GG/FS.GG.Audio @ 0.4.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
+// Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
 namespace FS.GG.Audio.Host
 
 open System
@@ -176,6 +176,20 @@ module Audio =
 [<RequireQualifiedAccess>]
 module NullBackend =
 
+    /// Maximum number of raw effects retained in a Null backend's diagnostic history.
+    [<Literal>]
+    val DiagnosticCapacity: int = 64
+
+    /// A bounded operational snapshot, separate from the deliberate recorder's audit Evidence.
+    type DiagnosticSnapshot =
+        {
+            /// Raw effects most recently presented to `IAudioBackend.Play`, oldest first. These are
+            /// not normalized through Core and never exceed `DiagnosticCapacity`.
+            Recent: AudioEffect list
+            /// Effects overwritten by the bounded ring since construction or `ClearDiagnostics`.
+            DroppedCount: int64
+        }
+
     /// A record-only backend: opens no device, never throws.
     ///
     /// Like every backend here it is NOT thread-safe and should be driven from one thread. It makes
@@ -185,27 +199,34 @@ module NullBackend =
     [<Sealed>]
     type T =
         interface IAudioBackend
-        /// Accumulated evidence — equal to `FS.GG.Audio.Core.Audio.interpret` of the same batch.
+        /// Accumulated evidence for a deliberately requested recorder — equal to
+        /// `FS.GG.Audio.Core.Audio.interpret` of the same batch.
         ///
-        /// Every effect played through this backend is retained until `Clear`, for the life of the
-        /// instance. That is deliberate — the retained requests ARE the evidence a headless test
-        /// asserts on — but it is also UNBOUNDED, and worth knowing about for anything long-lived:
-        /// a soak test, or a shipped game that reached this backend through the `OpenAlBackend.create`
-        /// degrade (FR-004) and will never read `Evidence` at all. Such a caller should `Clear`
-        /// periodically, or hold a backend of its own that records nothing.
+        /// A backend created deliberately by `NullBackend.create` retains each effect until `Clear`;
+        /// the retained requests ARE the evidence a headless test asserts on. A backend substituted
+        /// by `OpenAlBackend.create` after device failure records nothing: that production fallback
+        /// is process-lifetime silence, not an observer, and therefore stays bounded without
+        /// requiring an external caller to discover and clear it.
         ///
         /// Materialized on each read, so read it once and bind it rather than re-reading it in a loop.
         member Evidence: AudioEvidence
-        /// Effects recorded since construction or the last `Clear`. `Evidence.Requested.Length`
-        /// without materializing the list.
+        /// Effects recorded since construction or the last `Clear`. Always zero for a substituted
+        /// device-unavailable fallback. `Evidence.Requested.Length` without materializing the list.
         member RecordedCount: int
         /// Why this backend is silent (#34): `Requested` when the product built it on purpose,
         /// `DeviceUnavailable` when `OpenAlBackend.create` substituted it. Prefer `Backend.kindOf`,
         /// which answers the same question for ANY `IAudioBackend` without a type test.
         member Silence: Silence
-        /// Drop everything recorded so far, so a long-lived holder can bound what is otherwise kept
-        /// for the life of the instance. `Evidence` is then empty until the next `Play`.
+        /// Drop everything recorded so far. `Evidence` is then empty until the next `Play` on a
+        /// deliberately requested recorder. This does not clear the separate diagnostic history.
         member Clear: unit -> unit
+        /// Recent raw effects accepted by this silent backend, oldest first, plus the number
+        /// overwritten. This fixed-size operational history is available for both deliberately
+        /// requested recorders and device-unavailable fallbacks; it is not audit Evidence.
+        member Diagnostics: DiagnosticSnapshot
+        /// Clear only the bounded operational history and reset its dropped count. Deliberate
+        /// recorder Evidence is unchanged.
+        member ClearDiagnostics: unit -> unit
 
     /// Create a fresh Null backend. Its `Silence` is `Requested` — this is the deliberate,
     /// record-only backend, never a substitution.
@@ -221,8 +242,8 @@ module OpenAlBackend =
     /// and never throws into game code.
     ///
     /// **That substitution is silent unless you ask (#34).** The returned value is an `IAudioBackend`
-    /// either way, so a caller who does not check cannot tell a device from a tape recorder: a shipped
-    /// game runs record-only, and a headless test suite asserts playback against a recorder and passes
+    /// either way, so a caller who does not check cannot tell a device from a no-op: a shipped
+    /// game runs silently, and a headless test suite asserts playback against a no-op and passes
     /// *because* nothing played. Ask `Backend.isDeviceBacked` (or `Backend.kindOf`, which also carries
     /// the device's reason) — in a product, to surface "no audio device" in its own UI rather than
     /// trusting stderr; in a test, to SKIP loudly rather than assert vacuously.
