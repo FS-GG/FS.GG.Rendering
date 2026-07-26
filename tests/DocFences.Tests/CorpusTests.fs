@@ -101,4 +101,27 @@ let tests =
               Expect.contains kinds ProductSkill "product skills must be a corpus"
               Expect.contains kinds ScaffoldSource "scaffold sources must be a corpus"
               Expect.equal (List.length kinds) 2 "exactly the two fence-bearing corpora — the generated mirror is not one"
+          }
+
+          test "every product-skill fence has a current explicit compilation disposition" {
+              let plan = Harness.productSkillCompilationPlan ()
+
+              let selfContained =
+                  plan
+                  |> List.choose (fun (fence, disposition) ->
+                      match disposition with
+                      | Harness.SelfContained -> Some fence
+                      | Harness.Contextual _ -> None)
+
+              let contextualReasons =
+                  plan
+                  |> List.choose (fun (_, disposition) ->
+                      match disposition with
+                      | Harness.SelfContained -> None
+                      | Harness.Contextual reason -> Some reason)
+
+              Expect.equal plan.Length 84 "the reviewed whole-corpus inventory remains exact"
+              Expect.equal selfContained.Length 15 "the positive compiler corpus remains explicit"
+              Expect.equal contextualReasons.Length 69 "every remaining teaching fragment is accounted for"
+              Expect.all contextualReasons (System.String.IsNullOrWhiteSpace >> not) "contextual reasons are never blank"
           } ]

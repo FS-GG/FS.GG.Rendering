@@ -3,32 +3,35 @@ module FS.GG.DocFences.DriveTests
 open Expecto
 open FS.GG.DocFences
 
-/// THE FULL-CORPUS DRIVE (spec 255, T010) — PENDING a design decision, deliberately not a gate yet.
+/// THE FULL-CORPUS DRIVE (spec 255, T010) — ACTIVE over the explicitly self-contained corpus.
 ///
-/// The harness mechanism is proven (see HarnessProofTests: green + red, live). But driving the WHOLE skill
-/// corpus (measured during spec-255 exploration) revealed that the naive "one fence = one isolated
-/// compilation unit" does NOT hold for the pedagogical skill docs: even after excluding the ~4 parse-error
-/// fences, 7 of ~13 skill docs still fail — with `FS0039 'X is not defined'` on:
-///   * reader-owned identifiers a doc never defines (`Model`, `Msg`, `update`, `view`, `AppRoot`, `host`, ...);
-///   * symbols defined in an EARLIER fence of the same doc (cross-fence continuity);
-///   * modules needing a qualified open the preamble does not carry (`ControlsElmish`, `Audio`, `Expect`).
+/// Rendering#1050 re-audited the live published-pin corpus: 84 fences across 16 documents, and no whole
+/// document compiled in isolation. Per-document concatenation still cannot supply reader-owned values and
+/// leaks bindings between examples; a shared product prelude would invent Model/Msg/host contracts and can
+/// manufacture false greens. The supported model therefore keeps precise isolated modules and classifies
+/// the entire versioned inventory as either SelfContained or Contextual-with-reason.
 ///
-/// None of these are pin defects — they are the shape of teaching snippets. Making the corpus compile needs
-/// a design decision that reopens research.md D2 (per-doc concatenation / a shared product-type prelude /
-/// compile only self-contained corpora / keep the oracle for skills). Until that decision lands, this drive
-/// is marked PENDING (`ptestList`) — disclosed, NOT vacuously green — and the harness's proven green+red
-/// gate (HarnessProofTests) is what actually guards.
-///
-/// The body below is kept and current so that, once the design decision is made, this becomes the gate by
-/// changing `ptestList` to `testList`.
+/// Corpus drift fails in `productSkillCompilationPlan` before the build, forcing a fresh disposition. Every
+/// positive member compiles against the real published pins here; contextual snippets remain guarded by the
+/// retained symbol oracle rather than padded with fictional product code. The release-window waiver remains
+/// limited to a genuinely unpublished pin at the restore boundary.
 [<Tests>]
 let tests =
     testSequenced
-    // PendingTest: owner=FS-GG/FS.GG.Rendering#1050 review-by=2026-10-26
-    <| ptestList
-        "DocFences.Drive (PENDING — compilation-model decision tracked by Rendering#1050)"
-        [ test "every non-skipped skill fence compiles against the published pin" {
-              let fences = Corpus.productSkillFences ()
+    <| testList
+        "DocFences.Drive (explicitly self-contained product-skill corpus)"
+        [ test "every self-contained skill fence compiles against the published pin" {
+              let plan = Harness.productSkillCompilationPlan ()
+
+              let fences =
+                  plan
+                  |> List.choose (fun (fence, disposition) ->
+                      match disposition with
+                      | Harness.SelfContained -> Some fence
+                      | Harness.Contextual reason ->
+                          printfn "docfences: CONTEXTUAL %s:%d — %s" fence.Doc fence.StartLine reason
+                          None)
+
               let units, skipped = Harness.unitsFor fences
 
               for f, reason in skipped do
