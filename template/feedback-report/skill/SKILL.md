@@ -43,6 +43,33 @@ dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- che
 The tool appends one JSON object to `feedback/checkpoints/<cycle-id>.jsonl`. Use a stable,
 lowercase cycle id such as `018-map-motion-m5-interpolation-scene-cost`.
 
+If the capture loop was active and exercised its intended phases but no material event met the
+checkpoint threshold, record that fact explicitly instead of inventing a positive pattern or defect:
+
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- activate \
+  --cycle <cycle-id> \
+  --phases "scaffold-onboarding;implementation-test-evidence;verify-ship-pr" \
+  --evidence "command:dotnet test;file:readiness/ship-summary.json" \
+  --reason "The exercised phases completed without reusable friction, gaps, or positive patterns."
+```
+
+This writes the immutable, schema-versioned
+`feedback/checkpoints/<cycle-id>.activation.json`. Its `exercisedPhases` and `evidence` arrays prove
+that capture was active; `reasonNoEventQualified` explains the zero-event result without carrying
+event-only `kind`, `surface`, `summary`, `cost`, or `owner` fields. A cycle must contain either event
+JSONL or a zero-event activation receipt, never both.
+
+Validate the complete state from the product root:
+
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- \
+  validate-checkpoint-state --cycle <cycle-id>
+```
+
+The validator accepts a valid event file or a valid zero-event receipt and fails closed when state is
+missing, malformed, unreadable, contradictory, or exposes private evidence material.
+
 Allowed kinds:
 
 - `positive-pattern`
@@ -76,7 +103,7 @@ workspace before recording evidence. Checkpoints are committed.
 
 Finalize only after the cycle has exercised its intended acceptance surface. Read:
 
-1. the current cycle's checkpoint JSONL, if present;
+1. the current cycle's checkpoint JSONL or validated zero-event activation receipt;
 2. all earlier `feedback/*.md` reports for recurrence and prior dispositions;
 3. `scaffold-provenance.json`, package pins, and the skill manifest;
 4. `.fsgg/`, `work/`, `readiness/`, or equivalent lifecycle artifacts;
@@ -84,10 +111,10 @@ Finalize only after the cycle has exercised its intended acceptance surface. Rea
 6. build/test/TRX/evidence outputs, screenshots, playtest notes, timing artifacts, docs, and PR
    history that exist for this cycle.
 
-Missing checkpoints are themselves an evidence gap. Record one candidate finding per material claim
-whose facts cannot be reconstructed; the critic decides whether it is incomplete or unsupported.
-Never reconstruct precise elapsed time, commands, versions, ownership, root causes, or abandoned
-approaches without evidence.
+Missing both checkpoint JSONL and a valid zero-event activation receipt is itself an evidence gap.
+Record one candidate finding per material claim whose facts cannot be reconstructed; the critic
+decides whether it is incomplete or unsupported. Never reconstruct precise elapsed time, commands,
+versions, ownership, root causes, or abandoned approaches without evidence.
 
 ## Independent actionability critic
 

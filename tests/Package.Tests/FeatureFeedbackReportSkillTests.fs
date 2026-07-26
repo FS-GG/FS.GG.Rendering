@@ -584,9 +584,245 @@ let feedbackReportSkillTests =
 
                   Expect.isTrue (File.Exists path) "checkpoint file was created"
                   Expect.isEmpty (validateCheckpointFile path) "written checkpoint validates"
+
+                  Expect.isEmpty
+                      (validateCheckpointState root "001-example")
+                      "eventful checkpoint state remains valid"
+
                   let line = File.ReadAllText path
                   Expect.stringContains line "restore required a retry" "summary is retained"
                   Expect.stringContains line "dependencies-build" "surface is retained"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "valid zero-event activation receipt proves an exercised event-free cycle" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-activation-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  let path =
+                      appendZeroEventActivation
+                          root
+                          "001-example"
+                          [ "scaffold-onboarding"
+                            "implementation-test-evidence"
+                            "verify-ship-pr" ]
+                          [ "command:dotnet test"
+                            "file:readiness/ship-summary.json" ]
+                          "No reusable friction, gaps, or positive patterns qualified."
+
+                  Expect.isTrue (File.Exists path) "activation receipt was created"
+
+                  Expect.isFalse
+                      (File.Exists(Path.Combine(root, "feedback", "checkpoints", "001-example.jsonl")))
+                      "zero-event activation does not fabricate a checkpoint event"
+
+                  Expect.isEmpty
+                      (validateCheckpointState root "001-example")
+                      "valid zero-event activation is a complete checkpoint state"
+
+                  use document = JsonDocument.Parse(File.ReadAllText path)
+                  let receipt = document.RootElement
+
+                  Expect.equal
+                      (receipt.GetProperty("activationSchema").GetInt32())
+                      1
+                      "receipt schema is explicit"
+
+                  Expect.equal
+                      (receipt.GetProperty("receiptKind").GetString())
+                      "zero-event-activation"
+                      "receipt cannot masquerade as a finding"
+
+                  Expect.equal
+                      (receipt.GetProperty("exercisedPhases").GetArrayLength())
+                      3
+                      "all exercised phases are retained"
+
+                  Expect.equal
+                      (receipt.GetProperty("evidence").GetArrayLength())
+                      2
+                      "activation evidence is retained"
+
+                  Expect.isFalse
+                      (receipt.TryGetProperty("kind") |> fst)
+                      "event-only kind is not fabricated"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "zero-event receipt rejects event-only and arbitrary private fields" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-strict-schema-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  let path =
+                      appendZeroEventActivation
+                          root
+                          "001-example"
+                          [ "verify-ship-pr" ]
+                          [ "command:dotnet test" ]
+                          "No material event qualified."
+
+                  let mutated =
+                      File.ReadAllText(path).TrimEnd().TrimEnd('}')
+                      + ""","kind":"defect","owner":"rendering","secret":"--token=leak"}"""
+
+                  File.WriteAllText(path, mutated)
+                  let errors = validateCheckpointState root "001-example"
+
+                  for forbidden in [ "kind"; "owner"; "secret" ] do
+                      Expect.exists
+                          errors
+                          (fun error -> error.Contains(sprintf "unknown property '%s'" forbidden))
+                          (sprintf "strict schema rejects %s" forbidden)
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "missing checkpoint state is distinct from a verified zero-event receipt" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-missing-" + Guid.NewGuid().ToString "N"
+                  )
+
+              let errors = validateCheckpointState root "001-example"
+
+              Expect.exists
+                  errors
+                  (fun error ->
+                      error.Contains(
+                          "missing both checkpoint events and a zero-event activation receipt"
+                      ))
+                  "absence remains fail-closed rather than being interpreted as zero events"
+          }
+
+          test "empty checkpoint JSONL cannot impersonate an intentional zero-event cycle" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-empty-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  let directory = Path.Combine(root, "feedback", "checkpoints")
+                  Directory.CreateDirectory directory |> ignore
+                  File.WriteAllText(Path.Combine(directory, "001-example.jsonl"), "")
+                  let errors = validateCheckpointState root "001-example"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("contains no events"))
+                      "an empty event file requires an explicit activation receipt"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "checkpoint event state cannot escape the workspace through a symlink" {
+              if not (OperatingSystem.IsLinux()) then
+                  skiptest "Linux regression for realpath containment"
+
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-event-link-" + Guid.NewGuid().ToString "N"
+                  )
+
+              let external =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-event-external-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  let externalPath =
+                      appendCheckpoint
+                          external
+                          "001-example"
+                          "verify"
+                          "testing"
+                          "friction"
+                          "external event"
+                          "command:dotnet test"
+                          "none"
+                          "FS-GG/FS.GG.Rendering"
+
+                  let directory = Path.Combine(root, "feedback", "checkpoints")
+                  Directory.CreateDirectory directory |> ignore
+
+                  File.CreateSymbolicLink(
+                      Path.Combine(directory, "001-example.jsonl"),
+                      externalPath
+                  )
+                  |> ignore
+
+                  let errors = validateCheckpointState root "001-example"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("resolves outside the workspace"))
+                      "event JSONL receives the same containment check as activation receipts"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+
+                  if Directory.Exists external then
+                      Directory.Delete(external, true)
+          }
+
+          test "malformed zero-event activation receipt fails closed" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-malformed-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  let path = activationReceiptPath root "001-example"
+                  Directory.CreateDirectory(Path.Combine(root, "feedback", "checkpoints"))
+                  |> ignore
+                  File.WriteAllText(path, """{"activationSchema":1,"cycle":""")
+                  let errors = validateCheckpointState root "001-example"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("malformed JSON"))
+                      "truncated receipt is not accepted as activation evidence"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "unreadable zero-event activation receipt is not reported as merely missing" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-unreadable-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  activationReceiptPath root "001-example"
+                  |> Directory.CreateDirectory
+                  |> ignore
+
+                  let errors = validateCheckpointState root "001-example"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("unreadable"))
+                      "an unreadable receipt-shaped path has its own fail-closed diagnostic"
               finally
                   if Directory.Exists root then
                       Directory.Delete(root, true)
