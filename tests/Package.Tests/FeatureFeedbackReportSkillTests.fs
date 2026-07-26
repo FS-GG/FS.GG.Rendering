@@ -37,7 +37,7 @@ One retry.
 - **Impact:** one avoidable retry
 - **Expected:** one pass
 - **Observed:** two passes
-- **Evidence:** build.log
+- **Evidence:** file:readiness/build.log
 - **Version:** 0.23.0
 - **Owner:** FS-GG/FS.GG.Rendering template
 - **Recurrence:** new
@@ -142,7 +142,10 @@ let feedbackReportSkillTests =
                   validReport
                       .Replace("one pass", "the behavior should work")
                       .Replace("two passes", "the behavior should work")
-                      .Replace("build.log", "claim-only:no inspectable evidence")
+                      .Replace(
+                          "file:readiness/build.log",
+                          "claim-only:no inspectable evidence"
+                      )
 
               let root = Path.GetTempPath()
               let reportPath = Path.Combine(root, "feedback", "report.md")
@@ -177,9 +180,15 @@ let feedbackReportSkillTests =
                             result = "verified"
                             sha256 = Some(String.replicate 64 "0") |} |]
 
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "file:readiness/dead.log"
+                      )
+
                   let errors =
-                      auditJson root reportPath validReport "actionable" evidence
-                      |> validateActionabilityAudit root reportPath validReport
+                      auditJson root reportPath report "actionable" evidence
+                      |> validateActionabilityAudit root reportPath report
 
                   Expect.exists
                       errors
@@ -190,17 +199,60 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "an unrelated live audit locator cannot green the report's dead evidence" {
+              let root =
+                  Path.Combine(
+                      Path.GetTempPath(),
+                      "fsgg-feedback-substitution-" + Guid.NewGuid().ToString "N"
+                  )
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let livePath = Path.Combine(root, "readiness", "green.log")
+                  File.WriteAllText(livePath, "green")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/green.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "green") |} |]
+
+                  let errors =
+                      auditJson root reportPath validReport "actionable" evidence
+                      |> validateActionabilityAudit root reportPath validReport
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("report evidence has no matching check"))
+                      "the dead report locator remains unchecked"
+
+                  Expect.exists
+                      errors
+                      (fun error -> error.Contains("checked evidence is not declared"))
+                      "the unrelated live locator is an unexplained substitution"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "non-reproducing command cannot support actionable disposition" {
               let root = Path.GetTempPath()
               let reportPath = Path.Combine(root, "feedback", "report.md")
+              let report =
+                  validReport.Replace(
+                      "file:readiness/build.log",
+                      "command:dotnet test"
+                  )
+
               let evidence =
                   [| {| locator = "command:dotnet test"
                         result = "non-reproducing"
                         sha256 = None |} |]
 
               let errors =
-                  auditJson root reportPath validReport "actionable" evidence
-                  |> validateActionabilityAudit root reportPath validReport
+                  auditJson root reportPath report "actionable" evidence
+                  |> validateActionabilityAudit root reportPath report
 
               Expect.exists
                   errors
@@ -214,14 +266,20 @@ let feedbackReportSkillTests =
 
               for status, result in
                   [ "unsupported", "claim-only"; "duplicate", "verified" ] do
+                  let report =
+                      validReport.Replace(
+                          "file:readiness/build.log",
+                          "issue:FS-GG/FS.GG.Rendering#24"
+                      )
+
                   let evidence =
                       [| {| locator = "issue:FS-GG/FS.GG.Rendering#24"
                             result = result
                             sha256 = None |} |]
 
                   let errors =
-                      auditJson root reportPath validReport status evidence
-                      |> validateActionabilityAudit root reportPath validReport
+                      auditJson root reportPath report status evidence
+                      |> validateActionabilityAudit root reportPath report
 
                   if status = "unsupported" then
                       Expect.exists
@@ -233,7 +291,13 @@ let feedbackReportSkillTests =
           }
 
           test "well-grounded positive pattern requires positive-pattern disposition" {
-              let report = validReport.Replace("**Kind:** friction", "**Kind:** positive-pattern")
+              let report =
+                  validReport
+                      .Replace("**Kind:** friction", "**Kind:** positive-pattern")
+                      .Replace(
+                          "file:readiness/build.log",
+                          "command:dotnet test"
+                      )
               let root = Path.GetTempPath()
               let reportPath = Path.Combine(root, "feedback", "report.md")
               let evidence =
@@ -289,7 +353,7 @@ let feedbackReportSkillTests =
                       .Replace("Example friction", "Testing was green")
                       .Replace("one pass", "the player can leave the first room")
                       .Replace("two passes", "the test suite was green")
-                      .Replace("build.log", "command:dotnet test")
+                      .Replace("file:readiness/build.log", "command:dotnet test")
 
               let root = Path.GetTempPath()
               let reportPath = Path.Combine(root, "feedback", "rogue2.md")

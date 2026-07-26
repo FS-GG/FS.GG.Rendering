@@ -258,7 +258,7 @@ type ActionabilityAudit =
       criticPromptVersion: string
       findings: FindingAudit list }
 
-let private findingIdsAndKinds (reportText: string) =
+let private findingContracts (reportText: string) =
     let findings = sectionText reportText requiredSections.[3] requiredSections.[4]
     let matches = Regex.Matches(findings, @"(?m)^#### (§4\.\d+) .+$")
 
@@ -270,7 +270,21 @@ let private findingIdsAndKinds (reportText: string) =
 
           let chunk = findings.Substring(chunkStart, chunkEnd - chunkStart)
           let kindMatch = Regex.Match(chunk, @"(?m)^- \*\*Kind:\*\*\s+(\S+)\s*$")
-          yield matches.[index].Groups.[1].Value, if kindMatch.Success then kindMatch.Groups.[1].Value else "" ]
+          let evidenceMatch = Regex.Match(chunk, @"(?m)^- \*\*Evidence:\*\*\s+(.+?)\s*$")
+
+          let evidence =
+              if evidenceMatch.Success then
+                  evidenceMatch.Groups.[1].Value.Split(';')
+                  |> Array.map _.Trim()
+                  |> Array.filter (String.IsNullOrWhiteSpace >> not)
+                  |> Set.ofArray
+              else
+                  Set.empty
+
+          yield
+              matches.[index].Groups.[1].Value,
+              (if kindMatch.Success then kindMatch.Groups.[1].Value else ""),
+              evidence ]
 
 let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
     if not (locator.StartsWith("file:", StringComparison.Ordinal)) then
@@ -338,10 +352,10 @@ let validateActionabilityAudit
         if String.IsNullOrWhiteSpace audit.criticPromptVersion then
             errors.Add "audit: criticPromptVersion must not be empty"
 
-        let expectedFindings = findingIdsAndKinds reportText
+        let expectedFindings = findingContracts reportText
         let audits = if isNull (box audit.findings) then [] else audit.findings
 
-        for id, kind in expectedFindings do
+        for id, kind, declaredEvidence in expectedFindings do
             let matches = audits |> List.filter (fun finding -> finding.id = id)
 
             if List.isEmpty matches then
@@ -388,6 +402,24 @@ let validateActionabilityAudit
                 if List.isEmpty checks then
                     errors.Add(sprintf "audit: %s has no checked evidence" id)
 
+                let checkedLocators = checks |> List.map _.locator |> Set.ofList
+
+                for locator in Set.difference declaredEvidence checkedLocators do
+                    errors.Add(
+                        sprintf
+                            "audit: %s report evidence has no matching check: %s"
+                            id
+                            locator
+                    )
+
+                for locator in Set.difference checkedLocators declaredEvidence do
+                    errors.Add(
+                        sprintf
+                            "audit: %s checked evidence is not declared by the report: %s"
+                            id
+                            locator
+                    )
+
                 for check in checks do
                     if not (List.contains check.result evidenceResults) then
                         errors.Add(
@@ -429,7 +461,7 @@ let validateActionabilityAudit
                     elif Path.IsPathRooted check.locator then
                         errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
 
-        let expectedIds = expectedFindings |> List.map fst |> Set.ofList
+        let expectedIds = expectedFindings |> List.map (fun (id, _, _) -> id) |> Set.ofList
 
         for finding in audits do
             if not (Set.contains finding.id expectedIds) then

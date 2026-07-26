@@ -206,7 +206,7 @@ Use a structured record for every finding:
 - **Impact:** <who/what was affected and severity>
 - **Expected:** <documented, designed, or reasonably required behavior>
 - **Observed:** <what happened>
-- **Evidence:** <command/output, artifact, diff, screenshot, source location, timing, or interaction>
+- **Evidence:** <exact locator; separate multiple locators with `;`>
 - **Version:** <reproduced package/tool version and current version checked, or n/a>
 - **Owner:** <FS-GG repo plus component/change surface>
 - **Recurrence:** new | first seen <report/ref> | seen again <report/ref>; <existing issue/ref>
@@ -215,6 +215,8 @@ Use a structured record for every finding:
 ```
 
 Evidence need not be a command, but it must let another person inspect or reproduce the observation.
+Each semicolon-separated value is an exact locator copied into the audit's `checkedEvidence`; the
+validator rejects an unchecked report locator or a substituted audit locator.
 For versioned defects, check the latest available release and say when re-verification was not
 possible. Search prior reports and open/closed issues before filing. Add new evidence to an existing
 issue instead of duplicating it.
