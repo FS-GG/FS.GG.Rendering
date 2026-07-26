@@ -1197,7 +1197,18 @@ let liveProof (i: Inputs) : LiveResult =
             "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"FS.GG.UI\" Version=\"%s\" /></ItemGroup><ItemGroup><Compile Include=\"Library.fs\" /></ItemGroup></Project>"
             v)
 
-    let rc, ro = run cdir "dotnet" [ "restore"; "Consumer.fsproj" ]
+    // Use only the generated config. CI's release-window feed action writes a user-level
+    // PackageSourceMapping for FS.GG.UI.*; allowing NuGet to merge that mapping here can map the
+    // package away from this proof's freshly packed `local` source even though the source list is
+    // cleared below the repo root.
+    let rc, ro =
+        run
+            cdir
+            "dotnet"
+            [ "restore"
+              "Consumer.fsproj"
+              "--configfile"
+              Path.Combine(cdir, "nuget.config") ]
     if rc <> 0 then raise (GuardError(sprintf "clean restore of FS.GG.UI@%s failed:\n%s" v ro))
     let _, listOut = run cdir "dotnet" [ "list"; "Consumer.fsproj"; "package"; "--include-transitive" ]
     let resolved =

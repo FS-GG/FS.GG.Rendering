@@ -120,6 +120,15 @@ jobs:
       # --no-restore: the locked, cold restore above is the one restore (gate.yml's pattern, FR-002/GR3).
       - name: Build solution (warms the suites that shell out to dotnet against this repo)
         run: dotnet build FS.GG.Rendering.slnx --no-restore
+
+      # #1064 — Package.Tests executes a freshly generated game outside this checkout. The release
+      # pin is not on nuget.org until this workflow publishes it, so that consumer must resolve the
+      # coherent framework set from the same canonical tree-under-test feed used by the generated-
+      # product jobs. Keeping one action avoids a second feed/mapping implementation drifting.
+      - name: Pack the framework set for generated consumers in Package.Tests
+        id: package-tests-feed
+        uses: ./.github/actions/product-local-feed
+
       # Package.Tests has been a slnx MEMBER since #540 — it is NOT "outside the solution", and every
       # clause that used to follow from that is now false: the locked, cold restore above already covers
       # it (that is what validates its committed lock file against the feed), and gate.yml already runs
@@ -138,6 +147,8 @@ jobs:
       # So do NOT delete this step as "redundant with the gate": the gate never sets the flag, so its
       # run skips the smoke entirely, and the smoke runs nowhere else.
       - name: Run Package.Tests
+        env:
+          FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}
         run: dotnet test tests/Package.Tests/Package.Tests.fsproj -c Release
 
   # NOTE (#680): this job is NO LONGER the only thing that compiles the scaffolded product. `gate.yml`'s

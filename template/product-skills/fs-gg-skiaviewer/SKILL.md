@@ -192,9 +192,9 @@ boundaries, `RawSamplesReceived` totals 1,000, `FoldedSamplesApplied` is at most
 move-driven update count is at most 60. Also inject one press/release/click sequence and require it
 exactly once. Record `CoalescedSamples`, `ModelUpdates`, `PresentedFrames`, `RepaintCause`, and
 `FullRenderFallbacks`; a launch that replaces `OnMetrics` with `ignore` is not performance evidence.
-Use `runInteractiveViewerWithPointerPacingAndAudio` (and its window-behavior sibling) when the same
-launch also owns audio or explicit window behavior—do not wrap the native host and duplicate logical
-coordinate inversion.
+Use `Viewer.runInteractiveViewerWithPointerPacingAndAudio` for audio, `Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacing` for explicit
+window behavior, and `Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio` for both. For a deterministic headless fold, use
+`Viewer.runInteractiveViewerScriptWithPointerPacing`. Do not wrap the native host and duplicate logical coordinate inversion.
 
 Keep the synthetic stream separate from normal movement+aiming evidence. The normal case must report
 p95 below 16.67 ms, p99 below 25 ms, and no sustained catch-up; the 1,000-sample case proves bounded

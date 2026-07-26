@@ -53,13 +53,33 @@ module Harness =
     /// A stalled restore/build must fail, not hang. Generous enough for a cold restore on a slow runner.
     let private timeoutMs = 6 * 60 * 1000
 
-    let private nugetConfig =
-        """<?xml version="1.0" encoding="utf-8"?>
+    let private nugetConfig () =
+        let localSource, localMapping =
+            match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
+            | null
+            | "" -> "", ""
+            | feed ->
+                let escapedFeed = System.Security.SecurityElement.Escape feed
+
+                $"    <add key=\"product-local-feed\" value=\"{escapedFeed}\" />\n",
+                """    <packageSource key="product-local-feed">
+      <package pattern="FS.GG.UI" />
+      <package pattern="FS.GG.UI.*" />
+    </packageSource>
+"""
+
+        $"""<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
     <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+{localSource}    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
+  <packageSourceMapping>
+    <clear />
+{localMapping}    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
 </configuration>
 """
 
@@ -128,7 +148,7 @@ module Harness =
 </Project>
 """
 
-            File.WriteAllText(Path.Combine(workDir, "NuGet.config"), nugetConfig)
+            File.WriteAllText(Path.Combine(workDir, "NuGet.config"), nugetConfig ())
             File.WriteAllText(Path.Combine(workDir, "DocFences.Probe.fsproj"), project)
 
             for u in units do

@@ -1730,6 +1730,10 @@ open   FS.GG.UI.Scene
 +      Viewer.Types.fsi type ViewerPointerButtonKind
 +      Viewer.Types.fsi type ViewerPointerPhaseKind
 +      Viewer.Types.fsi type ViewerPointerInput
++      Viewer.Types.fsi type ViewerContinuousPointerPolicy
++      Viewer.Types.fsi type ViewerPointerRepaintCause
++      Viewer.Types.fsi type ViewerPointerPacingMetrics
++      Viewer.Types.fsi type ViewerPointerPacingOptions
 +      Viewer.Types.fsi type InteractiveViewerHost`2
 +      SkiaViewer.fsi val Viewer.init
 +      SkiaViewer.fsi val Viewer.initWithWindowBehavior
@@ -1759,8 +1763,15 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithAudio
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.defaultPointerPacingOptions
++      SkiaViewer.fsi val Viewer.enqueueInputWithPointerPolicy
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithPointerPacing
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithPointerPacingAndAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacing
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithAudio
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio
++      SkiaViewer.fsi val Viewer.runInteractiveViewerScriptWithPointerPacing
 +      SkiaViewer.fsi val Viewer.runAppEvidence
 +      SkiaViewer.fsi val Viewer.runBounded
 +      SkiaViewer.fsi val Viewer.runUntilFirstFrame

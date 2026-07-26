@@ -654,6 +654,34 @@ type ViewerPointerInput =
       DeltaX: float
       DeltaY: float }
 
+[<RequireQualifiedAccess>]
+/// Policy for replaceable continuous pointer samples at the interactive viewer boundary.
+/// `CoalesceLatestPerFrame` retains only the newest `Moved` sample for each presentation boundary;
+/// `Immediate` applies every move. Press/release/wheel/exit remain lossless in both modes.
+type ViewerContinuousPointerPolicy =
+    | CoalesceLatestPerFrame
+    | Immediate
+
+[<RequireQualifiedAccess>]
+type ViewerPointerRepaintCause =
+    | ContinuousPointer
+    | DiscretePointer
+    | MixedPointer
+
+/// Live counters emitted after each pointer-input batch is drained.
+type ViewerPointerPacingMetrics =
+    { RawSamplesReceived: int
+      FoldedSamplesApplied: int
+      CoalescedSamples: int
+      ModelUpdates: int
+      PresentedFrames: int64
+      RepaintCause: ViewerPointerRepaintCause
+      FullRenderFallbacks: int }
+
+type ViewerPointerPacingOptions =
+    { ContinuousPolicy: ViewerContinuousPointerPolicy
+      OnMetrics: ViewerPointerPacingMetrics -> unit }
+
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`.
 /// Controls-free lower runner; the Control/PointerInteraction-aware `InteractiveAppHost`
@@ -829,6 +857,45 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Default retained pointer policy: latest `Moved` sample per presented-frame boundary; discrete
+    /// events are lossless. The callback is `ignore`.
+    val defaultPointerPacingOptions: ViewerPointerPacingOptions
+    /// Enqueue using the same explicit continuous-pointer policy as the interactive live host.
+    val enqueueInputWithPointerPolicy:
+        policy: ViewerContinuousPointerPolicy ->
+        receivedAt: DateTimeOffset ->
+        inputKind: ViewerResponsivenessInputKind ->
+        payload: string ->
+        queue: ViewerInputQueue ->
+            ViewerInputEnvelope * ViewerInputQueue
+    /// `runInteractiveViewer` with an explicit continuous-pointer policy and live pacing counters.
+    val runInteractiveViewerWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Pointer pacing and audio share the same interactive launch fold.
+    val runInteractiveViewerWithPointerPacingAndAudio:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Pointer pacing plus explicit window behavior on the same retained launch path.
+    val runInteractiveViewerWithWindowBehaviorAndPointerPacing:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// Full interactive launch: explicit window behavior, pointer pacing metrics, and audio.
+    val runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #438 — `runInteractiveViewerScript` with an audio sink. #429 gave the interactive family a
     /// sink but only on its NON-scripted entry points; the scripted runners kept passing `ignore`, so a
     /// scripted product's `PlayAudio` was still dropped with no error and no diagnostic. That mattered
@@ -849,6 +916,12 @@ module Viewer =
         behavior: ViewerWindowBehaviorRequest ->
         script: ViewerScriptInput list ->
         audioSink: (AudioEffect list -> unit) ->
+        host: InteractiveViewerHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerScriptWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        script: ViewerScriptInput list ->
         host: InteractiveViewerHost<'model,'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Public contract function exposed by this FS.GG.UI package.

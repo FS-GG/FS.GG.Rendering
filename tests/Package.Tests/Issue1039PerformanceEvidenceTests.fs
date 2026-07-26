@@ -25,6 +25,36 @@ let private occurrences (needle: string) (text: string) =
 
     loop 0 0
 
+let private writeConsumerNugetConfig directory =
+    match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
+    | null
+    | "" -> ()
+    | feed ->
+        let escapedFeed = System.Security.SecurityElement.Escape feed
+
+        File.WriteAllText(
+            Path.Combine(directory, "NuGet.Config"),
+            $"""<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="product-local-feed" value="{escapedFeed}" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <clear />
+    <packageSource key="product-local-feed">
+      <package pattern="FS.GG.UI" />
+      <package pattern="FS.GG.UI.*" />
+    </packageSource>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>
+"""
+        )
+
 type private CommandResult =
     { ExitCode: int
       Output: string }
@@ -317,6 +347,7 @@ let performanceEvidenceContract =
                         "readiness/performance-intent.yml" ]
 
               Directory.CreateDirectory fixtureRoot |> ignore
+              writeConsumerNugetConfig fixtureRoot
 
               try
                   let install =

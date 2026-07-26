@@ -527,6 +527,36 @@ let private probeTimeoutMs = 6 * 60 * 1000
 let private probePackagesDir =
     Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-packages")
 
+let private isolatedProbeNugetConfig () =
+    let localSource, localMapping =
+        match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
+        | null
+        | "" -> "", ""
+        | feed ->
+            let escapedFeed = System.Security.SecurityElement.Escape feed
+
+            $"    <add key=\"product-local-feed\" value=\"{escapedFeed}\" />\n",
+            """    <packageSource key="product-local-feed">
+      <package pattern="FS.GG.UI" />
+      <package pattern="FS.GG.UI.*" />
+    </packageSource>
+"""
+
+    $"""<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+{localSource}    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <clear />
+{localMapping}    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>
+"""
+
 // ---------------------------------------------------------------------------------------------
 // #589 — the same question, asked of the DOCS instead of Program.fs.
 //
@@ -1955,15 +1985,7 @@ module private PinnedApi =
             // GREEN precisely when the published pin is missing the API, which is the failure it exists
             // to catch. So: `<clear />` the sources down to nuget.org, and restore into a probe-local
             // packages folder that no local pack can have seeded.
-            let nugetConfig =
-                """<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-  </packageSources>
-</configuration>
-"""
+            let nugetConfig = isolatedProbeNugetConfig ()
 
             // Built OUTSIDE the repo tree so the repo's Directory.Build.props / central package
             // management / locked-restore rules do not apply to the probe.
@@ -2090,15 +2112,7 @@ module private PinnedApi =
             // carries whatever was in `src/` at pack time — INCLUDING the very symbols this rule exists to
             // catch — so resolving against the ambient cache would make it green precisely when it should
             // be red.
-            let nugetConfig =
-                """<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-  </packageSources>
-</configuration>
-"""
+            let nugetConfig = isolatedProbeNugetConfig ()
 
             let project =
                 $"""<Project Sdk="Microsoft.NET.Sdk">
