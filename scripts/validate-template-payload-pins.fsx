@@ -14,7 +14,7 @@
 // every check in this repo. This is the fails-open class of FS-GG/.github#266: "nothing to check"
 // and "checked, and it's fine" must not share an exit code.
 //
-// Two layers, mirroring scripts/validate-version-coherence.fsx:
+// Three lanes, and WHICH LANE A RULE LIVES IN IS THE POINT (#1102 — see "THE SPLIT VERDICT" below):
 //
 //   * Structural verdict-core (always, env-free, offline): the three axis literals are present
 //     exactly once each and are well-formed SemVer; EVERY `FS.GG.*` PackageVersion derives through
@@ -32,10 +32,52 @@
 //         literals would be insufficient), unless the template is on the preview channel, which is
 //         asserted by $(FsGgUiVersion) alone (see `previewChannel`);
 //       - NU1603 (version substituted) / NU1608 / NU1101 / NU1102 are ERRORS, so a nonexistent pin
-//         cannot resolve upward silently;
-//       - the $(FsGgGameVersion) / $(FsGgAudioVersion) pins do not LAG feed-newest (the staleness
-//         direction that caught nothing when Game sat two minors behind). Sibling prior art:
-//         `.github`'s check-feed-coherence.py, which fails BOTH directions.
+//         cannot resolve upward silently.
+//
+//   * Staleness sweep (FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1): the $(FsGgGameVersion) /
+//     $(FsGgAudioVersion) / $(FsGgContractsVersion) pins do not LAG feed-newest (the staleness
+//     direction that caught nothing when Game sat two minors behind). Sibling prior art: `.github`'s
+//     check-feed-coherence.py, which fails BOTH directions. THIS LANE IS NOT ON A PR — it is
+//     scheduled, and it files an item. See below.
+//
+// THE SPLIT VERDICT (#1102, decided 2026-07-27 by @EHotwagner on that issue; filed from #1094 AC 3).
+//
+// `pin-lags-feed` used to run in the restore lane, i.e. on every PR. It compares a COMMITTED pin
+// against the LIVE nuget.org feed, so it is f(tree, WORLD): it moves without anybody committing. On
+// 2026-07-27 `main`@e2d860bc was green at 08:45Z; FS.GG.Contracts published 7.1.0 at 08:56Z and 7.2.0
+// at 13:26Z; by 13:59Z EVERY open PR in this repository was red, and not one of them had touched the
+// pin. The remedy was not one line either: landing the bump (#1094 / PR #1100) took five files across
+// three further gates, none of which the reporting CI ever reached, because `Deterministic gate` exits
+// at the first failing suite. A gate whose remedy is invisible to the CI that reports it is not giving
+// the author an actionable verdict — and it was accusing authors who caused nothing.
+//
+// So the verdict is SPLIT, by whether the rule is decidable from the commit under test:
+//
+//   | rule                                    | f(tree)? | lane      |
+//   |-----------------------------------------|----------|-----------|
+//   | pin-not-axis-derived                    | yes      | PR        |
+//   | profile-restores-nothing                | yes      | PR        |
+//   | prerelease-in-scaffolded-graph          | yes      | PR        |
+//   | pin-not-published / pin-does-not-resolve| yes*     | PR        |
+//   | pin-resolved-elsewhere                  | yes      | PR        |
+//   | pin-lags-feed                           | NO       | SCHEDULED |
+//
+// *"the pin resolves" reads the feed, but it accuses the commit that wrote the pin, and a pin that
+// does not resolve is broken FOR THE AUTHOR — the structural half of the same question. It stays.
+//
+// `pin-lags-feed` moves to `.github/workflows/template-pin-staleness-sweep.yml`, which runs this
+// script in the staleness lane on a schedule and FILES A TRACKED ITEM — exactly as
+// `skill-refs-sweep.yml` already does for citation decay in this repo. Drift is still tracked and
+// still gets an owner; it simply stops reddening people who did not cause it.
+//
+// TWO OPTIONS WERE REJECTED, and for stated reasons rather than by omission. Keeping it on every PR:
+// rejected on the measured cost above. Moving the WHOLE gate to a schedule: rejected because a
+// scaffolded product generated from a broken pin during the window is a real cost, and the structural
+// checks are cheap, decidable and genuinely the author's responsibility.
+//
+// DO NOT re-add `pin-lags-feed` to the PR lane, and do not "fix" a noisy sweep by making it required:
+// that is #1102 verbatim. A signal that cannot block is information; the same signal wired to block is
+// a false accusation.
 //
 // WHY $(FsGgUiVersion) IS EXEMPT FROM THE STALENESS RULE (and only that rule). The FS.GG.UI.* set is
 // published FROM THIS REPO, and Feature 209's guard already pins it to `fs-gg-ui/v*` snapshot tags —
@@ -56,6 +98,11 @@
 // feed-dependent check takes a dependency on nuget.org's availability, and a feed outage must not
 // wedge every merge in the repo. "Advisory" means NOT-REQUIRED; it does NOT mean `continue-on-error`
 // (#216). This script reddens its job whenever it cannot prove the payload restores.
+//
+// NOT-REQUIRED IS NOT UNBLOCKING, WHICH IS THE OTHER HALF OF #1102. `landable` scores EVERY workflow
+// run and check-run on a PR's head SHA, required or not, so a red advisory job stops the fleet from
+// merging just as surely as a red required one. "It is only advisory" was never an answer to the
+// false accusation; moving the rule out of the lane is.
 //
 // RELEASE-PENDING (#506) — WHY AN UNPUBLISHED $(FsGgUiVersion) IS NOT ALWAYS DRIFT.
 //
@@ -124,6 +171,15 @@ open System.Text.RegularExpressions
 let repoRoot = Directory.GetParent(__SOURCE_DIRECTORY__).FullName
 let repo (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 let live = Environment.GetEnvironmentVariable "FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE" = "1"
+
+/// STALENESS SWEEP LANE (#1102) — set by `.github/workflows/template-pin-staleness-sweep.yml`, which
+/// is SCHEDULED and files an item. It is the ONLY lane in which `pin-lags-feed` is evaluated: that
+/// rule is f(tree, WORLD) and may not red a PR whose commits did not change it. See the header.
+///
+/// It needs no restore — staleness is decided from the axis literals plus the feed's version list —
+/// so it deliberately does not imply `live`, and asking for both is a misconfiguration this script
+/// refuses rather than silently resolves (see `main`).
+let stalenessSweep = Environment.GetEnvironmentVariable "FS_GG_TEMPLATE_PIN_STALENESS_SWEEP" = "1"
 
 /// RELEASE LANE — set job-wide by any job that gates a PUBLISH (`release.yml`). Kills the
 /// RELEASE-PENDING waiver outright: it exists because the packages cannot exist before the commit that
@@ -635,14 +691,17 @@ let directPrereleaseFailures (i: Inputs) : Failure list =
                                 "re-pin $(%s) onto a stable version. The TRANSITIVE half of this rule needs the restore that RELEASE-PENDING skipped; a directly pinned prerelease needs no graph to see, so it is still checked"
                                 p.Axis } ]
 
-/// Existence on the feed, and (for the axes the feed owns) non-staleness. Both directions, like
-/// `.github`'s check-feed-coherence.py: a pin BEHIND feed-newest is stale; a pin the feed does not
-/// carry at all never resolves.
+/// EXISTENCE on the feed — the half of the old `feedFailures` that stays in the PR lane (#1102).
+///
+/// It reads the feed, but it accuses the commit that wrote the pin: a pin the feed does not carry is
+/// broken FOR THE AUTHOR, today and on every future commit, and no upstream publish can make it pass
+/// or fail. That is what separates it from `stalenessFailures` below, which moves when somebody else
+/// publishes. See the header's split table.
 ///
 /// `waiveUi` suppresses `pin-not-published` for the $(FsGgUiVersion) axis ALONE, and only in the
 /// release window (see `releasePending`). Game/Audio existence is never waived: this repo's bump does
 /// not publish them, so an absent one is a real defect on any commit.
-let feedFailures (waiveUi: bool) (i: Inputs) : Failure list =
+let feedExistenceFailures (waiveUi: bool) (i: Inputs) : Failure list =
     [ for KeyValue(axis, version) in i.AxisVersions do
         // Existence is asked of every pinned package on that axis, not of a representative: axis
         // members are published together, and one member missing at V is exactly the partial-graph
@@ -663,8 +722,20 @@ let feedFailures (waiveUi: bool) (i: Inputs) : Failure list =
                             if axis = uiAxis then
                                 sprintf "publish %s@%s, or re-pin $(%s) onto a version the feed carries. NOTE: this is NOT waived as RELEASE-PENDING, so this commit did not bump $(%s) — the pin is stale or typo'd, not mid-release" id version axis axis
                             else
-                                sprintf "publish %s@%s from its OWN repo, or re-pin $(%s) onto a version the feed carries — bumping this axis here publishes nothing" id version axis }
+                                sprintf "publish %s@%s from its OWN repo, or re-pin $(%s) onto a version the feed carries — bumping this axis here publishes nothing" id version axis } ]
 
+/// STALENESS — `pin-lags-feed`, and it is the ONLY rule in this lane (#1102).
+///
+/// It compares a committed pin against the LIVE feed, so it is f(tree, WORLD): an upstream publish
+/// flips it with no commit here, which is why it does NOT run on a PR any more. `stalenessSweep` is
+/// the only caller; `.github/workflows/template-pin-staleness-sweep.yml` is the only thing that sets
+/// it, on a schedule, and it FILES AN ITEM on a red rather than accusing whoever has a PR open.
+///
+/// `Fix` names the reconciliation ROUTINE rather than just the bump, because the bump is not the work:
+/// #1094 measured a Contracts move at five files across three further gates. docs/ci/cadence-map.md
+/// §4b carries the ordered list.
+let stalenessFailures (i: Inputs) : Failure list =
+    [ for KeyValue(axis, version) in i.AxisVersions do
         match axes |> List.tryPick (fun (a, rep) -> if a = axis then rep else None) with
         | None -> () // $(FsGgUiVersion): Feature 209 owns its staleness, against tags. See the header.
         | Some representative ->
@@ -675,7 +746,7 @@ let feedFailures (waiveUi: bool) (i: Inputs) : Failure list =
                       Location = sprintf "%s ($(%s))" propsRel axis
                       Expected = sprintf "%s (newest %s on nuget.org)" newest (if i.PreviewChannel then "version" else "stable version")
                       Actual = version
-                      Fix = sprintf "bump $(%s) to %s — a scaffolded product otherwise starts life on a stale component" axis newest } ]
+                      Fix = sprintf "bump $(%s) to %s — a scaffolded product otherwise starts life on a stale component. This is NOT a one-line diff: follow the reconciliation routine in docs/ci/cadence-map.md §4b (\"Bumping a component axis\"), which lists every gate the bump moves, in order" axis newest } ]
 
 // ---- reporting --------------------------------------------------------------------------------
 let printDrift (failures: Failure list) =
@@ -721,8 +792,11 @@ let printReleasePending (i: Inputs) (pending: string list) =
     printfn "    - the resolved graph of all %d scaffold profiles — the TRANSITIVE half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`" profiles.Length
     printfn "  STILL CHECKED (this bump does not publish these, so the window excuses nothing about them):"
     printfn "    - the structural verdict-core"
-    printfn "    - $(FsGgGameVersion) / $(FsGgAudioVersion) / $(FsGgContractsVersion) existence + staleness"
+    printfn "    - $(FsGgGameVersion) / $(FsGgAudioVersion) / $(FsGgContractsVersion) EXISTENCE on the feed"
     printfn "    - the DIRECT half of `prerelease-in-scaffolded-graph` — a pinned prerelease needs no graph to see"
+    printfn "  NOT CHECKED IN THIS LANE AT ALL, window or no window (#1102): staleness (`pin-lags-feed`)."
+    printfn "    It is f(tree, WORLD) and may not red a PR whose commits did not change it. It runs on a"
+    printfn "    schedule (.github/workflows/template-pin-staleness-sweep.yml) and files a tracked item."
     printfn "  Those still decide the exit code: a failure in any of them reds this run, waiver or no waiver."
     printfn "  If the publish never lands, the next commit to main does not bump the pin, the waiver is OFF, and this gate reds on `pin-not-published`."
     writeStepSummary
@@ -731,25 +805,76 @@ let printReleasePending (i: Inputs) (pending: string list) =
           ""
           sprintf "- **awaiting publish @ %s:** %s" version (String.concat ", " pending)
           sprintf "- **not checked:** the resolved graph of all %d scaffold profiles — the transitive half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`. Skipped, not passed." profiles.Length
-          "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` / `$(FsGgContractsVersion)` existence + staleness; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
+          "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` / `$(FsGgContractsVersion)` **existence** on the feed; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
+          "- **not in this lane at all (#1102):** staleness (`pin-lags-feed`). It is `f(tree, WORLD)`, so it runs on a schedule (`template-pin-staleness-sweep.yml`) and files a tracked item instead of reddening a PR nobody's commit broke."
           ""
           "If the publish never lands, the next commit to `main` reds this gate on `pin-not-published`." ]
 
 // ---- main -------------------------------------------------------------------------------------
 let main () =
+    // Two lanes at once is a misconfiguration, and it is REFUSED rather than silently resolved. A
+    // precedence rule here would decide, in secret, whether `pin-lags-feed` ran on a PR — which is the
+    // single question #1102 exists to have answered out loud.
+    if stalenessSweep && live then
+        raise (
+            GuardError
+                "FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 and FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE=1 are both set. These are different lanes with different verdicts (#1102): the restore lane gates a PR and must never evaluate `pin-lags-feed`; the sweep lane is scheduled, evaluates only `pin-lags-feed`, and files an item. Pick one."
+        )
+
     semverSelfCheck ()
     let i = readInputs ()
     let axisLine =
         i.AxisVersions |> Map.toList |> List.map (fun (a, v) -> sprintf "$(%s)=%s" a v) |> String.concat " · "
     printfn "template payload: %s%s" axisLine (if i.PreviewChannel then " (PREVIEW CHANNEL)" else "")
 
-    if not live then
+    if stalenessSweep then
+        // ---- the scheduled staleness lane (#1102) -------------------------------------------
+        // ONE rule lives here, and it lives ONLY here. No restore: staleness is decided from the
+        // axis literals plus the feed's version list, so this lane is cheap enough to run daily.
+        //
+        // A structural failure is a GUARD ERROR here rather than drift, and the distinction is the
+        // #266 one this script exists to keep. A bare-literal pin is invisible to `axes`, so the
+        // sweep would sweep a pin set that is not the one the props file describes and report a
+        // vacuous "up to date". It is also not this lane's finding to file: the required `gate` job
+        // already reds on it, against the author who wrote it.
+        let structural = structuralFailures i
+        if not structural.IsEmpty then
+            printDrift structural
+            eprintfn
+                "template payload pins: STALENESS SWEEP CANNOT RUN — %d structural failure(s) mean the pin set this lane would sweep is not the one %s describes. That is the required gate's finding, not this sweep's; fail closed rather than report a vacuous 'up to date'."
+                structural.Length
+                propsRel
+            2
+        else
+            let stale = stalenessFailures i
+            if stale.IsEmpty then
+                printfn
+                    "template payload pins: UP TO DATE — every feed-owned axis equals newest %s on nuget.org. ($(%s) is exempt: this repo publishes it, and Feature 209 owns its staleness against tags.)"
+                    (if i.PreviewChannel then "published version" else "stable version")
+                    uiAxis
+                writeStepSummary
+                    "Template payload pins — staleness sweep: up to date"
+                    [ sprintf "- axes: %s" axisLine
+                      sprintf "- every feed-owned axis equals newest %s on nuget.org." (if i.PreviewChannel then "published version" else "stable version")
+                      sprintf "- `$(%s)` is exempt from this rule and only this rule — see the script header." uiAxis ]
+                0
+            else
+                printDrift stale
+                summariseDrift stale
+                eprintfn
+                    "template payload pins: STALE — %d axis(es) lag the feed. Nobody's commit did this; the sweep files it as a tracked item rather than reddening a PR (#1102)."
+                    stale.Length
+                1
+    elif not live then
         let failures = structuralFailures i
         if failures.IsEmpty then
             printfn
                 "template payload pins: STRUCTURAL OK — %d FS.GG.* pins, all axis-derived; %d profiles each restore >= 1. Run with FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE=1 to prove the resolved graph."
                 i.Pins.Length
                 profiles.Length
+            // Say what was NOT judged, or "structural OK" reads as "the pins are fine" (#266).
+            printfn
+                "  NOT JUDGED HERE: the resolved graph (needs the restore lane), and staleness — `pin-lags-feed` runs only under FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1, on a schedule, and files an item (#1102)."
             0
         else
             printDrift failures
@@ -776,7 +901,8 @@ let main () =
                 // not say better. Skip them, and SAY they were skipped.
                 let pending = unpublishedUiMembers i
                 let waiveUi = releasePending pending
-                let feed = feedFailures waiveUi i
+                // EXISTENCE only. `pin-lags-feed` is not in this lane at all any more (#1102).
+                let feed = feedExistenceFailures waiveUi i
 
                 if waiveUi then
                     printReleasePending i pending
@@ -788,7 +914,7 @@ let main () =
                         // Deliberately NOT "COHERENT": the graph was not proved, and a success line that
                         // said so would be the lie the header forbids. The exit code says "not drift";
                         // the words say exactly what was and was not established.
-                        printfn "template payload pins: RELEASE-PENDING — structural core OK, Game/Audio axes OK, no directly pinned prerelease; restore proof deferred to the publish."
+                        printfn "template payload pins: RELEASE-PENDING — structural core OK, Game/Audio/Contracts pins all published, no directly pinned prerelease; restore proof deferred to the publish, staleness deferred to the sweep (#1102)."
                         0
                     else
                         // The waiver covers $(FsGgUiVersion)'s PUBLICATION and nothing else, so anything
@@ -815,12 +941,17 @@ let main () =
                         (if prereleases.IsEmpty then "NONE" else prereleases |> List.map (fun (id, v) -> sprintf "%s %s" id v) |> String.concat ", ")
 
                     if failures.IsEmpty then
-                        printfn "template payload pins: COHERENT (structural + restore-grounded)."
+                        // "COHERENT", not "UP TO DATE" — the words are not interchangeable since #1102.
+                        // This lane proves the payload RESOLVES; it says nothing about whether a newer
+                        // component has shipped, and a success line that blurred the two would be the
+                        // #266 lie in the other direction.
+                        printfn "template payload pins: COHERENT (structural + restore-grounded). Staleness NOT judged here — `pin-lags-feed` is the scheduled sweep's (#1102)."
                         writeStepSummary
                             "Template payload pins — coherent"
                             [ sprintf "- axes: %s" axisLine
                               sprintf "- profiles proved: %s" (String.concat ", " profiles)
-                              sprintf "- distinct `FS.GG.*` resolved (transitive incl.): **%d** · prerelease: **NONE**" allResolved.Length ]
+                              sprintf "- distinct `FS.GG.*` resolved (transitive incl.): **%d** · prerelease: **NONE**" allResolved.Length
+                              "- **not judged here:** staleness (`pin-lags-feed`) — see `.github/workflows/template-pin-staleness-sweep.yml` (#1102)." ]
                         0
                     else
                         printDrift failures

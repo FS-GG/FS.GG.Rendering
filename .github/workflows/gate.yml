@@ -704,8 +704,17 @@ jobs:
   # asserts the RESOLVED GRAPH: no prerelease `FS.GG.*` anywhere including transitively (a prerelease
   # enters through a dependency without ever appearing in the props file — FS.GG.Game.Render reaches
   # down to FS.GG.UI.Scene, so a regex over the three literals is insufficient); NU1603/NU1608 promoted
-  # to errors so a nonexistent pin cannot resolve upward silently; and the Game/Audio pins not lagging
-  # feed-newest (the staleness direction, as `.github`'s check-feed-coherence.py does for the registry).
+  # to errors so a nonexistent pin cannot resolve upward silently; and every pinned (id, version)
+  # present on the feed.
+  #
+  # WHAT THIS JOB NO LONGER JUDGES, AND WHY (#1102). It used to also assert the Game/Audio/Contracts
+  # pins were not LAGGING feed-newest. That rule — `pin-lags-feed` — is f(tree, WORLD): it flips when
+  # somebody publishes in another repository, and no commit here can preempt it. On 2026-07-27 an
+  # upstream FS.GG.Contracts publish turned every open PR in this repo red, none of which had touched
+  # the pin, and the remedy lived in a file none of their items had declared. It now runs on a schedule
+  # — `.github/workflows/template-pin-staleness-sweep.yml` — which FILES A TRACKED ITEM instead. Do not
+  # move it back here, and do not "fix" a noisy sweep by making it required. What stays here is what
+  # the author of the commit under test is answerable for: the pin resolves, exactly as written.
   #
   # A SEPARATE JOB, not a step of the required `gate`: this reads nuget.org, and requiring a
   # feed-dependent check takes a dependency on that feed's availability — an outage must not wedge
@@ -713,6 +722,9 @@ jobs:
   # because it can tell a silent feed apart from a break (`FeedUnavailable` → exit 0). This job
   # cannot: the feed is its SUBJECT, so an outage is indistinguishable from a bad pin. It has no
   # elevation path and must stay non-required (cadence-map §4b/§5).
+  # AND NON-REQUIRED IS NOT NON-BLOCKING (#1102): `landable` scores every workflow run and check-run on
+  # the head SHA, required or not, so a red here still stops the fleet merging. That is why a rule that
+  # can red an unchanged commit had to LEAVE this job rather than merely stay advisory in it.
   # NOT-REQUIRED is NOT `continue-on-error` (#216): this job has none and must not grow one.
   # A red here is the gate reporting what it found. Its exits: 0 coherent · 1 drift · 2 guard error
   # (feed unreachable / restore tooling failed / zero pins matched) — it fails CLOSED, per #266's rule

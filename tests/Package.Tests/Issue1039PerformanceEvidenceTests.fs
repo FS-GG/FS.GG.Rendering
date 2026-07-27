@@ -284,14 +284,34 @@ let performanceEvidenceContract =
                   (source.Contains("type PerformanceIntentDeclaration", StringComparison.Ordinal))
                   "the template does not invent a parallel intent contract"
 
-              // #1094: the pin moved 7.0.0 -> 7.2.0. `pin-lags-feed` compares this pin against the LIVE
-              // nuget.org feed, so an upstream FS.GG.Contracts publish reds `main` with no commit here and
-              // the pin MUST follow it. This assertion is deliberately still a frozen literal rather than a
-              // `7.` prefix match: "producer version is exact" is the property under test — the pin is one
-              // exact version, never a floating range — and a prefix match would stop witnessing it. The
-              // cost is that this literal is a second edit every time Contracts publishes; that recurring
-              // cost, and whether a feed-comparing gate belongs on every PR at all, is the open question
-              // recorded on #1094 (AC 3) and filed as its own item rather than settled by narrowing here.
+              // A FROZEN LITERAL, ON PURPOSE — AND HERE IS THE GATE THAT WILL BREAK IT (#1102 AC 2).
+              //
+              // THE GATE: `pin-lags-feed`, in scripts/validate-template-payload-pins.fsx. It demands
+              // $(FsGgContractsVersion) equal the newest STABLE FS.GG.Contracts on nuget.org. This test
+              // demands it equal the literal below. So every upstream FS.GG.Contracts publish makes the
+              // two mutually unsatisfiable until a human edits this line. That is EXPECTED AND ROUTINE,
+              // not a defect: it is the cost of witnessing the property, and it is paid deliberately.
+              //
+              // WHY IT STAYS EXACT. "Producer version is exact" is the property under test — the pin is
+              // ONE EXACT VERSION, never a floating range. A `7.` prefix match would stop witnessing it,
+              // and nothing else in the tree witnesses it. Two things are therefore FORBIDDEN here, and
+              // both were considered and rejected on #1102 rather than overlooked:
+              //   * DO NOT loosen this to a prefix/StartsWith match. That is the property, gone.
+              //   * DO NOT source it from the axis `pin-lags-feed` reads. It removes the manual edit and
+              //     collapses two independent witnesses into one source, so neither can catch the other
+              //     being wrong. The manual edit IS the second witness.
+              //
+              // WHAT TO DO WHEN IT FIRES. Moving this literal is step 6 of a SIX-STEP routine, and the
+              // other five are invisible to the CI that reported it: `Deterministic gate` exits at the
+              // first failing suite, so a Contracts bump reds one gate at a time. #1094 measured the
+              // 7.0.0 -> 7.2.0 move at five files across three further gates (the omission ledger, the
+              // ledger ceiling, the pre-#782 mirror bridge, the M-PROV stamps, and this line). Work
+              // docs/ci/cadence-map.md §4b, "Bumping a component axis", which lists them in order.
+              //
+              // AND `pin-lags-feed` NO LONGER REDS A PR (#1102). It moved to the scheduled sweep
+              // .github/workflows/template-pin-staleness-sweep.yml, which files a tracked item. So this
+              // literal is now moved by somebody who CLAIMED that item, with the routine in hand —
+              // rather than by whoever happened to have a PR open when Contracts published.
               Expect.stringContains packages "<FsGgContractsVersion>7.2.0</FsGgContractsVersion>" "producer version is exact"
               Expect.stringContains
                   project
