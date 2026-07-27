@@ -387,26 +387,32 @@ let packingReleaseAtOrAbove (id: string) (pinned: string) : Result<string option
         Error $"could not reach nuget.org: {ex.Message}"
 
 /// The hard error for a pin that carries no `api-surface/`, with advice that is true for THIS package.
+///
+/// The OBSERVATION is all the header states — "the restored package carries no api-surface/". "It
+/// predates #782" is a DIAGNOSIS, and it belongs only in the branches where the feed has confirmed it:
+/// in the restore-is-wrong branch it is flatly false, and asserting it there would send the reader
+/// looking for a producer gap that does not exist. Separating the two is the same discipline AC3 is
+/// about — never state as fact something this code has not established.
 let noSurfaceFailure (id: string) (version: string) : string =
-    let head = $"{id} {version} carries no api-surface/ — it predates #782."
+    let head = $"{id} {version}: the restored package carries no api-surface/."
 
     match packingReleaseAtOrAbove id version with
     | Ok(Some newest) when newest = version ->
-        // The feed says this very version packs it, but the restored package does not carry it: the
-        // restore, not the pin, is what is wrong. Never advise a bump to the version already pinned.
-        $"{head} But nuget.org reports that {id} {newest} DOES pack api-surface/, so the restored copy \
-under {probePackagesDir} is not what the feed serves — clear it and restore again rather than moving \
-the pin."
+        // The feed says this very version packs it, but the restored copy does not carry it: the
+        // restore, not the pin, is what is wrong. Never advise a bump to the version already pinned,
+        // and never call this "predates #782" — the feed has just said otherwise.
+        $"{head} But nuget.org reports that {id} {newest} DOES pack api-surface/, so the copy under \
+{probePackagesDir} is not what the feed serves — clear it and restore again rather than moving the pin."
     | Ok(Some newest) ->
-        $"{head} {id} {newest} is the newest published stable release at or above the pin that DOES \
-pack its .fsi — bump this package's pin in {pinsProps} to it."
+        $"{head} It predates #782. {id} {newest} is the newest published stable release at or above \
+the pin that DOES pack its .fsi — bump this package's pin in {pinsProps} to it."
     | Ok None ->
-        $"{head} NO published stable release of {id} at or above {version} packs api-surface/, so \
-BUMPING THE PIN CANNOT FIX THIS — there is nothing to bump to. The remedy belongs to the PRODUCING \
-repository, which owes #782's half (pack $(Compile) filtered to .fsi under api-surface/); file it \
-there and leave this pin alone. Do NOT hand-copy the surface into this repo instead: that bridge \
-existed for FS.GG.Contracts, it blinded the member-level coverage rule for the whole time it was \
-there, and #1101 deleted it."
+        $"{head} It predates #782, and so does every published stable release of {id} at or above \
+{version} — NO release above the pin packs api-surface/, so BUMPING THE PIN CANNOT FIX THIS. There is \
+nothing to bump to. The remedy belongs to the PRODUCING repository, which owes #782's half (pack \
+$(Compile) filtered to .fsi under api-surface/); file it there and leave this pin alone. Do NOT \
+hand-copy the surface into this repo instead: that bridge existed for FS.GG.Contracts, it blinded the \
+member-level coverage rule for the whole time it was there, and #1101 deleted it."
     | Error why ->
         $"{head} Could not determine whether any published release of {id} packs its .fsi ({why}), so \
 this cannot tell you whether bumping the pin is even possible — failing closed rather than guessing. \
