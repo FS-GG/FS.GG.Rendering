@@ -8,28 +8,39 @@ module Feature1093UnreadableSurfaceTests
 // `readEntry`/`parseFrontMatter` alike, and it emitted no finding, no caveat and no diagnostic — the file
 // was simply not in the inventory, and nothing anywhere said so.
 //
-// Why that is a fail-open and not a rough edge. #1086 makes a REQUIRED surface that resolves to zero
-// FILES a High finding, and that check is deliberately over `filesForSurface`, which counts files on
-// disk. So the residual hole is exact: a surface whose files all exist but all fail to read has a
-// non-empty file list (it passes #1086's check) and contributes zero ENTRIES, so every entry-driven
-// producer — wrapper parity, canonical drift, manifest coverage, API symbols — has nothing to say about
-// it, and the gate reports `passed`. The surface was not empty; it was UNHEARD. Worse than the original
-// in one respect: #1086's version at least showed a zero in the surface inventory, whereas this one shows
-// files present and findings absent.
+// Why that is a fail-open and not a rough edge. Every OTHER rule in the module judges bodies that were
+// successfully READ — wrapper parity, canonical drift, manifest coverage, API symbols — so a file that
+// never became an entry is a file none of them can speak about, and the gate reports `passed`. The
+// surface was not empty; it was UNHEARD, which is strictly harder to notice than empty: an empty surface
+// at least shows a zero in the inventory, whereas this shows the files present and the findings absent.
 //
-// The first test below is that scenario end to end. It makes the fixture's canonical body unreadable, and
+// #1093 was split out of #1086 and is INDEPENDENT of it. (#1086 is OPEN as this is written — PR #1091 —
+// so nothing it proposes is on `main`, and the assertions here are written against the tree that exists
+// rather than the one it will produce.) #1086 proposes to fail a REQUIRED surface that resolves to zero
+// FILES, a check over `filesForSurface`, which counts files on disk; a surface whose files all exist and
+// all fail to read has a non-empty file list, so it would pass that check too. Different cause,
+// different remedy, neither subsuming the other.
+//
+// The second test below is the scenario end to end. It makes the fixture's canonical body unreadable and
 // the whole three-entry inventory collapses — the two wrappers route THROUGH that body, so their target
-// read fails too. Under the old code that run reported `passed` with an empty findings list and an empty
-// inventory. Under this one it is three findings and `failed`.
+// read fails too — yet all three findings name the CANONICAL path, because that is the file that could
+// not be read. Naming the wrapper would send a reader to fix a file that reads perfectly.
 //
-// On the trigger. The issue records why a natural one is not available: `File.ReadAllText` does not throw
-// on invalid UTF-8, a directory named `SKILL.md` is not returned by `Directory.GetFiles`, and
-// permission-based fixtures are unreliable in CI and useless as root (CI runs as root in a container, and
-// root reads a 0000 file). And there is NO natural trigger at all for the second case — an unexpected
-// exception type is by definition a defect nobody can provoke on demand. So the failure is injected
-// through the reader seam `runCheckWith`/`inventorySkillsWith` take, which is deterministic by
-// construction and exercises the behaviour rather than asserting it. That is the option the issue names,
-// and it is preferred to skipping the test: a fix that cannot be proven red is the thing #1086 was about.
+// On the trigger, where this item's stated premise turned out to be too pessimistic by half.
+//
+// The issue ruled out the candidates it considered, correctly: `File.ReadAllText` does not throw on
+// invalid UTF-8, a directory named `SKILL.md` is not returned by `Directory.GetFiles`, and permission
+// bits are useless as root, which is how CI runs. It concluded a seam was the only option. But a
+// share-mode LOCK is neither a permission nor a platform quirk — opening the file `FileShare.None` makes
+// every other open fail, including one in the same process, and .NET implements that on Unix as well as
+// Windows. So there IS a portable deterministic trigger for the unreadable case, and
+// "no seam: a genuinely locked skill file fails the real gate" below uses it: the real `File.ReadAllText`,
+// a real file it genuinely cannot read, the real `runCheck`.
+//
+// The seam is still needed and still used, for two things the lock cannot reach. There is NO natural
+// trigger at all for an unexpected exception type — a defect nobody can provoke on demand — and that is
+// acceptance criterion 3. And it lets a failure be aimed at one specific file inside a larger tree
+// without locking anything process-wide, which is what makes the misattribution assertions cheap.
 
 open System
 open System.IO
@@ -53,6 +64,13 @@ let private readerFailingOn (shouldFail: string -> bool) (raiseWith: string -> e
             File.ReadAllText path
 
 let private normalize (path: string) = path.Replace('\\', '/')
+
+/// Holds `path` open with `FileShare.None` for the duration of `f`, so every other open of it fails.
+/// This is the portable deterministic "cannot be read" the issue thought did not exist: a share-mode lock
+/// is not a permission bit, .NET enforces it on Unix as well as Windows, and root cannot read through it.
+let private whileLocked (path: string) (f: unit -> 'a) =
+    use _lock = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None)
+    f ()
 
 let private isCanonicalPassingBody (path: string) =
     (normalize path).EndsWith("canonical/passing/SKILL.md", StringComparison.Ordinal)
@@ -119,7 +137,7 @@ let unreadableSurfaceTests =
 
                 // The exact fail-open: with the canonical body unreadable, all three entries are lost —
                 // the wrappers route through it, so their target read fails too — and every entry-driven
-                // rule goes quiet. The OLD code reported `passed` with zero findings on this very run.
+                // rule goes quiet, which is the state the old code reported as `passed`.
                 Expect.isNonEmpty findings "the unreadable file produces a finding rather than vanishing from the inventory"
 
                 Expect.equal
@@ -137,29 +155,58 @@ let unreadableSurfaceTests =
                     (failsTheGate request)
                     "every unreadable-surface finding is at or above the default FailOnSeverity, so `runCli` exits non-zero"
 
-                let canonicalFinding =
+                // EVERY finding names the file that could not be read — not one of the wrappers that
+                // merely READ it. A wrapper resolves its canonical target and reads that too, so a naive
+                // producer attributes the throw to whichever file the SURFACE enumerated and tells the
+                // reader to go fix `claude/passing/SKILL.md`, which is perfectly readable.
+                Expect.all
                     findings
-                    |> List.tryFind (fun finding -> isCanonicalPassingBody finding.SkillName)
+                    (fun finding -> isCanonicalPassingBody finding.SkillName)
+                    (sprintf
+                        "every finding names the canonical body that actually threw; got %A"
+                        (findings |> List.map (fun f -> f.SkillName)))
 
-                match canonicalFinding with
-                | None ->
-                    failtestf
-                        "no finding named the unreadable canonical body; findings named %A"
-                        (findings |> List.map (fun f -> f.SkillName))
-                | Some finding ->
-                    Expect.equal finding.Severity SkillParity.High "an unreadable FILE is a fact about the repository, reported at High"
+                // One per surface: the canonical surface enumerated it, and each wrapper surface reached
+                // it through its own wrapper. Three surfaces, three findings, one path.
+                Expect.equal (List.length findings) 3 "one finding per surface that could not read it, and no more"
 
-                    Expect.stringContains
-                        finding.Message
-                        "IOException"
-                        "the finding names the exception TYPE, so the reader can tell an IO error from a permission error without re-running anything"
+                Expect.equal
+                    (findings |> List.map (fun f -> f.SurfaceId) |> List.distinct |> List.length)
+                    3
+                    "and they are three DIFFERENT surfaces, not one surface reported three times"
 
-                    Expect.stringContains
-                        finding.Message
-                        "synthetic injected read failure"
-                        "the finding carries the underlying reason verbatim rather than a generic 'could not read'"
+                let finding = List.head findings
 
-                    Expect.isSome finding.CanonicalPath "the finding carries the offending path as evidence"
+                Expect.equal finding.Severity SkillParity.High "an unreadable FILE is a fact about the repository, reported at High"
+
+                Expect.stringContains
+                    finding.Message
+                    "IOException"
+                    "the finding names the exception TYPE, so the reader can tell an IO error from a permission error without re-running anything"
+
+                Expect.stringContains
+                    finding.Message
+                    "synthetic injected read failure"
+                    "the finding carries the underlying reason rather than a generic 'could not read'"
+
+                Expect.isSome finding.CanonicalPath "the finding carries the offending path as evidence"
+
+                // The reason is OS-supplied text and it lands in the COMMITTED report, so it must not
+                // carry the absolute path of whichever checkout produced it.
+                Expect.all
+                    findings
+                    (fun f -> not (f.Message.Contains root))
+                    "no finding message embeds the temp-root path the run happened to use"
+
+                // The wrapper surfaces say how they got there; the canonical surface enumerated it
+                // directly and has nothing to add.
+                let viaFindings =
+                    findings |> List.filter (fun f -> f.Message.Contains "Reached from")
+
+                Expect.equal
+                    (List.length viaFindings)
+                    2
+                    "the two wrapper surfaces name the wrapper that routed to the unreadable body, so the reader can find the route as well as the file"
             finally
                 Feature168SkillParityFixtures.deleteTempRoot root
         }
@@ -217,6 +264,85 @@ let unreadableSurfaceTests =
                 Feature168SkillParityFixtures.deleteTempRoot root
         }
 
+        // NO SEAM. This one drives the real `File.ReadAllText` over a real file it genuinely cannot read,
+        // so the whole pipeline is proven without trusting the injection point at all.
+        //
+        // The issue reasoned that no portable deterministic trigger existed, and it ruled out the ones it
+        // considered correctly — `ReadAllText` does not throw on invalid UTF-8, a directory named
+        // `SKILL.md` is not returned by `Directory.GetFiles`, and permission bits are useless as root,
+        // which is how CI runs. But a share-mode LOCK is neither a permission nor a platform quirk:
+        // opening the file `FileShare.None` makes every other open fail, including one in the same
+        // process, and .NET implements that on Unix as well as Windows. Verified on this repository's
+        // runtime: `IOException: The process cannot access the file '…' because it is being used by
+        // another process.` So the premise was too pessimistic for THIS half, and the seam is kept for the
+        // half that really has no natural trigger — an unexpected exception type, which is by definition a
+        // defect nobody can provoke on demand.
+        test "no seam: a genuinely locked skill file fails the real gate" {
+            let root = Feature168SkillParityFixtures.createTempRoot "fsgg-1093-locked"
+
+            try
+                let fixtureRoot = Path.Combine(root, "tree")
+                SkillParity.createFixture fixtureRoot "passing"
+
+                let request =
+                    { SkillParity.defaultRequest fixtureRoot with
+                        OutDir = Path.Combine(root, "out")
+                        ReportPath = Path.Combine(root, "out", "report.md")
+                        SummaryJsonPath = Path.Combine(root, "out", "summary.json")
+                        SurfaceOverrides = [ "fixture-canonical", "canonical" ] }
+
+                let surfaces = [ Path.Combine(fixtureRoot, "canonical", "passing", "SKILL.md") ]
+                Expect.isTrue (File.Exists surfaces.Head) "the fixture wrote the canonical body"
+
+                let canonicalSurface: SkillParity.SkillSurface list =
+                    [ { SurfaceId = "fixture-canonical"
+                        DisplayName = "fixture canonical"
+                        RootPath = "canonical"
+                        Kind = SkillParity.Canonical
+                        Agent = SkillParity.Repository
+                        IsRequired = true
+                        Notes = [] } ]
+
+                // Green first, through the same real reader, so the red below is the lock and nothing else.
+                let before = SkillParity.runCheck request
+                Expect.isEmpty (unreadableFindings before) "unlocked, the same tree reports no unreadable surface"
+
+                Expect.isNonEmpty
+                    (SkillParity.inventorySkills request canonicalSurface)
+                    "and the body really is inventoried when it can be read (non-vacuity for everything below)"
+
+                let report = whileLocked surfaces.Head (fun () -> SkillParity.runCheck request)
+                let findings = unreadableFindings report
+                Expect.equal (List.length findings) 1 "the locked body is reported exactly once"
+
+                let finding = List.head findings
+                Expect.equal finding.Severity SkillParity.High "at High, so the default FailOnSeverity blocks"
+                Expect.equal report.OverallStatus SkillParity.Failed "and the gate fails"
+
+                Expect.stringContains
+                    (normalize finding.SkillName)
+                    "canonical/passing/SKILL.md"
+                    "naming the file that could not be read"
+
+                Expect.stringContains finding.Message "IOException" "and the real exception type the OS raised"
+
+                Expect.isFalse
+                    (finding.Message.Contains fixtureRoot)
+                    "with the checkout's absolute path scrubbed out of the reason — this text is rendered into a COMMITTED report whose gate diffs it"
+
+                // The compatibility entry point must not quietly re-open the hole under a new name.
+                whileLocked surfaces.Head (fun () ->
+                    Expect.throwsT<IOException>
+                        (fun () -> SkillParity.inventorySkills request canonicalSurface |> ignore)
+                        "inventorySkills RAISES on a file it cannot read rather than dropping it — two repository gates read this inventory and would otherwise pass vacuously over a skill nobody could read")
+
+                // And unlocked it is green again, so the lock is what the assertions above measured.
+                let after = SkillParity.runCheck request
+                Expect.isEmpty (unreadableFindings after) "released, the tree is clean again"
+            finally
+                Feature168SkillParityFixtures.deleteTempRoot root
+        }
+
         // The inventory itself, below the report: the entry is genuinely absent (so the surrounding rules
         // really did have nothing to judge) AND the reason is genuinely reported. Both halves matter —
         // returning the failure while quietly keeping a half-built entry would be a different bug.
@@ -269,11 +395,15 @@ let unreadableSurfaceTests =
                 Feature168SkillParityFixtures.deleteTempRoot root
         }
 
-        // Two unreadable files under one surface must be two findings. `classifyFindings` dedupes by
-        // FindingId, and the id is built from category+surface+skill — but the skill NAME is precisely
-        // what could not be read, so an id that did not carry the PATH would collapse every unreadable
-        // file on a surface into one. Same trap the broken-target producer hit.
-        test "two unreadable files under one surface are two findings, not one" {
+        // N unreadable files under ONE surface must be N findings. `classifyFindings` groups by FindingId
+        // and keeps one per group, and the id is category+surface+skill — but the skill NAME is precisely
+        // what could not be read, so an id that did not carry the PATH would collapse every unreadable file
+        // on a surface into one. Same trap the broken-target producer hit.
+        //
+        // The assertion is a COUNT against the files on disk, not "the ids are distinct": ids are distinct
+        // by construction after `groupBy`, so that assertion can never fail and would pass on the very
+        // regression it claims to guard.
+        test "every unreadable file under one surface is its own finding" {
             let root = Feature168SkillParityFixtures.createTempRoot "fsgg-1093-dedupe"
 
             try
@@ -286,24 +416,29 @@ let unreadableSurfaceTests =
 
                 let report = SkillParity.runCheckWith reader request
 
-                let paths =
-                    unreadableFindings report
-                    |> List.map (fun finding -> normalize finding.SkillName)
-                    |> List.distinct
+                // The oracle: how many canonical bodies the `all` fixture actually wrote. Counted from
+                // disk rather than hard-coded, so adding a fixture case cannot quietly weaken this.
+                let fixtureRoot = Path.Combine(request.OutDir, "_skill-parity-fixture")
 
-                Expect.isGreaterThan
-                    (List.length paths)
-                    1
-                    "the `all` fixture has several canonical bodies and each unreadable one is reported separately"
+                let unreadableFiles =
+                    Directory.GetFiles(Path.Combine(fixtureRoot, "canonical"), "SKILL.md", SearchOption.AllDirectories)
+                    |> Array.length
 
-                let ids =
+                Expect.isGreaterThan unreadableFiles 1 "the `all` fixture writes more than one canonical body (non-vacuity)"
+
+                let canonicalSurfaceFindings =
                     unreadableFindings report
-                    |> List.map (fun finding -> finding.FindingId)
+                    |> List.filter (fun finding -> finding.SurfaceId = "fixture-canonical")
 
                 Expect.equal
-                    (List.length ids)
-                    (ids |> List.distinct |> List.length)
-                    "and their FindingIds are distinct, so the severity-resolving dedupe cannot collapse them"
+                    (List.length canonicalSurfaceFindings)
+                    unreadableFiles
+                    "one finding per unreadable file on the canonical surface — a FindingId that dropped the path would collapse them all into one"
+
+                Expect.equal
+                    (canonicalSurfaceFindings |> List.map (fun f -> f.SkillName) |> List.distinct |> List.length)
+                    unreadableFiles
+                    "and each names a different file"
             finally
                 Feature168SkillParityFixtures.deleteTempRoot root
         }

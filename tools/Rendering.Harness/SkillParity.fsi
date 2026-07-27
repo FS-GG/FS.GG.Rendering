@@ -161,14 +161,20 @@ module SkillParity =
         /// the harness itself; naming it "unreadable" would be a lie about whose bug it is.
         | UnexpectedReadDefect
 
-    /// One enumerated skill file that could not be turned into an entry, and the reason. This is the fact
-    /// the old `with _ -> None` destroyed.
+    /// One file that could not be turned into an entry, and the reason. This is the fact the old
+    /// `with _ -> None` destroyed.
+    ///
+    /// `Path` is the file that ACTUALLY threw, repository-relative. It is not always the file the surface
+    /// enumerated — a wrapper reads its canonical target too — and `ReachedFrom` names the enumerated
+    /// path(s) that led here when they differ. Reporting the enumerated path instead would send a reader to
+    /// fix a file that reads perfectly.
     type SurfaceReadFailure =
         { SurfaceId: string
           Path: string
           Kind: SurfaceReadFailureKind
           ExceptionType: string
-          Reason: string }
+          Reason: string
+          ReachedFrom: string list }
 
     type ParityFinding =
         { FindingId: string
@@ -293,7 +299,8 @@ module SkillParity =
         surfaces: SkillSurface list ->
             SkillEntry list * SurfaceReadFailure list
 
-    /// The entries only, reading through the real filesystem.
+    /// The entries only, reading through the real filesystem — and it RAISES on a file it could not read
+    /// rather than dropping it, so a caller that only wants the list cannot inherit #1093's fail-open.
     val inventorySkills: request: ParityCheckRequest -> surfaces: SkillSurface list -> SkillEntry list
 
     /// Declaring module -> its public member names, from `readiness/surface-baselines/members`.
