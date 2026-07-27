@@ -5,7 +5,7 @@ description: Work with the parts of a grid in a generated FS.GG.UI product — f
 
 # FS.GG Product Grids
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

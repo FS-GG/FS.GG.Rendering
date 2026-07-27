@@ -5,7 +5,7 @@ description: Generated product guidance for Skia-rendered FS.GG.UI Controls, ric
 
 # FS.GG Product UI Widgets
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

@@ -5,7 +5,7 @@ description: Generated product guidance for laying out an FS.GG.UI product by ou
 
 # FS.GG Product Layout
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

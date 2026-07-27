@@ -5,7 +5,7 @@ description: Build Skia-rendered FS.GG.UI Controls, ControlInspection and retain
 
 # FS.GG UI Widgets
 
-This is the Claude-active wrapper for the canonical local skill.
+This is a wrapper for the canonical local skill.
 
 Before acting, read the canonical instructions in:
 

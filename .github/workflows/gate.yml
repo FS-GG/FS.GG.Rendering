@@ -79,6 +79,28 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # #1080/#1082 — the agent-skill roots are DERIVED, and this is what knows it.
+      #
+      # `skill-union` (the reusable receiver caller in skill-union.yml) asserts the OUTCOME: the three
+      # ADR-0011 roots are the byte-identical union. This step asserts the DERIVATION: every id in those
+      # roots is attributable to a producer, and each root matches what that producer says. They are not
+      # the same claim, and only this one fails when a producer CHANGES — which is the regression a
+      # `cp -R` repair would have re-armed rather than removed (#1080 criterion 2). It additionally
+      # catches an ORPHAN (a projection left behind by a skill a producer removed), a DANGLING ROUTE (a
+      # wrapper naming a canonical body that no longer exists) and a LOST OVERRIDE (a re-install
+      # clobbering the Feature 168 evidence rules appended to speckit-implement) — none of which a
+      # byte-equality check between roots can see, because all three roots agree in every one of them.
+      #
+      # Shell + python3 only: no SDK, no restore, no network. It is placed in THIS job because this job
+      # is a required status check and the check is worthless unarmed (the #332/#334/#880 class).
+      - name: Agent-skill roots match their producers
+        run: |
+          set -euo pipefail
+          if ! bash scripts/materialize-skill-roots.sh --check; then
+            echo "::error::The agent-skill roots do not match their producers. Run 'scripts/materialize-skill-roots.sh' and commit the result. If it reports [UNATTRIBUTED]/[orphan], a skill was added to or removed from a root without a producer declaring it — fix the producer, not the root (refs #1080/#1082)."
+            exit 1
+          fi
+
       # 211 (FR-002/FR-004) — locked restore against committed packages.lock.json. On a graph that
       # differs from the lockfile (or an un-pinnable version, NU1603) restore fails and the gate
       # blocks. The RestoreLockedMode property (Directory.Build.props) makes the repo behave like the

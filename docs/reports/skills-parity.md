@@ -3,7 +3,7 @@
 
 Overall status: `passed`
 Canonical sources: `29`
-Wrappers: `59`
+Wrappers: `60`
 
 ## Supported Surfaces
 | Surface | Kind | Agent | Root | Required |
@@ -12,7 +12,7 @@ Wrappers: `59`
 | claude | wrapper | claude | .claude/skills | True |
 | package-canonical | canonical | package | src | True |
 | template-canonical | canonical | generated-product | template | True |
-| ant-canonical | canonical | repository | .claude/skills/fs-gg-ant-design/SKILL.md | True |
+| ant-canonical | canonical | repository | docs/product/ant-design/skill/SKILL.md | True |
 | spec-kit-command | command | spec-kit | .agents/skills/speckit-* and .claude/skills/speckit-* | True |
 
 ## Severity Counts

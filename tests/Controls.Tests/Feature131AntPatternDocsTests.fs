@@ -25,8 +25,11 @@ let private antRoot = Path.Combine(repositoryRoot, "docs", "product", "ant-desig
 let private patternsDir = Path.Combine(antRoot, "patterns")
 let private templatesDir = Path.Combine(antRoot, "templates")
 let private readmePath = Path.Combine(antRoot, "README.md")
-let private skillPath =
-    Path.Combine(repositoryRoot, ".claude", "skills", "fs-gg-ant-design", "SKILL.md")
+// #1080/#1082: the Ant canonical body moved OUT of `.claude/skills/` — a root holding the canonical while
+// the other roots route into it is a shape ADR-0011's byte-identical union cannot contain. It now sits
+// under its own subject area, on the `<area>/skill/SKILL.md` convention, and every agent-skill root holds
+// an ordinary wrapper routing here. The assertions below are unchanged; only the location is.
+let private skillPath = Path.Combine(antRoot, "skill", "SKILL.md")
 let private hubPath = Path.Combine(antRoot, "reference", "ant-llms-sources.md")
 
 // ---------------------------------------------------------------------------

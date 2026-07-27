@@ -1,0 +1,27 @@
+name: skill-union
+on:
+  # DELIBERATELY UNFILTERED — do not add a `paths:` filter here. This context is REQUIRED on the
+  # default branch, and a required check that does not report on every PR blocks the repo. GitHub does
+  # not skip a required check whose workflow a path filter excluded — it never creates the check run at
+  # all, and branch protection cannot tell that apart from one that has not reported yet, so the PR sits
+  # at "Expected — waiting for status to be reported" forever. See
+  # docs/coordination/skill-union-assertion.md §"Why the pull_request trigger carries no paths: filter"
+  # in FS-GG/.github (.github#1508) before you tidy this.
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - ".claude/skills/**"
+      - ".codex/skills/**"
+      - ".agents/skills/**"
+      - ".github/workflows/skill-union.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skill-union:
+    uses: FS-GG/.github/.github/workflows/skill-union-assert.yml@main
+    # No `with:` at all is the most correct form: `product-path` defaults to "." (the repository root)
+    # and `roots` to ADR-0011's three. Writing them out is equivalent, and narrowing either is not.

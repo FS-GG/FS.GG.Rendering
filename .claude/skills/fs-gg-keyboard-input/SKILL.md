@@ -5,7 +5,7 @@ description: Work on keyboard input contracts and generated product keyboard gui
 
 # FS.GG Keyboard Input
 
-This is the Claude-active wrapper for the canonical local skill.
+This is a wrapper for the canonical local skill.
 
 Before acting, read the canonical instructions in:
 
