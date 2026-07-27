@@ -25,6 +25,15 @@ module Feature1099SurfaceInventoryContractTests
 // and one wrote a path that has not been the canonical body since #1082. Since #1092 both halves are
 // declared data, so the table finally has something mechanical to be checked against.
 //
+// ONE CLAIM IN THE ISSUE IS FALSE, and correcting it is part of landing it. #1099's body says of
+// `template-canonical` that "`template/product-skills` does not exist in the tree". It does, and it
+// did at `e2d860bc`, the commit the issue itself checked against: it was added in #991/#999 and holds
+// fifteen canonical bodies today. That row is still wrong, for the reason the rest of the table is —
+// it publishes prose in the column the report emits as `Root`, and it omits that the ADR-0011 mirror
+// roots under `template/base/.agents|.claude|.codex/skills/` are SUBTRACTED, which is the whole
+// content of the `non-mirrored-bodies` selector. It is not wrong because it named a directory that
+// was never there.
+//
 // CORRECTING THE ROWS IS NOT THE FIX. Acceptance criterion 2 says so outright: without a test the
 // rows are re-corrected today and stale again on the next surface change, which is exactly how they
 // got here. So these tests re-derive the surfaces from the CODE at runtime and the rows from the
@@ -331,7 +340,7 @@ let surfaceInventoryContractTests =
                     Expect.isTrue
                         (File.Exists absolute || Directory.Exists absolute)
                         (sprintf
-                            "row '%s' publishes root '%s', which resolves to no file or directory in the repository — `template/product-skills` was published here for as long as it has not existed"
+                            "row '%s' publishes root '%s', which resolves to no file or directory in the repository"
                             row.SurfaceId
                             root)
         }
