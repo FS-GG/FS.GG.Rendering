@@ -271,10 +271,11 @@ let surfaceInventoryContractTests =
             let otherSelector =
                 let first = List.head surfaces
 
-                let replacement =
-                    everySelector () |> List.find (fun selector -> selector <> first.Selector)
-
-                { first with Selector = replacement } :: List.tail surfaces
+                match everySelector () |> List.tryFind (fun selector -> selector <> first.Selector) with
+                | Some replacement -> { first with Selector = replacement } :: List.tail surfaces
+                | None ->
+                    failtest
+                        "non-vacuity: SurfaceSelector defines more than one case, so 'the selector changed' is a perturbation that can be expressed at all"
 
             Expect.isNonEmpty
                 (mismatches rows otherSelector)
