@@ -125,6 +125,7 @@
     <Compile Include="PerformanceEvidenceCriticTests.fs" />
     <Compile Include="Issue1069ApiSurfaceRestoreIsolationTests.fs" />
     <Compile Include="Issue1071VisualCoverageTests.fs" />
+    <Compile Include="Issue1081TemplateBaseSkillRootsTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

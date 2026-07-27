@@ -1,0 +1,74 @@
+name: template-base-skill-union
+
+# FS.GG.Rendering#1081 — the scaffolding base tree `template/base/` is a skill-union subject, and
+# until this gate existed NOTHING audited it.
+#
+# WHY A SEPARATE WORKFLOW FROM `skill-union.yml`. There are exactly two kinds of caller of the
+# reusable assertion, and FS-GG/.github's roster detector deliberately tells them apart
+# (docs/coordination/skill-union-assertion.md, .github#1504/#628):
+#
+#   * the RECEIVER caller — `product-path` at its default `.` — audits THIS REPOSITORY'S OWN
+#     committed runtime roots (`.claude/skills`, `.codex/skills`, `.agents/skills`). That is the
+#     shape `receives: skill-union` means, it is a different subject from this one, and it is
+#     wired by FS.GG.Rendering#1080 in its own `skill-union.yml`.
+#   * this one — a GENERATED-PRODUCT-shaped caller passing `product-path: template/base` — audits a
+#     subdirectory tree. It deliberately does NOT satisfy this repo's `receives: skill-union` row,
+#     and must not be mistaken for it. Two subjects, two workflows, two greens.
+#
+# WHAT IT PROVES. Over ADR-0011's three roots, for every skill in the union of `template/base/`:
+# present in every root (`[partitioned]`), byte-identical across them (`[divergent]`), and — because
+# `manifest:` is supplied — its `SKILL.md` canonical digest equals the digest the shipped
+# `template/skill-manifest/skill-manifest.json` declares (`[drifted]`). The manifest cross-check is
+# not decoration: the defect this gate was built after was `template/base/.claude/skills/
+# fs-gg-project/SKILL.md` sitting three commits behind the canonical `.agents/` body while
+# `.template.config/template.json` asserted in prose that copyOnly kept them byte-identical.
+#
+# WHY IT IS ARMED THE WAY IT IS. `paths:` must cover all three base roots or the gate is armed on
+# nothing — the .github#332/#334/#880 class, where the check is correct and its trigger fails open.
+# The manifest is included because it is the reference the digest check reads: a manifest edit can
+# turn this gate red without any root changing, and a gate that cannot see its own reference is the
+# .github#266 shape all over again. The workflow file itself is included so a change to the gate
+# re-runs the gate.
+#
+# REPRODUCE LOCALLY (the command a reviewer runs; expected exit code 0):
+#
+#   curl -fsSL -o skill-union-assert.sh \
+#     "https://raw.githubusercontent.com/FS-GG/.github/<40-char-sha>/dist/skill-union-assert.sh"
+#   bash skill-union-assert.sh --product template/base \
+#     --manifest template/skill-manifest/skill-manifest.json
+#
+# Fetch `dist/`, never `scripts/` — the latter sources `scripts/lib/*` relative to its own dirname
+# and dies immediately when fetched alone (.github#843).
+
+on:
+  pull_request:
+    paths:
+      - "template/base/.claude/**"
+      - "template/base/.codex/**"
+      - "template/base/.agents/**"
+      - "template/skill-manifest/**"
+      - ".github/workflows/template-base-skill-union.yml"
+  push:
+    branches: [main]
+    paths:
+      - "template/base/.claude/**"
+      - "template/base/.codex/**"
+      - "template/base/.agents/**"
+      - "template/skill-manifest/**"
+      - ".github/workflows/template-base-skill-union.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  template-base-skill-union:
+    uses: FS-GG/.github/.github/workflows/skill-union-assert.yml@main
+    with:
+      product-path: "template/base"
+      # `roots` is left at ADR-0011's three on purpose. The reusable gate always passes them
+      # explicitly and never consults a `.agent-skill-roots` declaration found inside the subject
+      # (.github#517) — letting the audited tree scope its own audit is the fail-open this gate
+      # exists to catch. Narrowing the set here would be a smaller audit than the decision on #1081
+      # asked for.
+      manifest: "template/skill-manifest/skill-manifest.json"
