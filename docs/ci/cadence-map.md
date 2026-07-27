@@ -331,34 +331,6 @@ the sweep itself when green, carrying a `Paths:` and a `Class:` line so it is sc
 sweep does not "simplify" the gate — it restores the #235 silence the rule exists to break. **Do not
 make it required.**
 
-### Bumping a component axis — the reconciliation routine
-
-The staleness finding is *not* a one-line diff, and this is where the next worker is meant to find that
-out rather than rediscover it. Renovate will offer the one-line bump (it offered exactly that as PR
-#1090); its CI will not tell you what else moves, because `Deterministic gate` exits at the **first**
-failing suite and the second and third gates never report. #1094 measured the last
-`$(FsGgContractsVersion)` move at **five files across three further gates**. In order:
-
-1. `template/base/Directory.Packages.props` — the axis literal itself.
-2. `tests/Build.Tests/mirror-omission-ledger.txt` — every `Fsgg.*` type the new surface adds, ledgered
-   **with a reason**. The 7.1.0/7.2.0 move added 14. Appending to go green is not the point; curate.
-3. `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — `OmissionLedgerCeiling`, raised in the *same*
-   commit with the reason (456 → 470 for that move).
-4. `scripts/refresh-api-surface-mirror.fsx` — the version-keyed pre-#782 bridge is a **tripwire** and
-   hard-fails on every bump by design. Re-measure the taught surface against the real nupkg before
-   extending it (#1101 tracks the producer-side gap); do not widen it on faith.
-5. `scripts/api-surface-manifest.txt` and `template/base/docs/api-surface/**` — the `M-PROV` provenance
-   stamps naming the version the surface was mirrored from.
-6. `tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs` — a **frozen literal** naming the exact
-   pin. It is exact on purpose (#1102 AC 2): it witnesses that the pin is *one exact version and never a
-   floating range*, which nothing else in the tree witnesses. **Move it. Do not loosen it to a `7.`
-   prefix match, and do not source it from the axis it is checking** — that would collapse two
-   independent witnesses into one source, so neither could catch the other being wrong.
-
-Steps 2–5 apply to `$(FsGgContractsVersion)` specifically, because it is the axis whose surface this
-repo mirrors. A `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` bump is cheaper, but check `Build.Tests`
-before assuming so — the sweep's issue body renders the axis-appropriate list.
-
 **`RELEASE-PENDING` — why this gate is no longer expected-red on a release PR** (#506). The pin bump is
 what *causes* the publish: `release-tags.yml` cuts `fs-gg-ui/v<pin>` on merge and calls `release.yml`.
 So at PR time `$(FsGgUiVersion)` necessarily names a version nuget.org does not carry yet, and this gate
@@ -407,6 +379,34 @@ non-prerelease by the restore layer.
 template deliberately scaffolds preview products, so a prerelease component is coherent with it. It
 must not be read as "any axis is prerelease": under that reading a prerelease `$(FsGgAudioVersion)`
 would declare the very preview channel that excuses it, and #235 would have stayed green.
+
+### Bumping a component axis — the reconciliation routine
+
+The staleness finding is *not* a one-line diff, and this is where the next worker is meant to find that
+out rather than rediscover it. Renovate will offer the one-line bump (it offered exactly that as PR
+#1090); its CI will not tell you what else moves, because `Deterministic gate` exits at the **first**
+failing suite and the second and third gates never report. #1094 measured the last
+`$(FsGgContractsVersion)` move at **five files across three further gates**. In order:
+
+1. `template/base/Directory.Packages.props` — the axis literal itself.
+2. `tests/Build.Tests/mirror-omission-ledger.txt` — every `Fsgg.*` type the new surface adds, ledgered
+   **with a reason**. The 7.1.0/7.2.0 move added 14. Appending to go green is not the point; curate.
+3. `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — `OmissionLedgerCeiling`, raised in the *same*
+   commit with the reason (456 → 470 for that move).
+4. `scripts/refresh-api-surface-mirror.fsx` — the version-keyed pre-#782 bridge is a **tripwire** and
+   hard-fails on every bump by design. Re-measure the taught surface against the real nupkg before
+   extending it (#1101 tracks the producer-side gap); do not widen it on faith.
+5. `scripts/api-surface-manifest.txt` and `template/base/docs/api-surface/**` — the `M-PROV` provenance
+   stamps naming the version the surface was mirrored from.
+6. `tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs` — a **frozen literal** naming the exact
+   pin. It is exact on purpose (#1102 AC 2): it witnesses that the pin is *one exact version and never a
+   floating range*, which nothing else in the tree witnesses. **Move it. Do not loosen it to a `7.`
+   prefix match, and do not source it from the axis it is checking** — that would collapse two
+   independent witnesses into one source, so neither could catch the other being wrong.
+
+Steps 2–5 apply to `$(FsGgContractsVersion)` specifically, because it is the axis whose surface this
+repo mirrors. A `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` bump is cheaper, but check `Build.Tests`
+before assuming so — the sweep's issue body renders the axis-appropriate list.
 
 ## 4c. The packaged-consumer path — chosen gate behavior (#300)
 
