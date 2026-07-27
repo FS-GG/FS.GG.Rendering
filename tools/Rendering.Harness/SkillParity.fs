@@ -790,6 +790,16 @@ module SkillParity =
     let private coordinationKitSkills =
         Set.ofList [ "cross-repo-coordination"; "intra-repo-parallel-work"; "check-board"; "pnext-item" ]
 
+    /// ADR-0011's three agent-skill roots, as the path segments that identify a MIRROR copy of a skill
+    /// inside a scaffolding tree under `template/`. A body found at one of these is a byte-identical
+    /// projection of a canonical body, never a canonical source — see the `template-canonical` filter.
+    ///
+    /// Issue #1081: this was an inline two-of-three list and it fails OPEN, because a root nobody has
+    /// created yet is a root nobody excludes. Keep it as one named set covering all three, and keep
+    /// `Feature1081TemplateCanonicalRootsTests` pinning it to ADR-0011.
+    let internal agentSkillRootMirrorSegments =
+        [ "/.claude/skills/"; "/.codex/skills/"; "/.agents/skills/" ]
+
     let private targetFromContent (absoluteSkillPath: string) (content: string) =
         let routeIndex = content.IndexOf("Before acting", StringComparison.OrdinalIgnoreCase)
         let matches = Regex.Matches(content, "`([^`]*SKILL\\.md)`", RegexOptions.IgnoreCase)
@@ -873,11 +883,32 @@ module SkillParity =
             safeFiles (Path.Combine(repositoryRoot, "src")) "SKILL.md" SearchOption.AllDirectories
             |> List.filter (fun path -> normalizeSeparators path |> containsIgnoreCase "/skill/SKILL.md")
         | "template-canonical" ->
+            // The ADR-0011 agent-skill roots under `template/` are MIRRORS of a canonical body, not
+            // canonical sources, so all of them are filtered out here. `template/base/`'s canonical
+            // `fs-gg-project` body lives at `template/base/.agents/skills/fs-gg-project/SKILL.md`
+            // (ADR-0011 §3's provider source root, the digest `template/skill-manifest/
+            // skill-manifest.json` declares, and what `template/lifecycle/materialize-skill-roots.fsx`
+            // mirrors OUT of); the `.claude/` and `.codex/` copies are byte-identical projections of it.
+            //
+            // ISSUE #1081 — `.codex/skills/` was MISSING from this list, which is the same 2-of-3
+            // enumeration defect #1081 fixed one level down in the tree itself. It was invisible only
+            // because no `template/base/.codex/` existed to be scanned; #1081 created one, and the
+            // mirror was promptly counted as a 30th canonical source — inflating `Canonical sources`,
+            // adding a duplicate `fs-gg-project` API-symbol row, and double-counting two guarded-theme
+            // references. Cosmetic while the roots agree, and NOT cosmetic once one diverges: a
+            // divergent MIRROR would be reported against the mirror's own path, sending a reader to fix
+            // the copy instead of the canonical body it drifted from.
+            //
+            // Enumerate all three rather than the two that had a subject: a list that names only the
+            // roots which happen to be populated today fails open the moment the fourth root of the day
+            // is added, which is exactly how this one failed. `Feature1081TemplateCanonicalRootsTests`
+            // pins the set against ADR-0011's roots so the next addition cannot pass silently.
             safeFiles (Path.Combine(repositoryRoot, "template")) "SKILL.md" SearchOption.AllDirectories
             |> List.filter (fun path ->
                 let normalized = normalizeSeparators path
-                not (containsIgnoreCase "/.agents/skills/" normalized)
-                && not (containsIgnoreCase "/.claude/skills/" normalized))
+
+                agentSkillRootMirrorSegments
+                |> List.forall (fun segment -> not (containsIgnoreCase segment normalized)))
         | "ant-canonical" ->
             let path = Path.Combine(repositoryRoot, "docs", "product", "ant-design", "skill", "SKILL.md")
             if File.Exists path then [ path ] else []

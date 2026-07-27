@@ -510,15 +510,39 @@ let private classifyFixture (fixturePath: string) =
 /// Verify the directive agent-context docs are lifecycle-safe (CC-1, env-free).
 let private verifyBaseDocsNeutral () =
     use doc = templateDoc ()
-    // base CLAUDE.md must be excluded from the ungated base source.
-    let baseExcludesClaudeMd =
+    let baseUngatedExcludes =
         doc.RootElement.GetProperty("sources").EnumerateArray()
-        |> Seq.exists (fun s ->
+        |> Seq.filter (fun s ->
             (match s.TryGetProperty "source" with true, v -> v.GetString() = "template/base/" | _ -> false)
-            && (match s.TryGetProperty "exclude" with
-                | true, ex -> ex.EnumerateArray() |> Seq.exists (fun e -> e.GetString() = "CLAUDE.md")
-                | _ -> false))
-    assertTrue baseExcludesClaudeMd "template/base/ source must exclude CLAUDE.md (gated agent-context)"
+            && (match s.TryGetProperty "condition" with true, c -> String.IsNullOrWhiteSpace(c.GetString()) | _ -> true))
+        |> Seq.collect (fun s ->
+            match s.TryGetProperty "exclude" with
+            | true, ex -> ex.EnumerateArray() |> Seq.map (fun e -> e.GetString())
+            | _ -> Seq.empty)
+        |> Set.ofSeq
+
+    // base CLAUDE.md must be excluded from the ungated base source.
+    assertTrue (baseUngatedExcludes.Contains "CLAUDE.md") "template/base/ source must exclude CLAUDE.md (gated agent-context)"
+
+    // Issue #1081 — EVERY ADR-0011 agent-skill root must be excluded from the UNGATED base source.
+    //
+    // Each of these is re-emitted only by a `lifecycle == "spec-kit"`-gated source, so an exclusion
+    // missing here does not merely duplicate content: it makes the provider write that root on the
+    // `sdd` lane, which is the ADR-0011 §3 violation `specs/229-drop-claude-skills-mirror` removed
+    // and which re-trips SDD's `isSddTree` intrusion guard (`scaffold.providerWroteSddTree`, 229
+    // SC-001). Until #1081 the whole of that invariant was carried by a `comment` field — and #1081
+    // is the item that found a DIFFERENT prose-only claim about this same tree ("copyOnly keeps the
+    // fs-gg-project body byte-identical") had been false for three commits with nothing able to see
+    // it. A comment is not a gate; this is the gate. `.codex/**` is listed here because #1081 added
+    // `template/base/.codex/`, and the other two are listed because the reason is identical for all
+    // three and enumerating only the new one would leave the older two exactly as unguarded as the
+    // claim that failed.
+    for root in [ ".agents/**"; ".claude/**"; ".codex/**" ] do
+        assertTrue
+            (baseUngatedExcludes.Contains root)
+            (sprintf
+                "the UNGATED template/base/ source must exclude %s — it is a `lifecycle == \"spec-kit\"`-gated agent-skill root, and emitting it ungated makes the provider write it on the sdd lane (ADR-0011 §3 / spec 229 SC-001, issue #1081)"
+                root)
     // base README.md must carry no suppressed-path reference.
     let baseReadme = File.ReadAllText(repoPath "template/base/README.md")
     for p in [ ".specify/"; ".agents/"; ".claude/" ] do

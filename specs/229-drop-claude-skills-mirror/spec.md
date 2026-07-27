@@ -6,6 +6,16 @@
 
 **Status**: Shipped
 
+> **Addendum — [`decision-1081-template-base-three-roots.md`](decision-1081-template-base-three-roots.md).**
+> `template/base/` now carries **all three** ADR-0011 roots (`.agents/`, `.claude/`, `.codex/`),
+> byte-identical, and is gated by `.github/workflows/template-base-skill-union.yml`. That does **not**
+> overturn this feature: this spec governs what a *provider* writes into a *scaffolded product* under
+> ADR-0011 §3, whereas `template/base/` is the scaffolding *source* tree. This spec's own *Assumptions*
+> already exempted the base `fs-gg-project` skill from its invariant and deferred the standalone-lane
+> union question as "a separate orchestrator/template concern tracked elsewhere" —
+> [FS.GG.Rendering#1081](https://github.com/FS-GG/FS.GG.Rendering/issues/1081) is that elsewhere. No
+> requirement or success criterion below changes. **Read the addendum before concluding otherwise.**
+
 **Input**: User description: "start the next rendering item on the coord board." → resolved to the next Ready rendering-scoped item: **FS.GG.Rendering#42 / contract `fs-gg-ui-template`** — re-release the template so it materializes its UI product skills **only** into `.agents/skills/` and drops the `.claude/skills/` copies entirely, per **ADR-0011**. Unblocks `FS-GG/FS.GG.Templates#47` (`scaffold.providerWroteSddTree`).
 
 ## Context (non-normative)
@@ -120,7 +130,7 @@ A maintainer needs assurance that the template will not silently reacquire a `.c
 - **This supersedes Feature 228's `spec-kit` invariant.** Feature 228 kept the `.claude/skills/` UI mirror under `spec-kit`; ADR-0011 §3/§4 remove it there too. The `spec-kit` skill-set change (UI skills no longer mirrored into `.claude/skills/`) is the intended ADR consequence, explicitly disclosed here.
 - **Scope = every provider `.claude/skills/` write (full confinement).** Removed: the 9 per-profile product-skill `.claude/skills/` sources (`fs-gg-scene`, `fs-gg-symbology`, `fs-gg-skiaviewer`, `fs-gg-elmish`, `fs-gg-keyboard-input`, `fs-gg-ui-widgets`, `fs-gg-styling`, `fs-gg-layout`, `fs-gg-testing`); the base `.agents/skills/`→`.claude/skills/` mirror; and the sample-pack/feedback `.claude/skills/` sources. Kept: the matching `.agents/skills/` sources; the base `.claude/` workspace tree (`template/base/.claude/` — settings, hooks, `fs-gg-project`). `.codex/skills/` is never written. *(This scope was expanded from the initial "9 per-skill sources only" after live evidence showed the base mirror kept 7/8 UI skills in `spec-kit`'s `.claude/skills/`; the maintainer chose full confinement.)*
 - **The base `fs-gg-project` skill is workspace infrastructure, not a UI product-skill mirror.** It ships inside the base `.claude/` workspace tree (`template/base/.claude/`) and is the standalone Spec Kit workspace's own authoring skill. It is exempt from the "0 UI product skills in `.claude/skills/`" invariant (which counts the UI product / sample / feedback set). Under `sdd`/`none` even `fs-gg-project` is absent (the whole base `.claude/` workspace is `spec-kit`-gated).
-- **Standalone `spec-kit` discoverability is the orchestrator's concern.** With the provider confined to `.agents/skills/`, surfacing UI skills into `.claude/skills/`/`.codex/skills/` is the fan-out's job. This feature does not add an in-template three-root mirror for the standalone `spec-kit` lane; if standalone `spec-kit` needs the union in `.claude/skills/`, that is a separate orchestrator/template concern tracked elsewhere.
+- **Standalone `spec-kit` discoverability is the orchestrator's concern.** With the provider confined to `.agents/skills/`, surfacing UI skills into `.claude/skills/`/`.codex/skills/` is the fan-out's job. This feature does not add an in-template three-root mirror for the standalone `spec-kit` lane; if standalone `spec-kit` needs the union in `.claude/skills/`, that is a separate orchestrator/template concern tracked elsewhere. *(**Resolved 2026-07-27** by [FS.GG.Rendering#1081](https://github.com/FS-GG/FS.GG.Rendering/issues/1081) — it does, and `template/base/` now carries all three roots. See [`decision-1081-template-base-three-roots.md`](decision-1081-template-base-three-roots.md); this assumption is the hook the decision hangs on, not a contradiction of it.)*
 - **A re-release is required.** Unlike Feature 228 (merged unreleased), issue #42's definition of done requires the coherent set to be re-released and published so `FS.GG.Templates` can re-pin under publish-before-flip. The version bump + local pack happens in this repo; the org-feed publish, registry flip, and Templates re-pin are cross-repo follow-ons.
 - **No src/behavior change.** Tier 2 content/config change to the scaffold source map + the two repo-owned gates + the validation script; adds no runtime module, no `.fsi`. Mirrors the delivery shape of Features 226/227/228.
 - **Verification rides existing gates plus a live scaffold observation.** Evidence (before/after scaffold reports, per-lifecycle skill-set diffs, gate transcripts) is recorded under `specs/229-drop-claude-skills-mirror/readiness/`.
