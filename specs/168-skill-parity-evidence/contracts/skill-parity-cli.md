@@ -21,7 +21,7 @@ dotnet run --project tools/Rendering.Harness/Rendering.Harness.fsproj -- skill-p
 | `--report <path>` | Markdown report path. Defaults to `docs/reports/skills-parity.md`. |
 | `--summary-json <path>` | Structured summary path. Defaults to `<out>/skill-parity-summary.json`. |
 | `--fixture <name>` | Run a controlled fixture case instead of the repository inventory. Use `all` to run every required fixture. |
-| `--surface <id=path>` | Add or override a skill surface for fixture or advanced local checks. Repeatable. |
+| `--surface <id=path>` | **Replace** the checked surface set with the surfaces named here. Repeatable. The run inspects these and no others. For fixtures and advanced local checks. |
 | `--allow-exception <id>` | Allow an intentional exception id while keeping it visible in the report. Repeatable. |
 | `--fail-on <severity>` | Lowest unresolved severity that returns exit code `1`. Defaults to `high`. |
 | `--list-symbols` | Print every API symbol the skills document, with its status and skill, and exit without writing reports. |
@@ -42,6 +42,35 @@ When no `--surface` is supplied, the checker reads:
 Spec Kit command skills that exist as wrappers without package/template
 canonical sources are reported as command-surface entries, not hidden.
 
+## `--surface` Replaces, and Says So
+
+`--surface <id>=<path>` **replaces** the surface set for that run. Supplying one
+override does not add a seventh surface to the six above: it makes the run check
+that one surface and nothing else. An overridden surface is always treated as
+required, and is inventoried with every `SKILL.md` beneath its declared root
+(no id-specific narrowing is inherited, because an override is a fresh
+declaration rather than a patch to an existing one).
+
+Because a narrowed run can still print `passed` and exit `0`, every run states
+how much of the declared world it covered, on three channels:
+
+- the `surfaces: <checked> checked of <declared> declared` operator line, which
+  additionally says `NARROWED by --surface` when the set was replaced;
+- `surfacesChecked` and `surfacesDeclared` in the `--json` object;
+- a caveat in the generated report and the JSON summary naming the count and
+  every baseline surface id the run did **not** check.
+
+The report's regenerate line repeats the `--surface` arguments, so the command
+it publishes reproduces the run it describes rather than a wider one.
+
+### With `--fixture`
+
+`--fixture` and `--surface` combine with one defined meaning: `--fixture`
+materializes the synthetic tree and re-roots the run at it, then `--surface`
+replaces the **fixture** surface set. Override roots are therefore resolved
+beneath the fixture root, and the fixture set — not the repository's six
+surfaces — is the baseline the caveat and the `declared` count report.
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -53,13 +82,14 @@ canonical sources are reported as command-surface entries, not hidden.
 
 ## Operator Output
 
-The CLI prints:
+The CLI prints, one line each:
 
-- checked repository root
-- checked surfaces
-- report path and summary JSON path
-- overall status
-- unresolved finding counts by severity
+- `skill-parity status:` — overall status
+- `root:` — the repository root that was checked (the fixture tree under `--fixture`)
+- `surfaces:` — how many surfaces were checked, of how many declared
+- `report:` — report path
+- `summary-json:` — summary JSON path
+- `findings:` — unresolved finding counts by severity
 
 With `--json`, stdout is a single JSON object:
 
@@ -71,11 +101,14 @@ With `--json`, stdout is a single JSON object:
   "critical": 0,
   "high": 1,
   "warning": 3,
-  "info": 2
+  "info": 2,
+  "surfacesChecked": 6,
+  "surfacesDeclared": 6
 }
 ```
 
-Diagnostics go to stderr.
+Diagnostics go to stderr, including the narrowing notice for
+`--list-symbols --surface`, whose stdout is a tab-separated table.
 
 ## Fixture Cases
 

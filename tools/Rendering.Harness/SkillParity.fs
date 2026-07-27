@@ -881,6 +881,66 @@ module SkillParity =
         |> List.map (fun surface ->
             { surface with Roots = surface.Roots |> List.map (fun path -> relativePath root (Path.Combine(root, path))) })
 
+    /// ISSUE #1098 — the surfaces a run inspects when NO `--surface` is supplied.
+    ///
+    /// `--surface` REPLACES this set; it does not merge into it (see `effectiveSurfaces`). That is a
+    /// deliberate, documented behaviour now, but it is only safe while it is VISIBLE: before this item the
+    /// sole trace that five of six gates had been skipped was the `Supported Surfaces` table having one
+    /// row instead of six, and a one-surface run and a six-surface run both printed `passed` and exited 0.
+    /// Naming the baseline once, here, is what lets the report, the operator output, and the `--json`
+    /// object all say how much of the repository a run actually covered without re-deriving it three ways.
+    ///
+    /// Pure: both branches only build records, so callers may evaluate it for the count alone.
+    let private baseSurfaces request root =
+        match request.FixtureMode with
+        | Some _ -> fixtureSurfaces root
+        | None -> discoverDefaultSurfaces root
+
+    /// ISSUE #1098 — how much of the declared world this run covered.
+    ///
+    /// Returns `checked`, `declared`, and the baseline ids this run did NOT inspect — in the baseline's
+    /// own order, so the text derived from it is deterministic (it reaches a COMMITTED report whose gate
+    /// diffs it).
+    let private surfaceCensus request (surfaces: SkillSurface list) =
+        let declared = baseSurfaces request request.RepositoryRoot
+        let inspected = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+
+        let notChecked =
+            declared
+            |> List.map (fun surface -> surface.SurfaceId)
+            |> List.filter (inspected.Contains >> not)
+
+        List.length surfaces, List.length declared, notChecked
+
+    /// The one sentence that makes a narrowed run tell on itself, in the report and the JSON summary both.
+    /// `None` when nothing was narrowed, so the committed `docs/reports/skills-parity.md` — which is
+    /// produced by a run with no overrides — is byte-identical to what it was before this item.
+    let private narrowingCaveat request surfaces =
+        if request.SurfaceOverrides.IsEmpty then
+            None
+        else
+            let checkedCount, declaredCount, notChecked = surfaceCensus request surfaces
+
+            let baseline =
+                if request.FixtureMode.IsSome then
+                    "the fixture set"
+                else
+                    "this repository"
+
+            let skipped =
+                match notChecked with
+                | [] -> ""
+                | ids -> $""" NOT checked: {String.concat ", " ids}."""
+
+            let text =
+                // "instead of", not "not the N": an operator may override every declared id at once, and
+                // then the counts match while the roots do not. The sentence has to stay true in that case.
+                $"`--surface` REPLACED the checked surface set: this run inspected {checkedCount} "
+                + $"operator-declared surface(s) instead of the {declaredCount} {baseline} declares.{skipped} "
+                + "This run is NOT full repository parity evidence."
+
+            Some text
+
     let private commandSkillName (name: string) =
         name.StartsWith("speckit-", StringComparison.OrdinalIgnoreCase)
 
@@ -2084,11 +2144,21 @@ module SkillParity =
             |> Option.map (fun mode -> $" --fixture {mode}")
             |> Option.defaultValue ""
 
+        // ISSUE #1098 — the overrides belong in the regenerate line. This line's whole job is to be the
+        // command that reproduces the report it sits in, and `--surface` REPLACES the surface set: omitting
+        // it published a command that regenerates a DIFFERENT, wider run than the one above it, which is
+        // the same "the artifact does not say what produced it" fail-open the caveat closes from the other
+        // side. Empty for a run with no overrides, so the committed report is untouched.
+        let overrides =
+            request.SurfaceOverrides
+            |> List.map (fun (surfaceId, path) -> $" --surface {surfaceId}={path}")
+            |> String.concat ""
+
         // The report is committed, so the regenerate line must not bake in the absolute path of
         // whichever checkout produced it — otherwise every worktree rewrites the file.
         let path = relativePath request.RepositoryRoot
 
-        $"dotnet fsi scripts/check-agent-skill-parity.fsx --out {path request.OutDir} --report {path request.ReportPath} --summary-json {path request.SummaryJsonPath}{fixture} --fail-on {severityToken request.FailOnSeverity}"
+        $"dotnet fsi scripts/check-agent-skill-parity.fsx --out {path request.OutDir} --report {path request.ReportPath} --summary-json {path request.SummaryJsonPath}{fixture}{overrides} --fail-on {severityToken request.FailOnSeverity}"
 
     let private buildReport
         (request: ParityCheckRequest)
@@ -2123,6 +2193,9 @@ module SkillParity =
             [ "Global Codex skill installation paths are excluded from required repository parity."
               if request.FixtureMode.IsSome then
                   "Fixture mode uses synthetic skill files and is not real repository parity evidence."
+              // #1098: a `--surface` run checked fewer gates than the repository declares, and until now
+              // the only trace of that was the `Supported Surfaces` table having one row instead of six.
+              yield! (narrowingCaveat request surfaces |> Option.toList)
               yield! symbolCaveats
               yield! artifactCaveats ]
           Command = commandText request }
@@ -2231,11 +2304,34 @@ Before acting, read the canonical instructions in:
                 "Documents a public API that no test exercises."
                 (documents "Widget.hidden")
 
+    /// ISSUE #1098 — `--surface` REPLACES the surface set. It is not additive, and the contract now says
+    /// so (`specs/168-skill-parity-evidence/contracts/skill-parity-cli.md`), where it used to say "Add or
+    /// override a skill surface" and mean neither.
+    ///
+    /// WHY REPLACE, AND NOT THE MERGE THE OLD WORDING PROMISED. The merge reading — "swap the roots of a
+    /// known id, append an unknown one" — would have to keep the known id's `Selector`, `Kind`, `Agent`
+    /// and `IsRequired` and change only `Roots`. That is precisely the `Roots`/`Selector` shape #1092
+    /// landed and this item put out of scope, and it contradicts #1092's decision below: an override is a
+    /// FRESH declaration ("the operator declared a root and nothing else, so nothing else is applied"),
+    /// not a patch to an existing one. It would also delete the flag's only real use — isolating one
+    /// synthetic surface against a temporary tree, which is how #1086, #1092 and #1093's own red cases are
+    /// written — because every such run would drag the six repository surfaces along and light them all up
+    /// as empty-and-required.
+    ///
+    /// So the behaviour stands and the DOCUMENT moved. What was actually dangerous was never the
+    /// replacement: it was that the replacement was SILENT. A run that checked one of six gates and a run
+    /// that checked all six both printed `passed`, exited 0, and differed only in a table's row count.
+    /// Three things now say it out loud, and each is reachable by a different consumer: `narrowingCaveat`
+    /// (committed report + JSON summary), the `surfaces:` operator line and `surfacesChecked`/
+    /// `surfacesDeclared` in `--json` (stdout), and `--surface` in the report's regenerate line.
+    ///
+    /// `--fixture` PLUS `--surface` has one meaning, and it is this one: `--fixture` materializes the
+    /// synthetic tree and re-roots the run at it (`effectiveRequestFor`, which has already run by the time
+    /// this is called), then `--surface` replaces the FIXTURE set — so the overrides are resolved beneath
+    /// the fixture root, and `baseSurfaces` reports the fixture set as the baseline they replaced.
     let private effectiveSurfaces request root =
         if request.SurfaceOverrides.IsEmpty then
-            match request.FixtureMode with
-            | Some _ -> fixtureSurfaces root
-            | None -> discoverDefaultSurfaces root
+            baseSurfaces request root
         else
             // ISSUE #1092 — an override is now GENUINE for every surface id, including the five that
             // used to have a hard-coded branch in `filesForSurface`. `EverySkillBody` is the honest
@@ -2773,6 +2869,14 @@ Before acting, read the canonical instructions in:
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
         let entries, readFailures = inventorySkillsWith File.ReadAllText effectiveRequest surfaces
 
+        // #1098: the same narrowing notice as the report path, but on STDERR — `--list-symbols`'s stdout is
+        // a tab-separated table a caller pipes, and a census line in it would corrupt the very output the
+        // flag exists to produce. The doc already routes diagnostics to stderr. Silence here would leave
+        // `--list-symbols --surface x=y` looking like a complete symbol list for the whole repository.
+        match narrowingCaveat effectiveRequest surfaces with
+        | Some caveat -> eprintfn "skill-parity: %s" caveat
+        | None -> ()
+
         // `--list-symbols` shares the pipeline so it cannot disagree with the report, and that includes not
         // going quiet about a body it failed to read: a symbol table missing a whole skill is exactly the
         // fail-open #1093 closed. It EXITS non-zero too, exactly as it already does when symbol resolution
@@ -2833,9 +2937,21 @@ Before acting, read the canonical instructions in:
             let report = runCheck request
             writeReport request report |> ignore
 
+            // ISSUE #1098 — the surface census, on the channel a caller actually reads.
+            //
+            // `contracts/skill-parity-cli.md` has promised "checked repository root" and "checked surfaces"
+            // under Operator Output since Feature 168, and the CLI printed NEITHER: it printed status,
+            // report, summary-json and findings. So the one fact that separates a run over one surface from
+            // a run over all six was reachable only by opening the generated report and counting rows —
+            // exactly the "distinguishable by something other than reading a table" this item's acceptance
+            // criterion 2 asks for. `report.RepositoryRoot` is the EFFECTIVE root (the fixture tree under
+            // `--fixture`), which is the root that was actually checked and therefore the one to print.
+            let surfacesChecked = List.length report.SupportedSurfaces
+            let surfacesDeclared = List.length (baseSurfaces request report.RepositoryRoot)
+
             if request.JsonOutput then
                 printfn
-                    "{\"summaryJson\":%s,\"report\":%s,\"overallStatus\":%s,\"critical\":%i,\"high\":%i,\"warning\":%i,\"info\":%i}"
+                    "{\"summaryJson\":%s,\"report\":%s,\"overallStatus\":%s,\"critical\":%i,\"high\":%i,\"warning\":%i,\"info\":%i,\"surfacesChecked\":%i,\"surfacesDeclared\":%i}"
                     (JsonSerializer.Serialize report.StructuredSummaryPath)
                     (JsonSerializer.Serialize report.GeneratedReportPath)
                     (JsonSerializer.Serialize(overallStatusToken report.OverallStatus))
@@ -2843,8 +2959,20 @@ Before acting, read the canonical instructions in:
                     report.FindingCountsBySeverity.High
                     report.FindingCountsBySeverity.Warning
                     report.FindingCountsBySeverity.Info
+                    surfacesChecked
+                    surfacesDeclared
             else
                 printfn "skill-parity status: %s" (overallStatusToken report.OverallStatus)
+                printfn "root: %s" report.RepositoryRoot
+
+                if request.SurfaceOverrides.IsEmpty then
+                    printfn "surfaces: %i checked of %i declared" surfacesChecked surfacesDeclared
+                else
+                    printfn
+                        "surfaces: %i checked of %i declared — NARROWED by --surface, this run is not full repository parity"
+                        surfacesChecked
+                        surfacesDeclared
+
                 printfn "report: %s" report.GeneratedReportPath
                 printfn "summary-json: %s" report.StructuredSummaryPath
                 printfn

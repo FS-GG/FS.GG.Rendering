@@ -36,8 +36,13 @@ Represents one supported directory or source class that contains skill files.
 - Every file a surface inventories is beneath one of the roots it declares, so
   the report's `Root` column is a checkable claim about where the gate looks and
   not a comment that happens to agree with it.
-- `--surface <id>=<path>` overrides the roots of *any* surface id, including the
-  ids the resolver narrows.
+- `--surface <id>=<path>` REPLACES the surface set: the run inspects the
+  surfaces named on the command line and no others. It reaches *any* surface id,
+  including the ids the resolver narrows, but an override is a fresh declaration
+  rather than a patch — the resulting surface carries the operator's root, the
+  `every-skill-body` selector, and `IsRequired`, and inherits no narrowing from
+  the id it shares a name with. A narrowed run states its own coverage: see
+  `contracts/skill-parity-cli.md`.
 - Required wrapper surfaces must be readable before parity status can pass.
 - Mixed surfaces must classify each skill entry as canonical or wrapper.
 
