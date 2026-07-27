@@ -53,13 +53,40 @@
 # A resolution that finds nothing is a hard error naming what to do — never a silent no-op, which is the
 # #266 failure this whole effort exists to end.
 #
-# IT DECIDES TWO THINGS ABOUT COORDINATION, AND ONLY BECAUSE NOTHING ELSE CAN (#929, #709). `BOARD_WRITES`
-# below names which verbs write shared state, so a STALE engine can be refused one; and an engine built
-# from UNCOMMITTED source is warned about. That is coordination knowledge in a pipe that is meant to hold
-# none, and the trade is deliberate: neither check can live in the engine, because the suspect engine IS
+# IT DECIDES TWO THINGS ABOUT COORDINATION, AND ONLY BECAUSE NOTHING ELSE CAN (#929, #709). The verb
+# PARTITION below names which verbs write shared state, so a STALE engine can be refused one; and an engine
+# built from UNCOMMITTED source is warned about. That is coordination knowledge in a pipe that is meant to
+# hold none, and the trade is deliberate: neither check can live in the engine, because the suspect engine IS
 # the thing being checked — an engine built before the check existed would not run it, which is exactly
 # how a fix for #914 sat in `src/` while the fleet ran without it. The resolver is the last place that
 # sees both the artifact and the source before the exec.
+#
+# WHAT THE ENGINE CANNOT BE ASKED, AND WHY THE ANSWER IS A TEST (.github#1528). The knowledge duplicated
+# here is a property of the engine, so the obvious repair is to DERIVE it — have the engine emit its own
+# write surface (`command-contract` already emits the verb surface, by reflection over the `Command` union)
+# and read that here instead of enumerating. It does not work, for the reason the paragraph above already
+# gives, and it fails in the WORST direction. The engine that would answer is the STALE one: an engine built
+# before a `writes` field existed emits no such field, the shim derives an EMPTY write-set from it, and
+# every board write is permitted — on precisely the oldest artifacts, which are the dangerous ones. A guard
+# that needs a current engine to decide whether the engine is current is circular, and it fails OPEN. (Two
+# lesser reasons, both real: it puts a second `exec` of a suspect binary on the hot path of every single
+# invocation, and a stale engine that hangs or crashes then takes the guard down with it.)
+#
+# So the enumeration stays, and what changes is that it can no longer be SILENTLY incomplete. The verbs are
+# partitioned into three named sets that must, between them, cover the engine's whole command surface;
+# `tests/coord-engine-parity/shim.sh` §3b reads `command-contract --json` off a freshly built engine and
+# REDS if any verb it advertises is in none of them, or if any set names a verb the engine does not have.
+# A verb added to the engine therefore arrives UNCLASSIFIED and fails the build until somebody decides
+# about it. That is the whole fix: the list is still written by hand, but forgetting it is no longer quiet.
+# §3c then drives every verb in every set against a stale fixture engine, so the partition is behaviour
+# rather than a string — a verb moved between sets without meaning it reds too.
+#
+# The list was wrong when this was written, and in both directions, which is the argument for the gate
+# rather than for a longer string: `set-paths` reached the same `Writes.widen` PATCH as `widen` through
+# the same `updateTouchSet` helper and was absent; `room` (`Writes.createRoom` + `Writes.writeRoomRef`) and
+# `reconcile` (`Board.boardWrite`) were absent; and `bootstrap`, which the filing believed created the
+# project, is a READ (`Board.bootstrap`: *"Resolve the board and its field/option ids. Two GraphQL calls"*)
+# that adding would have made a stale engine refuse for nothing.
 #
 # The two are one question asked at two joints — "is the code about to run the code this checkout says?"
 # `stale_guard` compares the ARTIFACT to the source; `dirty_guard` compares that SOURCE to HEAD. Neither
@@ -127,7 +154,59 @@ engine_path() { printf '%s/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-en
 # strict as the engine's own dispatch — there is no accepted invocation that hides a write verb elsewhere,
 # which is what would make this guard fail OPEN. Matching any argv token instead would fail the other way,
 # on values: `ready --status Done` is a read, and `Done` is a write verb's name.
-BOARD_WRITES=" claim take release heartbeat adopt add set-field flush child widen say done reap "
+#
+# THE SETS ARE UNPADDED AND JOINED WITH ONE SPACE AT THE POINT OF USE, which is not a style choice. The
+# match below is `*" $verb "*`, and `$verb` is EMPTY for a bare `scripts/fsgg-coord` (which the engine
+# parses as `--help`). Two sets each carrying their own outer spaces would concatenate to a DOUBLE space,
+# the empty verb's pattern would be `*"  "*`, and a bare help invocation would be refused as a board write.
+# One space between, spaces added once around the whole, and no pattern for an empty verb can match.
+
+# WRITES, UNCONDITIONALLY — every invocation of these can mutate state the whole fleet shares.
+BOARD_WRITES="add adopt child claim done flush heartbeat release room say set-field set-paths take widen"
+
+# WRITES ONLY UNDER A CONDITION — and the flat list above CANNOT say that, which is how it got wrong.
+# These are refused all the same, verb-level and fail-closed, and they are held in a set of their own so
+# the fact stays recorded rather than laundered into "these are write verbs":
+#
+#   reap        — writes only under `--apply`; the bare form is a DRY RUN (`Client.fs`, `if not opts.Apply`).
+#   reconcile   — the same shape: `--apply` writes board columns via `Board.boardWrite`, bare is a dry run.
+#   next        — writes under no flag at all. AFTER printing its answer it makes the #733 chore OFFER
+#                 (`offerChoreAtNext` → `Chores.offer` → `Writes.claim`), which POSTs a claim marker to take
+#                 the repo's chore lock. `.github`'s lock is #1033, so this fires in the repo that owns this
+#                 shim. `batch` is the same decision uncapped and makes no offer, so it stays a read.
+#
+# WHY VERB-LEVEL RATHER THAN ARGUMENT-AWARE. `--apply` is a bare token in the parser (no `--apply=X` form),
+# so scanning argv for it would in fact be exact today — but it buys a permitted dry run at the price of a
+# guard whose correctness depends on argv SHAPE, and the paragraph above already refuses that trade for the
+# verb ("matching any argv token would fail on values"). The two directions are not symmetric: a missed
+# `--apply` is a stale engine writing the board, and a spurious one is a refused dry run whose remedy is the
+# `dotnet build` this guard already prints. `reap` has been refused verb-level for its whole life on exactly
+# that reasoning, and `next` cannot be argument-aware at all — its write is gated on board state, not on a
+# flag. Take the refusal. If a permitted stale dry run is ever wanted, the honest way is for the engine to
+# declare per-invocation write-ness, not for this shim to re-implement the parser.
+BOARD_WRITES_CONDITIONAL="next reap reconcile"
+
+# READS — permitted (with a warning) on a stale engine, because a stale read misinforms ONE worker where a
+# stale write corrupts what the fleet shares. This set exists so the partition is total: it is the half that
+# makes "unclassified" detectable, and every member was checked against the code rather than its name.
+#
+#   No handler here reaches `Board.boardWrite`/`boardWriteBatch`/`setField`/`setFieldBatch`/`addItem`/`flush`
+#   or any `Writes.*` mutation, and none APPLIES a writing handler — the only inter-handler write calls in
+#   `Client.fs` are `adopt`→`claim`, `take`→`claim` and `widen`/`set-paths`→`updateTouchSet`, all above.
+#   `board`/`bootstrap`/`field-id`/`option-id`/`item-id` are GraphQL QUERIES plus a per-user cache file under
+#   `$XDG_CACHE_HOME/fsgg-coord` — local, not the board. `decide`/`lanes`/`facts` never touch the transport
+#   at all; `whoami`/`followup`/`predicate` never touch the board (identity, a local queue, local registry
+#   files). `scan` POSTs to `graphql`, which is how a GraphQL READ is spelled.
+#
+# `--help`, `-h` and `--version` are deliberately absent: they are not verbs, and the engine's
+# `command-contract` excludes them for the same reason. They are exempted by GRAMMAR at the guard below
+# ("begins with `-`, or is empty"), NOT by being listed here — because an unclassified token is REFUSED
+# there, not permitted, so a list of flag spellings is a list that could be left short.
+#
+# ONE LINE, AND NO SUBSTITUTION IN IT — the parity gate lifts these three assignments straight out of this
+# file and refuses any that is not a plain literal, so a `$…`/`$(…)`/continuation spelling would red §3b
+# rather than be evaluated. Long, therefore, on purpose.
+BOARD_READS="batch board bootstrap budget command-contract decide facts field-id followup inbox issues item-id landable lanes lint option-id overlap predicate ready scan verify-paths who whoami"
 
 # STAT THE .dll, NOT THE APPHOST. `fsgg-coord-engine` is the .NET apphost — a fixed ~78 KB native stub,
 # BYTE-IDENTICAL across every build of every commit. The IL, which is the thing that goes stale, is in
@@ -158,11 +237,41 @@ stale_guard() {
             ${newer#"$top/"} changed $changed
             You are about to run code that is NOT in this checkout (#929). Rebuild it:
               dotnet build src/FS.GG.Coord.Cli -c Release"
-  case "$BOARD_WRITES" in
+  # ONE SPACE BETWEEN THE SETS, spaces added once around the whole — see the note above the sets. A padded
+  # concatenation would put a DOUBLE space here and refuse the empty verb of a bare invocation.
+  case " $BOARD_WRITES $BOARD_WRITES_CONDITIONAL " in
     *" $verb "*)
       die "REFUSED — '$verb' writes the board the whole fleet shares, and the engine is STALE.
 $detail" ;;
   esac
+
+  # AN UNCLASSIFIED VERB IS REFUSED, NOT PERMITTED — the runtime half of the partition, and the reason
+  # `BOARD_READS` is a set rather than a comment. Without this, "not in the write set" means "permitted",
+  # so a verb ADDED to the engine and not to this file runs on a stale engine silently: the parity gate
+  # would red on the next CI run, but the fleet would already have run it. Falling the other way costs
+  # nothing — the guard is only reached when the engine is genuinely STALE, and a non-flag first token
+  # this file does not know is either a NEW verb (refuse: that is the whole bug) or a typo the engine
+  # would refuse a moment later anyway.
+  #
+  # THE EXEMPTION ASKS THE GRAMMAR, NOT A LIST (#1507). `--help`, `-h`, `--version` and the empty argv of a
+  # bare invocation are not verbs and are not in the engine's `command-contract`; a fourth spelling would
+  # have to be added to any list that named them, and being left out of that list would refuse `--help` on
+  # a stale engine. "Begins with `-`, or is empty" is the same question the engine's own dispatch asks
+  # (it REFUSES a flag before the verb), so no list can fall out of date here.
+  case " $BOARD_READS " in
+    *" $verb "*) ;;
+    *)
+      case "$verb" in
+        '' | -*) ;;
+        *)
+          die "REFUSED — '$verb' is a verb this resolver does not classify, and the engine is STALE.
+            Neither BOARD_WRITES, BOARD_WRITES_CONDITIONAL nor BOARD_READS in this file names it, so
+            whether it writes the board the fleet shares is UNKNOWN — and an unknown write is refused.
+            If it is a new verb, classify it here (tests/coord-engine-parity/shim.sh §3b gates the set).
+$detail" ;;
+      esac ;;
+  esac
+
   echo "fsgg-coord: WARNING — the engine is STALE, so it need not behave as this checkout reads." >&2
   printf '%s\n' "$detail" >&2
   echo "            Board writes are refused until you do." >&2
