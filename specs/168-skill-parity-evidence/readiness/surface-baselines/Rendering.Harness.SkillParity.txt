@@ -15,6 +15,8 @@ type WrapperTarget
 type SkillEntry
 type ApiSymbol
 type IntentionalException
+type SurfaceReadFailureKind
+type SurfaceReadFailure
 type ParityFinding
 type SeverityCounts
 type SkillSymbolSummary
@@ -36,6 +38,7 @@ val overallStatusToken
 val defaultRequest
 val parseFrontMatter
 val discoverDefaultSurfaces
+val inventorySkillsWith
 val inventorySkills
 val loadSurfaceMembers
 val loadExercisedSymbols
@@ -43,6 +46,7 @@ val evaluateApiSymbols
 val defaultGuardedThemes
 val loadHarnessCommands
 val evaluateArtifactReferences
+val runCheckWith
 val runCheck
 val renderMarkdown
 val renderSummaryJson

@@ -149,6 +149,33 @@ module SkillParity =
           ReviewDate: string
           Scope: string }
 
+    /// Why a file that `filesForSurface` ENUMERATED never became a `SkillEntry`. The two cases are kept
+    /// apart on purpose (#1093): an unreadable file is a fact about the repository, an unexpected defect is
+    /// a fact about this harness, and reporting the second as the first sends the reader to fix a file that
+    /// is perfectly fine.
+    type SurfaceReadFailureKind =
+        /// The file exists and the filesystem refused to hand over its bytes — IO, permissions, a path the
+        /// OS rejects. The repository is what needs fixing.
+        | UnreadableFile
+        /// Any other exception escaping the read. `readEntry`/`parseFrontMatter` threw, which is a defect in
+        /// the harness itself; naming it "unreadable" would be a lie about whose bug it is.
+        | UnexpectedReadDefect
+
+    /// One file that could not be turned into an entry, and the reason. This is the fact the old
+    /// `with _ -> None` destroyed.
+    ///
+    /// `Path` is the file that ACTUALLY threw, repository-relative. It is not always the file the surface
+    /// enumerated — a wrapper reads its canonical target too — and `ReachedFrom` names the enumerated
+    /// path(s) that led here when they differ. Reporting the enumerated path instead would send a reader to
+    /// fix a file that reads perfectly.
+    type SurfaceReadFailure =
+        { SurfaceId: string
+          Path: string
+          Kind: SurfaceReadFailureKind
+          ExceptionType: string
+          Reason: string
+          ReachedFrom: string list }
+
     type ParityFinding =
         { FindingId: string
           SkillName: string
@@ -263,6 +290,17 @@ module SkillParity =
 
     val discoverDefaultSurfaces: repositoryRoot: string -> SkillSurface list
 
+    /// Inventory the surfaces, and REPORT every enumerated file that could not be read instead of dropping
+    /// it (#1093). `readText` is the seam the red-case test drives: there is no portable, deterministic way
+    /// to make `File.ReadAllText` throw from a fixture, and none at all for an unexpected exception type.
+    val inventorySkillsWith:
+        readText: (string -> string) ->
+        request: ParityCheckRequest ->
+        surfaces: SkillSurface list ->
+            SkillEntry list * SurfaceReadFailure list
+
+    /// The entries only, reading through the real filesystem — and it RAISES on a file it could not read
+    /// rather than dropping it, so a caller that only wants the list cannot inherit #1093's fail-open.
     val inventorySkills: request: ParityCheckRequest -> surfaces: SkillSurface list -> SkillEntry list
 
     /// Declaring module -> its public member names, from `readiness/surface-baselines/members`.
@@ -296,6 +334,10 @@ module SkillParity =
         themes: GuardedTheme list ->
         entries: SkillEntry list ->
             ArtifactReference list
+
+    /// `runCheck` with the inventory's file reader injected, so the unreadable-file path can be proven
+    /// through the WHOLE pipeline — finding, severity, overall status — rather than asserted in isolation.
+    val runCheckWith: readText: (string -> string) -> request: ParityCheckRequest -> ParityReport
 
     val runCheck: request: ParityCheckRequest -> ParityReport
 
