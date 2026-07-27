@@ -64,10 +64,26 @@ let private packedEntry = "content/" + fragmentRelative
 
 /// Pack the template package into a scratch directory and return its entries.
 ///
-/// Deliberately isolated: `-o` and `BaseIntermediateOutputPath` both point at the scratch dir and the lock
-/// file is suppressed, so a run leaves the working tree byte-for-byte unchanged. (It does not: a stray
-/// `packages.lock.json` from an unisolated pack is exactly the kind of artifact that reddens an unrelated
-/// regeneration gate later.)
+/// Deliberately isolated: `-o` and `BaseIntermediateOutputPath` both point at the scratch dir, and the
+/// restore cannot write a lock file, so a run leaves the working tree byte-for-byte unchanged. (It does
+/// not: a stray `packages.lock.json` from an unisolated pack is exactly the kind of artifact that reddens
+/// an unrelated regeneration gate later.)
+///
+/// 1089 — HOW THAT ISOLATION IS SPELLED CHANGED, AND IT HAD TO. This used to pass
+/// `-p:RestorePackagesWithLockFile=false`, which was the right way to say "do not write a lock" while
+/// `.template.package` had none. #1089 committed one — the project whose output IS the published package
+/// was restoring UNLOCKED in the release lane — and NuGet rejects that combination outright:
+///
+///   error NU1005: Invalid restore input where RestorePackagesWithLockFile property is set to false
+///   but a packages lock file exists at .../.template.package/packages.lock.json
+///
+/// `RestoreLockedMode=true` states the same intent against a project that now HAS a lock: locked restore
+/// validates the committed graph and never rewrites the file, so the working tree is still untouched.
+/// It is also strictly stronger — this pack is the one place outside `release.yml` that restores this
+/// project, so it is now also where a lock that has drifted from the central pin gets caught, on the PR
+/// rather than in the middle of a release. Do not "simplify" this back to dropping the flag: without it a
+/// local (non-CI) run restores unlocked and MAY rewrite the committed lock, which is the working-tree
+/// mutation this comment has always been about.
 let private packedFragmentBytes =
     lazy
         (let scratch = Path.Combine(Path.GetTempPath(), "fs-gg-570-" + System.Guid.NewGuid().ToString("N"))
@@ -86,7 +102,7 @@ let private packedFragmentBytes =
            "-m:1"
            "--nologo"
            $"-p:BaseIntermediateOutputPath={scratch}/obj/"
-           "-p:RestorePackagesWithLockFile=false" ]
+           "-p:RestoreLockedMode=true" ]
          |> List.iter psi.ArgumentList.Add
 
          match Process.Start psi with
