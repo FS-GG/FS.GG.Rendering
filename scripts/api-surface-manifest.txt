@@ -198,7 +198,7 @@ pkg    FS.GG.UI.Canvas
 # ------------------------------------------------------------------------------------------
 file   Contracts/Schemas.fsi
 skill  fs-gg-testing
-header // Mirrored from FS-GG/FS.GG.SDD @ 7.2.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
+header // Mirrored from FS-GG/FS.GG.SDD @ 7.4.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
 ns     Fsgg
 pkg    FS.GG.Contracts
 +      Schemas.fsi type Schemas.PerformanceIntentDeclaration
@@ -2062,6 +2062,37 @@ open   FS.GG.UI.DesignSystem
 # — then reconcile teach-vs-waive by eye: a newly-shipped member lands here by default; MOVE it to a
 # `+` in the right file stanza if the scaffold should teach it. Kept sorted by (package, source,
 # path, kind) so a diff shows exactly which members entered or left the pin's surface.
+#
+# #1101 — FS.GG.Contracts ENTERS THIS BLOCK FOR THE FIRST TIME (112 lines), AND THAT IS THE POINT.
+#
+# Until now this block contained ZERO FS.GG.Contracts members. That was not because the package
+# shipped none: it was because `scripts/refresh-api-surface-mirror.fsx` carried a `legacyPre782Surfaces`
+# bridge that fed Contracts a hand-written copy of one `.fsi` instead of the package's own packed
+# surface, so the COVERAGE rule reconciled the manifest against the hand-copy and had nothing to
+# demand. Measured at the 7.2.0 pin: `--emit-waivers` emitted 969 lines and not one was a Contracts
+# member, while the package in fact exported 113 public members. The bridge and
+# `scripts/legacy-api-surfaces/` are deleted, the pin is FS.GG.Contracts 7.4.0 — the first published
+# release that packs `api-surface/*.fsi` (FS-GG/FS.GG.SDD#742, discharging #782's producer half) — and
+# the generator now reads Contracts like every other package.
+#
+# So these 112 lines are a BLIND SPOT BEING LIFTED, not a surface that shrank. The count reconciles
+# exactly: 969 -> 1081 waivers, delta 112, and the non-Contracts lines are byte-identical before and
+# after. 113 public members minus the one the mirror teaches
+# (`Schemas.PerformanceIntentDeclaration`) = 112.
+#
+# WHY WAIVED AND NOT TAUGHT. The scaffold's teaching contract with Contracts is unchanged by this
+# item: `docs/scaffold-map.md` sanctions exactly one taught Contracts type, the producer-owned early
+# performance-intent declaration (Rendering#1060), and a scaffolded product consumes nothing else from
+# the package. Teaching Registry/SkillMirror/Schemas here would teach the SDD lifecycle's own
+# machinery to a product template that never calls it. Waiving is the same curation decision the
+# mirror has always made for these members — it is now EXPLICIT rather than invisible, which is what
+# #925's rule exists for and what the bridge was suppressing.
+#
+# WHAT CHANGES FOR THE NEXT CONTRACTS BUMP. Previously a Contracts bump could add or drop public
+# members with no member-level verdict at all. Now a bump that adds one reds this gate until somebody
+# teaches or waives it, and a bump that removes one reds it as a stale waiver. That is the drift
+# detection the bridge made impossible, and it is why the bridge could not simply be carried forward.
+#
 waive FS.GG.Audio.Engine Engine.fsi val Engine.createSink
 waive FS.GG.Audio.Engine Engine.fsi val Engine.createSinkOver
 waive FS.GG.Audio.Engine Engine.fsi val Engine.createSinkWith
@@ -2082,6 +2113,118 @@ waive FS.GG.Audio.Host Host.fsi val DeviceDiagnostics.message
 waive FS.GG.Audio.Host Host.fsi val DeviceDiagnostics.recovered
 waive FS.GG.Audio.Host Host.fsi type Silence
 waive FS.GG.Audio.Host Host.fsi val Wav.FormatPcm
+waive FS.GG.Contracts ContractVersion.fsi val ContractVersion.major
+waive FS.GG.Contracts ContractVersion.fsi val ContractVersion.minor
+waive FS.GG.Contracts ContractVersion.fsi val ContractVersion.patch
+waive FS.GG.Contracts ContractVersion.fsi val ContractVersion.value
+waive FS.GG.Contracts Provider.fsi type Provider.DeclaredCommand
+waive FS.GG.Contracts Provider.fsi type Provider.ProviderDescriptor
+waive FS.GG.Contracts Provider.fsi type Provider.ProviderParameterSpec
+waive FS.GG.Contracts Provider.fsi val Provider.defaultNameParameter
+waive FS.GG.Contracts Provider.fsi val Provider.isMalformed
+waive FS.GG.Contracts Provider.fsi val Provider.resolveNameParameter
+waive FS.GG.Contracts Registry.fsi type Registry.CoherenceEntry
+waive FS.GG.Contracts Registry.fsi type Registry.ConsumerDeclaration
+waive FS.GG.Contracts Registry.fsi type Registry.ContractEntry
+waive FS.GG.Contracts Registry.fsi type Registry.DependencyEdge
+waive FS.GG.Contracts Registry.fsi type Registry.DependencyEdge2
+waive FS.GG.Contracts Registry.fsi type Registry.MirrorDeclaration
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryComponent
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryDiagnostic
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryDocument
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryModel
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryRepo
+waive FS.GG.Contracts Registry.fsi type Registry.RegistryRule
+waive FS.GG.Contracts Registry.fsi type Registry.SkillRegistryDocument
+waive FS.GG.Contracts Registry.fsi type Registry.SkillRegistryEntry
+waive FS.GG.Contracts Registry.fsi type Registry.ValidationResult
+waive FS.GG.Contracts Registry.fsi type Registry.WireContract
+waive FS.GG.Contracts Registry.fsi type Registry.WireContractDeclaration
+waive FS.GG.Contracts Registry.fsi val Registry.validate
+waive FS.GG.Contracts Registry.fsi val Registry.validateDocument
+waive FS.GG.Contracts Registry.fsi val Registry.validateSkillRegistry
+waive FS.GG.Contracts Schemas.fsi type Schemas.AgentGuidanceTargetEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.AgentsSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.CapabilitiesSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.GeneratorRef
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffConfigPresence
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffEvidence
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffEvidenceEdge
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffEvidenceNode
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffPerformanceEvidence
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffReadiness
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffReference
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceHandoffSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.GovernanceSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.PerformanceEvidenceArtifact
+waive FS.GG.Contracts Schemas.fsi type Schemas.PerformanceEvidenceMeasurement
+waive FS.GG.Contracts Schemas.fsi type Schemas.PerformanceEvidenceSampleSet
+waive FS.GG.Contracts Schemas.fsi type Schemas.PolicySchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.ProjectSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.ProviderParameterEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.ProviderRegistryEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.ProvidersSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.ScaffoldProducedPathEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.ScaffoldProvenanceSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.SchemaContractEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.SchemaDiagnostic
+waive FS.GG.Contracts Schemas.fsi type Schemas.SchemaOwner
+waive FS.GG.Contracts Schemas.fsi type Schemas.SchemaSourceIdentity
+waive FS.GG.Contracts Schemas.fsi type Schemas.SddSchema
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillManifest
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillManifestEntry
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillManifestFile
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillManifestFileSet
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillManifestV2
+waive FS.GG.Contracts Schemas.fsi type Schemas.SkillScope
+waive FS.GG.Contracts Schemas.fsi type Schemas.ToolingSchema
+waive FS.GG.Contracts Schemas.fsi val Schemas.agentSkillRoots
+waive FS.GG.Contracts Schemas.fsi val Schemas.agentsVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.capabilitiesVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.entries
+waive FS.GG.Contracts Schemas.fsi val Schemas.governanceHandoffContractVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.governanceHandoffVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.governanceVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.policyVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.projectVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.providersVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.scaffoldProvenanceVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.sddVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.skillManifestVersion
+waive FS.GG.Contracts Schemas.fsi val Schemas.toolingVersion
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.ActualCopy
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.ActualSkillFiles
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.BodyRefusalReason
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.DeclaredFileDrift
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.DeclaredSkillDrift
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.ExpectedSkill
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.ExpectedSkillFiles
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MirrorPlan
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MirrorRefusal
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MirrorRefusalReason
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MirrorWrite
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MultiFileSkill
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MultiFileSkillDrift
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillDrift
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillFile
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillFileDrift
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.decodeBody
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.mirror
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.mirrorFiles
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.mirrorTargetRoots
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.providerSourceRoot
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.retargetSkillPath
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.sha256
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.sha256Bytes
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.skillFilePath
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.skillIdOfPath
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.skillPath
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verify
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyFileSet
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyFiles
+waive FS.GG.Contracts Version.fsi type Version.Version
+waive FS.GG.Contracts Version.fsi val Version.compare
+waive FS.GG.Contracts Version.fsi val Version.tryParse
 waive FS.GG.Game.Core Edges.fsi type Dir
 waive FS.GG.Game.Core Edges.fsi type Edge
 waive FS.GG.Game.Core Edges.fsi val Edges.astar

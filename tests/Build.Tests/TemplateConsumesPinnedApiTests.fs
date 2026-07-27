@@ -2565,8 +2565,17 @@ let private omissionLedger =
 /// a single Contracts type (`Schemas.PerformanceIntentDeclaration`, Rendering#1060) and the other 62
 /// `Fsgg` types — including that same skill-manifest family — were already ledgered. See the ledger's
 /// own dated stanza for the per-version evidence.
+///
+/// Raised 470 -> 471 by #1101: ONE type, `Fsgg.BodyRefusalReason`, which FS.GG.Contracts added in 7.3.0.
+/// The pin moved 7.2.0 -> 7.4.0 not to satisfy `pin-lags-feed` (#1102 removed that from the PR lane) but
+/// because #1101 deleted the pre-#782 `legacyPre782Surfaces` bridge, and reading Contracts like every
+/// other package requires a version that PACKS `api-surface/*.fsi` — 7.4.0 is the first that does.
+/// It is the twelfth SkillMirror-family type in a ledger that already carries eleven, so it continues an
+/// existing curation rather than opening one. Note what did NOT move: deleting the bridge shifted the
+/// MEMBER-level coverage rule by 112 (969 -> 1081 waivers in scripts/api-surface-manifest.txt), and this
+/// ceiling by one, because this rule reads the restored nupkg and never consulted the bridge at all.
 [<Literal>]
-let private OmissionLedgerCeiling = 470
+let private OmissionLedgerCeiling = 471
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

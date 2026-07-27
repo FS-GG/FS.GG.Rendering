@@ -312,7 +312,14 @@ let performanceEvidenceContract =
               // .github/workflows/template-pin-staleness-sweep.yml, which files a tracked item. So this
               // literal is now moved by somebody who CLAIMED that item, with the routine in hand —
               // rather than by whoever happened to have a PR open when Contracts published.
-              Expect.stringContains packages "<FsGgContractsVersion>7.2.0</FsGgContractsVersion>" "producer version is exact"
+              // #1101 moved it 7.2.0 -> 7.4.0, and for a reason the routine above did not anticipate: not
+              // `pin-lags-feed` (already out of the PR lane by then) but the DELETION of the pre-#782
+              // `legacyPre782Surfaces` bridge in scripts/refresh-api-surface-mirror.fsx. Reading Contracts
+              // like every other package needs a version that PACKS `api-surface/*.fsi`, and 7.4.0 is the
+              // first published release that does. So a second trigger for this literal now exists: any
+              // change to how the mirror generator sources a package can force the pin, independently of
+              // the feed. Steps 1-5 of the routine were all still required.
+              Expect.stringContains packages "<FsGgContractsVersion>7.4.0</FsGgContractsVersion>" "producer version is exact"
               Expect.stringContains
                   project
                   "<PackageReference Include=\"FS.GG.Contracts\" />"
