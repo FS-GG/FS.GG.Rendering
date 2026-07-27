@@ -81,6 +81,7 @@
     <Compile Include="Feature1092SurfaceRootTests.fs" />
     <Compile Include="Feature1093UnreadableSurfaceTests.fs" />
     <Compile Include="Feature1098SurfaceOverrideContractTests.fs" />
+    <Compile Include="Feature1099SurfaceInventoryContractTests.fs" />
     <Compile Include="Feature573RequirementCitationTests.fs" />
     <Compile Include="Feature570PublishedScaffoldGeometryTests.fs" />
     <Compile Include="Feature489WrapperNamingTests.fs" />
