@@ -143,6 +143,27 @@ module SkillParity =
           ReviewDate: string
           Scope: string }
 
+    /// Why a file that `filesForSurface` ENUMERATED never became a `SkillEntry`. The two cases are kept
+    /// apart on purpose (#1093): an unreadable file is a fact about the repository, an unexpected defect is
+    /// a fact about this harness, and reporting the second as the first sends the reader to fix a file that
+    /// is perfectly fine.
+    type SurfaceReadFailureKind =
+        /// The file exists and the filesystem refused to hand over its bytes — IO, permissions, a path the
+        /// OS rejects. The repository is what needs fixing.
+        | UnreadableFile
+        /// Any other exception escaping the read. `readEntry`/`parseFrontMatter` threw, which is a defect in
+        /// the harness itself; naming it "unreadable" would be a lie about whose bug it is.
+        | UnexpectedReadDefect
+
+    /// One enumerated skill file that could not be turned into an entry, and the reason. This is the fact
+    /// the old `with _ -> None` destroyed.
+    type SurfaceReadFailure =
+        { SurfaceId: string
+          Path: string
+          Kind: SurfaceReadFailureKind
+          ExceptionType: string
+          Reason: string }
+
     type ParityFinding =
         { FindingId: string
           SkillName: string
@@ -800,7 +821,7 @@ module SkillParity =
     let internal agentSkillRootMirrorSegments =
         [ "/.claude/skills/"; "/.codex/skills/"; "/.agents/skills/" ]
 
-    let private targetFromContent (absoluteSkillPath: string) (content: string) =
+    let private targetFromContent (readText: string -> string) (absoluteSkillPath: string) (content: string) =
         let routeIndex = content.IndexOf("Before acting", StringComparison.OrdinalIgnoreCase)
         let matches = Regex.Matches(content, "`([^`]*SKILL\\.md)`", RegexOptions.IgnoreCase)
 
@@ -825,7 +846,7 @@ module SkillParity =
 
             let targetMetadata, targetBody =
                 if exists then
-                    File.ReadAllText resolved |> parseFrontMatter
+                    readText resolved |> parseFrontMatter
                 else
                     Map.empty, ""
 
@@ -836,12 +857,17 @@ module SkillParity =
               CanonicalDescription = targetMetadata |> Map.tryFind "description"
               TargetHash = if exists then Some(sha256 targetBody) else None })
 
-    let private readEntry (repositoryRoot: string) (surface: SkillSurface) (absoluteSkillPath: string) =
-        let content = File.ReadAllText absoluteSkillPath
+    let private readEntry
+        (readText: string -> string)
+        (repositoryRoot: string)
+        (surface: SkillSurface)
+        (absoluteSkillPath: string)
+        =
+        let content = readText absoluteSkillPath
         let metadata, body = parseFrontMatter content
         let name = metadataValue "name" metadata
         let description = metadataValue "description" metadata
-        let target = targetFromContent absoluteSkillPath content
+        let target = targetFromContent readText absoluteSkillPath content
 
         let kind =
             if commandSkillName name then
@@ -946,19 +972,121 @@ module SkillParity =
             else
                 []
 
+    /// Which failures are the FILESYSTEM's answer, as opposed to this harness falling over. Everything the
+    /// BCL raises for "the bytes are there but you cannot have them" belongs here; nothing else does.
+    ///
+    /// `IOException` deliberately covers its subclasses, `FileNotFoundException` and
+    /// `DirectoryNotFoundException` among them. Those are NOT contradictions of `filesForSurface` having
+    /// enumerated the path: the read is a LATER, separate syscall, so a file that vanished in between — or
+    /// a dangling symlink, which `Directory.GetFiles` returns and `File.ReadAllText` cannot open — is a
+    /// fact about the tree, not a defect here.
+    let private classifyReadException (ex: exn) =
+        match ex with
+        | :? IOException
+        | :? UnauthorizedAccessException
+        | :? System.Security.SecurityException
+        | :? NotSupportedException -> UnreadableFile
+        | _ -> UnexpectedReadDefect
+
+    /// Inventory the surfaces, and REPORT every file that could not be read instead of dropping it.
+    ///
+    /// Issue #1093: this used to be `with _ -> None`. That catch was total — it swallowed IO errors,
+    /// permission errors, and any defect in `readEntry`/`parseFrontMatter` alike — and it emitted no
+    /// finding, no caveat, and no diagnostic. A skill body that exists but cannot be read simply was not in
+    /// the inventory, and NOTHING anywhere said so. That is the same fail-open #1086 closed, reached by a
+    /// different route: #1086's check is over `filesForSurface`, which counts files on DISK, so a required
+    /// surface whose files all exist and all fail to read has a non-empty file list (it passes #1086) and
+    /// contributes zero entries (so every entry-driven producer — wrapper parity, canonical drift, manifest
+    /// coverage, API symbols — has nothing to say about it). The surface was not empty; it was UNHEARD.
+    ///
+    /// `readText` is the seam the red-case test drives. There is no portable, deterministic way to make
+    /// `File.ReadAllText` throw from a fixture — `ReadAllText` does not throw on invalid UTF-8, a directory
+    /// named `SKILL.md` is not returned by `Directory.GetFiles`, and permission-based fixtures are
+    /// unreliable in CI and useless as root — and a fix that cannot be proven red is the thing #1086 was
+    /// about. So the injection point is a parameter rather than a fixture trick, and both branches of
+    /// `classifyReadException` are exercised through it.
+    let inventorySkillsWith (readText: string -> string) request surfaces =
+        let results =
+            surfaces
+            |> List.collect (fun surface ->
+                filesForSurface request.RepositoryRoot surface
+                |> List.map (fun path ->
+                    let absolute = Path.GetFullPath path
+
+                    try
+                        Choice1Of2(readEntry readText request.RepositoryRoot surface absolute)
+                    with ex ->
+                        Choice2Of2
+                            { SurfaceId = surface.SurfaceId
+                              Path = relativePath request.RepositoryRoot absolute
+                              Kind = classifyReadException ex
+                              ExceptionType = ex.GetType().Name
+                              Reason = ex.Message }))
+
+        let entries =
+            results
+            |> List.choose (function
+                | Choice1Of2 entry -> Some entry
+                | Choice2Of2 _ -> None)
+            |> List.distinctBy (fun entry -> entry.SurfaceId, entry.Path)
+
+        let failures =
+            results
+            |> List.choose (function
+                | Choice1Of2 _ -> None
+                | Choice2Of2 failure -> Some failure)
+            |> List.distinctBy (fun failure -> failure.SurfaceId, failure.Path)
+            |> List.sortBy (fun failure -> failure.SurfaceId, failure.Path)
+
+        entries, failures
+
+    /// The entries only. Kept at its original signature because callers outside this module read the
+    /// inventory and have no use for the failures; the gate itself goes through `inventorySkillsWith`.
     let inventorySkills request surfaces =
-        surfaces
-        |> List.collect (fun surface ->
-            filesForSurface request.RepositoryRoot surface
-            |> List.choose (fun path ->
-                try
-                    Some(readEntry request.RepositoryRoot surface (Path.GetFullPath path))
-                with _ ->
-                    None))
-        |> List.distinctBy (fun entry -> entry.SurfaceId, entry.Path)
+        inventorySkillsWith File.ReadAllText request surfaces |> fst
 
     let private findingId category surface skill =
         $"{categoryToken category}:{surface}:{skill}"
+
+    /// A file the inventory enumerated and could not read is a finding, never a silent drop (#1093).
+    ///
+    /// Both kinds fail the gate — the default `FailOnSeverity = High` blocks on either — because both mean
+    /// the same thing about the evidence: a declared skill body was NOT judged, and every entry-driven rule
+    /// (wrapper parity, canonical drift, manifest coverage, API symbols) was silent about it for a reason
+    /// that has nothing to do with the repository being clean. `canonicalDriftFindings` in particular
+    /// compares bodies that were READ, so a drifted canonical whose file also fails to read used to be
+    /// reported as neither drifted nor missing.
+    ///
+    /// The two kinds are separated in the MESSAGE and the severity, not merged into one: an unexpected
+    /// exception is a defect in this harness and is Critical, and calling it "unreadable" would send the
+    /// reader to fix a file that is fine. The identity is the surface and the PATH — the skill NAME is
+    /// exactly what could not be read, and two unreadable files under one surface must not collide into one
+    /// finding — the same trap the broken-target producer hit, and the reason it puts the path in its id.
+    let private unreadableSurfaceFindings (failures: SurfaceReadFailure list) =
+        failures
+        |> List.map (fun failure ->
+            let severity, message, remediation =
+                match failure.Kind with
+                | UnreadableFile ->
+                    High,
+                    $"Skill file could not be read, so this surface contributed no entry for it and no rule judged it: {failure.ExceptionType}: {failure.Reason}",
+                    "Restore read access to the file, or remove it from the surface if it is no longer a skill body."
+                | UnexpectedReadDefect ->
+                    Critical,
+                    $"Reading this skill file raised an unexpected {failure.ExceptionType}, which is a defect in the skill-parity harness rather than a fact about the file: {failure.Reason}",
+                    "Fix the harness defect this exception exposes; do not suppress the read."
+
+            { FindingId = findingId UnreadableSurface failure.SurfaceId failure.Path
+              SkillName = failure.Path
+              SurfaceId = failure.SurfaceId
+              Category = UnreadableSurface
+              Severity = severity
+              CanonicalPath = Some failure.Path
+              WrapperPath = None
+              Symbol = None
+              Message = message
+              Remediation = remediation
+              ExceptionId = None })
 
     let private productAliasTarget (skillName: string) =
         let normalized = normalizeText skillName
@@ -1627,7 +1755,7 @@ module SkillParity =
                                 $"`{entry.Path}` cites {phantomList}, which `{source}` does not define. The citation resolves to a real spec that does not state the requirement — so it reads as checked while pointing at nothing, which is #466's failure with a source line bolted on."
                                 $"Cite the requirements `{source}` actually defines, or point `metadata.source` at the spec that defines these ones.")
 
-    let private classifyFindings request entries symbols artifacts =
+    let private classifyFindings request entries readFailures symbols artifacts =
         // `manifestCoverageFindings` runs BEFORE `missingWrapperFindings` on purpose. The two share a
         // FindingId for the same missing wrapper, and the dedupe below breaks a SEVERITY TIE by keeping the
         // first — so on an equal-severity collision the survivor should be the manifest-driven one, which
@@ -1635,7 +1763,11 @@ module SkillParity =
         // not exposed on this supported wrapper surface"). Today the scan producer is Warning so no tie can
         // occur; this ordering is what stops that from becoming a silent message regression the day somebody
         // raises it to High.
-        manifestCoverageFindings request entries
+        // The read failures go FIRST, and they are the only producer whose input is not `entries`: every
+        // other rule below judges bodies that were successfully read, so a file missing from `entries`
+        // is a file none of them can speak about (#1093).
+        unreadableSurfaceFindings readFailures
+        @ manifestCoverageFindings request entries
         @ wrapperFindings entries
         @ missingWrapperFindings entries
         @ canonicalDriftFindings request entries
@@ -1939,10 +2071,13 @@ Before acting, read the canonical instructions in:
             Error
                 $"Guarded-theme resolution skipped: {relativePath root (harnessCliPath root)} not found — process guidance was not checked."
 
-    let runCheck request =
+    /// `runCheck` with the inventory's file reader injected — the seam #1093's red-case test drives, so the
+    /// unreadable-file path is proven through the WHOLE pipeline (finding, severity, overall status) rather
+    /// than asserted about `inventorySkillsWith` in isolation.
+    let runCheckWith (readText: string -> string) request =
         let effectiveRequest = effectiveRequestFor request
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
-        let entries = inventorySkills effectiveRequest surfaces
+        let entries, readFailures = inventorySkillsWith readText effectiveRequest surfaces
 
         let symbols, symbolCaveats =
             match resolveSymbols effectiveRequest entries with
@@ -1954,8 +2089,10 @@ Before acting, read the canonical instructions in:
             | Ok artifacts -> artifacts, []
             | Error reason -> [], [ reason ]
 
-        let findings = classifyFindings effectiveRequest entries symbols artifacts
+        let findings = classifyFindings effectiveRequest entries readFailures symbols artifacts
         buildReport effectiveRequest surfaces entries symbols symbolCaveats artifacts artifactCaveats findings
+
+    let runCheck request = runCheckWith File.ReadAllText request
 
     let private markdownTableRow (values: string list) =
         "| " + (values |> List.map (fun value -> value.Replace("\n", " ")) |> String.concat " | ") + " |"
@@ -2367,7 +2504,18 @@ Before acting, read the canonical instructions in:
     let private printSymbols request =
         let effectiveRequest = effectiveRequestFor request
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
-        let entries = inventorySkills effectiveRequest surfaces
+        let entries, readFailures = inventorySkillsWith File.ReadAllText effectiveRequest surfaces
+
+        // `--list-symbols` shares the pipeline so it cannot disagree with the report, and that includes not
+        // going quiet about a body it failed to read: a symbol table missing a whole skill is exactly the
+        // fail-open #1093 closed, and stderr is where this command already puts what it could not judge.
+        for failure in readFailures do
+            eprintfn
+                "skill-parity: %s: could not read %s (%s: %s) — its documented symbols were not resolved."
+                failure.SurfaceId
+                failure.Path
+                failure.ExceptionType
+                failure.Reason
 
         match resolveSymbols effectiveRequest entries with
         | Error reason ->
