@@ -23,8 +23,13 @@
          simulation profiles only. See ADR-0024. -->
     <FsGgAudioVersion>0.5.0</FsGgAudioVersion>
     <!-- Rendering#1060: producer-owned early performance intent. Keep this on the Contracts
-         release axis rather than the FS.GG.UI coherent-set axis. -->
-    <FsGgContractsVersion>7.2.0</FsGgContractsVersion>
+         release axis rather than the FS.GG.UI coherent-set axis.
+         Rendering#1101: 7.4.0 is the FIRST published FS.GG.Contracts that packs `api-surface/*.fsi`
+         (FS-GG/FS.GG.SDD#742 discharged #782's producer half; 7.0.0-7.3.0 each carry only
+         `lib/net10.0/`). Do NOT move this pin below 7.4.0 — `scripts/refresh-api-surface-mirror.fsx`
+         now reads Contracts like every other package and the pre-#782 hand-copy bridge is deleted,
+         so a pre-7.4.0 pin has no surface to generate from and hard-fails the generator. -->
+    <FsGgContractsVersion>7.4.0</FsGgContractsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the

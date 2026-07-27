@@ -603,6 +603,9 @@ type FS.GG.Game.Core::FS.GG.Game.Core.Regions
 # scripts/refresh-api-surface-mirror.fsx — FS.GG.Contracts still packs no `api-surface/` at 7.2.0. That
 # is the producer's half of #782 and is filed as a follow-up; it is orthogonal to these entries, which
 # are judged against the restored nupkg and not against that bridge.
+# RESOLVED by #1101: the follow-up landed as FS-GG/FS.GG.SDD#742, 7.4.0 packs `api-surface/`, and the
+# bridge is deleted. The paragraph above is kept as the dated record of what was true at 7.2.0 — do not
+# read it as current state; see the 7.4.0 stanza at the end of this file.
 type FS.GG.Contracts::Fsgg.ActualSkillFiles
 type FS.GG.Contracts::Fsgg.DeclaredFileDrift
 type FS.GG.Contracts::Fsgg.DeclaredSkillDrift
@@ -617,3 +620,33 @@ type FS.GG.Contracts::Fsgg.SkillFileDrift
 type FS.GG.Contracts::Fsgg.SkillManifestFile
 type FS.GG.Contracts::Fsgg.SkillManifestFileSet
 type FS.GG.Contracts::Fsgg.SkillManifestV2
+
+# ------------------------------------------------------------------------------------------------
+# ADDED AT $(FsGgContractsVersion)=7.4.0 — 1 omission (1 type, 0 modules): `Fsgg.BodyRefusalReason`,
+# the skill-mirror body-decode refusal reason FS.GG.Contracts 7.3.0 added (#1101).
+#
+# WHY THE PIN MOVED. Not `pin-lags-feed` this time — #1102 took that comparison out of the PR lane.
+# The pin moved because #1101 DELETED the pre-#782 `legacyPre782Surfaces` bridge and
+# scripts/legacy-api-surfaces/, and the generator can only read Contracts like every other package at a
+# version that PACKS `api-surface/*.fsi`. 7.4.0 is the first published release that does
+# (FS-GG/FS.GG.SDD#742 discharged #782's producer half); 7.0.0, 7.1.0, 7.2.0 and 7.3.0 each carry only
+# `lib/net10.0/`, verified by downloading and opening the published nupkgs from the nuget.org flat
+# container.
+#
+# WHY THIS ONE IS OMITTED RATHER THAN MIRRORED. Same curation as the 7.2.0 stanza above, continued:
+# `BodyRefusalReason` is a member of the SkillMirror family whose eleven siblings are already ledgered
+# there. It names why the SDD toolchain declined to decode a skill body — machinery a scaffolded game or
+# app product neither reaches nor should be taught. The mirror still teaches exactly one Contracts type,
+# `Schemas.PerformanceIntentDeclaration` (Rendering#1060).
+#
+# HOW IT ARRIVED. Upstream publish, the same temporal mechanism as the 7.2.0 stanza: the name is absent
+# from 7.2.0's `lib/net10.0/FS.GG.Contracts.xml` and present in 7.3.0's and 7.4.0's.
+#
+# WHAT ELSE #1101 MOVED, AND WHY IT IS NOT HERE. Deleting the bridge made the MEMBER-level coverage rule
+# in scripts/refresh-api-surface-mirror.fsx see FS.GG.Contracts for the first time: 969 waiver lines ->
+# 1081, every one of the 112 new lines a Contracts member, non-Contracts lines byte-identical either
+# side. Those are recorded in scripts/api-surface-manifest.txt, which is where member-level decisions
+# live. This ledger moves by ONE because it judges types and modules against the restored nupkg — a path
+# the bridge never touched, which is exactly why it kept judging Contracts while the member-level rule
+# was blind.
+type FS.GG.Contracts::Fsgg.BodyRefusalReason

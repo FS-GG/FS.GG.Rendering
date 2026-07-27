@@ -393,11 +393,22 @@ failing suite and the second and third gates never report. #1094 measured the la
    **with a reason**. The 7.1.0/7.2.0 move added 14. Appending to go green is not the point; curate.
 3. `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — `OmissionLedgerCeiling`, raised in the *same*
    commit with the reason (456 → 470 for that move).
-4. `scripts/refresh-api-surface-mirror.fsx` — the version-keyed pre-#782 bridge is a **tripwire** and
-   hard-fails on every bump by design. Re-measure the taught surface against the real nupkg before
-   extending it (#1101 tracks the producer-side gap); do not widen it on faith.
-5. `scripts/api-surface-manifest.txt` and `template/base/docs/api-surface/**` — the `M-PROV` provenance
-   stamps naming the version the surface was mirrored from.
+4. `scripts/api-surface-manifest.txt` — the **waiver block**. Every public member the new pin adds is
+   *unwaived by default*, so the member-level coverage rule reds until each is taught (a `+`) or waived
+   deliberately. Re-seed with `dotnet fsi scripts/refresh-api-surface-mirror.fsx --emit-waivers`, then
+   reconcile teach-vs-waive **by eye** — the regeneration is mechanical, the decision is not.
+
+   *This step did not exist for `$(FsGgContractsVersion)` before #1101, and that was the defect.* The
+   generator carried a `legacyPre782Surfaces` bridge feeding Contracts a hand-written `.fsi` instead of
+   the package's own packed surface, so the coverage rule reconciled against the hand-copy and demanded
+   nothing: 969 waiver lines at the 7.2.0 pin, **not one** a Contracts member. #1101 deleted the bridge
+   and `scripts/legacy-api-surfaces/`, pinned 7.4.0 (the first Contracts release that packs
+   `api-surface/*.fsi`, via FS-GG/FS.GG.SDD#742), and the block went 969 → 1081. **There is no bridge to
+   extend any more, and none is to be reintroduced** — if a pin carries no `api-surface/`, the generator
+   now tells you whether a packing release exists at all, and if none does the remedy is the producing
+   repo's, not a hand-copy here.
+5. `template/base/docs/api-surface/**` — regenerated output, plus the `M-PROV` provenance stamps naming
+   the version the surface was mirrored from (the `header` lines in the manifest).
 6. `tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs` — a **frozen literal** naming the exact
    pin. It is exact on purpose (#1102 AC 2): it witnesses that the pin is *one exact version and never a
    floating range*, which nothing else in the tree witnesses. **Move it. Do not loosen it to a `7.`

@@ -97,37 +97,34 @@ let manifestPath = Path.Combine(repoRoot, "scripts", "api-surface-manifest.txt")
 let mirrorRoot = Path.Combine(repoRoot, "template", "base", "docs", "api-surface")
 let pinsProps = Path.Combine(repoRoot, "template", "base", "Directory.Packages.props")
 
-// Contracts 7.0.0 shipped the producer-owned performance-intent type before the package learned to
-// carry api-surface/*.fsi (#782). Keep the exact producer signature as a narrow, version-keyed bridge;
-// any Contracts bump stops matching and returns to the normal package-owned surface path.
+// #1101 — THE PRE-#782 BRIDGE IS GONE. There is no `legacyPre782Surfaces` map any more, and no
+// `scripts/legacy-api-surfaces/`. Every package, FS.GG.Contracts included, is read from its own packed
+// `api-surface/*.fsi` and from nowhere else. Do not reintroduce a per-version hand-copy escape hatch
+// here; the paragraphs below are kept so the next reader knows what was removed and why it must not
+// come back.
 //
-// #1094 — 7.2.0 IS STILL PRE-#782, AND THE TRIPWIRE IS WHY WE KNOW. The version-keying above is not
-// bookkeeping: it is a tripwire that fires on the next bump so nobody carries a hand-copy forward
-// unnoticed. It fired. `$(FsGgContractsVersion)` had to move 7.0.0 -> 7.2.0 (the `pin-lags-feed` gate
-// reds `main` against the live feed, and 7.2.0 is newest stable), and the generator hard-failed:
-// "FS.GG.Contracts 7.2.0 carries no api-surface/". That is not a stale message — the 7.1.0 and 7.2.0
-// nupkgs were opened and neither carries an `api-surface/` folder, only `lib/net10.0/`. The PRODUCER
-// (FS-GG/FS.GG.SDD) has not yet done #782's half, so "returns to the normal package-owned surface path"
-// has nothing to return TO.
+// What it was. Contracts 7.0.0 shipped the producer-owned performance-intent type before the package
+// learned to carry `api-surface/*.fsi` (#782), so a narrow version-keyed map pointed
+// ("FS.GG.Contracts", "7.0.0") at a hand-written copy of the producer's `Schemas.fsi`. The version key
+// was a TRIPWIRE, not bookkeeping: the next Contracts bump would stop matching, so nobody could carry a
+// hand-copy forward unnoticed.
 //
-// Extending the bridge to 7.2.0 is therefore a MEASURED claim, not an assumption, and the measurement is
-// the only thing that makes it legitimate: this mirror teaches exactly ONE type
-// (`Schemas.PerformanceIntentDeclaration`, see scripts/api-surface-manifest.txt), and that type's public
-// shape is IDENTICAL in 7.0.0 and 7.2.0 — all fifteen fields, same names, same types, read by reflection
-// over both published assemblies. So the 7.0.0 signature below still describes 7.2.0's taught surface
-// exactly. What the bridge cannot see, and what the ledger records instead, is the surface 7.1.0/7.2.0
-// ADDED (the SkillMirror / SkillManifestV2 family) — that is judged by the pin-restoring
-// mirror-completeness rule in tests/Build.Tests, which reads the real nupkg and not this bridge.
+// It fired, and it was stepped over. #1094 had to move `$(FsGgContractsVersion)` 7.0.0 -> 7.2.0 and
+// added a second entry pointing at the same 7.0.0-era copy, on the measured basis that the one taught
+// type (`Schemas.PerformanceIntentDeclaration`) had an identical fifteen-field shape in both. True at
+// the time — and exactly the failure the tripwire existed to prevent, one step in.
 //
-// This entry must NOT be carried forward again on faith. The next Contracts bump re-fires the tripwire;
-// the honest fix is the producer packing its own `.fsi` (see the follow-up filed from #1094), after which
-// BOTH entries here are dead code and should be deleted with scripts/legacy-api-surfaces/.
-let legacyPre782Surfaces =
-    Map
-        [ (("FS.GG.Contracts", "7.0.0"),
-           Path.Combine(repoRoot, "scripts", "legacy-api-surfaces", "FS.GG.Contracts"))
-          (("FS.GG.Contracts", "7.2.0"),
-           Path.Combine(repoRoot, "scripts", "legacy-api-surfaces", "FS.GG.Contracts")) ]
+// What it cost, measured. While an entry existed the generator never read that package's real surface,
+// so it could not detect the taught type drifting: `--emit-waivers` at the 7.2.0 pin emitted 969 lines
+// and not ONE of them was a Contracts member. The member-level COVERAGE rule had nothing to demand,
+// because it only ever saw the hand-copy. Only the type/module-level completeness rule in
+// tests/Build.Tests (which restores the real nupkg) still judged Contracts at all.
+//
+// Why it is safe to delete now. FS-GG/FS.GG.SDD#742 discharged #782's producer half: FS.GG.Contracts
+// 7.4.0 is the first published version that packs `api-surface/` (six `.fsi`), on nuget.org — the feed
+// this script actually restores from — and the packed files are the compiled signature files, not a
+// copy that can drift. The pin above is 7.4.0. The normal package-owned surface path now has something
+// to return to, so the bridge is dead code and is deleted with it.
 
 let argv = fsi.CommandLineArgs |> Array.toList |> List.tail
 let checkOnly = argv |> List.contains "--check"
@@ -288,6 +285,139 @@ let restorePins () =
     finally
         try Directory.Delete(work, true) with _ -> ()
 
+// ---------------------------------------------------------------------------------------------
+// #1101 AC3 — WHEN A PIN CARRIES NO `api-surface/`, SAY WHAT CAN ACTUALLY BE DONE ABOUT IT.
+// ---------------------------------------------------------------------------------------------
+//
+// The old message was a single fixed sentence: "it predates #782. Bump the pin to a release that packs
+// its .fsi." For FS.GG.Contracts that advice was UNFOLLOWABLE for months — 7.0.0, 7.1.0, 7.2.0 and
+// 7.3.0 were every published version and not one of them packed `api-surface/`. A hard error that
+// prescribes an impossible remedy costs the reader the whole investigation (open four nupkgs) before
+// they can learn the remedy is not theirs to apply, and it is precisely what pushed #1094 into
+// extending the hand-copy bridge instead. The diagnostic must distinguish the two cases, so it asks
+// the feed rather than assuming:
+//
+//   * a packing release the pin can move UP to EXISTS -> name it, and the bump is genuinely the fix;
+//   * no such release exists -> say so plainly. The remedy is the PRODUCER's (#782), a pin bump cannot
+//     reach it, and hand-copying the surface is explicitly not the answer (#1101);
+//   * the feed could not answer -> say that too, and still fail. Fail closed (#266/#606): "I could not
+//     check" must never render as "no packing release exists".
+//
+// SCOPED TO "AT OR ABOVE THE PIN", which is the only scope that answers the reader's actual question.
+// "Does any version anywhere pack it" is the wrong question twice over: a packing release BELOW the pin
+// is not a remedy (nobody moves a pin backwards to fix a mirror), and scanning a package's whole
+// version list is unbounded work for an answer the reader cannot act on. Candidates are therefore the
+// stable versions >= the pinned one, newest-first — which for the motivating case (FS.GG.Contracts
+// pinned at 7.2.0, nothing above it packing) is a ONE-element probe that returns a definitive "none".
+//
+// Bounded by construction: stable-only, >= the pin, at most `maxProbes` nupkgs, one short timeout. This
+// runs ONLY on the failure path, so a healthy generate makes zero extra requests.
+
+let private probeHttp =
+    lazy (new Net.Http.HttpClient(Timeout = TimeSpan.FromSeconds 30.0))
+
+/// Stable-release ordering. Prereleases are filtered out before this is reached, so the numeric core is
+/// the whole comparison; a non-numeric segment sorts as 0 rather than throwing, because a diagnostic
+/// helper must not turn one failure into a different, less informative one.
+let private versionKey (v: string) =
+    let part (s: string) =
+        match Int32.TryParse s with
+        | true, n -> n
+        | _ -> 0
+
+    let seg = v.Split('.')
+    (part (Array.tryItem 0 seg |> Option.defaultValue "0"),
+     part (Array.tryItem 1 seg |> Option.defaultValue "0"),
+     part (Array.tryItem 2 seg |> Option.defaultValue "0"))
+
+/// The newest published stable version of `id` **at or above `pinned`** that packs `api-surface/*.fsi`.
+/// `Ok None` means the probe looked at every such version and none packs it — an earned "no". `Error`
+/// carries the reason the feed could not answer, and is NEVER conflated with `Ok None`.
+let packingReleaseAtOrAbove (id: string) (pinned: string) : Result<string option, string> =
+    let maxProbes = 12
+
+    try
+        let http = probeHttp.Force()
+        let indexUrl = $"https://api.nuget.org/v3-flatcontainer/{id.ToLowerInvariant()}/index.json"
+        let resp = http.GetAsync(indexUrl).GetAwaiter().GetResult()
+
+        if not resp.IsSuccessStatusCode then
+            Error $"nuget.org returned {int resp.StatusCode} for {indexUrl}"
+        else
+            let body = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            use doc = Text.Json.JsonDocument.Parse body
+
+            let floor = versionKey pinned
+
+            // Sorted here rather than trusting the feed's documented ascending order: the ordering is
+            // load-bearing for "newest that packs", and re-deriving it costs nothing.
+            let candidates =
+                doc.RootElement.GetProperty("versions").EnumerateArray()
+                |> Seq.map (fun e -> e.GetString())
+                |> Seq.filter (fun v -> not (v.Contains "-") && versionKey v >= floor)
+                |> Seq.sortByDescending versionKey
+                |> Seq.toList
+
+            let packs (v: string) =
+                let url =
+                    $"https://api.nuget.org/v3-flatcontainer/{id.ToLowerInvariant()}/{v}/{id.ToLowerInvariant()}.{v}.nupkg"
+
+                let r = http.GetAsync(url).GetAwaiter().GetResult()
+
+                if not r.IsSuccessStatusCode then
+                    false
+                else
+                    let bytes = r.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+                    use ms = new MemoryStream(bytes)
+                    use zip = new Compression.ZipArchive(ms, Compression.ZipArchiveMode.Read)
+
+                    zip.Entries
+                    |> Seq.exists (fun e ->
+                        e.FullName.StartsWith("api-surface/", StringComparison.OrdinalIgnoreCase)
+                        && e.FullName.EndsWith(".fsi", StringComparison.OrdinalIgnoreCase))
+
+            match candidates |> List.truncate maxProbes |> List.tryFind packs with
+            | Some v -> Ok(Some v)
+            | None when candidates.Length > maxProbes ->
+                // Did not look at every candidate, so "none" would be a claim the probe did not earn.
+                Error
+                    $"probed the newest {maxProbes} of {candidates.Length} stable versions at or above {pinned} and none packs api-surface/"
+            | None -> Ok None
+    with ex ->
+        Error $"could not reach nuget.org: {ex.Message}"
+
+/// The hard error for a pin that carries no `api-surface/`, with advice that is true for THIS package.
+///
+/// The OBSERVATION is all the header states — "the restored package carries no api-surface/". "It
+/// predates #782" is a DIAGNOSIS, and it belongs only in the branches where the feed has confirmed it:
+/// in the restore-is-wrong branch it is flatly false, and asserting it there would send the reader
+/// looking for a producer gap that does not exist. Separating the two is the same discipline AC3 is
+/// about — never state as fact something this code has not established.
+let noSurfaceFailure (id: string) (version: string) : string =
+    let head = $"{id} {version}: the restored package carries no api-surface/."
+
+    match packingReleaseAtOrAbove id version with
+    | Ok(Some newest) when newest = version ->
+        // The feed says this very version packs it, but the restored copy does not carry it: the
+        // restore, not the pin, is what is wrong. Never advise a bump to the version already pinned,
+        // and never call this "predates #782" — the feed has just said otherwise.
+        $"{head} But nuget.org reports that {id} {newest} DOES pack api-surface/, so the copy under \
+{probePackagesDir} is not what the feed serves — clear it and restore again rather than moving the pin."
+    | Ok(Some newest) ->
+        $"{head} It predates #782. {id} {newest} is the newest published stable release at or above \
+the pin that DOES pack its .fsi — bump this package's pin in {pinsProps} to it."
+    | Ok None ->
+        $"{head} It predates #782, and so does every published stable release of {id} at or above \
+{version} — NO release above the pin packs api-surface/, so BUMPING THE PIN CANNOT FIX THIS. There is \
+nothing to bump to. The remedy belongs to the PRODUCING repository, which owes #782's half (pack \
+$(Compile) filtered to .fsi under api-surface/); file it there and leave this pin alone. Do NOT \
+hand-copy the surface into this repo instead: that bridge existed for FS.GG.Contracts, it blinded the \
+member-level coverage rule for the whole time it was there, and #1101 deleted it."
+    | Error why ->
+        $"{head} Could not determine whether any published release of {id} packs its .fsi ({why}), so \
+this cannot tell you whether bumping the pin is even possible — failing closed rather than guessing. \
+Re-run when the feed is reachable, or open the published nupkgs by hand."
+
 /// `PackageId -> (sourceFileName -> parsed nodes)`, read from the restored package's `api-surface/`.
 ///
 /// An absent `api-surface/` is a HARD ERROR, not an empty map: it means the pinned version predates
@@ -307,14 +437,7 @@ let loadPinSurface () =
                     Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
 
                 let surfaceDir =
-                    if Directory.Exists dir then
-                        dir
-                    else
-                        legacyPre782Surfaces
-                        |> Map.tryFind (id, version)
-                        |> Option.defaultWith (fun () ->
-                            fail
-                                $"{id} {version} carries no api-surface/ — it predates #782. Bump the pin to a release that packs its .fsi.")
+                    if Directory.Exists dir then dir else fail (noSurfaceFailure id version)
 
                 Directory.GetFiles(surfaceDir, "*.fsi", SearchOption.AllDirectories)
                 |> Array.toList
