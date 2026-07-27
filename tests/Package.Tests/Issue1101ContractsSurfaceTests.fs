@@ -107,11 +107,23 @@ let issue1101ContractsSurfaceTests =
               Expect.isTrue m.Success "the payload props declare $(FsGgContractsVersion)"
 
               let pinned = m.Groups.["v"].Value
-              let parts = pinned.Split('.') |> Array.map int
-              Expect.isTrue (parts.Length >= 2) "the pin has a major.minor core"
-              Expect.isTrue
-                  (parts.[0] > 7 || (parts.[0] = 7 && parts.[1] >= 4))
-                  (sprintf "$(FsGgContractsVersion)=%s is >= 7.4.0, the first release that packs api-surface/" pinned)
+
+              // Read the numeric core only. A preview-channel pin (`7.4.0-preview.1`) is a legitimate
+              // future state, and `int` on the whole segment would throw a FormatException — a crash
+              // where the suite owes a verdict.
+              let core = pinned.Split('-').[0].Split('.')
+
+              let part i =
+                  match System.Int32.TryParse(Array.tryItem i core |> Option.defaultValue "") with
+                  | true, n -> Some n
+                  | _ -> None
+
+              match part 0, part 1 with
+              | Some major, Some minor ->
+                  Expect.isTrue
+                      (major > 7 || (major = 7 && minor >= 4))
+                      (sprintf "$(FsGgContractsVersion)=%s is >= 7.4.0, the first release that packs api-surface/" pinned)
+              | _ -> failtestf "$(FsGgContractsVersion)=%s has no numeric major.minor core to compare" pinned
           }
 
           test "the member-level coverage rule now sees FS.GG.Contracts at all" {
