@@ -209,14 +209,21 @@ let restoreLockTests =
                 "the template package project must not opt out of lockfile restore, or the committed lock is inert"
         }
 
-        // 1089 — AND PRESENCE IS NOT ENOUGH. THIS IS THE ONLY PR-TIME SIGNAL THIS LOCK HAS.
+        // 1089 — AND PRESENCE IS NOT ENOUGH.
         //
         // The rule above checks the lock EXISTS, which is all VR-1 checks — and for slnx members that
         // is fine, because the gate's cold locked restore then validates the contents on every PR. This
-        // project has no such backstop: `.template.package` is restored/packed in exactly ONE place in
-        // the repo, `release.yml`'s publish-packages job. No gate.yml job touches it. So an existence
-        // check is the whole of the PR-time signal, and an existence check passes on a lock that is
-        // empty, truncated, or simply STALE.
+        // project is restored in exactly two places: `release.yml`'s publish-packages job, and the
+        // `Feature570PublishedScaffoldGeometryTests` pack that runs inside `Deterministic gate`. The
+        // latter only became a contents check in THIS change — before it, that pack passed
+        // `-p:RestorePackagesWithLockFile=false`, i.e. it ran with lock handling switched OFF and could
+        // not have caught a stale or degenerate lock. So an existence check was the whole of the
+        // PR-time signal, and an existence check passes on a lock that is empty, truncated, or simply
+        // STALE.
+        //
+        // The Feature570 locked pack is now the stronger backstop of the two, but it is a full pack of
+        // the published package; this rule is the cheap, precise one that names the regeneration
+        // command in its failure message, and it reds in Build.Tests without a NuGet round trip.
         //
         // Staleness is the live case, not a hypothetical. FSharp.Core's version is pinned in the
         // ORG-SHARED Directory.Packages.props, synced in from FS-GG/.github. When it moves,
