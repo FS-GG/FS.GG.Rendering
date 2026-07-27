@@ -254,7 +254,7 @@ let restoreLockTests =
                     RegexOptions.Singleline)
 
             Expect.isTrue entry.Success
-                "the template package's packages.lock.json must actually RECORD FSharp.Core with a resolved version and a contentHash — an empty or truncated lock file satisfies Exists(), so RestoreLockedMode arms on it while this project has no gate-lane restore to catch the contents (#1089)"
+                "the template package's packages.lock.json must actually RECORD FSharp.Core with a resolved version and a contentHash — an empty or truncated lock file satisfies Exists(), so RestoreLockedMode arms on nothing and validates nothing (#1089). This message used to add 'while this project has no gate-lane restore to catch the contents'; that is FALSE and was the premise #1096 was filed on — the Feature570 pack does a locked restore of this project on every PR (#1096)."
 
             Expect.equal (entry.Groups.["resolved"].Value) centralPin
                 (sprintf "the template package's lock resolves FSharp.Core %s but Directory.Packages.props pins %s. lockfile-sync.yml does NOT regenerate this lock (its restore-target is the slnx, and .template.package is not a member), so regenerate it in THIS PR: dotnet restore .template.package/FS.GG.UI.Template.fsproj --use-lock-file --force-evaluate --configfile nuget.config"
@@ -262,5 +262,39 @@ let restoreLockTests =
 
             Expect.isGreaterThan (entry.Groups.["hash"].Value.Length) 0
                 "the recorded contentHash must be non-empty, or locked restore has nothing to validate against the feed"
+        }
+
+        // 1096 — THE DECISION ABOVE IS A COMMENT, AND COMMENTS ROT. This is the rule that reds when
+        // it is reversed silently.
+        //
+        // #1096 decided (option 3) to ACCEPT that `lockfile-sync.yml` regenerates 40 of the repo's 41
+        // committed locks and not `.template.package/packages.lock.json`, because the gap is missing
+        // auto-REPAIR, not missing detection: the Feature570 pack does a real locked restore of that
+        // project inside `Deterministic gate` on every PR, and the test above names the one-command
+        // repair. The rationale is written beside the `restore-target:` input, per that item's AC3.
+        //
+        // The rejected remedy was a SECOND caller job. It is rejected for reasons that do not show up
+        // in a green run: the reusable workflow ends in a bare `git add/commit/push` with no rebase,
+        // no retry and no concurrency group (so two callers race on one PR branch), and every extra
+        // foreign-authored commit on a `renovate/*` branch is an independent cause of Renovate parking
+        // the PR as abandoned (.github#1533). Both failures land in somebody ELSE's dependency-bump PR,
+        // far from whoever added the job. So assert the shape: one caller job, and the record present.
+        test "1096: lockfile-sync.yml still records WHY its restore-target does not cover the template lock" {
+            let wf = File.ReadAllText(repoPath ".github/workflows/lockfile-sync.yml")
+
+            Expect.stringContains wf "restore-target: FS.GG.Rendering.slnx"
+                "lockfile-sync.yml must still restore the slnx — if this moved, the #1096 decision beside it needs rewriting, not deleting"
+
+            Expect.stringContains wf "#1096"
+                "the #1096 decision (why .template.package/packages.lock.json is NOT regenerated here) must stay recorded in this file — its AC3 is that the next reader does not re-derive it"
+
+            // One `uses:` of the reusable workflow. A second caller job is the remedy #1096 rejected;
+            // if you are adding one deliberately, update the decision record in the same change.
+            let callers =
+                Regex.Matches(wf, @"^\s*uses:\s*FS-GG/\.github/\.github/workflows/lockfile-sync\.yml@", RegexOptions.Multiline)
+                    .Count
+
+            Expect.equal callers 1
+                "lockfile-sync.yml must call the shared reusable workflow exactly ONCE. Two caller jobs push the same PR branch with no rebase/retry/concurrency group (the loser's push is rejected) and multiply the .github#1533 Renovate-freeze exposure — that is the remedy #1096 rejected. If you are reversing that decision, rewrite the record beside `restore-target:` in the same change."
         }
     ]

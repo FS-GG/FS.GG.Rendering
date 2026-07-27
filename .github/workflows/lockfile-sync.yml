@@ -8,6 +8,9 @@
 # All mechanics + rationale (App-token push that re-triggers the gate, renovate/*-same-repo
 # gating, self-limiting second pass) live in the reusable workflow:
 #   FS-GG/.github .github/workflows/lockfile-sync.yml
+#
+# THIS JOB DOES NOT COVER EVERY COMMITTED LOCK, ON PURPOSE. See the decision recorded beside
+# `restore-target:` below (#1096) before adding a second caller job.
 name: lockfile-sync
 
 on:
@@ -22,6 +25,63 @@ jobs:
   sync:
     uses: FS-GG/.github/.github/workflows/lockfile-sync.yml@main
     with:
+      # THIS TARGET IS THE SLNX, AND IT DOES NOT COVER EVERY COMMITTED LOCK. Decided in #1096;
+      # written here so the next reader does not re-derive it.
+      #
+      # The repo commits 41 packages.lock.json files. This job regenerates 40 — every slnx member.
+      # The 41st is `.template.package/packages.lock.json`, whose project
+      # (`.template.package/FS.GG.UI.Template.fsproj`) is deliberately NOT an slnx member
+      # (release.yml: "the two packs never overlap"). The reusable workflow consumes `restore-target`
+      # as ONE string (`dotnet restore "$RESTORE_TARGET" --force-evaluate`), so it cannot name two.
+      #
+      # DECISION: accept the gap; do NOT add a second caller job. What is missing is the automatic
+      # REPAIR, not the detection — and the repair is one command, printed by the check that reds.
+      #
+      # Detection, which is why accepting is safe (verified in #1096, not assumed):
+      #   * `tests/Rendering.Harness.Tests/Feature570PublishedScaffoldGeometryTests.fs` packs this
+      #     project with `-p:RestoreLockedMode=true`. That is a REAL locked restore of
+      #     `.template.package`, and it runs in `Deterministic gate` on EVERY PR — the deterministic
+      #     tier derives its projects from the slnx, and Rendering.Harness.Tests is a member. So a
+      #     lock that has drifted from the central pin reds on the PR that moves the pin.
+      #   * `tests/Build.Tests/RestoreLockTests.fs` independently compares this lock's resolved
+      #     `FSharp.Core` against the central pin and names the regeneration command in its failure
+      #     message. Cheap, precise, no NuGet round trip.
+      # The original #1096 filing claimed no gate job restores `.template.package` at all and that a
+      # stale lock could only surface as an NU1004 in the RELEASE lane. That was false, and the filer
+      # corrected it in-thread. Both statements above were re-verified before this comment was written.
+      #
+      # Why not a second caller job invoking this reusable workflow with
+      # `restore-target: .template.package/FS.GG.UI.Template.fsproj`:
+      #   1. IT WOULD RACE. The reusable workflow's sync job ends in a bare
+      #      `git add -- '*packages.lock.json'; git commit; git push` — no rebase, no retry, no
+      #      concurrency group. Two jobs pushing the same PR branch means the loser's push is
+      #      rejected non-fast-forward and the step dies under `set -euo pipefail`. The workflow's
+      #      self-limiting second pass assumes ONE caller.
+      #   2. IT WOULD MAKE THE RENOVATE FREEZE WORSE. A foreign-authored commit on a renovate/*
+      #      branch makes Renovate read the PR as user-edited, rename it `... - abandoned` and park
+      #      it permanently (.github#1533 — measured 2026-07-27: of 19 parked branches across five
+      #      repos, ELEVEN carried a `chore: sync packages.lock.json` commit and EIGHT carried
+      #      nothing else). This job is already independently sufficient to freeze a branch. Adding
+      #      a second one that pushes to the same branch multiplies the exposure for zero new
+      #      detection.
+      #   3. gate.yml warns that adding a `dotnet restore`/`dotnet build` to any workflow is a
+      #      deliberate act. Two of them, to skip one manual command, is not the trade.
+      #
+      # The fix that WOULD be right is multi-target support in the shared reusable workflow
+      # (FS-GG/.github .github/workflows/lockfile-sync.yml), which would fix this for every consumer
+      # with an out-of-solution packable project. That is cross-repo work, not a Rendering caller
+      # edit. Until it exists, the standing instruction is:
+      #
+      #   when a central pin moves and the gate reds on the template lock, regenerate it in the SAME PR:
+      #     dotnet restore .template.package/FS.GG.UI.Template.fsproj \
+      #       --use-lock-file --force-evaluate --configfile nuget.config
+      #
+      # KNOWN LIMIT OF THE CHEAP CHECK, stated so it is not mistaken for full coverage: the
+      # Build.Tests comparison is a string comparison against ONE package (FSharp.Core). If
+      # `.template.package`'s dependency surface ever grows beyond FSharp.Core, that check does not
+      # grow with it. The Feature570 locked pack DOES — it is a real restore of the whole graph — so
+      # do not weaken it (its own header says the same). If a second dependency lands here, revisit
+      # this decision rather than assuming it still holds.
       restore-target: FS.GG.Rendering.slnx
     secrets:
       app-id:          ${{ secrets.FSGG_DISPATCH_APP_ID }}
