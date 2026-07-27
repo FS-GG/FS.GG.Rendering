@@ -290,13 +290,74 @@ nonexistent passed every check in this repo — which is exactly how #235 happen
   template's real TFM (`net10.0`), against nuget.org, and asserts the **resolved graph** rather than
   the literals: no prerelease `FS.GG.*` **including transitive** (`FS.GG.Game.Render` reaches down to
   `FS.GG.UI.Scene`, so a regex over the three literals would miss it); `NU1603`/`NU1608`/`NU1101`/
-  `NU1102`/`NU1605` promoted to errors so a nonexistent pin cannot resolve upward silently; every
-  pinned `(id, version)` present on the feed; and the Game/Audio pins not **lagging** feed-newest.
+  `NU1102`/`NU1605` promoted to errors so a nonexistent pin cannot resolve upward silently; and every
+  pinned `(id, version)` present on the feed.
+- **Staleness sweep (`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1`)** — **not on a PR at all.** The separate,
+  scheduled `.github/workflows/template-pin-staleness-sweep.yml` workflow, which runs `pin-lags-feed`
+  and *files a tracked item*. See *"Why staleness is scheduled and not gated"* below.
 
 Exit codes: `0` coherent **or `RELEASE-PENDING`** (see below) · `1` drift (named, expected-vs-actual) ·
 `2` guard error (feed unreachable, restore tooling failed, an unevaluable gate, zero pins matched). It
 **fails closed**, per `FS-GG/.github#266`: *"nothing to check" and "checked, and it's fine" must not
 share an exit code.*
+
+**Why staleness is scheduled and not gated** (#1102, decided 2026-07-27; filed from #1094 AC 3).
+`pin-lags-feed` compares a *committed* pin against the *live* feed, so it is `f(tree, WORLD)`: it moves
+when somebody publishes in another repository, and no commit here can preempt it. On 2026-07-27
+`main`@`e2d860bc` passed the restore gate at 08:45Z; `FS.GG.Contracts` published `7.1.0` at 08:56Z and
+`7.2.0` at 13:26Z; by 13:59Z **every** open PR in this repository was red on that rule, and not one of
+them had touched the pin. Worse, the fix lived in a file none of their items had declared in `Paths:`,
+so under ADR-0021/0027 they could not make it without widening onto a file they had no business
+touching. A merge gate may only demand a change inside the diff it gates.
+
+*Non-required did not save it, and that is the load-bearing detail.* `template-payload-restore-gate` is
+already a non-required job and those PRs were blocked anyway: `landable` scores **every** workflow run
+and check-run on the head SHA, required or not. So the rule had to leave the lane, not merely stay
+advisory in it.
+
+The verdict is therefore **split by decidability**, not by cost:
+
+| rule | decidable from the commit? | lane |
+|---|---|---|
+| `pin-not-axis-derived`, `profile-restores-nothing` | yes | required `gate` |
+| `prerelease-in-scaffolded-graph`, `pin-resolved-elsewhere` | yes | restore gate |
+| `pin-not-published` / `pin-does-not-resolve` | yes — it reads the feed, but it accuses the commit that wrote the pin | restore gate |
+| `pin-lags-feed` | **no** | **scheduled sweep → files an item** |
+
+The sweep is `skill-refs-sweep.yml`'s sibling and shares its argument (`FS.GG.Game#238`): a signal that
+cannot block is information; the same signal wired to block is a false accusation. It files one issue
+labelled `template-pin-drift`, rewritten in place each run, reopened rather than duplicated, closed by
+the sweep itself when green, carrying a `Paths:` and a `Class:` line so it is schedulable. Deleting the
+sweep does not "simplify" the gate — it restores the #235 silence the rule exists to break. **Do not
+make it required.**
+
+### Bumping a component axis — the reconciliation routine
+
+The staleness finding is *not* a one-line diff, and this is where the next worker is meant to find that
+out rather than rediscover it. Renovate will offer the one-line bump (it offered exactly that as PR
+#1090); its CI will not tell you what else moves, because `Deterministic gate` exits at the **first**
+failing suite and the second and third gates never report. #1094 measured the last
+`$(FsGgContractsVersion)` move at **five files across three further gates**. In order:
+
+1. `template/base/Directory.Packages.props` — the axis literal itself.
+2. `tests/Build.Tests/mirror-omission-ledger.txt` — every `Fsgg.*` type the new surface adds, ledgered
+   **with a reason**. The 7.1.0/7.2.0 move added 14. Appending to go green is not the point; curate.
+3. `tests/Build.Tests/TemplateConsumesPinnedApiTests.fs` — `OmissionLedgerCeiling`, raised in the *same*
+   commit with the reason (456 → 470 for that move).
+4. `scripts/refresh-api-surface-mirror.fsx` — the version-keyed pre-#782 bridge is a **tripwire** and
+   hard-fails on every bump by design. Re-measure the taught surface against the real nupkg before
+   extending it (#1101 tracks the producer-side gap); do not widen it on faith.
+5. `scripts/api-surface-manifest.txt` and `template/base/docs/api-surface/**` — the `M-PROV` provenance
+   stamps naming the version the surface was mirrored from.
+6. `tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs` — a **frozen literal** naming the exact
+   pin. It is exact on purpose (#1102 AC 2): it witnesses that the pin is *one exact version and never a
+   floating range*, which nothing else in the tree witnesses. **Move it. Do not loosen it to a `7.`
+   prefix match, and do not source it from the axis it is checking** — that would collapse two
+   independent witnesses into one source, so neither could catch the other being wrong.
+
+Steps 2–5 apply to `$(FsGgContractsVersion)` specifically, because it is the axis whose surface this
+repo mirrors. A `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` bump is cheaper, but check `Build.Tests`
+before assuming so — the sweep's issue body renders the axis-appropriate list.
 
 **`RELEASE-PENDING` — why this gate is no longer expected-red on a release PR** (#506). The pin bump is
 what *causes* the publish: `release-tags.yml` cuts `fs-gg-ui/v<pin>` on merge and calls `release.yml`.
@@ -322,7 +383,7 @@ The guard now waives it, bounded exactly as `validate-version-coherence.fsx`'s `
 In the window the resolved-graph proofs genuinely **cannot** run — no profile can restore against
 packages that do not exist — so they are **skipped and reported as skipped**, never as passed. The
 `RELEASE-PENDING` block names what was not proved (the five profiles' graphs) and what still was (the
-structural core, and Game/Audio existence + staleness). If the publish never lands, the next commit to
+structural core, and Game/Audio/Contracts **existence** on the feed). If the publish never lands, the next commit to
 `main` does not bump the pin, the waiver is off, and the gate reds on `pin-not-published`.
 
 **Why the restore half is a separate, non-required job.** It reads nuget.org, and requiring a

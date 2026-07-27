@@ -1,0 +1,437 @@
+name: template pin staleness sweep
+
+# FS.GG.Rendering#1102 — THE HALF OF THE TEMPLATE PAYLOAD PIN GUARD THAT IS f(tree, WORLD).
+#
+# `scripts/validate-template-payload-pins.fsx` decides several things about the axis literals in
+# `template/base/Directory.Packages.props`. All but one of them are decidable from the commit under
+# test. `pin-lags-feed` is not: it compares a COMMITTED pin against the LIVE nuget.org feed, so it
+# moves when somebody in another repository publishes, and no commit here can preempt it.
+#
+# WHY IT IS NOT A MERGE GATE. On 2026-07-27 `main`@e2d860bc ran the restore gate at 08:45Z and passed;
+# FS.GG.Contracts published 7.1.0 at 08:56Z and 7.2.0 at 13:26Z; by 13:59Z every open PR in this
+# repository was red on `pin-lags-feed`, and not one of them had touched the pin. That is a false
+# accusation, and it is worse than the usual kind: the fix is a bump to a file the accused PR's item
+# never declared in its `Paths:`, so under ADR-0021/0027 they cannot even make it without widening onto
+# a file they have no business touching. A merge gate may only demand a change inside the diff it
+# gates; this rule cannot promise that, so it does not gate. (`skill-refs-sweep.yml` carries the same
+# argument for citation decay, from FS.GG.Game#238. This workflow is deliberately its sibling.)
+#
+# AND "IT IS ONLY ADVISORY" WAS NEVER AN ANSWER. `template-payload-restore-gate` is a NON-REQUIRED job,
+# and the PRs were blocked anyway: `landable` scores every workflow run and check-run on the head SHA,
+# required or not. Non-required bought nothing here. Moving the rule out of the lane is what works.
+#
+# WHY IT STILL EXISTS. A pin that quietly falls behind is how FS.GG.Rendering#235 happened — a stable
+# `fs-gg-ui` template scaffolding products two minors behind on `$(FsGgGameVersion)`, red nowhere, for
+# months. Deleting the rule to fix the false accusation would restore that silence. So the rule is kept
+# and MOVED: swept daily, and filed as a tracked item with an owner.
+#
+# WHERE A RED GOES. Not into a notification nobody reads — a failing scheduled run mails whoever last
+# touched the workflow file, if they have Actions notifications on, and that is all. So the sweep FILES
+# ITS FINDING where this org already looks: one issue, labelled `template-pin-drift`, rewritten in place
+# on every run, REOPENED rather than duplicated, and CLOSED by the sweep itself the next time it is
+# green. It carries a `Paths:` line and a `Class:` line so it is schedulable the moment somebody adds
+# it to the board (a finding filed without a touch-set is invisible to `take`, FS-GG/.github#442; one
+# filed without a class reads as unclassed, FS-GG/.github#1651).
+#
+# THE FINDING IS NOT "BUMP ONE LINE", AND THE ISSUE SAYS SO. #1094 measured the last Contracts move at
+# five files across three further gates, none of which the reporting CI ever reached, because
+# `Deterministic gate` exits at the first failing suite. The rendered body carries that routine, and
+# `docs/ci/cadence-map.md` §4b is its canonical home.
+#
+# DO NOT MAKE THIS REQUIRED. That is #1102 verbatim. A signal that cannot block is information; the
+# same signal wired to block is a false accusation.
+
+on:
+  schedule:
+    # 07:20 UTC daily, twenty minutes after the skill-refs sweep so the two never contend for the REST
+    # budget. Staleness is not urgent: a component that published overnight is not on fire, and a
+    # slower cadence keeps this a signal people trust rather than noise they mute.
+    - cron: '20 7 * * *'
+  workflow_dispatch:
+  # The sweep is itself code, and a change to it must be exercised BY it — otherwise its first real run
+  # is post-merge, on a schedule nobody is watching, and a typo here disables the rule SILENTLY while
+  # the PR lane goes on not checking it either. Same argument as `skill-refs-sweep.yml`'s.
+  #
+  # BUT THE PR RUN NEVER FAILS ON THE VERDICT, and that is the whole point of this workflow rather than
+  # an oversight (see `Verdict` below). A `pull_request` run renders and stops. Reddening a PR because
+  # an upstream package published is precisely the thing #1102 abolished; reintroducing it here, on the
+  # workflow that abolished it, would be absurd.
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/template-pin-staleness-sweep.yml'
+      - 'scripts/validate-template-payload-pins.fsx'
+
+concurrency:
+  # Never cancel a scheduled sweep in flight: `reconcile` is a read-modify-write of one shared issue,
+  # and a run killed between "render" and "reconcile" leaves that issue asserting a drift set that is no
+  # longer true. PR runs are cancellable — they only ever render.
+  group: template-pin-staleness-sweep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  # For the tracking issue. The sweep never writes on a `pull_request` run (see `reconcile`), so this
+  # grant is unused there — and on a fork PR the token is read-only regardless.
+  issues: write
+
+env:
+  DRIFT_LABEL: template-pin-drift
+  # "the scaffolded payload", not "the repository": these axes are what a SCAFFOLDED PRODUCT restores,
+  # not what this repo builds against. A title naming the wrong subject sends the fixer to the wrong
+  # props file — there are two, and only one of them is this sweep's.
+  DRIFT_TITLE: "[template-pins] A component axis in the scaffolded payload lags nuget.org"
+
+jobs:
+  sweep:
+    name: Template payload pin staleness (are the scaffolded pins still newest-stable?)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Default shallow checkout is correct here, deliberately. The RELEASE-PENDING waiver — the one
+      # thing in this script that needs `HEAD~1`, and the reason `template-payload-restore-gate` sets
+      # `fetch-depth: 0` — lives in the restore lane, which this lane never enters.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # The step does NOT fail here; `Verdict` (last step) re-raises. Everything between the two has to
+      # run on the red path — that is the whole point of this workflow — and a step that dies takes its
+      # successors with it unless every one of them says `if: always()`, which is a footgun waiting for
+      # the next person to add a step and forget. The exit code is carried, not discarded.
+      - name: "Compare every feed-owned axis against newest-stable"
+        id: sweep
+        env:
+          FS_GG_TEMPLATE_PIN_STALENESS_SWEEP: '1'
+        run: |
+          set -uo pipefail
+          rc=0
+          dotnet fsi scripts/validate-template-payload-pins.fsx \
+            >"$RUNNER_TEMP/sweep.out" 2>"$RUNNER_TEMP/sweep.err" || rc=$?
+
+          cat "$RUNNER_TEMP/sweep.out"
+          cat "$RUNNER_TEMP/sweep.err" >&2
+
+          # The script's findings are its stderr `DRIFT [rule] location` lines (`printDrift`). This line
+          # format is the one contract this workflow has with the script — it is also the one a human
+          # reads in the log, which is what makes it the safe one to depend on.
+          grep -E '^DRIFT \[pin-lags-feed\] ' "$RUNNER_TEMP/sweep.err" > "$RUNNER_TEMP/findings.txt" || true
+          n=$(wc -l < "$RUNNER_TEMP/findings.txt" | tr -d ' ')
+
+          # AND HERE IS THE CHECK ON THAT CONTRACT — the same one `skill-refs-sweep.yml` keeps, for the
+          # same reason. The script prints this banner if and only if it decided that at least one axis
+          # lags, so "banner, but nothing parsed" means `printDrift`'s format drifted and this workflow
+          # can no longer read the findings it exists to file. Without the check that degrades into a
+          # LIE: zero parsed findings looks exactly like an infra failure, so the sweep would file
+          # "could not complete" over a run that completed fine and found real drift.
+          banner=false
+          grep -qF 'lag the feed' "$RUNNER_TEMP/sweep.err" && banner=true
+
+          # Which axes are implicated decides the `Paths:` line below, and an over-broad touch-set is
+          # not free: it is a RESERVATION, and one that names files the fix will not touch blocks lanes
+          # for everybody else (ADR-0021/0027).
+          contracts=false
+          grep -qF 'FsGgContractsVersion' "$RUNNER_TEMP/findings.txt" && contracts=true
+
+          {
+            echo "rc=$rc"
+            echo "findings=$n"
+            echo "reported=$banner"
+            echo "contracts=$contracts"
+          } >> "$GITHUB_OUTPUT"
+          echo "sweep: rc=$rc, $n finding(s), script-reported=$banner, contracts-axis=$contracts"
+
+      # Render the issue body. Runs on EVERY trigger including `pull_request` — deliberately: the
+      # renderer is the part most likely to carry a typo, and a PR that changes this workflow must
+      # exercise it. On a PR it renders to the step summary and stops.
+      - name: Render the finding
+        id: render
+        if: steps.sweep.outputs.rc != '0'
+        env:
+          REPO: ${{ github.repository }}
+          SERVER: ${{ github.server_url }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FINDINGS: ${{ steps.sweep.outputs.findings }}
+          REPORTED: ${{ steps.sweep.outputs.reported }}
+          CONTRACTS: ${{ steps.sweep.outputs.contracts }}
+          RC: ${{ steps.sweep.outputs.rc }}
+          DRY_RUN: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/body.md"
+          # If the sweep step died before it wrote these, treat it as "no findings" — which renders the
+          # "could not complete" body below, and that is exactly what happened.
+          : "${FINDINGS:=0}"
+          : "${REPORTED:=false}"
+          : "${CONTRACTS:=false}"
+          touch "$RUNNER_TEMP/findings.txt" "$RUNNER_TEMP/sweep.err"
+
+          {
+            echo "<!-- Managed by .github/workflows/template-pin-staleness-sweep.yml. Rewritten on every"
+            echo "     sweep; closed automatically when the sweep next goes green. Edit the PINS, not this. -->"
+            echo
+          } > "$body"
+
+          if [ "$FINDINGS" -eq 0 ]; then
+            # Non-zero with nothing parsed. Three very different causes, and calling one of them by
+            # another's name is the failure this workflow is about — so they are told apart.
+            {
+              if [ "$RC" = "2" ]; then
+                # The guard could not decide. `validate-template-payload-pins.fsx` fails CLOSED, per
+                # FS-GG/.github#266: "nothing to check" and "checked, and it's fine" must not share an
+                # exit code. So this is NOT "the pins are fine" — it is "nobody knows".
+                echo "## The staleness sweep could not decide — the pins are UNCHECKED"
+                echo
+                echo "\`validate-template-payload-pins.fsx\` exited **2**, its fail-closed code: the guard did not"
+                echo "run to a verdict. Nothing about the scaffolded payload's freshness was established."
+                echo
+                echo "Usual causes: nuget.org unreachable or answering 5xx; a feed that returned 200 and listed"
+                echo "zero versions; or a **structural** failure in \`template/base/Directory.Packages.props\` — a"
+                echo "bare-literal \`FS.GG.*\` pin, or a profile whose \`<!--#if -->\` gate resolves to nothing. A"
+                echo "structural failure is the required \`gate\` job's finding against whoever wrote it, not this"
+                echo "sweep's; this lane refuses to sweep a pin set that is not the one the props file describes."
+              elif [ "$REPORTED" = "true" ]; then
+                # The script DID name lagging axes; this workflow could not read them. Its one contract —
+                # `printDrift`'s `DRIFT [rule] location` line — has drifted, and the parser is now blind.
+                echo "## The sweep found drift — and this workflow could not read it"
+                echo
+                echo "\`validate-template-payload-pins.fsx\` reported at least one lagging axis (it printed its"
+                echo "\`lag the feed\` banner), but this workflow parsed **zero** \`DRIFT [pin-lags-feed]\` lines out"
+                echo "of it. The one contract between them — \`printDrift\`'s \`DRIFT [rule] location\` line — has"
+                echo "changed, and the \`grep\` in \`.github/workflows/template-pin-staleness-sweep.yml\` no longer"
+                echo "matches it."
+                echo
+                echo "**The drift is real, and it is not listed here, because this workflow cannot see it.**"
+                echo "Run \`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 dotnet fsi scripts/validate-template-payload-pins.fsx\`"
+                echo "locally to read the findings, then repair the parser so the next sweep can file them itself."
+              else
+                echo "## The sweep exited non-zero without naming an axis"
+                echo
+                echo "\`validate-template-payload-pins.fsx\` failed without printing either a finding or its"
+                echo "banner, so this is not drift: the sweep itself did not run. Nothing was verified."
+              fi
+              echo
+              echo "<details><summary>Last 40 lines of the run</summary>"
+              echo
+              echo '```'
+              tail -n 40 "$RUNNER_TEMP/sweep.err" | sed 's/```/ʼʼʼ/g'
+              echo '```'
+              echo
+              echo "</details>"
+              echo
+              echo "Paths: scripts/validate-template-payload-pins.fsx .github/workflows/template-pin-staleness-sweep.yml"
+              echo
+              echo "Class: defect"
+            } >> "$body"
+          else
+            {
+              echo "The daily template-payload pin sweep is **red**: a component axis in"
+              echo "\`template/base/Directory.Packages.props\` — the file that becomes a **scaffolded product's**"
+              echo "package pins — is behind newest-stable on nuget.org."
+              echo
+              echo "**Nobody's commit did this.** A package published in another repository. That is why this"
+              echo "check does not gate a merge (\`FS.GG.Rendering#1102\`), and why it files this instead: a stale"
+              echo "component pin is a small, well-specified, unblocked piece of work, not a broken build."
+              echo
+              echo "Swept [\`${SHA:0:7}\`]($SERVER/$REPO/commit/$SHA) · [run]($RUN_URL) · **$FINDINGS lagging axis(es)**"
+              echo
+              echo "## Findings"
+              echo
+            } >> "$body"
+
+            # `printDrift` writes four lines per failure: the `DRIFT [...]` header and three indented
+            # continuations. Only the headers were grepped into findings.txt; pull each one's
+            # expected/actual back out of the raw stderr so the issue states both sides.
+            while IFS= read -r ln; do
+              axis=$(printf '%s' "$ln" | sed -n 's/.*(\$(\([A-Za-z]*\))).*/\1/p')
+              # `expected` reads `7.2.0 (newest stable version on nuget.org)`; the parenthetical is for
+              # the log, and the issue already says which feed and which channel. Keep the version.
+              exp=$(grep -A3 -F "$ln" "$RUNNER_TEMP/sweep.err" | sed -n 's/^  expected: //p' | head -n1 | cut -d' ' -f1)
+              act=$(grep -A3 -F "$ln" "$RUNNER_TEMP/sweep.err" | sed -n 's/^  actual:   //p' | head -n1)
+              printf -- '- `$(%s)` — pinned at `%s`, newest on the feed is `%s`\n' \
+                "${axis:-unknown}" "${act:-?}" "${exp:-?}" >> "$body"
+            done < "$RUNNER_TEMP/findings.txt"
+
+            {
+              echo
+              echo "## Fixing it — and it is NOT a one-line diff"
+              echo
+              echo "Renovate will offer you the one-line bump. Take it if you like, but its CI will not tell you"
+              echo "what else moves: \`Deterministic gate\` exits at the **first** failing suite, so the second and"
+              echo "third gates never report. \`#1094\` measured the last \`\$(FsGgContractsVersion)\` move at **five"
+              echo "files across three further gates**. Work the routine in"
+              echo "[\`docs/ci/cadence-map.md\` §4b]($SERVER/$REPO/blob/$SHA/docs/ci/cadence-map.md#bumping-a-component-axis--the-reconciliation-routine) —"
+              echo "*\"Bumping a component axis\"* — which lists them in order."
+              echo
+              if [ "$CONTRACTS" = "true" ]; then
+                echo "This finding names **\`\$(FsGgContractsVersion)\`**, which is the expensive one. In order:"
+                echo
+                echo "1. \`template/base/Directory.Packages.props\` — the axis literal itself."
+                echo "2. \`tests/Build.Tests/mirror-omission-ledger.txt\` — every \`Fsgg.*\` type the new surface adds,"
+                echo "   ledgered with a reason. Appending to go green is not the point; curate."
+                echo "3. \`tests/Build.Tests/TemplateConsumesPinnedApiTests.fs\` — \`OmissionLedgerCeiling\`, raised in"
+                echo "   the same commit, with the reason."
+                echo "4. \`scripts/refresh-api-surface-mirror.fsx\` — the version-keyed pre-\`#782\` bridge is a"
+                echo "   **tripwire**, and it hard-fails on every bump by design. Re-measure before extending it"
+                echo "   (see \`#1101\`); do not widen it on faith."
+                echo "5. \`scripts/api-surface-manifest.txt\` and \`template/base/docs/api-surface/**\` — the M-PROV"
+                echo "   provenance stamps that name the version they were mirrored from."
+                echo "6. \`tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs\` — a **frozen literal** naming"
+                echo "   the exact pin. It is exact on purpose (\`#1102\` AC2): it witnesses that the pin is one"
+                echo "   exact version and never a floating range, which nothing else witnesses. Move it; do not"
+                echo "   loosen it to a prefix match, and do not source it from the axis it is checking."
+              else
+                echo "This finding does not name \`\$(FsGgContractsVersion)\`, so the api-surface mirror chain is not"
+                echo "in play. Expect \`template/base/Directory.Packages.props\` and the pin-restoring assertions in"
+                echo "\`tests/Build.Tests\` — but read §4b rather than assuming, and re-run the sweep locally with"
+                echo "\`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 dotnet fsi scripts/validate-template-payload-pins.fsx\`."
+              fi
+              echo
+              echo "---"
+              echo
+              echo "*This issue is written by the sweep: its body is rewritten on every run, and it closes itself"
+              echo "when the sweep next goes green. Edit the pins, not this issue.*"
+              echo
+
+              # A finding filed without a touch-set is a finding nobody can pick up — `take`/`batch`
+              # refuse an item whose `Paths:` cannot be proven disjoint from a live claim, so it lands on
+              # the board LOOKING like work and is invisible to every worker who asks for work
+              # (FS-GG/.github#442). And one filed without a class reads as UNCLASSED
+              # (FS-GG/.github#1651). The sweep knows both, so it declares both. It cannot place the item
+              # on the board itself — that is Projects v2, and GITHUB_TOKEN has no project scope — but
+              # the moment a human adds it, it is schedulable.
+              #
+              # The touch-set is axis-aware on purpose: it is a RESERVATION, and naming the whole
+              # api-surface chain on an Audio-axis bump would block lanes the fix never enters.
+              if [ "$CONTRACTS" = "true" ]; then
+                echo "Paths: template/base/Directory.Packages.props tests/Build.Tests/mirror-omission-ledger.txt tests/Build.Tests/TemplateConsumesPinnedApiTests.fs scripts/refresh-api-surface-mirror.fsx scripts/api-surface-manifest.txt template/base/docs/api-surface tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs"
+              else
+                echo "Paths: template/base/Directory.Packages.props tests/Build.Tests/TemplateConsumesPinnedApiTests.fs"
+              fi
+              echo
+              echo "Class: defect"
+            } >> "$body"
+          fi
+
+          {
+            echo "### Rendered tracking issue"
+            echo
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "> **Dry run.** This is a \`pull_request\` run, so nothing was filed and this check will not"
+              echo "> fail. Reddening your PR because somebody else published a package is the exact thing"
+              echo "> \`#1102\` removed. What follows is the body a *scheduled* run would have written."
+              echo
+            fi
+            cat "$body"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The API half. Scheduled and dispatched runs only.
+      #
+      # A `pull_request` run must NOT write: the PR author did not cause this and is not being asked to
+      # fix it, so filing an issue at them is the noise that gets a signal muted. A fork PR's token is
+      # read-only anyway. The render above still ran, so the PR does exercise the interesting half.
+      - name: Reconcile the tracking issue
+        id: reconcile
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          RC: ${{ steps.sweep.outputs.rc }}
+        run: |
+          set -euo pipefail
+
+          # REST throughout. It is the cheap budget, it is the one that is still up when GraphQL is
+          # gone, and `gh issue create|edit|close` are all GraphQL (FS-GG/.github#587).
+
+          # `-X GET` IS LOAD-BEARING. `gh api` defaults to POST the moment any `-f` is present, so
+          # without it this "read" POSTs to /issues — the CREATE-ISSUE endpoint — and the daily sweep
+          # opens a blank issue instead of finding the tracker.
+          #
+          # --paginate, because a truncated read here does not look truncated — it looks like "no
+          # tracking issue exists", and the sweep would then file a SECOND tracker every day
+          # (FS-GG/.github#547). `--slurp` cannot be combined with `--jq`, so aggregate in a separate
+          # `jq`. `/issues` returns PRs too; filter them out. Oldest-first, so the ORIGINAL tracker
+          # stays the tracker even if a duplicate ever gets made by hand.
+          tracker=$(gh api -X GET "repos/$REPO/issues" \
+                      -f "labels=$DRIFT_LABEL" -f state=all -f sort=created -f direction=asc \
+                      --paginate --slurp \
+                    | jq -c '[.[][] | select(.pull_request == null)] | first // {}')
+          num=$(jq -r '.number // empty' <<<"$tracker")
+          state=$(jq -r '.state // empty' <<<"$tracker")
+          echo "tracker: ${num:-none} ${state:-}"
+
+          if [ "$RC" != "0" ]; then
+            if [ -z "$num" ]; then
+              # Give the label a colour and a description the first time it is needed. `|| true`,
+              # deliberately: the probe reads ANY non-zero as "absent", including a 5xx blip, and the
+              # POST that follows would then 422 `already_exists` and, under `set -e`, abort the step —
+              # losing the finding to a cosmetic detail about a label, at exactly the moment the sweep
+              # has something to say. Label bookkeeping does not get to veto the report.
+              if ! gh api "repos/$REPO/labels/$DRIFT_LABEL" --silent 2>/dev/null; then
+                gh api -X POST "repos/$REPO/labels" \
+                  -f "name=$DRIFT_LABEL" -f color=D93F0B \
+                  -f "description=A scaffolded-payload component axis lags nuget.org. Filed by the template pin staleness sweep." \
+                  --silent 2>/dev/null || echo "note: could not create label $DRIFT_LABEL (it probably exists)"
+              fi
+
+              url=$(jq -n --arg t "$DRIFT_TITLE" --rawfile b "$RUNNER_TEMP/body.md" --arg l "$DRIFT_LABEL" \
+                      '{title:$t, body:$b, labels:[$l]}' \
+                    | gh api -X POST "repos/$REPO/issues" --input - --jq .html_url)
+              echo "FILED $url"
+              echo "- Filed [the tracking issue]($url)." >> "$GITHUB_STEP_SUMMARY"
+            else
+              # Rewrite the body every run so it is never stale, and reopen if it had closed. A body
+              # edit notifies nobody, which is right: while the issue is open it is already somebody's
+              # work item and a daily comment on it would be the noise that gets this muted. A REOPEN
+              # is a fresh regression, so that one gets a comment — and a notification with it.
+              jq -n --rawfile b "$RUNNER_TEMP/body.md" '{body:$b, state:"open"}' \
+                | gh api -X PATCH "repos/$REPO/issues/$num" --input - --silent
+
+              if [ "$state" = "closed" ]; then
+                gh api -X POST "repos/$REPO/issues/$num/comments" \
+                  -f "body=Reopened: the sweep went red again at \`${SHA:0:7}\`. The lagging axes are listed in the issue body, which has been rewritten. ([run]($RUN_URL))" \
+                  --silent
+                echo "REOPENED #$num"
+              else
+                echo "UPDATED #$num (already open)"
+              fi
+              echo "- Updated [#$num]($GITHUB_SERVER_URL/$REPO/issues/$num) — still red." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            if [ -n "$num" ] && [ "$state" = "open" ]; then
+              # Green. The drift is gone, so the work item is done — say so where it was filed, and
+              # close it. This is the half that keeps the issue trustworthy: a tracker that only ever
+              # opens is one people learn to ignore.
+              gh api -X POST "repos/$REPO/issues/$num/comments" \
+                -f "body=Resolved: every feed-owned axis in the scaffolded payload equals newest-stable again as of \`${SHA:0:7}\`. Closing. ([run]($RUN_URL))" \
+                --silent
+              jq -n '{state:"closed", state_reason:"completed"}' \
+                | gh api -X PATCH "repos/$REPO/issues/$num" --input - --silent
+              echo "CLOSED #$num"
+              echo "- Sweep is green; closed [#$num]($GITHUB_SERVER_URL/$REPO/issues/$num)." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "green; no open tracking issue. Nothing to do."
+            fi
+          fi
+
+      # Re-raise the sweep's verdict — on a SCHEDULED or DISPATCHED run only.
+      #
+      # The `if:` is not belt-and-braces, it is the rule. A `pull_request` run exists to exercise the
+      # script and the renderer; failing it on the verdict would red a PR because somebody else
+      # published a package, which is #1102 in the one place it would be most embarrassing. The PR run
+      # still fails if the RENDERER breaks — that step is `set -euo pipefail` — which is the half a PR
+      # is actually able to be responsible for.
+      #
+      # And this red must never become a REQUIRED check: see the header.
+      - name: Verdict
+        if: steps.sweep.outputs.rc != '0' && github.event_name != 'pull_request'
+        run: |
+          echo "::notice::The template payload pin sweep is red. The finding is on the \`$DRIFT_LABEL\` issue; this check does not gate a merge."
+          exit 1

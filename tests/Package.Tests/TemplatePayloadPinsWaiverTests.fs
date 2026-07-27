@@ -11,7 +11,7 @@ module TemplatePayloadPinsWaiverTests
 //     releasePending pending =
 //         not pending.IsEmpty && not releaseLane && bumpedInCommitUnderTest propsRel uiAxis
 //
-//     feedFailures:  if not (waiveUi && axis = uiAxis) then <check existence>
+//     feedExistenceFailures:  if not (waiveUi && axis = uiAxis) then <check existence>
 //
 // Drop any one conjunct and the guard fails OPEN. The axis guard is the most dangerous: the naive
 // "this commit bumped an axis ⇒ waive it" would waive an unpublished `FS.GG.Game.*` pin and exit 0 —
@@ -88,7 +88,7 @@ let private clean =
 let private releasePending (w: World) =
     not w.PendingUi.IsEmpty && not w.ReleaseLane && w.BumpedUiHere
 
-/// `feedFailures`' existence rule, reduced to the question that matters: which axes still get checked?
+/// `feedExistenceFailures`' rule, reduced to the question that matters: which axes still get checked?
 /// The waiver suppresses `pin-not-published` for the UI axis ALONE — `not (waiveUi && axis = uiAxis)`.
 let private pinNotPublishedFor (w: World) =
     let waiveUi = releasePending w
@@ -254,6 +254,95 @@ let tests =
             Expect.isTrue
                 (Regex.IsMatch(guardSource, @"directPrereleaseFailures\s+\w+"))
                 "…and it must still be CALLED, or the window ships a template pinning a prerelease"
+          }
+
+          // ---- #1102: the SPLIT VERDICT, and the lane `pin-lags-feed` may not return to -----------
+          //
+          // The decision (FS.GG.Rendering#1102, 2026-07-27) is that a feed-COMPARING verdict may not
+          // block a PR whose commits did not change. `pin-lags-feed` is `f(tree, WORLD)`: an upstream
+          // FS.GG.Contracts publish reddened every open PR in this repo on 2026-07-27 with nobody's
+          // commit to blame, and the remedy lived in a file none of those items had declared.
+          //
+          // Everything else in this guard stays merge-blocking, INCLUDING the feed-reading existence
+          // rule — `pin-not-published` accuses the commit that wrote the pin, and no upstream publish
+          // can flip it. That distinction is the whole decision, and it is one `let` away from being
+          // undone by somebody tidying two similar-looking rules back into one function. So it is
+          // pinned here, where the rest of this file's bounds are.
+
+          test "source lockstep: pin-lags-feed is declared in stalenessFailures and NOWHERE else" {
+              let ruleDecl = Regex.Matches(guardSource, @"Rule\s*=\s*""pin-lags-feed""")
+
+              Expect.equal ruleDecl.Count 1
+                  "`pin-lags-feed` must be yielded from exactly one place. A second copy is how a rule quietly re-enters a lane it was removed from (#1102)."
+
+              // Take the text of `stalenessFailures` up to the next top-level `let`/`//` banner and
+              // assert the rule is inside it. Substring, not a parser: the point is only that the
+              // declaration sits under this binding rather than under `feedExistenceFailures`.
+              let sweepFn =
+                  Regex.Match(guardSource, @"let stalenessFailures \(i: Inputs\) : Failure list =[\s\S]*?\n// ----")
+
+              Expect.isTrue sweepFn.Success "stalenessFailures must still exist as the sweep lane's rule set"
+              Expect.isTrue (sweepFn.Value.Contains "pin-lags-feed")
+                  "`pin-lags-feed` must live in `stalenessFailures` — the SCHEDULED lane. If it moved back into the PR lane, an upstream publish reds PRs nobody's commit broke (#1102)."
+          }
+
+          test "source lockstep: the PR restore lane calls feedExistenceFailures, never stalenessFailures" {
+              Expect.isTrue
+                  (squashedSource.Contains "let feed = feedExistenceFailures waiveUi i")
+                  "the restore lane must ask for EXISTENCE only. `feedExistenceFailures` is the half that accuses the commit under test; staleness is the sweep's (#1102)."
+
+              // Exactly one call site, and it is the sweep branch's.
+              let calls = Regex.Matches(guardSource, @"stalenessFailures i\b")
+
+              Expect.equal calls.Count 1
+                  "`stalenessFailures` must be called from exactly one place — the `stalenessSweep` branch of `main`. A second caller is the rule leaking back into a PR lane (#1102)."
+
+              Expect.isTrue
+                  (squashedSource.Contains "if stalenessSweep then")
+                  "…and that one caller must be guarded by `stalenessSweep`, the env var only the scheduled workflow sets"
+          }
+
+          test "source lockstep: the two lanes are refused together rather than silently ordered" {
+              Expect.isTrue
+                  (squashedSource.Contains "if stalenessSweep && live then raise (")
+                  "setting both FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 and FS_GG_RUN_TEMPLATE_PAYLOAD_RESTORE=1 must fail CLOSED. A precedence rule would decide in secret whether `pin-lags-feed` ran on a PR, which is the one question #1102 exists to answer out loud."
+          }
+
+          // And the other end of the contract: the workflow that owns the lane. A split that exists only
+          // in the script is a rule that runs NOWHERE — which would silently reintroduce the #235
+          // staleness blindness the rule was written for, while looking like a fix.
+          test "the scheduled sweep exists, drives the sweep lane, and cannot red a PR" {
+              let sweepPath = Path.Combine(root, ".github", "workflows", "template-pin-staleness-sweep.yml")
+
+              Expect.isTrue (File.Exists sweepPath)
+                  "`pin-lags-feed` left the PR lane, so something must still run it. Deleting .github/workflows/template-pin-staleness-sweep.yml does not simplify the gate — it restores the #235 silence."
+
+              let wf = File.ReadAllText sweepPath
+
+              Expect.stringContains wf "FS_GG_TEMPLATE_PIN_STALENESS_SWEEP: '1'"
+                  "the sweep must actually drive the staleness lane"
+
+              Expect.stringContains wf "- cron:" "the sweep must be scheduled — that is the lane it moved to"
+
+              // The PR trigger exists to exercise the renderer; the verdict step must exclude it, or
+              // this workflow reds a PR because somebody else published a package — #1102, verbatim, on
+              // the workflow that abolished it.
+              Expect.stringContains
+                  wf
+                  "if: steps.sweep.outputs.rc != '0' && github.event_name != 'pull_request'"
+                  "the Verdict step must not fail a `pull_request` run"
+
+              // The finding is only work if a worker can pick it up: no touch-set ⇒ `take`/`batch`
+              // refuse it (FS-GG/.github#442); no class ⇒ the row reads as unclassed (#1651).
+              Expect.stringContains wf "Paths:" "the filed item must declare a touch-set"
+              Expect.stringContains wf "Class: defect" "the filed item must declare a class"
+
+              // gate.yml must not have grown a copy of the rule back.
+              let gate = File.ReadAllText(Path.Combine(root, ".github", "workflows", "gate.yml"))
+
+              Expect.isFalse
+                  (gate.Contains "FS_GG_TEMPLATE_PIN_STALENESS_SWEEP")
+                  "the PR gate must never run the staleness lane (#1102)"
           }
 
           test "source lockstep: bumpedInCommitUnderTest still fails CLOSED when git cannot answer" {
