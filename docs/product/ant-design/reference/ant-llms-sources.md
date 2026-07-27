@@ -108,7 +108,7 @@ plot internals, pointer-playground/custom surfaces), the relevant pattern doc re
 ## Where this hub is cited
 
 - Every pattern doc under `../patterns/` (a `doc:` ref) and the index `../README.md`.
-- The `fs-gg-ant-design` skill (`.claude/skills/fs-gg-ant-design/SKILL.md`).
+- The `fs-gg-ant-design` skill (`../skill/SKILL.md`), which every agent-skill root wraps.
 - The product docs index (`docs/product/README.md`), the coding-agent context (`CLAUDE.md`), and
   the most relevant existing product skills — so FS.GG treats these three files as the canonical
   Ant source.

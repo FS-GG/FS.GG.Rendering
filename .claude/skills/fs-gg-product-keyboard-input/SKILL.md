@@ -5,7 +5,7 @@ description: Map keyboard input to product commands in a generated FS.GG.UI prod
 
 # FS.GG Product Keyboard Input
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

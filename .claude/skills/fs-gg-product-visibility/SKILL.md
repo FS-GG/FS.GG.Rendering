@@ -5,7 +5,7 @@ description: Compute 2D visibility in a generated FS.GG.UI product — the angul
 
 # FS.GG Product Visibility
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

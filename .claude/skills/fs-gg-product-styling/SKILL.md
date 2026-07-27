@@ -5,7 +5,7 @@ description: Generated product guidance for theming an FS.GG.UI product and styl
 
 # FS.GG Product Styling
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

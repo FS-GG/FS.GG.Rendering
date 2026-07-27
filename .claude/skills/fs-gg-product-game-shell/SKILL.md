@@ -5,7 +5,7 @@ description: Wire the reusable game shell — menu/start screen, settings (resol
 
 # FS.GG Product Game Shell
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

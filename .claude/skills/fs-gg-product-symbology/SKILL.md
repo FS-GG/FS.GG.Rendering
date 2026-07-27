@@ -5,7 +5,7 @@ description: Map a unit roster to legible vector symbols in a generated FS.GG.UI
 
 # FS.GG Product Symbology
 
-This is the Claude-active wrapper for the generated-product skill variant.
+This is a wrapper for the generated-product skill variant.
 
 Before acting, read the canonical instructions in:
 

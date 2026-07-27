@@ -736,11 +736,19 @@ module SkillParity =
             Notes = [] }
           { SurfaceId = "ant-canonical"
             DisplayName = "Ant Design canonical skill"
-            RootPath = ".claude/skills/fs-gg-ant-design/SKILL.md"
+            // #1080/#1082: this body used to live AT `.claude/skills/fs-gg-ant-design/SKILL.md`, which is
+            // a shape no byte-identical three-root union can contain — one root held the canonical while
+            // the others routed INTO it, and a root cannot route to itself. The decision on #1082 kept
+            // ADR-0011's byte-identity, so the canonical moved out of the roots to the
+            // `<area>/skill/SKILL.md` convention `src/*/skill/` and `template/*/skill/` already use, and
+            // `fs-gg-ant-design` became an ORDINARY wrapper — identical in all three roots and now covered
+            // by wrapper parity like every other one (it is no longer excluded in `filesForSurface`).
+            // The surface itself stays required: what it asserts is unchanged, only where it looks.
+            RootPath = "docs/product/ant-design/skill/SKILL.md"
             Kind = Canonical
             Agent = Repository
             IsRequired = true
-            Notes = [ "Routed to by the Codex Ant wrapper." ] }
+            Notes = [ "Routed to by the fs-gg-ant-design wrapper in every agent-skill root." ] }
           { SurfaceId = "spec-kit-command"
             DisplayName = "Spec Kit command skills"
             RootPath = ".agents/skills/speckit-* and .claude/skills/speckit-*"
@@ -871,7 +879,7 @@ module SkillParity =
                 not (containsIgnoreCase "/.agents/skills/" normalized)
                 && not (containsIgnoreCase "/.claude/skills/" normalized))
         | "ant-canonical" ->
-            let path = Path.Combine(repositoryRoot, ".claude", "skills", "fs-gg-ant-design", "SKILL.md")
+            let path = Path.Combine(repositoryRoot, "docs", "product", "ant-design", "skill", "SKILL.md")
             if File.Exists path then [ path ] else []
         | "spec-kit-command" ->
             let agents = safeFiles (Path.Combine(repositoryRoot, ".agents", "skills")) "SKILL.md" SearchOption.AllDirectories
@@ -885,15 +893,19 @@ module SkillParity =
         | "claude" ->
             safeFiles rootPath "SKILL.md" SearchOption.AllDirectories
             |> List.filter (fun path ->
-                let normalized = normalizeSeparators path
-                not (containsIgnoreCase "/.claude/skills/fs-gg-ant-design/SKILL.md" normalized)
-                && not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
+                // #1080/#1082: `fs-gg-ant-design` used to be excluded here, because
+                // `.claude/skills/fs-gg-ant-design/SKILL.md` WAS the canonical body rather than a wrapper
+                // routing to one. The canonical now lives at `docs/product/ant-design/skill/SKILL.md` and
+                // every root holds an ordinary wrapper, so the exclusion is gone and Ant is held to
+                // wrapper parity exactly like the other 29. This STRENGTHENS the gate: nothing about it
+                // was removed or weakened to satisfy the union.
+                not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
                 // The ADR-0019 coordination kit (cross-repo-coordination + intra-repo-parallel-work per
                 // ADR-0021, plus the check-board / pnext-item command skills) is externally-owned
                 // (FS-GG/.github): process skills synced verbatim by coordination-sync, not repo wrappers
                 // routing to an internal canonical. Their byte-coherence is enforced by the
-                // coordination-coherence gate, so exclude them from wrapper parity exactly like the Ant
-                // canonical and the externally-owned speckit-* command skills above.
+                // coordination-coherence gate, so exclude them from wrapper parity exactly like the
+                // externally-owned speckit-* command skills above.
                 && not (coordinationKitSkills |> Set.contains (parentDirectoryName path)))
         | _ ->
             if File.Exists rootPath then

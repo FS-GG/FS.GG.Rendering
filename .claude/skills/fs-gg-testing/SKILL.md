@@ -5,7 +5,7 @@ description: Work on generated product, package validation, visual inspection, a
 
 # FS.GG Testing
 
-This is the Claude-active wrapper for the canonical local skill.
+This is a wrapper for the canonical local skill.
 
 Before acting, read the canonical instructions in:
 

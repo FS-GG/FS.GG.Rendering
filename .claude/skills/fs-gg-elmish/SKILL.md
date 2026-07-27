@@ -5,7 +5,7 @@ description: Work on Elmish adapter contracts and generated product Elmish wirin
 
 # FS.GG Elmish
 
-This is the Claude-active wrapper for the canonical local skill.
+This is a wrapper for the canonical local skill.
 
 Before acting, read the canonical instructions in:
 

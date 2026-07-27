@@ -5,7 +5,7 @@ description: Generated product guidance for Skia-rendered FS.GG.UI Controls, ric
 
 # FS.GG Generated Controls Guidance
 
-This is the Claude-active wrapper for the canonical local skill.
+This is a wrapper for the canonical local skill.
 
 Before acting, read the canonical instructions in:
 
