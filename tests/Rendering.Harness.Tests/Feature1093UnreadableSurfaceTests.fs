@@ -297,7 +297,12 @@ let unreadableSurfaceTests =
                 let canonicalSurface: SkillParity.SkillSurface list =
                     [ { SurfaceId = "fixture-canonical"
                         DisplayName = "fixture canonical"
-                        RootPath = "canonical"
+                        // #1092: `RootPath` became `Roots` + `Selector`. `EverySkillBody` is the
+                        // literal equivalent of what this surface got before — `fixture-canonical` had
+                        // no branch in the old `filesForSurface`, so it fell through to the recursive
+                        // glob of its declared root, unnarrowed.
+                        Roots = [ "canonical" ]
+                        Selector = SkillParity.EverySkillBody
                         Kind = SkillParity.Canonical
                         Agent = SkillParity.Repository
                         IsRequired = true
@@ -359,7 +364,12 @@ let unreadableSurfaceTests =
                 let surfaces: SkillParity.SkillSurface list =
                     [ { SurfaceId = "fixture-canonical"
                         DisplayName = "fixture canonical"
-                        RootPath = "canonical"
+                        // #1092: `RootPath` became `Roots` + `Selector`. `EverySkillBody` is the
+                        // literal equivalent of what this surface got before — `fixture-canonical` had
+                        // no branch in the old `filesForSurface`, so it fell through to the recursive
+                        // glob of its declared root, unnarrowed.
+                        Roots = [ "canonical" ]
+                        Selector = SkillParity.EverySkillBody
                         Kind = SkillParity.Canonical
                         Agent = SkillParity.Repository
                         IsRequired = true

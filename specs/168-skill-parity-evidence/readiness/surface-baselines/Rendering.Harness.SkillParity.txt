@@ -10,6 +10,7 @@ type ArtifactReference
 type FindingSeverity
 type FindingCategory
 type OverallStatus
+type SurfaceSelector
 type SkillSurface
 type WrapperTarget
 type SkillEntry
@@ -27,6 +28,7 @@ type Model
 type Msg
 type Effect
 val surfaceKindToken
+val surfaceSelectorToken
 val agentToken
 val entryKindToken
 val symbolStatusToken

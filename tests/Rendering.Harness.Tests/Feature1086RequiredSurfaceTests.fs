@@ -62,9 +62,14 @@ let requiredSurfaceTests =
                         SummaryJsonPath = Path.Combine(outRoot, "out", "summary.json")
                         // The issue's own experiment, expressed through the public seam: a REQUIRED
                         // surface (every `--surface` override is required) pointing at a path that is
-                        // not there. Deliberately NOT the id `ant-canonical`, because `filesForSurface`
-                        // resolves that id from a hard-coded path and ignores `RootPath` entirely — an
-                        // override under that name would silently read the REAL file and prove nothing.
+                        // not there. It was originally NOT the id `ant-canonical` because
+                        // `filesForSurface` resolved that id from a hard-coded path and ignored
+                        // `RootPath` entirely, so an override under that name would silently read the
+                        // REAL file and prove nothing. #1092 removed the hard-coded branches, so an
+                        // override of any declared id is now genuine and that hazard is gone — the id
+                        // stays `bogus-canonical` anyway, because this test's subject is `IsRequired`
+                        // and not override fidelity, and a name that belongs to no declared surface
+                        // keeps it independent of which surfaces the repository happens to declare.
                         SurfaceOverrides = [ "bogus-canonical", "docs/product/ant-design/skill/NOPE.md" ] }
 
                 let report = SkillParity.runCheck request

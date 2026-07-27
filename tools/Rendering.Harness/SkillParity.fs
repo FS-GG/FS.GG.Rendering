@@ -96,10 +96,38 @@ module SkillParity =
         | WarningStatus
         | Failed
 
+    /// How a surface narrows the `SKILL.md` bodies its declared `Roots` yield.
+    ///
+    /// ISSUE #1092 — this exists so that NOTHING about where a surface looks is keyed on `SurfaceId`.
+    /// A selector may only NARROW what `Roots` produced; it can never introduce a path from outside
+    /// them. That is what makes the published `Root` column a checkable claim rather than a comment:
+    /// every file a surface reads is, by construction, beneath a root the surface declares.
+    type SurfaceSelector =
+        /// Every `SKILL.md` beneath the declared roots. The honest default, and what an operator
+        /// `--surface id=path` override gets: it declares a root and nothing else, so nothing else is
+        /// applied to it.
+        | EverySkillBody
+        /// Only `<area>/skill/SKILL.md` bodies — the package/template canonical-body convention.
+        | AreaSkillBodies
+        /// Every body except the ADR-0011 agent-skill-root MIRRORS (`agentSkillRootMirrorSegments`),
+        /// which are byte-identical projections of a canonical body rather than canonical sources.
+        | NonMirroredBodies
+        /// Repo-owned agent wrappers: excludes `speckit-*` command skills and the externally-owned
+        /// ADR-0019/0021 coordination kit, both of which are adjudicated by other gates.
+        | AgentWrappers
+        /// Only `speckit-*` command skills.
+        | CommandWrappers
+
     type SkillSurface =
         { SurfaceId: string
           DisplayName: string
-          RootPath: string
+          /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
+          /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
+          /// file. This is the ONLY place `filesForSurface` gets a path from, and it is what the
+          /// report's `Root` column and the summary JSON's `roots` publish — see `SurfaceSelector`.
+          Roots: string list
+          /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
+          Selector: SurfaceSelector
           Kind: SurfaceKind
           Agent: AgentSurface
           IsRequired: bool
@@ -265,6 +293,14 @@ module SkillParity =
         | Wrapper -> "wrapper"
         | Mixed -> "mixed"
         | Command -> "command"
+
+    let surfaceSelectorToken selector =
+        match selector with
+        | EverySkillBody -> "every-skill-body"
+        | AreaSkillBodies -> "area-skill-bodies"
+        | NonMirroredBodies -> "non-mirrored-bodies"
+        | AgentWrappers -> "agent-wrappers"
+        | CommandWrappers -> "command-wrappers"
 
     let agentToken agent =
         match agent with
@@ -735,28 +771,32 @@ module SkillParity =
 
         [ { SurfaceId = "codex-local"
             DisplayName = "Codex/local agent wrappers"
-            RootPath = relativePath root (Path.Combine(root, ".agents", "skills"))
+            Roots = [ relativePath root (Path.Combine(root, ".agents", "skills")) ]
+            Selector = AgentWrappers
             Kind = Wrapper
             Agent = Codex
             IsRequired = true
             Notes = [] }
           { SurfaceId = "claude"
             DisplayName = "Claude wrappers"
-            RootPath = relativePath root (Path.Combine(root, ".claude", "skills"))
+            Roots = [ relativePath root (Path.Combine(root, ".claude", "skills")) ]
+            Selector = AgentWrappers
             Kind = Wrapper
             Agent = Claude
             IsRequired = true
             Notes = [] }
           { SurfaceId = "package-canonical"
             DisplayName = "Package-owned canonical skills"
-            RootPath = "src"
+            Roots = [ "src" ]
+            Selector = AreaSkillBodies
             Kind = Canonical
             Agent = Package
             IsRequired = true
             Notes = [] }
           { SurfaceId = "template-canonical"
             DisplayName = "Generated-product and template canonical skills"
-            RootPath = "template"
+            Roots = [ "template" ]
+            Selector = NonMirroredBodies
             Kind = Canonical
             Agent = GeneratedProduct
             IsRequired = true
@@ -771,37 +811,51 @@ module SkillParity =
             // `fs-gg-ant-design` became an ORDINARY wrapper — identical in all three roots and now covered
             // by wrapper parity like every other one (it is no longer excluded in `filesForSurface`).
             // The surface itself stays required: what it asserts is unchanged, only where it looks.
-            RootPath = "docs/product/ant-design/skill/SKILL.md"
+            Roots = [ "docs/product/ant-design/skill/SKILL.md" ]
+            Selector = EverySkillBody
             Kind = Canonical
             Agent = Repository
             IsRequired = true
             Notes = [ "Routed to by the fs-gg-ant-design wrapper in every agent-skill root." ] }
           { SurfaceId = "spec-kit-command"
             DisplayName = "Spec Kit command skills"
-            RootPath = ".agents/skills/speckit-* and .claude/skills/speckit-*"
+            // ISSUE #1092 — this used to read `.agents/skills/speckit-* and .claude/skills/speckit-*`:
+            // English prose sitting in the field the report publishes as `Root`, describing what a
+            // hard-coded branch of `filesForSurface` did. The two roots are now DECLARED, and the
+            // `speckit-*` narrowing is the `CommandWrappers` selector, so the published declaration is
+            // the thing the resolver reads. Prose belongs in `Notes`, which is where the rest of it is.
+            Roots =
+              [ relativePath root (Path.Combine(root, ".agents", "skills"))
+                relativePath root (Path.Combine(root, ".claude", "skills")) ]
+            Selector = CommandWrappers
             Kind = Command
             Agent = SpecKit
             IsRequired = true
-            Notes = [ "Command surfaces are reported but do not require canonical wrappers." ] } ]
+            Notes =
+              [ "Command surfaces are reported but do not require canonical wrappers."
+                "Selects only the `speckit-*` skills beneath its roots." ] } ]
 
     let private fixtureSurfaces root =
         [ { SurfaceId = "fixture-canonical"
             DisplayName = "Synthetic fixture canonical skills"
-            RootPath = "canonical"
+            Roots = [ "canonical" ]
+            Selector = EverySkillBody
             Kind = Canonical
             Agent = Repository
             IsRequired = true
             Notes = [ "SYNTHETIC fixture surface." ] }
           { SurfaceId = "fixture-codex"
             DisplayName = "Synthetic Codex wrappers"
-            RootPath = "codex"
+            Roots = [ "codex" ]
+            Selector = EverySkillBody
             Kind = Wrapper
             Agent = Codex
             IsRequired = true
             Notes = [ "SYNTHETIC fixture surface." ] }
           { SurfaceId = "fixture-claude"
             DisplayName = "Synthetic Claude wrappers"
-            RootPath = "claude"
+            Roots = [ "claude" ]
+            Selector = EverySkillBody
             Kind = Wrapper
             Agent = Claude
             IsRequired = true
@@ -815,12 +869,17 @@ module SkillParity =
           // guards would come back.
           { SurfaceId = "fixture-optional"
             DisplayName = "Synthetic optional surface (never populated)"
-            RootPath = "optional"
+            // #1092: `optional/` is the declared root, and `EverySkillBody` is the honest selector for
+            // it — the surface's emptiness must come from the root being empty, not from a narrowing
+            // that filters everything out, or #1086's control would prove nothing.
+            Roots = [ "optional" ]
+            Selector = EverySkillBody
             Kind = Wrapper
             Agent = Codex
             IsRequired = false
             Notes = [ "SYNTHETIC fixture surface; deliberately empty and NOT required." ] } ]
-        |> List.map (fun surface -> { surface with RootPath = relativePath root (Path.Combine(root, surface.RootPath)) })
+        |> List.map (fun surface ->
+            { surface with Roots = surface.Roots |> List.map (fun path -> relativePath root (Path.Combine(root, path))) })
 
     let private commandSkillName (name: string) =
         name.StartsWith("speckit-", StringComparison.OrdinalIgnoreCase)
@@ -937,20 +996,17 @@ module SkillParity =
         | null -> ""
         | parent -> parent.Name
 
-    let private filesForSurface (repositoryRoot: string) (surface: SkillSurface) =
-        let rootPath = absolutePath repositoryRoot surface.RootPath
+    let private isCommandWrapperPath (path: string) =
+        (parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase)
 
-        let safeFiles (directory: string) (pattern: string) (search: SearchOption) =
-            if Directory.Exists directory then
-                Directory.GetFiles(directory, pattern, search) |> Array.toList
-            else
-                []
-
-        match surface.SurfaceId with
-        | "package-canonical" ->
-            safeFiles (Path.Combine(repositoryRoot, "src")) "SKILL.md" SearchOption.AllDirectories
-            |> List.filter (fun path -> normalizeSeparators path |> containsIgnoreCase "/skill/SKILL.md")
-        | "template-canonical" ->
+    /// The narrowing half of surface resolution. It is a PREDICATE over paths the declared roots
+    /// already produced, which is the whole point of #1092: a selector can drop a body, and can never
+    /// reach for one the surface did not declare a root for.
+    let private selectorAdmits (selector: SurfaceSelector) (path: string) =
+        match selector with
+        | EverySkillBody -> true
+        | AreaSkillBodies -> normalizeSeparators path |> containsIgnoreCase "/skill/SKILL.md"
+        | NonMirroredBodies ->
             // The ADR-0011 agent-skill roots under `template/` are MIRRORS of a canonical body, not
             // canonical sources, so all of them are filtered out here. `template/base/`'s canonical
             // `fs-gg-project` body lives at `template/base/.agents/skills/fs-gg-project/SKILL.md`
@@ -971,48 +1027,54 @@ module SkillParity =
             // roots which happen to be populated today fails open the moment the fourth root of the day
             // is added, which is exactly how this one failed. `Feature1081TemplateCanonicalRootsTests`
             // pins the set against ADR-0011's roots so the next addition cannot pass silently.
-            safeFiles (Path.Combine(repositoryRoot, "template")) "SKILL.md" SearchOption.AllDirectories
-            |> List.filter (fun path ->
-                let normalized = normalizeSeparators path
+            let normalized = normalizeSeparators path
 
-                agentSkillRootMirrorSegments
-                |> List.forall (fun segment -> not (containsIgnoreCase segment normalized)))
-        | "ant-canonical" ->
-            let path = Path.Combine(repositoryRoot, "docs", "product", "ant-design", "skill", "SKILL.md")
-            if File.Exists path then [ path ] else []
-        | "spec-kit-command" ->
-            let agents = safeFiles (Path.Combine(repositoryRoot, ".agents", "skills")) "SKILL.md" SearchOption.AllDirectories
-            let claude = safeFiles (Path.Combine(repositoryRoot, ".claude", "skills")) "SKILL.md" SearchOption.AllDirectories
+            agentSkillRootMirrorSegments
+            |> List.forall (fun segment -> not (containsIgnoreCase segment normalized))
+        | AgentWrappers ->
+            // #1080/#1082: `fs-gg-ant-design` used to be excluded here, because
+            // `.claude/skills/fs-gg-ant-design/SKILL.md` WAS the canonical body rather than a wrapper
+            // routing to one. The canonical now lives at `docs/product/ant-design/skill/SKILL.md` and
+            // every root holds an ordinary wrapper, so the exclusion is gone and Ant is held to
+            // wrapper parity exactly like the other 29. This STRENGTHENS the gate: nothing about it
+            // was removed or weakened to satisfy the union.
+            not (isCommandWrapperPath path)
+            // The ADR-0019 coordination kit (cross-repo-coordination + intra-repo-parallel-work per
+            // ADR-0021, plus the check-board / pnext-item command skills) is externally-owned
+            // (FS-GG/.github): process skills synced verbatim by coordination-sync, not repo wrappers
+            // routing to an internal canonical. Their byte-coherence is enforced by the
+            // coordination-coherence gate, so exclude them from wrapper parity exactly like the
+            // externally-owned speckit-* command skills above.
+            && not (coordinationKitSkills |> Set.contains (parentDirectoryName path))
+        | CommandWrappers -> isCommandWrapperPath path
 
-            (agents @ claude)
-            |> List.filter (fun path ->
-                let name = parentDirectoryName path
-                name.StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
-        | "codex-local"
-        | "claude" ->
-            safeFiles rootPath "SKILL.md" SearchOption.AllDirectories
-            |> List.filter (fun path ->
-                // #1080/#1082: `fs-gg-ant-design` used to be excluded here, because
-                // `.claude/skills/fs-gg-ant-design/SKILL.md` WAS the canonical body rather than a wrapper
-                // routing to one. The canonical now lives at `docs/product/ant-design/skill/SKILL.md` and
-                // every root holds an ordinary wrapper, so the exclusion is gone and Ant is held to
-                // wrapper parity exactly like the other 29. This STRENGTHENS the gate: nothing about it
-                // was removed or weakened to satisfy the union.
-                not ((parentDirectoryName path).StartsWith("speckit-", StringComparison.OrdinalIgnoreCase))
-                // The ADR-0019 coordination kit (cross-repo-coordination + intra-repo-parallel-work per
-                // ADR-0021, plus the check-board / pnext-item command skills) is externally-owned
-                // (FS-GG/.github): process skills synced verbatim by coordination-sync, not repo wrappers
-                // routing to an internal canonical. Their byte-coherence is enforced by the
-                // coordination-coherence gate, so exclude them from wrapper parity exactly like the
-                // externally-owned speckit-* command skills above.
-                && not (coordinationKitSkills |> Set.contains (parentDirectoryName path)))
-        | _ ->
-            if File.Exists rootPath then
-                [ rootPath ]
-            elif Directory.Exists rootPath then
-                safeFiles rootPath "SKILL.md" SearchOption.AllDirectories
+    /// ISSUE #1092 — every path this returns comes from `surface.Roots`, the field the report PUBLISHES
+    /// as the `Root` column and the summary JSON as `roots`. It used to `match surface.SurfaceId with`
+    /// and re-state each surface's path inline, so the column was a comment that happened to agree with
+    /// the resolver and nothing kept it agreeing; an operator `--surface ant-canonical=.../NOPE.md`
+    /// override was accepted, printed in that column, and silently ignored.
+    ///
+    /// MEASURED on `e2d860bc` before the fix, by holding each declared surface identical and pointing
+    /// only its root at an empty directory: `package-canonical` (10 bodies), `template-canonical` (18),
+    /// `ant-canonical` (1) and `spec-kit-command` (32) all resolved their full live inventory out of a
+    /// provably empty root. So it was FOUR of the six, not five as #1092's title says: `codex-local` and
+    /// `claude` did read `RootPath` (they emptied correctly) and hard-coded only their FILTER. Both
+    /// halves are declared now — `Roots` and `Selector` — and there is no `SurfaceId` branch left here,
+    /// so a surface added tomorrow is read through the same two fields as the six that exist today.
+    let private filesForSurface (repositoryRoot: string) (surface: SkillSurface) =
+        let bodiesUnder (root: string) =
+            let absolute = absolutePath repositoryRoot root
+
+            if File.Exists absolute then [ absolute ]
+            elif Directory.Exists absolute then
+                Directory.GetFiles(absolute, "SKILL.md", SearchOption.AllDirectories) |> Array.toList
             else
                 []
+
+        surface.Roots
+        |> List.collect bodiesUnder
+        |> List.filter (selectorAdmits surface.Selector)
+        |> List.distinctBy normalizeSeparators
 
     /// Which failures are the FILESYSTEM's answer, as opposed to this harness falling over. Everything the
     /// BCL raises for "the bytes are there but you cannot have them" belongs here; nothing else does.
@@ -1908,7 +1970,12 @@ module SkillParity =
               SurfaceId = surface.SurfaceId
               Category = UnreadableSurface
               Severity = High
-              CanonicalPath = Some surface.RootPath
+              // #1092: `RootPath` became `Roots`, so the finding names EVERY root the surface declares,
+              // in the same `", "`-joined form the report's `Root` column publishes. Naming only the
+              // first would send a reader of a multi-root surface (`spec-kit-command`) to half of what
+              // was searched — and after #1092 these are the paths that were ACTUALLY searched, so the
+              // finding and the resolver can no longer disagree about where the surface looked.
+              CanonicalPath = Some(String.concat ", " surface.Roots)
               WrapperPath = None
               Symbol = None
               Message = $"Required surface '{surface.SurfaceId}' resolves to zero skill files."
@@ -2170,11 +2237,18 @@ Before acting, read the canonical instructions in:
             | Some _ -> fixtureSurfaces root
             | None -> discoverDefaultSurfaces root
         else
+            // ISSUE #1092 — an override is now GENUINE for every surface id, including the five that
+            // used to have a hard-coded branch in `filesForSurface`. `EverySkillBody` is the honest
+            // selector for one: the operator declared a root and nothing else, so nothing else is
+            // applied. Before this, `--surface ant-canonical=<anything>` was accepted, printed in the
+            // `Root` column, and read by nothing — the resolver went to its own hard-coded path and
+            // reported on the real file.
             request.SurfaceOverrides
             |> List.map (fun (surfaceId, path) ->
                 { SurfaceId = surfaceId
                   DisplayName = surfaceId
-                  RootPath = path
+                  Roots = [ path ]
+                  Selector = EverySkillBody
                   Kind = Mixed
                   Agent = Repository
                   IsRequired = true
@@ -2298,8 +2372,17 @@ Before acting, read the canonical instructions in:
         sb.AppendLine($"Wrappers: `{report.WrapperCount}`") |> ignore
         sb.AppendLine() |> ignore
         sb.AppendLine("## Supported Surfaces") |> ignore
-        sb.AppendLine(markdownTableRow [ "Surface"; "Kind"; "Agent"; "Root"; "Required" ]) |> ignore
-        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
+        // ISSUE #1092 — `Root` lists every root the surface DECLARES, and `Selects` names how it
+        // narrows them. Together they are the complete answer to "where does this surface look?", and
+        // `filesForSurface` reads exactly these two fields, so the row cannot drift from the gate.
+        //
+        // `Selects` is APPENDED rather than slotted next to `Root`, which is where it reads best: the
+        // first five columns keep their positions, so a reader (or anything parsing this table
+        // positionally) that predates the column is not silently shifted by it.
+        sb.AppendLine(markdownTableRow [ "Surface"; "Kind"; "Agent"; "Root"; "Required"; "Selects" ])
+        |> ignore
+
+        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
         for surface in report.SupportedSurfaces do
             sb.AppendLine(
@@ -2307,8 +2390,9 @@ Before acting, read the canonical instructions in:
                     [ surface.SurfaceId
                       surfaceKindToken surface.Kind
                       agentToken surface.Agent
-                      surface.RootPath
-                      string surface.IsRequired ]
+                      String.concat ", " surface.Roots
+                      string surface.IsRequired
+                      surfaceSelectorToken surface.Selector ]
             )
             |> ignore
 
@@ -2440,7 +2524,12 @@ Before acting, read the canonical instructions in:
             |> List.map (fun surface ->
                 {| surfaceId = surface.SurfaceId
                    kind = surfaceKindToken surface.Kind
-                   rootPath = surface.RootPath
+                   // #1092: `rootPath` was a single string that, for four of the six default surfaces,
+                   // named a path the resolver never read — and for `spec-kit-command` was not a path at
+                   // all. `roots` is the list the resolver actually globs, and `selector` is how it
+                   // narrows them.
+                   roots = surface.Roots
+                   selector = surfaceSelectorToken surface.Selector
                    skillCount = 0
                    required = surface.IsRequired |})
 

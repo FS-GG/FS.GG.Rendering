@@ -6,14 +6,14 @@ Canonical sources: `29`
 Wrappers: `60`
 
 ## Supported Surfaces
-| Surface | Kind | Agent | Root | Required |
-| --- | --- | --- | --- | --- |
-| codex-local | wrapper | codex | .agents/skills | True |
-| claude | wrapper | claude | .claude/skills | True |
-| package-canonical | canonical | package | src | True |
-| template-canonical | canonical | generated-product | template | True |
-| ant-canonical | canonical | repository | docs/product/ant-design/skill/SKILL.md | True |
-| spec-kit-command | command | spec-kit | .agents/skills/speckit-* and .claude/skills/speckit-* | True |
+| Surface | Kind | Agent | Root | Required | Selects |
+| --- | --- | --- | --- | --- | --- |
+| codex-local | wrapper | codex | .agents/skills | True | agent-wrappers |
+| claude | wrapper | claude | .claude/skills | True | agent-wrappers |
+| package-canonical | canonical | package | src | True | area-skill-bodies |
+| template-canonical | canonical | generated-product | template | True | non-mirrored-bodies |
+| ant-canonical | canonical | repository | docs/product/ant-design/skill/SKILL.md | True | every-skill-body |
+| spec-kit-command | command | spec-kit | .agents/skills, .claude/skills | True | command-wrappers |
 
 ## Severity Counts
 | Critical | High | Warning | Info |

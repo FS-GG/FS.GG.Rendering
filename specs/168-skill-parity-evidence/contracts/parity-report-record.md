@@ -30,7 +30,8 @@ caveats outside generated sections.
     {
       "surfaceId": "codex-local",
       "kind": "wrapper",
-      "rootPath": ".agents/skills",
+      "roots": [".agents/skills"],
+      "selector": "agent-wrappers",
       "skillCount": 32,
       "required": true
     }
