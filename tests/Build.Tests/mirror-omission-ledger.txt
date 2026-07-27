@@ -39,10 +39,18 @@
 # `OmissionLedgerCeiling` literal in TemplateConsumesPinnedApiTests.fs is what enforces that.
 # ------------------------------------------------------------------------------------------------
 
-# FS.GG.Contracts 7.0.0 (61) — Rendering#1060 deliberately vendors only the producer-owned
-# Schemas.PerformanceIntentDeclaration needed by generated workload authoring. Contracts 7.0.0
+# FS.GG.Contracts (62) — Rendering#1060 deliberately vendors only the producer-owned
+# Schemas.PerformanceIntentDeclaration needed by generated workload authoring. Contracts still
 # predates packed api-surface files, so exposing the package's unrelated registry/provider/schema
 # implementation surface would turn this narrow compatibility bridge into a second Contracts manual.
+#
+# #1094: seeded at 7.0.0 and unversioned in this heading on purpose — the pin has since moved to
+# 7.2.0 and every one of the 62 entries below is STILL exported and STILL unmirrored there, so a
+# frozen version in a heading would only go stale. The count was written as (61); the block has
+# always held 62 lines (5 modules + 57 types), corrected here while adding the 7.2.0 stanza at the
+# foot of this file so that 62 + 14 = 76 actually reconciles. "Predates packed api-surface files"
+# remains literally true at 7.2.0: its nupkg carries lib/net10.0/ and no api-surface/ (#782 is the
+# producer's outstanding half — see the follow-up filed from #1094).
 module FS.GG.Contracts::Fsgg.ContractVersion
 module FS.GG.Contracts::Fsgg.Provider
 module FS.GG.Contracts::Fsgg.Registry
@@ -562,3 +570,50 @@ type FS.GG.Game.Core::FS.GG.Game.Core.Dir
 type FS.GG.Game.Core::FS.GG.Game.Core.Hex
 type FS.GG.Game.Core::FS.GG.Game.Core.Landmarks
 type FS.GG.Game.Core::FS.GG.Game.Core.Regions
+
+# ------------------------------------------------------------------------------------------------
+# ADDED AT $(FsGgContractsVersion)=7.2.0 — 14 omissions (14 types, 0 modules): the FS.GG.Contracts
+# SKILL-MIRROR and SKILL-MANIFEST-V2 surface that 7.1.0 and 7.2.0 added (#1094).
+#
+# WHY THE PIN MOVED AT ALL. `pin-lags-feed` compares the committed pin against the LIVE nuget.org feed,
+# so FS.GG.Contracts 7.1.0 (2026-07-27T08:56Z) and 7.2.0 (13:26Z) reddened the Template payload restore
+# gate on an unchanged `main`. 7.2.0 is newest stable and is what that gate demands.
+#
+# WHY THESE ARE OMITTED RATHER THAN MIRRORED, AND WHY THAT IS NOT "APPENDING TO GO GREEN". This mirror
+# TEACHES exactly one Contracts type — `Schemas.PerformanceIntentDeclaration`, the producer-owned early
+# performance intent a scaffolded product actually declares (Rendering#1060). Every OTHER type Contracts
+# exports into the `Fsgg` namespace is already ledgered above: 62 entries covering Registry, Provider,
+# Version, the schema documents, and — decisively for these fourteen — the SAME family, `SkillManifest`,
+# `SkillManifestEntry`, `SkillScope`, `SkillRegistryDocument`, `SkillRegistryEntry`, `SkillDrift`,
+# `ExpectedSkill`, `ActualCopy`, `MirrorWrite`, `MirrorDeclaration`, and the `Fsgg.SkillMirror` module
+# itself. These fourteen are that same curation continuing across a version bump, not a new one: they
+# describe how the SDD toolchain plans and audits a SKILL MIRROR (drift records, refusal reasons, file
+# sets, the v2 manifest shape). A scaffolded game or app product neither reaches nor should be taught
+# them; `scripts/api-surface-manifest.txt` teaches the single type it means to, and this ledger is what
+# reconciles the module/type level to that member-level decision — exactly as the 0.14.0 Game.Core and
+# #1072 Game.Harness stanzas above do.
+#
+# HOW IT ARRIVED UNDECLARED. Not a release window this time (that is the Audio.Host / Game.Core
+# mechanism above) but the plain temporal one: an UPSTREAM repo published, and the completeness rule
+# restores the pin from the feed. Nothing in this repository changed. The 11 SkillMirror types landed in
+# 7.1.0 and the 3 SkillManifestV2 types in 7.2.0; both were verified by opening the published nupkgs and
+# confirming each name is absent from 7.0.0.
+#
+# NOTE the pin bump also re-fired the pre-#782 legacy-surface tripwire in
+# scripts/refresh-api-surface-mirror.fsx — FS.GG.Contracts still packs no `api-surface/` at 7.2.0. That
+# is the producer's half of #782 and is filed as a follow-up; it is orthogonal to these entries, which
+# are judged against the restored nupkg and not against that bridge.
+type FS.GG.Contracts::Fsgg.ActualSkillFiles
+type FS.GG.Contracts::Fsgg.DeclaredFileDrift
+type FS.GG.Contracts::Fsgg.DeclaredSkillDrift
+type FS.GG.Contracts::Fsgg.ExpectedSkillFiles
+type FS.GG.Contracts::Fsgg.MirrorPlan
+type FS.GG.Contracts::Fsgg.MirrorRefusal
+type FS.GG.Contracts::Fsgg.MirrorRefusalReason
+type FS.GG.Contracts::Fsgg.MultiFileSkill
+type FS.GG.Contracts::Fsgg.MultiFileSkillDrift
+type FS.GG.Contracts::Fsgg.SkillFile
+type FS.GG.Contracts::Fsgg.SkillFileDrift
+type FS.GG.Contracts::Fsgg.SkillManifestFile
+type FS.GG.Contracts::Fsgg.SkillManifestFileSet
+type FS.GG.Contracts::Fsgg.SkillManifestV2

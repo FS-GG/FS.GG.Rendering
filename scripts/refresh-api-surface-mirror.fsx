@@ -100,9 +100,33 @@ let pinsProps = Path.Combine(repoRoot, "template", "base", "Directory.Packages.p
 // Contracts 7.0.0 shipped the producer-owned performance-intent type before the package learned to
 // carry api-surface/*.fsi (#782). Keep the exact producer signature as a narrow, version-keyed bridge;
 // any Contracts bump stops matching and returns to the normal package-owned surface path.
+//
+// #1094 — 7.2.0 IS STILL PRE-#782, AND THE TRIPWIRE IS WHY WE KNOW. The version-keying above is not
+// bookkeeping: it is a tripwire that fires on the next bump so nobody carries a hand-copy forward
+// unnoticed. It fired. `$(FsGgContractsVersion)` had to move 7.0.0 -> 7.2.0 (the `pin-lags-feed` gate
+// reds `main` against the live feed, and 7.2.0 is newest stable), and the generator hard-failed:
+// "FS.GG.Contracts 7.2.0 carries no api-surface/". That is not a stale message — the 7.1.0 and 7.2.0
+// nupkgs were opened and neither carries an `api-surface/` folder, only `lib/net10.0/`. The PRODUCER
+// (FS-GG/FS.GG.SDD) has not yet done #782's half, so "returns to the normal package-owned surface path"
+// has nothing to return TO.
+//
+// Extending the bridge to 7.2.0 is therefore a MEASURED claim, not an assumption, and the measurement is
+// the only thing that makes it legitimate: this mirror teaches exactly ONE type
+// (`Schemas.PerformanceIntentDeclaration`, see scripts/api-surface-manifest.txt), and that type's public
+// shape is IDENTICAL in 7.0.0 and 7.2.0 — all fifteen fields, same names, same types, read by reflection
+// over both published assemblies. So the 7.0.0 signature below still describes 7.2.0's taught surface
+// exactly. What the bridge cannot see, and what the ledger records instead, is the surface 7.1.0/7.2.0
+// ADDED (the SkillMirror / SkillManifestV2 family) — that is judged by the pin-restoring
+// mirror-completeness rule in tests/Build.Tests, which reads the real nupkg and not this bridge.
+//
+// This entry must NOT be carried forward again on faith. The next Contracts bump re-fires the tripwire;
+// the honest fix is the producer packing its own `.fsi` (see the follow-up filed from #1094), after which
+// BOTH entries here are dead code and should be deleted with scripts/legacy-api-surfaces/.
 let legacyPre782Surfaces =
     Map
         [ (("FS.GG.Contracts", "7.0.0"),
+           Path.Combine(repoRoot, "scripts", "legacy-api-surfaces", "FS.GG.Contracts"))
+          (("FS.GG.Contracts", "7.2.0"),
            Path.Combine(repoRoot, "scripts", "legacy-api-surfaces", "FS.GG.Contracts")) ]
 
 let argv = fsi.CommandLineArgs |> Array.toList |> List.tail

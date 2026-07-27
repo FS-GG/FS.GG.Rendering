@@ -284,7 +284,15 @@ let performanceEvidenceContract =
                   (source.Contains("type PerformanceIntentDeclaration", StringComparison.Ordinal))
                   "the template does not invent a parallel intent contract"
 
-              Expect.stringContains packages "<FsGgContractsVersion>7.0.0</FsGgContractsVersion>" "producer version is exact"
+              // #1094: the pin moved 7.0.0 -> 7.2.0. `pin-lags-feed` compares this pin against the LIVE
+              // nuget.org feed, so an upstream FS.GG.Contracts publish reds `main` with no commit here and
+              // the pin MUST follow it. This assertion is deliberately still a frozen literal rather than a
+              // `7.` prefix match: "producer version is exact" is the property under test — the pin is one
+              // exact version, never a floating range — and a prefix match would stop witnessing it. The
+              // cost is that this literal is a second edit every time Contracts publishes; that recurring
+              // cost, and whether a feed-comparing gate belongs on every PR at all, is the open question
+              // recorded on #1094 (AC 3) and filed as its own item rather than settled by narrowing here.
+              Expect.stringContains packages "<FsGgContractsVersion>7.2.0</FsGgContractsVersion>" "producer version is exact"
               Expect.stringContains
                   project
                   "<PackageReference Include=\"FS.GG.Contracts\" />"
