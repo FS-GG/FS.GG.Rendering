@@ -171,4 +171,96 @@ let restoreLockTests =
             Expect.stringContains gate "unset NUGET_PACKAGES"
                 "gate.yml's version-coherence step must unset NUGET_PACKAGES, or the env var overrides the globalPackagesFolder the smoke uses to isolate its clean consumer, and restore-partial can pass on a partial graph"
         }
+
+        // 1089 — THE PUBLISHED TEMPLATE PACKAGE IS LOCKED TOO, AND NOTHING ABOVE SAYS SO.
+        //
+        // VR-1 is scoped to slnx MEMBERS. `.template.package/FS.GG.UI.Template.fsproj` is deliberately
+        // NOT a member (release.yml: "the two packs never overlap"), so it was invisible to every rule
+        // in this file — which is the #540 lesson repeating one project later. The consequence was not
+        // theoretical: the 0.24.0 release lane printed
+        //
+        //   [lockfile-restore-enforcement] packages.lock.json is missing in CI (GITHUB_ACTIONS=true)
+        //   — locked restore is NOT enforced for FS.GG.UI.Template; restore is running UNLOCKED
+        //
+        // i.e. the ONE project whose output is the published template package was the one restoring
+        // unlocked, on the publish path. `RestoreLockedMode` in the root props is conditioned on
+        // `Exists(packages.lock.json)` so a new project can bootstrap; the cost of that fail-open is
+        // that DELETING the lock re-disarms the gate silently and every test above stays green.
+        // This is the rule that reds instead.
+        //
+        // Both halves are asserted because either one alone fails open: the lock file must be there,
+        // AND the project must not opt out of lockfile restore the way tests/Package.Tests once did
+        // (`<RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>`, removed in #540) —
+        // an opt-out would leave a committed lock sitting next to a restore that ignores it.
+        test "1089: the published template package project is locked, though it is not an slnx member" {
+            let templateDir = ".template.package"
+            let fsproj = repoPath (templateDir + "/FS.GG.UI.Template.fsproj")
+            Expect.isTrue (File.Exists fsproj)
+                "the template package project must exist — it is what release.yml packs and publishes as FS.GG.UI.Template"
+
+            Expect.isFalse (List.contains templateDir slnxProjectDirs)
+                "if .template.package ever becomes an slnx member, VR-1 covers it and this rule should be retired rather than duplicated"
+
+            Expect.isTrue (hasLockfile templateDir)
+                "the template package project must commit a packages.lock.json, or release.yml's `dotnet pack .template.package/...` restores UNLOCKED in CI (bootstrap fail-open) on the publish path itself (#1089)"
+
+            let proj = File.ReadAllText fsproj
+            Expect.isFalse (Regex.IsMatch(proj, @"<RestorePackagesWithLockFile>\s*false\s*</RestorePackagesWithLockFile>"))
+                "the template package project must not opt out of lockfile restore, or the committed lock is inert"
+        }
+
+        // 1089 — AND PRESENCE IS NOT ENOUGH.
+        //
+        // The rule above checks the lock EXISTS, which is all VR-1 checks — and for slnx members that
+        // is fine, because the gate's cold locked restore then validates the contents on every PR. This
+        // project is restored in exactly two places: `release.yml`'s publish-packages job, and the
+        // `Feature570PublishedScaffoldGeometryTests` pack that runs inside `Deterministic gate`. The
+        // latter only became a contents check in THIS change — before it, that pack passed
+        // `-p:RestorePackagesWithLockFile=false`, i.e. it ran with lock handling switched OFF and could
+        // not have caught a stale or degenerate lock. So an existence check was the whole of the
+        // PR-time signal, and an existence check passes on a lock that is empty, truncated, or simply
+        // STALE.
+        //
+        // The Feature570 locked pack is now the stronger backstop of the two, but it is a full pack of
+        // the published package; this rule is the cheap, precise one that names the regeneration
+        // command in its failure message, and it reds in Build.Tests without a NuGet round trip.
+        //
+        // Staleness is the live case, not a hypothetical. FSharp.Core's version is pinned in the
+        // ORG-SHARED Directory.Packages.props, synced in from FS-GG/.github. When it moves,
+        // `lockfile-sync.yml` regenerates the 40 slnx locks and NOT this one — its restore-target is
+        // FS.GG.Rendering.slnx, and the shared reusable workflow takes a single target string. Without
+        // the assertions below, that bump merges green and the staleness surfaces as an NU1004 in the
+        // RELEASE lane (fail-closed, before either `dotnet nuget push`, so nothing partially publishes —
+        // but the release is blocked with no earlier warning).
+        //
+        // Comparing the lock against the central pin moves that discovery back onto the PR that causes
+        // it: bump the pin without regenerating this lock and THIS test reds, naming the command.
+        test "1089: the template package's lock is not merely present — it matches the central FSharp.Core pin" {
+            let lockPath = repoPath ".template.package/packages.lock.json"
+            let lockText = File.ReadAllText lockPath
+
+            // The central pin is the authority; the lock must agree with it.
+            let centralPin =
+                let props = File.ReadAllText(repoPath "Directory.Packages.props")
+                let m = Regex.Match(props, @"<PackageVersion\s+Include=""FSharp\.Core""\s+Version=""([^""]+)""")
+                Expect.isTrue m.Success
+                    "Directory.Packages.props must centrally pin FSharp.Core — it is the version this lock is compared against"
+                m.Groups.[1].Value
+
+            let entry =
+                Regex.Match(
+                    lockText,
+                    @"""FSharp\.Core""\s*:\s*\{[^}]*?""resolved""\s*:\s*""(?<resolved>[^""]+)""[^}]*?""contentHash""\s*:\s*""(?<hash>[^""]+)""",
+                    RegexOptions.Singleline)
+
+            Expect.isTrue entry.Success
+                "the template package's packages.lock.json must actually RECORD FSharp.Core with a resolved version and a contentHash — an empty or truncated lock file satisfies Exists(), so RestoreLockedMode arms on it while this project has no gate-lane restore to catch the contents (#1089)"
+
+            Expect.equal (entry.Groups.["resolved"].Value) centralPin
+                (sprintf "the template package's lock resolves FSharp.Core %s but Directory.Packages.props pins %s. lockfile-sync.yml does NOT regenerate this lock (its restore-target is the slnx, and .template.package is not a member), so regenerate it in THIS PR: dotnet restore .template.package/FS.GG.UI.Template.fsproj --use-lock-file --force-evaluate --configfile nuget.config"
+                    (entry.Groups.["resolved"].Value) centralPin)
+
+            Expect.isGreaterThan (entry.Groups.["hash"].Value.Length) 0
+                "the recorded contentHash must be non-empty, or locked restore has nothing to validate against the feed"
+        }
     ]
