@@ -9,7 +9,17 @@ Represents one supported directory or source class that contains skill files.
 - `SurfaceId`: stable id such as `codex-local`, `claude`, `package-canonical`,
   `template-canonical`, `ant-canonical`, or `spec-kit-command`.
 - `DisplayName`: reviewer-facing name.
-- `RootPath`: repository-relative root path.
+- `Roots`: every repository-relative path this surface reads. A root is either a
+  directory, scanned recursively for `SKILL.md`, or a single `SKILL.md` file.
+  Issue #1092 replaced the single `RootPath` string with this list: four of the
+  six default surfaces resolved from a path hard-coded in the resolver while
+  `RootPath` was published as the report's `Root` column and read by nothing,
+  and `spec-kit-command`'s value was English prose (`.agents/skills/speckit-*
+  and .claude/skills/speckit-*`) rather than a path.
+- `Selector`: how the bodies under `Roots` are narrowed — `every-skill-body`,
+  `area-skill-bodies`, `non-mirrored-bodies`, `agent-wrappers`, or
+  `command-wrappers`. A selector may only *narrow* what `Roots` produced; it can
+  never introduce a path from outside them.
 - `SurfaceKind`: `canonical`, `wrapper`, or `mixed`.
 - `Agent`: `codex`, `claude`, `generated-product`, `package`, `spec-kit`, or
   `repository`.
@@ -19,8 +29,15 @@ Represents one supported directory or source class that contains skill files.
 **Validation Rules**
 
 - `SurfaceId` is unique.
-- `RootPath` is repository-relative unless fixture mode supplies a temporary
-  absolute root.
+- Every entry in `Roots` is repository-relative unless fixture mode or an
+  operator override supplies a temporary absolute root.
+- A root is a real path: no whitespace, no glob metacharacters. The narrowing a
+  glob would express belongs in `Selector`, and prose belongs in `Notes`.
+- Every file a surface inventories is beneath one of the roots it declares, so
+  the report's `Root` column is a checkable claim about where the gate looks and
+  not a comment that happens to agree with it.
+- `--surface <id>=<path>` overrides the roots of *any* surface id, including the
+  ids the resolver narrows.
 - Required wrapper surfaces must be readable before parity status can pass.
 - Mixed surfaces must classify each skill entry as canonical or wrapper.
 

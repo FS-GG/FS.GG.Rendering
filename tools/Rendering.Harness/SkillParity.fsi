@@ -102,10 +102,34 @@ module SkillParity =
         | WarningStatus
         | Failed
 
+    /// How a surface narrows the `SKILL.md` bodies its declared `Roots` yield. A selector may only
+    /// NARROW what `Roots` produced; it can never introduce a path from outside them, which is what
+    /// makes the published `Root` column a checkable claim about where the gate looks (#1092).
+    type SurfaceSelector =
+        /// Every `SKILL.md` beneath the declared roots — and what an operator `--surface id=path`
+        /// override gets, so an override is genuine for every surface id.
+        | EverySkillBody
+        /// Only `<area>/skill/SKILL.md` bodies — the package/template canonical-body convention.
+        | AreaSkillBodies
+        /// Every body except the ADR-0011 agent-skill-root mirrors, which are byte-identical
+        /// projections of a canonical body rather than canonical sources.
+        | NonMirroredBodies
+        /// Repo-owned agent wrappers: excludes `speckit-*` command skills and the externally-owned
+        /// ADR-0019/0021 coordination kit.
+        | AgentWrappers
+        /// Only `speckit-*` command skills.
+        | CommandWrappers
+
     type SkillSurface =
         { SurfaceId: string
           DisplayName: string
-          RootPath: string
+          /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
+          /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
+          /// file. This is the only source of paths the resolver has, and it is what the report's
+          /// `Root` column and the summary JSON's `roots` publish.
+          Roots: string list
+          /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
+          Selector: SurfaceSelector
           Kind: SurfaceKind
           Agent: AgentSurface
           IsRequired: bool
@@ -266,6 +290,8 @@ module SkillParity =
         | WriteSummaryJson
 
     val surfaceKindToken: kind: SurfaceKind -> string
+
+    val surfaceSelectorToken: selector: SurfaceSelector -> string
 
     val agentToken: agent: AgentSurface -> string
 
