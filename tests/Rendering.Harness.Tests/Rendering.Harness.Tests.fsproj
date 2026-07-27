@@ -77,6 +77,7 @@
     <Compile Include="Feature168ParityFindingTests.fs" />
     <Compile Include="Feature529MetadataSourceTests.fs" />
     <Compile Include="Feature1081TemplateCanonicalRootsTests.fs" />
+    <Compile Include="Feature1086RequiredSurfaceTests.fs" />
     <Compile Include="Feature1093UnreadableSurfaceTests.fs" />
     <Compile Include="Feature573RequirementCitationTests.fs" />
     <Compile Include="Feature570PublishedScaffoldGeometryTests.fs" />
