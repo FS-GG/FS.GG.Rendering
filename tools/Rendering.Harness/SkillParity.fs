@@ -805,7 +805,21 @@ module SkillParity =
             Kind = Wrapper
             Agent = Claude
             IsRequired = true
-            Notes = [ "SYNTHETIC fixture surface." ] } ]
+            Notes = [ "SYNTHETIC fixture surface." ] }
+          // #1086: the CONTROL for `emptyRequiredSurfaceFindings`. No fixture case ever writes into
+          // `optional/`, so this surface is empty in EVERY fixture run — and because it is not required,
+          // every fixture run must stay silent about it. That is the half of `IsRequired` a test can only
+          // prove by holding the emptiness constant and flipping the flag: `fixture-canonical` above is
+          // empty and required in the same run and MUST be reported. Delete this surface and the "empty is
+          // legitimate when the surface is optional" clause has no subject, which is how the fail-open it
+          // guards would come back.
+          { SurfaceId = "fixture-optional"
+            DisplayName = "Synthetic optional surface (never populated)"
+            RootPath = "optional"
+            Kind = Wrapper
+            Agent = Codex
+            IsRequired = false
+            Notes = [ "SYNTHETIC fixture surface; deliberately empty and NOT required." ] } ]
         |> List.map (fun surface -> { surface with RootPath = relativePath root (Path.Combine(root, surface.RootPath)) })
 
     let private commandSkillName (name: string) =
@@ -1855,7 +1869,55 @@ module SkillParity =
                                 $"`{entry.Path}` cites {phantomList}, which `{source}` does not define. The citation resolves to a real spec that does not state the requirement — so it reads as checked while pointing at nothing, which is #466's failure with a source line bolted on."
                                 $"Cite the requirements `{source}` actually defines, or point `metadata.source` at the spec that defines these ones.")
 
-    let private classifyFindings request entries readFailures symbols artifacts =
+    /// ISSUE #1086 — what ARMS `IsRequired`. Every other producer in this module reasons about entries
+    /// that were found; none of them can say anything about a surface that yielded NONE, and so a
+    /// REQUIRED surface resolving to zero files was reported as `passed`. Measured on `main` before this
+    /// existed: pointing `ant-canonical` at a nonexistent `NOPE.md` and running the real gate printed
+    /// `skill-parity status: passed / findings: critical=0 high=0 warning=0 info=0` and exited 0.
+    ///
+    /// That is this repo's recurring fail-open class (#332/#334/#880 in FS-GG/.github; #252/#255/#435/#216
+    /// here): the check is correct, and WHAT ARMS IT is what fails open. `IsRequired` was a field the
+    /// report printed in a `Required` column and nothing enforced — an assertion, not a check. The
+    /// concrete failure it permitted: a canonical body is moved, renamed or deleted, its surface silently
+    /// empties, and the published evidence keeps claiming the surface is required AND satisfied.
+    ///
+    /// It survived this long only by accident — `Feature131AntPatternDocsTests` independently pins the Ant
+    /// canonical and DOES fail when that body goes missing. That is one surface, by a different gate. The
+    /// other five (`package-canonical`, `template-canonical`, `spec-kit-command`, `codex-local`, `claude`)
+    /// have no such pin: restructure `src/*/skill/` and `package-canonical` globs to nothing and reports
+    /// `passed`.
+    ///
+    /// `UnreadableSurface` already existed with a token and ZERO producers, and
+    /// `specs/168-skill-parity-evidence/data-model.md` already carried the rule — "`broken-target`,
+    /// unreadable required surface, and `unresolved-api-symbol` are high or critical severity". This wires
+    /// the category the design already specified rather than inventing a second name for it.
+    ///
+    /// `High`, so the default `FailOnSeverity = High` blocks. Surfaces that are NOT required keep today's
+    /// behaviour — empty is legitimate for them, which is what `fixture-optional` exists to pin.
+    ///
+    /// DISJOINT from `unreadableSurfaceFindings` (#1093), which shares this category on purpose. That one
+    /// fires when `filesForSurface` ENUMERATED a file and the read of it failed, which requires at least one
+    /// file; this one fires only when it enumerated NONE. No surface can produce both in a run, and the ids
+    /// cannot collide either — this producer keys on the surface id, that one on the failing path.
+    let private emptyRequiredSurfaceFindings (repositoryRoot: string) (surfaces: SkillSurface list) =
+        surfaces
+        |> List.filter (fun surface -> surface.IsRequired && (filesForSurface repositoryRoot surface).IsEmpty)
+        |> List.map (fun surface ->
+            { FindingId = findingId UnreadableSurface surface.SurfaceId surface.SurfaceId
+              SkillName = surface.SurfaceId
+              SurfaceId = surface.SurfaceId
+              Category = UnreadableSurface
+              Severity = High
+              CanonicalPath = Some surface.RootPath
+              WrapperPath = None
+              Symbol = None
+              Message = $"Required surface '{surface.SurfaceId}' resolves to zero skill files."
+              Remediation =
+                "Restore the canonical skill body at the declared root, correct the surface's path, or "
+                + "declare the surface IsRequired = false if an empty surface is legitimate."
+              ExceptionId = None })
+
+    let private classifyFindings request surfaces entries readFailures symbols artifacts =
         // `manifestCoverageFindings` runs BEFORE `missingWrapperFindings` on purpose. The two share a
         // FindingId for the same missing wrapper, and the dedupe below breaks a SEVERITY TIE by keeping the
         // first — so on an equal-severity collision the survivor should be the manifest-driven one, which
@@ -1868,7 +1930,14 @@ module SkillParity =
         // above does not apply to them. What they ARE is the producer that explains the others' silence —
         // every rule below judges bodies that were successfully read, so a file missing from `entries` is a
         // file none of them can speak about (#1093).
+        //
+        // `emptyRequiredSurfaceFindings` (#1086) is kept immediately alongside it for the same reason and
+        // is its complement: #1093 answers "a file was there and could not be READ", #1086 answers "there
+        // was no file at all under a REQUIRED surface". Both are the reasons the entry-driven rules below
+        // have nothing to say, and both are disjoint by construction (zero files vs. at least one), so
+        // neither the order nor the shared `unreadable-surface` category can make them collide.
         unreadableSurfaceFindings readFailures
+        @ emptyRequiredSurfaceFindings request.RepositoryRoot surfaces
         @ manifestCoverageFindings request entries
         @ wrapperFindings entries
         @ missingWrapperFindings entries
@@ -2191,7 +2260,7 @@ Before acting, read the canonical instructions in:
             | Ok artifacts -> artifacts, []
             | Error reason -> [], [ reason ]
 
-        let findings = classifyFindings effectiveRequest entries readFailures symbols artifacts
+        let findings = classifyFindings effectiveRequest surfaces entries readFailures symbols artifacts
         buildReport effectiveRequest surfaces entries symbols symbolCaveats artifacts artifactCaveats findings
 
     let runCheck request = runCheckWith File.ReadAllText request
