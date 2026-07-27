@@ -1,5 +1,5 @@
 // See skill: fs-gg-testing
-// Mirrored from FS-GG/FS.GG.SDD @ 7.0.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
+// Mirrored from FS-GG/FS.GG.SDD @ 7.2.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
 namespace Fsgg
 
 module Schemas =

@@ -2557,8 +2557,16 @@ let private omissionLedger =
 /// mirrors only its opaque production-journey receipt boundary. The 41 producer-owned bot,
 /// exploration, law, property, trace, and legacy workload module/type omissions are deliberately
 /// reconciled with the matching manifest waivers; the prior ledger contained 415 live unique entries.
+///
+/// Raised 456 -> 470 by #1094: an UPSTREAM publish, not a change in this repository. FS.GG.Contracts
+/// 7.1.0/7.2.0 added a skill-mirror and skill-manifest-v2 surface, and `pin-lags-feed` forced
+/// $(FsGgContractsVersion) 7.0.0 -> 7.2.0 to clear a gate that was reddening `main` and every open PR.
+/// The 14 new type omissions continue an EXISTING curation rather than opening one: this mirror teaches
+/// a single Contracts type (`Schemas.PerformanceIntentDeclaration`, Rendering#1060) and the other 62
+/// `Fsgg` types — including that same skill-manifest family — were already ledgered. See the ledger's
+/// own dated stanza for the per-version evidence.
 [<Literal>]
-let private OmissionLedgerCeiling = 456
+let private OmissionLedgerCeiling = 470
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
