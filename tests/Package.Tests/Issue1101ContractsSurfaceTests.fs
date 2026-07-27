@@ -45,6 +45,14 @@ let private codeLines =
 let private codeMentions (needle: string) =
     codeLines |> Array.exists (fun l -> l.Contains needle)
 
+/// The generator's source with F# string-literal line continuations collapsed the way the compiler
+/// collapses them: a trailing `\` eats the newline and the next line's leading whitespace. The messages
+/// under test are long enough to be wrapped, so a raw-source `stringContains` is really asserting where
+/// the author happened to break the line — it fails on a reflow that changes nothing a reader sees.
+/// Assert against the text the operator is actually shown.
+let private rendered =
+    System.Text.RegularExpressions.Regex.Replace(generator.Replace("\r\n", "\n"), @"\\\n[ \t]*", "")
+
 [<Tests>]
 let issue1101ContractsSurfaceTests =
     testList
@@ -70,22 +78,22 @@ let issue1101ContractsSurfaceTests =
               // published FS.GG.Contracts and none packed `api-surface/`. Advice that may be impossible is
               // what pushed #1094 into the bridge, so the diagnostic has to decide, not assume.
               Expect.stringContains generator "packingReleaseAtOrAbove" "the failure path probes the feed for a release the pin could move UP to"
-              Expect.stringContains generator "BUMPING THE PIN CANNOT FIX THIS" "it says so plainly when no such release exists"
-              Expect.stringContains generator "The remedy belongs to the PRODUCING" "and it names whose problem it actually is"
+              Expect.stringContains rendered "BUMPING THE PIN CANNOT FIX THIS" "it says so plainly when no such release exists"
+              Expect.stringContains rendered "The remedy belongs to the PRODUCING" "and it names whose problem it actually is"
           }
 
           test "the no-release advice does not send the reader back to a hand-copy" {
               // The one remedy that must never be suggested, in the one message a reader hits at the exact
               // moment it looks attractive.
-              Expect.stringContains generator "Do NOT hand-copy the surface into this repo" "the impossible-bump branch forbids the bridge by name"
+              Expect.stringContains rendered "Do NOT hand-copy the surface into this repo" "the impossible-bump branch forbids the bridge by name"
           }
 
           test "an unreachable feed fails closed rather than claiming no release exists" {
               // #266/#606. "I could not check" rendering as "no packing release exists" would send a worker
               // to file a producer issue that is already discharged — the failure mode this run was warned
               // about, made structural.
-              Expect.stringContains generator "Could not determine whether any published release" "the unreachable-feed branch is distinct"
-              Expect.stringContains generator "failing closed rather than guessing" "and it says it is failing closed"
+              Expect.stringContains rendered "Could not determine whether any published release" "the unreachable-feed branch is distinct"
+              Expect.stringContains rendered "failing closed rather than guessing" "and it says it is failing closed"
           }
 
           test "the pin is at or above the first Contracts release that packs api-surface/" {
