@@ -2818,13 +2818,35 @@ Before acting, read the canonical instructions in:
     let private hasFlag flag args =
         args |> List.exists ((=) flag)
 
+    /// ISSUE #1110 — the ONE place that decides whether a `--surface` argument is usable, and the rule it
+    /// applies is `<id>=<path>` with BOTH halves present.
+    ///
+    /// `None` used to mean "silently drop this one" (`List.choose` in `requestFromArgs`), which turned a
+    /// run the operator asked to NARROW into a full six-surface run that printed `passed` and exited 0.
+    /// It now means "refuse the run" — see `malformedSurfaceArgs` and `runCli`. The function itself is
+    /// unchanged in shape on purpose: the parse and the verdict stay the same function, so a value the
+    /// request would have dropped is exactly a value the CLI rejects, and the two can never drift apart.
+    ///
+    /// THE EMPTY PATH IS AN ERROR TOO, and that is the decision this item was asked to make. `index <= 0`
+    /// already rejected `=path` (an empty id); `id=` was ACCEPTED and produced `Roots = [ "" ]`, which
+    /// resolves to the repository root itself — so `--surface id=` inventoried every `SKILL.md` in the
+    /// tree under one operator-declared id while reporting itself as a narrowed run. That is the same
+    /// fail-open as the dropped value wearing a different hat: the flag exists to make a run smaller, and
+    /// both spellings made it as large as possible. Whitespace-only halves go with them; a root of `" "`
+    /// is not a root anyone meant. `contracts/skill-parity-cli.md` states this rule.
     let private parseSurfaceOverride (value: string) =
         let index = value.IndexOf('=')
 
         if index <= 0 then
             None
         else
-            Some(value.Substring(0, index), value.Substring(index + 1))
+            let surfaceId = value.Substring(0, index)
+            let path = value.Substring(index + 1)
+
+            if String.IsNullOrWhiteSpace surfaceId || String.IsNullOrWhiteSpace path then
+                None
+            else
+                Some(surfaceId, path)
 
     let private requestFromArgs args =
         let repo =
@@ -2856,6 +2878,10 @@ Before acting, read the canonical instructions in:
             ReportPath = reportPath
             SummaryJsonPath = summaryPath
             FixtureMode = fixtureMode
+            // #1110: `List.choose` still discards `None`s, and that is now UNREACHABLE for a CLI run —
+            // `runCli` refuses the whole invocation before it gets here if any `--surface` argument does
+            // not parse. It is kept (rather than made total) because `requestFromArgs` is a pure argv
+            // decoder that must return a request or nothing; the refusal belongs where the exit code is.
             SurfaceOverrides = flagValues "--surface" args |> List.choose parseSurfaceOverride
             AllowedExceptionIds = flagValues "--allow-exception" args |> Set.ofList
             FailOnSeverity = failOn
@@ -2915,6 +2941,28 @@ Before acting, read the canonical instructions in:
               "--list-symbols"
               "--json" ]
 
+    /// ISSUE #1110 — every `--surface` argument this argv cannot use, quoted, in the order it was written.
+    ///
+    /// A TRAILING `--surface` with no value is in here too, and it has to be: `flagValues` matches on
+    /// `flag :: value :: tail`, so an option at the end of argv falls through its `_ :: tail` case and
+    /// disappears without ever reaching `parseSurfaceOverride`. That is the same silent full run by a
+    /// second route, and the `unknown` check above cannot see it either — `--surface` is a known flag.
+    let private malformedSurfaceArgs args =
+        let rec loop acc rest =
+            match rest with
+            | flag :: value :: tail when flag = "--surface" ->
+                let acc =
+                    match parseSurfaceOverride value with
+                    | Some _ -> acc
+                    | None -> acc @ [ sprintf "'%s'" value ]
+
+                loop acc tail
+            | [ flag ] when flag = "--surface" -> acc @ [ "'--surface' with no value" ]
+            | _ :: tail -> loop acc tail
+            | [] -> acc
+
+        loop [] args
+
     let runCli argv =
         // `--list-rules` was removed with the guidance layer. Silently ignoring it would run a full
         // check and rewrite the committed report — so an unrecognized option is a configuration error.
@@ -2926,6 +2974,27 @@ Before acting, read the canonical instructions in:
 
         if not unknown.IsEmpty then
             eprintfn "skill-parity: unknown option(s): %s" (String.concat " " unknown)
+            2
+        else
+
+        // ISSUE #1110 — a malformed VALUE of a recognized option is the same configuration error as an
+        // unrecognized option, by the same argument the check above is written from: it would "run a full
+        // check and rewrite the committed report". `--surface` is the flag that makes a run SMALLER, so a
+        // dropped one is uniquely dangerous — the run that happens is the largest one, and it reports
+        // itself as `passed`, exit 0, with no narrowing notice on any of #1098's four channels, because as
+        // far as the request is concerned no override was ever supplied.
+        //
+        // This runs BEFORE `requestFromArgs`, and therefore before `runCheck`/`writeReport`: a run that
+        // refuses its arguments must not have rewritten `docs/reports/skills-parity.md` on its way out.
+        // Exit 2 is the code `contracts/skill-parity-cli.md` reserves for a "surface configuration error".
+        let malformedSurfaces = malformedSurfaceArgs argv
+
+        if not malformedSurfaces.IsEmpty then
+            eprintfn "skill-parity: malformed --surface value(s): %s" (String.concat " " malformedSurfaces)
+
+            eprintfn
+                "skill-parity: --surface takes <id>=<path> with a non-empty id and a non-empty path. Nothing was checked and no report was written."
+
             2
         else
 
