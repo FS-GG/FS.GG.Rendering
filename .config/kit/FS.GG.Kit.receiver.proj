@@ -71,9 +71,9 @@
          green — so
          the root would simply leave the runtime contract with every required kit context still green.
          Measured on this tree, and on FS.GG.Net and FS.GG.Audio before it. That is the exact silent
-         class ADR-0067 §8 forbids, so this repo asserts the union itself, in
-         `scripts/check-skill-view-roots.sh`, on the REQUIRED `Deterministic gate`. Change either
-         property and that gate is what tells you. -->
+         class ADR-0067 §8 forbids, so this repo asserts the union itself, with
+         `scripts/skill-view check` and its `receiver-proj` flag, on the REQUIRED
+         `Deterministic gate`. Change either property and that gate is what tells you. -->
     <FsggKitSkillRoots>.claude/skills</FsggKitSkillRoots>
     <FsggKitViewSkillRoots>.agents/skills</FsggKitViewSkillRoots>
   </PropertyGroup>
@@ -112,7 +112,8 @@
 
     The `Condition` guards on the PROPERTY, so if a later change empties FsggKitViewSkillRoots this
     target stops running with it instead of generating a view nothing asserts. That same emptying is
-    what `scripts/check-skill-view-roots.sh` reds on, on the required `Deterministic gate`.
+    what `scripts/skill-view check` (with the `receiver-proj` flag) reds on, on the required
+    `Deterministic gate`.
   -->
   <Target Name="FsggRenderingGenerateSkillView" BeforeTargets="FsggKitCheckSkillView"
           Condition="'$(FsggKitViewSkillRoots)' != ''">
