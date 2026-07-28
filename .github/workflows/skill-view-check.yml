@@ -101,7 +101,9 @@
 # the wedge; there is never a reason to.
 #
 # =================================================================================================
-# WHEN THIS REPO RETIRES ITS SECOND COMMITTED ROOT, THIS FILE CHANGES IN THE SAME PULL REQUEST.
+# THIS REPO RETIRED ITS SECOND COMMITTED ROOT ON 2026-07-28, AND THIS FILE CHANGED IN THAT PULL
+# REQUEST — FS-GG/.github#1747. The block below is kept as the standing rule it always was; only its
+# tense has moved. The generate step it prescribes is now the first step of the job.
 # =================================================================================================
 # ADR-0067 phase 4 (FS-GG/.github#1676) untracks `.agents/skills` and git-ignores it, so a VIEW root
 # does not exist in a fresh checkout — a clean clone, a new worktree and this runner alike. The step
@@ -121,11 +123,13 @@
 # form was proven green on a bare checkout of a retired tree of THIS repo before this file was made
 # required — the run id is on FS-GG/.github#1715.
 #
-# Do NOT pre-emptively add that step now, and do NOT make it conditional on whether the root happens to
-# be missing. "Generate whatever is absent, then assert it is present" is the fail-open shape this
-# whole item exists to remove: it would make [absent-root] unreachable and hand back a gate that cannot
-# fail. The generate is authorised by the repo DECLARING a root to be a view, never by observing that
-# one is missing.
+# Do NOT make it conditional on whether the root happens to be missing. "Generate whatever is absent,
+# then assert it is present" is the fail-open shape this whole item exists to remove: it would make
+# [absent-root] unreachable and hand back a gate that cannot fail. The generate is authorised by the
+# repo DECLARING a root to be a view, never by observing that one is missing. The step below is
+# therefore UNCONDITIONAL, and what grades the declaration itself is
+# `scripts/check-skill-view-roots.sh` on the required `Deterministic gate` — see its header for the
+# measurement showing every kit gate green on a tree with the root dropped from the contract.
 
 name: skill-view-check
 
@@ -145,6 +149,21 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+
+      # THE STEP THE BLOCK ABOVE SAID THIS FILE WOULD GAIN, in the same pull request that untracked
+      # the root — FS-GG/.github#1747, ADR-0067 §9 phase 4. `.agents/skills` is no longer committed, so
+      # it does not exist in this checkout, and without this the step below would correctly report
+      # `[absent-root]` and this REQUIRED context would be red on every pull request.
+      #
+      # It could not have landed earlier: `skill-view generate` refuses a root git TRACKS, with no
+      # override (`skill-view:331`), so on the pre-retirement tree it died exit 2 — red before the
+      # retirement instead of after it. It could not land later: that window is a red required context
+      # on every pull request. Hence one commit, both halves.
+      #
+      # The flags are in the action, once, because TEN jobs across five workflows need this exact
+      # invocation and retyping it is how `--source` and `--roots` drift apart. See its header for why
+      # the reach is that wide here and was not on any earlier receiver.
+      - uses: ./.github/actions/skill-view
 
       # The bare command a worker runs, over this repo's own declared roots. The expected set is the
       # SOURCE directory, never a manifest: `registry`-style manifests declare a subset of a tree's

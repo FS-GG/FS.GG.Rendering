@@ -79,20 +79,61 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1676 / #1747) — `.agents/skills` is a generated VIEW ROOT.
+      #
+      # It is no longer committed, so it does not exist in this checkout, and the very next step
+      # (`scripts/materialize-skill-roots.sh --check`) still names it in its root set and dies with
+      # "configured root is absent: .agents/skills" without it. Generate it here, before anything
+      # asserts over it.
+      #
+      # WHY A STEP HERE AND ALSO A TARGET IN THE RECEIVER PROJECT. `FsggRenderingGenerateSkillView`
+      # (.config/kit/FS.GG.Kit.receiver.proj) covers every tree that runs `FsggKitMaterialize` — the
+      # `build-config-drift` job below, and `kit-materialize.yml`, which is a `uses:` of the hub's
+      # reusable workflow and cannot be given a step at all. THIS job runs no materialize (no restore,
+      # no network, by design), so it needs the generate directly. The trees do not overlap, so neither
+      # covers the other. The flags live in the action, once — see its header.
+      - uses: ./.github/actions/skill-view
+
+      # ADR-0067 §8's replacement alarm. The retirement above removed the only gate that would have
+      # noticed `.agents/skills` leaving this repo's RUNTIME CONTRACT: once a root is a view, dropping
+      # it from <FsggKitViewSkillRoots> leaves `coordination-sync --check --against-pin` (the required
+      # `kit / coordination-kit`) green — it reads <FsggKitSkillRoots> alone — and makes
+      # FsggKitCheckSkillView report "nothing to assert". MEASURED ON THIS REPO'S TREE, both green,
+      # with the root gone from the contract; the transcript is in the script's header. This step is
+      # what is red on that tree, and it is here because THIS JOB is a required status check — an alarm
+      # on an unrequired context is the FS.GG.Net shape that FS-GG/.github#1727 is open about.
+      #
+      # It runs AFTER the generate above, deliberately: its view leg then grades a root that is
+      # supposed to exist, so deleting the generate step reds this as well as the producer check below.
+      - name: The runtime skill-root contract is still ADR-0011's two
+        run: bash scripts/check-skill-view-roots.sh
+
       # #1080/#1082 — the agent-skill roots are DERIVED, and this is what knows it.
       #
-      # `skill-union` (the reusable receiver caller in skill-union.yml) asserts the OUTCOME: the three
-      # ADR-0011 roots are the byte-identical union. This step asserts the DERIVATION: every id in those
-      # roots is attributable to a producer, and each root matches what that producer says. They are not
-      # the same claim, and only this one fails when a producer CHANGES — which is the regression a
-      # `cp -R` repair would have re-armed rather than removed (#1080 criterion 2). It additionally
-      # catches an ORPHAN (a projection left behind by a skill a producer removed), a DANGLING ROUTE (a
-      # wrapper naming a canonical body that no longer exists) and a LOST OVERRIDE (a re-install
-      # clobbering the Feature 168 evidence rules appended to speckit-implement) — none of which a
-      # byte-equality check between roots can see, because all three roots agree in every one of them.
+      # This step asserts the DERIVATION: every id in this repo's skill roots is attributable to a
+      # producer, and each root matches what that producer says. It additionally catches an ORPHAN (a
+      # projection left behind by a skill a producer removed), a DANGLING ROUTE (a wrapper naming a
+      # canonical body that no longer exists) and a LOST OVERRIDE (a re-install clobbering the Feature
+      # 168 evidence rules appended to speckit-implement) — none of which a byte-equality check between
+      # roots can see, because every root agrees in every one of them.
       #
-      # Shell + python3 only: no SDK, no restore, no network. It is placed in THIS job because this job
-      # is a required status check and the check is worthless unarmed (the #332/#334/#880 class).
+      # IT USED TO BE THE JUNIOR HALF OF A PAIR, AND IT IS NOW ALONE ON THE DERIVATION SIDE. This
+      # comment named `skill-union` (the reusable receiver caller in `.github/workflows/skill-union.yml`)
+      # as the step that asserted the OUTCOME — the roots hold the byte-identical union. That caller was
+      # RETIRED on 2026-07-28 by FS-GG/.github#1715 blocker B5, shape (b), because on the view layout
+      # ADR-0067 phase 4 retires INTO both of its headline invariants become tautologies: the reusable
+      # gate enumerates with `find` and no `-L`, so a view root contributes ZERO ids, and its presence
+      # test is `[ -d ]` THROUGH the symlink, which cannot fail. Its replacement is the required
+      # `skill-view-check` context (.github/workflows/skill-view-check.yml). Do not read the loss as a
+      # narrowing of THIS step: the cross-root byte comparison below still runs, and — for every class
+      # except the kit's four — it still has a root that is a genuinely separate object to compare
+      # against, because `.codex/skills` is still in this script's own DEFAULT_ROOTS. See the note on
+      # FS.GG.Rendering#1120 there before narrowing that set.
+      #
+      # `.agents/skills` is a GENERATED VIEW as of this change, so it is present here only because the
+      # generate step above ran. Shell + python3 only otherwise: no SDK, no restore, no network. It is
+      # placed in THIS job because this job is a required status check and the check is worthless
+      # unarmed (the #332/#334/#880 class).
       - name: Agent-skill roots match their producers
         run: |
           set -euo pipefail
@@ -904,6 +945,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # ADR-0067 §9 phase 4 — `.agents/skills` is a generated VIEW and this job reads it. Two of the
+      # six surfaces `SkillParity.fs` declares are rooted at it (`.agents/skills`, and the speckit
+      # surface that spans both roots), so on a bare retired checkout the harness is not merely
+      # narrower, it FAILS. Measured on a bare clone of the retirement commit, 2026-07-28: without this
+      # step `skill-parity status: failed`, `critical=0 high=19 warning=3`, and the regenerated
+      # `docs/reports/skills-parity.md` differs from the committed one — so BOTH steps below go red.
+      # With it: `status: passed`, `high=0 warning=0`, report regenerates byte-identical.
+      - uses: ./.github/actions/skill-view
+
       - name: Check skill parity
         run: |
           set -euo pipefail
@@ -976,6 +1026,22 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — without this the TEMPLATE ITSELF IS INVALID, which
+      # is a louder failure than a missing skill and worth naming exactly. `.template.config/
+      # template.json` carries a source row `".agents/skills/" -> ".agents/skills/"` (include
+      # `speckit-*/**`, gated on `lifecycle == "spec-kit"`) pointing at the REPO ROOT's now-generated
+      # view. Measured on a bare clone of the retirement commit, 2026-07-28:
+      #
+      #   $ dotnet new install .
+      #   Error: The template 'FS GG UI Governed Project' (FS.GG.UI.Template) has the following
+      #     validation errors:
+      #        [Error][MV012] Source '.agents/skills/' in template does not exist.
+      #   Error: Failed to load the template …: the template is not valid.
+      #
+      # and this job then dies at `dotnet new failed for profile=app (exit 103): No templates or
+      # subcommands found matching: 'fs-gg-ui'`. With the view: `result: pass`, all lifecycles.
+      - uses: ./.github/actions/skill-view
 
       - name: Scaffold every profile × lifecycle and audit what it emitted
         env:
@@ -1055,6 +1121,18 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — THE TEMPLATE PAYLOAD VENDORS THE REPO-ROOT
+      # `.agents/skills/`, so this job cannot scaffold without the view.
+      # `.template.config/template.json` carries a source row `".agents/skills/" -> ".agents/skills/"`
+      # with `include: ["speckit-*/**"]`, gated on `lifecycle == "spec-kit"` — 16 directories, and they
+      # are the REPO ROOT's, not `template/base`'s. That root is now a generated view, absent in a fresh
+      # checkout, so `dotnet new install .` here would install a template whose spec-kit lane emits no
+      # `speckit-*` skills at all — and the scaffolded product would be audited as if that were correct.
+      # Repointing the source at `.claude/skills/` would be a template-contract change
+      # (`validate-lifecycle-template.fsx` classifies that row BY its source path); it is filed on
+      # FS-GG/.github#1747 rather than ridden in here.
+      - uses: ./.github/actions/skill-view
 
       # Packs FS.GG.UI.* from THIS TREE at the template's pin and points the machine at that feed.
       # Shared verbatim with release.yml's `template-product-tests`, so the PR gate and the release
@@ -1243,6 +1321,14 @@ jobs:
           # it announces the fallback and sweeps the whole tree — but that fallback hands back the very
           # false-red this scoping removes, so fetch the history and mean it.
           fetch-depth: 0
+
+      # ADR-0067 §9 phase 4 — `.agents/skills` is a generated VIEW, and `check-skill-refs.sh` reads it:
+      # `wrapper_body_paths` is built from BOTH roots (§ 0c, #723). Without this step the gate is still
+      # GREEN and its subject is HALF THE SIZE, which is worse than a red. Measured on a bare clone of
+      # the retirement commit, 2026-07-28: "57 repo-internal body/bodies" without the view, "103" with
+      # it — the same bodies, examined once instead of twice, and no diagnostic saying so. A gate whose
+      # subject quietly shrinks is the #416 shape this script's own header was written against.
+      - uses: ./.github/actions/skill-view
 
       # QUOTED, and it must stay quoted: an unquoted ` #N` is a YAML comment, and the step name would
       # silently lose the very words that name the third check.
