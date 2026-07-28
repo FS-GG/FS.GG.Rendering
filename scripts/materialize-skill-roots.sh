@@ -78,8 +78,9 @@
 #      `speckit.agent-context.update` → `speckit-agent-context-update`). These are NOT in
 #      claude.manifest.json: they arrive via the extension, not the base integration.
 #   4. The four KIT skills — authority: the pinned `FS.GG.Kit`, materialized by `coordination-sync` /
-#      `.config/kit/` and already bound to canonical in ALL THREE roots by the required
-#      `coordination-coherence` gate.
+#      `.config/kit/` and already bound to canonical, in every root THE KIT WRITES, by the required
+#      `coordination-coherence` gate. That is TWO roots, not this repo's three, since ADR-0067 §5
+#      retired `.codex/skills` — see §THE KIT'S ROOT SET IS NOT THIS REPO'S below.
 #
 # An id in no class is UNATTRIBUTED: reported, and refused rather than projected. That is the property
 # `cp -R` cannot have.
@@ -94,6 +95,37 @@
 # update from a stale root — laundering a real signal into a wrong repair. Verifying instead keeps the
 # red (the union genuinely is incoherent) while leaving the only correct repair — re-run the kit receiver —
 # the obvious one. This script refuses to write bytes it does not own.
+#
+# THE KIT'S ROOT SET IS NOT THIS REPO'S (FS.GG.Rendering#1088, .github#1636, ADR-0065 §Retiring a root)
+#
+# ADR-0065's ordered root set was ADR-0011's three until 2026-07-28, when ADR-0067 §5 retired
+# `.codex/skills`: `.agents/skills` is Codex's OWN second native root, so `.codex/skills` carried no
+# runtime the remaining two do not, and only ever produced a duplicate catalog entry. `FS.GG.Kit`
+# 0.15.0 declares that root RETIRED (`FsggKitRetiredSkillRoots`) and its materializer sweeps the kit's
+# OWN four directories out of it on the receiver's next restore.
+#
+# That sweep is the whole of the retirement on a receiver. It removed exactly `.codex/skills/{check-board,
+# cross-repo-coordination,intra-repo-parallel-work,pnext-item}` here and touched nothing else: this repo's
+# OWN 46 skills stay in `.codex/skills`, because §Retiring a root withdraws the KIT's copies from a
+# retired root — it does not empty the root, and this script must not either.
+#
+# So a kit skill is now expected in TWO roots while every other class is expected in this repo's three,
+# and conflating those two facts is exactly what broke. Before this change the kit class was verified
+# across `$ROOTS`; the moment the pin moved to 0.15.0 this script reported
+# `[kit-partitioned] <id> absent from .codex/skills — re-run the kit receiver` for all four, blaming the
+# receiver for a sweep the receiver had just performed correctly, and pointing the reader at a repair
+# (re-run the receiver) that reproduces the same state. The kit's output was right; the expectation was stale.
+#
+# The kit's set is READ from `scripts/skill-view`, which is itself kit-materialized: it is the pinned
+# kit's own statement of its root set, sitting in this tree, moving with the pin. Restating
+# `.claude/skills .agents/skills` here instead would be the second source of truth that `lib/roots.sh`'s
+# own header warns about — it would agree with the kit today and diverge silently the next time the
+# kit's set moves, in the direction that blames THIS tree for the kit's change. Absent or unparseable is
+# a hard error, never a fallback to `$ROOTS`: falling back is how the stale expectation got here (#266).
+#
+# The retired root is not merely skipped. A kit skill that SURVIVES in a root the kit does not write is
+# an unswept leftover — reported as `[kit-leftover]`, repaired by re-running the materializer, never by
+# this script, which deletes no bytes it does not own any more than it writes them.
 #
 # THE ONE OVERRIDDEN SPEC-KIT ROW, RECORDED RATHER THAN SKIPPED
 #
@@ -194,7 +226,34 @@ for s in "$NATIVE_SOURCE" "$SPECKIT_SOURCE"; do
   esac
 done
 
+# ---------------------------------------------------------------------------------------------------
+# The KIT's root set — read from the pinned kit's own materialized declaration, never restated here.
+# See §THE KIT'S ROOT SET IS NOT THIS REPO'S in the header for why this is a separate set at all.
+# ---------------------------------------------------------------------------------------------------
+KIT_ROOTS_DECL="$SCRIPT_DIR/skill-view"
+[ -f "$KIT_ROOTS_DECL" ] || die "cannot determine the kit's root set: $KIT_ROOTS_DECL is absent.
+  It is materialized from the pinned FS.GG.Kit — run
+  \`dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize\`. Refusing to fall back to
+  this repo's own root set: that substitution is exactly what .github#1636 turned into a false red."
+KIT_ROOTS="$(sed -n 's/^DEFAULT_ROOTS="\([^"]*\)".*/\1/p' "$KIT_ROOTS_DECL" | head -n 1)"
+[ -n "$KIT_ROOTS" ] || die "could not read DEFAULT_ROOTS from $KIT_ROOTS_DECL — the kit's root-set
+  declaration moved. Refusing to guess."
+
+# Roots this repo asserts that the kit does NOT write. A kit skill here is an unswept leftover.
+KIT_NONROOTS=""
+for r in $ROOTS; do
+  case " $KIT_ROOTS " in *" $r "*) ;; *) KIT_NONROOTS="$KIT_NONROOTS $r" ;; esac
+done
+for r in $KIT_ROOTS; do
+  case " $ROOTS " in
+    *" $r "*) ;;
+    *) die "the kit writes $r, which is not in this repo's root set ($ROOTS, from $ROOTS_SRC) — kit
+  bytes would land in a root nothing here asserts." ;;
+  esac
+done
+
 note "roots: $ROOTS (from $ROOTS_SRC)"
+note "kit roots:          $KIT_ROOTS (from $(basename "$KIT_ROOTS_DECL"), materialized by the pinned FS.GG.Kit)"
 note "repo-native source: $NATIVE_SOURCE (ADR-0011 §3 provider root)"
 note "spec-kit source:    $SPECKIT_SOURCE (derived from $(basename "$CLAUDE_MANIFEST"))"
 
@@ -331,9 +390,10 @@ echo "$ATTRIB" | {
   while IFS="$(printf '\t')" read -r id cls src verdict detail; do
     [ -n "$id" ] || continue
     if [ "$cls" = "kit" ]; then
-      # Verify only: present in every root, byte-identical across them.
+      # Verify only: present in every root THE KIT WRITES, byte-identical across those, and swept from
+      # every root it does not. Never written or deleted here (see the header).
       first=""
-      for r in $ROOTS; do
+      for r in $KIT_ROOTS; do
         d="$REPO_ROOT/$r/$id"
         if [ ! -d "$d" ]; then
           echo "materialize-skill-roots: [kit-partitioned] $id absent from $r — re-run the kit receiver" >&2
@@ -341,6 +401,12 @@ echo "$ATTRIB" | {
         fi
         if [ -z "$first" ]; then first="$d"; elif ! diff -qr "$first" "$d" >/dev/null 2>&1; then
           echo "materialize-skill-roots: [kit-divergent] $id differs between roots — re-run the kit receiver" >&2
+          drift=$((drift + 1))
+        fi
+      done
+      for r in $KIT_NONROOTS; do
+        if [ -d "$REPO_ROOT/$r/$id" ]; then
+          echo "materialize-skill-roots: [kit-leftover] $id survives in $r, a root the kit does not write — re-run the kit receiver, which sweeps it" >&2
           drift=$((drift + 1))
         fi
       done
