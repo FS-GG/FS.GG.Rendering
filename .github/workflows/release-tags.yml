@@ -105,6 +105,16 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — `.agents/skills` is a generated VIEW, absent in this
+      # checkout, and the #517 purity check below RE-DERIVES `docs/reports/skills-parity.md` and then
+      # fails the release if a committed artifact moved. `check-agent-skill-parity.fsx` reads that root,
+      # so without this step the report regenerates DIFFERENT on every release and `dirty` is never
+      # empty — a false red in the one place a false red is most expensive, and precisely the failure
+      # mode the comment below it warns about. Measured on a bare clone of the retirement commit,
+      # 2026-07-28: `status: failed`, high=19, report differs. With this step: `passed`, 0 findings,
+      # report byte-identical. See `.github/actions/skill-view`.
+      - uses: ./.github/actions/skill-view
+
       # Structural verdict-core only — no `FS_GG_RUN_VERSION_COHERENCE_SMOKE`, no restore, no network.
       # The heavyweight restore-grounded proof already ran on this exact commit in the required gate,
       # and it runs again, with every waiver disabled, in `release.yml`'s `package-tests` before

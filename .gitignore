@@ -162,3 +162,22 @@ Thumbs.db
 *.swp
 .env*
 .claude/worktrees/
+
+# ---------------------------------------------------------------------------
+# The GENERATED VIEW ROOT (ADR-0067 §6/§8/§9 phase 4, FS-GG/.github#1676/#1747).
+#
+# `.agents/skills` is no longer a second committed copy of this repo's skills. It is a VIEW of the
+# tracked source `.claude/skills`, resolved at checkout by this repo's own pinned `scripts/skill-view`
+# (driven from `.config/kit/FS.GG.Kit.receiver.proj`'s FsggRenderingGenerateSkillView target, so every
+# tree that materializes gets one). Committing it is what ADR-0067 §6 rejects on measurement: a
+# committed symlink checks out as a small regular TEXT FILE under `git -c core.symlinks=false` — the
+# git-for-Windows default without Developer Mode — and both runtimes then exit 0 with zero skills and
+# no diagnostic.
+#
+# ROOT-ANCHORED, and not `.agents/`: this ignores the generated root and nothing else, so a future
+# tracked file elsewhere under `.agents/` is not silently swallowed.
+#
+# The runtime root set is UNCHANGED — it is the union of <FsggKitSkillRoots> and
+# <FsggKitViewSkillRoots>, still ADR-0011's two as amended by ADR-0067 §5. What asserts that union is
+# still two is `scripts/check-skill-view-roots.sh`, on the required `Deterministic gate`.
+/.agents/skills

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Intra-Repo Parallel Work"
-  short_description: "Coordinate safe parallel work in one FS-GG repo"
-  default_prompt: "Use $intra-repo-parallel-work to coordinate isolated parallel workers inside one FS-GG repository."

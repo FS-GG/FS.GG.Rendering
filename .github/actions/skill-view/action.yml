@@ -1,0 +1,47 @@
+name: Resolve the generated skill view root
+description: >-
+  The single definition of the checkout-time generate that resolves this repo's VIEW skill root
+  (ADR-0067 §6/§8/§9 phase 4, FS-GG/.github#1676/#1747).
+
+  `.agents/skills` is no longer committed. It is a VIEW of the tracked source `.claude/skills`
+  (ADR-0065 §A root's three dispositions), and it does not exist in a fresh checkout — a clean clone,
+  a new worktree and every runner alike. Any job that READS this repo's runtime skill roots therefore
+  has to generate it first, and every one of them has to generate it the SAME way.
+
+  WHY AN ACTION RATHER THAN A `run:` LINE PER JOB. SIX jobs across FOUR workflows need this — `gate`,
+  `skill-parity-gate` and `skill-refs` in `gate.yml`, plus `skill-view-check.yml`,
+  `skill-refs-sweep.yml` and `release-tags.yml`'s `plan` — and the flags are load-bearing in a way that
+  does not survive being retyped:
+
+    * `--source .claude/skills` names the TRACKED root. Getting it backwards points the view at itself.
+    * `--roots ".agents/skills"` names the VIEW roots EXPLICITLY. Letting the tool fall back to
+      ADR-0065's default pair would also try to resolve `.claude/skills`, which git TRACKS, and
+      `skill-view` refuses to generate over a tracked root with no override (`skill-view:331`) — so the
+      fallback is a REFUSAL, exit 2, not a no-op.
+    * there is no `if:` and there must never be one. "Generate whatever is absent, then assert it is
+      present" makes the absence classes unreachable and hands back a gate that cannot fail — the exact
+      defect that retired the gate `skill-view-check` replaced. The generate is authorised by this repo
+      DECLARING the root to be a view (`<FsggKitViewSkillRoots>` in
+      `.config/kit/FS.GG.Kit.receiver.proj`), never by observing that one is missing.
+
+  This is the same argument `.github/actions/locked-restore` makes in its own header — "two inline
+  copies is how they drift" — applied to a rule the whole of ADR-0067 exists to stop restating.
+
+  NOT THE ONLY CALLER OF `skill-view generate`, DELIBERATELY. `.config/kit/FS.GG.Kit.receiver.proj`'s
+  `FsggRenderingGenerateSkillView` target runs it too, `BeforeTargets="FsggKitCheckSkillView"`, for
+  every tree that runs `FsggKitMaterialize` — `build-config-drift` here, and `kit-materialize.yml`,
+  which is a `uses:` of the hub's reusable workflow and cannot be given a step at all. A workflow step
+  reaches only the trees that run that workflow; a target reaches the materialize wherever it runs.
+  Neither covers the other's trees, which is why both exist.
+
+  THE TOOL IS THIS REPO'S OWN COPY, never one fetched from a moving hub `main`: `scripts/skill-view` is
+  delivered and byte-verified by the `FS.GG.Kit` version this repo pins (a kit row since 0.15.0,
+  together with `scripts/lib/args.sh` and `scripts/lib/roots.sh`, which `repos.sh validate` refuses to
+  let a kit separate). A receiver's verdict must be a function of the receiver (FS-GG/.github#1584).
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve the view roots this tree no longer commits
+      shell: bash
+      run: bash scripts/skill-view generate --source .claude/skills --roots ".agents/skills"

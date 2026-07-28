@@ -110,6 +110,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — `.agents/skills` is a generated VIEW, absent in this
+      # checkout, and `check-skill-refs.sh` builds `wrapper_body_paths` from BOTH roots. This is the
+      # FULL sweep, so it is the run that can least afford a subject that quietly halves: measured on a
+      # bare clone of the retirement commit, "57 repo-internal body/bodies" without this step and "103"
+      # with it, green either way. See `.github/actions/skill-view`.
+      - uses: ./.github/actions/skill-view
+
       # No --changed: this is the full sweep, and it is the ONLY run that resolves every link in the
       # tree. GH_TOKEN buys the 1,000/hr authenticated REST budget instead of a shared-IP 60/hr; the
       # links are public repos and no GraphQL is spent. The script REFUSES to self-skip in CI — a link

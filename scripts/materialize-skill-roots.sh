@@ -85,6 +85,45 @@
 # An id in no class is UNATTRIBUTED: reported, and refused rather than projected. That is the property
 # `cp -R` cannot have.
 #
+# `.agents/skills` IS A GENERATED VIEW AS OF 2026-07-28, AND THAT CHANGES WHAT SOME OF THIS PROVES
+# (ADR-0067 §9 phase 4, FS-GG/.github#1747)
+#
+# The repo-native provider root below is no longer a second committed tree. `.agents/skills` is a VIEW
+# of `.claude/skills`, generated at checkout (`.config/kit/FS.GG.Kit.receiver.proj`'s
+# FsggRenderingGenerateSkillView target, and a step in the `Deterministic gate` job that runs this
+# script). Nothing here needed a code change — `os.listdir`, `os.path.isfile` and `diff -qr` all follow
+# the link, and the check was measured green on the retirement tree, 50 attributed, no drift — but two
+# of its claims are now weaker than they read, and pretending otherwise is the #266 shape this file
+# argues against everywhere else.
+#
+#   * The PROJECTION comparison `$src/$id` vs `$r/$id` is VACUOUS whenever `$r` and `$src` resolve to
+#     the same object. After the retirement that is true for exactly two pairs: repo-native ids
+#     (`.agents/skills` -> `.claude/skills`) and spec-kit ids (`.claude/skills` -> `.agents/skills`).
+#     `diff -qr X X` cannot fail.
+#   * The KIT class's cross-root byte comparison, which walks `$KIT_ROOTS` — now `.claude/skills
+#     .agents/skills`, one object — is vacuous for the same reason, for all four ids. That fact has
+#     another owner and keeps a real subject there: `coordination-sync --check --against-pin` grades
+#     those bytes against the package's own kit-manifest.tsv, which is the required
+#     `kit / coordination-kit` context, and it is comparing against a PIN rather than against a
+#     sibling root. Nothing was lost; it moved.
+#
+# WHAT IS NOT VACUOUS, AND WHY THAT DEPENDS ON `DEFAULT_ROOTS` STAYING THREE. Every non-kit id is still
+# compared against `.codex/skills`, which is a genuinely separate tree of 46 directories this repo owns
+# — so the projection half of this gate still has a real subject for 46 of the 50 ids. The ATTRIBUTION
+# half (manifest digests, extension registry, wrapper route resolution, the speckit-implement override,
+# `[orphan]`) never compared roots at all and is untouched.
+#
+# SO THIS FILE AND FS.GG.Rendering#1120 INTERACT, AND NEITHER OF THEM ALONE IS THE PROBLEM. #1120 wants
+# `DEFAULT_ROOTS` narrowed from three to two, to match ADR-0065's contract set after ADR-0067 §5
+# retired `.codex/skills`. That is a correct and separate contract change — but landing it AFTER this
+# retirement removes the last root that is a separate object, and the projection half of this gate then
+# compares every one of the 50 ids with itself and can never fail. The retirement alone does not do
+# that (`.codex/skills` still absorbs it); #1120 alone would not have done it either (the two remaining
+# roots were separate committed trees until today). Together they do. **Whoever lands #1120 owes a
+# decision about what the projection half asserts afterwards** — the honest options are to drop it and
+# keep the attribution half, or to give it a subject that is not a root (the manifest digests already
+# are one). Do not narrow `DEFAULT_ROOTS` as a tidy-up. Recorded on #1120.
+#
 # THE KIT SKILLS ARE VERIFIED HERE, NEVER WRITTEN (a deliberate divergence from Governance's precedent)
 #
 # FS.GG.Governance#326's script projects its kit skills as part of the union, calling it "a no-op while

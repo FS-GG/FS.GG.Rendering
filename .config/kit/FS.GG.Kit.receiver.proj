@@ -37,11 +37,87 @@
          FsggKitAdoptBuildConfig=true for one run (.github#387); the canonical files here already carry
          the 'Source of truth: FS-GG/.github' marker, so no adopt is needed and the overwrite is free. -->
     <FsggKitMaterializeBuildConfig>true</FsggKitMaterializeBuildConfig>
+
+    <!-- ADR-0067 phase 4 (FS-GG/.github#1676 / #1747) — THE SECOND COMMITTED SKILL ROOT IS RETIRED.
+         `.agents/skills` is no longer a second committed COPY of this repo's skills: it is a VIEW
+         ROOT, generated at checkout by this repo's own pinned `scripts/skill-view` from the tracked
+         source `.claude/skills`. See `docs/coordination/skill-apparatus-retirement-order.md` in
+         FS-GG/.github for the order, the preconditions and the rollback path.
+
+         THE RUNTIME ROOT SET IS UNCHANGED, AND THAT IS THE POINT. `FS.GG.Kit.props` defines the
+         runtime surface as the UNION `FsggKitSkillRoots` + `FsggKitViewSkillRoots`; moving a root
+         from the first to the second keeps that union at ADR-0011's two as amended by ADR-0067 §5
+         (`.claude/skills` + `.agents/skills`). This is NOT a root retirement — a retired root leaves
+         the contract, and `.codex/skills` is the one that did (`FsggKitRetiredSkillRoots`, the kit's
+         default, which swept the kit's OWN four directories out of it at f08b2a8 and left this
+         repo's 46 own skills there untouched, exactly as ADR-0065 §Retiring a root requires).
+
+         BOTH PROPERTIES ARE NAMED EXPLICITLY even though `FsggKitSkillRoots` here differs from the
+         package default only by the root moved out of it. Restating the pair together is what makes
+         the union readable at the one place that decides it; splitting them costs a reader a trip to
+         the package's props to find out what the other half still is.
+
+         WHY THE VIEW ROOT IS `.agents/skills` AND THE TRACKED SOURCE IS `.claude/skills`. Both roots
+         hold byte-identical trees here (`diff -r .claude/skills .agents/skills` is silent, measured
+         at 44981d8 before anything was retired), so either could have been the source. The retirement
+         order §3 decides it for the fleet: `.claude/skills` is the source, because the kit's own
+         `kit:` rows and `scripts/generate-driver-manifest` content-address that path in FS-GG/.github,
+         and every receiver retired so far (Templates, Audio, Net) took the same direction. Keeping
+         one direction across receivers is worth more than this repo's local preference.
+
+         WHAT ASSERTS THE UNION IS STILL TWO. Emptying `FsggKitViewSkillRoots` below is SILENT in the
+         kit's own gates — the materialize then reports "nothing to assert" and succeeds, and
+         `coordination-sync` in its `check`/`against-pin` mode reads `FsggKitSkillRoots` alone and is
+         green — so
+         the root would simply leave the runtime contract with every required kit context still green.
+         Measured on this tree, and on FS.GG.Net and FS.GG.Audio before it. That is the exact silent
+         class ADR-0067 §8 forbids, so this repo asserts the union itself, in
+         `scripts/check-skill-view-roots.sh`, on the REQUIRED `Deterministic gate`. Change either
+         property and that gate is what tells you. -->
+    <FsggKitSkillRoots>.claude/skills</FsggKitSkillRoots>
+    <FsggKitViewSkillRoots>.agents/skills</FsggKitViewSkillRoots>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Version pinned centrally in Directory.Packages.local.props (Renovate-managed), like every other pin. -->
     <PackageReference Include="FS.GG.Kit" />
   </ItemGroup>
+
+  <!--
+    THE VIEW IS GENERATED BEFORE IT IS ASSERTED, IN EVERY TREE THE MATERIALIZE RUNS IN.
+
+    `FsggKitCheckSkillView` (ADR-0067 §8, AfterTargets=FsggKitMaterialize) fails the build when a view
+    root is absent, dangling, or partly visible — deliberately, because all three of those are exit 0
+    with no diagnostic in BOTH runtimes. A view root is NOT committed (a committed symlink degrades to
+    a plain text file under `git -c core.symlinks=false`, ADR-0067 §6), so EVERY fresh checkout starts
+    without one: a clean clone, a new worktree, and every runner alike.
+
+    THIS REPO NEEDS IT IN THE PROJECT MORE THAN ANY RECEIVER SO FAR, because it drives the materialize
+    from THREE trees and can only add a step to one of them. `.github/workflows/gate.yml`'s
+    `build-config-drift` job runs `FsggKitMaterialize` on a bare checkout, and
+    `.github/workflows/kit-materialize.yml` is a `uses:` of the hub's reusable workflow — a `uses:` job
+    cannot be given a step at all, which is the same shape that made FS-GG/.github#1715's B5 a blocker
+    rather than a tidy-up. A target here reaches all three; a workflow step reaches one.
+
+    The tool is `scripts/skill-view` — THIS repo's copy, delivered and byte-verified by the FS.GG.Kit
+    version this repo pins (a kit row since 0.15.0, together with scripts/lib/args.sh and
+    scripts/lib/roots.sh, which `repos.sh validate` refuses to let a kit separate), never one fetched
+    from a moving hub `main`: a receiver's verdict must be a function of the receiver
+    (FS-GG/.github#1584).
+
+    The `roots` flag names the view roots EXPLICITLY rather than letting the tool fall back to
+    ADR-0011's default pair. The fallback would also try to resolve `.claude/skills`, this repo's
+    TRACKED live root, and `skill-view` refuses to generate over a tracked root with no override, so it
+    would be a refusal rather than a no-op.
+
+    The `Condition` guards on the PROPERTY, so if a later change empties FsggKitViewSkillRoots this
+    target stops running with it instead of generating a view nothing asserts. That same emptying is
+    what `scripts/check-skill-view-roots.sh` reds on, on the required `Deterministic gate`.
+  -->
+  <Target Name="FsggRenderingGenerateSkillView" BeforeTargets="FsggKitCheckSkillView"
+          Condition="'$(FsggKitViewSkillRoots)' != ''">
+    <Exec WorkingDirectory="$(FsggKitReceiverRoot)"
+          Command="bash scripts/skill-view generate --source $(FsggKitSkillRoots) --roots &quot;$(FsggKitViewSkillRoots.Replace(';',' '))&quot;" />
+  </Target>
 
 </Project>
