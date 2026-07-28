@@ -15,6 +15,31 @@ name: kit-materialize
 on:
   pull_request:
     branches: [main]
+  # THE ON-DEMAND REPAIR BUTTON (FS-GG/.github#1845, #1853).
+  #
+  # Actions -> kit-materialize -> Run workflow, on any branch, by anyone with WRITE access.
+  # It exists because `kit / coordination-kit`'s DRIFT summary tells the reader to "re-run the
+  # materialize on this branch" and, before this, there was no way to: across 842 runs in all
+  # seven receivers, ZERO ran on anything but a `pull_request` (#1834). The remedy named an
+  # action nobody could perform, and the measured heal tail was 7-13 days.
+  #
+  # NO INPUT IS NEEDED. The reusable workflow's `receiver-project` already defaults correctly,
+  # and the branch comes from the Run-workflow dropdown, which the hub reads as
+  # `github.ref_name`. `permissions: contents: read` below is unchanged and still correct --
+  # the App installation token inside the reusable workflow performs the write.
+  #
+  # WHAT A DISPATCHED RUN MAY WRITE IS DECIDED IN THE HUB, NOT HERE:
+  #   this branch, in place                -- on any branch that is not the default branch
+  #   a NEW `kit-materialize/repair-<run>` -- on the default branch, which is NEVER written,
+  #                                           because a materialize WRITES and so is a repair,
+  #                                           not a check, and `kit / coordination-kit` is a
+  #                                           required context precisely so the kit's bytes are
+  #                                           graded BEFORE they reach the default branch.
+  #
+  # The hub's dispatch arm is UNCONDITIONAL on purpose: a skipped job reports
+  # `conclusion: skipped`, which branch protection counts as satisfied and a human reads as a
+  # tick -- so a button that skipped would be strictly worse than no button (#1815).
+  workflow_dispatch:
 
 permissions:
   contents: read   # the App token inside the reusable workflow performs the write
