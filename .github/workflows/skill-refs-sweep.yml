@@ -250,7 +250,15 @@ jobs:
               echo
               echo "</details>"
               echo
+              # BOTH bodies above are `defect`, and that is derived rather than chosen (#1103). Neither
+              # of them is decay: one says the script found real rot this workflow can no longer READ,
+              # the other says no pointer was judged at all. In ADR-0066's vocabulary — `defect` is
+              # "something is broken now" — the broken thing is the sweep itself, and while it is broken
+              # every link in the tree is unchecked. That is the `FS-GG/.github#416` shape, which is a
+              # live defect and not a way something COULD break later.
               echo "Paths: .github/workflows/skill-refs-sweep.yml scripts/check-skill-refs.sh"
+              echo
+              echo "Class: defect"
             } >> "$body"
           else
             {
@@ -268,6 +276,41 @@ jobs:
             } >> "$body"
 
             cur=""
+
+            # ── HOW BAD IS THIS ROW? (#1103) ─────────────────────────────────────────────────────
+            #
+            # Since ADR-0066 the `Class:` body line is the authority behind the board's `Class` column,
+            # and `lint` reports a Ready row whose text declares none as CLASS-UNSET. This body is
+            # REWRITTEN on every sweep, so a human cannot add the line by hand — the next run erases it.
+            # The sweep therefore has to write it, and #1588 AC3 says it must be DERIVED, never guessed.
+            #
+            # It is derived from the KIND of each finding, because this workflow already tells the
+            # reader that the kinds differ in urgency (see "Fixing it" below). The mapping, stated here
+            # rather than left implicit:
+            #
+            #   DECAY — `stale link`, `dangling link`, `unresolvable link`, `stale closed-ok marker`.
+            #       f(tree, WORLD). Nobody's commit did this; the citation was true when it was
+            #       published and an issue closed underneath it. Nothing in this repo is broken, and
+            #       repointing it removes a way a published body can mislead its reader.  → hardening
+            #
+            #   HERMETIC — `bare [[…]]`, `dangling [[…]]`, `stale prose-ok marker`, `bare ref`.
+            #       f(tree) alone: these do not consult the world, so `gate` resolves them on every PR
+            #       and is red on them too. A hermetic finding on `main` is a GATE REGRESSION, which the
+            #       body below already calls "more urgent than the rest of this issue".  → defect
+            #
+            # DEFECT DOMINATES a mixed run, matching `Class.fromBody`'s own precedence: the strongest
+            # claim is "something is broken NOW", and a run that mixes a gate regression with ordinary
+            # decay must not be quietly downgraded to the class that lets a burn-down stop.
+            #
+            # AND A KIND THIS BLOCK DOES NOT RECOGNISE IS `defect`, NOT `hardening`. The two lists above
+            # are a second contract with `report()`'s prose, alongside the `path:line:` shape the parser
+            # already depends on — and a reworded finding must not silently land in the gentler bucket,
+            # because that failure is invisible: the row still looks classed. #266's rule is that a
+            # subject you could not evaluate is never a subject that passed, so an unreadable kind
+            # classes UP and says so in the body. scripts/test-skill-refs-sweep.sh § 6 drives the REAL
+            # script for both buckets, so a rewording fails there rather than here, silently.
+            hermetic=0; decay=0; unknown=0
+
             # shellcheck disable=SC2016
             #
             # SC2016 ("expressions don't expand in single quotes") is a FALSE POSITIVE on both printf
@@ -286,6 +329,18 @@ jobs:
             while IFS= read -r ln; do
               f=${ln%%:*}; rest=${ln#*:}
               n=${rest%%:*}; msg=${rest#*: }
+              # Matched on the finding's opening WORDS, not on its punctuation: every one of these
+              # messages continues with an em dash the shell would have to carry through three
+              # quotings, and `dangling link` vs `dangling [[…]]` is precisely the pair a looser match
+              # would collapse — the two sit on opposite sides of the mapping above.
+              case $msg in
+                'bare [['*|'dangling [['*|'stale prose-ok marker'*|'bare ref '*)
+                  hermetic=$((hermetic + 1)) ;;
+                'stale link '*|'dangling link '*|'unresolvable link '*|'stale closed-ok marker'*)
+                  decay=$((decay + 1)) ;;
+                *)
+                  unknown=$((unknown + 1)) ;;
+              esac
               if [ "$f" != "$cur" ]; then
                 printf '\n### `%s`\n\n' "$f" >> "$body"
                 cur="$f"
@@ -299,7 +354,35 @@ jobs:
                 "$n" "$SERVER" "$REPO" "$SHA" "$f" "$n" "$(printf '%s' "$msg" | tr '`' "'")" >> "$body"
             done < "$RUNNER_TEMP/findings.txt"
 
+            # The verdict, and the sentence that shows its working. Recomputed from THIS run's findings
+            # every time the body is rendered, which is what stops the first run's value latching: the
+            # reconcile step rewrites the whole body, so a repo that fixes its gate regression and is
+            # left with plain decay drops from `defect` to `hardening` on the next sweep by itself.
+            if [ "$hermetic" -gt 0 ] || [ "$unknown" -gt 0 ]; then
+              class=defect
+              if [ "$hermetic" -gt 0 ]; then
+                why="the findings above include $hermetic **hermetic** one(s) (\`[[ref]]\` / bare \`#N\`). Those do not consult the world, so \`gate\` is red on them for every PR too: that is a gate regression on \`main\`, something broken now, and it raises the whole row."
+              else
+                why="this workflow does not recognise $unknown of the findings above, so it could not derive their severity and will not guess it downward. A subject you could not evaluate is never a subject that passed (\`FS-GG/.github#266\`); read them yourself before trusting this line."
+              fi
+            else
+              class=hardening
+              why="every finding above is world-moved decay: a citation that was true when it was published, with an issue that closed underneath it. Nothing in this repo is broken, and repointing it removes a way a published body can mislead its reader."
+            fi
+
             {
+              echo
+              echo "## Severity"
+              echo
+              # The class is DERIVED (#1588 AC3, ADR-0066), so the body shows its working. A reader who
+              # disagrees with the line is being handed the input it was computed from, not asked to
+              # take it on trust — and this is also the paragraph that explains why the `Class:` line at
+              # the foot of the body will change on its own when the findings do.
+              echo "\`Class: $class\` — $why"
+              echo
+              echo "The mapping is in \`.github/workflows/skill-refs-sweep.yml\`: world-moved decay is"
+              echo "\`hardening\`, a hermetic finding is \`defect\`, and a mixed run is \`defect\`. It is"
+              echo "recomputed on every sweep, so it follows the findings rather than latching."
               echo
               echo "## Fixing it"
               echo
@@ -323,15 +406,30 @@ jobs:
               echo "when the sweep next goes green. Edit the skills, not this issue.*"
               echo
 
-              # A finding filed without a touch-set is a finding nobody can pick up: `take`/`batch` refuse
-              # an item whose `Paths:` cannot be proven disjoint from a live claim, so it lands on the
-              # board LOOKING like work and is invisible to every worker who asks for work
-              # (FS-GG/.github#442). The sweep knows exactly which files it is asking someone to edit, so
-              # it declares them. It cannot place the item on the board itself — that is Projects v2, and
-              # GITHUB_TOKEN has no project scope — but the moment a human adds it, it is schedulable.
+              # THE TWO SENTINELS, at the foot of the body where a filer writes them by hand.
+              #
+              # Two lines, one failure between them: a row filed without either is a row that lands on
+              # the board LOOKING like work and that no scheduler can act on.
+              #
+              # `Paths:` is what `take`/`batch` need to prove the item disjoint from a live claim —
+              # without it they refuse it, so it is invisible to every worker who asks for work
+              # (FS-GG/.github#442). `Class:` is what `lint` needs to stop calling the row CLASS-UNSET,
+              # and what a burn-down needs in order to decide whether it may stop: under ADR-0066 an
+              # unclassed row counts as a POSSIBLE defect, so the gap is not a small one — it is a
+              # permanent "this run did not establish the board is defect-free".
+              #
+              # And a human cannot supply either one here. The next sweep rewrites this body and erases
+              # the edit; hand-editing the board column is worse still, because `reconcile` overwrites
+              # it from this text — so the edit is lost, and believed until it is.
+              #
+              # Neither can be placed on the board by this workflow — that is Projects v2 and
+              # GITHUB_TOKEN has no project scope — but the moment a human adds the issue, it is
+              # schedulable AND classed, with no further edit anywhere.
               printf 'Paths:'
               cut -d: -f1 "$RUNNER_TEMP/findings.txt" | sort -u | sed 's/^/ /' | tr -d '\n'
               echo
+              echo
+              echo "Class: $class"
             } >> "$body"
           fi
 
