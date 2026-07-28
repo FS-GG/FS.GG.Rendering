@@ -658,6 +658,197 @@ run_render
 expect_has 'the links are UNCHECKED' "$(body)" 'it files the infra failure, by its right name'
 unset GH_NOAUTH
 
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# § 6  THE `Class:` LINE — the row this workflow files must be CLASSABLE, and classed correctly
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+#
+# Since ADR-0066 the `Class:` body line is the authority behind the board's `Class` column, and an
+# open Ready row that declares none is `CLASS-UNSET` — counted as a POSSIBLE defect, so a burn-down
+# can never establish the board is defect-free while it exists. This body is rewritten on every
+# sweep, so nobody but the sweep can put the line there: a human's edit is erased by the next run,
+# and an edit to the board column is overwritten by `reconcile` from this text (#1103).
+#
+# The line must therefore be DERIVED and not guessed (#1588 AC3), which is what this section is
+# about. § 6a fixes the mapping against stubbed findings, § 6b fixes it against the REAL script's
+# real prose, and § 6c proves it FOLLOWS the findings instead of latching the first run's value.
+
+# The newest JSON payload this run put on the wire. `any_payload` concatenates every one of them, so
+# it cannot tell "the second PATCH carries the new class" from "the first one did" — which is the
+# only interesting question in § 6c.
+last_payload() {
+  local n
+  n=$(ls -1 "$FIX"/gh-bodies/body-*.json 2>/dev/null | sed 's/.*body-//;s/\.json$//' | sort -n | tail -1)
+  [[ -n $n ]] && cat "$FIX/gh-bodies/body-$n.json"
+}
+
+# The `Class:` lines the ENGINE would read out of the rendered body — `^ {0,3}[Cc]lass:`, outside any
+# fence (FS-GG/.github's `Class.declaredValues`). Modelled rather than shared, because the engine is
+# F# and this is bash; what it buys is that the prose mention in the body's "## Severity" paragraph —
+# which opens with a backtick — is counted the way the parser counts it, i.e. not at all.
+class_lines() { grep -E '^ {0,3}[Cc]lass:' <<<"$(body)" || true; }
+
+case_start '§6a DECAY only → hardening: the world moved, and nothing here is broken'
+fixture
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED. Repoint it at the live issue
+template/product-skills/alpha/SKILL.md:11: dangling link — FS-GG/FS.GG.Rendering#4242 does not exist
+template/product-skills/beta/SKILL.md:3: unresolvable link — could not read FS-GG/FS.GG.Rendering#7 from the API after 3 tries
+template/product-skills/beta/SKILL.md:5: stale closed-ok marker — FS-GG/FS.GG.Rendering#100 is OPEN again; drop the marker
+ERR
+run_sweep
+run_render
+expect_rc 0 'the renderer runs clean'
+expect_eq "$(class_lines)" 'Class: hardening' 'all four world-moved kinds map to hardening, and to ONE line'
+expect_has 'world-moved decay' "$(body)" 'and the body says why, rather than asserting it'
+
+case_start '§6a a HERMETIC finding → defect: a gate regression on `main`, not decay'
+fixture
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: bare ref — #4242 is read against the repo this body is MATERIALIZED into
+ERR
+run_sweep
+run_render
+expect_eq "$(class_lines)" 'Class: defect' 'a bare `#N` is not decay'
+
+case_start '§6a every hermetic kind is recognised as one'
+# Four spellings, and `dangling [[…]]` vs `dangling link —` is the pair a looser match collapses:
+# they sit on OPPOSITE sides of the mapping, so getting them confused silently downgrades a gate
+# regression to hardening — the failure mode that looks like a classed row.
+for msg in \
+  'bare [[fs-gg-x]] in a MIRRORED body — the same bytes are judged by BOTH repos' \
+  'dangling [[fs-gg-x]] — this repo does not publish it; qualify it as [[<owner>:fs-gg-x]]' \
+  'stale prose-ok marker — nothing in this file writes [[fs-gg-x]]; drop it' \
+  'stale prose-ok marker — nothing in this file writes a bare #4242; drop it'
+do
+  fixture
+  sweep_findings <<ERR
+template/product-skills/alpha/SKILL.md:9: $msg
+ERR
+  run_sweep
+  run_render
+  expect_eq "$(class_lines)" 'Class: defect' "hermetic: ${msg:0:34}…"
+done
+
+case_start '§6a a MIXED run is defect — the gate regression is not averaged away'
+# `Class.fromBody`'s own precedence, applied at the point the line is written rather than left for
+# the reader: a run carrying both must not resolve to the class that lets a burn-down stop.
+fixture
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED
+template/product-skills/alpha/SKILL.md:11: bare ref — #4242 is read against the repo this body is MATERIALIZED into
+template/product-skills/beta/SKILL.md:3: dangling link — FS-GG/FS.GG.Rendering#4242 does not exist
+ERR
+run_sweep
+run_render
+expect_eq "$(class_lines)" 'Class: defect' 'one hermetic finding among three raises the whole row'
+expect_has 'include 1 **hermetic** one(s)' "$(body)" 'and the body names how many, so the reader can check it'
+
+case_start '§6a a kind this workflow does not RECOGNISE classes UP, and says so'
+# The mapping is a second contract with `report()`'s prose. If a finding is reworded, the honest
+# answer is "I could not derive this", and #266's rule decides which way that falls: a subject you
+# could not evaluate is never a subject that passed. Landing it in `hardening` would be invisible —
+# the row still looks classed.
+fixture
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: rotten pointer — some future finding nobody has written yet
+ERR
+run_sweep
+run_render
+expect_eq "$(class_lines)" 'Class: defect' 'an underivable severity is not quietly the gentle one'
+expect_has 'does not recognise 1 of the findings' "$(body)" 'and the body refuses to imply it derived anything'
+
+case_start '§6a the DRIFT and BROKEN bodies are classed too — they are the #416 shape, not decay'
+# These file a row as much as the decay body does, and an unclassed one is just as unschedulable.
+fixture
+sweep_drifted
+run_sweep
+run_render
+expect_eq "$(class_lines)" 'Class: defect' 'the drift body is a defect: real decay this workflow cannot read'
+fixture
+sweep_broken
+run_sweep
+run_render
+expect_eq "$(class_lines)" 'Class: defect' 'the "links UNCHECKED" body is a defect: nothing was examined'
+# The `<details>` block below it is fenced, and `Class:` is read OUTSIDE fences only. A line that
+# drifted inside the fence would parse as nothing at all — with the body still LOOKING classed.
+expect_re '^Class: defect' "$(body)" 'and it is a real line at column 0, not fenced evidence'
+
+case_start '§6a the class travels with the body onto the wire'
+fixture
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED
+ERR
+pipeline
+expect_has 'Class: hardening' "$(any_payload)" 'the filed issue carries the class, not just the local render'
+
+case_start '§6b the REAL script: real decay derives hardening'
+# Everything in §6a stubs the script, so all of it would still pass if `report()` reworded its
+# findings — and the class would silently become `defect`-by-unrecognised, or worse, drift to a
+# spelling that lands in the wrong bucket. So: real decay, real prose, real mapping.
+fixture
+use_real_checker
+skill fs-gg-alpha <<'MD'
+# alpha
+Add your case at FS.GG.Rendering#100.
+MD
+issue 'FS-GG/FS.GG.Rendering#100' closed
+run_sweep
+run_render
+expect_eq "$(out_of reported)" 'true' 'the real script reported'
+expect_eq "$(class_lines)" 'Class: hardening' \
+          'the REAL `stale link` prose still lands in the decay bucket'
+expect_hasnt 'does not recognise' "$(body)" \
+             'and it was recognised — a rewording would show up HERE, not as a silent misclass'
+
+case_start '§6b the REAL script: a real bare `#N` derives defect'
+fixture
+use_real_checker
+skill fs-gg-alpha <<'MD'
+# alpha
+Add your case at #4242.
+MD
+run_sweep
+run_render
+expect_eq "$(out_of reported)" 'true' 'the real script reported'
+expect_eq "$(class_lines)" 'Class: defect' \
+          'the REAL `bare ref` prose still lands in the hermetic bucket'
+expect_hasnt 'does not recognise' "$(body)" 'and it was recognised, not classed up by accident'
+
+case_start '§6c the class FOLLOWS the findings — it does not latch the first run'"'"'s value'
+# The point of the line is that a driver can trust it, and a latched value is worse than none: a row
+# that says `hardening` while a gate regression sits on `main` is a lie the board will believe. The
+# body is rewritten in full on every sweep, so the class must move with it — in BOTH directions.
+fixture
+trackers <<'JSON'
+[{"number":42,"state":"open"}]
+JSON
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED
+ERR
+pipeline
+expect_eq "$(class_lines)" 'Class: hardening' 'run 1: plain decay'
+expect_has 'Class: hardening' "$(last_payload)" 'and that is what the tracker was rewritten with'
+
+# Run 2, SAME fixture and SAME tracker: a gate regression appears alongside the decay.
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED
+template/product-skills/alpha/SKILL.md:11: bare ref — #4242 is read against the repo this body is MATERIALIZED into
+ERR
+pipeline
+expect_eq "$(class_lines)" 'Class: defect' 'run 2: the row is upgraded, not left at the first value'
+expect_has 'Class: defect' "$(last_payload)" 'and the tracker is REWRITTEN with the new class'
+gh_called PATCH "/issues/42$" 'onto the same tracker, not a second one'
+
+# Run 3: the gate regression is fixed and only decay remains. The class must come back DOWN — a
+# ratchet would leave every tracker that ever saw one bare ref permanently `defect`, which is the
+# same lie pointing the other way.
+sweep_findings <<'ERR'
+template/product-skills/alpha/SKILL.md:9: stale link — FS-GG/FS.GG.Rendering#100 is CLOSED
+ERR
+pipeline
+expect_eq "$(class_lines)" 'Class: hardening' 'run 3: it comes back down, too — this is not a ratchet'
+expect_has 'Class: hardening' "$(last_payload)" 'and the tracker follows it down'
+
 # ── summary ─────────────────────────────────────────────────────────────────────────────────────
 #
 # STILL MISSING, and worth someone's next hour: nothing in CI parses this workflow's YAML beyond
