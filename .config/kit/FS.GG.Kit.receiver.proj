@@ -2,7 +2,7 @@
 
   <!--
     FS.GG.Kit receiver (ADR-0062, .github#1262). This repo is a `coordination-kit` receiver: it holds
-    the shared coordination skills, the `fsgg-coord` client, and the engine tool manifest on disk. It
+    the shared coordination skills and the `fsgg-coord` client on disk. It
     used to take them by byte-copy sync PR (`coordination-propagate`); it now REFERENCES the versioned
     `FS.GG.Kit` package and MATERIALIZES that kit onto disk from its pin. A hub change reaches this repo
     as an ordinary Renovate bump of the pin (in Directory.Packages.local.props), and `kit-materialize.yml`
@@ -13,11 +13,30 @@
 
         dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize
 
-    The materialized files (skills, scripts/fsgg-coord, .config/dotnet-tools.json, and — because this is
+    The materialized files (skills, scripts/fsgg-coord, and — because this is
     a `build-config` receiver — Directory.Build.props / Directory.Packages.props) are COMMITTED: the
     materialize is the write arm that replaces the byte-copy, not a live per-build input, so it does NOT
     run on every build (FsggKitMaterializeOnBuild=false, per the .github#1280 review). The committed bytes
     are content-addressed and byte-identical to canonical, so `coordination-coherence` stays green.
+
+    `.config/dotnet-tools.json` IS NOT AMONG THEM, since FS.GG.Kit 0.18.0 (FS-GG/.github#1615,
+    ADR-0068). The engine's tool-version pin left kit ownership: this repo now owns that file, and a
+    `fs.gg.coord.cli` version change no longer arrives as a kit republish and a seven-receiver fan-out.
+    Both sentences above said otherwise until this change, and six sibling receivers corrected the same
+    twin on the same day.
+
+    WHAT REPLACED THE OLD GUARANTEE. .github#1077 put the manifest on the kit fabric so that "receives
+    the tool implies can run the tool" held by construction; before it, this repo's siblings held an
+    `fsgg-coord` shim with no engine to exec. That is now ASSERTED rather than arranged: the daily
+    `scripts/repos-audit.sh` engine-manifest sweep reads every coordination-kit receiver's actual tree
+    and reds when one does not declare `fs.gg.coord.cli`. Stronger than the old rule, which constrained
+    the hub's roster rather than this repository.
+
+    THE DELIVERY ROUTE IS FILED AND NOT YET LIVE. The intended path is Renovate bumping
+    `fs.gg.coord.cli` here directly. `default.json` currently DISABLES its nuget manager for this file
+    across all seven receivers, a rule that was correct while the file was kit-materialized and is
+    wrong now. Tracked as FS-GG/.github#1798; until it is lifted, bump this pin by hand. Do not read a
+    quiet Renovate as evidence the pin is current (.github#1533).
   -->
 
   <PropertyGroup>
