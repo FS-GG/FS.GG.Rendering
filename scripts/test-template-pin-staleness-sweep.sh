@@ -307,8 +307,8 @@ sweep_broken() {
   printf 'MSBUILD : error MSB1003: Specify a project or solution file.\n' >"$FIX/stub.err"
 }
 
-# plant <state> — the five states this workflow has to tell apart, named once so a case that wants
-# all of them can loop over the names instead of carrying five heredocs.
+# plant <state> — the six sweep outcomes this workflow has to tell apart, named once so a case that
+# wants all of them can loop over the names instead of carrying six heredocs.
 plant() {
   case $1 in
     lagging)    sweep_stale 1 <<<"$(lag "$OTHER_AXIS" 4.1.0 4.3.0)" ;;
@@ -479,8 +479,9 @@ expect_has 'lane=1'       "$(cat "$FIX/dotnet.log")" 'and the script really rece
 # § 1  THE SWEEP STEP — parsing the script's findings out of its stderr
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 #
-# Three outcomes must stay distinct: parsed, drifted, never-ran. Calling one by another's name points
-# the fixer at the wrong thing while the real problem sits unread.
+# Four outcomes must stay distinct — parsed, could-not-run (exit 2), drifted, never-ran — because the
+# render step branches on exactly those and each branch sends a different person somewhere different.
+# Calling one by another's name points the fixer at the wrong thing while the real problem sits unread.
 
 case_start '§1 UP TO DATE reports rc=0, no findings, nothing to file'
 fixture
