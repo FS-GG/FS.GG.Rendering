@@ -1322,6 +1322,45 @@ jobs:
       - name: Behavioural test suite (planted decay in, filed issue out)
         run: scripts/test-skill-refs-sweep.sh
 
+  # Tests for the OTHER sweep — `.github/workflows/template-pin-staleness-sweep.yml`, the one #1102
+  # created when it moved `pin-lags-feed` off the PR lane. Same shape as the job above, and it is here
+  # for the same reason (FS.GG.Rendering#1106).
+  #
+  # That sweep RENDERS and FILES a tracking issue, and the renderer is ~120 lines of real bash: it
+  # parses `printDrift`'s `DRIFT [rule] location` lines out of the script's stderr, pulls each
+  # finding's expected/actual back out with `grep -A3`, branches four ways on `rc`/`REPORTED`, and
+  # emits an axis-aware `Paths:` line. Until this job existed, nothing ran any of it against a planted
+  # input — `TemplatePayloadPinsWaiverTests` asserts the workflow's SHAPE and never executes it.
+  #
+  # And the sweep's own `pull_request` trigger cannot cover it, for the reason it cannot cover the
+  # skill-refs one: the render step runs only when the sweep is RED, and on a normal day the pins are
+  # current, so a PR that rewrites the renderer gets a GREEN run in which the renderer never executed.
+  # Since #1102 this sweep is the ONLY thing in the repo asserting a scaffolded product's pins are not
+  # stale (#235), and its failure mode is SILENCE — so a green over an unexamined renderer is the
+  # `FS-GG/.github#416` shape sitting in the code whose job is to prevent it.
+  #
+  # It also pins the CROSS-FILE contract the sweep cannot self-diagnose, in both directions:
+  # `printDrift`'s line formats and the `lag the feed` banner. That half is asserted against the
+  # SCRIPT'S SOURCE rather than by running it — the staleness lane exists to ask nuget.org at a
+  # hard-coded URL, so a live run would make this job depend on the network and on what the world
+  # published that morning. Every planted stderr in the suite is generated from those same literals,
+  # so a reword reds here instead of silently blinding the sweep.
+  #
+  # Runs on every PR, not just ones touching the sweep: that contract has two ends, and a PR editing
+  # validate-template-payload-pins.fsx breaks it just as easily as one editing the workflow.
+  #
+  # Hermetic: fixture trees, a fake `gh`, a fake `dotnet`, no token, no network.
+  template-pin-staleness-sweep-tests:
+    name: Template pin sweep tests (.github/workflows/template-pin-staleness-sweep.yml)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Behavioural test suite (planted drift in, filed issue out)
+        run: scripts/test-template-pin-staleness-sweep.sh
+
   # ── Cross-repo contract-coherence gate ──────────────────────────────────────────────────
   # Adopted per FS-GG/.github#519 (decision: yes, the framework repos call it). The gate lives
   # in FS-GG/.github and is CALLED, never copied — it asserts that the org registry is
