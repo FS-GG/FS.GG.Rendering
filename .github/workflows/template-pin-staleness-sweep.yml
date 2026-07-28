@@ -148,6 +148,15 @@ jobs:
       # Render the issue body. Runs on EVERY trigger including `pull_request` — deliberately: the
       # renderer is the part most likely to carry a typo, and a PR that changes this workflow must
       # exercise it. On a PR it renders to the step summary and stops.
+      #
+      # BUT THAT TRIGGER IS NOT COVERAGE, and #1106 is why: this step only runs when the sweep is RED,
+      # and the sweep is red only when somebody in another repository published. On a normal day the
+      # pins are current, `rc=0`, and a PR that rewrites this renderer gets a GREEN run in which the
+      # renderer never executed. `scripts/test-template-pin-staleness-sweep.sh` plants the drift that
+      # trigger cannot and drives THESE `run:` blocks — extracted from this file at test time, never
+      # transcribed — through every branch below. It runs on every PR as the
+      # `template-pin-staleness-sweep-tests` job in gate.yml. Edit a branch here and expect to edit a
+      # case there; if you do not have to, one of the two has stopped looking.
       - name: Render the finding
         id: render
         if: steps.sweep.outputs.rc != '0'
