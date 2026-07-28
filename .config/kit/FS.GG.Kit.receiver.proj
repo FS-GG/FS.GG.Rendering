@@ -2,7 +2,7 @@
 
   <!--
     FS.GG.Kit receiver (ADR-0062, .github#1262). This repo is a `coordination-kit` receiver: it holds
-    the shared coordination skills, the `fsgg-coord` client, and the engine tool manifest on disk. It
+    the shared coordination skills and the `fsgg-coord` client on disk. It
     used to take them by byte-copy sync PR (`coordination-propagate`); it now REFERENCES the versioned
     `FS.GG.Kit` package and MATERIALIZES that kit onto disk from its pin. A hub change reaches this repo
     as an ordinary Renovate bump of the pin (in Directory.Packages.local.props), and `kit-materialize.yml`
@@ -13,11 +13,56 @@
 
         dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize
 
-    The materialized files (skills, scripts/fsgg-coord, .config/dotnet-tools.json, and — because this is
-    a `build-config` receiver — Directory.Build.props / Directory.Packages.props) are COMMITTED: the
+    The materialized files (skills, scripts/fsgg-coord, and — because this is a `build-config` receiver —
+    Directory.Build.props / Directory.Packages.props) are COMMITTED: the
     materialize is the write arm that replaces the byte-copy, not a live per-build input, so it does NOT
     run on every build (FsggKitMaterializeOnBuild=false, per the .github#1280 review). The committed bytes
     are content-addressed and byte-identical to canonical, so `coordination-coherence` stays green.
+
+    `.config/dotnet-tools.json` IS NOT ON THAT LIST, AND SINCE FS.GG.Kit 0.18.0 IT IS THIS REPO'S OWN
+    FILE. It used to be listed here, and that sentence outlived the fact: FS-GG/.github#1615 (ADR-0068)
+    removed `dist/dotnet/.config/dotnet-tools.json` from the kit's `kit:` block, taking kit membership
+    from 9 to 8, and the kit no longer writes this file into any receiver. The reason is the kit's own
+    content-addressing — `registry/repos.lock` carries a digest per `kit:` source — so while the manifest
+    was a kit row, moving the engine pin by ONE INTEGER was a kit content change: it staled the lock,
+    reddened the hub's `main`, and bought a full republish plus a seven-receiver fan-out. Nine republishes
+    over two days, four of them attributable to that row alone, and not one of the nine carried a change
+    to a skill. It also made the mechanical bump structurally unmergeable — hub Renovate #1340 touched
+    only the manifest and sat open for six days, because Renovate cannot run `repos.sh relock`.
+
+    NOTHING WAS LOST WHEN THE KIT STOPPED WRITING IT. `.config/dotnet-tools.json` is a TRACKED file here
+    and always has been, so the 0.18.0 bump (#1128) removed an overwrite, not a file — measured on this
+    tree, where materializing 0.18.0 wrote 0 of 29 files, the required `Build-config drift check` stayed
+    green, and `kit / coordination-kit` raised no drift and no "extra" finding for the now-unmanaged
+    manifest. What changes is OWNERSHIP: `coordination-coherence` no longer verifies these bytes
+    byte-identical to canonical, receivers' engine versions may now legitimately diverge from each
+    other, and RENOVATE is what converges ours, by bumping
+    `fs.gg.coord.cli` in the manifest directly. That path is not new machinery — `dotnet-tools.json` is
+    one of renovate's four SHIPPED nuget `managerFilePatterns`.
+
+    THAT LAST MILE IS NOT LIVE YET, AND SAYING SO IS THE POINT OF WRITING IT DOWN. Two do-not-propose
+    rules named this file, not one: THIS repo's, in `.github/renovate.json`, narrowed by the same change
+    as this comment; and the ORG-SHARED preset's, in FS-GG/.github `default.json`, scoped
+    `receives=coordination-kit` and therefore covering us. The org rule was correct while the manifest
+    was kit-materialized (a receiver-side bump was then a guaranteed-red PR, the `#794` churn class) and
+    its premise is exactly what ADR-0068 removed; FS-GG/.github#1798 is the fix, recorded as a same-day
+    correction in the ADR itself. Ours had to go REGARDLESS and first — a repo-local `packageRules` entry
+    is evaluated after the preset it extends, so leaving it would keep the file disabled here no matter
+    what #1798 does. Until #1798 lands, expect no engine bump PR in this repo, and read that silence as
+    the known gap rather than as evidence the manifest is fine: a non-proposal is not an error and
+    appears nowhere (.github#1533).
+
+    WHAT STOPS US DELETING IT BY ACCIDENT, given that no gate here copies it any more. `.github#1077`'s
+    invariant — "a `coordination-kit` receiver can actually run the engine `scripts/fsgg-coord` execs" —
+    used to be ARRANGED FOR, by keeping the shim row and the manifest row on the same fabric, which could
+    only ever constrain WHICH FABRIC TWO ROWS RODE and said nothing when the property broke by another
+    route. ADR-0068 replaces that arrangement with an assertion: FS-GG/.github's `repos-audit`
+    engine-manifest sweep reads THIS repo's real `.config/dotnet-tools.json` DAILY and reds, naming the
+    repo, unless it declares `fs.gg.coord.cli` with a usable version. So deleting this file is caught
+    centrally rather than silently — the one failure mode that "receiver-owned" would otherwise have
+    introduced. The sweep deliberately does NOT grade the engine VERSION (that is the kit-pin freshness
+    sweep's shape, one package over); a stale engine here is Renovate's job, and widening the sweep would
+    red the whole fleet on the day the engine ships a version.
   -->
 
   <PropertyGroup>
