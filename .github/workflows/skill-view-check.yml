@@ -160,8 +160,9 @@ jobs:
       # retirement instead of after it. It could not land later: that window is a red required context
       # on every pull request. Hence one commit, both halves.
       #
-      # The flags are in the action, once, because six jobs across four workflows need this exact
-      # invocation and retyping it is how `--source` and `--roots` drift apart. See its header.
+      # The flags are in the action, once, because TEN jobs across five workflows need this exact
+      # invocation and retyping it is how `--source` and `--roots` drift apart. See its header for why
+      # the reach is that wide here and was not on any earlier receiver.
       - uses: ./.github/actions/skill-view
 
       # The bare command a worker runs, over this repo's own declared roots. The expected set is the

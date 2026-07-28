@@ -171,6 +171,15 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — `.template.config/template.json` vendors the
+      # REPO-ROOT `.agents/skills/` (`include: ["speckit-*/**"]`, `lifecycle == "spec-kit"`), and that
+      # root is now a generated view that no fresh checkout has. Without this step `dotnet new install`
+      # refuses the template outright — `[Error][MV012] Source '.agents/skills/' in template does not
+      # exist` — so this job would fail at "Install template + instantiate generated product". See
+      # `.github/actions/skill-view`.
+      - uses: ./.github/actions/skill-view
+
       # #680: the pin + pack + user-level NuGet.Config + feed assertion used to live inline here, and
       # were the ONLY copy. They are now the shared `.github/actions/product-local-feed`, used verbatim
       # by `gate.yml`'s PR-time `generated-product-gate` as well — so the gate that is supposed to
@@ -279,6 +288,23 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — THIS IS THE JOB THAT PUBLISHES, AND IT IS THE ONE
+      # WHERE OMITTING THE GENERATE IS WORST. `dotnet pack .template.package/…` globs `..\**\*` from
+      # the repo root, and `.template.config/template.json` vendors the REPO-ROOT `.agents/skills/`
+      # (`include: ["speckit-*/**"]`). That root is a generated view now, absent in a fresh checkout,
+      # and pack does NOT fail on a missing glob — it ships a smaller package. MEASURED on a bare clone
+      # of the retirement commit, 2026-07-28, by packing both ways and reading the nupkg:
+      #
+      #   with the view generated   -> 1914 entries, 70 under content/.agents/skills/, 50 skill dirs
+      #   without it                -> 1843 entries,  0 under content/.agents/skills/
+      #
+      # A consumer installing the second one gets `[Error][MV012] Source '.agents/skills/' in template
+      # does not exist` and the template does not load AT ALL. That is a broken published artifact
+      # produced by a green publish, so the step goes here rather than being left to the gate that only
+      # predicts this job. MSBuild's `**` DOES traverse the view symlink — that was measured, not
+      # assumed, and it is the only reason a generate is sufficient. See `.github/actions/skill-view`.
+      - uses: ./.github/actions/skill-view
 
       # `github.event_name` CANNOT identify a `workflow_call` run: a called workflow reports the
       # CALLER's event. `release-tags.yml` is `push: branches: [main]`, so a call from it arrives here

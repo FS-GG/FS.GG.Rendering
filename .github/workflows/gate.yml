@@ -1027,6 +1027,22 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — without this the TEMPLATE ITSELF IS INVALID, which
+      # is a louder failure than a missing skill and worth naming exactly. `.template.config/
+      # template.json` carries a source row `".agents/skills/" -> ".agents/skills/"` (include
+      # `speckit-*/**`, gated on `lifecycle == "spec-kit"`) pointing at the REPO ROOT's now-generated
+      # view. Measured on a bare clone of the retirement commit, 2026-07-28:
+      #
+      #   $ dotnet new install .
+      #   Error: The template 'FS GG UI Governed Project' (FS.GG.UI.Template) has the following
+      #     validation errors:
+      #        [Error][MV012] Source '.agents/skills/' in template does not exist.
+      #   Error: Failed to load the template …: the template is not valid.
+      #
+      # and this job then dies at `dotnet new failed for profile=app (exit 103): No templates or
+      # subcommands found matching: 'fs-gg-ui'`. With the view: `result: pass`, all lifecycles.
+      - uses: ./.github/actions/skill-view
+
       - name: Scaffold every profile × lifecycle and audit what it emitted
         env:
           FS_GG_RUN_LIFECYCLE_VALIDATION: '1'
@@ -1105,6 +1121,18 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+
+      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — THE TEMPLATE PAYLOAD VENDORS THE REPO-ROOT
+      # `.agents/skills/`, so this job cannot scaffold without the view.
+      # `.template.config/template.json` carries a source row `".agents/skills/" -> ".agents/skills/"`
+      # with `include: ["speckit-*/**"]`, gated on `lifecycle == "spec-kit"` — 16 directories, and they
+      # are the REPO ROOT's, not `template/base`'s. That root is now a generated view, absent in a fresh
+      # checkout, so `dotnet new install .` here would install a template whose spec-kit lane emits no
+      # `speckit-*` skills at all — and the scaffolded product would be audited as if that were correct.
+      # Repointing the source at `.claude/skills/` would be a template-contract change
+      # (`validate-lifecycle-template.fsx` classifies that row BY its source path); it is filed on
+      # FS-GG/.github#1747 rather than ridden in here.
+      - uses: ./.github/actions/skill-view
 
       # Packs FS.GG.UI.* from THIS TREE at the template's pin and points the machine at that feed.
       # Shared verbatim with release.yml's `template-product-tests`, so the PR gate and the release

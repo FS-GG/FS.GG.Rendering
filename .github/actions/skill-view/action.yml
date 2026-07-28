@@ -8,10 +8,11 @@ description: >-
   a new worktree and every runner alike. Any job that READS this repo's runtime skill roots therefore
   has to generate it first, and every one of them has to generate it the SAME way.
 
-  WHY AN ACTION RATHER THAN A `run:` LINE PER JOB. SIX jobs across FOUR workflows need this — `gate`,
-  `skill-parity-gate` and `skill-refs` in `gate.yml`, plus `skill-view-check.yml`,
-  `skill-refs-sweep.yml` and `release-tags.yml`'s `plan` — and the flags are load-bearing in a way that
-  does not survive being retyped:
+  WHY AN ACTION RATHER THAN A `run:` LINE PER JOB. TEN jobs across FIVE workflows need this:
+  `gate`, `skill-parity-gate`, `skill-refs`, `generated-product-gate` and `lifecycle-live-gate` in
+  `gate.yml`; `template-product-tests` and `publish-packages` in `release.yml`; plus
+  `skill-view-check.yml`, `skill-refs-sweep.yml` and `release-tags.yml`'s `plan`. The flags are
+  load-bearing in a way that does not survive being retyped ten times:
 
     * `--source .claude/skills` names the TRACKED root. Getting it backwards points the view at itself.
     * `--roots ".agents/skills"` names the VIEW roots EXPLICITLY. Letting the tool fall back to
@@ -26,6 +27,14 @@ description: >-
 
   This is the same argument `.github/actions/locked-restore` makes in its own header — "two inline
   copies is how they drift" — applied to a rule the whole of ADR-0067 exists to stop restating.
+
+  TEN IS NOT ACCIDENTAL, AND IT IS THIS REPO'S OWN NUMBER. The reach is set by
+  `.template.config/template.json`, which vendors the REPO-ROOT `.agents/skills/` into the shipped
+  `dotnet new` template (`include: ["speckit-*/**"]`, `lifecycle == "spec-kit"`). That makes the view
+  root an input to every job that installs, scaffolds, audits, packs or PUBLISHES the template — not
+  only to the jobs that assert over skills. No other receiver retired so far has that coupling, and it
+  is the one thing a `diff -r` of the two roots cannot show, because the roots agreed byte for byte:
+  the dependency is on the PATH, not on the content. Recorded on FS-GG/.github#1747.
 
   NOT THE ONLY CALLER OF `skill-view generate`, DELIBERATELY. `.config/kit/FS.GG.Kit.receiver.proj`'s
   `FsggRenderingGenerateSkillView` target runs it too, `BeforeTargets="FsggKitCheckSkillView"`, for
