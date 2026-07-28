@@ -85,6 +85,102 @@ scripts/fsgg-coord inbox --repo <r>
 
 ## 1. Take the item
 
+### Engine currency
+
+**Your worktree is current. The engine it execs need not be, and that is a different checkout**
+(`.github#1594`). In `.github` the coordination engine is a *source build* — `scripts/fsgg-coord`
+resolves `src/FS.GG.Coord.Cli/bin/Release/net10.0/` under the **shared** checkout for every caller
+standing in a worktree (tier 2b, #931). A fresh worktree from `origin/main` makes your **source**
+current and leaves that **engine** at whatever somebody last built. Nothing in this protocol used to
+move it: §2 fetches, §2 branches, and no step pulls or rebuilds the tree the binary actually comes
+from. So its freshness was whoever-last-built-it, and it drifts monotonically for as long as the
+fan-out is working.
+
+Since `.github#1549` that drift is no longer silent — it is a **refusal**. `stale_guard` compares the
+shared checkout's `HEAD` to `origin/main` under the engine's own source trees and, when it is behind,
+refuses every `BOARD_WRITES` verb:
+
+```
+fsgg-coord: WARNING — the engine is STALE, so it need not behave as the code you are reading does.
+            BEHIND refs/remotes/origin/main by N commit(s) under the engine's own source trees …
+            Board writes are refused until you do.
+```
+
+`take` and `claim` are both in that set, so the refusal lands on the **first** thing you do — and on
+`heartbeat` and `done` if a merge lands mid-item, which is where it costs a lease. Run the check
+before the write, not after the refusal:
+
+```sh
+git fetch origin
+SHARED="$(git worktree list --porcelain | head -1 | cut -d' ' -f2-)"       # the path, for the repair
+SHARED_HEAD="$(git worktree list --porcelain | sed -n '2s/^HEAD //p')"     # the commit it is sitting on
+[ -n "$SHARED_HEAD" ] || { echo "cannot read the shared checkout's HEAD — that is not freshness"; exit 1; }
+git rev-list --count "$SHARED_HEAD..origin/main" -- \
+  src/FS.GG.Coord.Cli src/FS.GG.Coord.Core src/FS.GG.Coord.GitHub
+```
+
+Non-zero, and only then:
+
+```sh
+git -C "$SHARED" merge --ff-only origin/main
+dotnet build "$SHARED/src/FS.GG.Coord.Cli" -c Release
+```
+
+Every line of that has a reason, and skipping one costs the thing it protects:
+
+- **`git worktree list --porcelain | head -1`, not `..`.** git documents the *main* working tree
+  first, as an absolute path from anywhere. This is the same spelling `scripts/fsgg-coord`'s own
+  `shared_toplevel` uses, deliberately — a recipe that resolved the shared checkout differently from
+  the resolver would measure a tree the engine does not come from. In a receiver (no source build,
+  no `src/FS.GG.Coord.*`) the count is `0` and this whole block is a no-op, which is correct: a
+  receiver execs a packaged engine and has nothing beside it to be stale against.
+- **The check reads the shared checkout's HEAD *as a commit*, and runs `rev-list` HERE — no
+  `git -C`.** `--porcelain`'s second line is `HEAD <sha>`, and every linked worktree shares the
+  common dir's object database, so your own checkout can resolve and walk a commit that is checked
+  out somewhere else. That is not a micro-optimisation: a worker isolated to its worktree may have
+  git operations *against the shared checkout* refused outright by its host (measured, this run), and
+  a check spelled `git -C "$SHARED" rev-list …` would be unavailable to exactly the worker it exists
+  to protect. Spelled this way, the CHECK always runs; only the repair needs reach.
+- **An empty `SHARED_HEAD` REFUSES, and that guard is not decoration.** `--porcelain`'s second line is
+  `bare` rather than `HEAD <sha>` for a bare main working tree, and `git rev-list --count
+  "..origin/main"` is *valid git* that silently means `HEAD..origin/main` — i.e. it would measure YOUR
+  worktree, which is current by construction, and answer `0`. That is a check reporting fresh about a
+  subject it could not see: the same fail-open `upstream_drift` refuses three times over
+  (`.github#266`), so this one refuses too. Cannot look ≠ nothing to find.
+- **The `git fetch origin` is the one §2 already tells you to run**, and it does double duty — a
+  linked worktree shares the common dir's refs, so your fetch advances the *shared* checkout's
+  `origin/main` from the outside. That is why the check needs no network of its own, and why the
+  guard can afford to ask the question on every invocation.
+- **The check is scoped to the engine's three source trees, and it is deliberately NOT
+  `merge-base --is-ancestor origin/main HEAD`.** That spelling is true only when `HEAD` contains
+  *all* of `origin/main`, so a docs commit, a workflow edit or a registry row would send every worker
+  into a Release rebuild on every merge — "halting the fleet whenever `main` moves" is the outcome
+  #1549 explicitly refused. Same subject as the guard, so the check and the refusal cannot disagree;
+  same subject as `scripts/check-engine-freshness.py`, so neither can drift from the other. It is
+  four local `git` calls, ~5 ms, and the expensive half runs only when it answers non-zero.
+- **`merge --ff-only origin/main`, NOT `pull --ff-only`.** The shared checkout is routinely on a
+  **detached HEAD** — measured on this host mid-run — and `git pull --ff-only` there exits 1 with
+  *"You are not currently on a branch"*, without moving anything. `merge --ff-only` fast-forwards a
+  detached HEAD and a branch alike, and still refuses (loudly) if the tree has diverged, which is the
+  case you want escalated rather than merged.
+- **The rebuild names `$SHARED` explicitly.** A bare `dotnet build src/FS.GG.Coord.Cli -c Release`
+  rebuilds *your* worktree — never the stale tree — and leaves the refusal exactly where it was.
+
+**If you cannot touch the shared checkout, that is an answer, not a failure — escalate and stop.**
+Some hosts isolate a worker to its worktree and *refuse* its git operations against the shared
+checkout outright (measured on this host: `git -C <shared> …` is rejected before it runs). You then
+cannot carry out the repair, and the honest move is to report it to whoever dispatched you and stop
+**before** spending the lease on a `take` the guard will refuse — not to work the item and discover it
+at `done`.
+
+**You own the check; the repair belongs to whoever owns the shared checkout.** It is a mutation of a
+tree N workers share, and the actor that *creates* the drift is the one merging their PRs — so the
+refresh belongs with whoever dispatched the wave, which is also the only actor that can serialise it.
+That ownership is filed as `.github#1663` and is **not** in place yet, which is precisely why the rule
+above is a floor rather than a division of labour: check every time, because whether anyone else did
+is not something you can observe from here. And note `.github#1664` — `stale_guard`'s own printed
+remedy still says `pull --ff-only`, which is why this recipe does not.
+
 ```sh
 scripts/fsgg-coord take --repo <r>     # pick + claim the next SCHEDULABLE item, retrying a lost race
 ```
@@ -354,6 +450,10 @@ tree against *itself* and not one has an opinion about whether it is current. On
 two hours (#878). Another came one push from reverting a 76-line rewrite of **this very file**, merged
 2h earlier, with a clean diff and no conflict (#892). Nothing inside the tree can tell you; by the time
 any gate runs, the evidence is gone.
+
+**And a current worktree is not a current engine** — the binary you exec comes from the *shared*
+checkout, which this step does not move. That is [§1 Engine currency](#engine-currency), and if you
+skipped it, do it now rather than at the refusal.
 
 Use the isolation mechanism the current host exposes. Request a dedicated worktree when supported;
 otherwise create one explicitly from the fetched default branch before starting work. Do not copy a

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Cross-Repo Coordination"
-  short_description: "Coordinate contracts and work across FS-GG repos"
-  default_prompt: "Use $cross-repo-coordination to coordinate a dependency, contract, or shared decision across FS-GG repositories."

@@ -20,6 +20,29 @@ Keep `FSGG_WORKER` for the entire item. Never invent or copy a worker id.
 
 ## 1. Take one item
 
+**First, check the SHARED checkout's engine, because `take` is a board write.** In `.github` every
+worktree execs the engine built in the shared checkout, and a stale one **refuses** board writes
+(`.github#1549`) — so this is the step before the first write, not a recovery from it. The check is
+local, reads already-fetched refs, and costs milliseconds; the rebuild runs only when it fires:
+
+```bash
+git fetch origin
+SHARED="$(git worktree list --porcelain | head -1 | cut -d' ' -f2-)"
+SHARED_HEAD="$(git worktree list --porcelain | sed -n '2s/^HEAD //p')"
+[ -n "$SHARED_HEAD" ] || { echo "cannot read the shared checkout's HEAD — that is not freshness"; exit 1; }
+git rev-list --count "$SHARED_HEAD..origin/main" -- \
+  src/FS.GG.Coord.Cli src/FS.GG.Coord.Core src/FS.GG.Coord.GitHub
+```
+
+Zero: current, carry on. Non-zero: the engine you are about to run is not the code `main` says it is.
+Bring it current — `git -C "$SHARED" merge --ff-only origin/main`, then
+`dotnet build "$SHARED/src/FS.GG.Coord.Cli" -c Release`. **If you cannot touch the shared checkout**,
+say so to whoever dispatched you and stop *before* spending the lease on writes the guard will refuse —
+the repair belongs to whoever owns that checkout, and you must never assume it was done. Read
+[engine currency](references/deep-detail.md#engine-currency) before
+running any of it — every clause above has a measured reason, including why the check needs no `-C`
+and why the repair is not `pull --ff-only`.
+
 ```bash
 scripts/fsgg-coord budget
 scripts/fsgg-coord take --repo <repo> --json

@@ -1,0 +1,430 @@
+#!/usr/bin/env bash
+# skill-view — the checkout-time generated skill view, and the LOUD ABSENCE CHECK it makes mandatory.
+#
+# ADR-0067 (`resolve, don't copy`) §6/§7/§8; phase 2 of the rewrite decided on .github#1611, tracked as
+# .github#1635. Phase 1 (.github#1621) measured the ground this stands on.
+#
+# TWO SUBCOMMANDS, AND THE SECOND IS THE REASON THE FIRST IS ALLOWED TO EXIST.
+#
+#   skill-view generate  produce each runtime's skill root as a VIEW of ONE source directory.
+#   skill-view check     assert the skills that source declares are VISIBLE at each runtime's
+#                        expected path — and FAIL LOUDLY when they are not.
+#
+# WHY `check` IS NOT OPTIONAL AND NOT DEFERRABLE (ADR-0067 §8). Today a materialization bug turns a
+# gate red: the copied tree fails visibly. Under resolution every failure mode phase 1 measured —
+# an ABSENT root, a DANGLING symlink, and a `core.symlinks=false` checkout of a COMMITTED symlink —
+# is **exit 0 with no diagnostic in BOTH runtimes** (Claude Code 2.1.220, Codex CLI 0.145.0), and the
+# result is an agent that quietly has no skills. Shipping `generate` without `check` would trade a
+# loud failure for a silent one, which ADR-0067 records in as many words: *"a rewrite that removes the
+# loud failure and adds the quiet one is worse than no rewrite."* So `generate` RUNS `check` over what
+# it just produced, and refuses to report success without it.
+#
+# WHY NOT A COMMITTED SYMLINK (ADR-0067 §6). A committed symlink does not DEGRADE under
+# `git -c core.symlinks=false` — the git-for-Windows default without Developer Mode. It checks out as a
+# small regular TEXT FILE whose body is the link target, and both runtimes then exit 0 with zero skills.
+# ADR-0011's and ADR-0014 Decision 6's rejection of committed symlinks stands. This tool emits nothing
+# tracked; `git status --porcelain` is empty after it runs. It links where it can and copies where it
+# must, and neither runtime can tell the difference (phase 1 Q3, measured).
+#
+# WHY NOT A RESOLVER (ADR-0067 §7). `--plugin-dir`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and the local
+# directory marketplace all work, and each costs session-only scope, a relocated config home including
+# auth, or a per-machine bootstrap. Producing the directory at the runtime's own expected path is
+# strictly cheaper than every one of them.
+#
+# THIS TOOL RETIRES NOTHING (ADR-0067 §9). `coordination-sync`, kit materialization,
+# `kit-published-coherence`, `coordination-coherence`, `skill-union-assert` and the freshness sweep keep
+# running unchanged. `generate` REFUSES a root that git TRACKS, with no override — a repo that still
+# commits its roots is a repo whose replacement is not yet proven, and a generator able to delete
+# committed skills there would be executing phase 4 by accident. Untracking a root is a decision, taken
+# in the change that proves the view, never a side effect of running this.
+#
+# THE ROOT SET IS NOT THIS TOOL'S TO CHOOSE. It comes from `lib/roots.sh` — the SAME precedence parser
+# `skill-union-assert.sh` and `coordination-sync` resolve with (.github#525), because a tree whose root
+# set has two readers that agree only by coincidence of defaults is the defect that library exists to
+# have ended. ADR-0067 §5's two-root end state is a separate, separately-authorised change
+# (.github#1636); nothing here anticipates it.
+#
+# THE EXPECTED SET IS NEVER DERIVED FROM THE ROOTS THEMSELVES. `check` demands `--source` or
+# `--manifest` and dies without one. Deriving "what should be visible" by looking at what IS visible is
+# the vacuous-pass shape (epic #266): every root empty would then satisfy every root. An expected set
+# that comes out EMPTY is likewise exit 2, never a pass — "I found nothing to look for" and "everything
+# I looked for is there" are opposite facts.
+#
+# BEWARE THE SUBSET MANIFEST. `--manifest` believes what it is given. `registry/coordination-kit-
+# skill-manifest.json` declares FOUR of this repo's thirteen skills and `registry/driver-skill-
+# manifest.json` declares six; either would pass over a tree that had lost the other nine. That is
+# .github#1504's coherent-but-incomplete class exactly. Under the resolved layout the honest expectation
+# is the SOURCE directory, which cannot be a subset of itself.
+#
+# Usage:
+#   skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2> ..."] [--mode auto|link|copy]
+#   skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> ..."]
+#
+# Exit: 0 = every declared skill is visible at every configured root
+#       1 = a VERDICT: at least one skill is not visible somewhere (each printed with its class)
+#       2 = misconfiguration, or no verdict could be reached. Never a pass.
+
+set -euo pipefail
+
+TREE="."
+ROOTS=""
+ROOTS_ARG=""
+ROOTS_SRC=""
+SOURCE=""
+MANIFEST=""
+MODE="auto"
+
+# ADR-0065's two, as amended by ADR-0067 §5 and landed by .github#1636. `lib/roots.sh` takes the
+# default from its CALLER precisely so a migration changes it in one reviewed place rather than four
+# by drift — and this is that migration: `.codex/skills` is Codex's OTHER native root, so it carried
+# no runtime the remaining two do not and only ever produced a duplicate catalog entry.
+DEFAULT_ROOTS=".claude/skills .agents/skills"
+DEFAULT_LABEL="default (ADR-0065's two)"
+
+die() { echo "::error::skill-view: $*" >&2; exit 2; }
+
+# shellcheck source=lib/args.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/args.sh"
+# shellcheck source=lib/roots.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/roots.sh"
+
+usage() {
+  cat <<'EOF'
+skill-view — generate a runtime skill root as a view of one source, and assert it is visible.
+
+  skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2>"] [--mode auto|link|copy]
+  skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> <r2>"]
+
+  --source <dir>     the ONE source of truth: a directory of <id>/SKILL.md skills.
+  --manifest <file>  (check only) a JSON catalog {"skills":[{"id":...}]} to expect instead.
+  --tree <dir>       the repository root the roots are relative to (default: .).
+  --roots "<...>"    override the root set. Precedence: --roots > $AGENT_SKILL_ROOTS >
+                     <tree>/.agent-skill-roots > the ADR-0011 default.
+  --mode             auto (symlink, fall back to copy), link (symlink or die), copy (always copy).
+
+Exit: 0 ok; 1 a skill is not visible at some root; 2 misconfiguration / no verdict.
+EOF
+}
+
+# ---------------------------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------------------------
+
+need_cmd() { command -v "$1" >/dev/null 2>&1 || die "$1 not found ($2)."; }
+
+abs() { (cd "$1" >/dev/null 2>&1 && pwd) || die "not a directory: $1"; }
+
+# ids_from_source <dir> — the skills a source directory declares: every immediate subdirectory that
+# holds a SKILL.md. A subdirectory WITHOUT one is not a skill and is not silently counted as one.
+ids_from_source() {
+  local src="$1" d
+  for d in "$src"/*/; do
+    [ -d "$d" ] || continue
+    [ -f "$d/SKILL.md" ] || continue
+    basename "$d"
+  done
+}
+
+# ids_from_manifest <file> — `.skills[].id`, read with python3 rather than a regex, because a catalog
+# read wrongly is a catalog that certifies the wrong set.
+ids_from_manifest() {
+  need_cmd python3 "required to read --manifest"
+  python3 - "$1" <<'PY'
+import json, sys
+path = sys.argv[1]
+try:
+    doc = json.loads(open(path, encoding="utf-8").read())
+except (OSError, ValueError) as e:
+    sys.exit(f"cannot read manifest {path}: {e}")
+skills = doc.get("skills")
+if not isinstance(skills, list):
+    sys.exit(f"{path}: .skills must be an array")
+for row in skills:
+    if not isinstance(row, dict) or not str(row.get("id", "")).strip():
+        sys.exit(f"{path}: every .skills[] row needs a non-empty id")
+    print(row["id"])
+PY
+}
+
+# classify_root <abs-root-path> — WHAT IS ACTUALLY AT THE RUNTIME'S EXPECTED PATH.
+#
+# The three classes below are the three failure modes phase 1 measured as exit-0-and-silent in both
+# runtimes. They are reported SEPARATELY on purpose: `skill-union-assert.sh` calls all three
+# "configured root is absent … this is a REAL partition: the producer never materialized <root>",
+# which is measurably wrong for two of them — the path is right there, and no producer was involved.
+# A diagnostic that names the wrong cause sends the reader to the wrong repair, which is the failure
+# `lib/roots.sh`'s own CRLF note warns about one layer down.
+classify_root() {
+  local p="$1"
+  if [ -d "$p" ]; then echo "dir"; return; fi
+  if [ -L "$p" ]; then echo "dangling-link"; return; fi     # a link, and -d already said it resolves nowhere
+  if [ -e "$p" ]; then
+    if [ -f "$p" ] && looks_like_link_body "$p"; then echo "text-file-link"; return; fi
+    echo "not-a-directory"; return
+  fi
+  echo "absent"
+}
+
+# looks_like_link_body <file> — is this regular file the CHECKED-OUT BODY of a committed symlink?
+#
+# Two independent tells, strongest first:
+#   1. git records the path with mode 120000 (a symlink) while the working tree holds a regular file.
+#      That is `core.symlinks=false` and nothing else, and it needs no guessing.
+#   2. failing a git answer: a short, single-line, NUL-free body that names a path. This is a SNIFF and
+#      says so in its message — it exists so the class is still named on a tree git cannot speak for
+#      (an export, a tarball, a vendored copy).
+looks_like_link_body() {
+  local f="$1" mode body
+  if [ -n "${TREE_ABS:-}" ] && git -C "$TREE_ABS" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    mode="$(git -C "$TREE_ABS" ls-files --stage -- "$f" 2>/dev/null | awk '{print $1; exit}')"
+    [ "$mode" = "120000" ] && return 0
+  fi
+  [ "$(wc -c <"$f")" -le 1024 ] || return 1
+  # A NUL byte means a binary blob, not a link body. Tested by DELETION rather than by `grep -P`,
+  # whose PCRE mode is a GNU extension this repo cannot assume on every runner.
+  [ "$(LC_ALL=C tr -d '\000' <"$f" | wc -c)" -eq "$(wc -c <"$f")" ] || return 1
+  [ "$(wc -l <"$f")" -le 1 ] || return 1
+  body="$(tr -d '\n\r' <"$f")"
+  case "$body" in
+    "" ) return 1 ;;
+    */* ) return 0 ;;
+    * ) [ -e "$(dirname "$f")/$body" ] && return 0 ;;
+  esac
+  return 1
+}
+
+# ---------------------------------------------------------------------------------------------
+# check — THE LOUD ABSENCE CHECK
+# ---------------------------------------------------------------------------------------------
+do_check() {
+  local ids=() id root p cls violations=0 checked=0 visible root_ok
+
+  local raw=""
+  if [ -n "$SOURCE" ]; then
+    [ -d "$SOURCE" ] || die "--source is not a directory: $SOURCE"
+    raw="$(ids_from_source "$SOURCE")"
+  elif [ -n "$MANIFEST" ]; then
+    [ -f "$MANIFEST" ] || die "--manifest is not a file: $MANIFEST"
+    # A manifest this tool COULD NOT READ is exit 2, never an empty expected set: "unreadable" and
+    # "declares nothing" are opposite facts and only one of them is safe to act on.
+    raw="$(ids_from_manifest "$MANIFEST")" || die "could not read --manifest $MANIFEST (see above)."
+  else
+    die "check needs --source <dir> or --manifest <file>. Deriving the expected set from the roots would make every empty root pass (epic #266)."
+  fi
+
+  [ -n "$raw" ] || die "the expected skill set is EMPTY — refusing to report 'everything is visible' over nothing (epic #266)."
+  mapfile -t ids <<<"$raw"
+  [ "${#ids[@]}" -gt 0 ] || die "the expected skill set is EMPTY — refusing to report 'everything is visible' over nothing (epic #266)."
+
+  local nroots=0
+  for root in $ROOTS; do nroots=$((nroots + 1)); done
+
+  echo "skill-view check: tree='$TREE_ABS' roots='$ROOTS' (from $ROOTS_SRC) expecting ${#ids[@]} skill(s)"
+
+  for root in $ROOTS; do
+    p="$TREE_ABS/$root"
+    cls="$(classify_root "$p")"
+    root_ok=0
+    case "$cls" in
+      dir) root_ok=1 ;;
+      absent)
+        echo "::error::skill-view: [absent-root] $root does not exist. The view was never generated, so this runtime resolves ZERO skills and exits 0 while doing it. Run: scripts/skill-view generate --source <dir>" >&2
+        violations=$((violations + 1)) ;;
+      dangling-link)
+        echo "::error::skill-view: [dangling-root] $root is a symlink that resolves to nothing (-> $(readlink "$p")). This runtime resolves ZERO skills and exits 0 while doing it." >&2
+        violations=$((violations + 1)) ;;
+      text-file-link)
+        echo "::error::skill-view: [text-file-root] $root is a regular FILE whose body names a path ('$(tr -d '\n\r' <"$p")'). That is a COMMITTED SYMLINK checked out with core.symlinks=false — the git-for-Windows default without Developer Mode. ADR-0067 §6: the mechanism is a generated view, never a committed symlink. This runtime resolves ZERO skills and exits 0 while doing it." >&2
+        violations=$((violations + 1)) ;;
+      *)
+        echo "::error::skill-view: [not-a-directory-root] $root exists and is not a directory. This runtime resolves ZERO skills and exits 0 while doing it." >&2
+        violations=$((violations + 1)) ;;
+    esac
+
+    if [ "$root_ok" -eq 0 ]; then
+      # The per-skill loop below would report ${#ids[@]} identical follow-on failures for one cause.
+      # One named cause is what a reader can act on; N derived ones are what they scroll past.
+      continue
+    fi
+
+    visible=0
+    for id in "${ids[@]}"; do
+      checked=$((checked + 1))
+      p="$TREE_ABS/$root/$id/SKILL.md"
+      if [ ! -e "$p" ]; then
+        if [ -L "$p" ]; then
+          echo "::error::skill-view: [dangling-skill] $root/$id/SKILL.md is a symlink resolving to nothing (-> $(readlink "$p"))." >&2
+        else
+          echo "::error::skill-view: [missing-skill] $root/$id/SKILL.md is not visible at this runtime's expected path." >&2
+        fi
+        violations=$((violations + 1)); continue
+      fi
+      if [ ! -f "$p" ]; then
+        echo "::error::skill-view: [not-a-file-skill] $root/$id/SKILL.md exists and is not a regular file." >&2
+        violations=$((violations + 1)); continue
+      fi
+      if [ ! -r "$p" ]; then
+        echo "::error::skill-view: [unreadable-skill] $root/$id/SKILL.md is not readable. A runtime that cannot read it has no skill; unreadable is not present." >&2
+        violations=$((violations + 1)); continue
+      fi
+      if [ ! -s "$p" ]; then
+        echo "::error::skill-view: [empty-skill] $root/$id/SKILL.md is empty." >&2
+        violations=$((violations + 1)); continue
+      fi
+      visible=$((visible + 1))
+    done
+    echo "  $root: $visible/${#ids[@]} declared skill(s) visible"
+  done
+
+  if [ "$violations" -gt 0 ]; then
+    echo "::error::skill-view: $violations violation(s) — the declared skills are NOT all visible. Both runtimes would exit 0 over this tree; this check is the only thing that says so." >&2
+    exit 1
+  fi
+
+  # The denominator is printed with the count, per .github#1513: a count whose population is invisible
+  # is a coverage claim the reader supplies for themselves, generously.
+  echo "skill-view check: OK — ${#ids[@]} declared skill(s) visible in every one of $nroots root(s) ($checked path(s) examined)."
+}
+
+# ---------------------------------------------------------------------------------------------
+# generate — THE VIEW
+# ---------------------------------------------------------------------------------------------
+
+# relpath <from-dir> <to-path> — a relative symlink target, so the view survives a moved checkout.
+relpath() {
+  need_cmd python3 "required to compute a relative symlink target"
+  python3 -c 'import os,sys; print(os.path.relpath(sys.argv[2], sys.argv[1]))' "$1" "$2"
+}
+
+do_generate() {
+  local ids=() root dst parent target cls mode_used
+
+  [ -n "$SOURCE" ] || die "generate needs --source <dir>: the ONE source of truth the view is a view OF."
+  [ -d "$SOURCE" ] || die "--source is not a directory: $SOURCE"
+  case "$MODE" in auto|link|copy) ;; *) die "--mode must be auto, link or copy (got '$MODE')." ;; esac
+
+  local src_abs raw
+  src_abs="$(abs "$SOURCE")"
+  raw="$(ids_from_source "$src_abs")"
+  [ -n "$raw" ] || die "--source '$SOURCE' holds no <id>/SKILL.md — refusing to generate an EMPTY view, which every runtime would accept in silence (epic #266)."
+  mapfile -t ids <<<"$raw"
+
+  echo "skill-view generate: tree='$TREE_ABS' source='$src_abs' (${#ids[@]} skill(s)) roots='$ROOTS' (from $ROOTS_SRC) mode=$MODE"
+
+  for root in $ROOTS; do
+    dst="$TREE_ABS/$root"
+
+    # THE IDENTITY CASE IS ASKED FIRST, AND THE ORDER IS LOAD-BEARING. ADR-0067 §5's end state makes
+    # ONE root the canonical source — `.agents/skills`, because Codex reads it with no configuration —
+    # and that root is TRACKED, because it is the source of truth. Asking the tracked question first
+    # would refuse the very layout the record is aiming at. Generating "over" the source must never
+    # remove it; there is nothing to do, and saying so is the whole answer.
+    if [ -d "$dst" ] && [ "$(abs "$dst")" = "$src_abs" ]; then
+      echo "  $root: identity (this root IS the source) — nothing to generate"
+      continue
+    fi
+
+    # TRACKED ROOTS ARE REFUSED, WITH NO OVERRIDE (ADR-0067 §9). Nothing is retired before its
+    # replacement is proven, and a generator that could clobber committed skills would retire them
+    # by accident, in a repo whose CI is green, on a run nobody read.
+    if git -C "$TREE_ABS" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      if [ -n "$(git -C "$TREE_ABS" ls-files -- "$root" 2>/dev/null | head -n 1)" ]; then
+        die "refusing to generate over '$root': git TRACKS content there. ADR-0067 §9 retires nothing before its replacement is proven — stop tracking the root in the change that proves the view, then generate. There is no --force for this."
+      fi
+    fi
+
+    if [ -e "$dst" ] || [ -L "$dst" ]; then
+      # Only a previously-generated view is replaced. A directory of unknown provenance is somebody's
+      # data until proven otherwise.
+      if [ -L "$dst" ]; then
+        rm -f "$dst"
+      elif [ -d "$dst" ] && [ -f "$dst/.skill-view" ]; then
+        rm -rf "$dst"
+      else
+        die "refusing to replace '$root': it exists, is not a symlink, and carries no .skill-view receipt, so this tool did not create it."
+      fi
+    fi
+
+    parent="$(dirname "$dst")"
+    mkdir -p "$parent"
+
+    mode_used=""
+    if [ "$MODE" = "auto" ] || [ "$MODE" = "link" ]; then
+      target="$(relpath "$parent" "$src_abs")"
+      if ln -s "$target" "$dst" 2>/dev/null && [ -d "$dst" ]; then
+        mode_used="link"
+      else
+        rm -f "$dst" 2>/dev/null || true
+        if [ "$MODE" = "link" ]; then
+          die "--mode link: could not create a usable symlink at '$root' (this filesystem or OS refuses one). Use --mode copy, or --mode auto."
+        fi
+      fi
+    fi
+
+    if [ -z "$mode_used" ]; then
+      mkdir -p "$dst"
+      # The receipt is what makes a re-run idempotent without a --force that could eat real data. It
+      # is a DOTFILE at the root's top level, where neither runtime looks: both scan for
+      # <id>/SKILL.md subdirectories, so it adds no catalog entry to either.
+      printf 'generated by scripts/skill-view from %s\n' "$src_abs" > "$dst/.skill-view"
+      for id in "${ids[@]}"; do
+        cp -R "$src_abs/$id" "$dst/$id"
+      done
+      mode_used="copy"
+    fi
+
+    cls="$(classify_root "$dst")"
+    [ "$cls" = "dir" ] || die "generated '$root' and it did not come out as a directory (classified: $cls). Refusing to report success."
+    echo "  $root: generated ($mode_used)"
+
+    # NOTHING IT EMITS IS TRACKED — and "untracked" is only half of it. A generated root that git does
+    # not IGNORE shows up in `git status` and in every drift signal a worker reads, which is how a
+    # generated artifact starts getting committed by someone tidying up. The remedy is a line in the
+    # consuming repo's `.gitignore`, and this tool will not write one: a tracked file is exactly what
+    # it may not produce. So it says so, loudly, and leaves the edit to the repo.
+    if git -C "$TREE_ABS" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      if ! git -C "$TREE_ABS" check-ignore -q -- "$root" 2>/dev/null; then
+        echo "::warning::skill-view: '$root' is generated but NOT git-ignored — 'git status' will report it and someone will eventually commit it. Add '/$root' to the tree's .gitignore." >&2
+      fi
+    fi
+  done
+
+  # GENERATE RUNS CHECK. A view produced and not verified is exactly the silent failure this phase
+  # exists to prevent, so the success path goes through the check or there is no success path.
+  SOURCE="$src_abs"
+  do_check
+}
+
+# ---------------------------------------------------------------------------------------------
+# argv
+# ---------------------------------------------------------------------------------------------
+CMD="${1:-}"
+case "$CMD" in
+  generate|check) shift ;;
+  -h|--help) usage; exit 0 ;;
+  "") usage >&2; die "no subcommand (expected 'generate' or 'check')." ;;
+  *) usage >&2; die "unknown subcommand: $CMD (expected 'generate' or 'check')." ;;
+esac
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tree)     need_val "$@"; TREE="$2"; shift 2 ;;
+    --roots)    need_val "$@"; ROOTS_ARG="$2"; shift 2 ;;
+    --source)   need_val "$@"; SOURCE="$2"; shift 2 ;;
+    --manifest) need_val "$@"; MANIFEST="$2"; shift 2 ;;
+    --mode)     need_val "$@"; MODE="$2"; shift 2 ;;
+    -h|--help)  usage; exit 0 ;;
+    *) usage >&2; die "unknown argument: $1" ;;
+  esac
+done
+
+[ -d "$TREE" ] || die "--tree is not a directory: $TREE"
+TREE_ABS="$(abs "$TREE")"
+
+resolve_roots "$TREE_ABS" "$DEFAULT_ROOTS" "$DEFAULT_LABEL" "$ROOTS_ARG"
+[ -n "$ROOTS" ] || die "no roots resolved — refusing to examine nothing."
+
+case "$CMD" in
+  generate) do_generate ;;
+  check)    do_check ;;
+esac
