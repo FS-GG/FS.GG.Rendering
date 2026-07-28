@@ -63,6 +63,28 @@ how much of the declared world it covered, on three channels:
 The report's regenerate line repeats the `--surface` arguments, so the command
 it publishes reproduces the run it describes rather than a wider one.
 
+### A malformed `--surface` value is refused
+
+A `--surface` argument must be `<id>=<path>` with a **non-empty id** and a
+**non-empty path**. Anything else is a surface configuration error: the CLI
+names the offending value on stderr and exits `2` **before** any surface is
+checked, so nothing is regenerated — a run that refused its arguments never
+rewrites `docs/reports/skills-parity.md`.
+
+These are errors, not narrowings:
+
+- `--surface totally-malformed` — no `=`, so no path was named;
+- `--surface =path` — an empty id;
+- `--surface id=` — an empty path. An empty root resolves to the repository
+  root, so this would inventory the **whole tree** under one operator id while
+  reporting itself as a narrowed run. Both empty halves are errors, and so is a
+  whitespace-only one;
+- `--surface` with no value at all.
+
+Silently dropping such a value would run the **full** repository check and print
+`passed` with exit `0`, with none of the narrowing notices above firing — the
+run the operator asked for would not have happened, and nothing would say so.
+
 ### With `--fixture`
 
 `--fixture` and `--surface` combine with one defined meaning: `--fixture`
