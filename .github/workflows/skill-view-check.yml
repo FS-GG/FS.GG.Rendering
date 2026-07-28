@@ -127,9 +127,9 @@
 # then assert it is present" is the fail-open shape this whole item exists to remove: it would make
 # [absent-root] unreachable and hand back a gate that cannot fail. The generate is authorised by the
 # repo DECLARING a root to be a view, never by observing that one is missing. The step below is
-# therefore UNCONDITIONAL, and what grades the declaration itself is
-# `scripts/check-skill-view-roots.sh` on the required `Deterministic gate` — see its header for the
-# measurement showing every kit gate green on a tree with the root dropped from the contract.
+# therefore UNCONDITIONAL, and what grades the declaration itself is `scripts/skill-view check` with
+# its `--receiver-proj` flag, on the required `Deterministic gate` — see that job for the measurement
+# showing every kit gate green on a tree with the root dropped from the contract.
 
 name: skill-view-check
 

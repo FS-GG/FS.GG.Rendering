@@ -98,15 +98,53 @@ jobs:
       # noticed `.agents/skills` leaving this repo's RUNTIME CONTRACT: once a root is a view, dropping
       # it from <FsggKitViewSkillRoots> leaves `coordination-sync --check --against-pin` (the required
       # `kit / coordination-kit`) green — it reads <FsggKitSkillRoots> alone — and makes
-      # FsggKitCheckSkillView report "nothing to assert". MEASURED ON THIS REPO'S TREE, both green,
-      # with the root gone from the contract; the transcript is in the script's header. This step is
-      # what is red on that tree, and it is here because THIS JOB is a required status check — an alarm
-      # on an unrequired context is the FS.GG.Net shape that FS-GG/.github#1727 is open about.
+      # FsggKitCheckSkillView report "nothing to assert". MEASURED ON THIS REPO'S TREE AT
+      # FS.GG.Kit 0.17.0, both green with the root gone from the contract; the transcript is in
+      # FS-GG/.github#1777. These steps are what is red on that tree, and they are here because THIS
+      # JOB is a required status check — an alarm on an unrequired context is the FS.GG.Net shape that
+      # FS-GG/.github#1727 is open about.
       #
-      # It runs AFTER the generate above, deliberately: its view leg then grades a root that is
+      # IT USED TO BE `scripts/check-skill-view-roots.sh`, 18,346 BYTES OF THIS REPO'S OWN
+      # (FS-GG/.github#1710/#1777). Five receivers retired their second committed skill root, ADR-0067
+      # §8 obliged each to replace the loud failure it removed, and each hand-wrote the same alarm on
+      # the same day: 23,050 / 21,353 / 18,346 / 18,277 / 14,864 bytes for one invariant. The delivery
+      # seam already existed — `scripts/skill-view` is a kit-delivered file this repo pins and
+      # byte-verifies — so the assertion lives THERE now and this repo calls it.
+      #
+      # ADOPTING IT FIXES A DEFECT IN THIS REPO'S COPY BY CONSTRUCTION RATHER THAN BY REPAIR, AND THE
+      # DEFECT IS STATED AT ITS MEASURED SIZE. The copy guarded absence with a bare
+      # `[[ ! -e "$view" ]]`, which FOLLOWS symlinks, so a DANGLING view root — ADR-0067 §8's headline
+      # class — took the ABSENT branch and left the branch whose message names dangling unreachable
+      # for the case it names. Measured on this tree, 2026-07-28, with `.agents/skills` pointed at a
+      # nonexistent target: the copy exits 1 saying *"the view root .agents/skills does not exist"*;
+      # `skill-view check` exits 1 saying `[dangling-root] … is a symlink that resolves to nothing`.
+      # BOTH RED — a misattributed class rather than the silent pass FS.GG.Audio#212 was — but a
+      # diagnostic naming the wrong cause sends the reader to the wrong repair, and `classify_root` has
+      # always separated the four classes.
+      #
+      # The can-fire demonstration now ships INSIDE the tool, so this repo runs the same one the hub
+      # does rather than a copy of it: 16 cases, each negative one asserting the SPECIFIC diagnostic
+      # class its branch emits. Offline, about a second.
+      - name: Demonstrate every lane of the skill-root alarm can fire
+        run: bash scripts/skill-view selftest
+
+      # The `receiver-proj` flag is LANE 1, THE DECLARATION, and it is what replaces the deleted
+      # script: the sorted union of <FsggKitSkillRoots> and <FsggKitViewSkillRoots> must be ADR-0011's
+      # two roots, and an UNDECLARED property is a RED rather than an empty contribution. Lane 2 is
+      # `check`'s own resolution loop, which grades a partial view PER SKILL BY IDENTITY where the
+      # deleted script compared directory COUNTS; lane 3 is `[tracked-view-root]`, adopted from
+      # FS.GG.Net's copy and had by none of the others.
+      #
+      # It runs AFTER the generate above, deliberately: its resolution lane then grades a root that is
       # supposed to exist, so deleting the generate step reds this as well as the producer check below.
+      # NO `absent-ok` for the same reason — absence is RED here because this host generates first.
+      # FS.GG.Audio's and FS.GG.Templates' hosts are bare checkouts and legitimately excuse it.
       - name: The runtime skill-root contract is still ADR-0011's two
-        run: bash scripts/check-skill-view-roots.sh
+        run: |
+          bash scripts/skill-view check \
+            --source .claude/skills \
+            --tree . \
+            --receiver-proj .config/kit/FS.GG.Kit.receiver.proj
 
       # #1080/#1082 — the agent-skill roots are DERIVED, and this is what knows it.
       #
