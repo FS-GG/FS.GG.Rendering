@@ -127,6 +127,28 @@
 # then assert it is present" is the fail-open shape this whole item exists to remove: it would make
 # [absent-root] unreachable and hand back a gate that cannot fail. The generate is authorised by the
 # repo DECLARING a root to be a view, never by observing that one is missing. The step below is
+#
+# THAT DISTINCTION IS ABOUT AUTHORISATION, NOT REACHABILITY, AND THIS PARAGRAPH USED TO CLAIM BOTH
+# (FS-GG/.github#1869). The sentence above said a conditional generate "would make [absent-root]
+# unreachable and hand back a gate that cannot fail" — true, and equally true of the unconditional one
+# written here. Both leave the root present by the time the check runs. Measured on a bare receiver
+# checkout, 2026-07-29, running the assertion alone (`-t:FsggKitCheckSkillView`):
+#
+#   [absent-root]     rc 0 — the generate creates the view, the check then passes
+#   [dangling-root]   rc 0 — the generate replaces the dangling link, same
+#   [text-file-root]  rc 1 — but via `skill-view generate` REFUSING ("exists, is not a symlink, and
+#                     carries no .skill-view receipt"), exit 2, BEFORE the check runs
+#
+# So none of ADR-0067 §8's three absence classes is this check's verdict on the per-PR path. That is
+# STRUCTURAL, not an oversight: a view root is absent in every fresh checkout by construction (§6.1),
+# a required context over it must generate first, so absence can never be what it reports. The
+# unconditional-and-declared rule remains right for the reason it was written — it decides WHO may
+# generate — and it never preserved the class's reachability.
+#
+# WHAT THIS CHECK ASSERTS HERE, THEN: that the generate SUCCEEDED and the SOURCE is complete. Both are
+# real and both can fail — the text-file row above is one of them failing. §8's absence classes remain
+# reachable, and are mutation-proven to fire, in FS-GG/.github's own `src/FS.GG.Kit/verify-package.sh`,
+# whose fixtures deliberately do not generate (FS-GG/.github#1867).
 # therefore UNCONDITIONAL, and what grades the declaration itself is `scripts/skill-view check` with
 # its `--receiver-proj` flag, on the required `Deterministic gate` — see that job for the measurement
 # showing every kit gate green on a tree with the root dropped from the contract.
