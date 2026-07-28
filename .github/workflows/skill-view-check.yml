@@ -1,0 +1,154 @@
+# skill-view-check — the REQUIRED skill gate, and the replacement for the retired `skill-union` caller.
+#
+# ADR-0067 §8 (the loud absence check) and §9 (nothing is retired before its replacement is proven).
+# Decided on FS-GG/.github#1715 as blocker B5 of
+# `docs/coordination/skill-apparatus-retirement-order.md` §5, shape (b), with the repository owner's
+# authorization. This file IS that replacement, and it landed BEFORE the caller it replaces was
+# deleted and before the required context moved — see THE SWAP below.
+#
+# WHAT THIS REPO USED TO REQUIRE, AND WHY IT STOPPED MEANING ANYTHING. `.github/workflows/skill-union.yml`
+# was a `uses:` of FS-GG/.github's reusable `skill-union-assert.yml`, and its context
+# `skill-union / skill-union` was a required status check on `main`. That gate asserts one thing: the
+# runtime roots hold the BYTE-IDENTICAL UNION of the same skills. ADR-0067 phase 4 makes one of those
+# roots a generated VIEW of the other — a symlink, resolved at checkout, never committed (§6) — and on
+# that layout the gate's two headline invariants both become tautologies. Measured on this repo's own
+# tree, at a dry-run retirement, 2026-07-28:
+#
+#   skill-union-assert --roots ".agents/skills"                    -> exit 2, "no skills found under
+#                                                                      any root"
+#   skill-union-assert --roots ".claude/skills .agents/skills"     -> exit 0, "in-every-root=50/50
+#                                                                      byte-identical=50/50 ... OK"
+#
+# Read those two together. `union_ids()` enumerates with `find` and no `-L`, so the VIEW ROOT
+# CONTRIBUTES ZERO IDS — that is the first line, on its own. Every one of the 50 ids in the second line
+# therefore came from the tracked root alone, and the view root passed the presence test only because
+# presence is `[ -d ]` **through** the symlink, which cannot fail. "byte-identical=50/50" is 50
+# comparisons of a file with itself. The gate would have kept reporting `success` on a REQUIRED context
+# while asserting nothing about the view — a green indistinguishable from a green that means something,
+# which is epic #266 in its most expensive form.
+#
+# WHAT THIS ASSERTS INSTEAD. `skill-view check --source .claude/skills`: every skill the SOURCE
+# directory declares is VISIBLE at every runtime root the contract still names, with ADR-0067 §8's
+# absence classes reported separately — [absent-root], [dangling-root], [text-file-root],
+# [not-a-directory-root], [missing-skill], [dangling-skill], [not-a-file-skill], [unreadable-skill],
+# [empty-skill]. Those are the failure modes phase 1 (FS-GG/.github#1621) measured as **exit 0 with no
+# diagnostic in BOTH runtimes** (Claude Code 2.1.220, Codex CLI 0.145.0) — an agent that quietly has no
+# skills. This check is the only thing that says so.
+#
+# AND IT CAN FAIL, WHICH IS THE ENTIRE JUSTIFICATION FOR THE SWAP. Mutation-checked on this repo's own
+# tree rather than asserted (FS-GG/.github#1715 AC3):
+#
+#   the generated view removed   -> exit 1, "[absent-root] .agents/skills does not exist"
+#   the source root emptied      -> exit 2, "the expected skill set is EMPTY — refusing to report
+#                                    'everything is visible' over nothing"
+#
+# A leg that survives its own mutation is repaired or dropped, never shipped. Both mutations red this
+# one, in CI, by run id; the ids are in FS-GG/.github#1715.
+#
+# WHAT IT DOES **NOT** ASSERT, SAID OUT LOUD. It does not compare the two roots' BYTES against each
+# other, so while this repo still commits two independent copies of its skills it is weaker than the
+# union gate in exactly that one direction: a skill present in `.agents/skills` and absent from
+# `.claude/skills` is outside its subject. That direction stops existing the moment `.agents/skills`
+# becomes a view of `.claude/skills` — a view cannot diverge from what it is a view of — so the gap is
+# bounded by this repo's own ADR-0067 phase 4 retirement (FS-GG/.github#1676) and is recorded there.
+# `kit / coordination-kit` continues to grade the kit-owned skills' bytes against this repo's pin
+# throughout. Do not read that as coverage of the rest: a `coordination-coherence` green is evidence
+# about the kit's skills, never about the tree (FS-GG/.github#1504).
+#
+# THE TOOL IS THIS REPO'S OWN COPY, NEVER A MOVING HUB `main`. `scripts/skill-view` is delivered and
+# byte-verified by the `FS.GG.Kit` version this repo pins (a kit row since 0.15.0), together with the
+# two libraries it sources at load, `scripts/lib/args.sh` and `scripts/lib/roots.sh` — `repos.sh
+# validate` refuses a kit that separates them. A receiver's verdict must be a function of the receiver
+# (FS-GG/.github#1584); that is also the difference from the workflow this replaces, whose script came
+# from the authority's `@main` on every run.
+#
+# THE ROOT SET IS NOT NAMED HERE, DELIBERATELY. No `--roots`, so it comes from `lib/roots.sh` — the same
+# precedence parser every other reader in this repo resolves with (FS-GG/.github#525): `--roots` >
+# `$AGENT_SKILL_ROOTS` > `.agent-skill-roots` > the default. This repo commits no `.agent-skill-roots`,
+# so the effective set is ADR-0065's two as amended by ADR-0067 §5 — `.claude/skills .agents/skills` —
+# which is the SAME set the retired caller audited, so this swap narrows nothing. `.codex/skills` is in
+# no gate's subject: ADR-0067 §5 retired it from the runtime contract. Do NOT add `--roots` to "fix"
+# that; it would re-arm a gate on a root the contract retired, and widening or narrowing the audited
+# set is a declared decision, not a caller's convenience.
+#
+# THE `pull_request` TRIGGER CARRIES NO `paths:` FILTER, AND MUST NOT GAIN ONE. The context below is
+# REQUIRED on `main`. GitHub does not synthesise a neutral check run for a workflow a path filter
+# excluded — it never creates the check run at all — and branch protection cannot tell that apart from
+# a check that has not reported yet, so it holds every unrelated pull request at "Expected — waiting for
+# status to be reported", forever. The org has already paid for that combination twice, both times in
+# FS.GG.SDD (#370, #525), and the sibling required gates in this repo carry the same standing note.
+# `scripts/
+# check-required-contexts.py` now models it and `required-context-coherence.yml` sweeps for it nightly,
+# but the deadlock is still yours to avoid. Keeping the filter on `push:` is safe and is not the same
+# question: a `push` filter has no bearing on what a pull request reports.
+#
+# THE JOB NAME IS PUBLIC API. Branch protection requires the literal context string this job produces.
+# Renaming the job renames the context, the required one then never reports, and the repository stops
+# merging with no commit in it having changed — the FS.GG.Audio#60 shape that
+# `docs/coordination/reusable-workflow-contract.md` exists for. Change it only by sequencing it against
+# the protection setting, never as a tidy-up.
+#
+# THE SWAP WAS ATOMIC, AND THE ORDER IS THE POINT (FS-GG/.github#1715 AC4). Producer first, requirement
+# second, old producer last:
+#   1. this file landed on `main`, reporting on its own pull request, while `skill-union` was still
+#      required and still reporting;
+#   2. `skill-view-check` was added to the required contexts (`scripts/repos.sh require-context`, an
+#      ADD-ONLY verb that cannot delete);
+#   3. `skill-union / skill-union` was removed from them (`unrequire-context`, a separate verb with its
+#      own `--confirm-remove`);
+#   4. only then was `.github/workflows/skill-union.yml` deleted.
+# At no instant did this branch require a context no workflow could report. Reversing steps 3 and 4 is
+# the wedge; there is never a reason to.
+#
+# =================================================================================================
+# WHEN THIS REPO RETIRES ITS SECOND COMMITTED ROOT, THIS FILE CHANGES IN THE SAME PULL REQUEST.
+# =================================================================================================
+# ADR-0067 phase 4 (FS-GG/.github#1676) untracks `.agents/skills` and git-ignores it, so a VIEW root
+# does not exist in a fresh checkout — a clean clone, a new worktree and this runner alike. The step
+# below would then correctly report `[absent-root]` and this required context would be RED on every
+# pull request. Measured on a bare checkout of a dry-run retirement of this repo, 2026-07-28: exit 1.
+#
+# So the retiring pull request MUST add the generate ahead of the check, in the same commit that
+# untracks the root — never before it (`skill-view generate` refuses a root git TRACKS, with no
+# override, and would die), and never after it (that is the RED window):
+#
+#     - name: Resolve the view roots this tree no longer commits
+#       run: bash scripts/skill-view generate --source .claude/skills --roots ".agents/skills"
+#
+# `--roots` names the VIEW roots explicitly, exactly as `FsggKitViewSkillRoots` does for the
+# materializer: letting the tool fall back to the default pair would also try to resolve
+# `.claude/skills`, this repo's tracked source, and be a refusal rather than a no-op. That two-step
+# form was proven green on a bare checkout of a retired tree of THIS repo before this file was made
+# required — the run id is on FS-GG/.github#1715.
+#
+# Do NOT pre-emptively add that step now, and do NOT make it conditional on whether the root happens to
+# be missing. "Generate whatever is absent, then assert it is present" is the fail-open shape this
+# whole item exists to remove: it would make [absent-root] unreachable and hand back a gate that cannot
+# fail. The generate is authorised by the repo DECLARING a root to be a view, never by observing that
+# one is missing.
+
+name: skill-view-check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skill-view-check:
+    name: skill-view-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # The bare command a worker runs, over this repo's own declared roots. The expected set is the
+      # SOURCE directory, never a manifest: `registry`-style manifests declare a subset of a tree's
+      # skills and would stay green over a tree that had lost the rest, which is FS-GG/.github#1504's
+      # coherent-but-incomplete class. A source directory cannot be a subset of itself.
+      - name: Assert every skill .claude/skills declares is visible at every runtime root
+        run: bash scripts/skill-view check --source .claude/skills --tree .
