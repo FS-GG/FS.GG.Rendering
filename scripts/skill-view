@@ -1,14 +1,120 @@
 #!/usr/bin/env bash
+# shellcheck source-path=SCRIPTDIR
+#
+# THE LINE ABOVE IS LOAD-BEARING, AND ITS POSITION IS PART OF IT (.github#1718). This file `source`s
+# two libraries out of `lib/`, and the `# shellcheck source=...` pragmas on those lines are RELATIVE.
+# Without a `source-path`, shellcheck resolves them against ITS OWN working directory rather than this
+# script's, so `shellcheck -x scripts/skill-view` run from the repository root — which is how every
+# gate in this org invokes it, and how a developer types it — finds neither library and lints this
+# file with BOTH sources unread, inventing SC2034s for every variable they define:
+#
+#   scripts/skill-view:NN:3: note: Not following: lib/args.sh:  … does not exist [SC1091]
+#   scripts/skill-view:NN:3: note: Not following: lib/roots.sh: … does not exist [SC1091]
+#
+# `SCRIPTDIR` makes them resolve against the directory holding THIS FILE, so the command reproduces
+# from any cwd — in CI, in a receiver's materialized tree, and on the desk of whoever runs shellcheck
+# by hand. Fixing it with `-P`/`--source-path` on a gate's command line would fix the gate only, and
+# leave the by-hand run broken; the pragma belongs in the file.
+#
+# IT MUST STAY ABOVE THE FIRST COMMAND. Measured with the pinned shellcheck 0.11.0: this directive is
+# file-scoped only where it precedes every command in the file. Moved down next to the `source` lines
+# it binds to THE NEXT COMMAND ONLY — it clears the `lib/args.sh` finding and leaves the `lib/roots.sh`
+# one standing. Do not "tidy" it down to the code it describes.
+#
+# `scripts/skill-view` is a kit-materialized file (registry/repos.yml `kit:` row `skill-view`), so a
+# receiver cannot repair this in its own tree: the next FsggKitMaterialize reverts the edit. That is
+# why the fix is here and shipped as a kit release.
+#
 # skill-view — the checkout-time generated skill view, and the LOUD ABSENCE CHECK it makes mandatory.
 #
 # ADR-0067 (`resolve, don't copy`) §6/§7/§8; phase 2 of the rewrite decided on .github#1611, tracked as
 # .github#1635. Phase 1 (.github#1621) measured the ground this stands on.
 #
-# TWO SUBCOMMANDS, AND THE SECOND IS THE REASON THE FIRST IS ALLOWED TO EXIST.
+# THREE SUBCOMMANDS, AND THE SECOND IS THE REASON THE FIRST IS ALLOWED TO EXIST.
 #
 #   skill-view generate  produce each runtime's skill root as a VIEW of ONE source directory.
 #   skill-view check     assert the skills that source declares are VISIBLE at each runtime's
 #                        expected path — and FAIL LOUDLY when they are not.
+#   skill-view selftest  demonstrate that every lane of `check` CAN FIRE, over fixture trees.
+#
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# THE TWO LANES `check` GREW, AND WHY THEY ARE HERE RATHER THAN IN SEVEN RECEIVERS (.github#1710)
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+#
+# ADR-0067 §9 phase 4 retired every receiver's second COMMITTED skill root, turning it into a view
+# root. §8 forbids a retirement trading a loud failure for a quiet one, so each of the seven
+# receivers shipped a replacement alarm in its own retirement change. Measured 2026-07-28, that is
+# SEVEN implementations of ONE invariant — `scripts/check-skill-view-roots.sh` at 23,050 / 21,353 /
+# 18,346 / 18,277 / 14,864 bytes on SDD / Audio / Rendering / Game / Governance, plus
+# `tests/composition/skill-view-roots.sh` on Net and `tests/composition/lib/skill-view-roots.sh` on
+# Templates. A 55% size spread across files asserting the same thing, all written in one day, by a
+# phase whose stated purpose is removing hand-copies. ADR-0067 §3's rule — one implementation per
+# invariant, with a callable seam — applied where the ADR did not anticipate needing it.
+#
+# The seven did NOT build a parallel delivery mechanism; they bolted two lanes onto one that already
+# existed (`scripts/skill-view` is a kit-delivered source, and `FsggKitCheckSkillView` is
+# `AfterTargets="FsggKitMaterialize"` in every receiver). They bolted them on because `check` did not
+# cover them. It does now:
+#
+#   LANE 1 — THE ROOTS DECLARATION (`--receiver-proj`). With `<FsggKitViewSkillRoots>` EMPTIED,
+#   every kit gate is green and the root is simply gone from the runtime contract. Measured on
+#   FS.GG.Net's and FS.GG.Audio's own trees, 2026-07-28:
+#       dotnet build … -t:FsggKitMaterialize  -> "no view skill roots declared … nothing to assert."
+#       coordination-sync --check --against-pin -> "OK — all 28 file(s) match the FS.GG.Kit … pins."
+#   Both green, and Codex then resolves ZERO skills and exits 0 saying nothing. `coordination-sync`
+#   reads `FsggKitSkillRoots` ALONE by design (#1584); `CheckSkillView` returns true on an empty
+#   `FsggKitViewSkillRoots`. Nothing covered a view root's MEMBERSHIP. This lane does: the sorted
+#   UNION of the two properties must equal the declared runtime root set.
+#
+#   LANE 2 — THE VIEW ACTUALLY RESOLVES. Already `check`'s subject (`classify_root` below), and
+#   already STRONGER than all seven hand-copies: they compare DIRECTORY COUNTS
+#   (`find … -type d | wc -l`), which passes a view whose two skills are named nothing like the live
+#   root's two; `check` compares per-skill IDENTITY at `<id>/SKILL.md`. Two of the seven — Rendering
+#   and Governance — also guard absence with a bare `[[ ! -e ]]`, which FOLLOWS symlinks, leaving
+#   their dangling-link branch unreachable and the class misattributed. `classify_root` has always
+#   separated the four classes. The collapse therefore fixes both by construction rather than by
+#   repair.
+#
+# WHAT IS GENUINELY PER-RECEIVER, AND IS A PARAMETER RATHER THAN A COPY:
+#
+#   * THE ABSENT-VIEW-ROOT POLICY (`--absent-ok`). An absent view root is RED by default and that
+#     stays the default. But a receiver whose alarm runs on a BARE checkout — before any materialize,
+#     which is the normal state of that job — must treat absence as green or the alarm fires on every
+#     green build. That was the honest, measured split across the seven: Audio and Game ran on bare
+#     checkouts (absent -> green); Rendering, SDD and Governance ran `skill-view generate` first
+#     (absent -> red). It is a boolean, and it is NOT free: `--absent-ok` REQUIRES a reason, printed
+#     on every run, because what else catches an absent root DIFFERS PER RECEIVER and must be
+#     measured rather than assumed. On Game the kit's own check reds a required job (its alarm rides
+#     the same job that materializes); on Audio it does NOT, because `kit / coordination-kit` grades
+#     `<FsggKitSkillRoots>` bytes only and the materialize job is not required. A receiver that
+#     cannot state what covers absence has not earned the carve-out.
+#
+#   * THE REQUIRED-CONTEXT NAME the alarm rides is per-receiver by construction and is NOT a
+#     parameter of this tool — it is the workflow step that invokes it. All seven differ (Game rides
+#     `Build-config drift check`, Governance and SDD ride `skill-view-check`, Rendering rides
+#     `Deterministic gate`, Audio rides `Build + test`, Templates rides `composition`, Net rides an
+#     unrequired `Composition (runtime skill roots)` — .github#1727). One line in a gate.yml is not a
+#     hand-copy of an invariant.
+#
+# ONE LANE WAS ADOPTED FROM A RECEIVER RATHER THAN IMPOSED ON IT. FS.GG.Net's copy carried an
+# assertion no other copy had — that git does not TRACK content under a view root — catching a
+# re-committed view root, which resolves perfectly on Linux and passes every other copy's resolution
+# lane while being exactly the committed symlink ADR-0067 §6 rejects on measurement. It is folded in
+# for all receivers rather than dropped to make the collapse tidy (#1710: do not weaken any alarm to
+# make the collapse easier). `generate` has always refused to write over a root git tracks
+# (ADR-0067 §9); this asserts the same invariant on the checking side.
+#
+# EVERY LANE DEMONSTRATES IT CAN FIRE, AND THE DEMONSTRATION IS ITSELF MUTATION-TESTED —
+# `skill-view selftest`. This is not ceremony; it is the whole reason the hole existed. FS.GG.Audio's
+# alarm guarded absence with `[[ ! -e ]]` and shipped GREEN on a dangling view root — ADR-0067 §8's
+# HEADLINE class — for a day, with the branch naming it unreachable, because that lane had no demo
+# while the lane beside it in the same file had one and was correct (FS.GG.Audio#212, fixed in
+# `26d2bb7`). `selftest` asserts the SPECIFIC diagnostic class each branch emits, never merely that
+# something failed: a demo that only counts failures survives a mutation collapsing two branches into
+# one. It drives the real `check` as a SUBPROCESS over fixture trees, which also sidesteps the hazard
+# FS.GG.SDD's copy documents — an in-process demo capturing output through `$( )` runs the assertion
+# in a SUBSHELL, discarding the counters it increments, and reports "nothing fired" while looking
+# exactly like one that works.
 #
 # WHY `check` IS NOT OPTIONAL AND NOT DEFERRABLE (ADR-0067 §8). Today a materialization bug turns a
 # gate red: the copied tree fails visibly. Under resolution every failure mode phase 1 measured —
@@ -59,10 +165,17 @@
 # Usage:
 #   skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2> ..."] [--mode auto|link|copy]
 #   skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> ..."]
+#                       [--receiver-proj <file>] [--expect-roots "<r1> ..."] [--absent-ok "<why>"]
+#   skill-view selftest [--tree <dir>]
 #
 # Exit: 0 = every declared skill is visible at every configured root
 #       1 = a VERDICT: at least one skill is not visible somewhere (each printed with its class)
 #       2 = misconfiguration, or no verdict could be reached. Never a pass.
+#
+# BOTH 1 AND 2 ARE RED, AND NEITHER IS SOFTER THAN THE OTHER. The split says WHAT KIND of answer
+# this is — a finding about the tree, or an admission that no finding could be reached — because
+# "I could not evaluate this" is never "I evaluated it and it passed" (.github#266). A caller that
+# treats exit 2 as a warning has reintroduced the fail-open this whole file exists to prevent.
 
 set -euo pipefail
 
@@ -73,6 +186,14 @@ ROOTS_SRC=""
 SOURCE=""
 MANIFEST=""
 MODE="auto"
+
+# --- the roots-declaration lane's state (.github#1710 lane 1) -----------------------------------
+RECEIVER_PROJ=""       # the receiver project both root properties live in
+EXPECT_ROOTS=""        # the runtime root set the union must equal (--expect-roots)
+VIEW_ROOTS=""          # the subset of ROOTS that are VIEW roots, from <FsggKitViewSkillRoots>
+LIVE_ROOTS=""          # the subset that are materialized-into roots, from <FsggKitSkillRoots>
+MEMBERSHIP_FAULT=""    # non-empty when the declaration could not be read: a VERDICT, not a skip
+ABSENT_OK_WHY=""       # --absent-ok's mandatory reason; empty means absent view roots stay RED
 
 # ADR-0065's two, as amended by ADR-0067 §5 and landed by .github#1636. `lib/roots.sh` takes the
 # default from its CALLER precisely so a migration changes it in one reviewed place rather than four
@@ -94,6 +215,8 @@ skill-view — generate a runtime skill root as a view of one source, and assert
 
   skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2>"] [--mode auto|link|copy]
   skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> <r2>"]
+                      [--receiver-proj <file>] [--expect-roots "<r1> <r2>"] [--absent-ok "<why>"]
+  skill-view selftest [--tree <dir>]
 
   --source <dir>     the ONE source of truth: a directory of <id>/SKILL.md skills.
   --manifest <file>  (check only) a JSON catalog {"skills":[{"id":...}]} to expect instead.
@@ -102,7 +225,23 @@ skill-view — generate a runtime skill root as a view of one source, and assert
                      <tree>/.agent-skill-roots > the ADR-0011 default.
   --mode             auto (symlink, fall back to copy), link (symlink or die), copy (always copy).
 
-Exit: 0 ok; 1 a skill is not visible at some root; 2 misconfiguration / no verdict.
+  --receiver-proj <file>   (check only) grade the ROOTS DECLARATION too: read <FsggKitSkillRoots>
+                     and <FsggKitViewSkillRoots> from an FS.GG.Kit receiver project and assert their
+                     sorted UNION equals --expect-roots. Also supplies the root set to resolve (so
+                     --roots is refused alongside it), marks which roots are VIEW roots, and enables
+                     the tracked-view-root assertion. This is ADR-0067 §8's membership half: with
+                     <FsggKitViewSkillRoots> emptied, every other kit gate is green.
+  --expect-roots "<...>"   the runtime root set the union must equal. Default: ADR-0011's two.
+                     Set equality, not a minimum — ADR-0065 governs ADDING a root exactly as it
+                     governs removing one, and a legal disposition swap between the two properties
+                     leaves the union unchanged and must stay green.
+  --absent-ok "<why>"      an ABSENT view root is green rather than red, for an alarm that runs on a
+                     bare checkout where an ungenerated view is the normal state. The reason is
+                     REQUIRED and is printed on every run: what else catches an absent root differs
+                     per receiver and must be MEASURED, not assumed (.github#1710).
+
+Exit: 0 ok; 1 a verdict (a skill not visible, or the declaration wrong); 2 misconfiguration / no
+      verdict. BOTH 1 AND 2 ARE RED — see the note at the top of this file.
 EOF
 }
 
@@ -194,10 +333,135 @@ looks_like_link_body() {
 }
 
 # ---------------------------------------------------------------------------------------------
+# LANE 1 — THE ROOTS DECLARATION (.github#1710 piece 2)
+#
+# IT GRADES THE DECLARATION, NOT MSBUILD'S EVALUATION, and that is deliberate rather than lazy. The
+# faithful alternative is `dotnet msbuild -getProperty:` on the receiver project, which needs a
+# RESTORE of the pinned FS.GG.Kit — a network round-trip added to a REQUIRED check to grade a
+# two-line fact the receiver authors in its own tree. It would also introduce a second source of
+# truth for the package's defaults: a property a receiver does NOT declare evaluates to the package
+# default, so a text reader would have to restate `.claude/skills;.agents/skills` to interpret an
+# absence, and a restated default is the invented-location bug one file over. Requiring BOTH
+# properties to be declared EXPLICITLY removes the question: an absence is a RED, not a guess.
+# ---------------------------------------------------------------------------------------------
+
+# msbuild_property <file> <name> — the text of a single-line `<name>value</name>` element. Echoes
+# nothing and returns 1 when the element is absent, empty, or not on one line. Deliberately NOT an
+# XML parser: the one thing this needs to distinguish is "declared with a value" from "anything
+# else", and every "anything else" lands on the same red. A declaration this cannot read is a
+# declaration a reviewer should reformat.
+msbuild_property() {
+  local file="$1" name="$2" value
+  [ -r "$file" ] || return 1
+  value="$(sed -n "s|^[[:space:]]*<${name}>\(.*\)</${name}>[[:space:]]*\$|\1|p" "$file" | head -1)"
+  [ -n "$value" ] || return 1
+  printf '%s' "$value"
+}
+
+# normalize_roots <text> — split on ';' and whitespace, strip trailing slashes, drop empties, sort
+# unique, join with single spaces. SORTED, so a comparison is set equality and not an accident of
+# which property each root is declared in: moving a root between the two properties is a legal
+# ADR-0065 disposition change and must NOT red the membership lane.
+normalize_roots() {
+  printf '%s' "$1" | tr ';' '\n' | tr -s ' \t' '\n' \
+    | sed 's|[[:space:]]||g; s|/*$||' | grep -v '^$' | sort -u | paste -sd' ' - || true
+}
+
+# read_receiver_proj <file> — set LIVE_ROOTS / VIEW_ROOTS / ROOTS from a receiver project, or set
+# MEMBERSHIP_FAULT explaining why not. An UNDECLARED property must never read as an empty
+# contribution to the union: that would make deleting it the very thing it silently allows.
+read_receiver_proj() {
+  local file="$1" live view
+  if [ ! -r "$file" ]; then
+    MEMBERSHIP_FAULT="cannot read the receiver project '$file'. \"I could not look\" is never \"looked, and fine\" (.github#266)."
+    return
+  fi
+  if ! live="$(msbuild_property "$file" FsggKitSkillRoots)"; then
+    MEMBERSHIP_FAULT="'$file' does not declare <FsggKitSkillRoots> on one line with a value. Both root properties must be declared EXPLICITLY — an absence is a RED, not the package default silently restated here."
+    return
+  fi
+  if ! view="$(msbuild_property "$file" FsggKitViewSkillRoots)"; then
+    MEMBERSHIP_FAULT="'$file' does not declare <FsggKitViewSkillRoots> on one line with a value. THIS IS THE REGRESSION THIS LANE EXISTS FOR: with it emptied or deleted, the kit materialize reports 'no view skill roots declared … nothing to assert' and coordination-sync reports OK, because it grades <FsggKitSkillRoots> bytes only (#1584) — both GREEN while the root leaves the runtime contract and the runtime resolves ZERO skills, exiting 0 saying nothing (ADR-0067 §8)."
+    return
+  fi
+  LIVE_ROOTS="$(normalize_roots "$live")"
+  VIEW_ROOTS="$(normalize_roots "$view")"
+  ROOTS="$(normalize_roots "$live;$view")"
+  ROOTS_SRC="$(basename "$file") (<FsggKitSkillRoots> ∪ <FsggKitViewSkillRoots>)"
+}
+
+# is_view_root <root> — is this root one the receiver declared as a VIEW root? The absent-ok policy
+# and the tracked assertion apply to view roots ONLY. A materialized root that is absent is always a
+# red: the kit wrote it, so its absence is drift rather than a bare checkout.
+is_view_root() {
+  local r="$1" v
+  for v in $VIEW_ROOTS; do [ "$v" = "$r" ] && return 0; done
+  return 1
+}
+
+# assert_root_membership — the union of the two properties IS the runtime root set. Echoes nothing
+# and returns 0 on a pass; prints the violation and returns 1 otherwise.
+assert_root_membership() {
+  local want
+  if [ -n "$MEMBERSHIP_FAULT" ]; then
+    echo "::error::skill-view: [roots-declaration] $MEMBERSHIP_FAULT" >&2
+    return 1
+  fi
+  want="$(normalize_roots "$EXPECT_ROOTS")"
+  if [ "$ROOTS" = "$want" ]; then
+    echo "  roots-declaration: the runtime skill root set is '$ROOTS' — the union of <FsggKitSkillRoots> ('$LIVE_ROOTS') and <FsggKitViewSkillRoots> ('$VIEW_ROOTS')"
+    return 0
+  fi
+  echo "::error::skill-view: [roots-declaration] this tree's runtime skill roots are '$ROOTS', not '$want'. A root that leaves this union leaves the runtime contract, and every other gate stays green while it does: coordination-sync reads <FsggKitSkillRoots> alone (#1584), and FsggKitCheckSkillView reports 'nothing to assert' for an empty <FsggKitViewSkillRoots>. The runtime would then resolve zero skills and exit 0 saying nothing (ADR-0067 §8). If the root set is genuinely meant to change, that is an ADR-0065 'Retiring a root' contract migration — amend the record and the caller's --expect-roots in the SAME change." >&2
+  return 1
+}
+
+# assert_view_roots_untracked — a VIEW root git TRACKS is a committed view, which is the committed
+# symlink ADR-0067 §6 rejects on measurement: under `git -c core.symlinks=false` (the git-for-Windows
+# default without Developer Mode) it checks out as a small regular TEXT FILE whose body is the link
+# target, and both runtimes then exit 0 with zero skills. Adopted from FS.GG.Net's copy, which was
+# the only one of the seven that asserted it, and folded in for every receiver rather than dropped to
+# make the collapse tidy. `generate` has always REFUSED to write over a tracked root (ADR-0067 §9);
+# this is the same invariant on the checking side, where a re-commit would otherwise resolve
+# perfectly on Linux and pass every resolution lane.
+assert_view_roots_untracked() {
+  local root tracked n rc=0
+  [ -n "$VIEW_ROOTS" ] || return 0
+  if ! git -C "$TREE_ABS" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    # Not a pass. Said out loud, because a lane that silently grades nothing is the shape #266 is
+    # about — and this one legitimately cannot run on an export, a tarball or a fixture tree.
+    echo "  view-root-tracking: NOT GRADED — '$TREE_ABS' is not a git work tree, so git could not be asked whether the view roots are tracked. Nothing is asserted about it."
+    return 0
+  fi
+  for root in $VIEW_ROOTS; do
+    tracked="$(git -C "$TREE_ABS" ls-files -- "$root" 2>/dev/null || true)"
+    if [ -n "$tracked" ]; then
+      n="$(printf '%s\n' "$tracked" | grep -c . || true)"
+      echo "::error::skill-view: [tracked-view-root] '$root' is declared a VIEW root but git TRACKS $n path(s) under it. Either the retirement was reverted — fine, but then move the root back to <FsggKitSkillRoots> so coordination-sync grades it again — or a generated view was COMMITTED, which is the committed symlink ADR-0067 §6 rejects: it checks out as a plain text file under core.symlinks=false and both runtimes then resolve zero skills silently. \`generate\` refuses to write over this root while it stays tracked." >&2
+      rc=1
+    fi
+  done
+  [ "$rc" -eq 0 ] && echo "  view-root-tracking: git tracks nothing under $(printf '%s' "$VIEW_ROOTS" | wc -w) declared view root(s)"
+  return "$rc"
+}
+
+# ---------------------------------------------------------------------------------------------
 # check — THE LOUD ABSENCE CHECK
 # ---------------------------------------------------------------------------------------------
 do_check() {
   local ids=() id root p cls violations=0 checked=0 visible root_ok
+
+  # LANE 1 FIRST, AND ITS FAULT IS FATAL BEFORE THE ROOTS LOOP. When the declaration could not be
+  # read there is no honest root set to resolve against, so reporting "0 violations" over a set this
+  # tool invented would be the vacuous pass (#266) wearing the membership lane's clothes.
+  if [ -n "$RECEIVER_PROJ" ]; then
+    echo "skill-view check: grading the roots declaration in '$RECEIVER_PROJ' against '$EXPECT_ROOTS'"
+    if ! assert_root_membership; then
+      echo "::error::skill-view: the roots DECLARATION is wrong — refusing to go on and report on a root set this tree does not actually declare." >&2
+      exit 1
+    fi
+    assert_view_roots_untracked || violations=$((violations + 1))
+  fi
 
   local raw=""
   if [ -n "$SOURCE" ]; then
@@ -228,6 +492,12 @@ do_check() {
     case "$cls" in
       dir) root_ok=1 ;;
       absent)
+        # THE ONE SHAPE A CALLER MAY EXCUSE, AND ONLY FOR A VIEW ROOT, AND ONLY WITH A REASON.
+        # A materialized root's absence is drift and stays red no matter what --absent-ok says.
+        if [ -n "$ABSENT_OK_WHY" ] && [ -n "$RECEIVER_PROJ" ] && is_view_root "$root"; then
+          echo "  $root: absent — accepted by --absent-ok: $ABSENT_OK_WHY"
+          continue
+        fi
         echo "::error::skill-view: [absent-root] $root does not exist. The view was never generated, so this runtime resolves ZERO skills and exits 0 while doing it. Run: scripts/skill-view generate --source <dir>" >&2
         violations=$((violations + 1)) ;;
       dangling-link)
@@ -396,24 +666,251 @@ do_generate() {
 }
 
 # ---------------------------------------------------------------------------------------------
+# selftest — EVERY LANE DEMONSTRATES IT CAN FIRE
+#
+# "Demonstrated, not asserted" (.github#1611 category D: a gate that never fires and a gate that
+# always passes are indistinguishable from outside). Entirely offline, entirely local: fixture trees
+# in a temp dir, driving the REAL `check` as a subprocess.
+#
+# THE DEMO IS ITSELF MUTATION-TESTED, AND THAT IS THE POINT RATHER THAN A FLOURISH. Every negative
+# case asserts the SPECIFIC diagnostic class its branch emits — `[dangling-root]`, `[text-file-root]`,
+# `[absent-root]`, `[missing-skill]`, `[roots-declaration]`, `[tracked-view-root]` — never merely
+# that the exit code was non-zero. A demo that only counts failures SURVIVES a mutation that
+# collapses two branches into one, which is exactly how FS.GG.Audio's alarm shipped green on a
+# dangling view root for a day (FS.GG.Audio#212): its `! -e` absence guard followed the symlink, the
+# dangling case took the "fine" branch, and nothing in that file could tell. Here, collapsing
+# `dangling-link` into `absent` reds case 8; making `absent` unconditionally green reds case 11;
+# dropping the `--absent-ok` view-root scoping reds case 13. Each mutation was run before this
+# landed and each named case failed, individually.
+#
+# RUNNING `check` AS A SUBPROCESS is also what makes the counters trustworthy. FS.GG.SDD's copy
+# documents the hazard an in-process demo has to work around: capturing an assertion's output through
+# `$( )` runs it in a SUBSHELL, so the PASS/FAIL counters it increments are discarded and every case
+# reads "nothing fired" while looking exactly like one that works. A subprocess has no such shared
+# state to lose — the verdict is the exit code and the evidence is the output.
+# ---------------------------------------------------------------------------------------------
+
+SELFTEST_PASS=0
+SELFTEST_FAIL=0
+
+# mkskills <dir> <id...> — a source directory of <id>/SKILL.md skills.
+mkskills() {
+  local d="$1"; shift
+  local id
+  for id in "$@"; do
+    mkdir -p "$d/$id"
+    printf -- '---\nname: %s\n---\nfixture skill\n' "$id" > "$d/$id/SKILL.md"
+  done
+}
+
+# mkproj <file> <live> <view> — a receiver project declaring the two root properties. An empty
+# <view> writes the element with no content (the "emptied" regression); the literal string OMIT
+# leaves the element out entirely (the "deleted" regression).
+mkproj() {
+  local f="$1" live="$2" view="$3"
+  { printf '<Project>\n  <PropertyGroup>\n'
+    printf '    <FsggKitSkillRoots>%s</FsggKitSkillRoots>\n' "$live"
+    [ "$view" = "OMIT" ] || printf '    <FsggKitViewSkillRoots>%s</FsggKitViewSkillRoots>\n' "$view"
+    printf '  </PropertyGroup>\n</Project>\n'
+  } > "$f"
+}
+
+# selftest_case <label> <expect> <args...>
+#   expect = "ok"          -> the run must exit 0
+#            "[some-class]" -> the run must exit non-zero AND print that exact class tag
+selftest_case() {
+  local label="$1" expect="$2"; shift 2
+  local out rc=0
+  out="$(bash "$SELF" check "$@" 2>&1)" || rc=$?
+
+  if [ "$expect" = "ok" ]; then
+    if [ "$rc" -eq 0 ]; then
+      SELFTEST_PASS=$((SELFTEST_PASS + 1)); printf '  ok    %s — exit 0\n' "$label"
+    else
+      SELFTEST_FAIL=$((SELFTEST_FAIL + 1))
+      printf '  FAIL  %s — expected exit 0, got %s\n%s\n' "$label" "$rc" "$out" >&2
+    fi
+    return
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    SELFTEST_FAIL=$((SELFTEST_FAIL + 1))
+    printf '  FAIL  %s — expected %s and a RED, got exit 0. This lane CANNOT FIRE.\n%s\n' \
+      "$label" "$expect" "$out" >&2
+    return
+  fi
+  case "$out" in
+    *"$expect"*)
+      SELFTEST_PASS=$((SELFTEST_PASS + 1)); printf '  ok    %s — RED with %s\n' "$label" "$expect" ;;
+    *)
+      # Non-zero for the WRONG reason is the misattribution bug two of the seven hand-copies shipped
+      # (a bare `! -e` reporting a dangling link as absent). It fails here rather than passing.
+      SELFTEST_FAIL=$((SELFTEST_FAIL + 1))
+      printf '  FAIL  %s — RED (exit %s) but WITHOUT %s. The right class was not named.\n%s\n' \
+        "$label" "$rc" "$expect" "$out" >&2 ;;
+  esac
+}
+
+do_selftest() {
+  local tmp t
+  SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064  # expand tmp NOW: the trap must name this run's directory.
+  trap "rm -rf '$tmp'" EXIT
+
+  echo "skill-view selftest: every lane of 'check', demonstrated over fixture trees"
+  echo
+  echo "lane 1 — the roots declaration (.github#1710 piece 2)"
+
+  # Both roots real, so the RESOLUTION lane is satisfied throughout and only the DECLARATION varies.
+  mkdecl() {
+    local t="$tmp/$1"
+    mkdir -p "$t"
+    mkskills "$t/.claude/skills" alpha beta
+    mkskills "$t/.agents/skills" alpha beta
+    printf '%s' "$t"
+  }
+
+  t="$(mkdecl good)";  mkproj "$t/r.proj" ".claude/skills" ".agents/skills"
+  selftest_case "the shipped shape: union is ADR-0011's two" ok \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # A legal ADR-0065 disposition change: same union, roots declared the other way round. Reddening
+  # it would make the alarm an obstacle to the contract it protects.
+  t="$(mkdecl swapped)"; mkproj "$t/r.proj" ".agents/skills" ".claude/skills"
+  selftest_case "legal disposition swap: same union, properties exchanged" ok \
+    --tree "$t" --source "$t/.agents/skills" --receiver-proj "$t/r.proj"
+
+  # THE REGRESSION THIS LANE EXISTS FOR. Every other kit gate is green on this tree — measured.
+  t="$(mkdecl emptied)"; mkproj "$t/r.proj" ".claude/skills" ""
+  selftest_case "the view root EMPTIED out of the declaration" "[roots-declaration]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # An absent property must never read as an empty contribution to the union, which would make the
+  # deletion the very thing it silently allows.
+  t="$(mkdecl deleted)"; mkproj "$t/r.proj" ".claude/skills" "OMIT"
+  selftest_case "the view-root property DELETED outright" "[roots-declaration]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # THE CASE THAT SEPARATES "FAILS CLOSED" FROM "HAPPENS TO FAIL THE SET COMPARISON", and it was
+  # added because its absence let a mutation SURVIVE. With the view property deleted but the LIVE
+  # property alone already naming both roots, the union still equals --expect-roots — so a
+  # `read_receiver_proj` that treated an undeclared property as an empty CONTRIBUTION rather than a
+  # FAULT reported green here, while the case above stayed red for an unrelated reason and hid it.
+  # This is also the pre-retirement shape: both roots materialized, no view root. Passing
+  # --receiver-proj asserts this tree IS a view-root adopter, and an adopter that declares no view
+  # root has silently un-adopted — which is the regression, not a configuration.
+  t="$(mkdecl deleted_but_union_ok)"; mkproj "$t/r.proj" ".claude/skills;.agents/skills" "OMIT"
+  selftest_case "the view property deleted while the LIVE one still spans the union" "[roots-declaration]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # Set equality, not a minimum: ADR-0065 governs ADDING a root exactly as it governs removing one.
+  t="$(mkdecl extra)"; mkskills "$t/.codex/skills" alpha beta
+  mkproj "$t/r.proj" ".claude/skills;.codex/skills" ".agents/skills"
+  selftest_case "a THIRD root added with no contract migration" "[roots-declaration]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  t="$(mkdecl unreadable)"
+  selftest_case "the receiver project cannot be read at all" "[roots-declaration]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/does-not-exist.proj"
+
+  echo
+  echo "lane 2 — the view actually resolves (ADR-0067 §8's three silent classes, plus partial)"
+
+  # Declaration correct throughout, so only the view root's SHAPE varies.
+  mkview() {
+    local t="$tmp/$1"
+    mkdir -p "$t/.agents"
+    mkskills "$t/.claude/skills" alpha beta
+    mkproj "$t/r.proj" ".claude/skills" ".agents/skills"
+    printf '%s' "$t"
+  }
+
+  t="$(mkview resolving)"; ln -s ../.claude/skills "$t/.agents/skills"
+  selftest_case "a resolving symlink view over the same population" ok \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # ADR-0067 §8's HEADLINE class, and the one FS.GG.Audio's alarm reported GREEN for a day.
+  t="$(mkview dangling)"; ln -s ../.claude/skills-that-do-not-exist "$t/.agents/skills"
+  selftest_case "a DANGLING view-root symlink" "[dangling-root]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # What a COMMITTED symlink degrades to under `git -c core.symlinks=false` (ADR-0067 §6).
+  t="$(mkview textfile)"; printf '../.claude/skills' > "$t/.agents/skills"
+  selftest_case "a plain TEXT FILE where the view root belongs" "[text-file-root]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # A PARTIAL view. Graded per-skill by IDENTITY, which is strictly stronger than the directory-count
+  # comparison all seven hand-copies used: this fires even when the counts match.
+  t="$(mkview partial)"; mkskills "$t/.agents/skills" alpha
+  selftest_case "a PARTIAL view root (fewer skills than the live root)" "[missing-skill]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  t="$(mkview renamed)"; mkskills "$t/.agents/skills" alpha gamma
+  selftest_case "a view root with the RIGHT COUNT and a WRONG NAME" "[missing-skill]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  # Absence is RED by default, and that default is what makes --absent-ok a decision rather than a
+  # shrug.
+  t="$(mkview absent)"
+  selftest_case "an ABSENT view root, with no --absent-ok" "[absent-root]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  t="$(mkview absent_ok)"
+  selftest_case "an ABSENT view root, excused by --absent-ok with a reason" ok \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj" \
+    --absent-ok "bare-checkout job; the materialize path reds if the generate is ever removed"
+
+  # THE CARVE-OUT IS SCOPED TO VIEW ROOTS. A materialized root's absence is drift and must stay red
+  # even when --absent-ok is in force — otherwise the flag quietly excuses the whole root set.
+  t="$(mkview live_absent)"; ln -s ../.claude/skills "$t/.agents/skills"
+  mv "$t/.claude/skills" "$t/.claude/live"
+  selftest_case "an absent LIVE root is STILL red under --absent-ok" "[absent-root]" \
+    --tree "$t" --source "$t/.claude/live" --receiver-proj "$t/r.proj" \
+    --absent-ok "this excuse must not reach a materialized root"
+
+  echo
+  echo "lane 3 — a view root git TRACKS (adopted from FS.GG.Net's copy)"
+
+  t="$(mkview tracked)"; mkskills "$t/.agents/skills" alpha beta
+  git -C "$t" init -q 2>/dev/null || true
+  git -C "$t" -c user.email=selftest@fs.gg -c user.name=selftest add -A >/dev/null 2>&1 || true
+  selftest_case "a COMMITTED view root, resolving perfectly on Linux" "[tracked-view-root]" \
+    --tree "$t" --source "$t/.claude/skills" --receiver-proj "$t/r.proj"
+
+  echo
+  printf 'skill-view selftest: %d passed, %d failed\n' "$SELFTEST_PASS" "$SELFTEST_FAIL"
+  if [ "$SELFTEST_FAIL" -gt 0 ]; then
+    echo "::error::skill-view: $SELFTEST_FAIL selftest case(s) failed — a lane of 'check' cannot fire, or fires with the wrong class. A gate that cannot fire is not a gate (.github#1611 category D)." >&2
+    exit 1
+  fi
+  [ "$SELFTEST_PASS" -gt 0 ] || die "the selftest ran NO cases — that is not a pass (#266)."
+}
+
+# ---------------------------------------------------------------------------------------------
 # argv
 # ---------------------------------------------------------------------------------------------
 CMD="${1:-}"
 case "$CMD" in
-  generate|check) shift ;;
+  generate|check|selftest) shift ;;
   -h|--help) usage; exit 0 ;;
-  "") usage >&2; die "no subcommand (expected 'generate' or 'check')." ;;
-  *) usage >&2; die "unknown subcommand: $CMD (expected 'generate' or 'check')." ;;
+  "") usage >&2; die "no subcommand (expected 'generate', 'check' or 'selftest')." ;;
+  *) usage >&2; die "unknown subcommand: $CMD (expected 'generate', 'check' or 'selftest')." ;;
 esac
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --tree)     need_val "$@"; TREE="$2"; shift 2 ;;
-    --roots)    need_val "$@"; ROOTS_ARG="$2"; shift 2 ;;
-    --source)   need_val "$@"; SOURCE="$2"; shift 2 ;;
-    --manifest) need_val "$@"; MANIFEST="$2"; shift 2 ;;
-    --mode)     need_val "$@"; MODE="$2"; shift 2 ;;
-    -h|--help)  usage; exit 0 ;;
+    --tree)          need_val "$@"; TREE="$2"; shift 2 ;;
+    --roots)         need_val "$@"; ROOTS_ARG="$2"; shift 2 ;;
+    --source)        need_val "$@"; SOURCE="$2"; shift 2 ;;
+    --manifest)      need_val "$@"; MANIFEST="$2"; shift 2 ;;
+    --mode)          need_val "$@"; MODE="$2"; shift 2 ;;
+    --receiver-proj) need_val "$@"; RECEIVER_PROJ="$2"; shift 2 ;;
+    --expect-roots)  need_val "$@"; EXPECT_ROOTS="$2"; shift 2 ;;
+    # need_val rejects an EMPTY value, which is exactly the guard this flag needs: `--absent-ok ""`
+    # is a carve-out with no measured reason behind it, and that is the thing it must not be.
+    --absent-ok)     need_val "$@"; ABSENT_OK_WHY="$2"; shift 2 ;;
+    -h|--help)       usage; exit 0 ;;
     *) usage >&2; die "unknown argument: $1" ;;
   esac
 done
@@ -421,8 +918,25 @@ done
 [ -d "$TREE" ] || die "--tree is not a directory: $TREE"
 TREE_ABS="$(abs "$TREE")"
 
-resolve_roots "$TREE_ABS" "$DEFAULT_ROOTS" "$DEFAULT_LABEL" "$ROOTS_ARG"
-[ -n "$ROOTS" ] || die "no roots resolved — refusing to examine nothing."
+if [ "$CMD" = "selftest" ]; then
+  do_selftest
+  exit 0
+fi
+
+if [ -n "$RECEIVER_PROJ" ]; then
+  [ "$CMD" = "check" ] || die "--receiver-proj is a 'check' flag: it grades a DECLARATION, and 'generate' writes one out rather than judging it."
+  [ -z "$ROOTS_ARG" ] || die "--roots and --receiver-proj both name the root set. The receiver project IS the declaration this lane grades, so overriding it with --roots would grade one set and resolve another."
+  [ -n "$EXPECT_ROOTS" ] || EXPECT_ROOTS="$DEFAULT_ROOTS"
+  read_receiver_proj "$RECEIVER_PROJ"
+  # A fault leaves ROOTS empty on purpose; do_check reports it as the verdict it is, before the
+  # "no roots resolved" die below could turn a real finding into a misconfiguration.
+  [ -n "$MEMBERSHIP_FAULT" ] || [ -n "$ROOTS" ] || MEMBERSHIP_FAULT="'$RECEIVER_PROJ' declares both properties but their union is EMPTY."
+else
+  [ -z "$ABSENT_OK_WHY" ] || die "--absent-ok applies to VIEW roots, and only --receiver-proj says which roots those are. Excusing an absent root without knowing its disposition would excuse a materialized root's absence too, which is drift."
+  [ -z "$EXPECT_ROOTS" ] || die "--expect-roots grades the declaration --receiver-proj reads; on its own it has nothing to compare."
+  resolve_roots "$TREE_ABS" "$DEFAULT_ROOTS" "$DEFAULT_LABEL" "$ROOTS_ARG"
+  [ -n "$ROOTS" ] || die "no roots resolved — refusing to examine nothing."
+fi
 
 case "$CMD" in
   generate) do_generate ;;
