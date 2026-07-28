@@ -9,10 +9,17 @@
 # stops churning, so the kit stops re-drifting on every protocol edit.
 #
 # THIS IS THE SWAP (ADR-0040 Phase D.2), NOW FINAL (D.4). This file WAS ~7,000 lines of bash; it is now
-# a ~50-line resolver, proven transparent by `tests/coord-engine-parity/shim.sh` — the D.1 corpus is
+# a resolver, proven transparent by `tests/coord-engine-parity/shim.sh` — the D.1 corpus is
 # green THROUGH it. D.4 (the one-way door) deleted the old bash monolith and the shadow/differential gates
 # that drove it; the engine is the one and only implementation now. Nothing that calls `scripts/fsgg-coord`
 # had to change: this PATH still answers, and it answers with the engine.
+#
+# NO SIZE IS PINNED IN THIS COMMENT, AND THAT IS THE POINT (.github#1586). The line above read "a
+# ~50-line resolver" while the file was 793 lines — a comment asserting a property the code does not
+# have, which this repo treats as a defect in its own right (#1059's class). The number rotted because
+# every protocol decision landed here. #1586 moved the coordination knowledge to
+# `scripts/fsgg-coord-guards.sh` (see below), which is what stops it rotting again; a fresh number
+# written here today would simply start rotting tomorrow. If you want the count, run `wc -l`.
 #
 # WHAT IT DOES. It resolves ONE engine and execs it, passing argv through unchanged and returning its exit
 # code unchanged. It is a transparent pipe — it adds no output of its own on the happy path and holds no
@@ -52,54 +59,7 @@
 #
 # A resolution that finds nothing is a hard error naming what to do — never a silent no-op, which is the
 # #266 failure this whole effort exists to end.
-#
-# IT DECIDES TWO THINGS ABOUT COORDINATION, AND ONLY BECAUSE NOTHING ELSE CAN (#929, #709). The verb
-# PARTITION below names which verbs write shared state, so a STALE engine can be refused one; and an engine
-# built from UNCOMMITTED source is warned about. That is coordination knowledge in a pipe that is meant to
-# hold none, and the trade is deliberate: neither check can live in the engine, because the suspect engine IS
-# the thing being checked — an engine built before the check existed would not run it, which is exactly
-# how a fix for #914 sat in `src/` while the fleet ran without it. The resolver is the last place that
-# sees both the artifact and the source before the exec.
-#
-# WHAT THE ENGINE CANNOT BE ASKED, AND WHY THE ANSWER IS A TEST (.github#1528). The knowledge duplicated
-# here is a property of the engine, so the obvious repair is to DERIVE it — have the engine emit its own
-# write surface (`command-contract` already emits the verb surface, by reflection over the `Command` union)
-# and read that here instead of enumerating. It does not work, for the reason the paragraph above already
-# gives, and it fails in the WORST direction. The engine that would answer is the STALE one: an engine built
-# before a `writes` field existed emits no such field, the shim derives an EMPTY write-set from it, and
-# every board write is permitted — on precisely the oldest artifacts, which are the dangerous ones. A guard
-# that needs a current engine to decide whether the engine is current is circular, and it fails OPEN. (Two
-# lesser reasons, both real: it puts a second `exec` of a suspect binary on the hot path of every single
-# invocation, and a stale engine that hangs or crashes then takes the guard down with it.)
-#
-# So the enumeration stays, and what changes is that it can no longer be SILENTLY incomplete. The verbs are
-# partitioned into three named sets that must, between them, cover the engine's whole command surface;
-# `tests/coord-engine-parity/shim.sh` §3b reads `command-contract --json` off a freshly built engine and
-# REDS if any verb it advertises is in none of them, or if any set names a verb the engine does not have.
-# A verb added to the engine therefore arrives UNCLASSIFIED and fails the build until somebody decides
-# about it. That is the whole fix: the list is still written by hand, but forgetting it is no longer quiet.
-# §3c then drives every verb in every set against a stale fixture engine, so the partition is behaviour
-# rather than a string — a verb moved between sets without meaning it reds too.
-#
-# The list was wrong when this was written, and in both directions, which is the argument for the gate
-# rather than for a longer string: `set-paths` reached the same `Writes.widen` PATCH as `widen` through
-# the same `updateTouchSet` helper and was absent; `room` (`Writes.createRoom` + `Writes.writeRoomRef`) and
-# `reconcile` (`Board.boardWrite`) were absent; and `bootstrap`, which the filing believed created the
-# project, is a READ (`Board.bootstrap`: *"Resolve the board and its field/option ids. Two GraphQL calls"*)
-# that adding would have made a stale engine refuse for nothing.
-#
-# The two are one question asked at two joints — "is the code about to run the code this checkout says?"
-# `stale_guard` compares the ARTIFACT to the source; `dirty_guard` compares that SOURCE to HEAD. Neither
-# subsumes the other, and a build satisfies the first while defeating the second (see #709 below).
-#
-# NEITHER ASKS "IS IT ON MAIN?", AND THIS COMMENT MUST NOT IMPLY THEY DO. Both compare against the local
-# checkout — the artifact to `src/`, `src/` to HEAD — so a worker who COMMITS kit WIP on a branch here,
-# or whose shared checkout simply sits behind `origin/main`, defeats both while running code the fleet
-# never merged. That gap is real and deliberately unclosed: the honest comparison is against
-# `origin/main`, which is a network read this resolver must not do on every invocation, and which would
-# fire on every checkout that is merely BEHIND — the normal state of a shared checkout nobody fetches. What is
-# left is a guard that catches the observed bug (#709's ` M scripts/fsgg-coord`) and does not pretend to
-# be a merge check.
+
 set -uo pipefail
 
 die() { echo "fsgg-coord: $*" >&2; exit 69; }  # EX_UNAVAILABLE — the engine is not here
@@ -125,276 +85,71 @@ shared_toplevel() { git worktree list --porcelain 2>/dev/null | head -1 | cut -d
 # would resolve a DIFFERENT engine than the one the guards just measured.
 engine_path() { printf '%s/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-engine' "$1"; }
 
-# THE ARTIFACT IS NOT A REF (#929). Tier 2 execs a BUILD OUTPUT, and nothing keeps it in step with the
-# `src/` beside it: `git pull` does not rebuild it, `git status` cannot see it, and `--version` answers
-# the same assembly version from every build ever made — `0.2.0.0` when this line was written, `0.3.0.0`
-# today, and never once a per-commit answer, which is the whole point rather than a detail that rotted.
-# (#1018 measured exactly that: a global tool and a current `src/` both said `0.3.0.0`, hours apart in
-# build time.) So a worker can run — and WRITE TO THE BOARD WITH — code that is
-# not in their own tree. Twice on 2026-07-16 a stale engine silently ignored `release --status`, putting
-# a merged item back to `Ready`: #914's own fix, absent from an engine whose `src/` contained it.
+# THE COORDINATION KNOWLEDGE MOVED OUT, AND THE DISTRIBUTION IS WHY (.github#1586).
 #
-# READS WARN, WRITES REFUSE. A stale read misinforms one worker; a stale board write corrupts state the
-# whole fleet shares, and twice it did. Refusing every stale exec instead would halt every worker the
-# moment anyone touches `src/`, on a repo whose premise is N workers in one checkout.
+# This file used to also hold the verb PARTITION and the two guards that decide with it — `stale_guard`
+# (is the artifact behind the source, or the source behind `main`?) and `dirty_guard` (is that source
+# committed?). They are still exactly that, unchanged, and the long argument for why they cannot live
+# inside the engine (the suspect engine is the thing being checked; a derived write-set fails OPEN on
+# the oldest artifacts) is unchanged too. What changed is WHERE the bytes sit.
 #
-# ONLY THE SOURCE BUILD, AND STRUCTURALLY SO — BUT THE STRUCTURE HAD TO BE BUILT, AND #1018 IS THE BILL
-# FOR ASSUMING IT. This paragraph read: "the receivers' shape has no `src/` beside it to be stale against,
-# and never reaches here — tiers 1-3 `exec` first." Every clause was TRUE. The inference was not: it needs
-# "a checkout WITH a `src/` beside the binary therefore resolves this tier", and under the old order it did
-# not — a global tool exec'd first whether or not `src/` was there. So the one shape that CAN be stale was
-# the one shape that never reached the guard, and the sentence justifying the scoping named the very thing
-# defeating it ("tiers 1-3 `exec` first") as its reason to be safe. It described the code its author meant
-# to write. It is true NOW because the source build IS tier 2, and only tiers 3/4 — the receivers' shape,
-# which has no source to be stale against — sit below it. An explicit FSGG_COORD_ENGINE_BIN is untouched
-# either way: it is an instruction, and honouring it is tier 1's rule.
+# This file is a `coordination-kit` row, so it is CONTENT: mirrored byte-identical into all seven
+# receivers, and every edit republishes the kit and stales all seven. `scripts/fsgg-coord-guards.sh` has
+# no kit row, so it is not mirrored anywhere — and it does not need to be, because the guards are
+# reachable ONLY from tiers 2/2b below, and only the repo that owns coord's SOURCE can have a source
+# build. A receiver resolves at tier 1/3/4 and never loads the file. #1528, #1534 and #1535 each
+# republished the kit to mirror a partition decision into seven repos that cannot execute it; after this
+# they are a `.github` commit and nothing more. `tests/coord-engine-parity/shim.sh` §3f measures it.
 #
-# THE VERB IS ALWAYS `$1`, and that is the engine's rule rather than an assumption of ours: it dispatches
-# on argv[0] and REFUSES a flag before the verb (`unknown command: --repo`). So reading `$1` is exactly as
-# strict as the engine's own dispatch — there is no accepted invocation that hides a write verb elsewhere,
-# which is what would make this guard fail OPEN. Matching any argv token instead would fail the other way,
-# on values: `ready --status Done` is a read, and `Done` is a write verb's name.
+# ENGINE VERSION BUMPS ARE **NOT** COVERED, and pretending otherwise was the filer's own correction on
+# #1586: `dist/dotnet/.config/dotnet-tools.json` is a kit row too (#1077), so bumping the engine still
+# republishes. That is a kit-OWNERSHIP question, filed separately. This reduces the fan-out; it does not
+# remove it.
 #
-# THE SETS ARE UNPADDED AND JOINED WITH ONE SPACE AT THE POINT OF USE, which is not a style choice. The
-# match below is `*" $verb "*`, and `$verb` is EMPTY for a bare `scripts/fsgg-coord` (which the engine
-# parses as `--help`). Two sets each carrying their own outer spaces would concatenate to a DOUBLE space,
-# the empty verb's pattern would be `*"  "*`, and a bare help invocation would be refused as a board write.
-# One space between, spaces added once around the whole, and no pattern for an empty verb can match.
-
-# WRITES, UNCONDITIONALLY — every invocation of these can mutate state the whole fleet shares.
-BOARD_WRITES="add adopt child claim done flush heartbeat release room say set-field set-paths take widen"
-
-# WRITES ONLY UNDER A CONDITION — and the flat list above CANNOT say that, which is how it got wrong.
-# These are refused all the same, verb-level and fail-closed, and they are held in a set of their own so
-# the fact stays recorded rather than laundered into "these are write verbs":
+# LOADED WHERE IT IS USED, AND FAIL-CLOSED WHEN IT IS NOT THERE. `[ -f ] && source` would make a missing
+# file mean "no guards" — silence indistinguishable from a clean tree, which is the #266 shape the guards
+# themselves warn about three times. So `guards` is called only from inside the tier-2/2b branches, i.e.
+# only where a source build ALREADY resolved and staleness is therefore a real question; and if the
+# module is absent there, it dies rather than execing an unmeasured engine.
 #
-#   reap        — writes only under `--apply`; the bare form is a DRY RUN (`Client.fs`, `if not opts.Apply`).
-#   reconcile   — the same shape: `--apply` writes board columns via `Board.boardWrite`, bare is a dry run.
-#   next        — writes under no flag at all. AFTER printing its answer it makes the #733 chore OFFER
-#                 (`offerChoreAtNext` → `Chores.offer` → `Writes.claim`), which POSTs a claim marker to take
-#                 the repo's chore lock. `.github`'s lock is #1033, so this fires in the repo that owns this
-#                 shim. `batch` is the same decision uncapped and makes no offer, so it stays a read.
+# `${BASH_SOURCE[0]}`, NOT `$0`: `$0` is the INVOKED name (a `bash scripts/fsgg-coord` reader would get
+# bash's idea of it), while `BASH_SOURCE` is this file's own path. Inside a function it still names the
+# file the function was DEFINED in, which is this one — so resolving it here is exact.
+# A SYMLINKED shim resolves to the symlink's directory and will not find the module — which is a
+# REFUSAL, not a silent skip, and is therefore safe rather than merely unfortunate.
 #
-# WHY VERB-LEVEL RATHER THAN ARGUMENT-AWARE. `--apply` is a bare token in the parser (no `--apply=X` form),
-# so scanning argv for it would in fact be exact today — but it buys a permitted dry run at the price of a
-# guard whose correctness depends on argv SHAPE, and the paragraph above already refuses that trade for the
-# verb ("matching any argv token would fail on values"). The two directions are not symmetric: a missed
-# `--apply` is a stale engine writing the board, and a spurious one is a refused dry run whose remedy is the
-# `dotnet build` this guard already prints. `reap` has been refused verb-level for its whole life on exactly
-# that reasoning, and `next` cannot be argument-aware at all — its write is gated on board state, not on a
-# flag. Take the refusal. If a permitted stale dry run is ever wanted, the honest way is for the engine to
-# declare per-invocation write-ness, not for this shim to re-implement the parser.
-BOARD_WRITES_CONDITIONAL="next reap reconcile"
-
-# READS — permitted (with a warning) on a stale engine, because a stale read misinforms ONE worker where a
-# stale write corrupts what the fleet shares. This set exists so the partition is total: it is the half that
-# makes "unclassified" detectable, and every member was checked against the code rather than its name.
-#
-#   No handler here reaches `Board.boardWrite`/`boardWriteBatch`/`setField`/`setFieldBatch`/`addItem`/`flush`
-#   or any `Writes.*` mutation, and none APPLIES a writing handler — the only inter-handler write calls in
-#   `Client.fs` are `adopt`→`claim`, `take`→`claim` and `widen`/`set-paths`→`updateTouchSet`, all above.
-#   `board`/`bootstrap`/`field-id`/`option-id`/`item-id` are GraphQL QUERIES plus a per-user cache file under
-#   `$XDG_CACHE_HOME/fsgg-coord` — local, not the board. `decide`/`lanes`/`facts` never touch the transport
-#   at all; `whoami`/`followup`/`predicate` never touch the board (identity, a local queue, local registry
-#   files). `scan` POSTs to `graphql`, which is how a GraphQL READ is spelled.
-#
-# `--help`, `-h` and `--version` are deliberately absent: they are not verbs, and the engine's
-# `command-contract` excludes them for the same reason. They are exempted by GRAMMAR at the guard below
-# ("begins with `-`, or is empty"), NOT by being listed here — because an unclassified token is REFUSED
-# there, not permitted, so a list of flag spellings is a list that could be left short.
-#
-# ONE LINE, AND NO SUBSTITUTION IN IT — the parity gate lifts these three assignments straight out of this
-# file and refuses any that is not a plain literal, so a `$…`/`$(…)`/continuation spelling would red §3b
-# rather than be evaluated. Long, therefore, on purpose.
-BOARD_READS="batch board bootstrap budget command-contract decide facts field-id followup inbox issues item-id landable lanes lint option-id overlap predicate ready scan verify-paths who whoami"
-
-# STAT THE .dll, NOT THE APPHOST. `fsgg-coord-engine` is the .NET apphost — a fixed ~78 KB native stub,
-# BYTE-IDENTICAL across every build of every commit. The IL, which is the thing that goes stale, is in
-# `fsgg-coord-engine.dll` beside it. A guard that measured the apphost would be green on this exact bug.
-#
-# THE CLI's .dll IS THE WHOLE GRAPH'S BUILD STAMP. Cli references Core and GitHub, so a change anywhere
-# under `src/` forces its recompile (verified: touching Core/Protocol.fs alone moves it). So comparing
-# every `src/**/*.fs` against it neither false-greens on a Core-only edit nor false-STALEs after a real
-# build — the false-stale being the one that would halt the fleet.
-#
-# PORTABLE `find`, AND THAT IS NOT PEDANTRY — IT IS THIS GUARD'S OWN FAILURE MODE. The obvious spelling
-# ends `-print -quit`, stopping at the first hit. `-quit` is GNU-only: BSD/macOS find REFUSES it, and
-# since the probe must swallow stderr (a missing src/ is a legitimate no-op, not an error), the refusal
-# is invisible — the probe yields nothing, "nothing" reads as "not stale", and the guard SILENTLY never
-# fires. Measured: with a -quit-refusing find on PATH, a board write ran on a genuinely stale engine, no
-# warning, no refusal. That is the #266 signature this guard exists to END, rebuilt inside the guard. So
-# no `-quit`: `head -1` bounds it instead, and the scan is ~30 files.
-stale_guard() {
-  local top="$1" dll="$2" verb="$3" newer built changed detail
-  [ -f "$dll" ] || return 0   # no IL to measure against; the exec below fails honestly on its own
-  newer="$(find "$top/src" -name '*.fs' -newer "$dll" -print 2>/dev/null | head -1)"
-  [ -n "$newer" ] || return 0                                        # the engine is current — say nothing
-  # `date -r FILE` is GNU; BSD's `-r` takes SECONDS. A failure here must not blank the message, so fall
-  # back to '?': the timestamps are evidence, but the VERDICT above is what has to survive a foreign date.
-  built="$(date -r "$dll" '+%Y-%m-%d %H:%M' 2>/dev/null || echo '?')"
-  changed="$(date -r "$newer" '+%Y-%m-%d %H:%M' 2>/dev/null || echo '?')"
-  detail="            engine built $built
-            ${newer#"$top/"} changed $changed
-            You are about to run code that is NOT in this checkout (#929). Rebuild it:
-              dotnet build src/FS.GG.Coord.Cli -c Release"
-  # ONE SPACE BETWEEN THE SETS, spaces added once around the whole — see the note above the sets. A padded
-  # concatenation would put a DOUBLE space here and refuse the empty verb of a bare invocation.
-  case " $BOARD_WRITES $BOARD_WRITES_CONDITIONAL " in
-    *" $verb "*)
-      die "REFUSED — '$verb' writes the board the whole fleet shares, and the engine is STALE.
-$detail" ;;
-  esac
-
-  # AN UNCLASSIFIED VERB IS REFUSED, NOT PERMITTED — the runtime half of the partition, and the reason
-  # `BOARD_READS` is a set rather than a comment. Without this, "not in the write set" means "permitted",
-  # so a verb ADDED to the engine and not to this file runs on a stale engine silently: the parity gate
-  # would red on the next CI run, but the fleet would already have run it. Falling the other way costs
-  # nothing — the guard is only reached when the engine is genuinely STALE, and a non-flag first token
-  # this file does not know is either a NEW verb (refuse: that is the whole bug) or a typo the engine
-  # would refuse a moment later anyway.
-  #
-  # THE EXEMPTION ASKS THE GRAMMAR, NOT A LIST (#1507). `--help`, `-h`, `--version` and the empty argv of a
-  # bare invocation are not verbs and are not in the engine's `command-contract`; a fourth spelling would
-  # have to be added to any list that named them, and being left out of that list would refuse `--help` on
-  # a stale engine. "Begins with `-`, or is empty" is the same question the engine's own dispatch asks
-  # (it REFUSES a flag before the verb), so no list can fall out of date here.
-  case " $BOARD_READS " in
-    *" $verb "*) ;;
-    *)
-      case "$verb" in
-        '' | -*) ;;
-        *)
-          die "REFUSED — '$verb' is a verb this resolver does not classify, and the engine is STALE.
-            Neither BOARD_WRITES, BOARD_WRITES_CONDITIONAL nor BOARD_READS in this file names it, so
-            whether it writes the board the fleet shares is UNKNOWN — and an unknown write is refused.
-            If it is a new verb, classify it here (tests/coord-engine-parity/shim.sh §3b gates the set).
-$detail" ;;
-      esac ;;
-  esac
-
-  echo "fsgg-coord: WARNING — the engine is STALE, so it need not behave as this checkout reads." >&2
-  printf '%s\n' "$detail" >&2
-  echo "            Board writes are refused until you do." >&2
+# RESOLVED INSIDE `guards`, NOT AT FILE SCOPE, AND THAT IS THIS FILE'S OWN RULE RATHER THAN A FLOURISH.
+# The `cd … && pwd` is a SUBSHELL — a fork on every single invocation — and at file scope every receiver
+# would pay it on every `scripts/fsgg-coord` call to compute a path that only tiers 2/2b ever read, and
+# that no receiver can ever have. Tier 2b already refuses exactly that trade nine lines from here ("this
+# line is on the RECEIVERS' hot path … every invocation would otherwise pay for a subprocess that cannot
+# succeed"), and putting the module lookup at file scope would have re-introduced the cost that comment
+# exists to avoid. Inside the function it is paid only where a source build already resolved.
+guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the verb
+  local module
+  module="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/fsgg-coord-guards.sh"
+  [ -f "$module" ] || die "the stale/dirty guard module is missing: $module
+            A source build resolved under $1, so this checkout CAN hand you an engine that is
+            stale or built from uncommitted code — and the file that decides whether to refuse a
+            board write is not here. An unanswerable staleness question is not freshness (#266),
+            so this REFUSES rather than exec'ing unguarded.
+            Restore it:  git -C $1 checkout -- scripts/fsgg-coord-guards.sh"
+  # THE DIRECTIVE IS REPO-ROOT-RELATIVE, BECAUSE THAT IS WHERE THE LINTER STANDS. `scripts/lint-shell.sh`
+  # cd's to `git rev-parse --show-toplevel` before invoking shellcheck, and shellcheck resolves a
+  # `source=` path from its own CWD — not from the directory of the file being checked. The neighbouring
+  # `scripts/coordination-sync` spells its two as `lib/args.sh` / `lib/roots.sh`, which is the intuitive
+  # reading and does NOT resolve (measured: both emit SC1091 "Not following"). That is invisible in CI
+  # only because SC1091 is `info` and the gate runs at `warning`, so the directives have been decorative
+  # for their whole life. This one is spelled to actually work, so `-x` really does cross the boundary.
+  # shellcheck source=scripts/fsgg-coord-guards.sh
+  . "$module"
+  # DIRTY BEFORE STALE, because a dirty checkout is usually WHY an engine is stale, and a refusal is
+  # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
+  # one never does, so it cannot swallow that refusal.
+  dirty_guard "$1"
+  stale_guard "$1" "$2" "$3"
 }
 
-# AND THE SOURCE IS NOT A REF EITHER (#709). `stale_guard` asks one question — "is the ARTIFACT behind
-# the source?" — and it is an mtime question. It cannot ask the other one: "is the SOURCE ITSELF on
-# main?" So the two states it separates are not the two that matter:
-#
-#   edited, NOT built   → .fs newer than .dll  → stale_guard fires.  The engine is the OLD, merged code.
-#   edited AND built    → .dll newer than .fs  → stale_guard SILENT. The engine is somebody's WIP.
-#
-# The guard is loudest in the safe case and mute in the dangerous one. Building is what a worker does
-# NEXT, so #929's window closes itself: the warning decays into silence exactly as the risk arrives.
-#
-# THE RISK IS THIS REPO'S ALONE, AND IT IS THE WHOLE FLEET'S. Every worker on this board runs the
-# SHARED checkout's engine. Under `src/` live the scheduler, the claim CAS and the board writer. So one
-# worker editing the kit here, in violation of pnext-item §2, silently hands every other worker an
-# untested build of the lock they are about to take. #709 observed it live: ` M scripts/fsgg-coord` in a
-# checkout the reporter had not touched, discovered only because they diffed it against HEAD afterwards.
-#
-# WHY they all run it moved, and the guard's subject did not. This paragraph used to say "a worktree has
-# no bin/, so the source build cannot resolve there (that is why §2's isolation does not isolate this)"
-# — true when written, and #931's tier 2b is precisely the repair of it: a worktree caller now RESOLVES
-# the shared build rather than dying 69 at it. The conclusion is unchanged and is now a property of the
-# resolver rather than an accident of where `bin/` happens to be, so tier 2b passes $SHARED to this
-# guard — the reader standing in a worktree is exactly the reader whose claims that WIP is deciding.
-#
-# WARN, NEVER REFUSE — and this is NOT #929's trade repeated with a new subject. #929 may refuse a
-# board write because its remedy is local, cheap and yours: rebuild, and you are clear. Dirtiness has
-# no such exit. The checkout is dirty because somebody ELSE is mid-edit, and nothing you can run will
-# clean it — so refusing would let one worker's §2 violation halt every OTHER worker's board writes,
-# a fleet-wide outage manufactured by the guard rather than the bug. It would also trap the kit's own
-# author, who is the one person who must be able to test an engine that is by definition uncommitted.
-# The filer reached the same answer (#709: "my weak preference is warn always, refuse never").
-#
-# NO HEAD, NO VERDICT. A checkout with no commit has no baseline to be dirty AGAINST, so there is
-# nothing to assert — the same shape as `stale_guard`'s "no IL to measure against" above, and as
-# `release`'s "a column we cannot read is not one we may overwrite" (#331). This is also what keeps the
-# receivers' shape silent: tiers 3/4 never reach here at all.
-#
-# A LINKED WORKTREE IS THE SANCTIONED FLOW, SO IT IS EXEMPT — and getting this wrong would aim the
-# guard at the one worker obeying the rule it enforces. pnext-item §2 orders you to work the item in a
-# worktree; a kit author who does that and builds there makes the source build resolve THERE, against a tree
-# their own correct edits have made dirty. Warning them would accuse them of the §2 violation they are
-# in the middle of avoiding, and there is nothing to warn about: no other worker resolves an engine
-# through their worktree, so the WIP is reachable by nobody but them. Only the MAIN checkout is shared,
-# and only its dirt is everyone's problem. `--git-dir` == `--git-common-dir` is exactly that question
-# (they diverge in a linked worktree and nowhere else), which is why this is a git question and not a
-# guess about paths.
-#
-# `status --porcelain`, NOT `diff --quiet`: it sees STAGED work (a `git add`ed WIP is still not on
-# main) and untracked files, which `diff` alone cannot. `bin/` and `obj/` are gitignored, so the build
-# every worker performs is invisible to it — the difference between a guard and a permanent false
-# positive. Measured at ~3ms.
-#
-# AND `-c status.showUntrackedFiles=normal`, BECAUSE THE LINE ABOVE WAS NOT TRUE ON ITS OWN (#1043).
-# "it sees … untracked files" is a claim about the CALLER'S CONFIG, not about `status`: `--porcelain`
-# is a FORMATTING flag and does not override `status.showUntrackedFiles`. Set it to `no` — the usual
-# remedy for a slow `git status` on a big repo, and inherited from ~/.gitconfig, which the shared
-# checkout does not control — and this probe returns EMPTY on a tree full of uncommitted WIP. "Empty"
-# then reads as "clean" at the `[ -n "$dirty" ]` below, and the guard SILENTLY never fires: #266's
-# signature, rebuilt inside the check written to end it. Measured against a real tier-2 checkout with an
-# untracked `New.fs`: default warns `1 path(s)`, `showUntrackedFiles=no` says NOTHING AT ALL.
-#
-# This is the `-quit` trap immediately above, and the `--no-optional-locks` trap below, wearing a third
-# hat — and it is why they are worth spelling out rather than deleting as pedantry. All three are the
-# same bug: a probe whose failure is INVISIBLE, so its silence is indistinguishable from a clean tree.
-# The author reasoned it out twice for `find` and for a git flag, and the config channel kept the hole.
-#
-# `normal`, NOT `all`: it preserves exactly today's counting — a wholly-untracked directory stays
-# collapsed to one entry — so `$n path(s)` and the `head -5` truncation below are byte-identical on any
-# machine that never set the option. This forces the ANSWER's scope; it does not widen it.
-#
-# AND `core.excludesFile` IS LEFT ALONE — DECIDED, not overlooked (#1043 asked; this is the answer). It is
-# the obvious next knob: a global ignore also hides files from `status`, so why force one and not both?
-# Because THEY ARE NOT SYMMETRIC, and the difference is the whole design of this guard. Forcing
-# `showUntrackedFiles` can only ever reveal files that are genuinely uncommitted and NOT ignored — every
-# path it adds is real dirt, so it cannot produce a false positive. Forcing `core.excludesFile=/dev/null`
-# would resurrect whatever the WORKER chose to ignore globally: measured, a `Protocol.fs.swp` beside a real
-# source file reports as `?? src/…/Protocol.fs.swp` and warns about an editor swapfile that never reaches
-# the engine. That is a permanent false positive on somebody's editor, and this guard cannot afford one —
-# a warning that fires when nothing is wrong is one the fleet learns to skim, and the next one is real.
-# (The repo's OWN `.gitignore` — `bin/`, `obj/` — is unaffected by either knob: measured, `bin/artifact`
-# stays invisible with `excludesFile` forced off, so the build every worker performs stays invisible too.)
-# The trade is a far-fetched miss (a worker whose global ignore matches `*.fs`) against a plausible false
-# alarm. Take the miss.
-#
-# AND PLAIN `status`, DELIBERATELY — no `--no-optional-locks`. It looks made for this caller, and it is
-# the `-quit` trap above wearing a different hat: it is git 2.19+, and on anything older it is an
-# unknown option, which this probe's necessary `2>/dev/null` would swallow — leaving `$dirty` empty,
-# "empty" reading as "clean", and the guard SILENTLY never firing. The contention it would avoid does
-# not exist: measured with `.git/index.lock` HELD, `status` still answered correctly and exited 0,
-# because refreshing the index is *optional* and git simply skips the write. A real portability hole
-# traded for an imaginary lock.
-#
-# SCOPED TO WHAT ACTUALLY ENDS UP IN THE ENGINE, which is more than `src/`. The root
-# `Directory.Build.props`, `Directory.Packages.props` and `global.json` are imported implicitly by every
-# project beneath them, so a dirty package pin or SDK band changes the compiled engine exactly as an
-# edited `.fs` does — and #672 (the ADR-0032 shared-build-config rollout) is an epic whose whole subject
-# is editing those files. Naming only `src/` would have left the guard blind to part of its own subject:
-# #266's signature, rebuilt inside the check written to end it. A pathspec that matches nothing is
-# lenient (exit 0, no output), so naming a file this repo may not have costs nothing.
-dirty_guard() {
-  local top="$1" dirty n detail
-  git -C "$top" rev-parse --verify -q HEAD >/dev/null 2>&1 || return 0
-  [ "$(git -C "$top" rev-parse --git-dir 2>/dev/null)" \
-    = "$(git -C "$top" rev-parse --git-common-dir 2>/dev/null)" ] || return 0
-  dirty="$(git -C "$top" -c status.showUntrackedFiles=normal status --porcelain -- \
-             src scripts/fsgg-coord Directory.Build.props Directory.Packages.props global.json 2>/dev/null)"
-  [ -n "$dirty" ] || return 0
-  n="$(printf '%s\n' "$dirty" | wc -l | tr -d ' ')"
-  detail="$(printf '%s\n' "$dirty" | head -5 | sed 's/^/              /')"
-  [ "$n" -gt 5 ] && detail="$detail
-              … and $((n - 5)) more"
-  echo "fsgg-coord: WARNING — this engine is built from UNCOMMITTED code (#709)." >&2
-  echo "            $n path(s) that end up INSIDE the engine are modified in this SHARED checkout:" >&2
-  printf '%s\n' "$detail" >&2
-  echo "            Somebody is working the kit here, which pnext-item §2 forbids. Every worker on this" >&2
-  echo "            board runs THIS scripts/fsgg-coord, so that WIP — the scheduler, the claim CAS, the" >&2
-  echo "            board writer — is deciding your claims too. If it is yours: move it to a worktree." >&2
-  return 0
-}
 
 # AN EXPLICIT PATH IS AN INSTRUCTION, NOT A HINT (bash's rule, kept exactly): if it is set and not runnable,
 # REFUSE — do not fall through to some other engine the caller did not choose.
@@ -427,11 +182,7 @@ TOP="$(git_toplevel)"
 if [ -n "$TOP" ]; then
   CANDIDATE="$(engine_path "$TOP")"
   if [ -x "$CANDIDATE" ]; then
-    # DIRTY BEFORE STALE, because a dirty checkout is usually WHY an engine is stale, and a refusal is
-    # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
-    # one never does, so it cannot swallow that refusal.
-    dirty_guard "$TOP"
-    stale_guard "$TOP" "${CANDIDATE}.dll" "${1:-}"
+    guards "$TOP" "${CANDIDATE}.dll" "${1:-}"
     exec "$CANDIDATE" "$@"
   fi
 fi
@@ -483,8 +234,7 @@ SHARED=""
 if [ -n "$SHARED" ] && [ "$SHARED" != "$TOP" ]; then
   CANDIDATE="$(engine_path "$SHARED")"
   if [ -x "$CANDIDATE" ]; then
-    dirty_guard "$SHARED"
-    stale_guard "$SHARED" "${CANDIDATE}.dll" "${1:-}"
+    guards "$SHARED" "${CANDIDATE}.dll" "${1:-}"
     exec "$CANDIDATE" "$@"
   fi
 fi
