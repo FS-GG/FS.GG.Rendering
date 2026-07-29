@@ -11,19 +11,20 @@ module Feature1111CliSurfaceListContractTests
 // six surfaces:
 //
 //     the document said                                       the resolver reads
-//     src/*/skill/SKILL.md                  package-canonical  src        (area-skill-bodies)  WRONG
-//     template/**/SKILL.md                  template-canonical template   (non-mirrored-bodies) WRONG
+//     src/*/skill/SKILL.md                  package-canonical  src        (area-skill-bodies)
+//     template/**/SKILL.md                  template-canonical template   (non-mirrored-bodies)
+//     .agents/skills/*/SKILL.md             codex-local        .agents/skills (agent-wrappers)
+//     .claude/skills/*/SKILL.md             claude             .claude/skills (agent-wrappers)
+//         — four bullets writing a SELECTOR into the path, which is the pre-#1092 shape, where the
+//           glob stood in for a narrowing that was really a hard-coded branch of the resolver
 //     .claude/skills/fs-gg-ant-design/…     ant-canonical      docs/product/ant-design/skill/SKILL.md
-//                                                                                              WRONG
-//     .agents/skills/*/SKILL.md             codex-local        .agents/skills (agent-wrappers)  WRONG
-//     .claude/skills/*/SKILL.md             claude             .claude/skills (agent-wrappers)  WRONG
-//     — no bullet at all —                  spec-kit-command   .agents/skills, .claude/skills
-//                                                                          (command-wrappers)   ABSENT
-//
-// Five of the five bullets flattened `Roots` + `Selector` back into a single prose path — the
-// pre-#1092 shape, where a glob stood in for the narrowing and the narrowing was really a hard-coded
-// branch of the resolver. One named a path that stopped being the canonical body in #1080/#1082. And
-// the surface the section never mentioned is the one whose roots are widest.
+//         — not a flattened selector but a STALE PATH: that stopped being the canonical body in
+//           #1080/#1082, and the bullet still called it the canonical Ant Design skill
+//     — no bullet —                         spec-kit-command   .agents/skills, .claude/skills
+//                                                                          (command-wrappers)
+//         — the section's closing paragraph did mention Spec Kit command skills, to say they are
+//           reported rather than hidden. What it never named was a ROOT: the surface with the widest
+//           roots in the repository had no entry in the list of what the checker reads
 //
 // CORRECTING THE BULLETS IS NOT THE FIX, for the reason #1099 spelled out: rows hand-corrected today
 // are stale again on the next surface change, which is exactly how both copies got here. So this file
@@ -41,11 +42,14 @@ module Feature1111CliSurfaceListContractTests
 // Factoring them into one shared helper is filed as a follow-up rather than done by quietly crossing
 // a written scope boundary.
 //
-// A MALFORMED BULLET IS A FAILURE, NEVER A SKIP. The parser below reports every bullet it could not
-// read as a mismatch. Dropping unparseable bullets on the floor would make the pre-#1111 section
-// PASS — five bullets naming five wrong paths would parse as zero bullets and, if zero bullets were
-// also allowed, as zero disagreements. The historical-text control at the bottom holds the parser to
-// that: the section as it actually stood must be rejected by this file.
+// WHAT THE PARSER MUST NOT DO IS SKIP. Every bullet it cannot read is reported as a disagreement,
+// and so is a REPEATED surface id. Neither is a hypothetical: with unreadable bullets dropped, the
+// pre-#1111 text would still fail — `missingBullets` fires for all six surfaces — but the verdict
+// would be a lie about why, and a malformed bullet naming a surface that does not exist would vanish
+// completely. Repeats are the sharper hole: match a surface to its bullet with `tryFind` and a second
+// bullet for the same id is compared against nothing, so a correct `claude` bullet followed by a
+// `claude` bullet publishing any path at all reads as green — a direct hole in acceptance criterion
+// 1, which is that no bullet names a path the resolver does not read.
 
 open System
 open System.IO
@@ -77,19 +81,30 @@ type private SurfaceBullet =
       Selector: string }
 
 /// Everything the section yielded: the bullets that parsed, the bullets that did not, and every code
-/// span in the section including the prose. All three are inputs to the comparison — a bullet that
-/// could not be read is a failure, not an absence.
+/// span appearing in a bullet — its data line and the prose lines beneath it alike. All three are
+/// inputs to the comparison; a bullet that could not be read is a failure, not an absence.
 type private ParsedSection =
     { Bullets: SurfaceBullet list
       Malformed: string list
-      Spans: string list }
+      BulletSpans: string list }
 
 let private codeSpanPattern = Regex(@"`([^`]+)`", RegexOptions.Compiled)
+
+/// A Markdown ATX heading, which is what ends the section — NOT any line beginning with `#`. This
+/// file's house style wraps prose at about 80 columns and is dense with `#NNNN` issue references, so
+/// one unlucky wrap putting `#1092` in column 0 would otherwise truncate the section and quietly
+/// shrink what is checked.
+let private headingPattern = Regex(@"^#{1,6}\s", RegexOptions.Compiled)
 
 let private spans (text: string) =
     codeSpanPattern.Matches text
     |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
     |> List.ofSeq
+
+/// What is left of a cell once its code spans are removed. The pinned columns are DATA: a cell that
+/// spells part of its value in prose leaves residue here and is rejected, which is what stops
+/// ``selector `agent-wrappers` unless overridden`` from reading as a plain selector.
+let private residue (text: string) = codeSpanPattern.Replace(text, "").Trim()
 
 /// The lines of `sectionHeading`, stopping at the next heading of any level so a later section's
 /// bullets can never be mistaken for this one's.
@@ -103,68 +118,99 @@ let private sectionLines (document: string) =
         | [] -> None
 
     after lines
-    |> Option.map (List.takeWhile (fun (line: string) -> not (line.StartsWith("#", StringComparison.Ordinal))))
+    |> Option.map (List.takeWhile (fun (line: string) -> not (headingPattern.IsMatch line)))
 
-/// A bullet's data is its FIRST physical line; indented continuation lines are prose and are not
-/// parsed. That split is what lets each bullet carry an explanation without the explanation becoming
-/// part of the checked claim.
+/// Indentation is not a hiding place: a nested `- …` is a bullet of this section too, and is parsed
+/// and compared like any other. Continuation prose is indented but never starts with a list marker.
 let private isBulletStart (line: string) =
-    line.StartsWith("- ", StringComparison.Ordinal)
+    line.TrimStart().StartsWith("- ", StringComparison.Ordinal)
 
-let private emDash = '—'
+/// The section's bullets, each as its data line followed by the prose lines beneath it. The split is
+/// what lets a bullet carry an explanation without the explanation becoming part of the checked
+/// claim — while still being read for the path rule, so a path cannot re-enter through a sentence.
+let private bulletBlocks (lines: string list) =
+    let closed current acc =
+        match current with
+        | Some block -> List.rev block :: acc
+        | None -> acc
+
+    let rec go acc current rest =
+        match rest with
+        | [] -> List.rev (closed current acc)
+        | (line: string) :: tail ->
+            if isBulletStart line then go (closed current acc) (Some [ line ]) tail
+            elif line.Trim() = "" then go (closed current acc) None tail
+            else
+                match current with
+                | Some block -> go acc (Some(line :: block)) tail
+                | None -> go acc None tail
+
+    go [] None lines
 
 /// The grammar every bullet must satisfy:
 ///
 ///     - `<surface-id>` — roots `<root>`[, `<root>`…] — selector `<selector>`
 ///
-/// Three em-dash-separated parts, each of them labelled or a bare span, and every value a code span.
-/// A cell that spells its value in prose yields no span and is reported as malformed — which is the
-/// `src/*/skill/SKILL.md` shape this item exists to stop.
+/// Three em-dash-separated parts; the label of the second and third is a whole word; every value is a
+/// code span and nothing but code spans and separators. A cell that spells its value in prose yields
+/// residue, or no span at all, and is reported as malformed — the `src/*/skill/SKILL.md` shape this
+/// item exists to stop.
 let private parseBullet (line: string) =
-    let body = line.Substring(2).Trim()
-    let parts = body.Split(emDash) |> Array.map (fun part -> part.Trim()) |> Array.toList
+    let body = line.TrimStart().Substring(2).Trim()
+    let parts = body.Split('—') |> Array.map (fun part -> part.Trim()) |> Array.toList
 
     let labelled (label: string) (part: string) =
-        if part.StartsWith(label, StringComparison.OrdinalIgnoreCase) then
+        if part.StartsWith(label + " ", StringComparison.OrdinalIgnoreCase) then
             Some(part.Substring(label.Length).Trim())
         else
             None
+
+    let malformed reason = Error(sprintf "bullet %A %s" body reason)
 
     match parts with
     | [ idPart; rootsPart; selectorPart ] ->
         match spans idPart, labelled "roots" rootsPart, labelled "selector" selectorPart with
         | [ surfaceId ], Some rootsText, Some selectorText ->
-            match spans rootsText, spans selectorText with
-            | (_ :: _ as roots), [ selector ] ->
-                Ok
-                    { SurfaceId = surfaceId
-                      Roots = roots
-                      Selector = selector }
-            | [], _ -> Error(sprintf "bullet '%s' names no root as a code span" surfaceId)
-            | _, selectors ->
-                Error(sprintf "bullet '%s' publishes %d selector spans; a surface declares exactly one" surfaceId (List.length selectors))
+            let roots = spans rootsText
+            let selectors = spans selectorText
+
+            if residue idPart <> "" then
+                malformed (sprintf "carries prose %A beside its surface id; the id is the whole cell" (residue idPart))
+            elif List.isEmpty roots then
+                malformed "names no root as a code span"
+            elif residue rootsText |> Seq.exists (fun c -> c <> ',' && not (Char.IsWhiteSpace c)) then
+                malformed (sprintf "carries prose %A in its roots cell; roots are comma-separated code spans and nothing else" (residue rootsText))
+            else
+                match selectors with
+                | [ selector ] when residue selectorText = "" ->
+                    Ok
+                        { SurfaceId = surfaceId
+                          Roots = roots
+                          Selector = selector }
+                | [ _ ] ->
+                    malformed (sprintf "carries prose %A in its selector cell; a surface declares one selector and nothing else" (residue selectorText))
+                | _ ->
+                    malformed (sprintf "publishes %d selector spans in %A; a surface declares exactly one" (List.length selectors) selectorText)
         | ids, roots, selector ->
-            Error(
+            malformed (
                 sprintf
-                    "bullet %A does not read as `<surface-id>` %c roots `<root>`… %c selector `<selector>` (ids: %A, roots part: %A, selector part: %A)"
-                    body
-                    emDash
-                    emDash
+                    "does not read as `<surface-id>` — roots `<root>`… — selector `<selector>` (ids: %A, roots cell: %A, selector cell: %A)"
                     ids
                     roots
                     selector)
-    | _ -> Error(sprintf "bullet %A has %d em-dash-separated parts; the grammar has three" body (List.length parts))
+    | _ -> malformed (sprintf "has %d em-dash-separated parts; the grammar has three" (List.length parts))
 
 let private parseSection (document: string) =
     match sectionLines document with
     | None -> None
     | Some lines ->
-        let parsed = lines |> List.filter isBulletStart |> List.map parseBullet
+        let blocks = bulletBlocks lines
+        let parsed = blocks |> List.map (List.head >> parseBullet)
 
         Some
             { Bullets = parsed |> List.choose (function Ok bullet -> Some bullet | Error _ -> None)
               Malformed = parsed |> List.choose (function Error problem -> Some problem | Ok _ -> None)
-              Spans = lines |> List.collect spans }
+              BulletSpans = blocks |> List.collect (List.collect spans) }
 
 let private parseContract () = parseSection (File.ReadAllText contractPath)
 
@@ -181,7 +227,17 @@ let private mismatches (section: ParsedSection) (surfaces: SkillParity.SkillSurf
 
     let malformed =
         section.Malformed
-        |> List.map (sprintf "a bullet in %s could not be read as a surface declaration: %s" sectionHeading)
+        |> List.map (fun problem -> sprintf "a bullet in %s could not be read as a surface declaration: %s" sectionHeading problem)
+
+    // A surface is declared once, so it is restated once. Without this, a second bullet for an id is
+    // compared against nothing by every other clause here, and any path at all can ride in beside a
+    // correct bullet.
+    let repeated =
+        section.Bullets
+        |> List.countBy (fun bullet -> bullet.SurfaceId)
+        |> List.filter (fun (_, count) -> count > 1)
+        |> List.map (fun (surfaceId, count) ->
+            sprintf "%s publishes %d bullets for surface '%s'; a surface is declared once and is restated once" sectionHeading count surfaceId)
 
     let missingBullets =
         Set.difference surfaceIds bulletIds
@@ -197,9 +253,9 @@ let private mismatches (section: ParsedSection) (surfaces: SkillParity.SkillSurf
     let cellMismatches =
         surfaces
         |> List.collect (fun surface ->
-            match section.Bullets |> List.tryFind (fun bullet -> bullet.SurfaceId = surface.SurfaceId) with
-            | None -> []
-            | Some bullet ->
+            section.Bullets
+            |> List.filter (fun bullet -> bullet.SurfaceId = surface.SurfaceId)
+            |> List.collect (fun bullet ->
                 let expectedSelector = SkillParity.surfaceSelectorToken surface.Selector
 
                 [ if bullet.Roots <> surface.Roots then
@@ -215,15 +271,15 @@ let private mismatches (section: ParsedSection) (surfaces: SkillParity.SkillSurf
                               "surface '%s': the section publishes selector '%s' and the resolver uses '%s'"
                               surface.SurfaceId
                               bullet.Selector
-                              expectedSelector ])
+                              expectedSelector ]))
 
-    malformed @ missingBullets @ extraBullets @ cellMismatches
+    malformed @ repeated @ missingBullets @ extraBullets @ cellMismatches
 
 let private remedy =
     "Correct the bullet, or the declaration, so they agree. Nothing regenerates this section, so #1111 pins it — as #1099 pinned the same declaration in skill-surface-inventory.md."
 
-/// Every `SurfaceSelector` case, by reflection, so a case added tomorrow is covered without anyone
-/// remembering to extend this file.
+/// Every `SurfaceSelector` case, by reflection, so "some selector other than this surface's" can be
+/// expressed without naming a case this file would then have to be edited to keep true.
 let private everySelector () =
     FSharpType.GetUnionCases typeof<SkillParity.SurfaceSelector>
     |> Array.toList
@@ -331,11 +387,30 @@ let cliSurfaceListContractTests =
 
             Expect.isNonEmpty
                 (mismatches section seventhSurface)
-                "a surface declared with NO bullet must be reported; that is exactly how `spec-kit-command` went unmentioned here for three issues"
+                "a surface declared with NO bullet must be reported; that is exactly how `spec-kit-command` went without an entry here for three issues"
 
             Expect.isNonEmpty
                 (mismatches { section with Bullets = List.tail section.Bullets } surfaces)
                 "and a bullet deleted from the section must be reported too, so the check is not satisfied by an empty document"
+
+            // The other direction of the id-set comparison, which no perturbation above reaches: a
+            // bullet the resolver does not declare fails through `extraBullets`, not `missingBullets`.
+            let inventedBullet =
+                { List.head section.Bullets with SurfaceId = "fsgg-1111-invented-bullet" } :: section.Bullets
+
+            Expect.isNonEmpty
+                (mismatches { section with Bullets = inventedBullet } surfaces)
+                "a bullet for a surface that does not exist must be reported; a section may not add surfaces the checker never reads"
+
+            // The repeat hole, stated as its own control. Before this was handled, `tryFind` compared
+            // the FIRST bullet for an id and every later one rode in unchecked.
+            let repeatedBullet =
+                let first = List.head section.Bullets
+                { first with Roots = [ "docs" ]; Selector = "every-skill-body" } :: section.Bullets
+
+            Expect.isNonEmpty
+                (mismatches { section with Bullets = repeatedBullet } surfaces)
+                "a SECOND bullet for a surface that already has one must be reported, whatever it publishes — otherwise any path at all rides in beside a correct bullet"
 
             Expect.isNonEmpty
                 (mismatches { section with Malformed = [ "synthetic" ] } surfaces)
@@ -344,9 +419,8 @@ let cliSurfaceListContractTests =
 
         test "the section as it stood before #1111 is rejected by this check" {
             // The regression control, and the strongest statement this file can make: the parser is
-            // fed the ACTUAL pre-item text, and must reject it. A parser that silently dropped the
-            // bullets it cannot read would find zero bullets, zero disagreements, and pass on the
-            // very document this item was filed about.
+            // fed the ACTUAL pre-item text and must reject it, bullet by bullet, rather than merely
+            // noticing that six surfaces went unmentioned.
             let section =
                 match parseSection preItemSection with
                 | Some section -> section
@@ -368,33 +442,52 @@ let cliSurfaceListContractTests =
 
         // ---------- Acceptance criterion 1: no bullet names a path the resolver does not read ----------
 
-        test "every path-shaped code span in the section is a root the resolver actually reads" {
-            // `mismatches` already pins the roots by equality. This states the rule over the WHOLE
-            // section, prose included, so a path cannot re-enter through an explanatory sentence the
-            // way `.claude/skills/fs-gg-ant-design/SKILL.md` did — it survived #1080, #1082, #1098 and
-            // #1099 sitting in a bullet nothing compared. A span carrying a separator is a claim about
-            // where the checker looks; anything else in this section is a token or an identifier.
+        test "every path-shaped code span in a bullet is a root the resolver actually reads" {
+            // `mismatches` already pins the roots of the bullets it can parse. This states the rule
+            // over the whole of every bullet, its explanatory prose included, so a path cannot
+            // re-enter through a sentence the way `.claude/skills/fs-gg-ant-design/SKILL.md` did — it
+            // survived #1080, #1082, #1098 and #1099 sitting in a bullet nothing compared. A span
+            // carrying a path separator is a claim about where the checker looks; anything else in a
+            // bullet is a token or an identifier. Scoped to bullets, per the acceptance criterion's
+            // own words, so the section's surrounding paragraphs stay free to discuss paths that are
+            // not roots — `non-mirrored-bodies` subtracts some, and they have to be nameable.
             let section = parsedOrFail ()
             let surfaces = declaredSurfaces ()
             let declaredRoots = surfaces |> List.collect (fun surface -> surface.Roots) |> Set.ofList
 
-            Expect.isNonEmpty section.Spans "non-vacuity: the section's code spans were read and are not an empty list"
+            Expect.isNonEmpty section.BulletSpans "non-vacuity: the bullets' code spans were read and are not an empty list"
             Expect.isNonEmpty declaredRoots "non-vacuity: the resolver declares at least one root to compare against"
 
-            for span in section.Spans |> List.filter (fun span -> span.Contains '/') do
+            let pathShaped = section.BulletSpans |> List.filter (fun span -> span.Contains '/')
+
+            Expect.isNonEmpty pathShaped "non-vacuity: some bullet span looks like a path, so this rule has a subject"
+
+            for span in pathShaped do
                 Expect.isFalse
                     (span.Contains '*' || span.Contains '?')
                     (sprintf
-                        "the section publishes path `%s`, which contains a glob metacharacter — narrowing is the surface's SELECTOR, and a root is where it LOOKS. This is the pre-#1092 shape"
+                        "a bullet publishes path `%s`, which contains a glob metacharacter — narrowing is the surface's SELECTOR, and a root is where it LOOKS. This is the pre-#1092 shape"
                         span)
 
                 Expect.isTrue
                     (declaredRoots.Contains span)
                     (sprintf
-                        "the section publishes path `%s`, which is not a root any surface declares. Declared roots are %A. %s"
+                        "a bullet publishes path `%s`, which is not a root any surface declares. Declared roots are %A. %s"
                         span
                         (Set.toList declaredRoots)
                         remedy)
+        }
+
+        test "every root a bullet publishes resolves in the repository" {
+            // Separate from the rule above because it fails for a different reason and has a
+            // different remedy: the path is a declared root and still does not exist. NOTE that
+            // `.agents/skills` is a generated VIEW (ADR-0067 §6/§8/§9 phase 4) and is absent from a
+            // bare checkout, so this — like `Feature1099`'s equivalent — presumes the tree has been
+            // resolved by `.github/actions/skill-view`, as every job that reads the runtime skill
+            // roots does.
+            let section = parsedOrFail ()
+
+            Expect.isNonEmpty section.Bullets "non-vacuity: there are bullets whose roots can be resolved"
 
             for bullet in section.Bullets do
                 for root in bullet.Roots do
@@ -402,7 +495,10 @@ let cliSurfaceListContractTests =
 
                     Expect.isTrue
                         (File.Exists absolute || Directory.Exists absolute)
-                        (sprintf "bullet '%s' publishes root '%s', which resolves to no file or directory in the repository" bullet.SurfaceId root)
+                        (sprintf
+                            "bullet '%s' publishes root '%s', which resolves to no file or directory in the repository. If this is `.agents/skills`, the generated view root has not been resolved in this tree: run `bash scripts/skill-view generate --source .claude/skills --roots \".agents/skills\"`"
+                            bullet.SurfaceId
+                            root)
         }
 
         // ---------- Acceptance criterion 3: `ant-canonical` names the post-#1082 location ----------
@@ -450,7 +546,7 @@ let cliSurfaceListContractTests =
                 | Some bullet -> bullet
                 | None ->
                     failtestf
-                        "'%s' omits `spec-kit-command` entirely, which is the omission #1111 was filed for: the section says what the checker reads and left out one of the surfaces it reads"
+                        "'%s' has no `spec-kit-command` bullet, which is the omission #1111 was filed for: the section lists what the checker reads and the surface with the widest roots was named in no entry of it"
                         sectionHeading
 
             let declared =
