@@ -1094,7 +1094,30 @@ is_mirror() { [[ -n $mirror_bodies ]] && grep -qxF -- "$1" <<<"$mirror_bodies"; 
 # stripped from it, and the moment `prose-ok [[…]]` exists a marker becomes *itself a `[[ref]]`* —
 # reporting the very config written to silence it. Nothing in the tree had a `[[…]]` inside a marker, so
 # the hole was invisible; that is what a latent hole is. Config must not be its own subject — in any § .
+# SHARED BY BOTH REF EXTRACTORS (§ 2's `emit_links` and § 3's `BARE_AWK`), because they share the
+# defect (#1117). Both scan destructively — `s = substr(s, RSTART + RLENGTH)` — and both require the
+# character BEFORE a ref to be outside `[A-Za-z0-9._/#-]`. Those two facts together silently swallow
+# every ref after the first in a slash-joined chain: once `#1080` is consumed from `(#1080/#1082)` the
+# remainder opens `/#1082`, and `/` is exactly the boundary char the class forbids. `#1082` was not
+# judged and found innocent — it was never LOOKED at, which is this script`s own named failure shape
+# ("a gate green over a subject it never examined", § 3). Measured: `(#1080/#1082)` with BOTH closed
+# reported ONE finding; the tree writes the form in `#216/#227`, `#365/#396/#429/#535` and more.
+#
+# The boundary class is NOT the bug and must not be edited. Its `/` is what spares `…/docs/#1` and
+# `path/name#2` — drop it and the silent miss is traded for a false positive in a gate people would
+# then turn off. What tells the two apart is WHERE the `/` sits: one that opens the remainder of a ref
+# THIS SCAN JUST CONSUMED cannot be path text, because the ref it follows ended in a digit. So the
+# chain is expressed as an advance rule rather than as a looser boundary — rewrite that one separator
+# to a space (a legal boundary char) and the next link matches on its own merits, unchanged in every
+# other respect. A `/` anywhere else in the line, and a `/` not followed by another ref, is untouched.
+#
+# `tail` is the caller's own ref-opening pattern, and passing it is the point: § 3 continues a chain
+# only into a BARE `#N`, § 2 only into a QUALIFIED one, so neither extractor can step into the other's
+# subject. The `/` is only rewritten when a ref really does follow it.
 AWK_STRIP='
+  function chain_advance(rest, tail) {
+    return (rest ~ ("^/" tail)) ? " " substr(rest, 2) : rest
+  }
   function strip_markers(s,   res, i, j, seg) {
     res = ""
     while ((i = index(s, "<!--")) > 0) {
@@ -1394,6 +1417,10 @@ emit_links() {
         s = line
         while (match(s, /(^|[^A-Za-z0-9._\/#-])([A-Za-z0-9._-]+\/)?[A-Za-z][A-Za-z0-9._-]*#[0-9]+/)) {
           t = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+          # `Repo#A/Repo#B` is two links, not one — the same chain defect, in the qualified form
+          # (#1117). The tail pattern is this loop`s own, so the scan continues only into a ref
+          # § 2 would have resolved anyway; a bare `#B` after a qualified head is § 3`s subject.
+          s = chain_advance(s, "([A-Za-z0-9._-]+/)?[A-Za-z][A-Za-z0-9._-]*#[0-9]")
           sub(/^[^A-Za-z0-9]+/, "", t)
           h = index(t, "#"); num = substr(t, h + 1); nr = substr(t, 1, h - 1)
           sl = index(nr, "/")
@@ -1416,7 +1443,9 @@ emit_links() {
 #
 # The leading class carries `/` and `#`, which is what excludes the three near-misses: a URL fragment
 # (`…/page#1`), a markdown heading (`## 3`), and the `#535` of a qualified `FS.GG.Rendering#535` —
-# that last one is § 2's ref, and reporting it here would double-report every honest link.
+# that last one is § 2's ref, and reporting it here would double-report every honest link. Those three
+# are why the class keeps its `/`, and why a slash-joined chain (`#A/#B`) is handled by `chain_advance`
+# instead — see the note on it: the miss was real, and the class is not where it gets fixed.
 #
 # ONE extractor, TWO subjects, TWO verdicts (#698). The scan is identical on both surfaces — a bare
 # `#N` is a bare `#N` wherever it is written — but what it MEANS is not, so the caller passes the file
@@ -1441,6 +1470,7 @@ BARE_AWK='
 
         while (match(s, /(^|[^A-Za-z0-9._\/#-])#[0-9][A-Za-z0-9_-]*/)) {
           t = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+          s = chain_advance(s, "#[0-9]")   # `#A/#B` is two refs, not one (#1117)
           sub(/^[^#]*#/, "", t)          # drop the consumed boundary char and the `#`
           if (t ~ /^[0-9]+$/) print FILENAME, FNR, t
         }

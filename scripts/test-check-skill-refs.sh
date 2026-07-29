@@ -335,6 +335,97 @@ expect_out_has 'no bare #N refs' 'reports zero bare refs, out loud'
 expect_out_hasnt '1a2b3c' 'never mentions the colour'
 
 # ════════════════════════════════════════════════════════════════════════════════════════════════
+# THE #1117 CHAIN  — `#A/#B` is TWO refs, and the `/#N` near-misses stay spared
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+#
+# Both extractors scan DESTRUCTIVELY and both demand a boundary char outside `[A-Za-z0-9._/#-]` in
+# front of a ref. Those two facts together hid every ref after the FIRST of a slash-joined chain:
+# once `#1080` is taken from `(#1080/#1082)` the remainder opens `/#1082`, and `/` is precisely the
+# boundary char the class forbids. Measured on a real body whose refs were BOTH closed, the gate
+# reported ONE finding and passed the other — green over a subject it never examined, which is the
+# failure this script names in its own header.
+#
+# BOTH DIRECTIONS, and the second set is the load-bearing one. The naive fix — drop `/` from the
+# boundary class — passes every chain case below and is wrong: the `/` is what spares `docs/#1` and
+# a URL's `…/#2`. A suite that pinned only the chain would green-light exactly that fix, so the
+# near-miss cases must be able to FAIL, and they are written with a `/` DIRECTLY before the `#`
+# rather than the `page#1` shape (whose `e` the class already excludes on other grounds — a leg that
+# cannot fail is not a leg).
+
+case_start '§3 #1117: EVERY ref of a slash-joined chain is reported, not just the first'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+Carried over from the body that used to sit at this path (#4242/#4243).
+The staging plan ran #4244/#4245/#4246 in that order.
+MD
+run
+expect_rc 1 'the chain is rejected'
+expect_out_has 'bare ref — #4243' 'the SECOND ref of the pair is examined at last'
+expect_out_has 'bare ref — #4246' 'and so is the last of a three-link chain'
+expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 5 'one finding per REF (2 + 3), not one per chain'
+
+case_start '§3 #1117: a `/` that no ref precedes is still not a boundary — `docs/#1` stays spared'
+# THE FALSE-POSITIVE LEG. Links are skipped so the verdict is § 3's alone: § 3 is ungated by
+# `link_mode`, so a green run here is a claim about the bare-ref scan and nothing else. `path/name#2`
+# is a § 2 ref by grammar (owner/repo#num) and would resolve, or dangle, on its own merits — it is
+# here to state that § 3 does not ALSO report it as bare.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+The anchor is https://example.com/docs/#1 and the sub-page is https://example.com/a/b/#2.
+A relative one, docs/#3, is no different, and path/name#4 is a qualified ref, not a bare one.
+MD
+SKIP_LINKS=1 run
+expect_rc 0 'a bare-looking `#N` behind a path separator is not a ref'
+expect_out_has 'no bare #N refs' 'and it says so about the subject it scanned'
+
+case_start '§3 #1117: the chain rule does not survive a non-ref — `#12/notes/#3` stays spared'
+# The rule is "the `/` that opens the remainder of a ref we JUST consumed", not "any `/` after a ref
+# anywhere on the line". `#12` is consumed, the `/` that follows it is a separator only if a ref
+# follows IT; `notes/` is not one, so the scan is back to ordinary boundaries and `#3` is path text.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+<!-- skill-refs: prose-ok #12 — the chain head, not the subject of this case -->
+See #12/notes/#3 for the working copy.
+MD
+SKIP_LINKS=1 run
+expect_rc 0 'one hop only — the separator does not chain through path text'
+expect_out_hasnt 'bare ref — #3' 'the path fragment is not promoted to a ref'
+
+case_start '§2 #1117: the chain is resolved ref-by-ref on the REPO surface too'
+# § 2 and § 3 share `BARE_AWK`, so the repo surface's PROMOTION of bare refs to links inherits the
+# same blindness — and there it is worse, because the missed ref is one the gate would have RESOLVED.
+# This is the shape that was measured: both closed, one finding.
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' closed
+issue 'FS-GG/FS.GG.Rendering#4243' closed
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+Both halves landed (#4242/#4243).
+MD
+run
+expect_rc 1 'a closed issue is closed wherever it is read'
+expect_out_has 'FS.GG.Rendering#4243 is CLOSED' 'the second ref is RESOLVED, not skipped'
+expect_eq "$(grep -c 'stale link' <<<"$OUT")" 2 'two refs, two verdicts'
+
+case_start '§2 #1117: a QUALIFIED chain (Repo#A/Repo#B) resolves both halves'
+# `emit_links` has its own copy of the destructive scan and its own boundary class, so it has its own
+# copy of the defect. Same rule, the qualified form.
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' closed
+issue 'FS-GG/FS.GG.Rendering#4243' closed
+skill fs-gg-alpha <<'MD'
+# alpha
+Both halves landed (FS.GG.Rendering#4242/FS.GG.Rendering#4243).
+MD
+run
+expect_rc 1 'the qualified chain is rejected'
+expect_out_has 'FS.GG.Rendering#4243 is CLOSED' 'the second qualified ref is resolved'
+expect_eq "$(grep -c 'stale link' <<<"$OUT")" 2 'two links, two verdicts'
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
 # THE #241 NEAR-MISS  — closed-ok markers must survive a SINGLE-FILE --changed scope
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 #
