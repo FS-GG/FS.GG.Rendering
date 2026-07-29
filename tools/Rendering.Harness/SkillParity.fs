@@ -1030,10 +1030,28 @@ module SkillParity =
         let description = metadataValue "description" metadata
         let target = targetFromContent readText absoluteSkillPath content
 
+        // ISSUE #1137 — what an entry IS comes off the surface's DECLARATION and nothing else.
+        //
+        // This branch used to read `surface.Kind = Canonical || surface.SurfaceId = "ant-canonical"`.
+        // The second disjunct was DEAD for the default set — `ant-canonical` declares `Kind = Canonical`
+        // in `discoverDefaultSurfaces` — and it was a leftover from before #1080/#1082 moved the Ant
+        // canonical body out of `.claude/skills/`, when the surface was reached through a wrapper root
+        // and its kind did not say `Canonical`.
+        //
+        // Dead for the default set, but NOT dead in general, which is what made it a defect rather than
+        // clutter. `--surface <id>=<path>` builds a surface whose id is whatever the operator TYPED
+        // (`effectiveSurfaces`, which declares every override `Kind = Mixed`), so an override named
+        // `ant-canonical` was classified `CanonicalEntry` while an override named anything else, over
+        // the same directory, was not — the run's answer depended on a string the operator chose.
+        //
+        // That is the rule #1092 landed and both `contracts/` documents now publish, stated in
+        // `SurfaceSelector`'s own comment above: NOTHING about a surface is keyed on `SurfaceId`.
+        // `filesForSurface` honours it for WHERE a surface looks; this is the same rule for WHAT the
+        // bodies it finds are, one layer over — which is why #1092 did not catch it.
         let kind =
             if commandSkillName name then
                 CommandEntry
-            elif surface.Kind = Canonical || surface.SurfaceId = "ant-canonical" then
+            elif surface.Kind = Canonical then
                 CanonicalEntry
             elif target.IsSome then
                 WrapperEntry
@@ -1398,14 +1416,49 @@ module SkillParity =
                       ExceptionId = None }
             | _ -> None)
 
-    let private requiresWrapper (entry: SkillEntry) =
-        entry.EntryKind = CanonicalEntry
-        && (entry.SurfaceId = "package-canonical"
-            || entry.SurfaceId = "ant-canonical"
-            || entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase)
-            || entry.SurfaceId = "fixture-canonical")
+    /// ISSUE #1137 — which CANONICAL surfaces demand that their bodies ALSO appear as an activation
+    /// wrapper on the agent surfaces, read off the surface's DECLARATION rather than off its id.
+    ///
+    /// This replaces `SurfaceId = "package-canonical" || SurfaceId = "ant-canonical" ||
+    /// SurfaceId = "fixture-canonical"`, which listed by name exactly the canonical surfaces whose
+    /// declared `Agent` is not `GeneratedProduct` — the same set, stated as data instead of as three
+    /// literals a fourth canonical surface would have to be added to by hand.
+    ///
+    /// `GeneratedProduct` is the exclusion, and it is not an exception to the rule. Those bodies ship
+    /// INTO a generated workspace rather than being invoked in this repository, so this rule does not
+    /// speak for them: where the manifest declares one `scope: product` it is adjudicated by
+    /// `manifestCoverageFindings` below, and where it sits on the `template/product-skills` convention
+    /// it is adjudicated by the PATH clause in `requiresWrapper`. Neither is keyed on a surface id.
+    /// (A `template-canonical` body on NEITHER — `template/fragments/*/skill/`, say — is required by
+    /// nothing, which is the behaviour before this change too. #1143 is the row for that gap.)
+    let private surfaceDemandsWrapperExposure (surface: SkillSurface) =
+        surface.Kind = Canonical && surface.Agent <> GeneratedProduct
 
-    let private missingWrapperFindings (entries: SkillEntry list) =
+    /// `surfaces` is the run's EFFECTIVE surface set, and the lookup is a join on identity — which is
+    /// what `SurfaceId` is for. What #1092 and #1137 forbid is reading MEANING out of the id string;
+    /// using it to find the declaration that carries the meaning is the opposite of that.
+    ///
+    /// AN ENTRY WHOSE SURFACE THE RUN DID NOT DECLARE ANSWERS `false`, and that is the pre-#1137
+    /// answer preserved exactly: the id could not be in the three-literal list either. It is also
+    /// unreachable rather than merely untested — `inventorySkillsWith` builds every entry FROM this
+    /// same surface list, and `readEntry` only ever emits `CanonicalEntry` for a surface declaring
+    /// `Kind = Canonical`, so an entry reaching here with an unknown id is a state the inventory
+    /// cannot produce. Raising instead would be a new behaviour on an impossible input, which is not
+    /// this item's change to make; the assertion that it stays impossible is in
+    /// `Feature1137SurfaceIdKeyedClassificationTests`, which fails loudly on an entry whose surface
+    /// no declaration produced.
+    let private requiresWrapper (surfacesById: Map<string, SkillSurface>) (entry: SkillEntry) =
+        entry.EntryKind = CanonicalEntry
+        && (surfacesById
+            |> Map.tryFind entry.SurfaceId
+            |> Option.map surfaceDemandsWrapperExposure
+            |> Option.defaultValue false
+            || entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase))
+
+    let private missingWrapperFindings (surfaces: SkillSurface list) (entries: SkillEntry list) =
+        let surfacesById =
+            surfaces |> List.map (fun surface -> surface.SurfaceId, surface) |> Map.ofList
+
         let wrapperNames surfaceId =
             entries
             |> List.filter (fun entry -> entry.SurfaceId = surfaceId && entry.EntryKind = WrapperEntry)
@@ -1416,7 +1469,7 @@ module SkillParity =
         let claudeNames = wrapperNames "claude" + wrapperNames "fixture-claude"
 
         entries
-        |> List.filter requiresWrapper
+        |> List.filter (requiresWrapper surfacesById)
         |> List.collect (fun entry ->
             [ "codex-local", codexNames
               "claude", claudeNames ]
@@ -1429,9 +1482,23 @@ module SkillParity =
                 // A product skill's wrapper requirement is satisfied ONLY by its fs-gg-product-* alias;
                 // a bare same-named framework wrapper must not mask a missing product wrapper (Feature 223).
                 let canonicalSatisfies = (not isProductSkill) && names.Contains(canonicalName)
-                let antCanonicalSelfExposed = entry.SurfaceId = "ant-canonical" && surfaceId = "claude"
+                // ISSUE #1137 — a third `SurfaceId = "ant-canonical"` branch stood here:
+                //
+                //     let antCanonicalSelfExposed = entry.SurfaceId = "ant-canonical" && surfaceId = "claude"
+                //
+                // It exempted the Ant canonical from the Claude wrapper requirement because, before
+                // #1080/#1082, that body WAS `.claude/skills/fs-gg-ant-design/SKILL.md` — it satisfied
+                // the requirement by being the wrapper. #1082 moved it to
+                // `docs/product/ant-design/skill/SKILL.md` and made `fs-gg-ant-design` an ordinary
+                // wrapper present in every agent-skill root, so the exemption has had no subject since:
+                // `canonicalSatisfies` above is already true for it on both surfaces. Measured on this
+                // tree — the default run's findings are byte-identical with the branch removed.
+                //
+                // Removing it is not merely tidying. Left in, it would have silently exempted ANY
+                // operator override the operator happened to name `ant-canonical` from a requirement
+                // its identically-rooted, differently-named twin still had to meet.
 
-                if canonicalSatisfies || exposedAsAlias || antCanonicalSelfExposed then
+                if canonicalSatisfies || exposedAsAlias then
                     None
                 else
                     Some
@@ -2067,7 +2134,7 @@ module SkillParity =
         @ emptyRequiredSurfaceFindings request.RepositoryRoot surfaces
         @ manifestCoverageFindings request entries
         @ wrapperFindings entries
-        @ missingWrapperFindings entries
+        @ missingWrapperFindings surfaces entries
         @ canonicalDriftFindings request entries
         @ symbolFindings symbols
         @ artifactFindings artifacts
