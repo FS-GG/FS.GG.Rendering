@@ -237,7 +237,7 @@ let feature706TemplateConditionalBalanceTests =
 
           // THE CHAIN THAT MAKES THIS FILE REQUIRED, ASSERTED RATHER THAN ASSUMED.
           //
-          // Unlike `check-frozen-mirrors.fsx` (#541), this guard has NO `gate.yml` step of its own — it
+          // This guard has NO `gate.yml` step of its own — it
           // does not need one, because Package.Tests already runs inside the REQUIRED `Deterministic gate`
           // job. But that means the enforcement rides on a three-link chain THIS ITEM DOES NOT OWN:
           //
