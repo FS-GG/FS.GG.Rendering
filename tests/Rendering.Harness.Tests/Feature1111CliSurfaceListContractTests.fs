@@ -31,16 +31,16 @@ module Feature1111CliSurfaceListContractTests
 // re-derives the surfaces from the CODE at runtime and the bullets from the DOCUMENT at runtime and
 // compares them, failing in BOTH directions.
 //
-// ON REUSING #1099'S COMPARISON. #1111's acceptance criterion 2 says `mismatches` in
-// `Feature1099SurfaceInventoryContractTests` "is factored out precisely so a second document can
-// reuse it". It is factored out, but it is `let private` over a `type private InventoryRow`, so no
-// second module can call it — and #1111's own "Not in scope" fences off that test file, which is
-// where the accessibility would have to change. The comparison below is therefore a deliberate
-// second implementation, shaped for a document that publishes id/roots/selector and (rightly) not
-// `Kind`, which is `skill-surface-inventory.md`'s column. Unlike the declarations these two files
-// restate, both copies are executable and both are checked, so neither can drift in silence.
-// Factoring them into one shared helper is filed as a follow-up rather than done by quietly crossing
-// a written scope boundary.
+// ON REUSING #1099'S COMPARISON — RESOLVED BY #1136. #1111's acceptance criterion 2 claimed that
+// `mismatches` in `Feature1099SurfaceInventoryContractTests` "is factored out precisely so a second
+// document can reuse it". IT WAS NOT: it was `let private` over a `type private InventoryRow`, and
+// `private` at module level in F# means private to that module, so no second module could call it.
+// #1111's own "Not in scope" fenced off the file where the accessibility would have to change, so
+// #1111 landed a deliberate second implementation and filed #1136 rather than quietly crossing a
+// written scope boundary. #1136 moved the comparison to `SurfaceContractSupport`, which BOTH files
+// now call; neither defines one. `Kind` is optional to it, because this section says what a default
+// run READS and restating each surface's kind here would create a third copy of the declaration —
+// `skill-surface-inventory.md` is where `Kind` is published and checked.
 //
 // WHAT THE PARSER MUST NOT DO IS SKIP. Every bullet it cannot read is reported as a disagreement,
 // and so is a REPEATED surface id. Neither is a hypothetical: with unreadable bullets dropped, the
@@ -55,56 +55,43 @@ open System
 open System.IO
 open System.Text.RegularExpressions
 open Expecto
-open FSharp.Reflection
 open Rendering.Harness
-open FS.GG.TestSupport
-
-let private repositoryRoot = RepositoryRoot.value
+open SurfaceContractSupport
 
 let private contractPath =
     Path.Combine(repositoryRoot, "specs", "168-skill-parity-evidence", "contracts", "skill-parity-cli.md")
 
 let private sectionHeading = "## Default Repository Surfaces"
 
-let private declaredSurfaces () = SkillParity.discoverDefaultSurfaces repositoryRoot
+/// This document's half of the shared comparison. `ComparesKind` is FALSE, and that is a decision,
+/// not an omission: this section says what a default run READS, and each surface's kind is
+/// `skill-surface-inventory.md`'s published column. Restating it here would create a third copy of
+/// the declaration, which is the defect #1099 and #1111 exist to remove.
+let private bulletSubject: RestatementSubject =
+    { Document = sectionHeading
+      Entry = "bullet"
+      ComparesKind = false }
 
 // ---------------------------------------------------------------------------------------------
 // Reading the document
 // ---------------------------------------------------------------------------------------------
 
-/// One bullet of `## Default Repository Surfaces`, projected onto the two halves a surface declares.
-/// `Kind` is deliberately absent: this section says what a default run READS, and the kind of each
-/// surface is `skill-surface-inventory.md`'s column. Restating it here would create a third copy.
-type private SurfaceBullet =
-    { SurfaceId: string
-      Roots: string list
-      Selector: string }
-
 /// Everything the section yielded: the bullets that parsed, the bullets that did not, and every code
 /// span appearing in a bullet — its data line and the prose lines beneath it alike. All three are
 /// inputs to the comparison; a bullet that could not be read is a failure, not an absence.
+///
+/// A bullet is a `SurfaceContractSupport.SurfaceRestatement` with `Kind = None`, which is exactly
+/// what "this document does not publish a kind" means to the shared comparison.
 type private ParsedSection =
-    { Bullets: SurfaceBullet list
+    { Bullets: SurfaceRestatement list
       Malformed: string list
       BulletSpans: string list }
-
-let private codeSpanPattern = Regex(@"`([^`]+)`", RegexOptions.Compiled)
 
 /// A Markdown ATX heading, which is what ends the section — NOT any line beginning with `#`. This
 /// file's house style wraps prose at about 80 columns and is dense with `#NNNN` issue references, so
 /// one unlucky wrap putting `#1092` in column 0 would otherwise truncate the section and quietly
 /// shrink what is checked.
 let private headingPattern = Regex(@"^#{1,6}\s", RegexOptions.Compiled)
-
-let private spans (text: string) =
-    codeSpanPattern.Matches text
-    |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
-    |> List.ofSeq
-
-/// What is left of a cell once its code spans are removed. The pinned columns are DATA: a cell that
-/// spells part of its value in prose leaves residue here and is rejected, which is what stops
-/// ``selector `agent-wrappers` unless overridden`` from reading as a plain selector.
-let private residue (text: string) = codeSpanPattern.Replace(text, "").Trim()
 
 /// The lines of `sectionHeading`, stopping at the next heading of any level so a later section's
 /// bullets can never be mistaken for this one's.
@@ -185,8 +172,9 @@ let private parseBullet (line: string) =
                 | [ selector ] when residue selectorText = "" ->
                     Ok
                         { SurfaceId = surfaceId
+                          Kind = None
                           Roots = roots
-                          Selector = selector }
+                          Selector = Some selector }
                 | [ _ ] ->
                     malformed (sprintf "carries prose %A in its selector cell; a surface declares one selector and nothing else" (residue selectorText))
                 | _ ->
@@ -218,76 +206,15 @@ let private parseContract () = parseSection (File.ReadAllText contractPath)
 // The comparison
 // ---------------------------------------------------------------------------------------------
 
-/// Every way the section and the code disagree, as sentences. Empty means they agree. Both
-/// directions are enumerated on purpose: a surface with no bullet is as much a failure as a bullet
-/// for no surface, and the first of those is what the pre-#1111 section looked like.
+/// The one comparison, in the one place both files call (#1136). This is a projection onto its
+/// argument shape and nothing else — there is no second comparison in this file. `Malformed` is
+/// carried into it as `Unreadable`, so a bullet the parser could not read counts as a disagreement
+/// rather than as a bullet that is simply not there.
 let private mismatches (section: ParsedSection) (surfaces: SkillParity.SkillSurface list) =
-    let bulletIds = section.Bullets |> List.map (fun bullet -> bullet.SurfaceId) |> Set.ofList
-    let surfaceIds = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
-
-    let malformed =
-        section.Malformed
-        |> List.map (fun problem -> sprintf "a bullet in %s could not be read as a surface declaration: %s" sectionHeading problem)
-
-    // A surface is declared once, so it is restated once. Without this, a second bullet for an id is
-    // compared against nothing by every other clause here, and any path at all can ride in beside a
-    // correct bullet.
-    let repeated =
-        section.Bullets
-        |> List.countBy (fun bullet -> bullet.SurfaceId)
-        |> List.filter (fun (_, count) -> count > 1)
-        |> List.map (fun (surfaceId, count) ->
-            sprintf "%s publishes %d bullets for surface '%s'; a surface is declared once and is restated once" sectionHeading count surfaceId)
-
-    let missingBullets =
-        Set.difference surfaceIds bulletIds
-        |> Set.toList
-        |> List.map (fun surfaceId ->
-            sprintf "surface '%s' is declared by discoverDefaultSurfaces and has no bullet in %s" surfaceId sectionHeading)
-
-    let extraBullets =
-        Set.difference bulletIds surfaceIds
-        |> Set.toList
-        |> List.map (sprintf "%s has a bullet for '%s', which discoverDefaultSurfaces does not declare" sectionHeading)
-
-    let cellMismatches =
-        surfaces
-        |> List.collect (fun surface ->
-            section.Bullets
-            |> List.filter (fun bullet -> bullet.SurfaceId = surface.SurfaceId)
-            |> List.collect (fun bullet ->
-                let expectedSelector = SkillParity.surfaceSelectorToken surface.Selector
-
-                [ if bullet.Roots <> surface.Roots then
-                      yield
-                          sprintf
-                              "surface '%s': the section publishes roots %A and the resolver reads %A"
-                              surface.SurfaceId
-                              bullet.Roots
-                              surface.Roots
-                  if bullet.Selector <> expectedSelector then
-                      yield
-                          sprintf
-                              "surface '%s': the section publishes selector '%s' and the resolver uses '%s'"
-                              surface.SurfaceId
-                              bullet.Selector
-                              expectedSelector ]))
-
-    malformed @ repeated @ missingBullets @ extraBullets @ cellMismatches
+    disagreements bulletSubject { Entries = section.Bullets; Unreadable = section.Malformed } surfaces
 
 let private remedy =
     "Correct the bullet, or the declaration, so they agree. Nothing regenerates this section, so #1111 pins it — as #1099 pinned the same declaration in skill-surface-inventory.md."
-
-/// Every `SurfaceSelector` case, by reflection, so "some selector other than this surface's" can be
-/// expressed without naming a case this file would then have to be edited to keep true.
-let private everySelector () =
-    FSharpType.GetUnionCases typeof<SkillParity.SurfaceSelector>
-    |> Array.toList
-    |> List.filter (fun case -> Array.isEmpty (case.GetFields()))
-    |> List.choose (fun case ->
-        match FSharpValue.MakeUnion(case, [||]) with
-        | :? SkillParity.SurfaceSelector as selector -> Some selector
-        | _ -> None)
 
 let private parsedOrFail () =
     match parseContract () with
@@ -357,23 +284,13 @@ let cliSurfaceListContractTests =
                 (mismatches section surfaces)
                 "baseline: the section and the code agree before any perturbation, so each failure below is caused by the perturbation alone"
 
-            let movedRoot =
-                surfaces
-                |> List.mapi (fun index surface ->
-                    if index = 0 then
-                        { surface with Roots = [ "docs/product/ant-design/skill/SKILL.md" ] }
-                    else
-                        surface)
-
             Expect.isNonEmpty
-                (mismatches section movedRoot)
+                (mismatches section (withMovedRoot surfaces))
                 "a surface whose ROOT moved without the section moving with it must be reported — this is #1082 happening again"
 
             let otherSelector =
-                let first = List.head surfaces
-
-                match everySelector () |> List.tryFind (fun selector -> selector <> first.Selector) with
-                | Some replacement -> { first with Selector = replacement } :: List.tail surfaces
+                match withOtherSelector surfaces with
+                | Some perturbed -> perturbed
                 | None ->
                     failtest
                         "non-vacuity: SurfaceSelector defines more than one case, so 'the selector changed' is a perturbation that can be expressed at all"
@@ -382,11 +299,24 @@ let cliSurfaceListContractTests =
                 (mismatches section otherSelector)
                 "a surface whose SELECTOR changed without the section changing with it must be reported — the half a single prose path could never express"
 
-            let seventhSurface =
-                { List.head surfaces with SurfaceId = "fsgg-1111-undocumented-surface" } :: surfaces
+            // #1136 — the OTHER side of `bulletSubject.ComparesKind = false`, stated so the decision
+            // is executable rather than a comment. This section publishes no kind, so a surface
+            // whose KIND changes must NOT turn this file red; `skill-surface-inventory.md` is where
+            // that is checked, and its own control proves it. Without this, "we do not compare Kind"
+            // is an assertion nobody has measured.
+            let otherKind =
+                match withOtherKind surfaces with
+                | Some perturbed -> perturbed
+                | None ->
+                    failtest
+                        "non-vacuity: SurfaceKind defines more than one case, so 'the kind changed' is a perturbation that can be expressed at all"
+
+            Expect.isEmpty
+                (mismatches section otherKind)
+                "a surface whose KIND changed alone must NOT be reported here: this section deliberately does not restate Kind, and adding it would be a third copy of the declaration"
 
             Expect.isNonEmpty
-                (mismatches section seventhSurface)
+                (mismatches section (withUndeclaredSurface "fsgg-1111-undocumented-surface" surfaces))
                 "a surface declared with NO bullet must be reported; that is exactly how `spec-kit-command` went without an entry here for three issues"
 
             Expect.isNonEmpty
@@ -406,7 +336,7 @@ let cliSurfaceListContractTests =
             // the FIRST bullet for an id and every later one rode in unchecked.
             let repeatedBullet =
                 let first = List.head section.Bullets
-                { first with Roots = [ "docs" ]; Selector = "every-skill-body" } :: section.Bullets
+                { first with Roots = [ "docs" ]; Selector = Some "every-skill-body" } :: section.Bullets
 
             Expect.isNonEmpty
                 (mismatches { section with Bullets = repeatedBullet } surfaces)
@@ -491,14 +421,10 @@ let cliSurfaceListContractTests =
 
             for bullet in section.Bullets do
                 for root in bullet.Roots do
-                    let absolute = Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
-
-                    Expect.isTrue
-                        (File.Exists absolute || Directory.Exists absolute)
-                        (sprintf
-                            "bullet '%s' publishes root '%s', which resolves to no file or directory in the repository. If this is `.agents/skills`, the generated view root has not been resolved in this tree: run `bash scripts/skill-view generate --source .claude/skills --roots \".agents/skills\"`"
-                            bullet.SurfaceId
-                            root)
+                    // #1136 — the remedy this file already named now lives in the one place both
+                    // files call, so `Feature1099`'s equivalent stops reporting an ungenerated view
+                    // as the document being wrong.
+                    Expect.isTrue (rootResolves root) (unresolvedRootMessage "bullet" bullet.SurfaceId root)
         }
 
         // ---------- Acceptance criterion 3: `ant-canonical` names the post-#1082 location ----------
@@ -561,7 +487,7 @@ let cliSurfaceListContractTests =
 
             Expect.equal
                 commandBullet.Selector
-                (SkillParity.surfaceSelectorToken declared.Selector)
+                (Some(SkillParity.surfaceSelectorToken declared.Selector))
                 "the `speckit-` narrowing is named as the surface's SELECTOR"
 
             for root in commandBullet.Roots do

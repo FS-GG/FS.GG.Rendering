@@ -42,24 +42,41 @@ module Feature1099SurfaceInventoryContractTests
 // would pass on the day a seventh surface is added with no row at all, which is this item's whole
 // complaint.
 //
-// The comparison is factored into `mismatches` so the green assertion can carry a real non-vacuity
-// control: an empty mismatch list is equally true of a comparison that parsed nothing, so every
-// green case below is paired with a PERTURBED surface list that must be rejected.
+// The comparison is factored out so the green assertion can carry a real non-vacuity control: an
+// empty mismatch list is equally true of a comparison that parsed nothing, so every green case below
+// is paired with a PERTURBED surface list that must be rejected.
+//
+// #1136 — THE COMPARISON NOW LIVES IN `SurfaceContractSupport`, and this file no longer has one of
+// its own. It was `let private mismatches` over a `type private InventoryRow` here, which is private
+// to THIS module, so `Feature1111CliSurfaceListContractTests` could not call it and implemented the
+// same comparison a second time. Two consequences of that are closed by the move: the shared
+// `disagreements` compares EVERY entry for a surface id rather than the first, so a repeated row is
+// reported here too (#1111's review found that hole and fixed it only in its own file), and the
+// "declared root missing from disk" verdict now names the generated-view remedy instead of blaming
+// the document. What stays here is what is genuinely this document's: reading a Markdown TABLE, and
+// the rules for its own cells.
 
 open System
 open System.IO
-open System.Text.RegularExpressions
 open Expecto
-open FSharp.Reflection
 open Rendering.Harness
-open FS.GG.TestSupport
-
-let private repositoryRoot = RepositoryRoot.value
+open SurfaceContractSupport
 
 let private contractPath =
     Path.Combine(repositoryRoot, "specs", "168-skill-parity-evidence", "contracts", "skill-surface-inventory.md")
 
-let private declaredSurfaces () = SkillParity.discoverDefaultSurfaces repositoryRoot
+/// This document's half of the shared comparison. `ComparesKind` is TRUE: the Required Inventory
+/// table publishes a `Kind` column, and #1099 pinned it. The perturbation control below proves this
+/// flag is on, so it cannot be flipped off and delete a check with nothing turning red.
+let private inventorySubject: RestatementSubject =
+    { Document = "the Required Inventory table"
+      Entry = "row"
+      ComparesKind = true }
+
+/// The one comparison, in the one place both files call. This is a projection onto its argument
+/// shape and nothing else — there is no second comparison in this file.
+let private mismatches (rows: SurfaceRestatement list) (surfaces: SkillParity.SkillSurface list) =
+    disagreements inventorySubject { Entries = rows; Unreadable = [] } surfaces
 
 // ---------------------------------------------------------------------------------------------
 // Reading the document
@@ -97,27 +114,6 @@ let private tableUnder (heading: string) =
         | header :: separator :: rows when isSeparatorRow separator -> Some(cells header, rows |> List.map cells)
         | _ -> None
 
-let private codeSpanPattern = Regex(@"`([^`]+)`", RegexOptions.Compiled)
-
-/// Every code span in a cell, in order. The columns this item pins are DATA, so each one is written
-/// as a code span and read back as one — a cell that spells its value in prose yields nothing here
-/// and fails, which is the `src/*/skill` and `template/**/skill and template/product-skills` shape.
-let private spans (cell: string) =
-    codeSpanPattern.Matches cell
-    |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
-    |> List.ofSeq
-
-let private singleSpan (cell: string) =
-    match spans cell with
-    | [ only ] -> Some only
-    | _ -> None
-
-type private InventoryRow =
-    { SurfaceId: string
-      Kind: string option
-      Roots: string list
-      Selector: string option }
-
 let private columnIndex (header: string list) (name: string) =
     header |> List.tryFindIndex (fun cell -> cell.Trim().Equals(name, StringComparison.OrdinalIgnoreCase))
 
@@ -145,74 +141,8 @@ let private inventoryRows () =
             |> Some
         | _ -> None
 
-// ---------------------------------------------------------------------------------------------
-// The comparison
-// ---------------------------------------------------------------------------------------------
-
-/// Every way the document and the code disagree, as sentences. Empty means they agree. Both
-/// directions are enumerated deliberately: a surface with no row is as much a failure as a row with
-/// no surface, and only the first of those is what today's staleness looks like.
-let private mismatches (rows: InventoryRow list) (surfaces: SkillParity.SkillSurface list) =
-    let rowIds = rows |> List.map (fun row -> row.SurfaceId) |> Set.ofList
-    let surfaceIds = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
-
-    let missingRows =
-        Set.difference surfaceIds rowIds
-        |> Set.toList
-        |> List.map (sprintf "surface '%s' is declared by discoverDefaultSurfaces and has no row in the Required Inventory table")
-
-    let extraRows =
-        Set.difference rowIds surfaceIds
-        |> Set.toList
-        |> List.map (sprintf "the Required Inventory table has a row for '%s', which discoverDefaultSurfaces does not declare")
-
-    let cellMismatches =
-        surfaces
-        |> List.collect (fun surface ->
-            match rows |> List.tryFind (fun row -> row.SurfaceId = surface.SurfaceId) with
-            | None -> []
-            | Some row ->
-                let expectedKind = SkillParity.surfaceKindToken surface.Kind
-                let expectedSelector = SkillParity.surfaceSelectorToken surface.Selector
-
-                [ if row.Roots <> surface.Roots then
-                      yield
-                          sprintf
-                              "surface '%s': the table publishes roots %A and the resolver reads %A"
-                              surface.SurfaceId
-                              row.Roots
-                              surface.Roots
-                  if row.Selector <> Some expectedSelector then
-                      yield
-                          sprintf
-                              "surface '%s': the table publishes selector %A and the resolver uses '%s'"
-                              surface.SurfaceId
-                              row.Selector
-                              expectedSelector
-                  if row.Kind <> Some expectedKind then
-                      yield
-                          sprintf
-                              "surface '%s': the table publishes kind %A and the resolver declares '%s'"
-                              surface.SurfaceId
-                              row.Kind
-                              expectedKind ])
-
-    missingRows @ extraRows @ cellMismatches
-
 let private remedy =
     "Correct the row, or the declaration, so they agree. This table is the contract: nothing regenerates it, so #1099 pins it instead."
-
-/// Every `SurfaceSelector` case, by reflection, so a case added tomorrow is covered without anyone
-/// remembering to extend this file. All cases are nullary today; a case that ever takes fields is
-/// skipped rather than crashing the list, and the count control below catches its absence.
-let private everySelector () =
-    FSharpType.GetUnionCases typeof<SkillParity.SurfaceSelector>
-    |> Array.toList
-    |> List.filter (fun case -> Array.isEmpty (case.GetFields()))
-    |> List.choose (fun case ->
-        match FSharpValue.MakeUnion(case, [||]) with
-        | :? SkillParity.SurfaceSelector as selector -> Some selector
-        | _ -> None)
 
 [<Tests>]
 let surfaceInventoryContractTests =
@@ -265,23 +195,13 @@ let surfaceInventoryContractTests =
                 (mismatches rows surfaces)
                 "baseline: the table and the code agree before any perturbation, so each failure below is caused by the perturbation alone"
 
-            let movedRoot =
-                surfaces
-                |> List.mapi (fun index surface ->
-                    if index = 0 then
-                        { surface with Roots = [ "docs/product/ant-design/skill/SKILL.md" ] }
-                    else
-                        surface)
-
             Expect.isNonEmpty
-                (mismatches rows movedRoot)
+                (mismatches rows (withMovedRoot surfaces))
                 "a surface whose ROOT moved without the table moving with it must be reported — this is #1082 happening again"
 
             let otherSelector =
-                let first = List.head surfaces
-
-                match everySelector () |> List.tryFind (fun selector -> selector <> first.Selector) with
-                | Some replacement -> { first with Selector = replacement } :: List.tail surfaces
+                match withOtherSelector surfaces with
+                | Some perturbed -> perturbed
                 | None ->
                     failtest
                         "non-vacuity: SurfaceSelector defines more than one case, so 'the selector changed' is a perturbation that can be expressed at all"
@@ -290,16 +210,69 @@ let surfaceInventoryContractTests =
                 (mismatches rows otherSelector)
                 "a surface whose SELECTOR changed without the table changing with it must be reported — the half a single `Root` column could never express"
 
-            let seventhSurface =
-                { List.head surfaces with SurfaceId = "fsgg-1099-undocumented-surface" } :: surfaces
+            // #1136 — the control for `inventorySubject.ComparesKind`. This document publishes a
+            // `Kind` column and is checked on it, while `skill-parity-cli.md` deliberately is not;
+            // the difference is one boolean, and without this a flipped boolean would delete the
+            // kind check with nothing turning red. `Kind` is the ONLY column whose comparison is
+            // conditional, so it is the only one that needs its own control.
+            let otherKind =
+                match withOtherKind surfaces with
+                | Some perturbed -> perturbed
+                | None ->
+                    failtest
+                        "non-vacuity: SurfaceKind defines more than one case, so 'the kind changed' is a perturbation that can be expressed at all"
 
             Expect.isNonEmpty
-                (mismatches rows seventhSurface)
+                (mismatches rows otherKind)
+                "a surface whose KIND changed without the table changing with it must be reported — this table publishes Kind, so it is compared on it"
+
+            Expect.isNonEmpty
+                (mismatches rows (withUndeclaredSurface "fsgg-1099-undocumented-surface" surfaces))
                 "a surface declared with NO row at all must be reported; this is the direction a hand-corrected table fails silently in"
 
             Expect.isNonEmpty
                 (mismatches (List.tail rows) surfaces)
                 "and a row deleted from the table must be reported too, so the check is not satisfied by an empty document"
+
+            // The other direction of the id-set comparison, which no perturbation above reaches: a
+            // row the resolver does not declare fails through the extra-entry clause.
+            Expect.isNonEmpty
+                (mismatches ({ List.head rows with SurfaceId = "fsgg-1099-invented-row" } :: rows) surfaces)
+                "a row for a surface that does not exist must be reported; a table may not add surfaces the checker never reads"
+        }
+
+        test "a SECOND row for a surface that already has one is a disagreement, whatever it publishes" {
+            // #1136 acceptance criterion 2, and the hole this row was filed to close here. #1111's
+            // review found it in the sibling file: matching a surface to its restatement with
+            // `List.tryFind` compares the FIRST row for an id and every later one rides in
+            // unchecked, so a correct `claude` row followed by a `claude` row publishing any roots
+            // at all read as green. #1111 fixed it in its own copy only, because the comparison was
+            // `private` and could not be shared. It is now fixed in the one shared `disagreements`,
+            // which counts repeats AND compares every matching row rather than the first.
+            let rows =
+                match inventoryRows () with
+                | Some rows -> rows
+                | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
+
+            let surfaces = declaredSurfaces ()
+
+            Expect.isEmpty
+                (mismatches rows surfaces)
+                "baseline: the table and the code agree before the row is duplicated"
+
+            let duplicatedWithDifferentRoots =
+                { List.head rows with Roots = [ "docs" ] } :: rows
+
+            Expect.isNonEmpty
+                (mismatches duplicatedWithDifferentRoots surfaces)
+                "a duplicated row publishing DIFFERENT roots must fail — under `tryFind` the correct row was found first and this one was compared against nothing"
+
+            // And the sharper case the roots clause alone cannot catch: a byte-identical duplicate
+            // disagrees with nothing cell by cell, and is still a defect. A surface is declared
+            // once, so it is restated once — otherwise "which row is the contract" has no answer.
+            Expect.isNonEmpty
+                (mismatches (List.head rows :: rows) surfaces)
+                "an IDENTICAL duplicated row must fail too: a surface is declared once and is restated once"
         }
 
         // ---------- Acceptance criterion 1: the cells are data, not prose ----------
@@ -335,14 +308,13 @@ let surfaceInventoryContractTests =
                             row.SurfaceId
                             root)
 
-                    let absolute = Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
-
-                    Expect.isTrue
-                        (File.Exists absolute || Directory.Exists absolute)
-                        (sprintf
-                            "row '%s' publishes root '%s', which resolves to no file or directory in the repository"
-                            row.SurfaceId
-                            root)
+                    // #1136 routed finding: the message, not the verdict, was the defect here. The
+                    // failure is correct — the root does not resolve — but `.agents/skills` is a
+                    // gitignored GENERATED VIEW, absent from a bare worktree, so on a fresh clone
+                    // this reported the DOCUMENT as wrong when the tree had simply not generated
+                    // its view. `unresolvedRootMessage` names the generator first, and both files
+                    // now say the same thing because they call the same helper.
+                    Expect.isTrue (rootResolves root) (unresolvedRootMessage "row" row.SurfaceId root)
         }
 
         // ---------- Acceptance criterion 3: `ant-canonical` names the post-#1082 location ----------
