@@ -25,9 +25,9 @@ module Feature1137SurfaceIdKeyedClassificationTests
 //
 // THE TESTS ARE WRITTEN OVER THE RULE, quantified over `discoverDefaultSurfaces`, not over the id that
 // happened to be wrong. A test naming `ant-canonical` would pass on the day a second id-keyed branch is
-// added for some other surface — the failure mode this item is about. `theRuleHolds` below is that
-// test; the `ant-canonical` cases are the issue's own demonstration, kept because they are the measured
-// evidence, and each carries a non-vacuity control.
+// added for some other surface — the failure mode this item is about. The `ant-canonical` cases are the
+// issue's own demonstration, kept because they are the measured evidence, and each carries a
+// non-vacuity control.
 
 open System
 open System.IO
@@ -38,10 +38,15 @@ open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
 
-let private declaredSurfaces () = SkillParity.discoverDefaultSurfaces repositoryRoot
+let private declaredSurfaces = lazy (SkillParity.discoverDefaultSurfaces repositoryRoot)
 
-let private defaultEntries () =
-    SkillParity.inventorySkills (Feature168SkillParityFixtures.repositoryRequest repositoryRoot) (declaredSurfaces ())
+/// A full default inventory is a real filesystem walk of every declared root, so it is taken ONCE for
+/// the file rather than per test.
+let private defaultEntries =
+    lazy
+        (SkillParity.inventorySkills
+            (Feature168SkillParityFixtures.repositoryRequest repositoryRoot)
+            (declaredSurfaces.Force()))
 
 /// A request whose report and summary land in a throwaway directory. `docs/reports/skills-parity.md`
 /// is a COMMITTED artifact with a CI gate on its diff, so a test must never regenerate it in place.
@@ -65,12 +70,14 @@ let private classification (report: SkillParity.ParityReport) =
      |> List.map (fun finding -> finding.Category, finding.SkillName, finding.CanonicalPath, finding.WrapperPath)
      |> List.sort)
 
-/// What a surface's DECLARATION predicts its bodies will be classified as, restated here independently
-/// of `readEntry` so the assertion is a claim about the rule rather than a copy of the implementation.
+/// What a surface's DECLARATION predicts its bodies will be classified as.
+///
+/// Restated here independently of `readEntry`, so the assertion is a claim about the RULE rather than a
+/// copy of the implementation — including the command case, which is derived from the skill's own NAME
+/// (a property of the file, outside this rule's subject) rather than read back off the `EntryKind`
+/// under test. Reading `EntryKind` there would make every command entry pass tautologically.
 let private predictedKind (surface: SkillParity.SkillSurface) (entry: SkillParity.SkillEntry) =
-    if entry.EntryKind = SkillParity.CommandEntry then
-        // A `speckit-*` body is classified by its NAME, which is a property of the file and not of the
-        // surface. It is outside this rule's subject; the rule is about what the SURFACE contributes.
+    if entry.SkillName.StartsWith("speckit-", StringComparison.OrdinalIgnoreCase) then
         SkillParity.CommandEntry
     elif surface.Kind = SkillParity.Canonical then
         SkillParity.CanonicalEntry
@@ -79,29 +86,91 @@ let private predictedKind (surface: SkillParity.SkillSurface) (entry: SkillParit
     else
         SkillParity.WrapperOnlyEntry
 
-// The pre-#1137 text of the branch this item removed, used as the non-vacuity control for the source
-// guard below. A guard whose pattern no longer matches the defect it was written for is a guard that
-// passes because it broke, and nothing in a green run tells those two apart.
-let private removedBranchSample =
-    "            elif surface.Kind = Canonical || surface.SurfaceId = \"ant-canonical\" then"
-
-/// A QUALIFIED `SurfaceId` access compared against a string literal, in either direction.
-///
-/// The qualifier is what makes this precise: F# spells record CONSTRUCTION and EQUALITY with the same
-/// `=`, so a bare `SurfaceId = "codex-local"` is a declaration in `discoverDefaultSurfaces` and must
-/// stay legal. A comparison always reads a field off something — `entry.SurfaceId`, `surface.SurfaceId`
-/// — so the leading `.` separates the two without a whitelist of line numbers to keep up to date.
-let private literalSurfaceIdComparison =
-    Regex(@"\.SurfaceId\s*(=|<>)\s*""", RegexOptions.Compiled)
+// ---------------------------------------------------------------------------------------------
+// The source guard (acceptance criterion 4)
+// ---------------------------------------------------------------------------------------------
 
 let private skillParitySourcePath =
     Path.Combine(repositoryRoot, "tools", "Rendering.Harness", "SkillParity.fs")
 
-/// Comment lines are excluded, and deliberately: this item's own commentary QUOTES the branch it
-/// deleted, and a guard that could not tell a quotation from a use would forbid explaining the fix.
-let private isComment (line: string) =
-    let trimmed = line.TrimStart()
-    trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal)
+let private skillParitySource () = File.ReadAllLines skillParitySourcePath
+
+/// Comment lines are excluded from both guards below, and deliberately: this item's own commentary
+/// QUOTES the branch it deleted, and a guard that could not tell a quotation from a use would forbid
+/// explaining the fix.
+///
+/// LIMITATION, stated rather than hidden: this recognises `//` line comments only. `SkillParity.fs`
+/// contains no `(* … *)` block comments, and a block comment quoting a surface id would be reported
+/// here as an offender. That fails in the SAFE direction — a false alarm someone must look at, not a
+/// silent pass — which is the right way for a guard to be wrong.
+let private isComment (line: string) = line.TrimStart().StartsWith("//", StringComparison.Ordinal)
+
+/// A record-field DECLARATION of a surface id — `SurfaceId = "codex-local"`, with whatever list and
+/// record punctuation opens the line. F# spells construction and equality with the same `=`, so these
+/// must stay legal while comparisons must not.
+let private surfaceIdDeclaration =
+    Regex(@"^[\[\{\s]*SurfaceId\s*=\s*""", RegexOptions.Compiled)
+
+/// A QUALIFIED `SurfaceId` access used to DECIDE something against a string literal.
+///
+/// The qualifier is what makes this precise: a bare `SurfaceId = "…"` is a declaration (above), while
+/// a comparison always reads the field off something — `entry.SurfaceId`, `surface.SurfaceId`. The
+/// alternation covers the spellings an F# author would actually reach for after `=` is forbidden:
+/// `.Equals("…")`, `.StartsWith("…")`, `.Contains("…")`, and `match x.SurfaceId with | "…"`.
+let private literalSurfaceIdComparison =
+    Regex(
+        @"\.SurfaceId\s*(=|<>)\s*""|\.SurfaceId\.(Equals|StartsWith|EndsWith|Contains)\s*\(\s*""|match\s+[\w.]*\.SurfaceId\s+with",
+        RegexOptions.Compiled
+    )
+
+/// The pre-#1137 text of the branch this item removed, and three plausible re-introductions of it.
+/// A guard whose pattern no longer matches the defect it was written for is a guard that passes
+/// because it broke, and nothing in a green run tells those two apart.
+let private removedBranchSamples =
+    [ "            elif surface.Kind = Canonical || surface.SurfaceId = \"ant-canonical\" then"
+      "        let antCanonicalSelfExposed = entry.SurfaceId = \"ant-canonical\" && surfaceId = \"claude\""
+      "        if entry.SurfaceId.Equals(\"ant-canonical\", StringComparison.Ordinal) then"
+      "        match entry.SurfaceId with" ]
+
+/// Every line that still spells a DEFAULT surface id as a string literal outside a declaration, with
+/// the reason each one is not an id-keyed decision.
+///
+/// This is the half `literalSurfaceIdComparison` cannot see, and #1137's review is why it exists: a
+/// pattern that recognises USES can always be walked around (bind the field to a local, put the
+/// literals in a list, compare in a helper), so the second guard fixes the ids themselves and pins the
+/// residue EXACTLY. A new line joining this set fails the test, whatever spelling it used.
+///
+/// Matched on trimmed line TEXT rather than line number, so inserting code above them does not churn
+/// this list.
+let private knownLiteralSurfaceIdLines =
+    set
+        [
+          // `agentToken` — the report's `Agent` column. The token for the `Claude` agent happens to be
+          // spelled the same as the `claude` surface's id; it is not read as one.
+          "| Claude -> \"claude\""
+
+          // A fixture surface's declared ROOT — the directory named `claude/` under the synthetic tree,
+          // not a surface id.
+          "Roots = [ \"claude\" ]"
+
+          // `createFixture` — a path segment of the synthetic wrapper it writes.
+          "createWrapper (full [ \"claude\"; \"passing\"; \"SKILL.md\" ]) \"fs-gg-fixture-passing\" \"Aligned fixture skill.\" \"../../canonical/passing/SKILL.md\""
+
+          // ---- #1143: the wrapper-requirement TARGETS, still a literal list ----------------------
+          //
+          // These four lines in `missingWrapperFindings` and one in `manifestCoverageFindings` are the
+          // same family as what #1137 removed — a fact that should be declared, restated as literals —
+          // but a different question: which surfaces are the TARGETS of the wrapper requirement, not
+          // what an entry IS. Fixing them moves findings outside the default set (measured on #1143:
+          // a `--fixture all` run attributes its `missing-wrapper` findings to `claude` and
+          // `codex-local`, which are in no Supported Surfaces table that run printed) and needs an
+          // explicit decision about `fixture-optional`. They are tracked, not forgotten, and this set
+          // must SHRINK when #1143 lands.
+          "let codexNames = wrapperNames \"codex-local\" + wrapperNames \"fixture-codex\""
+          "let claudeNames = wrapperNames \"claude\" + wrapperNames \"fixture-claude\""
+          "[ \"codex-local\", codexNames"
+          "\"claude\", claudeNames ]"
+          "let roots = [ \"claude\", \".claude\"; \"codex-local\", \".agents\" ]" ]
 
 [<Tests>]
 let surfaceIdKeyedClassificationTests =
@@ -110,10 +179,9 @@ let surfaceIdKeyedClassificationTests =
         // ---------- Acceptance criterion 2: the default set is UNCHANGED ----------
 
         test "ant-canonical's bodies are still CanonicalEntry, by declaration rather than by name" {
-            let entries = defaultEntries ()
-
             let antEntries =
-                entries |> List.filter (fun entry -> entry.SurfaceId = "ant-canonical")
+                defaultEntries.Force()
+                |> List.filter (fun entry -> entry.SurfaceId = "ant-canonical")
 
             // Non-vacuity: there is something to classify. Without this, an inventory that resolved
             // `ant-canonical` to nothing at all would satisfy the assertion below by having no subject.
@@ -129,7 +197,8 @@ let surfaceIdKeyedClassificationTests =
             // now rests on, so a future edit that flipped `ant-canonical` to a non-canonical Kind while
             // leaving this test green would have to trip here instead.
             let antSurface =
-                declaredSurfaces () |> List.find (fun surface -> surface.SurfaceId = "ant-canonical")
+                declaredSurfaces.Force()
+                |> List.find (fun surface -> surface.SurfaceId = "ant-canonical")
 
             Expect.equal
                 antSurface.Kind
@@ -140,17 +209,21 @@ let surfaceIdKeyedClassificationTests =
         // ---------- The RULE, quantified over every declared surface ----------
 
         test "every entry's kind is what its surface's declaration predicts, for every declared surface" {
-            let surfaces = declaredSurfaces ()
-            let entries = defaultEntries ()
+            let entries = defaultEntries.Force()
 
             let bySurface =
-                surfaces |> List.map (fun surface -> surface.SurfaceId, surface) |> Map.ofList
+                declaredSurfaces.Force()
+                |> List.map (fun surface -> surface.SurfaceId, surface)
+                |> Map.ofList
 
             Expect.isNonEmpty entries "non-vacuity: the default inventory resolved bodies to judge"
 
             for entry in entries do
                 match Map.tryFind entry.SurfaceId bySurface with
                 | None ->
+                    // Also the assertion `requiresWrapper`'s `Option.defaultValue false` rests on: an
+                    // entry whose surface the run did not declare is a state the inventory cannot
+                    // produce, and this is where that stops being an assumption.
                     failtestf "entry '%s' claims surface '%s', which no declaration produced" entry.Path entry.SurfaceId
                 | Some surface ->
                     Expect.equal
@@ -163,31 +236,90 @@ let surfaceIdKeyedClassificationTests =
                             surface.Kind)
         }
 
+        // ---------- The wrapper-requirement rule, pinned as DATA rather than argued ----------
+
+        test "the surfaces demanding wrapper exposure are exactly the canonical, non-generated-product ones" {
+            // `requiresWrapper` used to name `package-canonical`/`ant-canonical`/`fixture-canonical`.
+            // The claim this change rests on is that those are EXACTLY the canonical surfaces whose
+            // declared `Agent` is not `GeneratedProduct`. That claim is asserted here rather than left
+            // in a commit message, because `Agent` had no other reader than the report's Agent column
+            // before this item — a surface added with the wrong one now trips a test.
+            let demanding =
+                declaredSurfaces.Force()
+                |> List.filter (fun surface ->
+                    surface.Kind = SkillParity.Canonical && surface.Agent <> SkillParity.GeneratedProduct)
+                |> List.map (fun surface -> surface.SurfaceId)
+                |> Set.ofList
+
+            Expect.equal
+                demanding
+                (set [ "package-canonical"; "ant-canonical" ])
+                "the declaration-derived rule selects exactly the ids the literal list used to name"
+
+            // The exclusion is the risky half, so it gets its own assertion rather than riding on the
+            // set equality above: `template-canonical` is exempt BECAUSE it is declared
+            // `Agent = GeneratedProduct`, not because it was left off a list.
+            let templateSurface =
+                declaredSurfaces.Force()
+                |> List.find (fun surface -> surface.SurfaceId = "template-canonical")
+
+            Expect.equal
+                templateSurface.Agent
+                SkillParity.GeneratedProduct
+                "template-canonical's exemption is a declared fact — its bodies ship into a generated workspace"
+        }
+
         // ---------- Acceptance criterion 3: the id no longer decides ----------
 
-        test "two overrides over the SAME directory classify identically, whatever the operator named them" {
-            // The issue's demonstration. Before #1137 the left run reported a canonical source (and the
-            // wrapper-requirement findings that follow from one) and the right run did not, over byte-for-byte
-            // the same directory — the only difference being the string the operator typed after `--surface`.
+        test "two overrides over the SAME directory are classified and required identically" {
+            // The issue's demonstration. Before #1137 the left run reported a canonical source — and
+            // the wrapper-requirement findings that follow from one — while the right run did not, over
+            // byte-for-byte the same directory, the only difference being the string the operator typed
+            // after `--surface`.
             let outRoot = Feature168SkillParityFixtures.createTempRoot "fsgg-1137-override-name"
 
             try
                 let directory = "docs/product/ant-design/skill"
+                let body = "docs/product/ant-design/skill/SKILL.md"
 
                 let asAnt = SkillParity.runCheck (requestWithOverrides outRoot [ "ant-canonical", directory ])
                 let asOther = SkillParity.runCheck (requestWithOverrides outRoot [ "some-other-surface", directory ])
 
-                // Non-vacuity: both runs actually READ the directory. Two runs that each resolved to
-                // nothing would agree here for the least interesting reason there is.
-                Expect.isNonEmpty asAnt.Findings "non-vacuity: the ant-named override resolved a body and judged it"
-                Expect.isNonEmpty asOther.Findings "non-vacuity: the differently-named override resolved a body and judged it"
+                // Non-vacuity, and it must name the BODY. `Findings` being non-empty proves nothing on
+                // its own: an override is `IsRequired = true`, so a root resolving to zero files emits
+                // an empty-required-surface finding and the list is non-empty either way.
+                for label, report in [ "ant-named", asAnt; "differently-named", asOther ] do
+                    Expect.isTrue
+                        (report.Findings
+                         |> List.exists (fun finding ->
+                             finding.WrapperPath = Some body || finding.CanonicalPath = Some body))
+                        (sprintf "non-vacuity: the %s override resolved the real body and judged it" label)
 
                 Expect.equal
                     (classification asAnt)
                     (classification asOther)
                     "an override's bodies are classified by its declaration; naming it `ant-canonical` buys it nothing"
 
-                // And the surfaces really were distinct — otherwise the equality above is comparing a run
+                // The `requiresWrapper` half, called out separately because the equality above would
+                // also hold if BOTH runs wrongly demanded wrappers. Measured on the pre-#1137 code:
+                // `asAnt` produced ONE missing-wrapper finding and `asOther` none — one rather than two
+                // because the `antCanonicalSelfExposed` branch was suppressing the `claude` side, which
+                // is the second removed branch showing up in the same experiment. Both are 0 now.
+                //
+                // That this producer still FIRES where it should is proven next door, on trees built to
+                // make it fire: `Feature223SymbologyParityTests` asserts `MissingWrapper` on both agent
+                // surfaces for a product skill whose alias is absent.
+                let missingWrapperCount (report: SkillParity.ParityReport) =
+                    report.Findings
+                    |> List.filter (fun finding -> finding.Category = SkillParity.MissingWrapper)
+                    |> List.length
+
+                Expect.equal
+                    (missingWrapperCount asAnt, missingWrapperCount asOther)
+                    (0, 0)
+                    "an override named after a canonical surface does not inherit that surface's wrapper requirement"
+
+                // And the two runs really were distinct — otherwise the equality above compares a run
                 // with itself.
                 Expect.notEqual
                     (asAnt.SupportedSurfaces |> List.map (fun surface -> surface.SurfaceId))
@@ -197,37 +329,15 @@ let surfaceIdKeyedClassificationTests =
                 Feature168SkillParityFixtures.deleteTempRoot outRoot
         }
 
-        test "an override named after a canonical surface does not inherit that surface's wrapper requirement" {
-            // The `requiresWrapper` half of the same defect: `entry.SurfaceId = "ant-canonical"` made an
-            // override's bodies demand agent wrappers, and the identically-rooted override next to it did not.
-            let outRoot = Feature168SkillParityFixtures.createTempRoot "fsgg-1137-override-requires"
-
-            try
-                let directory = "docs/product/ant-design/skill"
-
-                let missingWrapperOf (report: SkillParity.ParityReport) =
-                    report.Findings
-                    |> List.filter (fun finding -> finding.Category = SkillParity.MissingWrapper)
-
-                let asAnt = SkillParity.runCheck (requestWithOverrides outRoot [ "ant-canonical", directory ])
-                let asOther = SkillParity.runCheck (requestWithOverrides outRoot [ "some-other-surface", directory ])
-
-                Expect.equal
-                    (missingWrapperOf asAnt |> List.length)
-                    (missingWrapperOf asOther |> List.length)
-                    "the wrapper requirement follows the surface's declaration, not the name the operator typed"
-            finally
-                Feature168SkillParityFixtures.deleteTempRoot outRoot
-        }
-
         // ---------- Acceptance criterion 4: it cannot come back ----------
 
-        test "no branch in SkillParity.fs compares a SurfaceId against a string literal" {
-            // Non-vacuity FIRST: the pattern still recognises the defect it was written for. A guard
-            // whose regex has rotted is indistinguishable, in a green run, from a guard that passed.
-            Expect.isTrue
-                (literalSurfaceIdComparison.IsMatch removedBranchSample)
-                "control: the guard's pattern matches the pre-#1137 branch it exists to forbid"
+        test "no branch in SkillParity.fs decides anything by comparing a SurfaceId to a literal" {
+            // Non-vacuity FIRST: the pattern still recognises the defect it was written for, and the
+            // re-spellings someone would reach for once `=` is forbidden.
+            for sample in removedBranchSamples do
+                Expect.isTrue
+                    (literalSurfaceIdComparison.IsMatch sample)
+                    (sprintf "control: the guard's pattern matches `%s`" (sample.Trim()))
 
             // And it does NOT match a record-field DECLARATION, which is how `discoverDefaultSurfaces`
             // names its surfaces and must stay legal.
@@ -236,7 +346,7 @@ let surfaceIdKeyedClassificationTests =
                 "control: the guard does not forbid declaring a surface's id"
 
             let offenders =
-                File.ReadAllLines skillParitySourcePath
+                skillParitySource ()
                 |> Array.indexed
                 |> Array.filter (fun (_, line) -> not (isComment line) && literalSurfaceIdComparison.IsMatch line)
                 |> Array.map (fun (index, line) -> sprintf "  SkillParity.fs:%d  %s" (index + 1) (line.Trim()))
@@ -246,5 +356,46 @@ let surfaceIdKeyedClassificationTests =
                 offenders
                 ("a surface's meaning must be read off its declaration, never off its id (#1092/#1137). Offending line(s):\n"
                  + String.concat "\n" offenders)
+        }
+
+        test "the surface ids still written as literals in SkillParity.fs are exactly the known, tracked set" {
+            // The half a use-pattern cannot see. `literalSurfaceIdComparison` recognises SPELLINGS, and
+            // any spelling can be walked around — bind the field to a local, put the ids in a list,
+            // compare inside a helper. This one fixes the IDS and pins the residue, so a new literal
+            // fails the test whatever shape the code around it takes.
+            let ids =
+                declaredSurfaces.Force() |> List.map (fun surface -> surface.SurfaceId)
+
+            // Non-vacuity: there are ids to look for, and they are the ones the repository declares
+            // rather than a hand-written list that would go stale when a surface is added.
+            Expect.isNonEmpty ids "non-vacuity: the repository declares surfaces to search for"
+
+            let quoted = ids |> List.map (fun id -> "\"" + id + "\"")
+
+            let present =
+                skillParitySource ()
+                |> Array.map (fun line -> line.Trim())
+                |> Array.filter (fun line ->
+                    not (isComment line)
+                    && not (surfaceIdDeclaration.IsMatch line)
+                    && quoted |> List.exists (fun token -> line.Contains(token, StringComparison.Ordinal)))
+                |> Set.ofArray
+
+            let unexpected = Set.difference present knownLiteralSurfaceIdLines
+            let departed = Set.difference knownLiteralSurfaceIdLines present
+
+            Expect.isEmpty
+                unexpected
+                ("a surface id was written as a literal somewhere new. Either derive it from the surface's "
+                 + "declaration (#1092/#1137), or — if it is genuinely not an id-keyed decision — add it to "
+                 + "`knownLiteralSurfaceIdLines` with the reason. New line(s):\n"
+                 + String.concat "\n" (List.ofSeq unexpected))
+
+            Expect.isEmpty
+                departed
+                ("a line in `knownLiteralSurfaceIdLines` is no longer in `SkillParity.fs`. If #1143 (or a "
+                 + "refactor) removed it, delete it from that set — the set is a debt ledger and must "
+                 + "shrink, not accumulate entries nothing checks. Missing line(s):\n"
+                 + String.concat "\n" (List.ofSeq departed))
         }
     ]

@@ -1425,16 +1425,28 @@ module SkillParity =
     /// literals a fourth canonical surface would have to be added to by hand.
     ///
     /// `GeneratedProduct` is the exclusion, and it is not an exception to the rule. Those bodies ship
-    /// INTO a generated workspace rather than being invoked in this repository, so their wrapper
-    /// requirement is adjudicated by the MANIFEST (`scope: product`, `manifestCoverageFindings` below)
-    /// and by the `template/product-skills` PATH rule in `requiresWrapper` — neither of which is keyed
-    /// on a surface id either.
+    /// INTO a generated workspace rather than being invoked in this repository, so this rule does not
+    /// speak for them: where the manifest declares one `scope: product` it is adjudicated by
+    /// `manifestCoverageFindings` below, and where it sits on the `template/product-skills` convention
+    /// it is adjudicated by the PATH clause in `requiresWrapper`. Neither is keyed on a surface id.
+    /// (A `template-canonical` body on NEITHER — `template/fragments/*/skill/`, say — is required by
+    /// nothing, which is the behaviour before this change too. #1143 is the row for that gap.)
     let private surfaceDemandsWrapperExposure (surface: SkillSurface) =
         surface.Kind = Canonical && surface.Agent <> GeneratedProduct
 
     /// `surfaces` is the run's EFFECTIVE surface set, and the lookup is a join on identity — which is
     /// what `SurfaceId` is for. What #1092 and #1137 forbid is reading MEANING out of the id string;
     /// using it to find the declaration that carries the meaning is the opposite of that.
+    ///
+    /// AN ENTRY WHOSE SURFACE THE RUN DID NOT DECLARE ANSWERS `false`, and that is the pre-#1137
+    /// answer preserved exactly: the id could not be in the three-literal list either. It is also
+    /// unreachable rather than merely untested — `inventorySkillsWith` builds every entry FROM this
+    /// same surface list, and `readEntry` only ever emits `CanonicalEntry` for a surface declaring
+    /// `Kind = Canonical`, so an entry reaching here with an unknown id is a state the inventory
+    /// cannot produce. Raising instead would be a new behaviour on an impossible input, which is not
+    /// this item's change to make; the assertion that it stays impossible is in
+    /// `Feature1137SurfaceIdKeyedClassificationTests`, which fails loudly on an entry whose surface
+    /// no declaration produced.
     let private requiresWrapper (surfacesById: Map<string, SkillSurface>) (entry: SkillEntry) =
         entry.EntryKind = CanonicalEntry
         && (surfacesById
