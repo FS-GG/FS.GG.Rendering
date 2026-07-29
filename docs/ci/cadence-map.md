@@ -599,7 +599,11 @@ few weeks; #679 cost days.
 
 Tracking issues: FS.GG.Rendering#681 (this order), FS.GG.Rendering#679 (the wedged release it produced).
 
-## 4f. Frozen skill mirrors — chosen gate behavior (#738)
+## 4f. Historical: frozen skill-mirror gate behavior (#738, retired by #1147)
+
+> **Retired 2026-07-29.** Rendering no longer carries the four Game-owned bodies. Game.Skills is their
+> producer and delivery path, so #1147 removed both mirror-checker lanes and their implementation.
+> The account below is retained as historical context for ADR-0105; it does not describe a live gate.
 
 This repo ships byte-identical copies of four product skills whose canonical bodies live in **FS.GG.Game**
 (ADR-0022 §6). `scripts/check-frozen-mirrors.fsx` guards them. It used to run, whole, inside the required
@@ -656,7 +660,10 @@ other buys a wedge that waits for a cron job. Both moved; both still red the fre
 Tracking issues: FS.GG.Rendering#738 (this split), FS.GG.Rendering#714 (the live wedge),
 FS.GG.Rendering#541 (why the guard exists), FS.GG.Rendering#720 (the verdict split it depends on).
 
-## 4g. Frozen skill mirrors — how a re-freeze lands (#833)
+## 4g. Historical: how a mirror re-freeze landed (#833, retired by #1147)
+
+> **Retired 2026-07-29.** With no foreign bodies in this repository there is nothing to re-freeze.
+> The mechanism below is retained only to explain the former gate design.
 
 §4f's split left one edit with **no legal way to merge**: the **re-freeze** itself.
 
@@ -736,14 +743,6 @@ one-time action (it cannot be set from the repo tree). On `main`:
   feed-dependent, and ADR-0101's bound applies to it as it does to ApiCompat (§4b). Unlike ApiCompat,
   it has **no elevation path**: its subject *is* an external feed, so a nuget.org outage is
   indistinguishable from a bad pin and must stay unable to wedge the repo.
-- Leave **`Frozen mirror freshness (our mirrors still match FS.GG.Game's canonicals)`** unselected, and
-  **it may never be elevated** (§4f, ADR-0105). Its subject is *another repo's `main`*, so it fails
-  ADR-0105's test outright: FS.GG.Game merging a skill edit turns an already-green commit here red, with
-  no change in this repo and no PR here able to prevent it. Requiring it is not a hypothetical mistake —
-  it is what this job's other half was doing until #738, and it wedged every merge in the repo on a
-  pristine `main` (#714). The half of that guard whose verdict **is** a function of this commit
-  (`--required`: did *this change* edit a mirror?) stays where it was, in the required `Deterministic
-  gate`, with all of #541's teeth.
 - Leave **`Packaged-consumer gate (samples build against the packed feed)`** (`packaged-consumer.yml`)
   unselected, for the same reason, plus a second one: it is `paths:`-filtered, and a required check
   that is path-skipped never reports its context — it would block the merge button on every PR that

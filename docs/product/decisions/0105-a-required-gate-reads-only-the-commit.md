@@ -2,6 +2,11 @@
 
 **Status**: Accepted · **Date**: 2026-07-13 (accepted 2026-07-14) · **Issue**: [FS.GG.Rendering#738](https://github.com/FS-GG/FS.GG.Rendering/issues/738)
 
+> **Implementation retired 2026-07-29 (FS.GG.Rendering#1147).** The decision remains in force, but
+> Rendering no longer carries Game-owned skill bodies. The checker and both of its workflow lanes were
+> therefore removed rather than replaced with another mirror list. References below describe the
+> historical case that motivated this general rule.
+
 > **Numbering.** Repo-local ADRs resume at `0100` (see [`../README.md`](../README.md)). This one
 > follows [ADR-0104](./0104-canvas-loop-is-a-simulation-primitive.md).
 

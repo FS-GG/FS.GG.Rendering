@@ -4,8 +4,8 @@ module Issue925ApiSurfaceCoverageTests
 // pin SHIPS that no `+` line teaches merged into the mirror untaught, green (that is how 0.13.0 shipped
 // #911's key-wiring surface unteaching for the whole #912 window). `scripts/ApiSurfaceCoverage.fs` is the
 // reconciliation that closes it, and it is a compiled `.fs` — `#load`ed by the generator, compiled in
-// HERE — for the #720/#661 reason `FrozenMirrorVerdict.fs` is: the DECISION (which members are uncovered,
-// which waivers rotted) is pure and needs no restore, so it must be tested rather than only exercised by a
+// HERE because the DECISION (which members are uncovered, which waivers rotted) is pure and needs no
+// restore, so it must be tested rather than only exercised by a
 // live gate. These tests are that verdict, plus the offline half of the wiring the gate depends on.
 
 open System.IO

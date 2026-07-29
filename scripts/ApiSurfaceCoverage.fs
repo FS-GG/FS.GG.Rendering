@@ -11,8 +11,8 @@
 // fixed the omission by hand; nothing would have flagged it).
 //
 // This module is the reconciliation that closes that direction, and it lives HERE — a compiled `.fs`,
-// `#load`ed by the generator AND compiled into `tests/Package.Tests` — for the #720/#661 reason
-// `FrozenMirrorVerdict.fs` does: the DECISION (which members are uncovered, which waivers have rotted) is
+// `#load`ed by the generator AND compiled into `tests/Package.Tests`: the DECISION (which members are
+// uncovered, which waivers have rotted) is
 // pure and needs neither the network nor a restore to test, so it must not sit untested inside an `.fsx`
 // that only a live gate ever exercises. The generator supplies the surface (it restores the pin); this
 // says whether that surface is fully accounted for.
