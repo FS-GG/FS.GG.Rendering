@@ -142,7 +142,7 @@ let private bulletBlocks (lines: string list) =
 /// code span and nothing but code spans and separators. A cell that spells its value in prose yields
 /// residue, or no span at all, and is reported as malformed — the `src/*/skill/SKILL.md` shape this
 /// item exists to stop.
-let private parseBullet (line: string) =
+let private parseBullet (line: string) : Result<SurfaceRestatement, string> =
     let body = line.TrimStart().Substring(2).Trim()
     let parts = body.Split('—') |> Array.map (fun part -> part.Trim()) |> Array.toList
 

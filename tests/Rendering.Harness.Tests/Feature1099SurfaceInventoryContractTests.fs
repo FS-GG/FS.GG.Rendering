@@ -75,8 +75,8 @@ let private inventorySubject: RestatementSubject =
 
 /// The one comparison, in the one place both files call. This is a projection onto its argument
 /// shape and nothing else — there is no second comparison in this file.
-let private mismatches (rows: SurfaceRestatement list) (surfaces: SkillParity.SkillSurface list) =
-    disagreements inventorySubject { Entries = rows; Unreadable = [] } surfaces
+let private mismatches (table: ParsedRestatements) (surfaces: SkillParity.SkillSurface list) =
+    disagreements inventorySubject table surfaces
 
 // ---------------------------------------------------------------------------------------------
 // Reading the document
@@ -120,6 +120,18 @@ let private columnIndex (header: string list) (name: string) =
 /// The Required Inventory table, projected onto the four columns this contract is about. Read by
 /// column NAME rather than position, so reordering or inserting a column does not silently shift
 /// what is compared.
+///
+/// #1136 REVIEW — WHAT THIS MUST NOT DO IS SKIP, which is the rule #1111 already lived by and this
+/// file did not. Every data row whose `Surface id` cell is not exactly one code span, and nothing
+/// else, is reported as UNREADABLE rather than dropped. Measured on the real document before this
+/// was fixed: appending
+///
+///     | legacy-speckit-wrapper | `wrapper` | `.agents/skills/speckit-*` | `agent-wrappers` | … |
+///
+/// left the whole file GREEN. A prose id, a glob root — one of the exact pre-#1092 shapes #1099
+/// exists to stop — and a surface the resolver does not declare, and none of it was reported,
+/// because `List.choose` deleted the row before any rule could see it. The row-level glob, prose
+/// and root-resolution rules below cannot catch it either: they iterate the rows that PARSED.
 let private inventoryRows () =
     match tableUnder "## Required Inventory" with
     | None -> None
@@ -128,17 +140,28 @@ let private inventoryRows () =
         | Some idIndex, Some kindIndex, Some rootsIndex, Some selectorIndex ->
             let cell (row: string list) index = if index < List.length row then List.item index row else ""
 
-            rows
-            |> List.choose (fun row ->
-                match singleSpan (cell row idIndex) with
-                | None -> None
-                | Some surfaceId ->
-                    Some
+            let read row : Result<SurfaceRestatement, string> =
+                let idCell = cell row idIndex
+
+                match singleSpan idCell with
+                | Some surfaceId when residue idCell = "" ->
+                    Ok
                         { SurfaceId = surfaceId
                           Kind = singleSpan (cell row kindIndex)
                           Roots = spans (cell row rootsIndex)
-                          Selector = singleSpan (cell row selectorIndex) })
-            |> Some
+                          Selector = singleSpan (cell row selectorIndex) }
+                | _ ->
+                    Error(
+                        sprintf
+                            "row %A publishes a `Surface id` cell of %A; the id is one code span and the whole cell"
+                            (String.concat " | " row)
+                            idCell)
+
+            let parsed = rows |> List.map read
+
+            Some
+                { Entries = parsed |> List.choose (function Ok row -> Some row | Error _ -> None)
+                  Unreadable = parsed |> List.choose (function Error problem -> Some problem | Ok _ -> None) }
         | _ -> None
 
 let private remedy =
@@ -151,9 +174,9 @@ let surfaceInventoryContractTests =
         // ---------- Acceptance criteria 1 and 2: the table agrees, and cannot quietly stop ----------
 
         test "every row of the Required Inventory table agrees with the surface it restates" {
-            let rows =
+            let table =
                 match inventoryRows () with
-                | Some rows -> rows
+                | Some table -> table
                 | None ->
                     failtestf
                         "non-vacuity: no Required Inventory table with `Surface id`, `Kind`, `Roots` and `Selector` columns was parsed out of %s. This test compares that table with the code, so an unparseable table is a FAILURE and never a pass — a table nothing can read is the same fail-open as a table nothing checks"
@@ -162,16 +185,16 @@ let surfaceInventoryContractTests =
             let surfaces = declaredSurfaces ()
 
             Expect.isGreaterThanOrEqual
-                (List.length rows)
+                (List.length table.Entries + List.length table.Unreadable)
                 6
-                "non-vacuity: the table's data rows were parsed and are not an empty list"
+                "non-vacuity: the table's data rows were located and are not an empty list"
 
             Expect.isGreaterThanOrEqual
                 (List.length surfaces)
                 6
                 "non-vacuity: the repository declares at least the six surfaces this contract enumerates"
 
-            match mismatches rows surfaces with
+            match mismatches table surfaces with
             | [] -> ()
             | problems -> failtestf "the contract and the resolver disagree:\n  %s\n\n%s" (String.concat "\n  " problems) remedy
         }
@@ -184,19 +207,19 @@ let surfaceInventoryContractTests =
             // Each perturbation below is a divergence that has ACTUALLY happened to this document:
             // a root moved (#1082), a selector written into the root cell (#1092), and a surface
             // added with no row (the shape #1099 exists to stop).
-            let rows =
+            let table =
                 match inventoryRows () with
-                | Some rows -> rows
+                | Some table -> table
                 | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
 
             let surfaces = declaredSurfaces ()
 
             Expect.isEmpty
-                (mismatches rows surfaces)
+                (mismatches table surfaces)
                 "baseline: the table and the code agree before any perturbation, so each failure below is caused by the perturbation alone"
 
             Expect.isNonEmpty
-                (mismatches rows (withMovedRoot surfaces))
+                (mismatches table (withMovedRoot surfaces))
                 "a surface whose ROOT moved without the table moving with it must be reported — this is #1082 happening again"
 
             let otherSelector =
@@ -207,7 +230,7 @@ let surfaceInventoryContractTests =
                         "non-vacuity: SurfaceSelector defines more than one case, so 'the selector changed' is a perturbation that can be expressed at all"
 
             Expect.isNonEmpty
-                (mismatches rows otherSelector)
+                (mismatches table otherSelector)
                 "a surface whose SELECTOR changed without the table changing with it must be reported — the half a single `Root` column could never express"
 
             // #1136 — the control for `inventorySubject.ComparesKind`. This document publishes a
@@ -223,21 +246,23 @@ let surfaceInventoryContractTests =
                         "non-vacuity: SurfaceKind defines more than one case, so 'the kind changed' is a perturbation that can be expressed at all"
 
             Expect.isNonEmpty
-                (mismatches rows otherKind)
+                (mismatches table otherKind)
                 "a surface whose KIND changed without the table changing with it must be reported — this table publishes Kind, so it is compared on it"
 
             Expect.isNonEmpty
-                (mismatches rows (withUndeclaredSurface "fsgg-1099-undocumented-surface" surfaces))
+                (mismatches table (withUndeclaredSurface "fsgg-1099-undocumented-surface" surfaces))
                 "a surface declared with NO row at all must be reported; this is the direction a hand-corrected table fails silently in"
 
             Expect.isNonEmpty
-                (mismatches (List.tail rows) surfaces)
+                (mismatches { table with Entries = List.tail table.Entries } surfaces)
                 "and a row deleted from the table must be reported too, so the check is not satisfied by an empty document"
 
             // The other direction of the id-set comparison, which no perturbation above reaches: a
             // row the resolver does not declare fails through the extra-entry clause.
             Expect.isNonEmpty
-                (mismatches ({ List.head rows with SurfaceId = "fsgg-1099-invented-row" } :: rows) surfaces)
+                (mismatches
+                    { table with Entries = { List.head table.Entries with SurfaceId = "fsgg-1099-invented-row" } :: table.Entries }
+                    surfaces)
                 "a row for a surface that does not exist must be reported; a table may not add surfaces the checker never reads"
         }
 
@@ -249,30 +274,121 @@ let surfaceInventoryContractTests =
             // at all read as green. #1111 fixed it in its own copy only, because the comparison was
             // `private` and could not be shared. It is now fixed in the one shared `disagreements`,
             // which counts repeats AND compares every matching row rather than the first.
-            let rows =
+            let table =
                 match inventoryRows () with
-                | Some rows -> rows
+                | Some table -> table
                 | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
 
             let surfaces = declaredSurfaces ()
 
             Expect.isEmpty
-                (mismatches rows surfaces)
+                (mismatches table surfaces)
                 "baseline: the table and the code agree before the row is duplicated"
 
+            // The ORDER is the whole point, and getting it wrong makes this control vacuous: the
+            // wrong row is APPENDED, after the correct one. `tryFind` returns the FIRST match, so a
+            // wrong row placed first is compared and reported even under the broken implementation;
+            // only a wrong row placed SECOND reproduces the hole. Measured both ways while writing
+            // this — prepending left the assertion below green with `tryFind` restored.
             let duplicatedWithDifferentRoots =
-                { List.head rows with Roots = [ "docs" ] } :: rows
+                { table with Entries = table.Entries @ [ { List.head table.Entries with Roots = [ "docs" ] } ] }
+
+            let problems = mismatches duplicatedWithDifferentRoots surfaces
 
             Expect.isNonEmpty
-                (mismatches duplicatedWithDifferentRoots surfaces)
+                problems
                 "a duplicated row publishing DIFFERENT roots must fail — under `tryFind` the correct row was found first and this one was compared against nothing"
+
+            // #1136 REVIEW — and it must fail through the ROOTS clause, not merely through the
+            // repeat count. `isNonEmpty` alone is satisfied by `repeated` and stays green if the
+            // cell comparison reverts to `List.tryFind`, which is the very hole this closes. So the
+            // sentence about the second row's roots is asserted by name, and `List.filter` in
+            // `disagreements` is measured rather than merely described. Verified by mutation:
+            // restoring `tryFind |> Option.toList` turns THIS assertion red and nothing else.
+            Expect.isTrue
+                (problems |> List.exists (fun problem -> problem.Contains "publishes roots"))
+                "the SECOND row's roots must be reported in their own right: under `tryFind` only the first row for an id was compared, and this assertion is what pins `List.filter`"
 
             // And the sharper case the roots clause alone cannot catch: a byte-identical duplicate
             // disagrees with nothing cell by cell, and is still a defect. A surface is declared
             // once, so it is restated once — otherwise "which row is the contract" has no answer.
             Expect.isNonEmpty
-                (mismatches (List.head rows :: rows) surfaces)
+                (mismatches { table with Entries = List.head table.Entries :: table.Entries } surfaces)
                 "an IDENTICAL duplicated row must fail too: a surface is declared once and is restated once"
+        }
+
+        test "a row the parser cannot read is a disagreement, never a row that is not there" {
+            // #1136 REVIEW, and the fail-open this file carried in its own right. `inventoryRows`
+            // used to `List.choose` away every row whose `Surface id` cell was not exactly one code
+            // span, so a malformed row was DELETED before any rule could see it. Measured on the
+            // real document: appending
+            //
+            //     | legacy-speckit-wrapper | `wrapper` | `.agents/skills/speckit-*` | … |
+            //
+            // left this file green — a prose id, a glob root, and a surface that does not exist,
+            // all unreported. The glob and prose rules below cannot catch it, because they iterate
+            // the rows that PARSED. `Feature1111` already reported its unreadable bullets; this is
+            // the same rule, now that both files share the comparison that carries it.
+            let table =
+                match inventoryRows () with
+                | Some table -> table
+                | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
+
+            let surfaces = declaredSurfaces ()
+
+            Expect.isEmpty
+                table.Unreadable
+                "baseline: every row of the real table parses today, so the failures below are caused by the perturbation alone"
+
+            Expect.isEmpty (mismatches table surfaces) "baseline: the table and the code agree"
+
+            Expect.isNonEmpty
+                (mismatches { table with Unreadable = [ "synthetic" ] } surfaces)
+                "a row the parser could not read must count as a disagreement, never as a row that is simply not present"
+
+            // The structural statement of the same rule, over the REAL document rather than a
+            // synthetic list, and the one that would have caught this in the first place: every
+            // data row the table has is either read or reported. `List.choose` made those two
+            // numbers differ, silently, and nothing here noticed.
+            let dataRows =
+                match tableUnder "## Required Inventory" with
+                | Some(_, rows) -> rows
+                | None -> failtestf "non-vacuity: the Required Inventory table must be located in %s" contractPath
+
+            Expect.isNonEmpty dataRows "non-vacuity: the table has data rows for this rule to be about"
+
+            Expect.equal
+                (List.length table.Entries + List.length table.Unreadable)
+                (List.length dataRows)
+                "every data row is either read or reported as unreadable; a row this parser drops is a row no rule in this file can ever see"
+        }
+
+        test "the unresolved-root verdict names the view generator, not the document" {
+            // #1136's routed finding, pinned rather than merely written. `.agents/skills` is a
+            // gitignored generated VIEW and is absent from a bare worktree, so the root-resolution
+            // rule below fails on a fresh clone. The failure is correct; for two issues its MESSAGE
+            // was not — it reported the declaration as disagreeing with the tree, which reads as
+            // "this document is wrong" when the cause is "this tree has not generated its view".
+            // Nothing pinned that wording, which is exactly how it stayed wrong, so this asserts
+            // the remedy is named and the diagnosis is not asserted as the document's fault.
+            let message = unresolvedRootMessage "row" "codex-local" ".agents/skills"
+
+            Expect.stringContains
+                message
+                "scripts/skill-view generate"
+                "the verdict names the generator that resolves the view, so whoever hits it on a bare clone is one command from green rather than reading the document for a defect that is not there"
+
+            Expect.stringContains
+                message
+                ".agents/skills"
+                "and it names the root that is a generated view, so the reader can tell whether this failure is theirs"
+
+            // Both files must say it, because both check the same declared roots. That they share
+            // one helper is what makes that true without a second copy to keep in step.
+            Expect.equal
+                (unresolvedRootMessage "bullet" "codex-local" ".agents/skills")
+                (message.Replace("row '", "bullet '"))
+                "the two documents' verdicts differ only in the noun for one entry; the rest is one string in one place"
         }
 
         // ---------- Acceptance criterion 1: the cells are data, not prose ----------
@@ -284,14 +400,14 @@ let surfaceInventoryContractTests =
             // this surface looks". `mismatches` already rejects those by equality; this states the
             // rule generically, so the next cell tempted to explain itself in English fails here with
             // a message that says why.
-            let rows =
+            let table =
                 match inventoryRows () with
-                | Some rows -> rows
+                | Some table -> table
                 | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
 
-            Expect.isNonEmpty rows "non-vacuity: there are rows to check"
+            Expect.isNonEmpty table.Entries "non-vacuity: there are rows to check"
 
-            for row in rows do
+            for row in table.Entries do
                 Expect.isNonEmpty
                     row.Roots
                     (sprintf "row '%s' publishes no root as a code span — a root is data, and prose in this column is the defect #1099 is about" row.SurfaceId)
@@ -320,13 +436,13 @@ let surfaceInventoryContractTests =
         // ---------- Acceptance criterion 3: `ant-canonical` names the post-#1082 location ----------
 
         test "ant-canonical names the post-#1082 canonical location, and the pre-#1082 one appears nowhere" {
-            let rows =
+            let table =
                 match inventoryRows () with
-                | Some rows -> rows
+                | Some table -> table
                 | None -> failtestf "non-vacuity: the Required Inventory table must parse out of %s" contractPath
 
             let ant =
-                match rows |> List.tryFind (fun row -> row.SurfaceId = "ant-canonical") with
+                match table.Entries |> List.tryFind (fun row -> row.SurfaceId = "ant-canonical") with
                 | Some row -> row
                 | None -> failtest "non-vacuity: the table still has an `ant-canonical` row to check"
 

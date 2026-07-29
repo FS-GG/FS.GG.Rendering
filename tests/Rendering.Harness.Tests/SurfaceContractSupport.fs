@@ -30,7 +30,7 @@ module SurfaceContractSupport
 // part of ITS document's contract, and `Feature1099`'s perturbation control proves its own flag is
 // on — a silently-flipped `ComparesKind` would otherwise delete a check with nothing turning red.
 
-open System
+
 open System.IO
 open System.Text.RegularExpressions
 open FSharp.Reflection
