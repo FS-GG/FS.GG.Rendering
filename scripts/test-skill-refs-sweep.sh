@@ -262,8 +262,18 @@ expect_eq "$(step_if render)"    "steps.sweep.outputs.rc != '0'" 'render runs on
 expect_eq "$(step_if reconcile)" "github.event_name != 'pull_request'" 'reconcile never runs on a pull_request'
 expect_eq "$(step_env render DRY_RUN)" "\${{ github.event_name == 'pull_request' }}" \
           'DRY_RUN is the pull_request predicate'
+# THE VERDICT CARRIES BOTH CLAUSES, and the second one is #1114. With only `rc != '0'` a
+# `pull_request` run FAILS the job — and `landable` scores every workflow run and check-run on the
+# head SHA, required or not, so that red gates the merge of exactly the PRs that edit this sweep,
+# demanding a fix in a skill body their item never declared in its `Paths:`. Measured on #1113.
+# `scripts/test-template-pin-staleness-sweep.sh` pins the same two clauses on the sibling sweep,
+# which has carried them since #1105 created it — this file's subject was the one that had not.
+#
+# This pin must MOVE WITH the workflow, never be deleted: `pipeline()` below models a PR run as
+# "render, then stop", and that model is only honest while the verdict actually excludes PR runs.
 expect_eq "$(jq -r '.jobs.sweep.steps[] | select(.name=="Verdict") | .if' <<<"$WF_JSON")" \
-          "steps.sweep.outputs.rc != '0'" 'the verdict re-raises exactly when the sweep was red'
+          "steps.sweep.outputs.rc != '0' && github.event_name != 'pull_request'" \
+          'the verdict re-raises only on a scheduled/dispatched red, never on a PR'
 
 case_start '§0 the pull_request trigger still fires on the sweep'"'"'s own code'
 expect_has '.github/workflows/skill-refs-sweep.yml' "$(wf '.on.pull_request.paths[]')" \
@@ -389,6 +399,14 @@ expect_has 'FS-GG/.github#416' "$B" 'says what class of defect an unchecked link
 expect_hasnt 'could not read it' "$B" 'does NOT misreport an infra failure as drift'
 expect_has 'Last 40 lines of the run' "$B" 'carries the evidence a human needs to diagnose it'
 
+# THIS CASE IS WHAT #1114 REMOVED THE RED WITHOUT LOSING. The verdict no longer re-raises on a
+# `pull_request` run, so on a DECAYED tree the render asserted here is the whole of what that run
+# still produces. (On the normal green tree it produces less again — `render` is gated on `rc != '0'`
+# too, so it is skipped, which is #249's gap and the reason this suite plants its own decay rather
+# than trusting the trigger.) If the render were ever to go as well, the trigger would be checking
+# nothing at all and would be green about it — #249's failure a second time, and invisible rather
+# than merely unlucky. The structural half is pinned in § 0: `render`'s `if:` has no event clause, so
+# it must never grow the one the verdict now carries. This is the behavioural half. Keep both.
 case_start '§2 a PR run RENDERS — the half that was skipped on #249'"'"'s own green run'
 fixture
 EVENT=pull_request
@@ -398,6 +416,7 @@ ERR
 pipeline
 expect_has '**Dry run.**' "$(summary)" 'the PR run says it filed nothing'
 expect_has 'The daily skill-refs sweep is **red**' "$(summary)" 'but it DID render the body, into the summary'
+expect_has 'stale link FS.GG.Rendering#100' "$(summary)" 'and the findings themselves, not just the preamble'
 gh_no_writes 'a pull_request run writes NOTHING to the API'
 unset EVENT
 
