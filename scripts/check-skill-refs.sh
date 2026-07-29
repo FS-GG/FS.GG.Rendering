@@ -1094,14 +1094,24 @@ is_mirror() { [[ -n $mirror_bodies ]] && grep -qxF -- "$1" <<<"$mirror_bodies"; 
 # stripped from it, and the moment `prose-ok [[…]]` exists a marker becomes *itself a `[[ref]]`* —
 # reporting the very config written to silence it. Nothing in the tree had a `[[…]]` inside a marker, so
 # the hole was invisible; that is what a latent hole is. Config must not be its own subject — in any § .
+
 # SHARED BY BOTH REF EXTRACTORS (§ 2's `emit_links` and § 3's `BARE_AWK`), because they share the
 # defect (#1117). Both scan destructively — `s = substr(s, RSTART + RLENGTH)` — and both require the
 # character BEFORE a ref to be outside `[A-Za-z0-9._/#-]`. Those two facts together silently swallow
 # every ref after the first in a slash-joined chain: once `#1080` is consumed from `(#1080/#1082)` the
 # remainder opens `/#1082`, and `/` is exactly the boundary char the class forbids. `#1082` was not
-# judged and found innocent — it was never LOOKED at, which is this script`s own named failure shape
-# ("a gate green over a subject it never examined", § 3). Measured: `(#1080/#1082)` with BOTH closed
-# reported ONE finding; the tree writes the form in `#216/#227`, `#365/#396/#429/#535` and more.
+# judged and found innocent — it was never LOOKED at, which is this script's own named failure shape
+# ("a gate green over a subject it never examined", § 3).
+#
+# MEASURED, IN SUBJECT: `.claude/skills/fs-gg-ant-design/SKILL.md:4` wrote `(#1080/#1082)` with both
+# CLOSED and the sweep reported ONE finding; rewriting the separator to `, ` and nothing else took the
+# same two bodies from 2 links to 4, and #1082 was then reported as stale on its merits (#1117; that
+# line has since been rewritten by #1115, which is why it is quoted here rather than pointed at). Be
+# precise about the exposure, though: the FORM is common tree-wide (`#216/#227`, `#365/#396/#429/#535`
+# and more) but almost all of that is in `docs/` and `specs/`, which this gate never scans. In subject
+# today it is THREE refs across two bodies — `#989/#990` and `#990/#989` in fs-gg-symbol-design, and
+# `#429/#463` in src/SkiaViewer — every one of which happens to be marker-covered already. The defect
+# is the blind spot, not a backlog of decay it was hiding.
 #
 # The boundary class is NOT the bug and must not be edited. Its `/` is what spares `…/docs/#1` and
 # `path/name#2` — drop it and the silent miss is traded for a false positive in a gate people would
@@ -1109,14 +1119,25 @@ is_mirror() { [[ -n $mirror_bodies ]] && grep -qxF -- "$1" <<<"$mirror_bodies"; 
 # THIS SCAN JUST CONSUMED cannot be path text, because the ref it follows ended in a digit. So the
 # chain is expressed as an advance rule rather than as a looser boundary — rewrite that one separator
 # to a space (a legal boundary char) and the next link matches on its own merits, unchanged in every
-# other respect. A `/` anywhere else in the line, and a `/` not followed by another ref, is untouched.
+# other respect. A `/` anywhere else in the line is untouched.
 #
-# `tail` is the caller's own ref-opening pattern, and passing it is the point: § 3 continues a chain
-# only into a BARE `#N`, § 2 only into a QUALIFIED one, so neither extractor can step into the other's
-# subject. The `/` is only rewritten when a ref really does follow it.
+# CALL IT ONLY ON A REF THE SCAN ACCEPTED, WHICH IS WHY BOTH CALLS SIT AFTER THE VERDICT AND NOT
+# BEFORE IT. § 3's loop over-matches on purpose (`#[0-9][A-Za-z0-9_-]*`, so a CSS colour can be taken
+# whole and then THROWN AWAY), and a call placed before that test chains off tokens the scan just
+# rejected: `#1a2b3c/#000000` reported a bare ref `#000000`, and `#12abc/#34` a bare `#34`. Both are
+# exactly the false positive the boundary class exists to prevent, reintroduced by the rule written to
+# preserve it — and the justification above says why in as many words, since `#1a2b3c` did not end in
+# a digit and was never a ref. This is a REVIEW FINDING on the first cut of #1117, not a hypothetical.
+#
+# It takes no ref-shape argument, and that is deliberate rather than lazy. Rewriting one character at
+# `rest[1]` can expose exactly ONE new match position — `rest[2]` — and the caller's own loop pattern
+# is what decides it, so any "does a ref follow?" guard here would be a hand-copy of that pattern
+# whose agreement with it nothing could ever observe. A second copy that cannot be tested is how a
+# comment quietly stops being true. § 3 therefore continues a chain only into what § 3 matches and
+# § 2 only into what § 2 matches — enforced by the loops, stated here, duplicated nowhere.
 AWK_STRIP='
-  function chain_advance(rest, tail) {
-    return (rest ~ ("^/" tail)) ? " " substr(rest, 2) : rest
+  function chain_advance(rest) {
+    return (rest ~ /^\//) ? " " substr(rest, 2) : rest
   }
   function strip_markers(s,   res, i, j, seg) {
     res = ""
@@ -1418,9 +1439,14 @@ emit_links() {
         while (match(s, /(^|[^A-Za-z0-9._\/#-])([A-Za-z0-9._-]+\/)?[A-Za-z][A-Za-z0-9._-]*#[0-9]+/)) {
           t = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
           # `Repo#A/Repo#B` is two links, not one — the same chain defect, in the qualified form
-          # (#1117). The tail pattern is this loop`s own, so the scan continues only into a ref
-          # § 2 would have resolved anyway; a bare `#B` after a qualified head is § 3`s subject.
-          s = chain_advance(s, "([A-Za-z0-9._-]+/)?[A-Za-z][A-Za-z0-9._-]*#[0-9]")
+          # (#1117). Every match this loop makes IS a ref (there is no reject test to wait for, unlike
+          # § 3`s), so the call sits here. It continues into whatever this loop matches, which is a
+          # qualified ref: `Repo#A/#B` leaves `#B` for nobody, because § 3 never consumed the
+          # qualified head and so never reached the separator. That hole is #1138, named there rather
+          # than half-closed here. It also extends § 2`s standing false positive by one — the two
+          # halves of `docs/a.md#1/docs/b.md#2` are both `owner/repo#num` BY GRAMMAR, so the second is
+          # now resolved and dangles alongside the first, which is the same verdict on the same form.
+          s = chain_advance(s)
           sub(/^[^A-Za-z0-9]+/, "", t)
           h = index(t, "#"); num = substr(t, h + 1); nr = substr(t, 1, h - 1)
           sl = index(nr, "/")
@@ -1447,6 +1473,11 @@ emit_links() {
 # are why the class keeps its `/`, and why a slash-joined chain (`#A/#B`) is handled by `chain_advance`
 # instead — see the note on it: the miss was real, and the class is not where it gets fixed.
 #
+# A chain is N refs and therefore N markers. `prose-ok #A` says nothing about `#B`, and
+# `closed-ok Repo#A/Repo#B` registers only `#A` (the marker grep stops at the second `#`), so the
+# author who writes the obvious one thing gets a still-red gate. Markers are keyed on (file, num) and
+# are cheap; write one per link of the chain.
+#
 # ONE extractor, TWO subjects, TWO verdicts (#698). The scan is identical on both surfaces — a bare
 # `#N` is a bare `#N` wherever it is written — but what it MEANS is not, so the caller passes the file
 # set and decides. On a published body the form is the defect (§ 3 rejects it); on a repo-internal one
@@ -1470,9 +1501,10 @@ BARE_AWK='
 
         while (match(s, /(^|[^A-Za-z0-9._\/#-])#[0-9][A-Za-z0-9_-]*/)) {
           t = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
-          s = chain_advance(s, "#[0-9]")   # `#A/#B` is two refs, not one (#1117)
           sub(/^[^#]*#/, "", t)          # drop the consumed boundary char and the `#`
-          if (t ~ /^[0-9]+$/) print FILENAME, FNR, t
+          # AFTER the all-digits verdict, never before it: `#A/#B` is two refs (#1117), but
+          # `#1a2b3c/#000000` is a colour and a colour, and only the accepted token may open a chain.
+          if (t ~ /^[0-9]+$/) { print FILENAME, FNR, t; s = chain_advance(s) }
         }
       }'
 emit_bare_rows() { "$1" | xargs -0 -r awk -v OFS='\t' "$AWK_STRIP$BARE_AWK"; }

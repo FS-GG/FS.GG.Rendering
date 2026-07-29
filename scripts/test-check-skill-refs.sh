@@ -365,9 +365,9 @@ expect_out_has 'bare ref — #4243' 'the SECOND ref of the pair is examined at l
 expect_out_has 'bare ref — #4246' 'and so is the last of a three-link chain'
 expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 5 'one finding per REF (2 + 3), not one per chain'
 
-case_start '§3 #1117: a `/` that no ref precedes is still not a boundary — `docs/#1` stays spared'
+case_start '§3 #1117: a `/` that no ref precedes is still not a boundary — `docs/#3` stays spared'
 # THE FALSE-POSITIVE LEG. Links are skipped so the verdict is § 3's alone: § 3 is ungated by
-# `link_mode`, so a green run here is a claim about the bare-ref scan and nothing else. `path/name#2`
+# `link_mode`, so a green run here is a claim about the bare-ref scan and nothing else. `path/name#4`
 # is a § 2 ref by grammar (owner/repo#num) and would resolve, or dangle, on its own merits — it is
 # here to state that § 3 does not ALSO report it as bare.
 fixture
@@ -380,19 +380,38 @@ SKIP_LINKS=1 run
 expect_rc 0 'a bare-looking `#N` behind a path separator is not a ref'
 expect_out_has 'no bare #N refs' 'and it says so about the subject it scanned'
 
-case_start '§3 #1117: the chain rule does not survive a non-ref — `#12/notes/#3` stays spared'
-# The rule is "the `/` that opens the remainder of a ref we JUST consumed", not "any `/` after a ref
-# anywhere on the line". `#12` is consumed, the `/` that follows it is a separator only if a ref
-# follows IT; `notes/` is not one, so the scan is back to ordinary boundaries and `#3` is path text.
+case_start '§3 #1117: one hop only — the separator does not chain on through path text'
+# The rule is "the `/` that opens the remainder of a ref we JUST consumed", not "every `/` downstream
+# of a ref". `#12` is consumed and its `/` becomes a boundary; `notes/` is not a ref, so by the time
+# the scan reaches `/#3` no ref precedes THAT slash and ordinary boundaries apply. Left unbounded the
+# rule would walk the whole line, so this case fails on a fix that rewrites the separator once and
+# then keeps rewriting: the count is the leg, and the head's own finding is what makes it countable.
 fixture
 skill fs-gg-alpha <<'MD'
 # alpha
-<!-- skill-refs: prose-ok #12 — the chain head, not the subject of this case -->
 See #12/notes/#3 for the working copy.
 MD
 SKIP_LINKS=1 run
-expect_rc 0 'one hop only — the separator does not chain through path text'
-expect_out_hasnt 'bare ref — #3' 'the path fragment is not promoted to a ref'
+expect_rc 1 'the chain HEAD is a bare ref and is reported'
+expect_out_has 'bare ref — #12' 'the head, which is a real finding'
+expect_out_hasnt 'bare ref — #3' 'and the path fragment behind it, which is not'
+expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 1 'exactly one ref on the line, not two'
+
+case_start '§3 #1117: a token the scan REJECTED does not open a chain — `#1a2b3c/#000000`'
+# THE REVIEW FINDING ON THE FIRST CUT OF #1117, and the sharpest false-positive leg here. § 3's loop
+# over-matches deliberately so a CSS colour can be taken whole and then thrown away — so a chain rule
+# placed BEFORE that verdict chains off tokens that were just rejected, and `#000000` is reported as a
+# bare issue ref in a rendering repo's palette. The rule's own justification is what forbids it: a `/`
+# after a ref cannot be path text BECAUSE the ref ended in a digit, and `#1a2b3c` did not.
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+The two-tone fill is #1a2b3c/#000000, and the tag in the export reads #12abc/#34.
+MD
+SKIP_LINKS=1 run
+expect_rc 0 'a colour joined to a colour is still no issue ref'
+expect_out_has 'no bare #N refs' 'nothing was promoted behind the rejected token'
+expect_out_hasnt '000000' 'never mentions the second colour'
 
 case_start '§2 #1117: the chain is resolved ref-by-ref on the REPO surface too'
 # § 2 and § 3 share `BARE_AWK`, so the repo surface's PROMOTION of bare refs to links inherits the
