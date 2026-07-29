@@ -209,10 +209,24 @@ let surfaceRootTests =
 
                 // Non-vacuity: the override MECHANISM reaches this surface at all. Without this, the
                 // zero below is equally consistent with `--surface` having been dropped on the floor.
+                //
+                // ISSUE #1137 — this control used to read `control.CanonicalSourceCount = 1`, and that
+                // measured the wrong fact. An override declares a ROOT and nothing else, so
+                // `effectiveSurfaces` gives every one of them `Kind = Mixed`; the single body beneath
+                // this one was counted CANONICAL only because `readEntry` carried a
+                // `SurfaceId = "ant-canonical"` disjunct, i.e. because of the NAME the operator typed.
+                // #1137 deleted that disjunct, so the count is now 0 for `ant-canonical` and 0 for every
+                // other override name alike — which is the point, and which is why a control resting on
+                // it was resting on the defect.
+                //
+                // What the control always MEANT is "the declared root was READ", and that is asserted
+                // directly here and holds for any id: the body under the real root is inventoried, is
+                // classified by its surface's declaration rather than its name, and yields the one
+                // finding that names its path.
                 Expect.equal
-                    control.CanonicalSourceCount
-                    1
-                    "control: overriding ant-canonical at its real body inventories exactly that body"
+                    (control.Findings |> List.map (fun finding -> finding.Category, finding.WrapperPath))
+                    [ SkillParity.WrapperOnly, Some real ]
+                    "control: overriding ant-canonical at its real body READS exactly that body — the single finding names it"
 
                 let overridden = SkillParity.runCheck (requestWithOverrides outRoot [ "ant-canonical", bogus ])
 
@@ -225,6 +239,15 @@ let surfaceRootTests =
                     overridden.CanonicalSourceCount
                     0
                     "and it is what the resolver READS: a surface pointed at a nonexistent body resolves to nothing, rather than quietly reading the real file"
+
+                // The half of that claim the count can no longer carry on its own, now that the control
+                // is also 0: nothing in the redirected run names the REAL file. A resolver that ignored
+                // the override and went to its own hard-coded path would trip this and not the count.
+                Expect.isEmpty
+                    (overridden.Findings
+                     |> List.filter (fun finding ->
+                         finding.WrapperPath = Some real || finding.CanonicalPath = Some real))
+                    "no finding in the redirected run names the real body — the override was obeyed, not merely printed"
             finally
                 Feature168SkillParityFixtures.deleteTempRoot outRoot
         }

@@ -85,6 +85,7 @@
     <Compile Include="Feature1099SurfaceInventoryContractTests.fs" />
     <Compile Include="Feature1110MalformedSurfaceValueTests.fs" />
     <Compile Include="Feature1111CliSurfaceListContractTests.fs" />
+    <Compile Include="Feature1137SurfaceIdKeyedClassificationTests.fs" />
     <Compile Include="Feature573RequirementCitationTests.fs" />
     <Compile Include="Feature570PublishedScaffoldGeometryTests.fs" />
     <Compile Include="Feature489WrapperNamingTests.fs" />
