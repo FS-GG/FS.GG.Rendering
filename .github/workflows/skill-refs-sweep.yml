@@ -61,12 +61,42 @@ on:
   # honest, quietly checking nothing. Same for the script it drives.
   #
   # AND YES, THIS ONE RUN IS A FULL SWEEP ON A PR — the exact shape the rest of this file exists to
-  # abolish, so it is deliberate and narrow rather than an oversight. Two things make it affordable,
-  # and both must stay true: it is NOT a required check (a decay cannot block the merge, it can only
-  # inform it), and it fires ONLY on a PR that edits skill-refs itself — whose author is, by
-  # construction, the one person already holding this machinery in their head and the right reader for
-  # "a citation has rotted". If it ever becomes required, this trigger must go: a signal that cannot
-  # block is information, and the same signal wired to block is the false accusation #238 removed.
+  # abolish, so it is deliberate and narrow rather than an oversight. What makes it affordable is that
+  # it fires ONLY on a PR that edits skill-refs itself — whose author is, by construction, the one
+  # person already holding this machinery in their head and the right reader for "a citation has
+  # rotted".
+  #
+  # "IT IS NOT A REQUIRED CHECK" WAS THE OTHER HALF OF THAT ARGUMENT, AND IT WAS FALSE (#1114). The
+  # sentence here used to read "it is NOT a required check (a decay cannot block the merge, it can
+  # only inform it)" — an affordability claim resting on BRANCH PROTECTION, which is not what decides
+  # a merge in this org. Every FS-GG worker merges through `fsgg-coord landable`, and `landable`
+  # scores every workflow run and check-run on the head SHA, REQUIRED OR NOT (`Landable.fsi`: "every
+  # surviving run AND check-run is scored over BOTH lists"). Non-required bought nothing. Measured on
+  # #1113 at 2026-07-28T00:16:57Z: `sweep: rc=1, 2 finding(s)`, this job red in 16s, on two
+  # pre-existing `#928` findings a two-file diff that touched no skill body could not clear — the
+  # sweep gating exactly the class of PR that is repairing the sweep. `template-pin-staleness-sweep.yml`
+  # states the same fact in its own header and was BORN excluding PR runs from its verdict: #1102
+  # measured the shape on `template-payload-restore-gate` — a per-PR gate — and #1105's remedy was to
+  # move the rule OFF the PR lane into that sweep, which has carried the two-clause `if:` since its
+  # first commit (80ac35df). This file is the one place the org still had it wrong.
+  #
+  # SO THE PR RUN NEVER FAILS ON THE VERDICT (see `Verdict` below). A `pull_request` run renders and
+  # stops. That is what makes this trigger affordable now, and it is a property of THIS FILE rather
+  # than of a setting somewhere else that can be true today and false tomorrow.
+  #
+  # AND NOTHING IS GIVEN UP, WHICH IS A NARROWER CLAIM THAN IT LOOKS. The run is already a dry run —
+  # `reconcile` is skipped and `render` writes only to the step summary — so it files nothing either
+  # way. As for the exercise this trigger exists for: `render` is itself `if: rc != '0'`, so on the
+  # normal GREEN tree it is skipped and the renderer does NOT run on a PR. That is a real gap, but it
+  # is #249's gap and not this change's — `scripts/test-skill-refs-sweep.sh` is what closes it, by
+  # planting the decay the trigger cannot. What matters here is the exact overlap: the `Verdict`
+  # re-raise ALSO only ever fired when `rc != '0'`, which is precisely the case where `render` runs
+  # too. So on every run where the removed red could have fired, the renderer still executes, still
+  # under `set -euo pipefail`, and a typo in it still reddens the PR that introduced it. What the
+  # re-raise added over that was a red, and only a red.
+  #
+  # A signal that cannot block is information, and the same signal wired to block is the false
+  # accusation #238 removed. So do not make this required, and do not restore the re-raise on PRs.
   pull_request:
     branches: [main]
     paths:
@@ -550,11 +580,32 @@ jobs:
             fi
           fi
 
-      # Re-raise the sweep's verdict. The job is RED when a pointer does not resolve — the issue above
-      # is where the finding goes to be worked, not a way of swallowing it. What this red must never
-      # become is a REQUIRED check: see the header.
+      # Re-raise the sweep's verdict — on a SCHEDULED or DISPATCHED run only. The job is RED when a
+      # pointer does not resolve; the issue above is where the finding goes to be worked, not a way of
+      # swallowing it. `FS.GG.Game#242`'s rule is untouched by the second clause: a red nobody can see
+      # is the defect, so a scheduled red still fails and the tracking issue is still where the
+      # finding goes.
+      #
+      # THE SECOND CLAUSE IS THE RULE, NOT BELT-AND-BRACES (#1114). Without it a `pull_request` run
+      # fails this job — and because `landable` scores every run and check-run on the head SHA,
+      # required or not, that red is a MERGE GATE in practice for exactly the PRs that edit this
+      # machinery. It is also a merge gate of the kind the header abolishes: the clearing edit lives
+      # in a skill body the blocked item never declared in its `Paths:`, so under ADR-0021/0027 its
+      # author cannot even make it without widening onto a file they have no business touching. That
+      # is not hypothetical — it is self-inflicting, because the trigger fires only on edits to the
+      # sweep and its script, so the PRs it reddens are by construction the PRs fixing it. Measured on
+      # #1113, which existed to make this workflow's rows classable and was reddened here for doing
+      # so.
+      #
+      # Excluding the PR run costs nothing, and the trigger's note above shows the working: that run
+      # is already a dry run, and `render` is gated on the SAME `rc != '0'` this step was, so on every
+      # run where the removed red could have fired the renderer still executes and still fails the PR
+      # on its own typos. `template-pin-staleness-sweep.yml`, the sibling #1105 created when it moved
+      # `pin-lags-feed` off the PR lane, has carried this two-clause `if:` since its first commit.
+      #
+      # And this red must never become a REQUIRED check: see the header.
       - name: Verdict
-        if: steps.sweep.outputs.rc != '0'
+        if: steps.sweep.outputs.rc != '0' && github.event_name != 'pull_request'
         run: |
           echo "::notice::The sweep is red. The finding is on the \`$DECAY_LABEL\` issue; this check does not gate a merge."
           exit 1
