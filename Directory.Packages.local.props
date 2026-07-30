@@ -49,7 +49,7 @@
          `FS.GG.UI.Canvas.Loop`. samples/CanvasDemo and samples/SymbologyBoard consume it directly —
          the migration target must be a PACKAGE reference, because re-exporting it from Canvas is the
          `FS.GG.UI.Canvas -> FS.GG.Game.Core` edge ADR-0104 forbids. Below 0.3.0 there is no `Loop`. -->
-    <PackageVersion Include="FS.GG.Game.Core" Version="0.7.1" />
+    <PackageVersion Include="FS.GG.Game.Core" Version="0.13.0" />
     <!-- Issue #245: SkiaViewer.Tests drives the real record-only backend (NullBackend) through the
          same `Audio.play` the generated template hands to `runAppWithAudio`, so the seam is proven
          end-to-end without a window or a device. Test-only: the shipped SkiaViewer package depends on
