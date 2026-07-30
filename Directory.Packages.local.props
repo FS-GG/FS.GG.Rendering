@@ -54,7 +54,7 @@
          same `Audio.play` the generated template hands to `runAppWithAudio`, so the seam is proven
          end-to-end without a window or a device. Test-only: the shipped SkiaViewer package depends on
          FS.GG.Audio.Core alone. -->
-    <PackageVersion Include="FS.GG.Audio.Host" Version="0.1.0" />
+    <PackageVersion Include="FS.GG.Audio.Host" Version="0.5.0" />
     <PackageVersion Include="Expecto" Version="10.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
