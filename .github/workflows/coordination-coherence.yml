@@ -16,3 +16,5 @@ permissions:
 jobs:
   kit:
     uses: FS-GG/.github/.github/workflows/coordination-coherence.yml@main
+    with:
+      include-build-config: true
