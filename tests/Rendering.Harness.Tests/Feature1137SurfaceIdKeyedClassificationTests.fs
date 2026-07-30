@@ -166,11 +166,7 @@ let private knownLiteralSurfaceIdLines =
           // `codex-local`, which are in no Supported Surfaces table that run printed) and needs an
           // explicit decision about `fixture-optional`. They are tracked, not forgotten, and this set
           // must SHRINK when #1143 lands.
-          "let codexNames = wrapperNames \"codex-local\" + wrapperNames \"fixture-codex\""
-          "let claudeNames = wrapperNames \"claude\" + wrapperNames \"fixture-claude\""
-          "[ \"codex-local\", codexNames"
-          "\"claude\", claudeNames ]"
-          "let roots = [ \"claude\", \".claude\"; \"codex-local\", \".agents\" ]" ]
+          ]
 
 [<Tests>]
 let surfaceIdKeyedClassificationTests =
@@ -325,6 +321,45 @@ let surfaceIdKeyedClassificationTests =
                     (asAnt.SupportedSurfaces |> List.map (fun surface -> surface.SurfaceId))
                     (asOther.SupportedSurfaces |> List.map (fun surface -> surface.SurfaceId))
                     "control: the two runs really did declare different surface ids"
+            finally
+                Feature168SkillParityFixtures.deleteTempRoot outRoot
+        }
+
+        // ---------- #1143: wrapper targets come from the effective run ----------
+
+        test "fixture missing-wrapper findings name only required wrapper surfaces declared by that fixture run" {
+            let outRoot = Feature168SkillParityFixtures.createTempRoot "fsgg-1143-wrapper-targets"
+
+            try
+                let report = SkillParity.runCheck (Feature168SkillParityFixtures.request outRoot "all")
+
+                let declared =
+                    report.SupportedSurfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+
+                let requiredWrapperIds =
+                    report.SupportedSurfaces
+                    |> List.filter (fun surface -> surface.Kind = SkillParity.Wrapper && surface.IsRequired)
+                    |> List.map (fun surface -> surface.SurfaceId)
+                    |> Set.ofList
+
+                let missingWrapperSurfaceIds =
+                    report.Findings
+                    |> List.filter (fun finding -> finding.Category = SkillParity.MissingWrapper)
+                    |> List.map (fun finding -> finding.SurfaceId)
+                    |> Set.ofList
+
+                Expect.isNonEmpty
+                    missingWrapperSurfaceIds
+                    "non-vacuity: the all fixture deliberately includes canonical bodies without wrappers"
+
+                Expect.equal
+                    missingWrapperSurfaceIds
+                    requiredWrapperIds
+                    "every required fixture wrapper target still reports missing exposure, and no optional surface is targeted"
+
+                Expect.isTrue
+                    (Set.isSubset missingWrapperSurfaceIds declared)
+                    "every finding is attributed to a surface declared in this run's Supported Surfaces table"
             finally
                 Feature168SkillParityFixtures.deleteTempRoot outRoot
         }
