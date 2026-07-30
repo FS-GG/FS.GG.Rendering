@@ -1459,6 +1459,15 @@ BARE_AWK='
       {
         s = strip_markers($0)
 
+        # § 2 owns the qualified head of `Repo#A/#B`, but the tail is a bare ref
+        # rendered against this body’s repository.  The ordinary bare scan never reaches it:
+        # it rejects the `#A` behind the qualified name, then sees `/#B` behind a path
+        # separator.  Advance only that consumed-qualified-ref separator, exactly as
+        # chain_advance does after an accepted bare ref.  Do not loosen the boundary class:
+        # `docs/#1` and URL fragments remain outside the subject.
+        while (match(s, /(^|[^A-Za-z0-9._\/#-])([A-Za-z0-9._-]+\/)?[A-Za-z][A-Za-z0-9._-]*#[0-9]+\//))
+          s = substr(s, 1, RSTART + RLENGTH - 2) " " substr(s, RSTART + RLENGTH)
+
         # An EXPLICIT markdown link is not a bare ref, and this is the difference between a gate and
         # a nuisance: `[#587](https://github.com/FS-GG/FS.GG.Rendering/issues/587)` is the single most
         # idiomatic way to cite an issue, and it is CORRECT — the `#587` is a link LABEL, so GitHub
