@@ -1455,6 +1455,12 @@ module SkillParity =
             |> Option.defaultValue false
             || entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase))
 
+    /// The wrapper surfaces a run requires canonical bodies to reach are part of that run's declaration.
+    /// Optional wrapper surfaces deliberately do not create an exposure obligation: `fixture-optional`
+    /// stays empty to prove that an optional surface may be empty without manufacturing findings.
+    let private requiredWrapperSurfaces (surfaces: SkillSurface list) =
+        surfaces |> List.filter (fun surface -> surface.Kind = Wrapper && surface.IsRequired)
+
     let private missingWrapperFindings (surfaces: SkillSurface list) (entries: SkillEntry list) =
         let surfacesById =
             surfaces |> List.map (fun surface -> surface.SurfaceId, surface) |> Map.ofList
@@ -1465,14 +1471,14 @@ module SkillParity =
             |> List.map (fun entry -> normalizeText entry.SkillName)
             |> Set.ofList
 
-        let codexNames = wrapperNames "codex-local" + wrapperNames "fixture-codex"
-        let claudeNames = wrapperNames "claude" + wrapperNames "fixture-claude"
+        let wrapperTargets =
+            requiredWrapperSurfaces surfaces
+            |> List.map (fun surface -> surface.SurfaceId, wrapperNames surface.SurfaceId)
 
         entries
         |> List.filter (requiresWrapper surfacesById)
         |> List.collect (fun entry ->
-            [ "codex-local", codexNames
-              "claude", claudeNames ]
+            wrapperTargets
             |> List.choose (fun (surfaceId, names) ->
                 let canonicalName = normalizeText entry.SkillName
                 let productAliasName = canonicalName.Replace("fs-gg-", "fs-gg-product-")
@@ -1679,7 +1685,11 @@ module SkillParity =
     /// that is what is asserted — the wrapper at `required` must exist AND must not route into
     /// `src/<X>/skill/`. A wrapper that routes there is the framework skill's, whatever it is named and
     /// wherever the product body happens to live, and it cannot stand in for the product's own.
-    let private manifestCoverageFindings (request: ParityCheckRequest) (entries: SkillEntry list) =
+    let private manifestCoverageFindings
+        (request: ParityCheckRequest)
+        (surfaces: SkillSurface list)
+        (entries: SkillEntry list)
+        =
         // Fixture mode uses synthetic trees with no manifest; it is not real repository parity evidence.
         if request.FixtureMode.IsSome then
             []
@@ -1726,19 +1736,10 @@ module SkillParity =
             with _ ->
                 []
 
-        // Both orchestrator roots are required: a skill activated for one agent and not the other is
-        // half-shipped, and that asymmetry is precisely what the parity report exists to surface.
-        //
-        // These are the REAL surface ids from `supportedSurfaces` — `codex-local` is rooted at
-        // `.agents/skills` (there is no `.codex/` in this repo), not at anything called "agents". Reusing
-        // them (rather than inventing a surface name) keeps two invariants: the finding names a surface
-        // that appears in the report's Supported Surfaces table, and it shares a FindingId with the
-        // scan-driven `missingWrapperFindings` above — so when both fire for the same skill+surface, the
-        // severity-resolving dedupe in `classifyFindings` collapses them to ONE finding rather than
-        // reporting the same missing wrapper twice under two different names. (It used to be
-        // `List.distinctBy`, which kept the FIRST — the scan-driven Warning — and silently downgraded this
-        // producer's High. That is the fail-open #489 closes; see `classifyFindings`.)
-        let roots = [ "claude", ".claude"; "codex-local", ".agents" ]
+        // Both required wrapper surfaces are required: a skill activated for one agent and not another is
+        // half-shipped. They are derived from the effective surfaces, so every finding names a surface in
+        // this run's Supported Surfaces table and shares its identity with the scan-driven producer.
+        let wrapperTargets = requiredWrapperSurfaces surfaces
 
         productIds
         |> List.collect (fun (id, suppliedBy) ->
@@ -1756,18 +1757,22 @@ module SkillParity =
 
             let otherName = if onConvention then id else id.Replace("fs-gg-", "fs-gg-product-")
 
-            roots
-            |> List.choose (fun (surfaceId, root) ->
+            wrapperTargets
+            |> List.choose (fun surface ->
+                let roots = surface.Roots |> List.map normalizeSeparators
+                let rootDescription = String.concat " or " roots
+
                 let present name =
-                    File.Exists(Path.Combine(request.RepositoryRoot, root, "skills", name, "SKILL.md"))
+                    roots
+                    |> List.exists (fun root -> File.Exists(Path.Combine(request.RepositoryRoot, root, name, "SKILL.md")))
 
                 /// A wrapper that routes into `src/<X>/skill/` is the FRAMEWORK skill's, whatever it is named.
                 /// It cannot stand in for a product wrapper — that substitution IS the #465 bug.
                 let routesToFramework name =
-                    let wrapperPath = $"{root}/skills/{name}/SKILL.md"
-
                     entries
-                    |> List.tryFind (fun entry -> normalizeSeparators entry.Path = wrapperPath)
+                    |> List.tryFind (fun entry ->
+                        roots
+                        |> List.exists (fun root -> normalizeSeparators entry.Path = $"{root}/{name}/SKILL.md"))
                     |> Option.bind (fun entry -> entry.WrapperTarget)
                     |> Option.exists (fun target ->
                         let raw = normalizeSeparators target.RawTarget
@@ -1783,25 +1788,25 @@ module SkillParity =
                     // conflating them is how somebody fixes the wrong one.
                     let detail =
                         if present required && routesToFramework required then
-                            $" A wrapper DOES exist at `{root}/skills/{required}/`, but it routes into `src/…/skill/` — it is the FRAMEWORK skill's wrapper, not this product skill's, and it cannot stand in for one. That substitution is exactly the masking Feature 223 forbids and the #465 bug (a product skill materializing into every workspace with no wrapper of its own, while coverage reported green)."
+                            $" A wrapper DOES exist at `{rootDescription}/{required}/`, but it routes into `src/…/skill/` — it is the FRAMEWORK skill's wrapper, not this product skill's, and it cannot stand in for one. That substitution is exactly the masking Feature 223 forbids and the #465 bug (a product skill materializing into every workspace with no wrapper of its own, while coverage reported green)."
                         elif present otherName then
-                            $" A wrapper exists at `{root}/skills/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}` (#489)."
+                            $" A wrapper exists at `{rootDescription}/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}` (#489)."
                         else
                             ""
 
                     Some
-                        { FindingId = findingId MissingWrapper surfaceId id
+                        { FindingId = findingId MissingWrapper surface.SurfaceId id
                           SkillName = id
-                          SurfaceId = surfaceId
+                          SurfaceId = surface.SurfaceId
                           Category = MissingWrapper
                           Severity = High
                           CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
                           WrapperPath = None
                           Symbol = None
                           Message =
-                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists at `{root}/skills/{required}/`.{detail}"
+                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists at `{rootDescription}/{required}/`.{detail}"
                           Remediation =
-                            $"Add `{root}/skills/{required}/SKILL.md` routing to the canonical body, or drop the skill's `scope: product` in the manifest. The name is not a choice: a body supplied from `template/product-skills/` is wrapped under the `fs-gg-product-*` alias, and one supplied from anywhere else under its canonical id (#489)."
+                            $"Add `{rootDescription}/{required}/SKILL.md` routing to the canonical body, or drop the skill's `scope: product` in the manifest. The name is not a choice: a body supplied from `template/product-skills/` is wrapped under the `fs-gg-product-*` alias, and one supplied from anywhere else under its canonical id (#489)."
                           ExceptionId = None }))
 
     /// The ONLY authors whose `metadata.source` is upstream provenance rather than a citation of this repo.
@@ -2132,7 +2137,7 @@ module SkillParity =
         // neither the order nor the shared `unreadable-surface` category can make them collide.
         unreadableSurfaceFindings readFailures
         @ emptyRequiredSurfaceFindings request.RepositoryRoot surfaces
-        @ manifestCoverageFindings request entries
+        @ manifestCoverageFindings request surfaces entries
         @ wrapperFindings entries
         @ missingWrapperFindings surfaces entries
         @ canonicalDriftFindings request entries
