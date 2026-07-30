@@ -1112,6 +1112,9 @@ AWK_STRIP='
   function chain_advance(rest) {
     return (rest ~ /^\//) ? " " substr(rest, 2) : rest
   }
+  function bare_chain_advance(rest) {
+    return (rest ~ /^[\/._-]#/) ? " " substr(rest, 2) : rest
+  }
   function strip_markers(s,   res, i, j, seg) {
     res = ""
     while ((i = index(s, "<!--")) > 0) {
@@ -1443,7 +1446,8 @@ emit_links() {
 # The leading class carries `/` and `#`, which is what excludes the three near-misses: a URL fragment
 # (`…/page#1`), a markdown heading (`## 3`), and the `#535` of a qualified `FS.GG.Rendering#535` —
 # that last one is § 2's ref, and reporting it here would double-report every honest link. Those three
-# are why the class keeps its `/`, and why a slash-joined chain (`#A/#B`) is handled by `chain_advance`
+# are why the class keeps its `/`, and why a separator-joined bare chain (`#A/#B`, `#A.#B`, `#A-#B`,
+# or `#A_#B`) is handled by `bare_chain_advance`
 # instead — see the note on it: the miss was real, and the class is not where it gets fixed.
 #
 # A chain is N refs and therefore N markers. `prose-ok #A` says nothing about `#B`, and
@@ -1475,6 +1479,11 @@ BARE_AWK='
         # tree, which is the whole hazard § 3 exists for. Reporting it would reject the right
         # answer, and this gate would be the one people turn off.
         #
+        # A labelled link is not a bare ref, but it can be the head of a separator chain. Consume only
+        # that one separator so the ordinary scan gets the bare tail; then drop every other whole
+        # `[label](absolute-url)` construct. The label itself remains outside § 3 in both cases.
+        gsub(/\[[^]]*\]\(https?:\/\/[^)]+\)\//, " ", s)
+
         # Drop the whole `[label](absolute-url)` construct — the label of ANY http(s) link, not just a
         # `[#N]` one, so `[see #459](https://…)` is spared too. Nothing is lost: § 2 scans the
         # UNSTRIPPED line, so the URL is still resolved and a closed or missing target still fails.
@@ -1486,7 +1495,15 @@ BARE_AWK='
           sub(/^[^#]*#/, "", t)          # drop the consumed boundary char and the `#`
           # AFTER the all-digits verdict, never before it: `#A/#B` is two refs (#1117), but
           # `#1a2b3c/#000000` is a colour and a colour, and only the accepted token may open a chain.
-          if (t ~ /^[0-9]+$/) { print FILENAME, FNR, t; s = chain_advance(s) }
+          if (t ~ /^[0-9]+$/) {
+            print FILENAME, FNR, t
+            s = bare_chain_advance(s)
+          } else if (t ~ /^[0-9]+[-_]$/) {
+            # The deliberate over-match consumed `-`/`_` before learning that it separated two
+            # refs. Recover only this exact shape: `#12_beta` still rejects as one prose token.
+            print FILENAME, FNR, substr(t, 1, length(t) - 1)
+            s = " " s
+          }
         }
       }'
 emit_bare_rows() { "$1" | xargs -0 -r awk -v OFS='\t' "$AWK_STRIP$BARE_AWK"; }

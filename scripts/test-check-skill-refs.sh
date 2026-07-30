@@ -413,6 +413,33 @@ expect_rc 0 'a colour joined to a colour is still no issue ref'
 expect_out_has 'no bare #N refs' 'nothing was promoted behind the rejected token'
 expect_out_hasnt '000000' 'never mentions the second colour'
 
+case_start '§3 #1140: every adjacent-ref separator yields both bare refs'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+Ranges #4242-#4243, #4244_#4245, and #4246.#4247 are all two references.
+MD
+run
+expect_rc 1 'each separator chain is rejected'
+expect_out_has 'bare ref — #4242' 'the hyphen chain head is no longer dropped'
+expect_out_has 'bare ref — #4245' 'the underscore chain tail is examined'
+expect_out_has 'bare ref — #4247' 'the dot chain tail is examined'
+expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 6 'two findings for every adjacent-ref separator'
+
+case_start '§3 #1140: non-separator trailing runs remain prose, and a labelled-link head exposes its tail'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+Colours #1a2b3c and #abc123 plus a prose token #12_beta are not refs.
+The split is [#587](https://github.com/FS-GG/FS.GG.Rendering/issues/587)/#588.
+MD
+run
+expect_rc 1 'only the labelled-link chain tail is rejected'
+expect_out_has 'bare ref — #588' 'the bare tail after a labelled link is examined'
+expect_out_hasnt 'bare ref — #587' 'the labelled link head remains outside the bare scan'
+expect_out_hasnt 'bare ref — #12' 'an underscore without a following ref is still prose'
+expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 1 'only the chain tail is a bare ref'
+
 case_start '§2 #1117: the chain is resolved ref-by-ref on the REPO surface too'
 # § 2 and § 3 share `BARE_AWK`, so the repo surface's PROMOTION of bare refs to links inherits the
 # same blindness — and there it is worse, because the missed ref is one the gate would have RESOLVED.
