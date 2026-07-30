@@ -17,7 +17,7 @@
          product's `update` emits, and so `runAppWithAudio` can take an `AudioEffect list -> unit`
          sink. Core ONLY — Audio.Host/Engine (IAudioBackend, OpenAL, buses) stay out of the
          rendering core; the generated template supplies the backend at its own boundary. -->
-    <PackageVersion Include="FS.GG.Audio.Core" Version="0.3.0" />
+    <PackageVersion Include="FS.GG.Audio.Core" Version="0.5.0" />
     <PackageVersion Include="Fable.Elmish" Version="5.0.2" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1" />
