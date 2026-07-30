@@ -444,6 +444,31 @@ expect_rc 1 'the qualified chain is rejected'
 expect_out_has 'FS.GG.Rendering#4243 is CLOSED' 'the second qualified ref is resolved'
 expect_eq "$(grep -c 'stale link' <<<"$OUT")" 2 'two links, two verdicts'
 
+case_start '§3 #1138: a qualified head exposes its BARE tail, but is not double-reported'
+fixture
+skill fs-gg-alpha <<'MD'
+# alpha
+The next operation is FS.GG.Rendering#4242/#4243.
+MD
+run
+expect_rc 1 'the bare tail is rejected in a published body'
+expect_out_has 'bare ref — #4243' 'the bare tail is examined'
+expect_out_hasnt 'bare ref — #4242' 'the qualified head remains §2’s subject'
+expect_eq "$(grep -c 'bare ref —' <<<"$OUT")" 1 'only the bare tail is reported'
+
+case_start '§2 #1138: a qualified head exposes and resolves its BARE tail on the REPO surface'
+fixture
+issue 'FS-GG/FS.GG.Rendering#4242' open
+issue 'FS-GG/FS.GG.Rendering#4243' closed
+repo_skill Diagnostics <<'MD'
+# Diagnostics
+The next operation is FS.GG.Rendering#4242/#4243.
+MD
+run
+expect_rc 1 'the repo-surface bare tail resolves like every other bare ref'
+expect_out_has 'FS.GG.Rendering#4243 is CLOSED' 'the bare tail is resolved and found stale'
+expect_eq "$(grep -c 'stale link' <<<"$OUT")" 1 'only the closed bare tail is stale'
+
 # ════════════════════════════════════════════════════════════════════════════════════════════════
 # THE #241 NEAR-MISS  — closed-ok markers must survive a SINGLE-FILE --changed scope
 # ════════════════════════════════════════════════════════════════════════════════════════════════
