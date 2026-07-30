@@ -29,7 +29,7 @@
          `lib/net10.0/`). Do NOT move this pin below 7.4.0 — `scripts/refresh-api-surface-mirror.fsx`
          now reads Contracts like every other package and the pre-#782 hand-copy bridge is deleted,
          so a pre-7.4.0 pin has no surface to generate from and hard-fails the generator. -->
-    <FsGgContractsVersion>7.4.0</FsGgContractsVersion>
+    <FsGgContractsVersion>7.5.2</FsGgContractsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the

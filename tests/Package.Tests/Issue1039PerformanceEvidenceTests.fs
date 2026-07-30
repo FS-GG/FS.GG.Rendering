@@ -319,7 +319,9 @@ let performanceEvidenceContract =
               // first published release that does. So a second trigger for this literal now exists: any
               // change to how the mirror generator sources a package can force the pin, independently of
               // the feed. Steps 1-5 of the routine were all still required.
-              Expect.stringContains packages "<FsGgContractsVersion>7.4.0</FsGgContractsVersion>" "producer version is exact"
+              // #1156 advances the pin to 7.5.2 for the published skill-observation contract and
+              // reconciles its deliberately curated SkillMirror surface through the same routine.
+              Expect.stringContains packages "<FsGgContractsVersion>7.5.2</FsGgContractsVersion>" "producer version is exact"
               Expect.stringContains
                   project
                   "<PackageReference Include=\"FS.GG.Contracts\" />"

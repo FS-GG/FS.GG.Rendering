@@ -1,5 +1,5 @@
 // See skill: fs-gg-testing
-// Mirrored from FS-GG/FS.GG.SDD @ 7.4.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
+// Mirrored from FS-GG/FS.GG.SDD @ 7.5.2 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
 namespace Fsgg
 
 /// One typed source of truth for every `.fsgg` schema shape and its version
