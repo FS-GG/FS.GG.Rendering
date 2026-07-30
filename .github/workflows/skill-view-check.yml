@@ -27,23 +27,18 @@
 # while asserting nothing about the view — a green indistinguishable from a green that means something,
 # which is epic #266 in its most expensive form.
 #
-# WHAT THIS ASSERTS INSTEAD. `skill-view check --source .claude/skills`: every skill the SOURCE
-# directory declares is VISIBLE at every runtime root the contract still names, with ADR-0067 §8's
-# absence classes reported separately — [absent-root], [dangling-root], [text-file-root],
-# [not-a-directory-root], [missing-skill], [dangling-skill], [not-a-file-skill], [unreadable-skill],
-# [empty-skill]. Those are the failure modes phase 1 (FS-GG/.github#1621) measured as **exit 0 with no
-# diagnostic in BOTH runtimes** (Claude Code 2.1.220, Codex CLI 0.145.0) — an agent that quietly has no
-# skills. This check is the only thing that says so.
+# WHAT THIS RECEIVER CHECK ASSERTS. The declared, unconditional generate has succeeded, and
+# `skill-view check --source .claude/skills` then grades source completeness: every skill the SOURCE
+# directory declares is VISIBLE at every runtime root the contract still names. It can red over an
+# empty source or an incomplete generated view. The runtime's quiet-zero-skill failure remains the
+# reason this source-completeness check matters, but this per-PR path does not itself grade §8's root
+# absence classes; generation necessarily precedes the assertion here.
 #
-# AND IT CAN FAIL, WHICH IS THE ENTIRE JUSTIFICATION FOR THE SWAP. Mutation-checked on this repo's own
-# tree rather than asserted (FS-GG/.github#1715 AC3):
-#
-#   the generated view removed   -> exit 1, "[absent-root] .agents/skills does not exist"
-#   the source root emptied      -> exit 2, "the expected skill set is EMPTY — refusing to report
-#                                    'everything is visible' over nothing"
-#
-# A leg that survives its own mutation is repaired or dropped, never shipped. Both mutations red this
-# one, in CI, by run id; the ids are in FS-GG/.github#1715.
+# RECEIVER-PATH ABSENCE BEHAVIOUR, MEASURED. An `[absent-root]` is created and a `[dangling-root]` is
+# replaced by the declared generator before the assertion runs. A `[text-file-root]` does red this
+# workflow, but as a generator refusal before the assertion. The mutation-proven no-generate fixture
+# path for the §8 absence-class verdicts is FS.GG.Kit's `verify-package.sh` (FS-GG/.github#1867), not
+# this receiver workflow.
 #
 # WHAT IT DOES **NOT** ASSERT, SAID OUT LOUD. It does not compare the two roots' BYTES against each
 # other, so while this repo still commits two independent copies of its skills it is weaker than the
