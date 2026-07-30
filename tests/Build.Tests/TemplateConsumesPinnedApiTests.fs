@@ -2574,8 +2574,13 @@ let private omissionLedger =
 /// existing curation rather than opening one. Note what did NOT move: deleting the bridge shifted the
 /// MEMBER-level coverage rule by 112 (969 -> 1081 waivers in scripts/api-surface-manifest.txt), and this
 /// ceiling by one, because this rule reads the restored nupkg and never consulted the bridge at all.
+///
+/// Raised 471 -> 472 by #1156: Contracts 7.5.2 adds `Fsgg.UnobservedSkillFiles`, the observation-gap
+/// input to the existing SkillMirror verification family. The template still deliberately teaches only
+/// `Schemas.PerformanceIntentDeclaration`; the new toolchain-only type continues the documented
+/// SkillMirror curation and is reconciled in the omission ledger and member manifest.
 [<Literal>]
-let private OmissionLedgerCeiling = 471
+let private OmissionLedgerCeiling = 472
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

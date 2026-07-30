@@ -650,3 +650,15 @@ type FS.GG.Contracts::Fsgg.SkillManifestV2
 # the bridge never touched, which is exactly why it kept judging Contracts while the member-level rule
 # was blind.
 type FS.GG.Contracts::Fsgg.BodyRefusalReason
+
+# ------------------------------------------------------------------------------------------------
+# ADDED AT $(FsGgContractsVersion)=7.5.2 — 1 omission (1 type, 0 modules):
+# `Fsgg.UnobservedSkillFiles`, the observation-gap input added to SkillMirror verification
+# (FS-GG/FS.GG.SDD#813; Rendering#1156).
+#
+# WHY THIS IS OMITTED RATHER THAN MIRRORED. It continues the explicit SkillMirror curation recorded
+# in the 7.2.0 and 7.4.0 stanzas above: the scaffold teaches the one Contracts type a generated
+# product consumes (`Schemas.PerformanceIntentDeclaration`), while skill-root observation and mirror
+# verification remain SDD toolchain machinery. The matching member-level decisions are generated in
+# scripts/api-surface-manifest.txt, including `verifyObservedFiles` and `verifyObservedFileSet`.
+type FS.GG.Contracts::Fsgg.UnobservedSkillFiles
