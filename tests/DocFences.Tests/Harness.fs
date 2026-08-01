@@ -228,11 +228,13 @@ module Harness =
 
         units, skipped
 
-    /// Frozen identity of the 84-fence product-skill inventory reviewed for Rendering#1050. It covers
-    /// origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
+    /// Frozen identity of the 84-fence product-skill inventory re-audited for Rendering#1050. The #1160
+    /// gamepad guidance moves only the SkiaViewer fence origins; those examples remain Contextual because
+    /// they assemble reader-owned model, message, host, and launch values. It covers origin, body, skip
+    /// reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "07ca9c99499fa6c72cd0393ba4bdeda598b012ebc96496eddaebb0d5ebe056d9"
+        "5e7ebc793752355b163668b94e87f61048c24b1fa6a675c69147fb09bcf3d771"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
