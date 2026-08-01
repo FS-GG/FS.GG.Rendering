@@ -457,7 +457,7 @@ helpers that rendering calls, then compare them with the product's closed identi
 Keep the identities typed and central. The layout helper, production view, and evidence route all
 consume these values; none retypes a string list or a magic count:
 
-```text
+```fsharp
 type HudRegionId = Hearts | Currency | ActiveCharge | Minimap | FloorName
 
 module HudRegionId =
@@ -477,7 +477,7 @@ The evidence test asks the production helper for both required outputs and check
 finite in-bounds rectangles, and pairwise non-overlap. It does not rebuild the identities from labels
 or assert only `hudRegions.Length = 5`:
 
-```text
+```fsharp
 let requiredOutputs = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
 
 for output in requiredOutputs do

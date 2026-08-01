@@ -140,7 +140,7 @@ graph or chart variants.
 the product meaning, author the identity, color, and points together and render that exact value. A
 product-owned `Canvas` scene is the direct route when each line needs an authored color:
 
-```text
+```fsharp
 open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 

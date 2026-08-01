@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "2309c1b827c8f035b28ec97544d4f40c644d8660623fd824a1d0b3f04cc42eac",
+      "sha256": "784f0c4019e710f0fd5f5744ef1cdbe0807c83ba06b1fa30970ef703023252a2",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"
@@ -132,7 +132,7 @@
     {
       "id": "fs-gg-ui-widgets",
       "scope": "product",
-      "sha256": "8abb6caa2afdce1993970b0dd5a6a23135fb1e7416cf34600422303a9624f1a6",
+      "sha256": "37ba120a11ed335ea784bdc6d22c17bc73010733cfb7f971950f7783011f82a7",
       "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-ui-widgets/"

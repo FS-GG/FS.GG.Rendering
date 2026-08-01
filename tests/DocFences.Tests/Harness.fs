@@ -228,11 +228,12 @@ module Harness =
 
         units, skipped
 
-    /// Frozen identity of the 84-fence product-skill inventory reviewed for Rendering#1050. It covers
-    /// origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
-    /// classification/compilation and must be deliberately re-audited.
+    /// Frozen identity of the 87-fence product-skill inventory reviewed for Rendering#1050, re-audited for
+    /// Rendering#1165 (3 new fsharp fences: 2 in fs-gg-testing/SKILL.md, 1 in fs-gg-ui-widgets/SKILL.md). It
+    /// covers origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails
+    /// before classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "07ca9c99499fa6c72cd0393ba4bdeda598b012ebc96496eddaebb0d5ebe056d9"
+        "c464061cdeda9f015ce720e4de31d1f44c13804a7e93be5bc21e5f01b71a2352"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
