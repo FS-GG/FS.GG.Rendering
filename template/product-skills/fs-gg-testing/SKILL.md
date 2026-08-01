@@ -394,6 +394,13 @@ play, stress, throughput, and live-compositor workloads separately classified. A
 deliberate baseline capture, but that baseline never satisfies acceptance. This is bounded headless
 update + scene-route evidence, not live compositor or vsync proof.
 
+The marked workload source block is not the complete definition by itself. A workload digest also
+binds the complete deterministic value returned by `InitialState()` and every `MessageAt` value the
+warmup and sample passes execute. Keep helper-produced state and later-frame messages deterministic:
+changing a helper-only model field or frame 2 must stale `Authored` until the digest is reviewed again.
+The generated canonicalizer normalizes text across hosts and fails closed if it cannot represent a
+state or message safely; do not replace that failure with a hand-authored hash or prose acknowledgement.
+
 Run the machine gate before the representativeness critic. Each normal-play row must carry an opaque
 FS.GG.Game runner-issued journey receipt. Put a canonical factory at that journey's boot seam;
 caller-authored labels/hashes are not provenance. Disclose direct assembly as
