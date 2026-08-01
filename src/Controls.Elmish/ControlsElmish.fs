@@ -2212,6 +2212,22 @@ module ControlsElmish =
         GeneratedAppHost.audioRequests effects
 
     module Live =
+        /// Issue #1159: drive a raw viewer script through the public paced Controls launcher.
+        let runPointerPacingScript options pointerPacing mapRawPointer host script =
+            let observed = ResizeArray<FrameMetrics>()
+            let observingHost = { host with OnFrameMetrics = fun metric -> observed.Add metric; host.OnFrameMetrics metric }
+
+            match
+                runInteractiveAppWithLauncher
+                    (fun launchOptions viewerHost ->
+                        Viewer.runInteractiveViewerScriptWithPointerPacing launchOptions pointerPacing script viewerHost)
+                    options
+                    mapRawPointer
+                    observingHost
+            with
+            | Result.Ok outcome -> Result.Ok { Outcome = outcome; Metrics = observed |> Seq.toList }
+            | Result.Error failure -> Result.Error failure
+
         let private viewerButton button =
             match button with
             | PointerButton.Primary -> ViewerPointerButtonKind.Primary

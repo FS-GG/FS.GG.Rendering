@@ -721,6 +721,15 @@ module ControlsElmish =
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
+        /// Issue #1159: drive raw `ViewerScriptInput` through the public paced Controls launcher.
+        val runPointerPacingScript:
+            options: ViewerOptions ->
+            pointerPacing: ViewerPointerPacingOptions ->
+            mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: ViewerScriptInput list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
         val runScript:
             options: ViewerOptions ->
             host: InteractiveAppHost<'model, 'msg> ->
