@@ -621,7 +621,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       duplicateMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "ambiguous marker ownership receives the fail-closed diagnosis"
 
                   let missingMarkerSource =
@@ -637,7 +637,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       missingMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "unbounded executable source cannot retain an authored acknowledgement"
 
                   let duplicateIdSource =
