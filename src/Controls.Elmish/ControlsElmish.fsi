@@ -280,6 +280,12 @@ type LiveScriptRunResult =
     { Outcome: ViewerLaunchOutcome
       Metrics: FrameMetrics list }
 
+/// Deterministic evidence from the Controls paced-pointer composition.
+type internal DeterministicPointerPacingResult<'model> =
+    { Model: 'model
+      Drains: ViewerFrameDrain list
+      Metrics: ViewerPointerPacingMetrics list }
+
 /// Pointer-routing, size-aware durable host (feature 085, research D3-AMEND). Mirrors
 /// `GeneratedAppHost` field-for-field PLUS a `MapPointer` seam over `PointerInteraction` and a
 /// size-carrying `View` that returns a `Control<'msg>` tree (so `Control.renderTree` yields the
@@ -508,6 +514,17 @@ module ControlsElmish =
         input: ViewerPointerInput ->
             PointerState * 'msg list
 
+    /// Issue #1159: as `routeInteractivePointer`, then invokes the raw fallback for the same sample.
+    /// Controls hit-testing and authored bindings are retained and their messages precede the fallback.
+    val routeInteractivePointerWithRawFallback:
+        host: InteractiveAppHost<'model, 'msg> ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        state: PointerState ->
+        size: Size ->
+        model: 'model ->
+        input: ViewerPointerInput ->
+            PointerState * 'msg list
+
     /// Feature 110 (FR-001/FR-002/FR-003): resolve a single already-resolved `PointerInteraction` from
     /// the RETAINED frame, performing NO `host.View` + `Control.renderTree` for routing. A binding-
     /// eligible `Click` hit-tests via `RetainedRender.retainedHitTest` over the retained frame's cached
@@ -652,6 +669,17 @@ module ControlsElmish =
     val runInteractiveApp:
         options: ViewerOptions -> host: InteractiveAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
 
+    /// Issue #1159: as `runInteractiveApp`, but composes the lower viewer's pointer pacing policy with
+    /// the retained Controls route. Controls hit-testing and authored bindings run first; the raw mapper
+    /// then receives the same folded sample, so continuous aim needs no product-local viewer wrapper.
+    /// `pointerPacing.OnMetrics` remains the observable raw/folded/update/present receipt.
+    val runInteractiveAppWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit `ViewerWindowBehaviorRequest`
     /// threaded into the live launch (startup-state / resize / maximize / position / backend), so a
     /// generated app's parsed `--window-startup normal` actually applies to the controls window instead
@@ -699,6 +727,32 @@ module ControlsElmish =
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
+        /// Deterministic receipt path for the public Controls paced launcher.
+        val internal runDeterministicPointerPacing:
+            policy: ViewerContinuousPointerPolicy ->
+            receivedAt: DateTimeOffset ->
+            frames: (ViewerResponsivenessInputKind * string) list list ->
+                ViewerFrameDrain list
+
+        /// Drain Viewer-paced pointer input through Controls routing and `Update`, without a window.
+        val internal runDeterministicPointerPacingThroughControls:
+            policy: ViewerContinuousPointerPolicy ->
+            receivedAt: DateTimeOffset ->
+            size: Size ->
+            mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            frames: ViewerPointerInput list list ->
+                DeterministicPointerPacingResult<'model>
+
+        /// Issue #1159: drive raw `ViewerScriptInput` through the public paced Controls launcher.
+        val runPointerPacingScript:
+            options: ViewerOptions ->
+            pointerPacing: ViewerPointerPacingOptions ->
+            mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: ViewerScriptInput list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
         val runScript:
             options: ViewerOptions ->
             host: InteractiveAppHost<'model, 'msg> ->

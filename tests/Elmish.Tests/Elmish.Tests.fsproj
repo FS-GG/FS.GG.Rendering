@@ -87,6 +87,7 @@
     <Compile Include="Issue457PointerDiagnosticSinkTests.fs" />
     <Compile Include="Issue713SubscriptionsSeamTests.fs" />
     <Compile Include="Issue1046LifecycleSeamTests.fs" />
+    <Compile Include="Issue1159RawPointerPacingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
