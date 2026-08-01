@@ -403,7 +403,6 @@ owner-documented  largestRegion
 owner-documented  maze
 owner-documented  poissonScatter
 owner-documented  reachable
-owner-documented  regions
 owner-documented  set
 owner-documented  stranded
 
@@ -526,7 +525,6 @@ vocabulary  fit
 vocabulary  initEvidenceWorkflow
 vocabulary  initRun
 vocabulary  initWithWindowBehavior
-vocabulary  present
 vocabulary  runInteractiveViewerScriptWithAudio
 vocabulary  runInteractiveViewerScriptWithWindowBehaviorAndAudio
 vocabulary  runInteractiveViewerWithWindowBehavior
