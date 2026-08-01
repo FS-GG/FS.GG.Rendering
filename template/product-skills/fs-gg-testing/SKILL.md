@@ -482,9 +482,9 @@ let requiredOutputs = [ { Width = 1280; Height = 720 }; { Width = 1920; Height =
 
 for output in requiredOutputs do
     let hudRegions = hudRegionsForSize output
-    Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
+    Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region appears"
     Expect.all hudRegions (fun region -> finiteAndInside output region.Bounds) "HUD bounds are finite and on-screen"
-    Expect.isFalse (anyOverlap hudRegions) "HUD regions do not overlap"
+    Expect.isFalse (anyOverlap hudRegions) "no HUD region overlaps another"
 ```
 
 A concrete receipt from that helper should retain the names *and* bounds, not reduce them to a count.

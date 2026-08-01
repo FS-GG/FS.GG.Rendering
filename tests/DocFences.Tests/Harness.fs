@@ -229,11 +229,13 @@ module Harness =
         units, skipped
 
     /// Frozen identity of the 87-fence product-skill inventory reviewed for Rendering#1050, re-audited for
-    /// Rendering#1165 (3 new fsharp fences: 2 in fs-gg-testing/SKILL.md, 1 in fs-gg-ui-widgets/SKILL.md). It
-    /// covers origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails
-    /// before classification/compilation and must be deliberately re-audited.
+    /// Rendering#1165 (3 new fsharp fences: 2 in fs-gg-testing/SKILL.md, 1 in fs-gg-ui-widgets/SKILL.md), and
+    /// again after round 2 reworded two of those fences' Expecto assertion-message strings ("present"/"regions"
+    /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). It covers origin, body,
+    /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
+    /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "c464061cdeda9f015ce720e4de31d1f44c13804a7e93be5bc21e5f01b71a2352"
+        "8295a025cee3d06d557b0cdd33792a7f035ee88dc9c62895137db090349e21c0"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
