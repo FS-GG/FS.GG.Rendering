@@ -309,6 +309,12 @@ type InteractiveAppHost<'model, 'msg> =
       OnFrameMetrics: FrameMetrics -> unit
       Diagnostics: ViewerDiagnosticsOptions }
 
+/// Additive gamepad-capable Controls host. Existing `InteractiveAppHost` records and launchers
+/// remain source-compatible; use this variant when a product needs a native frame source.
+type InteractiveAppGamepadHost<'model, 'msg> =
+    { Host: InteractiveAppHost<'model, 'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`Before` ≠ `After`), `Inert` when
 /// it did not. An inert host (renders but does not respond) can only yield `Inert`.
@@ -521,6 +527,13 @@ module ControlsElmish =
     /// (FR-008).
     val runInteractiveApp:
         options: ViewerOptions -> host: InteractiveAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Runs the retained Controls host and polls `Gamepad.Poll` once per presentation frame. The
+    /// snapshot is mapped into replayable product messages before the host's ordinary `Tick`.
+    val runInteractiveAppWithGamepad:
+        options: ViewerOptions ->
+        gamepadHost: InteractiveAppGamepadHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit `ViewerWindowBehaviorRequest`
     /// threaded into the live launch (startup-state / resize / maximize / position / backend), so a

@@ -1537,6 +1537,16 @@ module internal ViewerRuntime =
             | Some msg -> dispatchHostMsg msg
             | None -> false
 
+    /// The interactive gamepad presentation boundary. The live launcher and host-level tests use
+    /// the same source poll → mapped messages → ordinary tick sequence.
+    let internal frameMessages (gamepad: GamepadFrameSource<'msg> option) (tick: TimeSpan -> 'msg option) delta =
+        let gamepadMessages =
+            match gamepad with
+            | Some source -> GamepadFrameSource.poll source
+            | None -> []
+
+        gamepadMessages @ (tick delta |> Option.toList)
+
     /// The close-time input-dispatch check: satisfied unless verification is required and no input was
     /// ever observed (`FS_SKIA_REQUIRE_INPUT_DISPATCH`, so an unresponsive launch fails rather than
     /// passing silently).
@@ -1856,15 +1866,8 @@ module internal ViewerRuntime =
                     // A gamepad is state, not an event: one native source poll belongs at the
                     // presented-frame boundary, then its deterministic product mapping is folded
                     // before the ordinary tick. This keeps both inputs when they share a frame.
-                    let gamepadCloseRequested =
-                        match gamepad with
-                        | Some(source: GamepadFrameSource<'msg>) ->
-                            GamepadFrameSource.poll source
-                            |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
-                        | None -> false
-
-                    let tickCloseRequested = makeHandleTick host.Tick dispatchHostMsg delta
-                    gamepadCloseRequested || tickCloseRequested
+                    frameMessages gamepad host.Tick delta
+                    |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
 
                 let handleKey rawKey isDown =
                     let key, normalizedDown =

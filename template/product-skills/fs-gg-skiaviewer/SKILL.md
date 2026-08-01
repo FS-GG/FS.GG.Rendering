@@ -161,12 +161,16 @@ hit-testing and authored bindings, while retaining the raw/folded/update/present
 ### Native gamepad snapshots are a separate once-per-frame source
 
 Do not invent a product-local native window wrapper to read a controller. Once the product's pinned
-Controls package publishes the gamepad-capable interactive host, provide its source with a native
-poller and map the immutable left stick, right stick, and trigger snapshot into one of your pure
-messages. The host polls that source once at each presentation-frame boundary, before the ordinary
-tick, so a fixed-step update receives a replayable snapshot without losing its tick. Keep device
-discovery and platform bindings at that source edge; the product model owns dead zones, normalization,
-and command semantics. Existing interactive-host records remain valid through the additive migration.
+Controls package publishes the gamepad-capable interactive host, provide a
+`GamepadFrameSource<'msg>` with a native `Poll` function and a pure `Map`; its
+`GamepadFrameSource.poll` result carries a `GamepadSnapshot` with both stick axes and both triggers.
+Launch the scene-level `InteractiveViewerGamepadHost` with
+`Viewer.runInteractiveViewerWithGamepad`, or the control-tree `InteractiveAppGamepadHost` with
+`ControlsElmish.runInteractiveAppWithGamepad`. Each launcher polls the source once at each
+presentation-frame boundary before the ordinary tick, so a fixed-step update receives a replayable
+snapshot without losing its tick. Keep device discovery and platform bindings at that source edge; the
+product model owns dead zones, normalization, and command semantics. Existing interactive-host records
+remain valid through the additive migration.
 
 **`MapPointer` is model-aware, and that is the whole reason it is a different seam from `MapKey`.**
 `MapKey : ViewerKey -> bool -> 'msg list` sees only the key edge — it is a stateless key→message wrapper.
