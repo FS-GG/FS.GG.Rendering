@@ -234,11 +234,18 @@ module Harness =
     /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). Re-audited again for
     /// Rendering#1166 (1 new fsharp fence in fs-gg-game-shell/SKILL.md, the pause-safe rebind + exact-persistence
     /// production-host journey; no new fences in fs-gg-keyboard-input/SKILL.md or fs-gg-testing/SKILL.md, whose
-    /// prose-only additions shift the three fs-gg-testing self-contained keys below). It covers origin, body,
-    /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
-    /// classification/compilation and must be deliberately re-audited.
+    /// prose-only additions shift the three fs-gg-testing self-contained keys below), and once more after
+    /// review round 1 (independent critic `smew-a5d2`, finding 1) replaced that fs-gg-game-shell fence's body:
+    /// the original never drove `Screen` to `Playing`, so its final assertion passed vacuously. The corrected
+    /// fence drives real `GameShell.Start`/`OpenSettings`/`ArmRebind`/`LeaveSettings`/`ResumeGame` navigation to
+    /// actually reach `Playing`, and adds explicit non-vacuity assertions (`Screen = Playing`, the held command
+    /// is genuinely `Some` before the pause) alongside the original zero-intent and persistence-count checks.
+    /// Verified against the real `template/base/src/Product/GameShell.fs` (not a stub) via a scratch
+    /// `dotnet fsi` script, both with the fix present (passes) and with the fix removed (reddens) — see the PR
+    /// discussion for the script. It covers origin, body, skip reason, and extra opens. Any added, removed,
+    /// moved, or edited fence fails before classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "bef0c45c08fc3fff5bba2948b1be042c166b0d054a3655f484048d55b648103a"
+        "c924783fe8b2b2d198c37c9f4eb53c3b698de78a4c18b077d0621ef509abe7fa"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product

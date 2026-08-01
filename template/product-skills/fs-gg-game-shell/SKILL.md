@@ -137,10 +137,13 @@ implicit startup behavior.
 
 A settings screen that reports a successful rebind, and a `Playing` transition that
 is truly zero-input-safe, are two different claims. Only a journey that runs BOTH
-through the real seams tells you which one you actually have. A test that constructs
-a resolved gameplay `Msg` by hand and asserts on `update` proves neither: it skips
-the raw key, so it cannot see a capture that silently fails to rearm, and it skips
-`Screen`, so it cannot see a command that survives a pause it never actually took.
+through the real seams — starting at `Screen = MainMenu` and actually REACHING
+`Screen = Playing` before the held-key/pause sequence — tells you which one you
+actually have. A test that never drives `Screen` to `Playing` at all proves nothing:
+the retained command can never become `Some` in the first place, so a final `None`
+assertion passes whether or not the pause-safety fix below is even present. A test
+that constructs a resolved gameplay `Msg` by hand skips the raw key too, so it
+cannot see a capture that silently fails to rearm.
 
 The trap is exactly where the up edge lands. A shell that clears its retained
 command only on the matching `GameEdge(_, false)` misses the one order that matters
@@ -152,11 +155,15 @@ key released during a pause resumes play still moving.
 Drive the whole journey through `GameShell.routeKeyEvent` and `GameShell.update` —
 never a hand-built `Msg` — and assert the persistence side at the same time: the one
 capture that actually changed the keymap must reach the sink exactly once, and a
-preference nobody touched (here, `DisplaySettings`) must reach it zero times.
+preference nobody touched (here, `DisplaySettings`) must reach it zero times. Menu
+navigation (`Start`, `OpenSettings`, `ArmRebind`, `LeaveSettings`, `ResumeGame`) is
+dispatched directly, exactly as the shell's own button rows do — only NATIVE KEY
+edges (the rebind capture, the pause, the resume) go through `routeKeyEvent`:
 
 ```fsharp
-// Drive the WHOLE journey through routeKeyEvent + update — the raw-key mapping and the
-// retained semantic-command boundary — never a hand-built game Msg.
+// Drive every NATIVE KEY edge through routeKeyEvent + update — the raw-key mapping and the
+// retained semantic-command boundary — never a hand-built game Msg. Menu buttons dispatch
+// their Msg directly, same as the shell's own rows.
 let step shell heldCommand key isDown =
     match GameShell.routeKeyEvent (fun command -> commandToMsg command) key isDown shell with
     | GameShell.ShellEdge m ->
@@ -169,22 +176,39 @@ let step shell heldCommand key isDown =
     | GameShell.GameEdge(_, false) -> shell, None, []
     | GameShell.NoKeyEvent -> shell, heldCommand, []
 
-let shell1, _ = GameShell.update (GameShell.ArmRebind "move-up") shell0   // Screen = Playing already
+// shell0 is explicit — GameShell.init's actual starting state — not left for the reader to
+// guess: `Screen = MainMenu`, which is the only Screen every journey legally starts from.
+let shell0 = GameShell.init config
+
+// Reach Playing for real, through the shell's own button-row Msgs — MainMenu -> Playing ->
+// Paused -> Settings, so ArmRebind actually arms (it only does while Screen = Settings).
+let shell1, _ = GameShell.update GameShell.Start shell0                      // MainMenu -> Playing
+let shell2, _ = GameShell.update GameShell.EscapePressed shell1              // Playing -> Paused
+let shell3, _ = GameShell.update GameShell.OpenSettings shell2               // Paused -> Settings
+let shell4, _ = GameShell.update (GameShell.ArmRebind "move-up") shell3      // arms; still Settings
 
 // 1. Complete the capture with the next native key — the shipped raw-key seam, not a Msg.
-let shell2, held2, keymapPersist = step shell1 None "KeyW" true
+let shell5, held5, keymapPersist = step shell4 None "KeyW" true
 
-// 2. Ordinary play: the SAME key now resolves through the retained semantic boundary.
-let shell3, held3, _ = step shell2 held2 "KeyW" true
+let shell6, _ = GameShell.update GameShell.LeaveSettings shell5              // Settings -> Paused
+let shell7, _ = GameShell.update GameShell.ResumeGame shell6                 // Paused -> Playing
 
-// 3. Pause BEFORE the "KeyW" up edge ever arrives.
-let shell4, held4, _ = step shell3 held3 "Escape" true
+// 2. Ordinary play: the SAME key now genuinely resolves through the retained semantic
+//    boundary (Screen really is Playing here, so this actually becomes Some).
+let shell8, held8, _ = step shell7 held5 "KeyW" true
+
+// 3. Pause BEFORE the "KeyW" up edge ever arrives — through the same native-key seam.
+let shell9, held9, _ = step shell8 held8 "Escape" true
 
 // 4. The up edge lands while paused, then resume.
-let shell5, held5, _ = step shell4 held4 "KeyW" false
-let _shell6, held6, _ = step shell5 held5 "Escape" true
+let shell10, held10, _ = step shell9 held9 "KeyW" false
+let _shell11, held11, _ = step shell10 held10 "Escape" true
 
-Expect.isNone held6
+Expect.equal shell7.Screen GameShell.Playing
+    "the journey must actually reach Playing, or the assertion below is vacuous"
+Expect.isSome held8
+    "the rebound key must actually become held, or the assertion below is vacuous"
+Expect.isNone held11
     "a rebound key whose up edge lands during a pause must not still be retained after resume"
 Expect.equal (List.length keymapPersist) 1
     "the one changed preference (the rebind) must reach the sink exactly once"
@@ -193,9 +217,16 @@ Expect.equal (List.length keymapPersist) 1
 `keymapPersist` is the `Effect list` `GameShell.update` returned for the capture step
 alone — the same shape [[fs-gg-testing]] asserts audio and persistence effects with —
 so counting it, rather than inspecting the model, is what proves the batch reached
-the host boundary once and not on every key. Run the identical journey a second time
-without arming a rebind and the count for that key must be zero: an untouched
-preference persists nothing.
+the host boundary once and not on every key. Every other `update` call in this
+journey (menu navigation, arming, pausing, resuming) returns no effects at all, so
+the total across the whole run is exactly the one batch the rebind produced. Run the
+identical journey a second time without arming a rebind and the count for that key
+must be zero: an untouched preference persists nothing.
+
+Delete the `if next.Screen = GameShell.Playing then heldCommand else None` line above
+— replace it with plain `heldCommand`, the pre-fix behavior — and `held11` becomes
+`Some`, reddening the assertion: the trace above is not vacuous, and this is what it
+actually catches.
 
 ## Capability boundary — the shell needs the pointer-aware host
 
