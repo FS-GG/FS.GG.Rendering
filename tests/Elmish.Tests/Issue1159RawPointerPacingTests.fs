@@ -50,4 +50,25 @@ let tests =
             Expect.equal pressed [ Aim(10.0, 10.0) ] "the press reaches the raw fallback"
             Expect.equal released [ BoundClick; Aim(10.0, 10.0) ] "the authored click is preserved before raw aim"
         }
+
+        test "public paced launcher folds 1000 moves and retains its receipt" {
+            if not (Viewer.runtimeCapability().PersistentWindow) then
+                skiptest "the production viewer script requires a persistent-window host"
+            else
+                let aims = ResizeArray<Msg>()
+                let receipts = ResizeArray<ViewerPointerPacingMetrics>()
+                let pacing = { Viewer.defaultPointerPacingOptions with ContinuousPolicy = ViewerContinuousPointerPolicy.CoalesceLatestPerFrame; OnMetrics = receipts.Add }
+                let script =
+                    [ for frame in 0 .. 59 do
+                          for i in 1 .. (if frame < 40 then 17 else 16) do
+                              yield ViewerScriptInput.Pointer(pointer ViewerPointerPhaseKind.Moved (float i) (float frame))
+                          yield ViewerScriptInput.WaitFrame ]
+
+                match ControlsElmish.Live.runPointerPacingScript { Title = "paced"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } pacing (fun input _ _ -> [ Aim(input.X, input.Y) ]) host script with
+                | Result.Error failure -> failtestf "paced public launcher failed: %A" failure
+                | Result.Ok _ ->
+                    let folded = receipts |> Seq.sumBy _.FoldedSamplesApplied
+                    Expect.isLessThanOrEqual folded 60 "at most one raw aim sample survives each presentation boundary"
+                    Expect.equal (receipts |> Seq.sumBy _.RawSamplesReceived) 1000 "the lower receipt observes every raw move"
+        }
     ]
