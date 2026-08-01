@@ -281,7 +281,7 @@ type LiveScriptRunResult =
       Metrics: FrameMetrics list }
 
 /// Deterministic evidence from the Controls paced-pointer composition.
-type DeterministicPointerPacingResult<'model> =
+type internal DeterministicPointerPacingResult<'model> =
     { Model: 'model
       Drains: ViewerFrameDrain list
       Metrics: ViewerPointerPacingMetrics list }
@@ -728,14 +728,14 @@ module ControlsElmish =
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
         /// Deterministic receipt path for the public Controls paced launcher.
-        val runDeterministicPointerPacing:
+        val internal runDeterministicPointerPacing:
             policy: ViewerContinuousPointerPolicy ->
             receivedAt: DateTimeOffset ->
             frames: (ViewerResponsivenessInputKind * string) list list ->
                 ViewerFrameDrain list
 
         /// Drain Viewer-paced pointer input through Controls routing and `Update`, without a window.
-        val runDeterministicPointerPacingThroughControls:
+        val internal runDeterministicPointerPacingThroughControls:
             policy: ViewerContinuousPointerPolicy ->
             receivedAt: DateTimeOffset ->
             size: Size ->

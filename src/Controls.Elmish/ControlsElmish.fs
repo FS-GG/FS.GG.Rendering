@@ -146,7 +146,7 @@ type LiveScriptRunResult =
 /// Deterministic, headless evidence for the Controls paced-pointer composition.  The queue drains
 /// come from the Viewer runner; `ModelUpdates` counts messages actually folded through the Controls
 /// host, so a receipt cannot claim a coalesced aim merely because it was accepted by the lower queue.
-type DeterministicPointerPacingResult<'model> =
+type internal DeterministicPointerPacingResult<'model> =
     { Model: 'model
       Drains: ViewerFrameDrain list
       Metrics: ViewerPointerPacingMetrics list }
@@ -2220,7 +2220,7 @@ module ControlsElmish =
         GeneratedAppHost.audioRequests effects
 
     module Live =
-        let runDeterministicPointerPacing policy receivedAt frames =
+        let internal runDeterministicPointerPacing policy receivedAt frames =
             Viewer.runDeterministicPacing policy receivedAt frames
 
         /// Issue #1159: deterministic counterpart of the live paced launcher.  It deliberately uses
@@ -2228,7 +2228,7 @@ module ControlsElmish =
         /// pointer router plus the additive raw fallback before folding its messages through `Update`.
         /// This gives product tests a no-window receipt for raw/folded/update/present counters while
         /// retaining authored bindings and discrete ordering.
-        let runDeterministicPointerPacingThroughControls
+        let internal runDeterministicPointerPacingThroughControls
             (policy: ViewerContinuousPointerPolicy)
             (receivedAt: DateTimeOffset)
             (size: Size)
