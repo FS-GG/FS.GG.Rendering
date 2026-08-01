@@ -370,7 +370,11 @@ let performanceEvidenceContract =
                 "| Some _, Authored _ -> { Passed = true; Reasons = [] }"
                 "let mutable model = workload.InitialState()"
                 "update (workload.MessageAt frame) model"
-                "let scene = view model" ]
+                "let scene = view model"
+                "let private initialStateFingerprint workload"
+                "let private messageFramesFingerprint workload"
+                "NormalizationForm.FormC"
+                "max workload.WarmupFrames workload.SampleFrames - 1" ]
               |> List.iter (fun token ->
                   Expect.stringContains source token $"authored workload contract carries {token}")
 
@@ -617,7 +621,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       duplicateMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "ambiguous marker ownership receives the fail-closed diagnosis"
 
                   let missingMarkerSource =
@@ -633,7 +637,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       missingMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "unbounded executable source cannot retain an authored acknowledgement"
 
                   let duplicateIdSource =
@@ -663,6 +667,58 @@ let performanceEvidenceContract =
                   Expect.equal stale.ExitCode 1 "route change with the old declaration digest fails closed"
                   Expect.stringContains stale.Output "authored declaration is stale" "stale route is diagnosed"
                   Expect.stringContains stale.Output "workload 'idle'" "changed workload is identified"
+
+                  let helperBoundPlaceholderSource =
+                      placeholderSource
+                      |> fun source ->
+                          source.Replace(
+                              "let expectedWorkloads =",
+                              """let private helperBoundInitialState () = initialModel
+
+let private helperBoundMessage frame =
+    if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)
+
+let expectedWorkloads =""",
+                              StringComparison.Ordinal
+                          )
+                      |> rewriteWorkloadBlock
+                          "idle"
+                          (fun block ->
+                              block
+                                  .Replace("InitialState = (fun () -> initialModel)", "InitialState = helperBoundInitialState")
+                                  .Replace("MessageAt = (fun _ -> Tick(1.0 / 60.0))", "MessageAt = helperBoundMessage"))
+
+                  File.WriteAllText(evidenceSourcePath, helperBoundPlaceholderSource)
+                  let helperBoundPending = runEvidence ()
+                  Expect.equal helperBoundPending.ExitCode 1 "helper-bound workloads remain unauthored before their digest is acknowledged"
+                  let helperBoundDigests = workloadDigests artifactPath
+                  let helperBoundAuthoredSource = authorWorkloads helperBoundDigests helperBoundPlaceholderSource
+
+                  let helperOnlyModelMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "let private helperBoundInitialState () = initialModel",
+                          "let private helperBoundInitialState () = { initialModel with TickCount = 1 }",
+                          StringComparison.Ordinal
+                      )
+
+                  File.WriteAllText(evidenceSourcePath, helperOnlyModelMutation)
+                  let helperOnlyModel = runEvidence ()
+                  Expect.equal helperOnlyModel.ExitCode 1 "a helper-only initial-model mutation invalidates Authored"
+                  Expect.stringContains helperOnlyModel.Output "authored declaration is stale" "helper-only model mutation is diagnosed as stale"
+                  Expect.stringContains helperOnlyModel.Output "workload 'idle'" "the helper-backed workload is identified"
+
+                  let frameTwoOnlyMessageMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)",
+                          "if frame = 2 then Tick(2.0 / 60.0) else Tick(1.0 / 60.0)",
+                          StringComparison.Ordinal
+                      )
+
+                  File.WriteAllText(evidenceSourcePath, frameTwoOnlyMessageMutation)
+                  let frameTwoOnlyMessage = runEvidence ()
+                  Expect.equal frameTwoOnlyMessage.ExitCode 1 "a frame-2-only helper message mutation invalidates Authored"
+                  Expect.stringContains frameTwoOnlyMessage.Output "authored declaration is stale" "frame-2 helper mutation is diagnosed as stale"
+                  Expect.stringContains frameTwoOnlyMessage.Output "workload 'idle'" "the later-frame workload is identified"
 
                   let staleIntent = runIntent ()
                   Expect.equal staleIntent.ExitCode 1 "route changes invalidate the old early intent acknowledgement"
@@ -729,4 +785,8 @@ let performanceEvidenceContract =
                   Expect.stringContains skill "Placeholder" $"{path} teaches fail-closed workload authoring"
                   Expect.stringContains skill "definitionDigest" $"{path} teaches stale-evidence invalidation"
                   Expect.stringContains prose "before feature implementation" $"{path} moves authoring early")
+
+              let testingSkill = read "template/product-skills/fs-gg-testing/SKILL.md"
+              Expect.stringContains testingSkill "complete deterministic value returned by `InitialState()`" "testing guidance closes helper-backed initial-state evidence"
+              Expect.stringContains testingSkill "frame 2" "testing guidance closes helper-backed later-frame evidence"
           } ]

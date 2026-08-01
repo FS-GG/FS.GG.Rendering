@@ -400,15 +400,56 @@ let private workloadSourceFingerprint id =
             |> sha256Text
             |> Some
 
+/// Keep value fingerprints stable across hosts. `%A` is appropriate for the generated closed
+/// Model/Msg structures; if a consumer changes either route to a value that cannot be rendered
+/// safely, authorship must fail rather than acknowledging an ambiguous definition.
+let private normalizeFingerprintText (text: string) =
+    if isNull text || text.IndexOf '\u0000' >= 0 then
+        None
+    else
+        Some(text.Replace("\r\n", "\n").Replace("\r", "\n").Normalize(NormalizationForm.FormC))
+
+let private structuralFingerprint value =
+    try
+        value
+        |> sprintf "%A"
+        |> normalizeFingerprintText
+        |> Option.map sha256Text
+    with _ ->
+        None
+
+let private initialStateFingerprint workload =
+    try
+        workload.InitialState() |> structuralFingerprint
+    with _ ->
+        None
+
+let private messageFramesFingerprint workload =
+    try
+        // The sampler restarts frame numbering for warmup and sample passes. Fingerprint their
+        // complete union, so an external helper that changes a later executed frame cannot hide.
+        [ for frame in 0 .. max workload.WarmupFrames workload.SampleFrames - 1 ->
+              frame, workload.MessageAt frame ]
+        |> structuralFingerprint
+    with _ ->
+        None
+
+let private workloadDefinitionFingerprint workload =
+    match workloadSourceFingerprint workload.Id, initialStateFingerprint workload, messageFramesFingerprint workload with
+    | Some source, Some initialState, Some messages -> Some(source, initialState, messages)
+    | _ -> None
+
 let definitionDigest workload =
     let budget =
         workload.Budget
         |> Option.map (fun b -> $"{b.P95Ms:R}|{b.P99Ms:R}|{b.MaximumSceneNodes}|{b.AllowSustainedCatchUp}")
         |> Option.defaultValue "none"
 
-    let executableSource =
-        workloadSourceFingerprint workload.Id
-        |> Option.defaultValue "missing-workload-source-block"
+    let executableDefinition =
+        workloadDefinitionFingerprint workload
+        |> Option.map (fun (source, initialState, messages) ->
+            $"source={source}|initial={initialState}|messages={messages}")
+        |> Option.defaultValue "unreadable-workload-definition"
 
     let structuralBudgets = String.concat "," performanceIntentSeed.StructuralCostBudgets
 
@@ -421,7 +462,7 @@ let definitionDigest workload =
     let costDriverIds = String.concat "," workload.CostDriverIds
 
     let canonical =
-        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{provenanceDefinitionToken workload.Provenance}|{compositionToken workload.Composition}|{costDriverIds}|{budget}|{intentPolicy}|{executableSource}"
+        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{provenanceDefinitionToken workload.Provenance}|{compositionToken workload.Composition}|{costDriverIds}|{budget}|{intentPolicy}|{executableDefinition}"
 
     sha256Text canonical
 
@@ -495,11 +536,11 @@ let evaluateBudget workload p95 p99 catchUpFrames sceneNodes =
 let evaluateAuthorship workload =
     let actualDigest = definitionDigest workload
 
-    match workloadSourceFingerprint workload.Id, workload.Authorship with
+    match workloadDefinitionFingerprint workload, workload.Authorship with
     | None, _ ->
         { Passed = false
           Reasons =
-            [ $"workload '{workload.Id}' has no readable WORKLOAD-SOURCE block; executable state/message authorship cannot be verified" ] }
+            [ $"workload '{workload.Id}' has no safely readable WORKLOAD-SOURCE block, initial state, or executed message frames; executable state/message authorship cannot be verified" ] }
     | Some _, Placeholder requiredWork ->
         { Passed = false
           Reasons = [ $"required workload '{workload.Id}' is still a placeholder: {requiredWork}" ] }
