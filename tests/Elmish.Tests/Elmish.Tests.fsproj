@@ -88,6 +88,7 @@
     <Compile Include="Issue713SubscriptionsSeamTests.fs" />
     <Compile Include="Issue1046LifecycleSeamTests.fs" />
     <Compile Include="Issue1159RawPointerPacingTests.fs" />
+    <Compile Include="Issue1160GamepadFrameSourceTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

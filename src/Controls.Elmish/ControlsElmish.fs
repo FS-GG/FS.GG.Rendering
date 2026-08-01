@@ -163,6 +163,10 @@ type InteractiveAppHost<'model, 'msg> =
       OnFrameMetrics: FrameMetrics -> unit
       Diagnostics: ViewerDiagnosticsOptions }
 
+type InteractiveAppGamepadHost<'model, 'msg> =
+    { Host: InteractiveAppHost<'model, 'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`before` ≠ `after`), `Inert` when
 /// it did not. An inert host (renders but does not respond) can only yield `Inert`.
@@ -2145,6 +2149,20 @@ module ControlsElmish =
 
     let runInteractiveApp (options: ViewerOptions) (host: InteractiveAppHost<'model, 'msg>) =
         runInteractiveAppWithLauncher Viewer.runInteractiveViewer options ignoreRawPointer host
+
+    let runInteractiveAppWithGamepad
+        (options: ViewerOptions)
+        (gamepadHost: InteractiveAppGamepadHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost ->
+                Viewer.runInteractiveViewerWithGamepad
+                    launchOptions
+                    { Host = viewerHost
+                      Gamepad = gamepadHost.Gamepad })
+            options
+            ignoreRawPointer
+            gamepadHost.Host
 
     /// Issue #1159: compose the lower viewer's frame-paced input route with the retained Controls host.
     /// The raw callback sees only folded samples and is invoked after Controls hit-testing/bindings.

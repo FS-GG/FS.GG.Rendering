@@ -1714,6 +1714,7 @@ module internal ViewerRuntime =
         script
         (audioSink: AudioEffect list -> unit)
         pointerPacing
+        gamepad
         (host: InteractiveViewerHost<'model,'msg>)
         =
         match validateLaunch options behavior with
@@ -1851,7 +1852,19 @@ module internal ViewerRuntime =
                                   "closeRequested", string closeRequested ]
                             closeRequested
 
-                let handleTick = makeHandleTick host.Tick dispatchHostMsg
+                let handleTick delta =
+                    // A gamepad is state, not an event: one native source poll belongs at the
+                    // presented-frame boundary, then its deterministic product mapping is folded
+                    // before the ordinary tick. This keeps both inputs when they share a frame.
+                    let gamepadCloseRequested =
+                        match gamepad with
+                        | Some(source: GamepadFrameSource<'msg>) ->
+                            GamepadFrameSource.poll source
+                            |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                        | None -> false
+
+                    let tickCloseRequested = makeHandleTick host.Tick dispatchHostMsg delta
+                    gamepadCloseRequested || tickCloseRequested
 
                 let handleKey rawKey isDown =
                     let key, normalizedDown =
@@ -1956,38 +1969,41 @@ module internal ViewerRuntime =
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore None host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore None None host
 
     let runInteractiveViewer options host =
         runInteractiveViewerWithWindowBehavior options defaultWindowBehavior host
+
+    let runInteractiveViewerWithGamepad options (gamepadHost: InteractiveViewerGamepadHost<'model,'msg>) =
+        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore None (Some gamepadHost.Gamepad) gamepadHost.Host
 
     let defaultPointerPacingOptions =
         { ContinuousPolicy = ViewerContinuousPointerPolicy.CoalesceLatestPerFrame
           OnMetrics = ignore }
 
     let runInteractiveViewerWithPointerPacing options pointerPacing host =
-        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore (Some pointerPacing) host
+        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore (Some pointerPacing) None host
 
     let runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore (Some pointerPacing) host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None ignore (Some pointerPacing) None host
 
     let runInteractiveViewerScriptWithWindowBehavior options behavior script host =
-        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) ignore None host
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) ignore None None host
 
     let runInteractiveViewerScript options script host =
         runInteractiveViewerScriptWithWindowBehavior options defaultWindowBehavior script host
 
     let runInteractiveViewerScriptWithPointerPacing options pointerPacing script host =
-        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior (Some script) ignore (Some pointerPacing) host
+        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior (Some script) ignore (Some pointerPacing) None host
 
     let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink (host: InteractiveViewerHost<'model,'msg>) =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink None host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink None None host
 
     let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
 
     let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
-        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink (Some pointerPacing) host
+        runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink (Some pointerPacing) None host
 
     let runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options defaultWindowBehavior pointerPacing audioSink host
@@ -2005,7 +2021,7 @@ module internal ViewerRuntime =
         audioSink
         (host: InteractiveViewerHost<'model,'msg>)
         =
-        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink None host
+        runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink None None host
 
     let runInteractiveViewerScriptWithAudio options script audioSink (host: InteractiveViewerHost<'model,'msg>) =
         runInteractiveViewerScriptWithWindowBehaviorAndAudio options defaultWindowBehavior script audioSink host

@@ -90,6 +90,7 @@ module Viewer =
     let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host
     let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host
     let runInteractiveViewer options host = ViewerRuntime.runInteractiveViewer options host
+    let runInteractiveViewerWithGamepad options gamepadHost = ViewerRuntime.runInteractiveViewerWithGamepad options gamepadHost
     let runInteractiveViewerWithWindowBehavior options behavior host = ViewerRuntime.runInteractiveViewerWithWindowBehavior options behavior host
     let defaultPointerPacingOptions = ViewerRuntime.defaultPointerPacingOptions
     let runInteractiveViewerWithPointerPacing options pointerPacing host = ViewerRuntime.runInteractiveViewerWithPointerPacing options pointerPacing host
