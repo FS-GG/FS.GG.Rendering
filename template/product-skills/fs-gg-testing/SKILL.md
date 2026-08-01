@@ -447,6 +447,96 @@ them in this skill's **Sources** / durable-lessons line (and any product-local `
 location). Offline, the mandate degrades to recording "research blocked — <why>"
 rather than hard-failing the phase.
 
+## Supplemental UI performance — bind semantic identities, not totals
+
+Control/node totals are useful cost counters, but they are not composition evidence. A required HUD
+region can disappear while an unrelated node replaces it and the total stays green. For a
+product-authored supplemental UI route, derive the observed identities from the same production
+helpers that rendering calls, then compare them with the product's closed identity inventory.
+
+Keep the identities typed and central. The layout helper, production view, and evidence route all
+consume these values; none retypes a string list or a magic count:
+
+```text
+open FS.GG.UI.Scene
+
+type HudRegionId = Hearts | Currency | ActiveCharge | Minimap | FloorName
+
+module HudRegionId =
+    let all = [ Hearts; Currency; ActiveCharge; Minimap; FloorName ]
+
+type NamedHudRegion = { Id: HudRegionId; Bounds: Rect }
+
+let hudRegionsForSize (size: Size) : NamedHudRegion list =
+    HudRegionId.all
+    |> List.map (fun id -> { Id = id; Bounds = boundsForHudRegion size id })
+
+let hudSceneForSize size model =
+    hudRegionsForSize size
+    |> List.map (fun region -> renderHudRegion model region.Id region.Bounds)
+    |> Scene.group
+```
+
+The evidence test asks the production helper for both required outputs and checks exact identities,
+finite in-bounds rectangles, and pairwise non-overlap. It does not rebuild the identities from labels
+or assert only `regions.Length = 5`:
+
+```text
+let requiredOutputs = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
+
+for output in requiredOutputs do
+    let regions = hudRegionsForSize output
+    Expect.sequenceEqual (regions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
+    Expect.all regions (fun region -> finiteAndInside output region.Bounds) "HUD bounds are finite and on-screen"
+    Expect.isFalse (anyOverlap regions) "HUD regions do not overlap"
+```
+
+A concrete receipt from that helper should retain the names *and* bounds, not reduce them to a count.
+For example, a 1280x720/1920x1080 HUD using the layout above records:
+
+| Output | Region | `(X, Y, Width, Height)` |
+| --- | --- | --- |
+| 1280x720 | `hearts` | `(24, 20, 384, 32)` |
+| 1280x720 | `currency` | `(24, 60, 230, 28)` |
+| 1280x720 | `active-charge` | `(1180, 20, 72, 40)` |
+| 1280x720 | `minimap` | `(1140, 70, 120, 120)` |
+| 1280x720 | `floor-name` | `(490, 668, 300, 32)` |
+| 1920x1080 | `hearts` | `(24, 20, 384, 32)` |
+| 1920x1080 | `currency` | `(24, 60, 230, 28)` |
+| 1920x1080 | `active-charge` | `(1820, 20, 72, 40)` |
+| 1920x1080 | `minimap` | `(1780, 70, 120, 120)` |
+| 1920x1080 | `floor-name` | `(810, 1028, 300, 32)` |
+
+Serialize those rows from `hudRegionsForSize`; do not duplicate the numeric table in the assertion.
+The asserted contract is the typed identity inventory plus geometry invariants, while the receipt makes
+the exact output of the production helper reviewable.
+
+Use the same shape for KPIs: define `KpiId = Deepest | Runs | WinRate | Kills` with
+`KpiId.all = [ Deepest; Runs; WinRate; Kills ]`, let `statsKpis model` return `(KpiId * string)` values,
+feed that exact list to `statsView`, and compare `statsKpis model |> List.map fst` with `KpiId.all`.
+The receipt records the exact stable identities `deepest`, `runs`, `win-rate`, and `kills` from a single
+`KpiId.toStableId` function. A deletion, rename, duplicate, or replacement then fails even if tile/node
+counts remain unchanged. If the identity inventory or stable-id mapping changes, the supplemental
+workload's source-bound `definitionDigest` must stale and require renewed authorship.
+
+This route remains `ComponentOnlySupplemental "HUD/stats view only"` unless it traverses the complete
+production composition. It can report bounded-headless update/view/render timing and deterministic
+reference rasters. It cannot claim native compositor, swapchain/vsync, input ergonomics, legibility,
+or usability evidence.
+
+For charts, structural evidence must bind each typed series identity to its authored color and to the
+same scene consumed by the production view. Require distinct colors, then render that production scene
+to a PNG and make the PNG current and content-addressed:
+
+- compute SHA-256 from the PNG bytes and require both `image-identity: sha256:<digest>` and the basename
+  `sha256-<digest>.png`;
+- require exactly one referenced PNG for the subject and remove superseded files;
+- inspect or pixel-test the raster for every authored series color at the required output size.
+
+Names such as “Dealt” and “Taken”, two series records, or two paths are not proof that the traces are
+visibly distinct. A green result needs all three bindings: exact series identities, pairwise-distinct
+authored colors used by the production scene, and the current raster bytes.
+
 ## Related
 
 - [[fs-gg-elmish]] — the runnable interaction-driver recipe (`Perf.runScriptToModel`,

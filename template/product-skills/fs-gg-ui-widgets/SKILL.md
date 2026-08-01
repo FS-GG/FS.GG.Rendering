@@ -134,6 +134,59 @@ Use `GraphView.create`, `BarChart.create`, `PieChart.create`, and
 `ScatterPlot.create` from the same Controls package when the product needs
 graph or chart variants.
 
+## Charts whose series colors carry meaning
+
+`ChartSeries.Name` is a label, not a color contract. When the distinction between series is part of
+the product meaning, author the identity, color, and points together and render that exact value. A
+product-owned `Canvas` scene is the direct route when each line needs an authored color:
+
+```text
+open FS.GG.UI.Controls
+open FS.GG.UI.Scene
+
+type DamageSeriesId = Dealt | Taken
+
+module DamageSeriesId =
+    let all = [ Dealt; Taken ]
+
+type DamageSeries =
+    { Id: DamageSeriesId
+      Color: Color
+      Points: Point list }
+
+let private dealtColor = { Red = 42uy; Green = 120uy; Blue = 214uy; Alpha = 255uy }
+let private takenColor = { Red = 27uy; Green = 175uy; Blue = 122uy; Alpha = 255uy }
+
+let damageSeries model =
+    [ { Id = Dealt; Color = dealtColor; Points = dealtPoints model }
+      { Id = Taken; Color = takenColor; Points = takenPoints model } ]
+
+let private seriesScene series =
+    series.Points
+    |> List.pairwise
+    |> List.map (fun (startPoint, endPoint) ->
+        Scene.line startPoint endPoint (Paint.stroke series.Color 3.0))
+    |> Scene.group
+
+let statsChartScene model =
+    damageSeries model |> List.map seriesScene |> Scene.group
+
+let statsChart model =
+    Canvas.create [ Canvas.scene (statsChartScene model) ]
+```
+
+The production view and supplemental evidence both call `damageSeries` and `statsChartScene`. The
+evidence compares `damageSeries model |> List.map _.Id` with `DamageSeriesId.all`, requires the colors
+to be pairwise distinct, and rasterizes `statsChartScene model`. Do not duplicate `"dealt"`/`"taken"`
+lists, accept `series.Length = 2`, or infer color from a label such as `"Dealt #2a78d6"`; those checks
+can stay green while both traces render identically.
+
+Keep the resulting reference PNG content-addressed and current: its filename and receipt identity
+must match the SHA-256 of its bytes, exactly one referenced PNG remains for the subject, and the visual
+or pixel check confirms both authored colors occur on the chart. This is deterministic reference-raster
+evidence, not native compositor or usability evidence. The complete exact-identity, two-output HUD,
+KPI, component-only classification, and raster-receipt test recipe lives in `fs-gg-testing`.
+
 When the generated product also selects Elmish program integration, use the
 `FS.GG.UI.Controls.Elmish` adapter at the product edge for commands and
 subscriptions.
