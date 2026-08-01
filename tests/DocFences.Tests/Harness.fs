@@ -232,7 +232,7 @@ module Harness =
     /// origin, body, skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "13c122416e45422f985228f899b0180885a5e9b5979320504122aa1a19782266"
+        "07ca9c99499fa6c72cd0393ba4bdeda598b012ebc96496eddaebb0d5ebe056d9"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
