@@ -415,6 +415,10 @@ order. Second, measure normal movement+aiming separately and require p95 below 1
 `ViewerPointerPacingOptions.OnMetrics` sink and records raw/folded/coalesced samples, model updates,
 presented frames, repaint causes, and full-render fallbacks.
 
+For a Controls `InteractiveAppHost`, drive the scenario through
+`ControlsElmish.runInteractiveAppWithPointerPacing`, not a product-local viewer wrapper. Assert that
+an authored binding is delivered before the raw fallback and retain the lower viewer's metrics receipt.
+
 Keep assertion and evidence logic pure over value records; let your test runner
 and `Verify` target perform the actual file and process I/O.
 

@@ -508,6 +508,17 @@ module ControlsElmish =
         input: ViewerPointerInput ->
             PointerState * 'msg list
 
+    /// Issue #1159: as `routeInteractivePointer`, then invokes the raw fallback for the same sample.
+    /// Controls hit-testing and authored bindings are retained and their messages precede the fallback.
+    val routeInteractivePointerWithRawFallback:
+        host: InteractiveAppHost<'model, 'msg> ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        state: PointerState ->
+        size: Size ->
+        model: 'model ->
+        input: ViewerPointerInput ->
+            PointerState * 'msg list
+
     /// Feature 110 (FR-001/FR-002/FR-003): resolve a single already-resolved `PointerInteraction` from
     /// the RETAINED frame, performing NO `host.View` + `Control.renderTree` for routing. A binding-
     /// eligible `Click` hit-tests via `RetainedRender.retainedHitTest` over the retained frame's cached
@@ -651,6 +662,17 @@ module ControlsElmish =
     /// (FR-008).
     val runInteractiveApp:
         options: ViewerOptions -> host: InteractiveAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #1159: as `runInteractiveApp`, but composes the lower viewer's pointer pacing policy with
+    /// the retained Controls route. Controls hit-testing and authored bindings run first; the raw mapper
+    /// then receives the same folded sample, so continuous aim needs no product-local viewer wrapper.
+    /// `pointerPacing.OnMetrics` remains the observable raw/folded/update/present receipt.
+    val runInteractiveAppWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit `ViewerWindowBehaviorRequest`
     /// threaded into the live launch (startup-state / resize / maximize / position / backend), so a

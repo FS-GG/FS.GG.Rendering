@@ -1099,6 +1099,20 @@ module ControlsElmish =
             // so existing EventBinding/MapPointer routing is bit-for-bit unchanged (additive).
             state', messages @ canvasPointerMessages rendered current (pointerSampleOf input)
 
+    /// Issue #1159: the Controls-first composition used by the paced launcher. The raw mapper is
+    /// deliberately invoked after the normal routing result, so an authored binding remains first and
+    /// a product's continuous-pointer message cannot replace Controls hit-testing.
+    let routeInteractivePointerWithRawFallback
+        (host: InteractiveAppHost<'model, 'msg>)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+        (state: PointerState)
+        (size: Size)
+        (model: 'model)
+        (input: ViewerPointerInput)
+        : PointerState * 'msg list =
+        let state', messages = routeInteractivePointer host state size model input
+        state', messages @ mapRawPointer input size model
+
     // Feature 110 (FR-002/FR-003): resolve a single interaction's authored bindings from the RETAINED
     // frame — the mirror of `bindingMessagesFor`, reading the retained frame's `EventBindings` instead
     // of a freshly rendered tree. `Some msgs` = an authored binding consumed the interaction (MapPointer
@@ -1651,9 +1665,12 @@ module ControlsElmish =
     // launcher so `runInteractiveApp` (default windowed-fullscreen) and
     // `runInteractiveAppWithWindowBehavior` (explicit window behavior) reuse the EXACT same
     // message→update→retained-step + clock/visual-state/pointer wiring — no parallel logic.
+    let private ignoreRawPointer (_: ViewerPointerInput) (_: Size) (_: 'model) : 'msg list = []
+
     let runInteractiveAppWithLauncher
         (launch: ViewerOptions -> InteractiveViewerHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>)
         (options: ViewerOptions)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
         (host: InteractiveAppHost<'model, 'msg>)
         =
         // Feature 182/issue #1046: the interpreter-edge cells and their pointer/diagnostic transitions
@@ -1936,14 +1953,16 @@ module ControlsElmish =
                         |> ScrollState.withExtent contentHeight viewportHeight
                         |> ScrollState.applyScrollDelta (-deltaY * wheelScrollStep)
                     loopState.ScrollOffsets <- Map.add svId next loopState.ScrollOffsets
-                messages, fallbacks
+                // The viewer's pacing policy has already selected this sample. Preserve the Controls
+                // route first, then offer that same folded sample to the raw fallback.
+                messages @ mapRawPointer input size model, fallbacks
             | _ ->
                 // No retained frame yet (a pointer sample before the first paint seeded the frame, not
                 // expected in the live loop where paint precedes input): fall back to the preserved
                 // oracle so routing is still correct, counting the full render it performs.
                 let state', messages = routeInteractivePointer host loopState.PointerState size model input
                 loopState.PointerState <- state'
-                messages, 1
+                messages @ mapRawPointer input size model, 1
 
         // Feature 108 (US4, FR-011/012): pointer-move coalescing on the live loop. A MOVE sample is
         // buffered (latest position wins) and the PREVIOUSLY-buffered move is processed at the next
@@ -2117,7 +2136,21 @@ module ControlsElmish =
         launch options viewerHost
 
     let runInteractiveApp (options: ViewerOptions) (host: InteractiveAppHost<'model, 'msg>) =
-        runInteractiveAppWithLauncher Viewer.runInteractiveViewer options host
+        runInteractiveAppWithLauncher Viewer.runInteractiveViewer options ignoreRawPointer host
+
+    /// Issue #1159: compose the lower viewer's frame-paced input route with the retained Controls host.
+    /// The raw callback sees only folded samples and is invoked after Controls hit-testing/bindings.
+    let runInteractiveAppWithPointerPacing
+        (options: ViewerOptions)
+        (pointerPacing: ViewerPointerPacingOptions)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+        (host: InteractiveAppHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithPointerPacing launchOptions pointerPacing viewerHost)
+            options
+            mapRawPointer
+            host
 
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit window behavior threaded into
     /// the live launch (startup-state / resize / maximize / position / backend), so a generated app's
@@ -2132,6 +2165,7 @@ module ControlsElmish =
             (fun launchOptions viewerHost ->
                 Viewer.runInteractiveViewerWithWindowBehavior launchOptions behavior viewerHost)
             options
+            ignoreRawPointer
             host
 
     // Issue #429: audio reaches the Controls host family the same way window behavior does — by
@@ -2146,6 +2180,7 @@ module ControlsElmish =
         runInteractiveAppWithLauncher
             (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithAudio launchOptions audioSink viewerHost)
             options
+            ignoreRawPointer
             host
 
     /// Issue #429: `runInteractiveAppWithAudio` with an explicit window behavior — the audio-capable
@@ -2160,6 +2195,7 @@ module ControlsElmish =
             (fun launchOptions viewerHost ->
                 Viewer.runInteractiveViewerWithWindowBehaviorAndAudio launchOptions behavior audioSink viewerHost)
             options
+            ignoreRawPointer
             host
 
     /// Issue #641 — every sound request in an effect batch, flattened in dispatch order; non-audio
@@ -2274,6 +2310,7 @@ module ControlsElmish =
                             audioSink
                             viewerHost)
                     options
+                    ignoreRawPointer
                     observingHost
             with
             | Result.Ok outcome ->

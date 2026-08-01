@@ -151,6 +151,13 @@ A game is the first row: it draws a `SceneNode`, so it wants **`InteractiveViewe
 right model for a UI, the wrong one for reading a bare aim cursor. Reach for it only when your product
 is a control tree.)
 
+For a Controls host that also needs continuous raw aim, use
+`ControlsElmish.runInteractiveAppWithPointerPacing`. Pass
+`Viewer.defaultPointerPacingOptions` with `ContinuousPolicy = CoalesceLatestPerFrame`; its
+`OnMetrics` remains the authoritative raw/folded/update/present receipt. The supplied raw mapper
+receives the same folded `ViewerPointerInput` sample only after retained Controls hit-testing and
+authored bindings. Existing `InteractiveAppHost` records and `MapPointer` consumers stay unchanged.
+
 **`MapPointer` is model-aware, and that is the whole reason it is a different seam from `MapKey`.**
 `MapKey : ViewerKey -> bool -> 'msg list` sees only the key edge — it is a stateless key→message wrapper.
 `MapPointer : ViewerPointerInput -> Size -> 'model -> 'msg list` also gets the current viewport `Size` and
