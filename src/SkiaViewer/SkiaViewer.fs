@@ -60,6 +60,7 @@ module Viewer =
     let enqueueInput receivedAt inputKind payload queue = ViewerRuntime.enqueueInput receivedAt inputKind payload queue
     let enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue = ViewerRuntime.enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue
     let drainInputQueue batchId drainReason queue = ViewerRuntime.drainInputQueue batchId drainReason queue
+    let runDeterministicPacing policy receivedAt (frames: (ViewerResponsivenessInputKind * string) list list) = ViewerRuntime.runDeterministicPacing policy receivedAt frames
     let dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason = ViewerRuntime.dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason
     let dirtyStateRequiresRecompose dirty = ViewerRuntime.dirtyStateRequiresRecompose dirty
     let createResponsivenessRunId a0 = ViewerResponsivenessReport.createResponsivenessRunId a0

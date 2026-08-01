@@ -280,6 +280,12 @@ type LiveScriptRunResult =
     { Outcome: ViewerLaunchOutcome
       Metrics: FrameMetrics list }
 
+/// Deterministic evidence from the Controls paced-pointer composition.
+type DeterministicPointerPacingResult<'model> =
+    { Model: 'model
+      Drains: ViewerFrameDrain list
+      Metrics: ViewerPointerPacingMetrics list }
+
 /// Pointer-routing, size-aware durable host (feature 085, research D3-AMEND). Mirrors
 /// `GeneratedAppHost` field-for-field PLUS a `MapPointer` seam over `PointerInteraction` and a
 /// size-carrying `View` that returns a `Control<'msg>` tree (so `Control.renderTree` yields the
@@ -721,6 +727,23 @@ module ControlsElmish =
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
+        /// Deterministic receipt path for the public Controls paced launcher.
+        val runDeterministicPointerPacing:
+            policy: ViewerContinuousPointerPolicy ->
+            receivedAt: DateTimeOffset ->
+            frames: (ViewerResponsivenessInputKind * string) list list ->
+                ViewerFrameDrain list
+
+        /// Drain Viewer-paced pointer input through Controls routing and `Update`, without a window.
+        val runDeterministicPointerPacingThroughControls:
+            policy: ViewerContinuousPointerPolicy ->
+            receivedAt: DateTimeOffset ->
+            size: Size ->
+            mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            frames: ViewerPointerInput list list ->
+                DeterministicPointerPacingResult<'model>
+
         /// Issue #1159: drive raw `ViewerScriptInput` through the public paced Controls launcher.
         val runPointerPacingScript:
             options: ViewerOptions ->

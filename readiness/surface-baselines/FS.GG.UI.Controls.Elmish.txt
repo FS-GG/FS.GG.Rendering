@@ -15,6 +15,7 @@ FS.GG.UI.Controls.Elmish.CompositorFrameDiagnostics
 FS.GG.UI.Controls.Elmish.ControlsElmish
 FS.GG.UI.Controls.Elmish.ControlsElmish+Live
 FS.GG.UI.Controls.Elmish.ControlsElmish+Perf
+FS.GG.UI.Controls.Elmish.DeterministicPointerPacingResult`1
 FS.GG.UI.Controls.Elmish.DiagnosticsDisabledCompatibility
 FS.GG.UI.Controls.Elmish.FrameCause
 FS.GG.UI.Controls.Elmish.FrameCause+Tags

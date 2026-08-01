@@ -33,9 +33,14 @@ type private LegacyHostMsg<'msg> =
     | LegacyHostEffect of Host.ViewerEffect<LegacyHostMsg<'msg>>
     | LegacyAppMsg of 'msg
 
-type private LegacyQueuedInput =
+type internal LegacyQueuedInput =
     | QueuedLegacyKey of rawKey: string * isDown: bool
     | QueuedLegacyPointer of ViewerPointerInput
+
+type internal QueuedPointerState =
+    { Queue: ViewerInputQueue
+      Payloads: System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>
+      NextBatchId: int64 }
 
 module internal ViewerRuntime =
     open ViewerEvidence
@@ -99,6 +104,31 @@ module internal ViewerRuntime =
           Verbose = false }
 
     let emptyInputQueue = ViewerInputQueueOps.emptyInputQueue
+
+    let private nextQueuedDrain state =
+        let drain, queue = ViewerInputQueueOps.drainInputQueue state.NextBatchId "frame-update" state.Queue
+        drain, { state with Queue = queue; NextBatchId = state.NextBatchId + 1L }
+
+    let internal drainDeterministicPointerQueue state = nextQueuedDrain state
+
+    let internal enqueueDeterministicPointer policy receivedAt input payload state =
+        let envelope, queue = ViewerInputQueueOps.enqueueInputWithPolicy policy receivedAt input payload state.Queue
+        envelope, { state with Queue = queue }
+
+    let internal runDeterministicPacing policy receivedAt frames =
+        let mutable state =
+            { Queue = emptyInputQueue
+              Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+              NextBatchId = 1L }
+
+        frames
+        |> List.map (fun inputs ->
+            for (kind, payload) in inputs do
+                let _, next = enqueueDeterministicPointer policy receivedAt kind payload state
+                state <- next
+            let drain, next = drainDeterministicPointerQueue state
+            state <- next
+            drain)
 
     let inputQueueDepth queue = ViewerInputQueueOps.inputQueueDepth queue
 
@@ -207,9 +237,10 @@ module internal ViewerRuntime =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
-        let mutable inputQueue = emptyInputQueue
-        let mutable nextDrainBatchId = 1L
-        let queuedPayloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+        let mutable queuedState =
+            { Queue = emptyInputQueue
+              Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+              NextBatchId = 1L }
         let scriptedInputs = scriptInputs |> Option.map List.toArray
         let mutable scriptedIndex = 0
         let mutable scriptedCompletionFrames = 0
@@ -270,16 +301,16 @@ module internal ViewerRuntime =
 
         let enqueueQueuedInput kind payloadText payload =
             let envelope, nextQueue =
-                enqueueInputWithPointerPolicy continuousPolicy DateTimeOffset.UtcNow kind payloadText inputQueue
-            inputQueue <- nextQueue
-            queuedPayloads[envelope.SequenceId] <- payload
+                enqueueInputWithPointerPolicy continuousPolicy DateTimeOffset.UtcNow kind payloadText queuedState.Queue
+            queuedState <- { queuedState with Queue = nextQueue }
+            queuedState.Payloads[envelope.SequenceId] <- payload
             RenderLagTrace.emit
                 "input-queued"
                 [ "seq", string envelope.SequenceId
                   "kind", responsivenessInputKindToken kind
                   "payload", payloadText
                   "receiptDepth", string envelope.ReceiptQueueDepth
-                  "queueDepth", string (inputQueueDepth inputQueue) ]
+                  "queueDepth", string (inputQueueDepth queuedState.Queue) ]
 
         let enqueueScriptInput input =
             match input with
@@ -312,7 +343,7 @@ module internal ViewerRuntime =
             | Some inputs ->
                 scriptedIndex >= inputs.Length
                 && scriptedCompletionFrames > 0
-                && inputQueueDepth inputQueue = 0
+                && inputQueueDepth queuedState.Queue = 0
             | None -> false
 
         let handleQueuedPayload payload =
@@ -331,20 +362,19 @@ module internal ViewerRuntime =
                 | _ -> false
 
         let drainQueuedInputs () =
-            if inputQueueDepth inputQueue = 0 then
+            if inputQueueDepth queuedState.Queue = 0 then
                 false
             else
                 let drainStarted = DateTimeOffset.UtcNow
                 let modelUpdatesBefore = getModelUpdateCount ()
                 let rawPointerSamples =
-                    queuedPayloads.Values
+                    queuedState.Payloads.Values
                     |> Seq.filter (function
                         | QueuedLegacyPointer _ -> true
                         | _ -> false)
                     |> Seq.length
-                let drain, nextQueue = drainInputQueue nextDrainBatchId "frame-update" inputQueue
-                inputQueue <- nextQueue
-                nextDrainBatchId <- nextDrainBatchId + 1L
+                let drain, nextState = nextQueuedDrain queuedState
+                queuedState <- nextState
                 RenderLagTrace.emit
                     "input-drain-start"
                     [ "batch", string drain.BatchId
@@ -367,7 +397,7 @@ module internal ViewerRuntime =
                     orderedInputs
                     |> List.fold
                         (fun closeRequested envelope ->
-                            let found, payload = queuedPayloads.TryGetValue envelope.SequenceId
+                            let found, payload = queuedState.Payloads.TryGetValue envelope.SequenceId
 
                             if found then
                                 let queueDelay = drainStarted - envelope.ReceivedAt
@@ -377,7 +407,7 @@ module internal ViewerRuntime =
                                       "kind", responsivenessInputKindToken envelope.InputKind
                                       "payload", envelope.Payload
                                       "queueDelayMs", queueDelay.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
-                                queuedPayloads.Remove envelope.SequenceId |> ignore
+                                queuedState.Payloads.Remove envelope.SequenceId |> ignore
                                 let handled = handleQueuedPayload payload
                                 RenderLagTrace.emit
                                     "input-handle-end"
@@ -388,7 +418,7 @@ module internal ViewerRuntime =
                                 closeRequested)
                         false
 
-                queuedPayloads.Clear()
+                queuedState.Payloads.Clear()
                 match pointerPacing with
                 | Some pacing when rawPointerSamples > 0 ->
                     let appliedPointerEnvelopes =

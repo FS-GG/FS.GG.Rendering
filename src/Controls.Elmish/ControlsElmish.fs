@@ -143,6 +143,14 @@ type LiveScriptRunResult =
     { Outcome: ViewerLaunchOutcome
       Metrics: FrameMetrics list }
 
+/// Deterministic, headless evidence for the Controls paced-pointer composition.  The queue drains
+/// come from the Viewer runner; `ModelUpdates` counts messages actually folded through the Controls
+/// host, so a receipt cannot claim a coalesced aim merely because it was accepted by the lower queue.
+type DeterministicPointerPacingResult<'model> =
+    { Model: 'model
+      Drains: ViewerFrameDrain list
+      Metrics: ViewerPointerPacingMetrics list }
+
 type InteractiveAppHost<'model, 'msg> =
     { Init: unit -> 'model * ViewerEffect list
       Update: 'msg -> 'model -> 'model * ViewerEffect list
@@ -2212,6 +2220,77 @@ module ControlsElmish =
         GeneratedAppHost.audioRequests effects
 
     module Live =
+        let runDeterministicPointerPacing policy receivedAt frames =
+            Viewer.runDeterministicPacing policy receivedAt frames
+
+        /// Issue #1159: deterministic counterpart of the live paced launcher.  It deliberately uses
+        /// the Viewer queue/drain runner, then feeds every drained sample through the normal Controls
+        /// pointer router plus the additive raw fallback before folding its messages through `Update`.
+        /// This gives product tests a no-window receipt for raw/folded/update/present counters while
+        /// retaining authored bindings and discrete ordering.
+        let runDeterministicPointerPacingThroughControls
+            (policy: ViewerContinuousPointerPolicy)
+            (receivedAt: DateTimeOffset)
+            (size: Size)
+            (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (frames: ViewerPointerInput list list)
+            : DeterministicPointerPacingResult<'model> =
+            let payloads = System.Collections.Generic.Dictionary<string, ViewerPointerInput>()
+            let mutable nextPayload = 0
+            let queueFrames =
+                frames
+                |> List.map (fun samples ->
+                    samples
+                    |> List.map (fun input ->
+                        let payload = string nextPayload
+                        nextPayload <- nextPayload + 1
+                        payloads.Add(payload, input)
+                        let kind =
+                            match input.Phase with
+                            | ViewerPointerPhaseKind.Moved -> ViewerResponsivenessInputKind.PointerMove
+                            | _ -> ViewerResponsivenessInputKind.PointerDiscrete
+                        kind, payload))
+
+            let drains = Viewer.runDeterministicPacing policy receivedAt queueFrames
+            let mutable model, _effects = host.Init()
+            let mutable pointerState = Pointer.init ()
+            let metrics = ResizeArray<ViewerPointerPacingMetrics>()
+
+            drains
+            |> List.iteri (fun frameIndex drain ->
+                let inputs =
+                    drain.DiscreteInputs
+                    @ (drain.CoalescedPointer |> Option.toList)
+                    |> List.map (fun envelope -> payloads.[envelope.Payload])
+                let mutable updateCount = 0
+                for input in inputs do
+                    let nextState, messages =
+                        routeInteractivePointerWithRawFallback host mapRawPointer pointerState size model input
+                    pointerState <- nextState
+                    for message in messages do
+                        let nextModel, _ = host.Update message model
+                        model <- nextModel
+                        updateCount <- updateCount + 1
+                let repaintCause =
+                    match drain.DiscreteInputs.IsEmpty, drain.CoalescedPointer.IsSome with
+                    | false, true -> ViewerPointerRepaintCause.MixedPointer
+                    | false, false -> ViewerPointerRepaintCause.DiscretePointer
+                    | true, true -> ViewerPointerRepaintCause.ContinuousPointer
+                    | true, false -> ViewerPointerRepaintCause.ContinuousPointer
+                metrics.Add
+                    { RawSamplesReceived = frames.[frameIndex].Length
+                      FoldedSamplesApplied = inputs.Length
+                      CoalescedSamples = drain.CoalescedMovementCount
+                      ModelUpdates = updateCount
+                      PresentedFrames = int64 (frameIndex + 1)
+                      RepaintCause = repaintCause
+                      FullRenderFallbacks = 0 })
+
+            { Model = model
+              Drains = drains
+              Metrics = metrics |> Seq.toList }
+
         /// Issue #1159: drive a raw viewer script through the public paced Controls launcher.
         let runPointerPacingScript options pointerPacing mapRawPointer host script =
             let observed = ResizeArray<FrameMetrics>()
