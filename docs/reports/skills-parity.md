@@ -36,7 +36,7 @@ Wrappers: `60`
 | fs-gg-symbol-design | 6 | 6 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
 | fs-gg-testing | 12 | 12 | 0 | 0 |
-| fs-gg-ui-widgets | 44 | 44 | 0 | 0 |
+| fs-gg-ui-widgets | 49 | 49 | 0 | 0 |
 
 ## Guarded Theme Coverage
 | Theme | Scoped | Resolved | Dangling | Unnamed |
