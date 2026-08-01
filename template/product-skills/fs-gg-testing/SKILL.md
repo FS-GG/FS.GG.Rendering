@@ -458,37 +458,33 @@ Keep the identities typed and central. The layout helper, production view, and e
 consume these values; none retypes a string list or a magic count:
 
 ```text
-open FS.GG.UI.Scene
-
 type HudRegionId = Hearts | Currency | ActiveCharge | Minimap | FloorName
 
 module HudRegionId =
     let all = [ Hearts; Currency; ActiveCharge; Minimap; FloorName ]
 
-type NamedHudRegion = { Id: HudRegionId; Bounds: Rect }
+type NamedHudRegion = { Id: HudRegionId; Bounds: HudBounds }
 
-let hudRegionsForSize (size: Size) : NamedHudRegion list =
+let hudRegionsForSize (size: OutputSize) : NamedHudRegion list =
     HudRegionId.all
     |> List.map (fun id -> { Id = id; Bounds = boundsForHudRegion size id })
 
 let hudSceneForSize size model =
-    hudRegionsForSize size
-    |> List.map (fun region -> renderHudRegion model region.Id region.Bounds)
-    |> Scene.group
+    renderHud model (hudRegionsForSize size)
 ```
 
 The evidence test asks the production helper for both required outputs and checks exact identities,
 finite in-bounds rectangles, and pairwise non-overlap. It does not rebuild the identities from labels
-or assert only `regions.Length = 5`:
+or assert only `hudRegions.Length = 5`:
 
 ```text
 let requiredOutputs = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
 
 for output in requiredOutputs do
-    let regions = hudRegionsForSize output
-    Expect.sequenceEqual (regions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
-    Expect.all regions (fun region -> finiteAndInside output region.Bounds) "HUD bounds are finite and on-screen"
-    Expect.isFalse (anyOverlap regions) "HUD regions do not overlap"
+    let hudRegions = hudRegionsForSize output
+    Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
+    Expect.all hudRegions (fun region -> finiteAndInside output region.Bounds) "HUD bounds are finite and on-screen"
+    Expect.isFalse (anyOverlap hudRegions) "HUD regions do not overlap"
 ```
 
 A concrete receipt from that helper should retain the names *and* bounds, not reduce them to a count.
