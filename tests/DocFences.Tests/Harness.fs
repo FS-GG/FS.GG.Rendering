@@ -228,14 +228,17 @@ module Harness =
 
         units, skipped
 
-    /// Frozen identity of the 87-fence product-skill inventory reviewed for Rendering#1050, re-audited for
+    /// Frozen identity of the product-skill inventory reviewed for Rendering#1050, re-audited for
     /// Rendering#1165 (3 new fsharp fences: 2 in fs-gg-testing/SKILL.md, 1 in fs-gg-ui-widgets/SKILL.md), and
     /// again after round 2 reworded two of those fences' Expecto assertion-message strings ("present"/"regions"
-    /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). It covers origin, body,
+    /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). Re-audited again for
+    /// Rendering#1166 (1 new fsharp fence in fs-gg-game-shell/SKILL.md, the pause-safe rebind + exact-persistence
+    /// production-host journey; no new fences in fs-gg-keyboard-input/SKILL.md or fs-gg-testing/SKILL.md, whose
+    /// prose-only additions shift the three fs-gg-testing self-contained keys below). It covers origin, body,
     /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "8295a025cee3d06d557b0cdd33792a7f035ee88dc9c62895137db090349e21c0"
+        "bef0c45c08fc3fff5bba2948b1be042c166b0d054a3655f484048d55b648103a"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -244,9 +247,9 @@ module Harness =
         Set.ofList
             [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
               "template/product-skills/fs-gg-symbology/SKILL.md", 226
-              "template/product-skills/fs-gg-testing/SKILL.md", 209
-              "template/product-skills/fs-gg-testing/SKILL.md", 234
-              "template/product-skills/fs-gg-testing/SKILL.md", 300
+              "template/product-skills/fs-gg-testing/SKILL.md", 239
+              "template/product-skills/fs-gg-testing/SKILL.md", 264
+              "template/product-skills/fs-gg-testing/SKILL.md", 330
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44

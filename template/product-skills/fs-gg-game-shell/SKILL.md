@@ -133,6 +133,70 @@ for both flagged and unflagged launches. One native pointer coordinate must iden
 the same point in the authored Controls layout; do not rely on a different overload's
 implicit startup behavior.
 
+### Pause-safe rebind and exact persistence (the production-host journey)
+
+A settings screen that reports a successful rebind, and a `Playing` transition that
+is truly zero-input-safe, are two different claims. Only a journey that runs BOTH
+through the real seams tells you which one you actually have. A test that constructs
+a resolved gameplay `Msg` by hand and asserts on `update` proves neither: it skips
+the raw key, so it cannot see a capture that silently fails to rearm, and it skips
+`Screen`, so it cannot see a command that survives a pause it never actually took.
+
+The trap is exactly where the up edge lands. A shell that clears its retained
+command only on the matching `GameEdge(_, false)` misses the one order that matters
+here: the up edge can legally arrive one `Screen` transition later than the down
+that started the hold, while `Screen = Paused`. So the retained-command snapshot
+must ALSO clear the moment `Screen` leaves `Playing` — not only on release — or a
+key released during a pause resumes play still moving.
+
+Drive the whole journey through `GameShell.routeKeyEvent` and `GameShell.update` —
+never a hand-built `Msg` — and assert the persistence side at the same time: the one
+capture that actually changed the keymap must reach the sink exactly once, and a
+preference nobody touched (here, `DisplaySettings`) must reach it zero times.
+
+```fsharp
+// Drive the WHOLE journey through routeKeyEvent + update — the raw-key mapping and the
+// retained semantic-command boundary — never a hand-built game Msg.
+let step shell heldCommand key isDown =
+    match GameShell.routeKeyEvent (fun command -> commandToMsg command) key isDown shell with
+    | GameShell.ShellEdge m ->
+        let next, effects = GameShell.update m shell
+        // Leaving Playing must drop any retained command NOW: the matching up edge, if
+        // one ever arrives, lands after Paused and must not find something to release.
+        let stillHeld = if next.Screen = GameShell.Playing then heldCommand else None
+        next, stillHeld, effects
+    | GameShell.GameEdge(gameMsg, true) -> shell, Some gameMsg, []
+    | GameShell.GameEdge(_, false) -> shell, None, []
+    | GameShell.NoKeyEvent -> shell, heldCommand, []
+
+let shell1, _ = GameShell.update (GameShell.ArmRebind "move-up") shell0   // Screen = Playing already
+
+// 1. Complete the capture with the next native key — the shipped raw-key seam, not a Msg.
+let shell2, held2, keymapPersist = step shell1 None "KeyW" true
+
+// 2. Ordinary play: the SAME key now resolves through the retained semantic boundary.
+let shell3, held3, _ = step shell2 held2 "KeyW" true
+
+// 3. Pause BEFORE the "KeyW" up edge ever arrives.
+let shell4, held4, _ = step shell3 held3 "Escape" true
+
+// 4. The up edge lands while paused, then resume.
+let shell5, held5, _ = step shell4 held4 "KeyW" false
+let _shell6, held6, _ = step shell5 held5 "Escape" true
+
+Expect.isNone held6
+    "a rebound key whose up edge lands during a pause must not still be retained after resume"
+Expect.equal (List.length keymapPersist) 1
+    "the one changed preference (the rebind) must reach the sink exactly once"
+```
+
+`keymapPersist` is the `Effect list` `GameShell.update` returned for the capture step
+alone — the same shape [[fs-gg-testing]] asserts audio and persistence effects with —
+so counting it, rather than inspecting the model, is what proves the batch reached
+the host boundary once and not on every key. Run the identical journey a second time
+without arming a rebind and the count for that key must be zero: an untouched
+preference persists nothing.
+
 ## Capability boundary — the shell needs the pointer-aware host
 
 The generated game shell already launches through `InteractiveAppHost`
@@ -154,6 +218,13 @@ Also change 1280x720 to 1920x1080 and activate the same semantic control through
 corresponding physical point; this proves the visible fit and retained hit geometry use
 one policy rather than merely proving that the resolution value persisted.
 
+Extend that same rebound key one step further: pause BEFORE its key-up edge arrives,
+release while paused, resume, and assert zero movement intent — see
+[Pause-safe rebind and exact persistence](#pause-safe-rebind-and-exact-persistence-the-production-host-journey)
+for the worked journey. Also assert the persistence side at the sink: the one capture
+that actually changed a preference must reach the host boundary exactly once, and a
+preference the run never touched must reach it zero times.
+
 ## Evidence
 
 Record deterministic menu/settings/rebind **evidence** under this game's `readiness/`
@@ -167,6 +238,8 @@ the legacy file only after the platform write succeeds.
 - [[fs-gg-skiaviewer]] — the interactive host + `LogicalCanvas` the settings drive.
 - [[fs-gg-ui-widgets]] — the typed `Controls` the menu is authored with.
 - [[fs-gg-elmish]] — thread the shell `Msg` through the pure adapter.
+- [[fs-gg-testing]] — the assert-at-the-sink pattern this journey's persistence count
+  reuses, and the record-only-versus-durable distinction it depends on.
 
 ## Persistent problems
 
