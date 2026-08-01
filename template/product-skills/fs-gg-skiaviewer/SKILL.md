@@ -160,8 +160,8 @@ hit-testing and authored bindings, while retaining the raw/folded/update/present
 
 ### Native gamepad snapshots are a separate once-per-frame source
 
-Do not invent a product-local native window wrapper to read a controller. Once the product's pinned
-Controls package publishes the gamepad-capable interactive host, provide a
+Do not invent a product-local native window wrapper to read a controller. The product's pinned
+Controls package exposes the gamepad-capable interactive host: provide a
 `GamepadFrameSource<'msg>` with a native `Poll` function and a pure `Map`; its
 `GamepadFrameSource.poll` result carries a `GamepadSnapshot` with both stick axes and both triggers.
 Launch the scene-level `InteractiveViewerGamepadHost` with

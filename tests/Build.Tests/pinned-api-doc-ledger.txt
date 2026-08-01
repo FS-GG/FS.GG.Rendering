@@ -112,26 +112,3 @@
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
-
-# Rendering#1160 — native frame-paced gamepad input is implemented in this source tree but is not in the
-# currently pinned 0.21.1 product package. The gamepad source is intentionally documented as a post-publish
-# migration (not a copy-now consumer recipe); these entries retire together when the Controls/SkiaViewer
-# package containing that public surface is published and the product pin advances.
-template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::ControlsElmish.runInteractiveAppWithGamepad
-template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::InteractiveAppGamepadHost`2.Host
-template/base/docs/api-surface/Controls.Elmish/ControlsElmish.fsi::InteractiveAppGamepadHost`2.Gamepad
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.LeftStickX
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.LeftStickY
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.RightStickX
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.RightStickY
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.LeftTrigger
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadSnapshot.RightTrigger
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadFrameSource`1.Poll
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadFrameSource`1.Map
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::InteractiveViewerGamepadHost`2.Host
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::InteractiveViewerGamepadHost`2.Gamepad
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::GamepadFrameSource.poll
-template/base/docs/api-surface/SkiaViewer/SkiaViewer.fsi::Viewer.runInteractiveViewerWithGamepad
-template/product-skills/fs-gg-skiaviewer/SKILL.md::GamepadFrameSource.poll
-template/product-skills/fs-gg-skiaviewer/SKILL.md::Viewer.runInteractiveViewerWithGamepad
-template/product-skills/fs-gg-skiaviewer/SKILL.md::ControlsElmish.runInteractiveAppWithGamepad
