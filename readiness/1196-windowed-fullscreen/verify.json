@@ -51,7 +51,7 @@
       "kind": "workModel",
       "digest": {
         "algorithm": "sha256",
-        "value": "1fa4c8f0662fd27ed39f16ac3c87efecad548480a21e02d3909d226cf62e1100"
+        "value": "87cf8d559760e87361d262d92cf3543196e3109f8f12cd67c173f4a3ae9ca5e9"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -81,7 +81,7 @@
       "kind": "evidence",
       "digest": {
         "algorithm": "sha256",
-        "value": "b3ffcaa5791472ce3561da1c8df9eb2ed5d2759164a49cb9f2852e94d2e6dfd8"
+        "value": "608d000c3db5df398794accfeea14adb27459b0e6462d016d650d15764561797"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -433,24 +433,7 @@
       "diagnosticIds": []
     }
   ],
-  "findings": [
-    {
-      "id": "VF001",
-      "severity": "warning",
-      "category": "warning",
-      "path": "work/1196-windowed-fullscreen/evidence.yml",
-      "relatedIds": [
-        "analysis",
-        "checklist",
-        "clarifications",
-        "plan",
-        "spec",
-        "tasks"
-      ],
-      "message": "One or more evidence source snapshots no longer match current source digests.",
-      "correction": "Rerun the evidence command after reviewing the changed source artifacts."
-    }
-  ],
+  "findings": [],
   "governanceCompatibility": [
     {
       "path": ".fsgg/policy.yml",
@@ -474,23 +457,7 @@
       "diagnosticIds": []
     }
   ],
-  "diagnostics": [
-    {
-      "id": "evidence.staleEvidenceSource",
-      "severity": "warning",
-      "artifact": "work/1196-windowed-fullscreen/evidence.yml",
-      "message": "One or more evidence source snapshots no longer match current source digests.",
-      "correction": "Rerun the evidence command after reviewing the changed source artifacts.",
-      "relatedIds": [
-        "analysis",
-        "checklist",
-        "clarifications",
-        "plan",
-        "spec",
-        "tasks"
-      ]
-    }
-  ],
+  "diagnostics": [],
   "readiness": "verificationReady",
   "nextAction": {
     "actionId": "verify.next.ship",
