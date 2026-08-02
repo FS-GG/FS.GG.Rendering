@@ -203,8 +203,11 @@ axis_names() {
 # The token the RENDER/SWEEP steps branch on for the wide `Paths:` line, read off the workflow.
 CONTRACTS_AXIS=$(grep -oE "grep -qF '(Fs[A-Za-z]*Version)'" "$SWEEP_SH" | head -n1 | sed "s/.*'\(.*\)'/\1/")
 OTHER_AXIS=$(axis_names | grep -v -x "$CONTRACTS_AXIS" | head -n1)
-[[ -n $CONTRACTS_AXIS && -n $OTHER_AXIS ]] || {
-  echo "test-template-pin-staleness-sweep: could not derive the axis pair (contracts='$CONTRACTS_AXIS' other='$OTHER_AXIS')" >&2
+MIRROR_AXIS=$(axis_names | grep -E '^FsGg(Game|Audio)Version$' | head -n1)
+SECOND_MIRROR_AXIS=$(axis_names | grep -E '^FsGg(Game|Audio)Version$' | tail -n1)
+NON_MIRROR_AXIS=$(grep -oE '"FsGgUiVersion"' "$FSX" | head -n1 | tr -d '"')
+[[ -n $CONTRACTS_AXIS && -n $OTHER_AXIS && -n $MIRROR_AXIS && -n $SECOND_MIRROR_AXIS && -n $NON_MIRROR_AXIS ]] || {
+  echo "test-template-pin-staleness-sweep: could not derive the axes (contracts='$CONTRACTS_AXIS' other='$OTHER_AXIS' mirror='$MIRROR_AXIS' second-mirror='$SECOND_MIRROR_AXIS' non-mirror='$NON_MIRROR_AXIS')" >&2
   exit 2; }
 
 # expand <printf-style-format> <arg>… — substitute %s/%d left to right. F# `sprintf`/`eprintfn` and
@@ -311,7 +314,9 @@ sweep_broken() {
 # wants all of them can loop over the names instead of carrying six heredocs.
 plant() {
   case $1 in
-    lagging)    sweep_stale 1 <<<"$(lag "$OTHER_AXIS" 4.1.0 4.3.0)" ;;
+    lagging)    sweep_stale 1 <<<"$(lag "$NON_MIRROR_AXIS" 4.1.0 4.3.0)" ;;
+    mirror)     sweep_stale 1 <<<"$(lag "$MIRROR_AXIS" 4.1.0 4.3.0)" ;;
+    mirror_two) sweep_stale 1 <<<"$(lag "$SECOND_MIRROR_AXIS" 4.1.0 4.3.0)" ;;
     contracts)  sweep_stale 1 <<<"$(lag "$CONTRACTS_AXIS" 7.0.0 7.2.0)" ;;
     two)        sweep_stale 2 <<<"$(lag "$OTHER_AXIS" 4.1.0 4.3.0)
 $(lag "$CONTRACTS_AXIS" 7.0.0 7.2.0)" ;;
@@ -363,7 +368,7 @@ run_render() {
   mapfile -t base < <(step_base_env); e+=("${base[@]}")
   e+=("REPO=$REPO" "SERVER=$SERVER" "SHA=$SHA" "RUN_URL=$RUN_URL"
       "FINDINGS=$(out_of findings)" "REPORTED=$(out_of reported)"
-      "CONTRACTS=$(out_of contracts)" "RC=$(out_of rc)" "DRY_RUN=$dry")
+      "CONTRACTS=$(out_of contracts)" "CROSS_REPO_MIRROR=$(out_of cross_repo_mirror)" "RC=$(out_of rc)" "DRY_RUN=$dry")
   OUT=$(cd "$FIX" && "${e[@]}" bash "$RENDER_SH" 2>&1); RC=$?
   ((VERBOSE)) && { printf '    ── render\n'; printf '%s\n' "$OUT" | sed 's/^/    │ /'; }
   return 0
@@ -562,7 +567,7 @@ expect_rc 0 'the renderer runs clean'
 B=$(body)
 expect_has 'The daily template-payload pin sweep is **red**' "$B" 'names the finding for what it is'
 expect_has '**1 lagging axis(es)**' "$B" 'counts them'
-expect_has "- \`\$($OTHER_AXIS)\` — pinned at \`4.1.0\`, newest on the feed is \`4.3.0\`" "$B" \
+expect_has "- \`\$($NON_MIRROR_AXIS)\` — pinned at \`4.1.0\`, newest on the feed is \`4.3.0\`" "$B" \
            'states BOTH sides, from the script'"'"'s own expected/actual lines'
 expect_has "commit/$SHA" "$B" 'links the commit that was swept'
 expect_hasnt 'could not decide' "$B" 'does not also cry infra failure'
@@ -584,17 +589,30 @@ expect_has "- \`\$($OTHER_AXIS)\` — pinned at \`4.1.0\`, newest on the feed is
 expect_has "- \`\$($CONTRACTS_AXIS)\` — pinned at \`7.0.0\`, newest on the feed is \`7.2.0\`" "$B" \
            'the second axis, with ITS versions and not the first one'"'"'s'
 
-case_start '§2 STALE body: the narrow touch-set when Contracts is NOT implicated'
-# The `Paths:` line is a RESERVATION (ADR-0021/0027). Naming the whole api-surface chain on a
-# Game-axis bump blocks lanes the fix never enters.
+case_start '§2 STALE body: the narrow touch-set when no cross-repository mirror axis is implicated'
 fixture
 plant lagging
 pipeline
 B=$(body)
 expect_paths_real 'every token on the narrow Paths: line exists in this tree'
 expect_hasnt 'scripts/api-surface-manifest.txt' "$(paths_lines)" \
-             'the api-surface chain is NOT reserved on a non-Contracts bump'
-expect_has 'does not name' "$B" 'and the body says why the chain is not in play'
+             'the api-surface chain is NOT reserved on a non-mirror bump'
+expect_has 'no axis with a cross-repository api-surface mirror' "$B" 'and the body says why the chain is not in play'
+
+case_start '§2 STALE body: the M-PROV touch-set when a Game or Audio mirror axis is implicated'
+fixture
+plant mirror
+pipeline
+B=$(body)
+expect_paths_real 'every token on the M-PROV Paths: line exists in this tree'
+expect_has 'scripts/api-surface-manifest.txt' "$(paths_lines)" 'the api-surface chain IS reserved'
+expect_hasnt 'tests/Build.Tests/mirror-omission-ledger.txt' "$(paths_lines)" 'the Contracts-only omission ledger stays unreserved'
+expect_has 'M-PROV provenance stamps' "$B" 'and the body identifies the Game/Audio obligation'
+
+fixture
+plant mirror_two
+pipeline
+expect_has 'scripts/api-surface-manifest.txt' "$(paths_lines)" 'the second Game/Audio mirror axis also reserves the api-surface chain'
 
 case_start '§2 STALE body: the WIDE touch-set, and the ordered routine, when Contracts IS implicated'
 fixture

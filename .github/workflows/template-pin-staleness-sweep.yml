@@ -137,13 +137,19 @@ jobs:
           contracts=false
           grep -qF 'FsGgContractsVersion' "$RUNNER_TEMP/findings.txt" && contracts=true
 
+          # M-PROV covers every axis whose bundled API surface comes from another repository. That is
+          # currently Contracts, Game, and Audio — it is not a Contracts-only obligation.
+          cross_repo_mirror=false
+          grep -qE 'FsGg(Contracts|Game|Audio)Version' "$RUNNER_TEMP/findings.txt" && cross_repo_mirror=true
+
           {
             echo "rc=$rc"
             echo "findings=$n"
             echo "reported=$banner"
             echo "contracts=$contracts"
+            echo "cross_repo_mirror=$cross_repo_mirror"
           } >> "$GITHUB_OUTPUT"
-          echo "sweep: rc=$rc, $n finding(s), script-reported=$banner, contracts-axis=$contracts"
+          echo "sweep: rc=$rc, $n finding(s), script-reported=$banner, contracts-axis=$contracts, cross-repo-mirror-axis=$cross_repo_mirror"
 
       # Render the issue body. Runs on EVERY trigger including `pull_request` — deliberately: the
       # renderer is the part most likely to carry a typo, and a PR that changes this workflow must
@@ -168,6 +174,7 @@ jobs:
           FINDINGS: ${{ steps.sweep.outputs.findings }}
           REPORTED: ${{ steps.sweep.outputs.reported }}
           CONTRACTS: ${{ steps.sweep.outputs.contracts }}
+          CROSS_REPO_MIRROR: ${{ steps.sweep.outputs.cross_repo_mirror }}
           RC: ${{ steps.sweep.outputs.rc }}
           DRY_RUN: ${{ github.event_name == 'pull_request' }}
         run: |
@@ -178,6 +185,7 @@ jobs:
           : "${FINDINGS:=0}"
           : "${REPORTED:=false}"
           : "${CONTRACTS:=false}"
+          : "${CROSS_REPO_MIRROR:=false}"
           touch "$RUNNER_TEMP/findings.txt" "$RUNNER_TEMP/sweep.err"
 
           {
@@ -295,10 +303,19 @@ jobs:
                 echo "   exact version and never a floating range, which nothing else witnesses. Move it; do not"
                 echo "   loosen it to a prefix match, and do not source it from the axis it is checking."
               else
-                echo "This finding does not name \`\$(FsGgContractsVersion)\`, so the api-surface mirror chain is not"
-                echo "in play. Expect \`template/base/Directory.Packages.props\` and the pin-restoring assertions in"
-                echo "\`tests/Build.Tests\` — but read §4b rather than assuming, and re-run the sweep locally with"
-                echo "\`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 dotnet fsi scripts/validate-template-payload-pins.fsx\`."
+                if [ "$CROSS_REPO_MIRROR" = "true" ]; then
+                  echo "This finding names an axis with a cross-repository api-surface mirror. In addition to"
+                  echo "\`template/base/Directory.Packages.props\` and the pin-restoring assertions in \`tests/Build.Tests\`,"
+                  echo "regenerate \`scripts/api-surface-manifest.txt\` and \`template/base/docs/api-surface/**\`. Their"
+                  echo "M-PROV provenance stamps are checked by \`tests/Package.Tests/ApiSurfaceMirrorTests.fs\`."
+                  echo "Read §4b rather than assuming, and re-run the sweep locally with"
+                  echo "\`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 dotnet fsi scripts/validate-template-payload-pins.fsx\`."
+                else
+                  echo "This finding names no axis with a cross-repository api-surface mirror. Expect"
+                  echo "\`template/base/Directory.Packages.props\` and the pin-restoring assertions in \`tests/Build.Tests\` —"
+                  echo "but read §4b rather than assuming, and re-run the sweep locally with"
+                  echo "\`FS_GG_TEMPLATE_PIN_STALENESS_SWEEP=1 dotnet fsi scripts/validate-template-payload-pins.fsx\`."
+                fi
               fi
               echo
               echo "---"
@@ -315,10 +332,13 @@ jobs:
               # on the board itself — that is Projects v2, and GITHUB_TOKEN has no project scope — but
               # the moment a human adds it, it is schedulable.
               #
-              # The touch-set is axis-aware on purpose: it is a RESERVATION, and naming the whole
-              # api-surface chain on an Audio-axis bump would block lanes the fix never enters.
+              # The touch-set is axis-aware on purpose: it is a RESERVATION. M-PROV applies to the
+              # three cross-repository mirror axes, whereas the omission ledger and frozen literal
+              # remain Contracts-only obligations.
               if [ "$CONTRACTS" = "true" ]; then
                 echo "Paths: template/base/Directory.Packages.props tests/Build.Tests/mirror-omission-ledger.txt tests/Build.Tests/TemplateConsumesPinnedApiTests.fs scripts/refresh-api-surface-mirror.fsx scripts/api-surface-manifest.txt template/base/docs/api-surface tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs"
+              elif [ "$CROSS_REPO_MIRROR" = "true" ]; then
+                echo "Paths: template/base/Directory.Packages.props tests/Build.Tests/TemplateConsumesPinnedApiTests.fs scripts/api-surface-manifest.txt template/base/docs/api-surface"
               else
                 echo "Paths: template/base/Directory.Packages.props tests/Build.Tests/TemplateConsumesPinnedApiTests.fs"
               fi

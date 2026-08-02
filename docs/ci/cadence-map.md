@@ -415,9 +415,12 @@ failing suite and the second and third gates never report. #1094 measured the la
    prefix match, and do not source it from the axis it is checking** — that would collapse two
    independent witnesses into one source, so neither could catch the other being wrong.
 
-Steps 2–5 apply to `$(FsGgContractsVersion)` specifically, because it is the axis whose surface this
-repo mirrors. A `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` bump is cheaper, but check `Build.Tests`
-before assuming so — the sweep's issue body renders the axis-appropriate list.
+Steps 2–4 and 6 apply to `$(FsGgContractsVersion)` specifically. Step 5 applies to every axis with a
+cross-repository mirror in `ApiSurfaceMirrorTests.fs`'s `crossRepoMirrors` table: currently
+`$(FsGgContractsVersion)`, `$(FsGgGameVersion)`, and `$(FsGgAudioVersion)`. A Game or Audio bump is
+therefore cheaper than a Contracts bump, but it still requires regenerating the M-PROV stamps and
+running `Package.Tests`' api-surface mirror check; `Build.Tests` alone does not check those stamps. The
+sweep's issue body renders the axis-appropriate list.
 
 ## 4c. The packaged-consumer path — chosen gate behavior (#300)
 
