@@ -28,7 +28,7 @@
     {
       "id": "fs-gg-game-shell",
       "scope": "product",
-      "sha256": "8f0a44606f18ac99e359720d7cdaf564017233e5de18c14fa2b5a1d789a056a3",
+      "sha256": "e532b8a13b4324cc105ca26c9aa7501a924b7454f1e0cfedb99e2eb787bf198a",
       "resolvablePath": ".agents/skills/fs-gg-game-shell/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-game-shell/"
@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "48378dd80c74e2484af5b5f284b4aa2b57b24b3d0359303d53f9032c26a9c988",
+      "sha256": "5a533c620b38914840807730128bb3c04dca9b98c1a7ed411ad266660c28b13f",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/"
@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "80d982a448b375e12b8858edd07f6521f83f76cafae8fd73895f7f525682c6c7",
+      "sha256": "91bb3a6a17d54680c5e86ac1dac12fb0093531baa1de2c71985c915d035b4423",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"

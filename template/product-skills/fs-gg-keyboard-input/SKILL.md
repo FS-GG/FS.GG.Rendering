@@ -94,6 +94,14 @@ Run `./fake.sh build -t Test` to assert binding resolution and command effects. 
 game, add a host-level down → fixed tick → fixed tick → up → fixed tick script and assert the
 control advances on both held ticks and not after release. Direct reducer injection does not count.
 
+For a product that also PAUSES — anything using [[fs-gg-game-shell]] — extend the script one step
+further: press, run a tick, then pause BEFORE the release edge arrives, release while paused,
+resume, and assert the held command is gone. Route every edge through the SAME `mapKey` /
+`MapKey` seam the down → tick → up script above uses; constructing the resolved product `Msg`
+directly skips the raw key entirely and cannot see a capture, a drop, or a pause that never took.
+[[fs-gg-game-shell]] has the worked example, because pausing is the shell's `Screen`, not a
+concept this skill owns.
+
 ## Evidence
 
 Record keyboard command and state evidence under this product's `readiness/`

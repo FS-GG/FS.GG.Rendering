@@ -228,14 +228,30 @@ module Harness =
 
         units, skipped
 
-    /// Frozen identity of the 87-fence product-skill inventory reviewed for Rendering#1050, re-audited for
+    /// Frozen identity of the product-skill inventory reviewed for Rendering#1050, re-audited for
     /// Rendering#1165 (3 new fsharp fences: 2 in fs-gg-testing/SKILL.md, 1 in fs-gg-ui-widgets/SKILL.md), and
     /// again after round 2 reworded two of those fences' Expecto assertion-message strings ("present"/"regions"
-    /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). It covers origin, body,
+    /// were bare-word homonyms of real, unrelated shipped API vals — S-DOC finding 2). Re-audited again for
+    /// Rendering#1166 (1 new fsharp fence in fs-gg-game-shell/SKILL.md, the pause-safe rebind + exact-persistence
+    /// production-host journey; no new fences in fs-gg-keyboard-input/SKILL.md or fs-gg-testing/SKILL.md, whose
+    /// prose-only additions shift the three fs-gg-testing self-contained keys below), and once more after
+    /// review round 1 (independent critic `smew-a5d2`, finding 1) replaced that fs-gg-game-shell fence's body:
+    /// the original never drove `Screen` to `Playing`, so its final assertion passed vacuously. The corrected
+    /// fence drives real `GameShell.Start`/`OpenSettings`/`ArmRebind`/`LeaveSettings`/`ResumeGame` navigation to
+    /// actually reach `Playing`, and adds explicit non-vacuity assertions (`Screen = Playing`, the held command
+    /// is genuinely `Some` before the pause) alongside the original zero-intent and persistence-count checks.
+    /// Verified against the real `template/base/src/Product/GameShell.fs` (not a stub) via a scratch
+    /// `dotnet fsi` script, both with the fix present (passes) and with the fix removed (reddens) — see the PR
+    /// discussion for the script. Re-audited once more after review round 3 (finding 3): the acceptance text
+    /// was corrected to require asserting "unchanged preferences emit none" on the `GameShell.Effect` list
+    /// itself (this template wires no `ViewerEffect.Persist` sink), so the fs-gg-game-shell fence now threads
+    /// every step's effects instead of discarding most as `_`, and fs-gg-testing's two cross-references were
+    /// reworded to describe that same seam instead of a sink that does not exist here — a prose-only edit that
+    /// shifts the three fs-gg-testing self-contained keys below by the same +6 lines. It covers origin, body,
     /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "8295a025cee3d06d557b0cdd33792a7f035ee88dc9c62895137db090349e21c0"
+        "34aafcd7c870b50e73c7975e5b5088fc0a3774156177927a4567bf06f29ab4b3"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -244,9 +260,9 @@ module Harness =
         Set.ofList
             [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
               "template/product-skills/fs-gg-symbology/SKILL.md", 226
-              "template/product-skills/fs-gg-testing/SKILL.md", 209
-              "template/product-skills/fs-gg-testing/SKILL.md", 234
-              "template/product-skills/fs-gg-testing/SKILL.md", 300
+              "template/product-skills/fs-gg-testing/SKILL.md", 245
+              "template/product-skills/fs-gg-testing/SKILL.md", 270
+              "template/product-skills/fs-gg-testing/SKILL.md", 336
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44

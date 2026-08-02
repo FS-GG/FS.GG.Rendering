@@ -106,6 +106,42 @@ If you write your own cue seam by analogy (a `SaveCues.forTransition`, say), you
 inherit this blind spot along with the pattern. Give it a `Started` too, and test it
 here.
 
+## Persistence effects: requested is not durable
+
+The same sink-not-model shape, once more, for save/settings state: a component-only
+or headless host harness can prove your product REQUESTED a save — the
+`ViewerEffect.Persist` batch reached the sink — but it cannot prove a backend
+actually wrote or later reloaded it, because no such backend was ever wired into
+the harness. Keep the two claims separate in what you assert and what you write
+down:
+
+- **Requested (record-only).** Collect the `ViewerEffect.Persist` values a run
+  produced and assert on THOSE — the same shape `audioRequests` above uses. This is
+  the claim a headless test can make honestly, every time.
+- **Durable (backend save/load).** A round-trip through the actual save file,
+  registry key, or platform store — reading back what a previous run wrote. This
+  needs the real backend wired in and is a different test, not a stronger assertion
+  on the same one.
+
+Label evidence for what it is. A readiness report that calls requested-only proof
+"persistence verified" invites the reader to believe the second claim from the
+first; say "persist requested" and "persist durable" as distinct rows instead.
+
+This split also settles how many batches a run is allowed to produce: count the
+requested effects per preference, not per keystroke or per frame. Each preference
+your product actually changed this run must contribute exactly one batch to the
+count; a preference the run never touched must contribute none. Asserting a total
+count alone hides a preference that fired twice while another fired zero times —
+name the preference the count is FOR.
+
+See [[fs-gg-game-shell]] for a concrete rebind/pause-boundary journey that asserts this
+per-preference count one seam upstream of a host sink: this template wires no
+`ViewerEffect.Persist` sink at all (no host here calls `runAppWithPersistence`), so
+the observable point there is the `GameShell.Effect` list `GameShell.update` itself
+returns, not a sink collection. The rule is identical either way — count per
+preference, not per keystroke — assert it on whichever of the two your product
+actually wires.
+
 ## Seeded generation — pin it byte-for-byte, and prove the streams are independent
 
 This one is for products that generate content from a seed — the `game` and
@@ -543,6 +579,9 @@ authored colors used by the production scene, and the current raster bytes.
 - [[fs-gg-game:fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
   assertions reuse.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
+- [[fs-gg-game-shell]] — the pause-safe rebind journey that asserts the same
+  per-preference count on its own `GameShell.Effect` list, one seam upstream of the
+  sink this section describes.
 
 ## Sources / links
 
