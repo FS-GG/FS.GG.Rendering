@@ -14,11 +14,12 @@ description: >-
   `skill-view-check.yml`, `skill-refs-sweep.yml` and `release-tags.yml`'s `plan`. The flags are
   load-bearing in a way that does not survive being retyped ten times:
 
-    * `--source .claude/skills` names the TRACKED root. Getting it backwards points the view at itself.
-    * `--roots ".agents/skills"` names the VIEW roots EXPLICITLY. Letting the tool fall back to
-      ADR-0065's default pair would also try to resolve `.claude/skills`, which git TRACKS, and
-      `skill-view` refuses to generate over a tracked root with no override (`skill-view:331`) — so the
-      fallback is a REFUSAL, exit 2, not a no-op.
+    * `--receiver-proj .config/kit/FS.GG.Kit.receiver.proj` reads the TRACKED source root and the VIEW
+      roots from their one declaration. That keeps a legal disposition change from leaving the action
+      generating the former pair.
+    * The declaration-driven invocation never falls back to ADR-0065's default pair. That fallback
+      would also try to resolve `.claude/skills`, which git TRACKS, and `skill-view` refuses to generate
+      over a tracked root with no override (`skill-view:331`) — so it is a REFUSAL, exit 2, not a no-op.
     * there is no `if:` and there must never be one. "Generate whatever is absent, then assert it is
       present" makes the absence classes unreachable and hands back a gate that cannot fail — the exact
       defect that retired the gate `skill-view-check` replaced. The generate is authorised by this repo
@@ -53,4 +54,4 @@ runs:
   steps:
     - name: Resolve the view roots this tree no longer commits
       shell: bash
-      run: bash scripts/skill-view generate --source .claude/skills --roots ".agents/skills"
+      run: bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj
