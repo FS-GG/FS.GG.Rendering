@@ -251,7 +251,7 @@
     },
     {
       "condition": "(lifecycle == \"spec-kit\")",
-      "source": ".agents/skills/",
+      "source": ".claude/skills/",
       "target": ".agents/skills/",
       "include": [
         "speckit-*/**"
@@ -259,7 +259,7 @@
       "copyOnly": [
         "**/*"
       ],
-      "comment": "Feature 231 (ADR-0014 §Decision 4, fixes audit F3): vendor ONLY the self-contained speckit-* process skills from the repo's `.agents/skills/` — never the whole dev surface. The dropped remainder (fs-gg-product-* aliases and framework wrappers) routes to repo-internal paths (`../../../src/**`, `../../../template/**`) that do not exist in a product. The former blanket `.claude/`/`.codex/` copies are replaced by the single standalone materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, run by the FsGgMaterializeSkillRoots build target)."
+      "comment": "Issue #1126: vendor ONLY the self-contained speckit-* process skills from the tracked `.claude/skills/` root — never the generated `.agents/skills/` view or the whole dev surface. The dropped remainder (fs-gg-product-* aliases and framework wrappers) routes to repo-internal paths (`../../../src/**`, `../../../template/**`) that do not exist in a product. The former blanket `.claude/`/`.codex/` copies are replaced by the single standalone materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, run by the FsGgMaterializeSkillRoots build target)."
     },
     {
       "source": "template/skill-manifest/",
