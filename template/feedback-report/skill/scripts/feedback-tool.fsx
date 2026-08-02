@@ -99,9 +99,13 @@ match argv with
             [ "diff"; "--name-status"; "--find-renames"; "--find-copies"; baseRef; headRef ]
             |> List.iter start.ArgumentList.Add
             use child = Process.Start start
+            let stdout = child.StandardOutput.ReadToEndAsync()
+            let stderr = child.StandardError.ReadToEndAsync()
             child.WaitForExit()
-            if child.ExitCode <> 0 then fail [ sprintf "could not read commit path changes: %s" (child.StandardError.ReadToEnd()) ]
-            child.StandardOutput.ReadToEnd() |> changedPathsFromNameStatus
+            let output = stdout.Result
+            let errors = stderr.Result
+            if child.ExitCode <> 0 then fail [ sprintf "could not read commit path changes: %s" errors ]
+            output |> changedPathsFromNameStatus
         | _ -> fail [ "check-invalidation requires either --changed \"path;path\" or --base REF --head REF" ]
     let result = findInvalidatedAuditBindings root changed
 

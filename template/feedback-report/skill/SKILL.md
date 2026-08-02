@@ -326,17 +326,20 @@ It intentionally does not validate old schema-v1 reports.
 
 ## Commit-time audit invalidation check
 
-Before a commit lands, pass its changed repository-relative paths to the selective checker:
+Before a commit lands, use the commit-aware base/head form:
 
 ```sh
 dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- \
-  check-invalidation --changed "src/Changed.fs;docs/roadmap.md"
+  check-invalidation --base origin/main --head HEAD
 ```
 
-It indexes only digest-bearing `file:` citations in `feedback/audits/*.audit.json` and fails with the
-audit path, merged report, finding ID, and locator for each touched citation. It does not run the full
-historical validator or read the cited files. Malformed audit metadata fails closed so a broken index
-cannot make a commit look safe.
+It derives paths with `git diff --name-status --find-renames --find-copies`: rename and copy records
+contribute both old and new sides, while deletions contribute their removed source path. It indexes only
+digest-bearing `file:` citations in `feedback/audits/*.audit.json` and fails with the audit path, merged
+report, finding ID, and locator for each touched citation. It does not run the full historical validator
+or read cited files. Malformed or unreadable audit metadata fails closed so a broken index cannot make a
+commit look safe. `--changed` is an advanced input only: callers must supply the complete name-status
+path set, including old rename/copy sides and deletions; do not feed it ordinary `git diff --name-only`.
 
 ## Final roll-up
 

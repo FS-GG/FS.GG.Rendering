@@ -1014,6 +1014,9 @@ let feedbackReportSkillTests =
 
                   File.WriteAllText(Path.Combine(audits, "positive.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Changed.fs"))
                   File.WriteAllText(Path.Combine(audits, "negative.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Untouched.fs"))
+                  File.WriteAllText(Path.Combine(audits, "rename.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Old.fs"))
+                  File.WriteAllText(Path.Combine(audits, "copy.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Copied.fs"))
+                  File.WriteAllText(Path.Combine(audits, "deleted.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Deleted.fs"))
 
                   let positive = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
                   Expect.isEmpty positive.errors "a valid path-index scan has no parse errors"
@@ -1022,12 +1025,24 @@ let feedbackReportSkillTests =
                   Expect.equal positive.invalidated.Head.report "feedback/report.md" "diagnostic names the merged report"
 
                   let renameAndDelete =
-                      changedPathsFromNameStatus "R100\tsrc/Changed.fs\tsrc/Renamed.fs\nD\tsrc/Deleted.fs\n"
+                      changedPathsFromNameStatus "R100\tsrc/Old.fs\tsrc/Renamed.fs\nC100\tsrc/Source.fs\tsrc/Copied.fs\nD\tsrc/Deleted.fs\n"
 
                   Expect.sequenceEqual
                       renameAndDelete
-                      [ "src/Changed.fs"; "src/Deleted.fs"; "src/Renamed.fs" ]
-                      "commit name-status input indexes both rename sides and deleted paths"
+                      [ "src/Copied.fs"; "src/Deleted.fs"; "src/Old.fs"; "src/Renamed.fs"; "src/Source.fs" ]
+                      "commit name-status input indexes both rename/copy sides and deleted paths"
+
+                  let commitMutation = findInvalidatedAuditBindings root renameAndDelete
+                  Expect.isEmpty commitMutation.errors "full name-status derived input remains a valid index query"
+                  Expect.sequenceEqual
+                      (commitMutation.invalidated |> List.map (fun item -> item.audit, item.report, item.findingId, item.path))
+                      [ "feedback/audits/copy.audit.json", "feedback/report.md", "§4.1", "src/Copied.fs"
+                        "feedback/audits/deleted.audit.json", "feedback/report.md", "§4.1", "src/Deleted.fs"
+                        "feedback/audits/rename.audit.json", "feedback/report.md", "§4.1", "src/Old.fs" ]
+                      "rename old side, copy side, and deletion each name their audit/report/finding deterministically"
+
+                  let largeNameStatus = String.replicate 20000 "M\tsrc/Unrelated.fs\n" |> changedPathsFromNameStatus
+                  Expect.equal largeNameStatus [ "src/Unrelated.fs" ] "large name-status output drains and deduplicates deterministically"
 
                   let negative = findInvalidatedAuditBindings root [ "src/Other.fs" ]
                   Expect.isEmpty negative.invalidated "unrelated paths do not revalidate or invalidate audits"
@@ -1047,6 +1062,10 @@ let feedbackReportSkillTests =
 
                   let scale = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
                   Expect.equal scale.invalidated.Length 201 "all and only indexed citations are selected at scale"
+                  Expect.sequenceEqual
+                      (scale.invalidated |> List.map (fun item -> item.audit))
+                      (scale.invalidated |> List.map (fun item -> item.audit) |> List.sort)
+                      "scale diagnostics retain deterministic audit ordering"
               finally
                   if Directory.Exists root then
                       Directory.Delete(root, true)
