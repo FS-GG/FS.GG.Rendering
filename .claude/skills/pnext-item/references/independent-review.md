@@ -9,6 +9,49 @@ The host reserves a slot for the critic and keeps the implementing worker alive 
 The critic reviews requirements coverage, correctness, regressions, tests/evidence, architecture and
 ownership boundaries, release obligations, and touch-set honesty.
 
+## Runtime-route evidence gate
+
+Source review remains required, but it is not sufficient for a runtime-route divergence claim. When
+the PR's requirements, claimed behavior, or a candidate finding concern runtime behavior reachable
+through more than one meaningful route, the critic **must execute or measure** at least one comparison
+through the production route against the built artifact. The comparison must observe the behavior that
+could diverge (for example, a player input route and its direct dispatch), rather than merely assert
+that the source implementations look equivalent.
+
+The critic records the built artifact, command or measurement, compared routes, and observed result in
+the review report with `Verification:`. A report that cites only source reading for such a claim is
+incomplete; it cannot be accepted as evidence that the routes agree. If no meaningful production-route
+comparison exists for the review subject, the critic states that boundary and why under `Verification:`;
+that exception does not waive the rest of the required source review.
+
+Every **passing** initial or confirmation marker carries exactly one machine-readable applicability
+shape; a `changes-required` marker may carry one, but cannot confer acceptance without a later passing
+marker that does. The meaningful shape is:
+
+```text
+route-applicability: meaningful
+built-artifact: <artifact exercised>
+executed-command: <command or measurement performed>
+compared-routes: <production route and comparison route>
+observed-result: <observed equality or divergence>
+```
+
+The not-meaningful shape is:
+
+```text
+route-applicability: not-meaningful
+route-not-meaningful-reason: <bounded reason tied to this review subject>
+```
+
+Missing, duplicate, empty, unknown, mixed-shape, or overlong reason fields fail the live review-marker
+parser. A prose claim or `Verification:` line does not substitute for these fields; source-only review
+therefore cannot produce a valid passing chain when the critic declares the comparison meaningful.
+
+This is reusable guidance, not an audio-specific recipe. Rogue3 exposed the shape when a built product
+route emitted `[]` while direct dispatch emitted `[PlaySfx (SoundId "floor-descend", 0.8)]`: the cue map
+looked correct in isolation, but executing both routes revealed the defect. Apply the same comparison
+discipline to any reachable behavior whose routes can diverge.
+
 ## Handoff-assertion provenance
 
 Every specific, checkable assertion in an implementation handoff, critic report, or host relay carries
@@ -206,4 +249,9 @@ repair-phase), the host posts `<!-- fsgg:review-accepted:v1 -->` with the accept
 review URL, and confirmation URL when a repair occurred, and — for a repair-phase landing — the
 `fsgg:independent-review-repair-phase:v1` marker URL so acceptance evidence itself shows which path
 the item took.
+The ordinary marker's required machine fields are `accepted-head: <exact SHA>`,
+`initial-review: <initial review comment URL>`, and
+`latest-confirmation: <latest confirmation comment URL>`; when no repair occurred,
+`latest-confirmation` equals `initial-review`. Missing, duplicated, stale, or differently linked fields
+fail closed.
 The worker must observe that exact-SHA host marker before calling `landable` or merging.
