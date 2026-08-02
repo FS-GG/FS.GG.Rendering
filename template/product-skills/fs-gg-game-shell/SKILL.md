@@ -116,7 +116,9 @@ catalog's defaults and emits the same persistence effect.
 `GameShell.logicalSize settings` the logical canvas. Seed `ViewerOptions.LogicalSize`
 with the initial value; when `DisplayChanged` fires, emit both `ApplyWindowOptions`
 and `ApplyLogicalCanvas`. The chosen resolution then letterboxes onto any surface and
-the mode picks windowed / borderless / exclusive fullscreen.
+the mode picks windowed / borderless / exclusive fullscreen. Prefer `Fullscreen` as
+the safe shipped default until the native host contract is verified on the target
+desktop; reserve `Borderless` for an explicitly tested work-area transition.
 
 The persistent viewer applies `ApplyWindowOptions` to the live native window on its
 loop thread. Repeated identical requests are idempotent; returning to windowed mode
@@ -135,6 +137,13 @@ At default launch, make `ViewerOptions.InitialSize` exactly
 for both flagged and unflagged launches. One native pointer coordinate must identify
 the same point in the authored Controls layout; do not rely on a different overload's
 implicit startup behavior.
+
+When parsing launch/configuration options, overlay each supplied field on the shell's
+existing `ViewerWindowBehaviorRequest`; do not replace the record. A single flag must
+change only its named field, preserving `ResizePolicy`, `MaximizePolicy`, `StartupState`,
+`StartupPosition`, and backend preference from the shell/default configuration. Test
+the no-flag case and each single flag (including an omitted `startup`) through the real
+parser before treating a worked configuration as safe.
 
 ### Pause-safe rebind and exact persistence (the production-host journey)
 

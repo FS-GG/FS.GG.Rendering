@@ -301,7 +301,9 @@ module GlHost =
           GetPosition: unit -> Vector2D<int>
           SetPosition: Vector2D<int> -> unit
           GetSize: unit -> Vector2D<int>
-          SetSize: Vector2D<int> -> unit }
+          SetSize: Vector2D<int> -> unit
+          /// Resolves the work area of the output that currently owns this window.
+          GetWorkArea: unit -> (Vector2D<int> * Vector2D<int>) option }
 
     type private RuntimeWindowSnapshot =
         { State: WindowState
@@ -368,6 +370,13 @@ module GlHost =
 
         let desiredPosition, desiredSize =
             match behavior.Mode with
+            // A runtime request must be resolved on the native-loop target, not against the
+            // process default monitor captured when the effect was planned. On multi-output
+            // desktops those are legitimately different outputs.
+            | RuntimeWindowMode.WindowedFullscreen ->
+                match target.GetWorkArea() with
+                | Some(origin, extent) -> Some origin, Some extent
+                | None -> requestedPosition, requestedSize
             | RuntimeWindowMode.Normal ->
                 requestedPosition |> Option.orElse controller.WindowedPosition,
                 requestedSize |> Option.orElse (Some controller.WindowedSize)
@@ -1799,7 +1808,12 @@ module GlHost =
                           GetPosition = fun () -> activeWindow.Position
                           SetPosition = fun value -> activeWindow.Position <- value
                           GetSize = fun () -> activeWindow.Size
-                          SetSize = fun value -> activeWindow.Size <- value }
+                          SetSize = fun value -> activeWindow.Size <- value
+                          GetWorkArea = fun () ->
+                              try
+                                  let bounds = activeWindow.Monitor.Bounds
+                                  if bounds.Size.X > 0 && bounds.Size.Y > 0 then Some(bounds.Origin, bounds.Size) else None
+                              with _ -> None }
 
                     match applyRuntimeWindowBehavior runtimeWindowController target behavior with
                     | Ok changed ->

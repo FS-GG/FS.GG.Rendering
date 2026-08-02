@@ -47,7 +47,8 @@ let private target fake : GlHost.RuntimeWindowTarget =
               failwith "synthetic native size failure"
 
           fake.Writes.Add $"size:{value.X}x{value.Y}"
-          fake.Size <- value }
+          fake.Size <- value
+      GetWorkArea = fun () -> Some(Vector2D<int>(2400, 1440), Vector2D<int>(3440, 1400)) }
 
 let private initialFake () =
     { State = WindowState.Normal
@@ -155,6 +156,15 @@ let runtimeWindowBehaviorTests =
             Expect.equal fake.Border WindowBorder.Resizable "window chrome/resize policy is restored"
             Expect.equal fake.Position (Vector2D<int>(100, 80)) "pre-presentation position is restored"
             Expect.equal fake.Size (Vector2D<int>(1280, 720)) "pre-presentation size is restored"
+        }
+
+        test "borderless runtime transition uses the active output work area, not the planned default monitor" {
+            let fake = initialFake ()
+            let controller = GlHost.createRuntimeWindowController { Width = 1280; Height = 720 }
+            let plannedForDefault = native RuntimeWindowMode.WindowedFullscreen WindowBorder.Hidden (Some(0, 0)) (Some(1920, 1080)) "borderless"
+            Expect.equal (GlHost.applyRuntimeWindowBehavior controller (target fake) plannedForDefault) (Ok true) "transition applies"
+            Expect.equal fake.Position (Vector2D<int>(2400, 1440)) "the active output origin wins"
+            Expect.equal fake.Size (Vector2D<int>(3440, 1400)) "the active output work area wins"
         }
 
         test "unsupported backend is diagnosed and never receives a native plan" {
