@@ -6,6 +6,29 @@ open AppRoot.Program
 open AppRoot.Model
 open FS.GG.UI.Scene
 
+[<Tests>]
+let windowOptionOverlayTests =
+    testList "window option overlay" [
+        test "safe default and every single option overlay preserve unspecified fields" {
+            let baseline = AppRoot.WindowOptions.parseWindowBehavior []
+            Expect.equal baseline.Startup "fullscreen" "no flags use the safe exclusive-fullscreen default"
+            let cases =
+                [ [ "--window-resize"; "fixed-size" ], fun v -> v.Resize = "fixed-size"
+                  [ "--window-maximize"; "not-maximizable" ], fun v -> v.Maximize = "not-maximizable"
+                  [ "--window-startup"; "normal" ], fun v -> v.Startup = "normal"
+                  [ "--window-position"; "10,20" ], fun v -> v.Position = "10,20"
+                  [ "--window-backend"; "opengl" ], fun v -> v.Backend = "opengl" ]
+            for args, changed in cases do
+                let overlay = AppRoot.WindowOptions.parseWindowBehavior args
+                Expect.isTrue (changed overlay) "the supplied flag changes its own field"
+                if args.Head <> "--window-resize" then Expect.equal overlay.Resize baseline.Resize "unrelated resize remains default"
+                if args.Head <> "--window-maximize" then Expect.equal overlay.Maximize baseline.Maximize "unrelated maximize remains default"
+                if args.Head <> "--window-startup" then Expect.equal overlay.Startup baseline.Startup "omitted startup remains safe default"
+                if args.Head <> "--window-position" then Expect.equal overlay.Position baseline.Position "unrelated position remains default"
+                if args.Head <> "--window-backend" then Expect.equal overlay.Backend baseline.Backend "unrelated backend remains default"
+        }
+    ]
+
 // Feature 060 (FR-005): replaceable scaffold-BEHAVIOR tests. These call the scaffold
 // product's `view`/`update`/host/scene-text directly, so when you replace the scaffold
 // model with your own you rewrite THIS file. `GovernanceTests.fs` (compiled first) keeps

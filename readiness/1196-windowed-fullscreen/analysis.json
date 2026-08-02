@@ -37,6 +37,16 @@
       "schemaStatus": "current"
     },
     {
+      "path": "readiness/1196-windowed-fullscreen/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "39c7986c244b8aa7ef7bfafb7a0f9057e3e021927eec24341f73cb7a1270c596"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
       "path": "work/1196-windowed-fullscreen/checklist.md",
       "kind": "checklist",
       "digest": {
@@ -81,7 +91,7 @@
       "kind": "tasks",
       "digest": {
         "algorithm": "sha256",
-        "value": "f5fc7d28c8373081d996faff73565d1b0f975908be88d4f0f8b043b3e92baee3"
+        "value": "915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -316,7 +326,7 @@
     {
       "path": "readiness/1196-windowed-fullscreen/work-model.json",
       "kind": "workModel",
-      "currency": "missing",
+      "currency": "current",
       "diagnosticIds": []
     }
   ],

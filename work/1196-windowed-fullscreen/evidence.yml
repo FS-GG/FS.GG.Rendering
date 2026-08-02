@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1196-windowed-fullscreen/analysis.json
-    digest: 0234a78c036960ca461b09592bb138d7a95babc0584d2f8777b51bb7683fbce8
+    digest: 294d956380efa91ce0c6a585bb5b01d746573a0cab3b32499340eb56312e1b18
     schemaVersion: 1
   - label: checklist
     path: work/1196-windowed-fullscreen/checklist.md
@@ -53,10 +53,10 @@ evidence:
     result: pass
     synthetic: false
     observedRun:
-      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
-      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:e7838897efb742d2b775918f4f3f3455aa207cc30f532b9fbcaf6108fdbb6712"
       outcome: passed
-      passed: 8
+      passed: 9
       failed: 0
       skipped: 0
     notes: [Evidence required before verify.]
@@ -79,10 +79,10 @@ evidence:
     result: pass
     synthetic: false
     observedRun:
-      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
-      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:e7838897efb742d2b775918f4f3f3455aa207cc30f532b9fbcaf6108fdbb6712"
       outcome: passed
-      passed: 8
+      passed: 9
       failed: 0
       skipped: 0
     notes: [Evidence required before verify.]
@@ -105,10 +105,10 @@ evidence:
     result: pass
     synthetic: false
     observedRun:
-      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
-      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:e7838897efb742d2b775918f4f3f3455aa207cc30f532b9fbcaf6108fdbb6712"
       outcome: passed
-      passed: 8
+      passed: 9
       failed: 0
       skipped: 0
     notes: [Evidence required before verify.]
@@ -131,10 +131,10 @@ evidence:
     result: pass
     synthetic: false
     observedRun:
-      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
-      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:e7838897efb742d2b775918f4f3f3455aa207cc30f532b9fbcaf6108fdbb6712"
       outcome: passed
-      passed: 8
+      passed: 9
       failed: 0
       skipped: 0
     notes: [Evidence required before verify.]
@@ -157,10 +157,10 @@ evidence:
     result: pass
     synthetic: false
     observedRun:
-      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
-      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:e7838897efb742d2b775918f4f3f3455aa207cc30f532b9fbcaf6108fdbb6712"
       outcome: passed
-      passed: 8
+      passed: 9
       failed: 0
       skipped: 0
     notes: [Evidence required before verify.]
