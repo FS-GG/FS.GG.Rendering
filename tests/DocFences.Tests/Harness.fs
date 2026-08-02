@@ -269,8 +269,10 @@ module Harness =
     /// road-map guard fence formerly marked self-contained has also been classified honestly as contextual:
     /// it intentionally composes the preceding `sectionsByHeading` example and the product test runner's
     /// Expecto dependency, neither of which the published-pin probe supplies in isolation.
+    /// Re-audited for Rendering#1175: the new restaging fence is contextual because
+    /// its model, fixture, guarded action, and room staging helpers are product-owned.
     let private expectedProductSkillInventory =
-        "ae6b90e4808965085857d81ab00c9572e2de85e2a5c7d5526b611c71729f7667"
+        "01a3675c6152cc290bf6f324e5bac82c1dca9de84f5d186828f599cadb133f3b"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
