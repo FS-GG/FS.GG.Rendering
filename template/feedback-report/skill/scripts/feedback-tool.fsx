@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Diagnostics
 open FsGgFeedbackReportTool
 
 let fail (messages: string list) =
@@ -83,6 +84,42 @@ match argv with
         fail errors
 | [| "validate"; _ |] ->
     fail [ "validate requires --audit <feedback/audits/report.audit.json>" ]
+| args when args.Length > 0 && args.[0] = "check-invalidation" ->
+    let options = parseOptions args.[1..]
+    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+    let changed =
+        match Map.tryFind "changed" options, Map.tryFind "base" options, Map.tryFind "head" options with
+        | Some value, None, None -> value.Split(';') |> Array.toList
+        | None, Some baseRef, Some headRef ->
+            let start = ProcessStartInfo("git")
+            start.WorkingDirectory <- root
+            start.RedirectStandardOutput <- true
+            start.RedirectStandardError <- true
+            start.UseShellExecute <- false
+            [ "diff"; "--name-status"; "--find-renames"; "--find-copies"; baseRef; headRef ]
+            |> List.iter start.ArgumentList.Add
+            use child = Process.Start start
+            let stdout = child.StandardOutput.ReadToEndAsync()
+            let stderr = child.StandardError.ReadToEndAsync()
+            child.WaitForExit()
+            let output = stdout.Result
+            let errors = stderr.Result
+            if child.ExitCode <> 0 then fail [ sprintf "could not read commit path changes: %s" errors ]
+            output |> changedPathsFromNameStatus
+        | _ -> fail [ "check-invalidation requires either --changed \"path;path\" or --base REF --head REF" ]
+    let result = findInvalidatedAuditBindings root changed
+
+    if not (List.isEmpty result.errors) then
+        fail result.errors
+    elif List.isEmpty result.invalidated then
+        pass "no merged feedback-audit bindings were invalidated"
+    else
+        printfn "feedback-tool: %d merged feedback-audit binding(s) invalidated:" result.invalidated.Length
+
+        for item in result.invalidated do
+            eprintfn "feedback-tool: invalidated %s %s %s (%s)" item.audit item.findingId item.locator item.report
+
+        fail [ "commit touches evidence cited by merged feedback audit(s)" ]
 | [| "validate-checkpoints"; path |] ->
     let errors = validateCheckpointFile path
 
@@ -143,5 +180,6 @@ match argv with
           "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
           "  feedback-tool.fsx -- digest <text-file>"
           "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
+          "  feedback-tool.fsx -- check-invalidation (--changed \"path;path\" | --base REF --head REF) [--root PATH]"
           "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
           "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]
