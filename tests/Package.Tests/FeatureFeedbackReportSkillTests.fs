@@ -1,6 +1,7 @@
 module FeatureFeedbackReportSkillTests
 
 open System
+open System.Diagnostics
 open System.IO
 open System.Text.Json
 open Expecto
@@ -80,6 +81,58 @@ let private auditJson root reportPath reportText status evidence =
                  confidenceLimits = [||] |} ] |}
     )
 
+let private shellQuote (value: string) =
+    "'" + value.Replace("'", "'\"'\"'") + "'"
+
+let private runValidateThroughTail root reportPath auditPath =
+    let scriptPath =
+        Path.Combine(repositoryRoot, "template", "feedback-report", "skill", "scripts", "feedback-tool.fsx")
+
+    let command =
+        sprintf
+            "dotnet fsi %s -- validate %s --audit %s | tail -1"
+            (shellQuote scriptPath)
+            (shellQuote reportPath)
+            (shellQuote auditPath)
+
+    let startInfo = ProcessStartInfo("bash")
+    startInfo.WorkingDirectory <- root
+    startInfo.UseShellExecute <- false
+    startInfo.RedirectStandardOutput <- true
+    startInfo.RedirectStandardError <- true
+    startInfo.ArgumentList.Add "-c"
+    startInfo.ArgumentList.Add command
+
+    match Process.Start startInfo with
+    | null -> failwith "could not start the feedback-tool tail fixture"
+    | child ->
+        use child = child
+        let stdout = child.StandardOutput.ReadToEndAsync()
+        let stderr = child.StandardError.ReadToEndAsync()
+        child.WaitForExit()
+        child.ExitCode, stdout.Result.TrimEnd(), stderr.Result
+
+let private runValidate root reportPath auditPath =
+    let scriptPath =
+        Path.Combine(repositoryRoot, "template", "feedback-report", "skill", "scripts", "feedback-tool.fsx")
+
+    let startInfo = ProcessStartInfo("dotnet")
+    startInfo.WorkingDirectory <- root
+    startInfo.UseShellExecute <- false
+    startInfo.RedirectStandardOutput <- true
+    startInfo.RedirectStandardError <- true
+    [ "fsi"; scriptPath; "--"; "validate"; reportPath; "--audit"; auditPath ]
+    |> List.iter startInfo.ArgumentList.Add
+
+    match Process.Start startInfo with
+    | null -> failwith "could not start feedback-tool"
+    | child ->
+        use child = child
+        let stdout = child.StandardOutput.ReadToEndAsync()
+        let stderr = child.StandardError.ReadToEndAsync()
+        child.WaitForExit()
+        child.ExitCode, stdout.Result, stderr.Result
+
 [<Tests>]
 let feedbackReportSkillTests =
     testList
@@ -105,6 +158,60 @@ let feedbackReportSkillTests =
 
           test "valid schema-v2 report passes" {
               Expect.isEmpty (validateReportText validReport) "valid report has no errors"
+          }
+
+          test "validate emits a terminal PASS or FAIL verdict through tail while retaining stderr detail and exit codes" {
+              let root =
+                  Path.Combine(Path.GetTempPath(), "fsgg-feedback-verdict-" + Guid.NewGuid().ToString "N")
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let validReportPath = Path.Combine(root, "feedback", "valid.md")
+                  let validAuditPath = Path.Combine(root, "feedback", "valid.audit.json")
+                  let evidencePath = Path.Combine(root, "readiness", "build.log")
+                  File.WriteAllText(validReportPath, validReport)
+                  File.WriteAllText(evidencePath, "green")
+
+                  let evidence =
+                      [| {| locator = "file:readiness/build.log"
+                            result = "verified"
+                            sha256 = Some(sha256Text "green") |} |]
+
+                  File.WriteAllText(validAuditPath, auditJson root validReportPath validReport "actionable" evidence)
+
+                  let successExit, successLastLine, successError =
+                      runValidateThroughTail root validReportPath validAuditPath
+
+                  Expect.equal successExit 0 "a valid report keeps its successful pipeline exit code"
+                  Expect.stringContains
+                      successLastLine
+                      "PASS"
+                      $"the last stdout line explicitly says PASS. stderr: {successError}"
+                  Expect.isEmpty successError "a valid report produces no stderr detail"
+
+                  let invalidReportPath = Path.Combine(root, "feedback", "invalid.md")
+                  let invalidAuditPath = Path.Combine(root, "feedback", "invalid.audit.json")
+                  File.WriteAllText(invalidReportPath, "deliberately invalid report")
+                  File.WriteAllText(invalidAuditPath, "{}")
+
+                  let pipelineExit, failureLastLine, failureDetail =
+                      runValidateThroughTail root invalidReportPath invalidAuditPath
+
+                  // `tail` still exits zero: the regression is that its captured line must now carry FAIL.
+                  Expect.equal pipelineExit 0 "tail preserves its own successful pipeline exit code"
+                  Expect.stringContains failureLastLine "FAIL" "the last stdout line explicitly says FAIL"
+                  Expect.stringContains failureDetail "frontmatter:" "per-error validation detail remains on stderr"
+
+                  let directExit, directOutput, directError =
+                      runValidate root invalidReportPath invalidAuditPath
+
+                  Expect.equal directExit 1 "the validator's failure exit code remains unchanged"
+                  Expect.stringContains directOutput "FAIL" "the direct stdout verdict remains explicit"
+                  Expect.stringContains directError "frontmatter:" "direct validation still reports detail on stderr"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
           }
 
           test "complete actionable audit binds every finding and verified evidence digest" {
