@@ -1,8 +1,9 @@
 # Merge and release obligations
 
-Review the complete diff and verify changed paths against the issue. Ensure required checks reported on
-the current head; green from an earlier SHA is not evidence. Address all actionable review threads and
-re-run affected gates before merging.
+Verify the independent-review marker and ordered confirmation chain against the current head, then review the complete
+diff and changed paths against the issue. Ensure required checks reported on that head; green from an
+earlier SHA is not evidence. Address all actionable review threads and re-run affected gates before
+merging.
 
 After merge, fetch the default branch and verify the PR's merge commit is reachable. If packable or
 deployable artifacts changed, choose a coherent SemVer bump, pack from the merged commit, publish
