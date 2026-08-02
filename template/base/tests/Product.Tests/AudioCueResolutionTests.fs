@@ -59,8 +59,8 @@ let audioCueResolutionTests =
             Expect.equal (AppRoot.AudioCues.placeholderSha256 first) (AppRoot.AudioCues.placeholderSha256 second) "digest is reproducible"
         }
         // The repository-owned integration probe filters these two tests by name. The writer creates
-        // source assets through the production helper; the probe then checks real Release build and
-        // publish directories, plus mutated missing/malformed controls, through production readiness.
+        // source assets through the runtime helper; the probe then checks real Release build and
+        // publish directories, plus mutated missing/malformed controls, through runtime readiness.
         test "artifact fixture writer" {
             match optionalEnvironment "FSGG_AUDIO_FIXTURE_SOURCE_ROOT" with
             | None -> ()

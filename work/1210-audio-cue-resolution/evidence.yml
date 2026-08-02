@@ -54,7 +54,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -81,7 +81,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -108,7 +108,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -135,7 +135,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -162,7 +162,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -189,7 +189,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
@@ -216,7 +216,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
-      digest: "sha256:15ac3a04dbc7a0b1e9f651cf1d8d0e2f318dbfe45a55365807bb9185e4865a86"
+      digest: "sha256:7a2925344e2de49f58750030980dd245fc3583ff718a7efe78589cf1db1ff5e4"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 4
