@@ -77,7 +77,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "33b21e241271060787dbc15ef3f222d76da6ca864562ed6e3f1279bae2fd8add"
+        "value": "4fd97b3f7859e5d078ec877f5d261c36b8f3b18e79646b0eb806f3edab106767"
       }
     },
     {
@@ -113,7 +113,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "f5fc7d28c8373081d996faff73565d1b0f975908be88d4f0f8b043b3e92baee3"
+        "value": "915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66"
       }
     }
   ],
@@ -153,7 +153,7 @@
     {
       "id": "T001",
       "title": "Implement requirement FR-001",
-      "status": "pending",
+      "status": "done",
       "owner": "sdd",
       "dependencies": [],
       "requirements": [
@@ -181,7 +181,7 @@
     {
       "id": "T002",
       "title": "Update contract surface PC-001",
-      "status": "pending",
+      "status": "done",
       "owner": "sdd",
       "dependencies": [
         "T001"
@@ -207,7 +207,7 @@
     {
       "id": "T003",
       "title": "Record verification evidence VO-001",
-      "status": "pending",
+      "status": "done",
       "owner": "sdd",
       "dependencies": [
         "T001"
@@ -235,7 +235,7 @@
     {
       "id": "T004",
       "title": "Handle migration posture PM-001",
-      "status": "pending",
+      "status": "done",
       "owner": "sdd",
       "dependencies": [
         "T001"
@@ -261,7 +261,7 @@
     {
       "id": "T005",
       "title": "Refresh generated view impact GV-001",
-      "status": "pending",
+      "status": "done",
       "owner": "sdd",
       "dependencies": [
         "T001"
@@ -288,7 +288,7 @@
   "evidence": [
     {
       "id": "EV001",
-      "kind": "missing",
+      "kind": "verification",
       "subjectType": "task",
       "subjectId": "T001",
       "taskRefs": [
@@ -297,8 +297,11 @@
       "requirementRefs": [
         "FR-001"
       ],
-      "artifactRefs": [],
-      "result": "missing",
+      "artifactRefs": [
+        "src/SkiaViewer/Host/OpenGl.fs",
+        "tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs"
+      ],
+      "result": "pass",
       "synthetic": false,
       "performanceBudget": null,
       "performanceEvidenceArtifact": null,
@@ -312,15 +315,18 @@
     },
     {
       "id": "EV002",
-      "kind": "missing",
+      "kind": "verification",
       "subjectType": "task",
       "subjectId": "T002",
       "taskRefs": [
         "T002"
       ],
       "requirementRefs": [],
-      "artifactRefs": [],
-      "result": "missing",
+      "artifactRefs": [
+        "src/SkiaViewer/Host/OpenGl.fs",
+        "src/SkiaViewer/Host/OpenGl.fsi"
+      ],
+      "result": "pass",
       "synthetic": false,
       "performanceBudget": null,
       "performanceEvidenceArtifact": null,
@@ -334,15 +340,17 @@
     },
     {
       "id": "EV003",
-      "kind": "missing",
+      "kind": "verification",
       "subjectType": "task",
       "subjectId": "T003",
       "taskRefs": [
         "T003"
       ],
       "requirementRefs": [],
-      "artifactRefs": [],
-      "result": "missing",
+      "artifactRefs": [
+        "readiness/1196-windowed-fullscreen/issue1022-tests.xml"
+      ],
+      "result": "pass",
       "synthetic": false,
       "performanceBudget": null,
       "performanceEvidenceArtifact": null,
@@ -356,15 +364,17 @@
     },
     {
       "id": "EV004",
-      "kind": "missing",
+      "kind": "verification",
       "subjectType": "task",
       "subjectId": "T004",
       "taskRefs": [
         "T004"
       ],
       "requirementRefs": [],
-      "artifactRefs": [],
-      "result": "missing",
+      "artifactRefs": [
+        "work/1196-windowed-fullscreen/plan.md"
+      ],
+      "result": "pass",
       "synthetic": false,
       "performanceBudget": null,
       "performanceEvidenceArtifact": null,
@@ -378,15 +388,17 @@
     },
     {
       "id": "EV005",
-      "kind": "missing",
+      "kind": "verification",
       "subjectType": "task",
       "subjectId": "T005",
       "taskRefs": [
         "T005"
       ],
       "requirementRefs": [],
-      "artifactRefs": [],
-      "result": "missing",
+      "artifactRefs": [
+        "readiness/1196-windowed-fullscreen/work-model.json"
+      ],
+      "result": "pass",
       "synthetic": false,
       "performanceBudget": null,
       "performanceEvidenceArtifact": null,
@@ -453,7 +465,7 @@
           "path": "work/1196-windowed-fullscreen/evidence.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "33b21e241271060787dbc15ef3f222d76da6ca864562ed6e3f1279bae2fd8add"
+            "value": "4fd97b3f7859e5d078ec877f5d261c36b8f3b18e79646b0eb806f3edab106767"
           },
           "schemaVersion": 1
         },
@@ -477,14 +489,14 @@
           "path": "work/1196-windowed-fullscreen/tasks.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "f5fc7d28c8373081d996faff73565d1b0f975908be88d4f0f8b043b3e92baee3"
+            "value": "915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66"
           },
           "schemaVersion": 1
         }
       ],
       "outputDigest": {
         "algorithm": "sha256",
-        "value": "9f04651e865e13d3817ab3795edabdc795169273164d6582946480e74a5f26c5"
+        "value": "b09f3df74f92cdaccad96ba26b979382ee953a231daf7bfa4948563da1127f50"
       },
       "currency": "current"
     }

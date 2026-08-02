@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="8" failures="0" errors="0" skipped="0">
+  <testsuite name="SkiaViewer.Tests" tests="8" failures="0" errors="0" skipped="0">
+    <testcase name="windowed borderless and fullscreen requests all produce native plans" />
+    <testcase name="unsupported backend is diagnosed and never receives a native plan" />
+    <testcase name="the shared persistent interpreter routes every mode request in effect order" />
+    <testcase name="native transitions are idempotent and restore prior windowed geometry" />
+    <testcase name="borderless runtime transition uses the active output work area, not the planned default monitor" />
+    <testcase name="native mutation failure restores the captured state and returns a Window diagnostic" />
+    <testcase name="runtime lifecycle planning is deterministic behind the injected work-area seam" />
+    <testcase name="the new host effect preserves the existing comparison contract" />
+  </testsuite>
+</testsuites>

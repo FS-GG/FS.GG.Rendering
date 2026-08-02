@@ -1,7 +1,7 @@
 schemaVersion: 1
 workId: 1196-windowed-fullscreen
 stage: evidence
-status: needsEvidenceCorrection
+status: evidenceReady
 sourceSpec: work/1196-windowed-fullscreen/spec.md
 sourceClarifications: work/1196-windowed-fullscreen/clarifications.md
 sourceChecklist: work/1196-windowed-fullscreen/checklist.md
@@ -31,11 +31,11 @@ sourceSnapshots:
     schemaVersion: 1
   - label: tasks
     path: work/1196-windowed-fullscreen/tasks.yml
-    digest: f5fc7d28c8373081d996faff73565d1b0f975908be88d4f0f8b043b3e92baee3
+    digest: 915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66
     schemaVersion: 1
 evidence:
   - id: EV001
-    kind: missing
+    kind: verification
     subject:
       type: task
       id: T001
@@ -46,15 +46,22 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: [PD-001]
     obligationRefs: [EV001]
-    artifacts: []
+    artifacts: [src/SkiaViewer/Host/OpenGl.fs, tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs]
     sourceRefs:
       - kind: verification
         path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
-    result: missing
+    result: pass
     synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
+      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      outcome: passed
+      passed: 8
+      failed: 0
+      skipped: 0
     notes: [Evidence required before verify.]
   - id: EV002
-    kind: missing
+    kind: verification
     subject:
       type: task
       id: T002
@@ -65,15 +72,22 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: [PD-001]
     obligationRefs: [EV002]
-    artifacts: []
+    artifacts: [src/SkiaViewer/Host/OpenGl.fs, src/SkiaViewer/Host/OpenGl.fsi]
     sourceRefs:
       - kind: verification
         path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
-    result: missing
+    result: pass
     synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
+      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      outcome: passed
+      passed: 8
+      failed: 0
+      skipped: 0
     notes: [Evidence required before verify.]
   - id: EV003
-    kind: missing
+    kind: verification
     subject:
       type: task
       id: T003
@@ -84,15 +98,22 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: [PD-001]
     obligationRefs: [EV003]
-    artifacts: []
+    artifacts: [readiness/1196-windowed-fullscreen/issue1022-tests.xml]
     sourceRefs:
       - kind: verification
         path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
-    result: missing
+    result: pass
     synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
+      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      outcome: passed
+      passed: 8
+      failed: 0
+      skipped: 0
     notes: [Evidence required before verify.]
   - id: EV004
-    kind: missing
+    kind: verification
     subject:
       type: task
       id: T004
@@ -103,15 +124,22 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: []
     obligationRefs: [EV004]
-    artifacts: []
+    artifacts: [work/1196-windowed-fullscreen/plan.md]
     sourceRefs:
       - kind: verification
         path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
-    result: missing
+    result: pass
     synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
+      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      outcome: passed
+      passed: 8
+      failed: 0
+      skipped: 0
     notes: [Evidence required before verify.]
   - id: EV005
-    kind: missing
+    kind: verification
     subject:
       type: task
       id: T005
@@ -122,12 +150,19 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: [PD-001]
     obligationRefs: [EV005]
-    artifacts: []
+    artifacts: [readiness/1196-windowed-fullscreen/work-model.json]
     sourceRefs:
       - kind: verification
         path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
-    result: missing
+    result: pass
     synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/issue1022-tests.junit.xml
+      digest: "sha256:c3478498a6ec222118e3c6a0f6991d8cf74be726ca87fd38fde5154999d207c8"
+      outcome: passed
+      passed: 8
+      failed: 0
+      skipped: 0
     notes: [Evidence required before verify.]
 lifecycleNotes:
   - "Next lifecycle action: verify."
