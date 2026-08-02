@@ -4,10 +4,10 @@
   "workId": "1196-windowed-fullscreen",
   "stage": "ship",
   "status": "shipReady",
-  "generator": "FS.GG.SDD.Artifacts/0.32.0",
+  "generator": "FS.GG.SDD.Artifacts/1.0.0",
   "sourcesDigest": {
     "algorithm": "sha256",
-    "value": "fc752269452f2253bc9ebdeaeb26e77da897e7a30e932018b6b70fd2e995b63b"
+    "value": "4e26d13e6fe2c0ac2b2380d22ccd3daa9c358aa4557ffb5e65229aad84a8e3aa"
   },
   "verificationReadiness": {
     "status": "verificationReady",

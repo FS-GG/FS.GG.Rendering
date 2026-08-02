@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1196-windowed-fullscreen/analysis.json
-    digest: 41aaf78ac89a34ace8c723621d6eb9fb303abc9e284d77344a40c6df3e44b884
+    digest: 93efd2e1e9ef33ec4ab60476d2b30561b2225bc7a17a959fa93b269d8d1409f4
     schemaVersion: 1
   - label: checklist
     path: work/1196-windowed-fullscreen/checklist.md
@@ -55,6 +55,7 @@ evidence:
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
       digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
       failed: 0
@@ -81,6 +82,7 @@ evidence:
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
       digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
       failed: 0
@@ -107,6 +109,7 @@ evidence:
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
       digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
       failed: 0
@@ -133,6 +136,7 @@ evidence:
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
       digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
       failed: 0
@@ -159,6 +163,7 @@ evidence:
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
       digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
       failed: 0
