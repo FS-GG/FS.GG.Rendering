@@ -116,6 +116,7 @@
     <Compile Include="Issue1012GeneratedInteractiveHostTests.fs" />
     <Compile Include="Issue1030ViewImageSizeTests.fs" />
     <Compile Include="Issue1039PerformanceEvidenceTests.fs" />
+    <Compile Include="Issue1208CounterGuidanceTests.fs" />
     <Compile Include="PerformanceEvidenceCriticTests.fs" />
     <Compile Include="Issue1069ApiSurfaceRestoreIsolationTests.fs" />
     <Compile Include="Issue1071VisualCoverageTests.fs" />
