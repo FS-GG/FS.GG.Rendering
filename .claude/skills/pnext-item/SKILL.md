@@ -103,7 +103,10 @@ claim alive, set the item to `In review`, and freshly verify that row while the 
 reviews the exact head SHA. The critic does not edit the
 implementation: it checks requirements, diff, tests, architecture, release obligations, and `Paths:`;
 searches code/history and existing work for each candidate root cause; and files only unresolved,
-distinct **material** work. The same critic reviews up to three numbered repair rounds. If material
+distinct **material** work. For a meaningful runtime behavior reachable through more than one route,
+the handoff supplies a built artifact and runnable production-route evidence so the critic can execute
+or measure the comparison required by `independent-review`, not infer it from source alone. The same
+critic reviews up to three numbered repair rounds. If material
 findings remain after round three, park the item on `Blocked on: human/action`, release the claim, and
 escalate to a human; never start round four or merge.
 
