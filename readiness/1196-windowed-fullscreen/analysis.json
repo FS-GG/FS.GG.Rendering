@@ -3,7 +3,7 @@
   "viewVersion": "1.0",
   "workId": "1196-windowed-fullscreen",
   "stage": "analyze",
-  "status": "implementationReady",
+  "status": "needsGeneratedViewRefresh",
   "generator": "FS.GG.SDD.Artifacts/0.32.0",
   "sources": [
     {
@@ -41,7 +41,7 @@
       "kind": "workModel",
       "digest": {
         "algorithm": "sha256",
-        "value": "87cf8d559760e87361d262d92cf3543196e3109f8f12cd67c173f4a3ae9ca5e9"
+        "value": "9184e8f43c402f61bb9dcc577f629a9dfde3f1f1007db70ea6cec2e4ae68a246"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -310,24 +310,39 @@
     }
   ],
   "readiness": {
-    "status": "implementationReady",
-    "readyCount": 21,
+    "status": "needsGeneratedViewRefresh",
+    "readyCount": 0,
     "advisoryCount": 0,
     "warningCount": 0,
     "blockingCount": 0,
-    "staleSourceCount": 0,
+    "staleSourceCount": 1,
     "missingDispositionCount": 0,
     "malformedSourceCount": 0,
     "generatedViewFindingCount": 0,
     "acceptedDeferralCount": 0
   },
-  "findings": [],
+  "findings": [
+    {
+      "id": "AF001",
+      "category": "staleSource",
+      "severity": "staleSource",
+      "state": "open",
+      "path": "readiness/1196-windowed-fullscreen/work-model.json",
+      "relatedIds": [
+        "readiness/1196-windowed-fullscreen/work-model.json"
+      ],
+      "message": "Generated view \u0027readiness/1196-windowed-fullscreen/work-model.json\u0027 is stale.",
+      "correction": "Regenerate readiness/\u003Cid\u003E/work-model.json from current lifecycle sources."
+    }
+  ],
   "generatedViews": [
     {
       "path": "readiness/1196-windowed-fullscreen/work-model.json",
       "kind": "workModel",
       "currency": "current",
-      "diagnosticIds": []
+      "diagnosticIds": [
+        "staleGeneratedView"
+      ]
     }
   ],
   "optionalBoundaryFacts": [
@@ -353,10 +368,21 @@
       "diagnosticIds": []
     }
   ],
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "id": "staleGeneratedView",
+      "severity": "warning",
+      "artifact": "readiness/1196-windowed-fullscreen/work-model.json",
+      "message": "Generated view \u0027readiness/1196-windowed-fullscreen/work-model.json\u0027 is stale.",
+      "correction": "Regenerate readiness/\u003Cid\u003E/work-model.json from current lifecycle sources.",
+      "relatedIds": [
+        "readiness/1196-windowed-fullscreen/work-model.json"
+      ]
+    }
+  ],
   "nextAction": {
-    "actionId": "analysis.next.implement",
+    "actionId": "correctBlockingDiagnostics",
     "command": null,
-    "reason": "Lifecycle sources are current and ready for implementation."
+    "reason": "Analysis found lifecycle diagnostics that must be corrected before implementation."
   }
 }
