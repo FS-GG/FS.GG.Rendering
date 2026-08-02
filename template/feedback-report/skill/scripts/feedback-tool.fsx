@@ -58,7 +58,7 @@ match argv with
     let reportText = File.ReadAllText path
 
     let audit =
-        validateActionabilityAuditDetailed
+        validateActionabilityAuditAtReportHeadDetailed
             (Directory.GetCurrentDirectory())
             (Path.GetFullPath path)
             reportText
