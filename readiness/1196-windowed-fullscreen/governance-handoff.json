@@ -6,12 +6,12 @@
   "sources": [
     {
       "path": "readiness/1196-windowed-fullscreen/ship.json",
-      "digest": "sha256:4cfbe7ef7ed1654fc03bd64bfe5627074de363379a1ea8790bf08a24ad4b7dfe",
+      "digest": "sha256:2062ba59a4052eab42743ce89524de101cebeaff0f090719b17cc2e0045f7ded",
       "schemaVersion": 1
     },
     {
       "path": "readiness/1196-windowed-fullscreen/verify.json",
-      "digest": "sha256:a3ea9c712ca04099762b94c2e5c9161412d921835491ab5233947f08507aebd5",
+      "digest": "sha256:6ad4141273ec2c586217c14353cc33a8b7b8cf77a76cd675aa3e05de3c28d07a",
       "schemaVersion": 1
     },
     {

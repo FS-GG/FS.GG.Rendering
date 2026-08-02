@@ -41,7 +41,7 @@
       "kind": "analysis",
       "digest": {
         "algorithm": "sha256",
-        "value": "294d956380efa91ce0c6a585bb5b01d746573a0cab3b32499340eb56312e1b18"
+        "value": "b61041c430f8de3c665d7b8f947e79b00ea1d9331948a9f821060561ae131ca4"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -433,7 +433,24 @@
       "diagnosticIds": []
     }
   ],
-  "findings": [],
+  "findings": [
+    {
+      "id": "VF001",
+      "severity": "warning",
+      "category": "warning",
+      "path": "work/1196-windowed-fullscreen/evidence.yml",
+      "relatedIds": [
+        "analysis",
+        "checklist",
+        "clarifications",
+        "plan",
+        "spec",
+        "tasks"
+      ],
+      "message": "One or more evidence source snapshots no longer match current source digests.",
+      "correction": "Rerun the evidence command after reviewing the changed source artifacts."
+    }
+  ],
   "governanceCompatibility": [
     {
       "path": ".fsgg/policy.yml",
@@ -457,7 +474,23 @@
       "diagnosticIds": []
     }
   ],
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "id": "evidence.staleEvidenceSource",
+      "severity": "warning",
+      "artifact": "work/1196-windowed-fullscreen/evidence.yml",
+      "message": "One or more evidence source snapshots no longer match current source digests.",
+      "correction": "Rerun the evidence command after reviewing the changed source artifacts.",
+      "relatedIds": [
+        "analysis",
+        "checklist",
+        "clarifications",
+        "plan",
+        "spec",
+        "tasks"
+      ]
+    }
+  ],
   "readiness": "verificationReady",
   "nextAction": {
     "actionId": "verify.next.ship",
