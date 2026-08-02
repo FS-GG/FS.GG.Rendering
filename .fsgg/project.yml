@@ -1,0 +1,7 @@
+schemaVersion: 1
+project:
+  id: rendering-1194
+  defaultWorkRoot: work
+sdd:
+  config: .fsgg/sdd.yml
+  agents: .fsgg/agents.yml

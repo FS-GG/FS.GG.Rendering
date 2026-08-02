@@ -1,0 +1,246 @@
+schemaVersion: 1
+workId: 1194-feedback-audit-binding
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1194-feedback-audit-binding/spec.md
+sourceClarifications: work/1194-feedback-audit-binding/clarifications.md
+sourceChecklist: work/1194-feedback-audit-binding/checklist.md
+sourcePlan: work/1194-feedback-audit-binding/plan.md
+sourceTasks: work/1194-feedback-audit-binding/tasks.yml
+sourceAnalysis: readiness/1194-feedback-audit-binding/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1194-feedback-audit-binding/analysis.json
+    digest: 00f17d55fcc50503e2cfeff10c6928b83882b6757be70bc474557e1ff7f83995
+    schemaVersion: 1
+  - label: checklist
+    path: work/1194-feedback-audit-binding/checklist.md
+    digest: d1f9277ff2bf52225d4018d43859d99a2637f04fc9af5171534f1a5cdadb8e1c
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1194-feedback-audit-binding/clarifications.md
+    digest: d044621df3f670f6c3bd00092739833810a08a1bc8ccce141f95e72421081f18
+    schemaVersion: 1
+  - label: plan
+    path: work/1194-feedback-audit-binding/plan.md
+    digest: 9cf83839c3717a1e0765187848b6df3d209dd26bff807b02170c8ea8d1889c7c
+    schemaVersion: 1
+  - label: spec
+    path: work/1194-feedback-audit-binding/spec.md
+    digest: 4c0b5286864b032a315c8d65cbb6ea3858e9526ccd689bc0a67c984a3640a939
+    schemaVersion: 1
+  - label: tasks
+    path: work/1194-feedback-audit-binding/tasks.yml
+    digest: c0be52cd4bd7b47d7b8afdc7ef999014936a9838744ab19673ab26ab600773bb
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV004]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV006]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV007]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV008]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1194-feedback-audit-binding/feedback-report-tests.xml
+      digest: "sha256:48ea7c6475a640c34d701aba73b5878761ff5cd8766acdedf7321200a3fa9574"
+      outcome: passed
+      passed: 28
+      failed: 0
+      skipped: 0
+    notes: [Focused ledger, "and CLI compilation coverage passed; the broader package run has unrelated host OOM failures.", resolved-path, stale-binding]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

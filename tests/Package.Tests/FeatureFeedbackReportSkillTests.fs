@@ -137,6 +137,97 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "stale audit-binding ledger citation is reported rather than rejected" {
+              let root =
+                  Path.Combine(Path.GetTempPath(), "fsgg-feedback-ledger-" + Guid.NewGuid().ToString "N")
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "scripts")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let ledgerPath = Path.Combine(root, "scripts", "audit-binding-exceptions.json")
+                  let locator = "file:scripts/audit-binding-exceptions.json"
+                  let report = validReport.Replace("file:readiness/build.log", locator)
+                  File.WriteAllText(reportPath, report)
+                  File.WriteAllText(ledgerPath, "changed after the audit")
+
+                  let audit =
+                      auditJson root reportPath report "actionable"
+                          [| {| locator = locator
+                                result = "verified"
+                                sha256 = Some(sha256Text "the old ledger bytes") |} |]
+
+                  let result = validateActionabilityAuditDetailed root reportPath report audit
+                  Expect.isEmpty result.errors "the self-rewriting ledger has no stable digest to compare"
+                  Expect.equal result.notBound.Length 1 "the exemption stays observable"
+                  Expect.equal result.notBound.Head.locator locator "the cited locator is reported"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "symlinked workspace root recognizes the ledger by its resolved path" {
+              if not (OperatingSystem.IsLinux()) then
+                  skiptest "Linux regression for resolved ledger paths"
+
+              let realRoot =
+                  Path.Combine(Path.GetTempPath(), "fsgg-feedback-ledger-real-" + Guid.NewGuid().ToString "N")
+
+              let linkedRoot =
+                  Path.Combine(Path.GetTempPath(), "fsgg-feedback-ledger-link-" + Guid.NewGuid().ToString "N")
+
+              try
+                  Directory.CreateDirectory(Path.Combine(realRoot, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(realRoot, "scripts")) |> ignore
+                  Directory.CreateSymbolicLink(linkedRoot, realRoot) |> ignore
+                  let reportPath = Path.Combine(linkedRoot, "feedback", "report.md")
+                  let locator = "file:scripts/audit-binding-exceptions.json"
+                  let report = validReport.Replace("file:readiness/build.log", locator)
+                  File.WriteAllText(reportPath, report)
+                  File.WriteAllText(Path.Combine(realRoot, "scripts", "audit-binding-exceptions.json"), "changed")
+
+                  let audit =
+                      auditJson linkedRoot reportPath report "actionable"
+                          [| {| locator = locator
+                                result = "verified"
+                                sha256 = Some(sha256Text "old") |} |]
+
+                  let result = validateActionabilityAuditDetailed linkedRoot reportPath report audit
+                  Expect.isEmpty result.errors "canonical root and candidate paths agree"
+                  Expect.equal result.notBound.Length 1 "the resolved ledger remains visible"
+              finally
+                  if Directory.Exists linkedRoot then
+                      Directory.Delete(linkedRoot, true)
+
+                  if Directory.Exists realRoot then
+                      Directory.Delete(realRoot, true)
+          }
+
+          test "stale non-ledger evidence remains fail-closed" {
+              let root =
+                  Path.Combine(Path.GetTempPath(), "fsgg-feedback-stale-" + Guid.NewGuid().ToString "N")
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  File.WriteAllText(reportPath, validReport)
+                  File.WriteAllText(Path.Combine(root, "readiness", "build.log"), "changed")
+
+                  let audit =
+                      auditJson root reportPath validReport "actionable"
+                          [| {| locator = "file:readiness/build.log"
+                                result = "verified"
+                                sha256 = Some(sha256Text "old") |} |]
+
+                  let result = validateActionabilityAuditDetailed root reportPath validReport audit
+                  Expect.exists result.errors (fun error -> error.Contains("evidence digest is stale")) "ordinary evidence stays bound"
+                  Expect.isEmpty result.notBound "the narrow exemption does not grow"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "scheme-prefixed absolute paths and secret arguments fail closed" {
               let root = Path.GetTempPath()
               let reportPath = Path.Combine(root, "feedback", "report.md")
