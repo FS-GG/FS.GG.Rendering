@@ -652,6 +652,15 @@ else
         'the deep link has rotted — the fixer lands at the top of the document, with no routine'
   fi
 fi
+
+case_start '§2 the cadence routine keeps manifest coverage and M-PROV axis-aware'
+CADENCE_TEXT=$(<"$REPO_ROOT/docs/ci/cadence-map.md")
+expect_has 'Steps 2, 3, and 6 apply to `$(FsGgContractsVersion)` specifically.' "$CADENCE_TEXT" \
+           'the Contracts-only steps exclude the manifest coverage step'
+expect_has 'Steps 4 and 5 apply to every axis' "$CADENCE_TEXT" \
+           'Game and Audio receive both coverage and provenance reconciliation'
+expect_has 'scripts/refresh-api-surface-mirror.fsx --emit-waivers' "$CADENCE_TEXT" \
+           'the cross-repository route names the manifest coverage regeneration command'
 expect_has "$CADENCE_TARGET" "$(body)" 'and the rendered body really carries that link'
 
 case_start '§2 exit 2 body: the pins are UNCHECKED — not "fine", and not drift'
