@@ -1021,12 +1021,24 @@ let feedbackReportSkillTests =
                   Expect.equal positive.invalidated.Head.findingId "§4.1" "diagnostic names the finding"
                   Expect.equal positive.invalidated.Head.report "feedback/report.md" "diagnostic names the merged report"
 
+                  let renameAndDelete =
+                      changedPathsFromNameStatus "R100\tsrc/Changed.fs\tsrc/Renamed.fs\nD\tsrc/Deleted.fs\n"
+
+                  Expect.sequenceEqual
+                      renameAndDelete
+                      [ "src/Changed.fs"; "src/Deleted.fs"; "src/Renamed.fs" ]
+                      "commit name-status input indexes both rename sides and deleted paths"
+
                   let negative = findInvalidatedAuditBindings root [ "src/Other.fs" ]
                   Expect.isEmpty negative.invalidated "unrelated paths do not revalidate or invalidate audits"
 
                   File.WriteAllText(Path.Combine(audits, "malformed.audit.json"), "{")
                   let malformed = findInvalidatedAuditBindings root [ "src/Other.fs" ]
                   Expect.exists malformed.errors (fun error -> error.Contains("malformed audit feedback/audits/malformed.audit.json")) "malformed audit metadata fails closed"
+
+                  File.WriteAllText(Path.Combine(audits, "malformed.audit.json"), """{"auditSchema":0,"report":"","reportSha256":"old","findings":[]}""")
+                  let malformedStructure = findInvalidatedAuditBindings root [ "src/Other.fs" ]
+                  Expect.exists malformedStructure.errors (fun error -> error.Contains("auditSchema must be 1")) "schema-invalid audits cannot render a safe empty index"
 
                   File.Delete(Path.Combine(audits, "malformed.audit.json"))
 

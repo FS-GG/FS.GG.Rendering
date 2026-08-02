@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Diagnostics
 open FsGgFeedbackReportTool
 
 let fail (messages: string list) =
@@ -86,7 +87,22 @@ match argv with
 | args when args.Length > 0 && args.[0] = "check-invalidation" ->
     let options = parseOptions args.[1..]
     let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
-    let changed = required options "changed" |> fun value -> value.Split(';') |> Array.toList
+    let changed =
+        match Map.tryFind "changed" options, Map.tryFind "base" options, Map.tryFind "head" options with
+        | Some value, None, None -> value.Split(';') |> Array.toList
+        | None, Some baseRef, Some headRef ->
+            let start = ProcessStartInfo("git")
+            start.WorkingDirectory <- root
+            start.RedirectStandardOutput <- true
+            start.RedirectStandardError <- true
+            start.UseShellExecute <- false
+            [ "diff"; "--name-status"; "--find-renames"; "--find-copies"; baseRef; headRef ]
+            |> List.iter start.ArgumentList.Add
+            use child = Process.Start start
+            child.WaitForExit()
+            if child.ExitCode <> 0 then fail [ sprintf "could not read commit path changes: %s" (child.StandardError.ReadToEnd()) ]
+            child.StandardOutput.ReadToEnd() |> changedPathsFromNameStatus
+        | _ -> fail [ "check-invalidation requires either --changed \"path;path\" or --base REF --head REF" ]
     let result = findInvalidatedAuditBindings root changed
 
     if not (List.isEmpty result.errors) then
@@ -160,6 +176,6 @@ match argv with
           "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
           "  feedback-tool.fsx -- digest <text-file>"
           "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
-          "  feedback-tool.fsx -- check-invalidation --changed \"path;path\" [--root PATH]"
+          "  feedback-tool.fsx -- check-invalidation (--changed \"path;path\" | --base REF --head REF) [--root PATH]"
           "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
           "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]

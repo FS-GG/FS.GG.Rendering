@@ -384,6 +384,25 @@ type AuditInvalidationCheck =
 let private normalizeWorkspacePath (path: string) =
     path.Trim().Replace('\\', '/').TrimStart('/')
 
+/// Parse `git diff --name-status --find-renames --find-copies` output. Rename
+/// and copy records contribute BOTH names; deletions contribute their source.
+let changedPathsFromNameStatus (text: string) =
+    (normalizeNewlines text)
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+    |> Array.collect (fun line ->
+        let fields = line.Split('\t', StringSplitOptions.RemoveEmptyEntries)
+
+        if fields.Length < 2 then
+            [||]
+        elif fields.[0].StartsWith("R", StringComparison.Ordinal) || fields.[0].StartsWith("C", StringComparison.Ordinal) then
+            if fields.Length >= 3 then [| normalizeWorkspacePath fields.[1]; normalizeWorkspacePath fields.[2] |] else [||]
+        else
+            [| normalizeWorkspacePath fields.[1] |])
+    |> Array.filter (String.IsNullOrWhiteSpace >> not)
+    |> Array.distinct
+    |> Array.sort
+    |> Array.toList
+
 /// Selectively find digest-bearing `file:` citations in committed audit JSON
 /// whose paths intersect `changedPaths`. It never reads reports or evidence
 /// bytes, so historical audits unrelated to this commit are not revalidated.
@@ -408,12 +427,20 @@ let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string l
                 else
                     let audit = unbox<ActionabilityAudit> (box parsed)
 
-                    if isNull (box audit.findings) then
+                    if audit.auditSchema <> 1 then
+                        errors.Add(sprintf "invalidation: malformed audit %s: auditSchema must be 1" relativeAudit)
+                    elif String.IsNullOrWhiteSpace(normalizedJsonString audit.report) then
+                        errors.Add(sprintf "invalidation: malformed audit %s: report is required" relativeAudit)
+                    elif not (Regex.IsMatch(normalizedJsonString audit.reportSha256, "^[0-9a-f]{64}$")) then
+                        errors.Add(sprintf "invalidation: malformed audit %s: reportSha256 must be 64 lowercase hex characters" relativeAudit)
+                    elif isNull (box audit.findings) || List.isEmpty audit.findings then
                         errors.Add(sprintf "invalidation: malformed audit %s: findings is required" relativeAudit)
                     else
                         for finding in audit.findings do
                             if obj.ReferenceEquals(box finding, null) then
                                 errors.Add(sprintf "invalidation: malformed audit %s: findings must not contain null entries" relativeAudit)
+                            elif String.IsNullOrWhiteSpace(normalizedJsonString finding.id) then
+                                errors.Add(sprintf "invalidation: malformed audit %s: finding id is required" relativeAudit)
                             elif isNull (box finding.checkedEvidence) then
                                 errors.Add(sprintf "invalidation: malformed audit %s: %s has no checkedEvidence" relativeAudit (normalizedJsonString finding.id))
                             else
@@ -422,9 +449,16 @@ let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string l
                                         errors.Add(sprintf "invalidation: malformed audit %s: %s has null checkedEvidence" relativeAudit (normalizedJsonString finding.id))
                                     else
                                         let locator = normalizedJsonString evidence.locator
+                                        let result = normalizedJsonString evidence.result
                                         let digest = evidence.sha256 |> Option.map normalizedJsonString
 
-                                        if locator.StartsWith("file:", StringComparison.Ordinal) && digest.IsSome then
+                                        if String.IsNullOrWhiteSpace result || not (List.contains result evidenceResults) then
+                                            errors.Add(sprintf "invalidation: malformed audit %s: %s has an invalid evidence result" relativeAudit (normalizedJsonString finding.id))
+                                        elif locator.StartsWith("file:", StringComparison.Ordinal) && digest.IsNone then
+                                            errors.Add(sprintf "invalidation: malformed audit %s: %s file evidence needs sha256" relativeAudit (normalizedJsonString finding.id))
+                                        elif digest |> Option.exists (fun value -> not (Regex.IsMatch(value, "^[0-9a-f]{64}$"))) then
+                                            errors.Add(sprintf "invalidation: malformed audit %s: %s evidence sha256 must be 64 lowercase hex characters" relativeAudit (normalizedJsonString finding.id))
+                                        elif locator.StartsWith("file:", StringComparison.Ordinal) && digest.IsSome then
                                             let path = locator.Substring("file:".Length) |> normalizeWorkspacePath
 
                                             if String.IsNullOrWhiteSpace path then
