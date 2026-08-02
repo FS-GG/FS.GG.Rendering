@@ -15,6 +15,9 @@ open Silk.NET.Core.Contexts
 open Silk.NET.Input
 open Silk.NET.Maths
 open Silk.NET.Windowing
+open Microsoft.FSharp.NativeInterop
+
+#nowarn "9"
 open Silk.NET.OpenGL
 open SkiaSharp
 open FS.GG.UI.Scene
@@ -285,6 +288,17 @@ module internal LoopDispatch =
             ran
 
 module GlHost =
+    let private tryResolveMonitorWorkArea (monitor: IMonitor) =
+        try
+            let glfw = Silk.NET.GLFW.Glfw.GetApi()
+            let mutable count = 0
+            let monitors = glfw.GetMonitors(&count)
+            if NativePtr.toNativeInt monitors = 0n || monitor.Index < 0 || monitor.Index >= count then None
+            else
+                let mutable x, y, width, height = 0, 0, 0, 0
+                glfw.GetMonitorWorkarea(NativePtr.get monitors monitor.Index, &x, &y, &width, &height)
+                if width > 0 && height > 0 then Some(Vector2D<int>(x, y), Vector2D<int>(width, height)) else None
+        with _ -> None
     /// The single source of truth for the graphics backend this viewer host actually initializes.
     /// The live window is always created with `ContextAPI.OpenGL` (see `createWindow`) and Skia
     /// wraps it through `GRContext.CreateGl` (see `createSkiaContext`); Vulkan/software preferences
@@ -1811,8 +1825,7 @@ module GlHost =
                           SetSize = fun value -> activeWindow.Size <- value
                           GetWorkArea = fun () ->
                               try
-                                  let bounds = activeWindow.Monitor.Bounds
-                                  if bounds.Size.X > 0 && bounds.Size.Y > 0 then Some(bounds.Origin, bounds.Size) else None
+                                  tryResolveMonitorWorkArea activeWindow.Monitor
                               with _ -> None }
 
                     match applyRuntimeWindowBehavior runtimeWindowController target behavior with

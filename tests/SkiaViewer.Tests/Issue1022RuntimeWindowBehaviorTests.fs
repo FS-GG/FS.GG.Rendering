@@ -167,6 +167,23 @@ let runtimeWindowBehaviorTests =
             Expect.equal fake.Size (Vector2D<int>(3440, 1400)) "the active output work area wins"
         }
 
+        test "post-change active-output surface drives both presentation fit and inverse pointer mapping" {
+            let logical: Size = { Width = 1920; Height = 1080 }
+            let activeSurface: Size = { Width = 3440; Height = 1400 }
+            let fit = LogicalCanvas.fit logical activeSurface
+            let logicalX, logicalY = 960.0, 540.0
+            let native =
+                { X = logicalX * fit.Scale + fit.OffsetX
+                  Y = logicalY * fit.Scale + fit.OffsetY
+                  Phase = ViewerPointerPhaseKind.Pressed
+                  Button = Some ViewerPointerButtonKind.Primary
+                  DeltaX = 0.0
+                  DeltaY = 0.0 }
+            let mapped = Viewer.pointerInProductSpace (Some logical) activeSurface activeSurface native
+            Expect.floatClose Accuracy.high mapped.X logicalX "the post-change presentation surface inverts to the control X"
+            Expect.floatClose Accuracy.high mapped.Y logicalY "the post-change presentation surface inverts to the control Y"
+        }
+
         test "unsupported backend is diagnosed and never receives a native plan" {
             let unsupported =
                 { request ViewerWindowStartupState.Fullscreen with
