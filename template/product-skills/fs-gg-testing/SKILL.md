@@ -215,6 +215,98 @@ The shape is generic — serialize-and-compare, then vary-the-other-stream-and-r
 — so it pins every later generator (enemy population, determinism audits); write it
 once here.
 
+## Turn a numbered specification into a scenario-indexed sweep
+
+A milestone specification with numbered scenarios is an executable coverage contract,
+not a list from which to pick a few representative tests. Give every numbered scenario
+one named test, then add a separate index guard that proves the suite covers each number
+exactly once. The names make a red result point at the missing behaviour; the guard
+stops a new or omitted scenario from looking covered merely because nearby milestone
+tests are green.
+
+Keep the specification's numbers in one declared index. Do not infer coverage from test
+names, folders, or a total test count: those are conventions the compiler cannot check.
+The guard must compare the declared index with the specification's complete `1..N`
+range and must reject both omissions and duplicates.
+
+```fsharp
+open Expecto
+
+// Transcribe the numbered acceptance scenarios once, with the number in the value —
+// not only in a test name. Add a value and a test together when the specification grows.
+type Scenario = { Number: int; Name: string; Assert: unit -> unit }
+
+let scenarios =
+    [ { Number = 1; Name = "detonation reveals its room"; Assert = fun () -> () }
+      { Number = 2; Name = "key opens its matching door"; Assert = fun () -> () }
+      { Number = 3; Name = "room transition removes the old actor"; Assert = fun () -> () } ]
+
+let specificationScenarioCount = 3
+
+[<Tests>]
+let specificationSweep =
+    testList "numbered acceptance scenarios" [
+        test "the scenario index covers specification items 1 through N exactly once" {
+            let indexed = scenarios |> List.map (fun scenario -> scenario.Number) |> List.sort
+            Expect.equal indexed [ 1 .. specificationScenarioCount ]
+                "every numbered specification scenario needs exactly one named test"
+        }
+
+        for scenario in scenarios do
+            test $"scenario {scenario.Number}: {scenario.Name}" scenario.Assert
+    ]
+```
+
+The `Assert = fun () -> ()` bodies above are placeholders only for this small index
+example. Replace each with the product journey that proves that exact scenario. To prove
+the guard itself bites, temporarily remove one scenario value (or use a deliberately
+incomplete copy in a unit test) and observe the index test red even while every remaining
+scenario test stays green.
+
+## Compare the encoded whole state for “nothing advanced” invariants
+
+For a negative invariant such as “paused advances nothing”, listing fields one at a time
+turns the assertion into an incomplete memory test. Encode the canonical whole model
+before and after the action instead. The encoding must be the same non-truncating,
+deterministic representation used for save/determinism evidence — never `ToString`, a
+debug view, or a hand-picked projection. Its contract is that every persisted model
+field participates in the bytes.
+
+```fsharp
+open Expecto
+
+// Product-owned: encode every field of Model in a stable, non-truncating form.
+// When a field is added to Model, this function's contract makes it part of the comparison.
+let encodeModel (model: Model) : string = Determinism.encode model
+
+let advanceFixedTicks ticks model =
+    ticks |> List.fold (fun state _ -> update FixedTick state) model
+
+[<Tests>]
+let pauseAndResume =
+    testList "whole-state pause invariant" [
+        test "paused fixed ticks advance no encoded state" {
+            let before = fixture |> update Pause
+            let after = before |> advanceFixedTicks [ 1 .. 5 ]
+            Expect.equal (encodeModel after) (encodeModel before)
+                "paused ticks must leave enemies, bullets, fuses, cooldowns, banners, rooms, and every later field unchanged"
+        }
+
+        test "resuming permits the simulation to advance" {
+            let paused = fixture |> update Pause
+            let resumed = paused |> update Resume |> advanceFixedTicks [ 1 ]
+            Expect.notEqual (encodeModel resumed) (encodeModel paused)
+                "resume must permit at least one simulation step to change encoded state"
+        }
+    ]
+```
+
+This stays complete as the model evolves: if a newly added field advances while paused,
+the unchanged test fails without editing its assertion. Keep the positive resume test
+alongside it, so a reducer that freezes everything also cannot pass. If the model has
+ephemeral fields that must not be compared, define a deliberate canonical persisted
+state type first; do not silently omit fields from the encoder used by this invariant.
+
 ## Assert on a repo document — locate it CWD-independently, then prove the guard can redden
 
 Some of the most valuable tests a product suite carries assert on a **checked-in

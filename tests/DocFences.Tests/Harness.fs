@@ -261,9 +261,16 @@ module Harness =
     /// directly). This fence remains Contextual (unchanged classification, only its body moved), so it
     /// is still not fed to the compiler here; verified separately against the real shipped
     /// `AppRoot.GameShell`/`FS.GG.UI.Controls` types via a scratch `dotnet fsi` probe (compiles with the
-    /// fix, fails FS0001 on `Config` having no field `DefaultKeymap` with it reverted).
+    /// fix, fails FS0001 on `Config` having no field `DefaultKeymap` with it reverted). Re-audited for
+    /// Rendering#1169: the two new fs-gg-testing examples teach a numbered scenario index with an exact
+    /// 1..N guard, and a canonical whole-model encoding for pause invariants. Both are contextual because
+    /// their `Scenario` assertion and `Model`/`Determinism`/`update` seams are product-owned; their full
+    /// worked examples are retained in the corpus inventory and covered by the document fence parser. The
+    /// road-map guard fence formerly marked self-contained has also been classified honestly as contextual:
+    /// it intentionally composes the preceding `sectionsByHeading` example and the product test runner's
+    /// Expecto dependency, neither of which the published-pin probe supplies in isolation.
     let private expectedProductSkillInventory =
-        "e689fac95fb00214828718b65d96cca6e6f47dfc6bd46ca0963b913770374d4e"
+        "ae6b90e4808965085857d81ab00c9572e2de85e2a5c7d5526b611c71729f7667"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -272,9 +279,8 @@ module Harness =
         Set.ofList
             [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
               "template/product-skills/fs-gg-symbology/SKILL.md", 226
-              "template/product-skills/fs-gg-testing/SKILL.md", 245
-              "template/product-skills/fs-gg-testing/SKILL.md", 270
-              "template/product-skills/fs-gg-testing/SKILL.md", 336
+              "template/product-skills/fs-gg-testing/SKILL.md", 337
+              "template/product-skills/fs-gg-testing/SKILL.md", 362
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44
