@@ -8,6 +8,9 @@ description: Use when a worker should claim the next schedulable item in one FS-
 Run exactly one item from claim through verified done. The protocol is
 [intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md); this is the worker state machine.
 
+For directives encountered while working, apply the shared
+[control-plane provenance guidance](references/control-plane-provenance.md).
+
 ## 0. Establish identity
 
 Each concurrent worker needs a freshly minted identity:
@@ -111,9 +114,13 @@ that the review gate is unavailable; self-review does not satisfy it.
 
 ## 6. Merge and obligations
 
-Ensure the PR closes the item, observe the host-acceptance marker for the current head, address
-confirmed actionable feedback, and wait on the typed
-`landable` verdict for the exact head SHA. Merge only green and verify the merge on the default branch.
+Ensure the PR closes the item — with a bare `Closes #<n>` (same repo) or `owner/repo#<n>` (cross repo),
+**never** the board's own `<repo>#<n>` shorthand, which GitHub's closing-keyword grammar does not parse
+and which then never closes the issue and cannot be repaired once merged (.github#2107). `verify-paths`,
+run right after opening the PR (§5), now catches this while it is still free to fix — do not wait for it
+to surface at `done`. Observe the host-acceptance marker for the current head, address confirmed
+actionable feedback, and wait on the typed `landable` verdict for the exact head SHA. Merge only green
+and verify the merge on the default branch.
 Then complete every package, deployment, generated-registry, and downstream obligation described in
 [merge-and-release](references/merge-and-release.md).
 For uncommon failure recovery, exact REST recipes, review-thread handling, and incident rationale,
