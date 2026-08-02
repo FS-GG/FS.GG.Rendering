@@ -1,22 +1,32 @@
 module Issue1081TemplateBaseSkillRootsTests
 
-// Issue #1081 — `template/base/` carries ALL THREE ADR-0011 agent-skill roots, byte-identical.
+// Issue #1081 (SUPERSEDED by #1121, see below) — `template/base/` carries `.claude/` and `.agents/`,
+// byte-identical.
 //
-// WHY AN IN-REPO TEST WHEN A GATE EXISTS. `.github/workflows/template-base-skill-union.yml` is the
-// item's answer to "nothing audits this tree", and it is the authority — it runs FS-GG/.github's
-// reusable assertion over the real root set. This test is not a second copy of it: it is the half
-// that runs inside the ALWAYS-ON required gate (`gate.yml` -> Package.Tests) rather than in a
-// path-filtered workflow of its own, and it fails in the same place a contributor is already
-// looking. The defect that motivated #1081 survived three commits precisely because the only thing
-// asserting the invariant was a `comment` field in `.template.config/template.json` claiming
-// "copyOnly keeps the fs-gg-project body byte-identical to the `.agents/` canonical copy
-// (skill-manifest digest)" — while `.claude/` sat at 4cfdc0f8… and canonical at c9fac83f….
+// #1081 (2026-07-27) decided `template/base/` should carry ALL THREE then-current ADR-0011 roots,
+// including `.codex/`. ADR-0067 §5, executed one day later (2026-07-28, `.github#1636`), narrowed the
+// org's ordered agent-skill root set to TWO — `.claude/skills`, `.agents/skills` — and retired
+// `.codex/skills` (`.agents/skills` is Codex CLI's own second native discovery root, so the third root
+// carried no runtime the other two did not, and only produced a duplicate model-visible catalog
+// entry). Issue #1121 completed that retirement here: `template/base/.codex/` is deleted and this
+// file now asserts TWO roots plus the retired root's absence, rather than three roots present.
+//
+// WHY AN IN-REPO TEST WHEN A GATE EXISTS. `.github/workflows/template-base-skill-union.yml` is
+// #1081's answer to "nothing audits this tree", and it is the authority — it runs FS-GG/.github's
+// reusable assertion over the real root set (now two, by the reusable workflow's own default; see
+// #1121). This test is not a second copy of it: it is the half that runs inside the ALWAYS-ON
+// required gate (`gate.yml` -> Package.Tests) rather than in a path-filtered workflow of its own, and
+// it fails in the same place a contributor is already looking. The defect that motivated #1081
+// survived three commits precisely because the only thing asserting the invariant was a `comment`
+// field in `.template.config/template.json` claiming "copyOnly keeps the fs-gg-project body
+// byte-identical to the `.agents/` canonical copy (skill-manifest digest)" — while `.claude/` sat at
+// 4cfdc0f8… and canonical at c9fac83f….
 //
 // DIRECTION MATTERS. `.agents/` is canonical: ADR-0011 §3 makes it the provider source root,
 // `template/lifecycle/materialize-skill-roots.fsx` mirrors OUT of it, and the shipped
 // `template/skill-manifest/skill-manifest.json` declares its digest. So the assertions below are
 // "each other root equals `.agents/`", never "they equal each other" — a test written the loose way
-// stays green when all three drift together, away from the manifest.
+// stays green when both drift together, away from the manifest.
 //
 // SCOPE. Skill roots only. `template/base/.claude/settings.json` and `.claude/hooks/` are
 // deliberately NOT triplicated (Claude Code's own configuration schema; no other runtime reads it)
@@ -33,8 +43,9 @@ let private repositoryRoot = RepositoryRoot.value
 let private native (path: string) =
     Path.Combine(repositoryRoot, path.Replace('/', Path.DirectorySeparatorChar))
 
-/// ADR-0011's three, in the order the assertion tool declares them.
-let private agentSkillRoots = [ ".claude"; ".codex"; ".agents" ]
+/// ADR-0065's two (narrowed from ADR-0011's three by ADR-0067 §5 / `.github#1636`), in the order the
+/// assertion tool declares them.
+let private agentSkillRoots = [ ".claude"; ".agents" ]
 
 let private canonicalRoot = ".agents"
 
@@ -86,22 +97,35 @@ let templateBaseSkillRootTests =
                 "template/base/.agents/skills/ holds at least one skill; if this fails every other test in this list passes over an empty set and proves nothing"
         }
 
-        test "every ADR-0011 root exists and holds exactly the canonical skill set" {
+        test "every ADR-0065 root exists and holds exactly the canonical skill set" {
             let canonical = skillIds canonicalRoot
 
             for root in agentSkillRoots do
                 Expect.isTrue
                     (Directory.Exists(skillsDir root))
                     (sprintf
-                        "template/base/%s/skills must exist — a missing root is a [partitioned] tree, and an absent .codex/ is exactly what issue #1081 was filed about"
+                        "template/base/%s/skills must exist — a missing root is a [partitioned] tree (issue #1081)"
                         root)
 
                 Expect.equal
                     (skillIds root)
                     canonical
                     (sprintf
-                        "template/base/%s/skills holds exactly the canonical .agents/skills set — a skill added to one root and not the others is [partitioned]"
+                        "template/base/%s/skills holds exactly the canonical .agents/skills set — a skill added to one root and not the other is [partitioned]"
                         root)
+        }
+
+        // INVERTED from #1081's original assertion. #1081 (2026-07-27) required `template/base/.codex/`
+        // to exist and failed a missing root as a "[partitioned] tree". ADR-0067 §5 (2026-07-28,
+        // `.github#1636`) retired `.codex/skills` org-wide one day later: `.agents/skills` is Codex
+        // CLI's own second native discovery root, so a third copy carried no runtime the other two did
+        // not and only produced a duplicate model-visible catalog entry. Issue #1121 deleted
+        // `template/base/.codex/` to complete that retirement here, so an ABSENT `.codex/` is now the
+        // correct, expected state — its reappearance (a resurrected #1081 twin) is the defect.
+        test "the retired .codex/ root does not exist under template/base (issue #1121, ADR-0067 §5)" {
+            Expect.isFalse
+                (Directory.Exists(native "template/base/.codex"))
+                "template/base/.codex/ must NOT exist — .codex/skills is retired (ADR-0067 §5 / .github#1636); its presence would resurrect the #1081 three-root shape ADR-0067 superseded"
         }
 
         test "every file under every root is byte-identical to its canonical .agents counterpart" {
@@ -169,7 +193,7 @@ let templateBaseSkillRootTests =
                 (File.Exists(native "template/base/.claude/settings.json"))
                 "the base .claude/ workspace tree still carries Claude Code's settings.json"
 
-            for root in [ ".codex"; ".agents" ] do
+            for root in [ ".agents" ] do
                 Expect.isFalse
                     (File.Exists(native (sprintf "template/base/%s/settings.json" root)))
                     (sprintf
