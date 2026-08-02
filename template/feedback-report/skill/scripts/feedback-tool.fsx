@@ -4,11 +4,16 @@ open System
 open System.IO
 open FsGgFeedbackReportTool
 
-let fail messages =
+let fail (messages: string list) =
+    printfn "feedback-tool: FAIL: validation failed (%d error(s))" messages.Length
+
     for message in messages do
         eprintfn "feedback-tool: %s" message
 
     exit 1
+
+let pass message =
+    printfn "feedback-tool: PASS: %s" message
 
 let parseOptions (args: string array) =
     let rec loop index options =
@@ -70,10 +75,10 @@ match argv with
             printfn "    %s" citation.reason
 
     if List.isEmpty errors then
-        printfn "feedback-tool: valid actionability-bound schema-v2 report: %s" path
-
         if not (List.isEmpty audit.notBound) then
             printfn "feedback-tool: %d citation(s) were not checked (listed above)." audit.notBound.Length
+
+        pass (sprintf "valid actionability-bound schema-v2 report: %s" path)
     else
         fail errors
 | [| "validate"; _ |] ->
@@ -82,7 +87,7 @@ match argv with
     let errors = validateCheckpointFile path
 
     if List.isEmpty errors then
-        printfn "feedback-tool: valid checkpoint file: %s" path
+        pass (sprintf "valid checkpoint file: %s" path)
     else
         fail errors
 | args when args.Length > 0 && args.[0] = "validate-checkpoint-state" ->
@@ -92,7 +97,7 @@ match argv with
     let errors = validateCheckpointState root cycle
 
     if List.isEmpty errors then
-        printfn "feedback-tool: valid checkpoint state for cycle %s" cycle
+        pass (sprintf "valid checkpoint state for cycle %s" cycle)
     else
         fail errors
 | args when args.Length > 0 && args.[0] = "activate" ->
