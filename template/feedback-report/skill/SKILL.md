@@ -170,10 +170,31 @@ After resolving the audit, write `feedback/audits/<report-stem>.audit.json`:
 ```
 
 Use workspace-relative `file:` locators and strip secrets, customer data, personal data, internal
-hostnames, and excluded absolute paths from critic prompts and audits. For non-file evidence, use a
-specific locator such as `command:dotnet test ...` or `issue:<owner>/<repo>#<number>`, record the checked
-result, and omit `sha256`. Evidence result vocabulary is `verified`, `missing`, `stale`,
-`non-reproducing`, `contradictory`, or `claim-only`.
+hostnames, and excluded absolute paths from critic prompts and audits. A `file:` locator is valid only
+when it is a regular tracked file in the Git commit named by the report's `commit:` frontmatter. A file
+created by the current run—even when it exists locally—does not become reviewable evidence. The validator
+fails closed for an untracked, ignored, absent, or unknown-Git locator and tells you to commit it, cite a
+stable committed receipt, or use a `command:` locator.
+
+For generated render or performance evidence, prefer a command locator when the artifact is intentionally
+ephemeral. Run and inspect the command before the critic records it; then record the exact command without
+machine-local paths or secrets. For example, this clean-checkout-safe pair keeps the committed generator
+and cites its reproducible output without committing the generated JSON:
+
+```markdown
+- **Evidence:** command:dotnet fsi readiness/generate-render-performance.fsx && inspect readiness/generated-performance.json
+```
+
+```json
+{
+  "locator": "command:dotnet fsi readiness/generate-render-performance.fsx && inspect readiness/generated-performance.json",
+  "result": "verified"
+}
+```
+
+For non-file evidence, use a specific locator such as `command:dotnet test ...` or
+`issue:<owner>/<repo>#<number>`, record the checked result, and omit `sha256`. Evidence result vocabulary
+is `verified`, `missing`, `stale`, `non-reproducing`, `contradictory`, or `claim-only`.
 
 Compute the report and text-evidence digests with the bundled helper so newline normalization is
 identical to validation:

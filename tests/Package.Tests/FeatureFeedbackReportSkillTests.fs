@@ -133,6 +133,65 @@ let private runValidate root reportPath auditPath =
         child.WaitForExit()
         child.ExitCode, stdout.Result, stderr.Result
 
+let private runProcess workingDirectory executable arguments =
+    let startInfo = ProcessStartInfo(executable)
+    startInfo.WorkingDirectory <- workingDirectory
+    startInfo.UseShellExecute <- false
+    startInfo.RedirectStandardOutput <- true
+    startInfo.RedirectStandardError <- true
+    arguments |> List.iter startInfo.ArgumentList.Add
+
+    match Process.Start startInfo with
+    | null -> failwithf "could not start %s" executable
+    | child ->
+        use child = child
+        let stdout = child.StandardOutput.ReadToEndAsync()
+        let stderr = child.StandardError.ReadToEndAsync()
+        child.WaitForExit()
+        child.ExitCode, stdout.Result, stderr.Result
+
+let private git root arguments =
+    let exitCode, stdout, stderr = runProcess root "git" arguments
+
+    if exitCode <> 0 then
+        failwithf "git %s failed: %s" (String.concat " " arguments) stderr
+
+    stdout.Trim()
+
+let private runPackagedValidate root reportPath auditPath =
+    runProcess
+        root
+        "dotnet"
+        [ "fsi"
+          ".agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx"
+          "--"
+          "validate"
+          reportPath
+          "--audit"
+          auditPath ]
+
+let private copyPackagedFeedbackSkill root =
+    let destination =
+        Path.Combine(root, ".agents", "skills", "fs-gg-feedback-report", "scripts")
+
+    Directory.CreateDirectory destination |> ignore
+
+    for file in [ "FeedbackReportTool.fs"; "feedback-tool.fsx" ] do
+        File.Copy(
+            Path.Combine(repositoryRoot, "template", "feedback-report", "skill", "scripts", file),
+            Path.Combine(destination, file)
+        )
+
+let private commitFixture root message =
+    git root [ "add"; "." ] |> ignore
+    git root [ "commit"; "-q"; "-m"; message ] |> ignore
+    git root [ "rev-parse"; "HEAD" ]
+
+let private reportAt commit locator =
+    validReport
+        .Replace("commit: abc123", "commit: " + commit)
+        .Replace("file:readiness/build.log", locator)
+
 [<Tests>]
 let feedbackReportSkillTests =
     testList
@@ -160,6 +219,127 @@ let feedbackReportSkillTests =
               Expect.isEmpty (validateReportText validReport) "valid report has no errors"
           }
 
+          test "packaged feedback skill validates file evidence from the report commit, not a dirty checkout" {
+              let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-clean-head-" + Guid.NewGuid().ToString "N")
+              let clone name = Path.Combine(Path.GetTempPath(), name + "-" + Guid.NewGuid().ToString "N")
+              let created = ResizeArray<string>()
+              created.Add root
+
+              let prepareClone name =
+                  let destination = clone name
+                  git (Path.GetTempPath()) [ "clone"; "-q"; root; destination ] |> ignore
+                  created.Add destination
+                  destination
+
+              try
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  copyPackagedFeedbackSkill root
+                  File.WriteAllText(Path.Combine(root, "readiness", "render-baseline.json"), "committed-render-evidence")
+                  File.WriteAllText(
+                      Path.Combine(root, "readiness", "generate-performance.fsx"),
+                      "open System.IO\nFile.WriteAllText(\"readiness/generated-performance.json\", \"generated-performance-evidence\")"
+                  )
+                  git root [ "init"; "-q" ] |> ignore
+                  git root [ "config"; "user.email"; "fixture@example.test" ] |> ignore
+                  git root [ "config"; "user.name"; "Fixture" ] |> ignore
+                  let reportHead = commitFixture root "seed committed render evidence"
+                  let report = reportAt reportHead "file:readiness/render-baseline.json"
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let auditPath = Path.Combine(root, "feedback", "report.audit.json")
+                  Directory.CreateDirectory(Path.Combine(root, "feedback")) |> ignore
+                  File.WriteAllText(reportPath, report)
+                  File.WriteAllText(
+                      auditPath,
+                      auditJson root reportPath report "actionable"
+                          [| {| locator = "file:readiness/render-baseline.json"
+                                result = "verified"
+                                sha256 = Some(sha256Text "committed-render-evidence") |} |]
+                  )
+                  commitFixture root "add feedback audit" |> ignore
+
+                  let committed = prepareClone "fsgg-feedback-committed"
+                  let goodExit, goodOutput, goodError = runPackagedValidate committed "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal goodExit 0 (sprintf "committed evidence validates from a clean checkout: %s" goodError)
+                  Expect.stringContains goodOutput "PASS" "the packaged skill reports a successful validation"
+
+                  let untracked = prepareClone "fsgg-feedback-untracked"
+                  let untrackedReport = reportAt reportHead "file:readiness/generated-performance.json"
+                  File.WriteAllText(Path.Combine(untracked, "feedback", "report.md"), untrackedReport)
+                  File.WriteAllText(Path.Combine(untracked, "readiness", "generated-performance.json"), "generated-performance-evidence")
+                  File.WriteAllText(
+                      Path.Combine(untracked, "feedback", "report.audit.json"),
+                      auditJson untracked (Path.Combine(untracked, "feedback", "report.md")) untrackedReport "actionable"
+                          [| {| locator = "file:readiness/generated-performance.json"
+                                result = "verified"
+                                sha256 = Some(sha256Text "generated-performance-evidence") |} |]
+                  )
+                  let untrackedExit, _, untrackedError = runPackagedValidate untracked "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal untrackedExit 1 "a locally generated but untracked artifact fails"
+                  Expect.stringContains untrackedError "untracked at report head" "the diagnostic distinguishes dirty generated evidence"
+                  Expect.stringContains untrackedError "command: locator" "the diagnostic gives bounded remediation"
+
+                  let ignored = prepareClone "fsgg-feedback-ignored"
+                  File.WriteAllText(Path.Combine(ignored, ".gitignore"), "readiness/ignored-performance.json\n")
+                  File.WriteAllText(Path.Combine(ignored, "readiness", "ignored-performance.json"), "ignored")
+                  let ignoredReport = reportAt reportHead "file:readiness/ignored-performance.json"
+                  File.WriteAllText(Path.Combine(ignored, "feedback", "report.md"), ignoredReport)
+                  File.WriteAllText(
+                      Path.Combine(ignored, "feedback", "report.audit.json"),
+                      auditJson ignored (Path.Combine(ignored, "feedback", "report.md")) ignoredReport "actionable"
+                          [| {| locator = "file:readiness/ignored-performance.json"; result = "verified"; sha256 = Some(sha256Text "ignored") |} |]
+                  )
+                  let ignoredExit, _, ignoredError = runPackagedValidate ignored "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal ignoredExit 1 "an ignored artifact fails"
+                  Expect.stringContains ignoredError "ignored at report head" "the diagnostic distinguishes ignored evidence"
+
+                  let absent = prepareClone "fsgg-feedback-absent"
+                  let absentReport = reportAt reportHead "file:readiness/absent-performance.json"
+                  File.WriteAllText(Path.Combine(absent, "feedback", "report.md"), absentReport)
+                  File.WriteAllText(
+                      Path.Combine(absent, "feedback", "report.audit.json"),
+                      auditJson absent (Path.Combine(absent, "feedback", "report.md")) absentReport "actionable"
+                          [| {| locator = "file:readiness/absent-performance.json"; result = "verified"; sha256 = Some(sha256Text "absent") |} |]
+                  )
+                  let absentExit, _, absentError = runPackagedValidate absent "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal absentExit 1 "an absent artifact fails"
+                  Expect.stringContains absentError "absent at report head" "the diagnostic distinguishes an absent path"
+
+                  let command = prepareClone "fsgg-feedback-command"
+                  let generatorExit, _, generatorError = runProcess command "dotnet" [ "fsi"; "readiness/generate-performance.fsx" ]
+                  Expect.equal generatorExit 0 (sprintf "the clean-checkout generator runs: %s" generatorError)
+                  let commandLocator = "command:dotnet fsi readiness/generate-performance.fsx && inspect readiness/generated-performance.json"
+                  let commandReport = reportAt reportHead commandLocator
+                  File.WriteAllText(Path.Combine(command, "feedback", "report.md"), commandReport)
+                  File.WriteAllText(
+                      Path.Combine(command, "feedback", "report.audit.json"),
+                      auditJson command (Path.Combine(command, "feedback", "report.md")) commandReport "actionable"
+                          [| {| locator = commandLocator; result = "verified"; sha256 = None |} |]
+                  )
+                  let commandExit, commandOutput, commandError = runPackagedValidate command "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal commandExit 0 (sprintf "a command locator can describe generated performance evidence: %s" commandError)
+                  Expect.stringContains commandOutput "PASS" "the command-locator fixture remains valid"
+
+                  let nonGit = clone "fsgg-feedback-no-git"
+                  created.Add nonGit
+                  Directory.CreateDirectory(Path.Combine(nonGit, "feedback")) |> ignore
+                  Directory.CreateDirectory(Path.Combine(nonGit, "readiness")) |> ignore
+                  copyPackagedFeedbackSkill nonGit
+                  let nonGitReport = reportAt "unresolvable-head" "file:readiness/render-baseline.json"
+                  File.WriteAllText(Path.Combine(nonGit, "readiness", "render-baseline.json"), "local-only")
+                  File.WriteAllText(Path.Combine(nonGit, "feedback", "report.md"), nonGitReport)
+                  File.WriteAllText(
+                      Path.Combine(nonGit, "feedback", "report.audit.json"),
+                      auditJson nonGit (Path.Combine(nonGit, "feedback", "report.md")) nonGitReport "actionable"
+                          [| {| locator = "file:readiness/render-baseline.json"; result = "verified"; sha256 = Some(sha256Text "local-only") |} |]
+                  )
+                  let nonGitExit, _, nonGitError = runPackagedValidate nonGit "feedback/report.md" "feedback/report.audit.json"
+                  Expect.equal nonGitExit 1 "an unknown Git workspace fails closed"
+                  Expect.stringContains nonGitError "cannot establish Git workspace state" "unknown is not treated as a clean checkout"
+              finally
+                  for path in created |> Seq.distinct do
+                      if Directory.Exists path then Directory.Delete(path, true)
+          }
+
           test "validate emits a terminal PASS or FAIL verdict through tail while retaining stderr detail and exit codes" {
               let root =
                   Path.Combine(Path.GetTempPath(), "fsgg-feedback-verdict-" + Guid.NewGuid().ToString "N")
@@ -170,15 +350,20 @@ let feedbackReportSkillTests =
                   let validReportPath = Path.Combine(root, "feedback", "valid.md")
                   let validAuditPath = Path.Combine(root, "feedback", "valid.audit.json")
                   let evidencePath = Path.Combine(root, "readiness", "build.log")
-                  File.WriteAllText(validReportPath, validReport)
                   File.WriteAllText(evidencePath, "green")
+                  git root [ "init"; "-q" ] |> ignore
+                  git root [ "config"; "user.email"; "fixture@example.test" ] |> ignore
+                  git root [ "config"; "user.name"; "Fixture" ] |> ignore
+                  let reportHead = commitFixture root "seed verdict evidence"
+                  let committedReport = reportAt reportHead "file:readiness/build.log"
+                  File.WriteAllText(validReportPath, committedReport)
 
                   let evidence =
                       [| {| locator = "file:readiness/build.log"
                             result = "verified"
                             sha256 = Some(sha256Text "green") |} |]
 
-                  File.WriteAllText(validAuditPath, auditJson root validReportPath validReport "actionable" evidence)
+                  File.WriteAllText(validAuditPath, auditJson root validReportPath committedReport "actionable" evidence)
 
                   let successExit, successLastLine, successError =
                       runValidateThroughTail root validReportPath validAuditPath

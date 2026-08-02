@@ -1,6 +1,7 @@
 module FsGgFeedbackReportTool
 
 open System
+open System.Diagnostics
 open System.IO
 open System.Security.Cryptography
 open System.Text
@@ -518,7 +519,103 @@ let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
                 else
                     None
 
-let validateActionabilityAuditDetailed
+type private GitRun =
+    { exitCode: int
+      stdout: string
+      stderr: string }
+
+let private runGit (workspaceRoot: string) (arguments: string list) =
+    try
+        let start = ProcessStartInfo("git")
+        start.WorkingDirectory <- workspaceRoot
+        start.UseShellExecute <- false
+        start.RedirectStandardOutput <- true
+        start.RedirectStandardError <- true
+        arguments |> List.iter start.ArgumentList.Add
+
+        match Process.Start start with
+        | null -> Error "could not start git"
+        | child ->
+            use child = child
+            let stdout = child.StandardOutput.ReadToEndAsync()
+            let stderr = child.StandardError.ReadToEndAsync()
+            child.WaitForExit()
+
+            Ok
+                { exitCode = child.ExitCode
+                  stdout = stdout.Result
+                  stderr = stderr.Result.Trim() }
+    with ex ->
+        Error ex.Message
+
+let private reportCommit reportText =
+    frontmatter reportText
+    |> Option.bind (Map.tryFind "commit")
+    |> Option.map _.Trim()
+    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+
+let private boundedFileEvidenceGuidance =
+    "commit the artifact, use a stable committed receipt, or use a command: locator that regenerates and inspects it"
+
+/// Resolve the immutable Git tree a feedback report describes.  This is intentionally
+/// separate from the working-tree path checks: a local file is not evidence that a
+/// reviewer can recover from the report's stated commit.
+let private resolveReportHead (workspaceRoot: string) (reportText: string) =
+    match runGit workspaceRoot [ "rev-parse"; "--is-inside-work-tree" ] with
+    | Error detail -> Error(sprintf "cannot establish Git workspace state (%s); %s" detail boundedFileEvidenceGuidance)
+    | Ok state when state.exitCode <> 0 || state.stdout.Trim() <> "true" ->
+        Error(sprintf "cannot establish Git workspace state (%s); %s" state.stderr boundedFileEvidenceGuidance)
+    | Ok _ ->
+        match reportCommit reportText with
+        | None -> Error(sprintf "cannot establish the report commit; %s" boundedFileEvidenceGuidance)
+        | Some commit ->
+            match runGit workspaceRoot [ "rev-parse"; "--verify"; commit + "^{commit}" ] with
+            | Ok resolved when resolved.exitCode = 0 -> Ok(resolved.stdout.Trim())
+            | Ok resolved ->
+                Error(
+                    sprintf
+                        "cannot resolve report commit '%s' (%s); %s"
+                        commit
+                        resolved.stderr
+                        boundedFileEvidenceGuidance
+                )
+            | Error detail -> Error(sprintf "cannot resolve report commit '%s' (%s); %s" commit detail boundedFileEvidenceGuidance)
+
+let private committedFileText (workspaceRoot: string) (head: string) (relative: string) =
+    let absent classification =
+        Error(sprintf "file evidence is %s at report head: file:%s; %s" classification relative boundedFileEvidenceGuidance)
+
+    match runGit workspaceRoot [ "ls-tree"; "-z"; head; "--"; relative ] with
+    | Error detail -> Error(sprintf "cannot inspect Git tree for file:%s (%s); %s" relative detail boundedFileEvidenceGuidance)
+    | Ok tree when tree.exitCode <> 0 ->
+        Error(sprintf "cannot inspect Git tree for file:%s (%s); %s" relative tree.stderr boundedFileEvidenceGuidance)
+    | Ok tree when String.IsNullOrEmpty tree.stdout ->
+        match runGit workspaceRoot [ "check-ignore"; "--quiet"; "--"; relative ] with
+        | Ok ignored when ignored.exitCode = 0 -> absent "ignored"
+        | Ok ignored when ignored.exitCode <> 1 ->
+            Error(sprintf "cannot classify file:%s in Git (%s); %s" relative ignored.stderr boundedFileEvidenceGuidance)
+        | Error detail -> Error(sprintf "cannot classify file:%s in Git (%s); %s" relative detail boundedFileEvidenceGuidance)
+        | Ok _ ->
+            match runGit workspaceRoot [ "ls-files"; "--error-unmatch"; "--"; relative ] with
+            | Ok tracked when tracked.exitCode = 0 -> absent "absent"
+            | Ok tracked when tracked.exitCode = 1 && File.Exists(Path.Combine(workspaceRoot, relative)) -> absent "untracked"
+            | Ok tracked when tracked.exitCode = 1 -> absent "absent"
+            | Ok tracked -> Error(sprintf "cannot classify file:%s in Git (%s); %s" relative tracked.stderr boundedFileEvidenceGuidance)
+            | Error detail -> Error(sprintf "cannot classify file:%s in Git (%s); %s" relative detail boundedFileEvidenceGuidance)
+    | Ok tree ->
+        let metadata = tree.stdout.Split('\000').[0]
+        let fields = metadata.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+
+        if fields.Length < 3 || not (fields.[0].StartsWith("100", StringComparison.Ordinal)) then
+            Error(sprintf "file evidence is not a regular committed file at report head: file:%s; %s" relative boundedFileEvidenceGuidance)
+        else
+            match runGit workspaceRoot [ "show"; head + ":" + relative ] with
+            | Ok content when content.exitCode = 0 -> Ok content.stdout
+            | Ok content -> Error(sprintf "cannot read committed file evidence file:%s (%s); %s" relative content.stderr boundedFileEvidenceGuidance)
+            | Error detail -> Error(sprintf "cannot read committed file evidence file:%s (%s); %s" relative detail boundedFileEvidenceGuidance)
+
+let private validateActionabilityAuditDetailedWithGitTree
+    (requireCommittedTree: bool)
     (workspaceRoot: string)
     (reportPath: string)
     (reportText: string)
@@ -526,6 +623,7 @@ let validateActionabilityAuditDetailed
     =
     let errors = ResizeArray<string>()
     let notBound = ResizeArray<NotBoundCitation>()
+    let reportHead = lazy (resolveReportHead workspaceRoot reportText)
 
     let audit =
         try
@@ -706,28 +804,35 @@ let validateActionabilityAuditDetailed
                                     "audit: %s evidence locator must be a workspace-relative file: path"
                                     id
                             )
-                        | Some path when not (File.Exists path) ->
-                            errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
                         | Some path ->
                             let relative = workspaceRelative workspaceRoot path
 
-                            match digestExemption relative with
-                            | Some reason ->
-                                notBound.Add
-                                    { findingId = id
-                                      locator = locator
-                                      path = relative
-                                      reason = reason }
-                            | None ->
-                                match digest with
-                                | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
-                                | Some digest ->
-                                    let actual = File.ReadAllText path |> sha256Text
+                            let validateDigest text =
+                                match digestExemption relative with
+                                | Some reason ->
+                                    notBound.Add
+                                        { findingId = id
+                                          locator = locator
+                                          path = relative
+                                          reason = reason }
+                                | None ->
+                                    match digest with
+                                    | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
+                                    | Some digest when digest <> sha256Text text ->
+                                        errors.Add(sprintf "audit: %s evidence digest is stale: %s" id locator)
+                                    | Some _ -> ()
 
-                                    if digest <> actual then
-                                        errors.Add(
-                                            sprintf "audit: %s evidence digest is stale: %s" id locator
-                                        )
+                            if requireCommittedTree then
+                                match reportHead.Force() with
+                                | Error detail -> errors.Add(sprintf "audit: %s %s" id detail)
+                                | Ok head ->
+                                    match committedFileText workspaceRoot head relative with
+                                    | Error detail -> errors.Add(sprintf "audit: %s %s" id detail)
+                                    | Ok committedText -> validateDigest committedText
+                            elif not (File.Exists path) then
+                                errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
+                            else
+                                File.ReadAllText path |> validateDigest
                     elif not (String.IsNullOrWhiteSpace locator) && Path.IsPathRooted locator then
                         errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
 
@@ -747,6 +852,26 @@ let validateActionabilityAuditDetailed
         |> Seq.distinctBy (fun citation -> citation.findingId, citation.locator)
         |> Seq.sortBy (fun citation -> citation.findingId, citation.locator)
         |> List.ofSeq }
+
+/// The reusable validation core keeps filesystem-only behavior for embedders that
+/// intentionally validate an in-memory or synthetic fixture.
+let validateActionabilityAuditDetailed
+    (workspaceRoot: string)
+    (reportPath: string)
+    (reportText: string)
+    (auditText: string)
+    =
+    validateActionabilityAuditDetailedWithGitTree false workspaceRoot reportPath reportText auditText
+
+/// The command-facing validator proves every `file:` locator from the report's
+/// committed Git tree, rather than accepting an artifact created in a dirty tree.
+let validateActionabilityAuditAtReportHeadDetailed
+    (workspaceRoot: string)
+    (reportPath: string)
+    (reportText: string)
+    (auditText: string)
+    =
+    validateActionabilityAuditDetailedWithGitTree true workspaceRoot reportPath reportText auditText
 
 /// Compatibility wrapper for existing callers that only need validation errors.
 let validateActionabilityAudit

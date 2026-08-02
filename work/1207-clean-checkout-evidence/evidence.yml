@@ -1,0 +1,350 @@
+schemaVersion: 1
+workId: 1207-clean-checkout-evidence
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1207-clean-checkout-evidence/spec.md
+sourceClarifications: work/1207-clean-checkout-evidence/clarifications.md
+sourceChecklist: work/1207-clean-checkout-evidence/checklist.md
+sourcePlan: work/1207-clean-checkout-evidence/plan.md
+sourceTasks: work/1207-clean-checkout-evidence/tasks.yml
+sourceAnalysis: readiness/1207-clean-checkout-evidence/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1207-clean-checkout-evidence/analysis.json
+    digest: 2cd97f86e274c3586c68d2790bfb19e80ec7197ec30ba7d4b19c57cae74fc155
+    schemaVersion: 1
+  - label: checklist
+    path: work/1207-clean-checkout-evidence/checklist.md
+    digest: aaa52d56619ed9b8deb3dbf4b2b338b95c12747387baec93f2756c7d77012881
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1207-clean-checkout-evidence/clarifications.md
+    digest: 0f21ee62a28e89bfd0b9156b680a85a762f1a3ec8b4cdc09e1b1da5d1572d334
+    schemaVersion: 1
+  - label: plan
+    path: work/1207-clean-checkout-evidence/plan.md
+    digest: e693197095ffd7d4b730218ecc75c2249d8491c85fbea51b9661eaa4b569a62b
+    schemaVersion: 1
+  - label: spec
+    path: work/1207-clean-checkout-evidence/spec.md
+    digest: c96d3e1e7921888042c4b153c0836d687b85436d01ddbdc719b10e67f94ecbb8
+    schemaVersion: 1
+  - label: tasks
+    path: work/1207-clean-checkout-evidence/tasks.yml
+    digest: e065a8ff0264ee05e32fa29b443623830c39aa8b13b5c4a31d886cac7e6e22b9
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV005]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV006]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV007]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV008]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV009]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV010]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV011]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV012]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1207-clean-checkout-evidence/feedback-clean-checkout.trx
+      digest: "sha256:ac729df835f66a452fc833a76eb22fe3fa8f9fa603aad48c39832439fc70b068"
+      outcome: passed
+      passed: 1
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."
