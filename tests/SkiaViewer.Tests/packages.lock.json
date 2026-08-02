@@ -14,11 +14,11 @@
       },
       "FS.GG.Audio.Host": {
         "type": "Direct",
-        "requested": "[0.1.0, )",
-        "resolved": "0.1.0",
-        "contentHash": "RKAXe6HA0HqYUmtTd+TwfKdDsl7sW4PixqDyEGP8Lh845B1EnQsQGuszI2ihR+B2PyEgzAjeeIylPQUTjsjcKg==",
+        "requested": "[0.5.0, )",
+        "resolved": "0.5.0",
+        "contentHash": "PxReDLXeZyDNNg0rp1cDfD7iZv2/Unp400blVfkAPnwylVquspNkGkIkCw0x8XDZ/yHxSLEb2jGxYk8dlaxbwQ==",
         "dependencies": {
-          "FS.GG.Audio.Core": "0.1.0",
+          "FS.GG.Audio.Core": "0.5.0",
           "FSharp.Core": "10.1.301",
           "Silk.NET.OpenAL": "2.23.0",
           "Silk.NET.OpenAL.Soft.Native": "1.23.1"
