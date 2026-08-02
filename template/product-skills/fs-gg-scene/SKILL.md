@@ -42,7 +42,7 @@ top-level shape. Do not use `Expect.isNonEmpty scene.Nodes` (or a node-count che
 that a gameplay element was emitted; the assertion passes even when the projection emitted
 nothing meaningful.
 
-```fsharp
+```text
 let noDoorWasEmitted = Scene.group []
 
 Expect.isNonEmpty noDoorWasEmitted.Nodes
