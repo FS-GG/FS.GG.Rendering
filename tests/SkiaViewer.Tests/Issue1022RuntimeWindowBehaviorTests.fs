@@ -165,6 +165,21 @@ let runtimeWindowBehaviorTests =
             Expect.equal (GlHost.applyRuntimeWindowBehavior controller (target fake) plannedForDefault) (Ok true) "transition applies"
             Expect.equal fake.Position (Vector2D<int>(2400, 1440)) "the active output origin wins"
             Expect.equal fake.Size (Vector2D<int>(3440, 1400)) "the active output work area wins"
+            // Consume the surface emitted by the SAME fake native transition, rather than
+            // independently inventing a size for the pointer assertion.
+            let postChangeSurface: Size = { Width = fake.Size.X; Height = fake.Size.Y }
+            let logical: Size = { Width = 1920; Height = 1080 }
+            let fit = LogicalCanvas.fit logical postChangeSurface
+            let native =
+                { X = 960.0 * fit.Scale + fit.OffsetX
+                  Y = 540.0 * fit.Scale + fit.OffsetY
+                  Phase = ViewerPointerPhaseKind.Pressed
+                  Button = Some ViewerPointerButtonKind.Primary
+                  DeltaX = 0.0
+                  DeltaY = 0.0 }
+            let mapped = Viewer.pointerInProductSpace (Some logical) postChangeSurface postChangeSurface native
+            Expect.floatClose Accuracy.high mapped.X 960.0 "the emitted post-change surface drives inverse control X"
+            Expect.floatClose Accuracy.high mapped.Y 540.0 "the emitted post-change surface drives inverse control Y"
         }
 
         test "post-change active-output surface drives both presentation fit and inverse pointer mapping" {

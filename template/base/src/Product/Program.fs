@@ -192,18 +192,11 @@ let main args =
             // One launch overload owns both paths. With no flags, the shell's authored default
             // (1280x720, Windowed) is explicit rather than inheriting a viewer default that can select
             // different surface/window behavior. Flagged launches replace that request, not the host.
-            let launchRequest =
-                if AppRoot.WindowOptions.windowFlagSupplied args then
-                    AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
-                else
-                    AppRoot.GameShell.windowBehavior AppRoot.EvidenceCommands.shellConfig.InitialDisplay
+            let launchRequest = AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
 
             ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest audioSink interactiveHost
             //#else
-            if AppRoot.WindowOptions.windowFlagSupplied args then
-                ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
-            else
-                ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
             //#endif
         //#else
         // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). A window flag
@@ -214,10 +207,7 @@ let main args =
         // sinkless `Viewer.runApp`. It had referenced all four FS.GG.Audio packages since ADR-0024 and
         // wired none of them — shipping the dependency and the silence together.
         let launchResult =
-            if AppRoot.WindowOptions.windowFlagSupplied args then
-                Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
-            else
-                Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+            Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
         //#endif
 
         match launchResult with
