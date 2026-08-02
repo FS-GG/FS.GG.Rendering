@@ -35,6 +35,8 @@
 #   skill-view generate  produce each runtime's skill root as a VIEW of ONE source directory.
 #   skill-view check     assert the skills that source declares are VISIBLE at each runtime's
 #                        expected path — and FAIL LOUDLY when they are not.
+#   skill-view roots     report the resolved roots and their filesystem classes, without requiring
+#                        an expected skill source.
 #   skill-view selftest  demonstrate that every lane of `check` CAN FIRE, over fixture trees.
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -163,9 +165,11 @@
 # is the SOURCE directory, which cannot be a subset of itself.
 #
 # Usage:
-#   skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2> ..."] [--mode auto|link|copy]
+#   skill-view generate (--source <dir> | --receiver-proj <file>) [--tree <dir>]
+#                       [--roots "<r1> <r2> ..."] [--mode auto|link|copy]
 #   skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> ..."]
 #                       [--receiver-proj <file>] [--expect-roots "<r1> ..."] [--absent-ok "<why>"]
+#   skill-view roots    [--tree <dir>] [--roots "<r1> ..."]
 #   skill-view selftest [--tree <dir>]
 #
 # Exit: 0 = every declared skill is visible at every configured root
@@ -213,7 +217,8 @@ usage() {
   cat <<'EOF'
 skill-view — generate a runtime skill root as a view of one source, and assert it is visible.
 
-  skill-view generate --source <dir> [--tree <dir>] [--roots "<r1> <r2>"] [--mode auto|link|copy]
+  skill-view generate (--source <dir> | --receiver-proj <file>) [--tree <dir>]
+                      [--roots "<r1> <r2>"] [--mode auto|link|copy]
   skill-view check    (--source <dir> | --manifest <file.json>) [--tree <dir>] [--roots "<r1> <r2>"]
                       [--receiver-proj <file>] [--expect-roots "<r1> <r2>"] [--absent-ok "<why>"]
   skill-view selftest [--tree <dir>]
@@ -225,12 +230,15 @@ skill-view — generate a runtime skill root as a view of one source, and assert
                      <tree>/.agent-skill-roots > the ADR-0011 default.
   --mode             auto (symlink, fall back to copy), link (symlink or die), copy (always copy).
 
-  --receiver-proj <file>   (check only) grade the ROOTS DECLARATION too: read <FsggKitSkillRoots>
+  --receiver-proj <file>   for check, grade the ROOTS DECLARATION too: read <FsggKitSkillRoots>
                      and <FsggKitViewSkillRoots> from an FS.GG.Kit receiver project and assert their
                      sorted UNION equals --expect-roots. Also supplies the root set to resolve (so
                      --roots is refused alongside it), marks which roots are VIEW roots, and enables
                      the tracked-view-root assertion. This is ADR-0067 §8's membership half: with
                      <FsggKitViewSkillRoots> emptied, every other kit gate is green.
+                     For generate, the same declaration supplies the ONE live source root and the
+                     VIEW roots to write, so a workflow cannot hand-copy a different pair. It is
+                     refused with --source or --roots: the declaration is the whole input set.
   --expect-roots "<...>"   the runtime root set the union must equal. Default: ADR-0011's two.
                      Set equality, not a minimum — ADR-0065 governs ADDING a root exactly as it
                      governs removing one, and a legal disposition swap between the two properties
@@ -302,6 +310,16 @@ classify_root() {
     echo "not-a-directory"; return
   fi
   echo "absent"
+}
+
+# do_roots — expose classify_root to callers that must judge the roots before a readable source
+# exists.  Keep this deliberately source-free: the hook's subject can itself be the source.
+do_roots() {
+  local root cls
+  for root in $ROOTS; do
+    cls="$(classify_root "$TREE_ABS/$root")"
+    printf '%s\t%s\n' "$root" "$cls"
+  done
 }
 
 # looks_like_link_body <file> — is this regular file the CHECKED-OUT BODY of a committed symlink?
@@ -662,6 +680,14 @@ do_generate() {
   # GENERATE RUNS CHECK. A view produced and not verified is exactly the silent failure this phase
   # exists to prevent, so the success path goes through the check or there is no success path.
   SOURCE="$src_abs"
+  # Declaration-driven generation writes only VIEW roots, but its mandatory verification must grade
+  # the complete runtime union.  Restoring the live roots here preserves the same declaration that
+  # selected SOURCE above; it does not re-read or hand-copy workflow arguments.
+  if [ -n "$RECEIVER_PROJ" ]; then
+    ROOTS="$(normalize_roots "$LIVE_ROOTS;$VIEW_ROOTS")"
+    ROOTS_SRC="$(basename "$RECEIVER_PROJ") (<FsggKitSkillRoots> ∪ <FsggKitViewSkillRoots>)"
+    [ -n "$EXPECT_ROOTS" ] || EXPECT_ROOTS="$DEFAULT_ROOTS"
+  fi
   do_check
 }
 
@@ -704,12 +730,12 @@ mkskills() {
 }
 
 # mkproj <file> <live> <view> — a receiver project declaring the two root properties. An empty
-# <view> writes the element with no content (the "emptied" regression); the literal string OMIT
-# leaves the element out entirely (the "deleted" regression).
+# property writes the element with no content (the "emptied" regression); the literal string OMIT
+# leaves that property out entirely (the "deleted" regression).
 mkproj() {
   local f="$1" live="$2" view="$3"
   { printf '<Project>\n  <PropertyGroup>\n'
-    printf '    <FsggKitSkillRoots>%s</FsggKitSkillRoots>\n' "$live"
+    [ "$live" = "OMIT" ] || printf '    <FsggKitSkillRoots>%s</FsggKitSkillRoots>\n' "$live"
     [ "$view" = "OMIT" ] || printf '    <FsggKitViewSkillRoots>%s</FsggKitViewSkillRoots>\n' "$view"
     printf '  </PropertyGroup>\n</Project>\n'
   } > "$f"
@@ -751,6 +777,35 @@ selftest_case() {
   esac
 }
 
+# selftest_generate_case is deliberately separate from selftest_case: the latter drives check,
+# while this one proves generate's declaration reader and its refusal boundary.  Keeping both as
+# subprocesses means the test observes the argv parser a workflow actually reaches.
+selftest_generate_case() {
+  local label="$1" expect="$2"; shift 2
+  local out rc=0
+  out="$(bash "$SELF" generate "$@" 2>&1)" || rc=$?
+  case "$expect" in
+    ok)
+      if [ "$rc" -eq 0 ]; then
+        echo "  PASS  $label"
+        SELFTEST_PASS=$((SELFTEST_PASS + 1))
+      else
+        echo "  FAIL  $label — expected green, got exit $rc" >&2
+        printf '%s\n' "$out" >&2
+        SELFTEST_FAIL=$((SELFTEST_FAIL + 1))
+      fi ;;
+    *)
+      if [ "$rc" -ne 0 ] && [[ "$out" == *"$expect"* ]]; then
+        echo "  PASS  $label (red: $expect)"
+        SELFTEST_PASS=$((SELFTEST_PASS + 1))
+      else
+        echo "  FAIL  $label — expected red containing '$expect', got exit $rc" >&2
+        printf '%s\n' "$out" >&2
+        SELFTEST_FAIL=$((SELFTEST_FAIL + 1))
+      fi ;;
+  esac
+}
+
 do_selftest() {
   local tmp t
   SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
@@ -770,6 +825,48 @@ do_selftest() {
     mkskills "$t/.agents/skills" alpha beta
     printf '%s' "$t"
   }
+
+  # A generate fixture starts with only the live source.  Its view root is absent by design: this
+  # is the checkout state a receiver workflow repairs, and the one where stale hard-coded arguments
+  # previously let a legal declaration change generate the wrong root.
+  mkgen() {
+    local t="$tmp/$1"
+    mkdir -p "$t"
+    mkskills "$t/.claude/skills" alpha beta
+    mkproj "$t/r.proj" ".claude/skills" ".agents/skills"
+    printf '%s' "$t"
+  }
+
+  echo "generate declaration mode — one reader for source and view roots (.github#1893)"
+
+  t="$(mkgen generate_declared)"
+  selftest_generate_case "the declared live root sources the declared view root" ok \
+    --tree "$t" --receiver-proj "$t/r.proj"
+
+  t="$(mkgen generate_source_conflict)"
+  selftest_generate_case "--source cannot override a receiver declaration" "--source and --receiver-proj" \
+    --tree "$t" --receiver-proj "$t/r.proj" --source "$t/.claude/skills"
+
+  t="$(mkgen generate_roots_conflict)"
+  selftest_generate_case "--roots cannot override a receiver declaration" "--roots and --receiver-proj" \
+    --tree "$t" --receiver-proj "$t/r.proj" --roots ".agents/skills"
+
+  t="$(mkgen generate_missing_live)"; mkproj "$t/r.proj" "OMIT" ".agents/skills"
+  selftest_generate_case "an undeclared live source property is red on generate" "does not declare <FsggKitSkillRoots>" \
+    --tree "$t" --receiver-proj "$t/r.proj"
+
+  t="$(mkgen generate_missing_view)"; mkproj "$t/r.proj" ".claude/skills" "OMIT"
+  selftest_generate_case "an undeclared view-root property is red on generate" "does not declare <FsggKitViewSkillRoots>" \
+    --tree "$t" --receiver-proj "$t/r.proj"
+
+  # A disposition swap remains legal.  Generate must follow the declaration, rather than continue
+  # using a workflow's former --source/--roots pair.
+  t="$tmp/generate_swapped"; mkskills "$t/.agents/skills" alpha beta
+  mkproj "$t/r.proj" ".agents/skills" ".claude/skills"
+  selftest_generate_case "a legal disposition swap drives generate from the new declaration" ok \
+    --tree "$t" --receiver-proj "$t/r.proj"
+
+  echo
 
   t="$(mkdecl good)";  mkproj "$t/r.proj" ".claude/skills" ".agents/skills"
   selftest_case "the shipped shape: union is ADR-0011's two" ok \
@@ -892,10 +989,10 @@ do_selftest() {
 # ---------------------------------------------------------------------------------------------
 CMD="${1:-}"
 case "$CMD" in
-  generate|check|selftest) shift ;;
+  generate|check|roots|selftest) shift ;;
   -h|--help) usage; exit 0 ;;
-  "") usage >&2; die "no subcommand (expected 'generate', 'check' or 'selftest')." ;;
-  *) usage >&2; die "unknown subcommand: $CMD (expected 'generate', 'check' or 'selftest')." ;;
+  "") usage >&2; die "no subcommand (expected 'generate', 'check', 'roots' or 'selftest')." ;;
+  *) usage >&2; die "unknown subcommand: $CMD (expected 'generate', 'check', 'roots' or 'selftest')." ;;
 esac
 
 while [ $# -gt 0 ]; do
@@ -924,13 +1021,27 @@ if [ "$CMD" = "selftest" ]; then
 fi
 
 if [ -n "$RECEIVER_PROJ" ]; then
-  [ "$CMD" = "check" ] || die "--receiver-proj is a 'check' flag: it grades a DECLARATION, and 'generate' writes one out rather than judging it."
   [ -z "$ROOTS_ARG" ] || die "--roots and --receiver-proj both name the root set. The receiver project IS the declaration this lane grades, so overriding it with --roots would grade one set and resolve another."
-  [ -n "$EXPECT_ROOTS" ] || EXPECT_ROOTS="$DEFAULT_ROOTS"
+  if [ "$CMD" = "generate" ]; then
+    [ -z "$SOURCE" ] || die "--source and --receiver-proj both name the source root. The receiver project is the declaration the workflow must follow, so overriding it would generate one source into another declaration's view roots."
+    [ -z "$EXPECT_ROOTS" ] || die "--expect-roots grades the declaration --receiver-proj reads; generate resolves the declaration rather than grading an extra expectation."
+  else
+    [ -n "$EXPECT_ROOTS" ] || EXPECT_ROOTS="$DEFAULT_ROOTS"
+  fi
   read_receiver_proj "$RECEIVER_PROJ"
-  # A fault leaves ROOTS empty on purpose; do_check reports it as the verdict it is, before the
-  # "no roots resolved" die below could turn a real finding into a misconfiguration.
-  [ -n "$MEMBERSHIP_FAULT" ] || [ -n "$ROOTS" ] || MEMBERSHIP_FAULT="'$RECEIVER_PROJ' declares both properties but their union is EMPTY."
+  if [ "$CMD" = "generate" ]; then
+    [ -z "$MEMBERSHIP_FAULT" ] || die "cannot generate from --receiver-proj '$RECEIVER_PROJ': $MEMBERSHIP_FAULT"
+    live_count="$(printf '%s\n' "$LIVE_ROOTS" | wc -w | tr -d ' ')"
+    [ "$live_count" = 1 ] || die "--receiver-proj '$RECEIVER_PROJ' declares '$LIVE_ROOTS' as <FsggKitSkillRoots>; generate needs exactly ONE live source root, not $live_count. A multi-source view has no declared identity to copy."
+    [ -n "$VIEW_ROOTS" ] || die "--receiver-proj '$RECEIVER_PROJ' declares no <FsggKitViewSkillRoots>; generate has no view root to produce."
+    SOURCE="$TREE_ABS/$LIVE_ROOTS"
+    ROOTS="$VIEW_ROOTS"
+    ROOTS_SRC="$(basename "$RECEIVER_PROJ") (<FsggKitViewSkillRoots>)"
+  else
+    # A fault leaves ROOTS empty on purpose; do_check reports it as the verdict it is, before the
+    # "no roots resolved" die below could turn a real finding into a misconfiguration.
+    [ -n "$MEMBERSHIP_FAULT" ] || [ -n "$ROOTS" ] || MEMBERSHIP_FAULT="'$RECEIVER_PROJ' declares both properties but their union is EMPTY."
+  fi
 else
   [ -z "$ABSENT_OK_WHY" ] || die "--absent-ok applies to VIEW roots, and only --receiver-proj says which roots those are. Excusing an absent root without knowing its disposition would excuse a materialized root's absence too, which is drift."
   [ -z "$EXPECT_ROOTS" ] || die "--expect-roots grades the declaration --receiver-proj reads; on its own it has nothing to compare."
@@ -941,4 +1052,5 @@ fi
 case "$CMD" in
   generate) do_generate ;;
   check)    do_check ;;
+  roots)    do_roots ;;
 esac

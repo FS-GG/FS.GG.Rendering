@@ -10,3 +10,9 @@ ordering dependency, not transient file overlap. Use a coordination room or `say
 
 Never broaden the current PR merely because a nearby defect is easy. Put distinct work in the follow-up
 queue so the same informed worker can take it after this item.
+
+This file governs findings the implementer discovers before independent review. After the review gate
+starts, [independent-review](independent-review.md) takes precedence: the critic alone searches and
+files review-discovered causes, files only material unresolved work, and files it directly rather than
+through either agent's private follow-up queue. Nonmaterial observations never become issues or board
+rows.

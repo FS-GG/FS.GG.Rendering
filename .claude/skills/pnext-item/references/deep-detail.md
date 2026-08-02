@@ -166,20 +166,54 @@ Every line of that has a reason, and skipping one costs the thing it protects:
 - **The rebuild names `$SHARED` explicitly.** A bare `dotnet build src/FS.GG.Coord.Cli -c Release`
   rebuilds *your* worktree — never the stale tree — and leaves the refusal exactly where it was.
 
-**If you cannot touch the shared checkout, that is an answer, not a failure — escalate and stop.**
-Some hosts isolate a worker to its worktree and *refuse* its git operations against the shared
-checkout outright (measured on this host: `git -C <shared> …` is rejected before it runs). You then
-cannot carry out the repair, and the honest move is to report it to whoever dispatched you and stop
-**before** spending the lease on a `take` the guard will refuse — not to work the item and discover it
-at `done`.
+**If you cannot touch the shared checkout, there is a SECOND repair, and it is the one a
+worktree-isolated worker can actually run.** Some hosts isolate a worker to its worktree and *refuse*
+its git operations against the shared checkout outright (measured on this host: `git -C <shared> …` is
+rejected before it runs). The remedy the guard prints names only that checkout, so a reader who takes
+it literally concludes they are stuck. They are not:
+
+```sh
+git rebase origin/main                        # or `git merge --ff-only origin/main`
+dotnet build src/FS.GG.Coord.Cli -c Release   # YOUR worktree — no -C, no $SHARED
+```
+
+**Why this works is the resolver's tier order, not a trick.** `scripts/fsgg-coord` tries **tier 2a**
+— a source build under the *caller's own* toplevel — **before** tier 2b, the shared checkout's build,
+and it is emphatic that the order is deliberate: *"AFTER 2a, NEVER BEFORE IT. A worker who builds in
+their own worktree gets THEIR build."* Both tiers then call `guards` with **the toplevel they
+resolved**, so once your worktree has a `bin/`, `stale_guard` measures *your* tree — current by
+construction if you rebased — and the refusal lifts. It is not a bypass: the engine that executes
+really is the current code, which is the only thing the guard was ever protecting.
+
+Two conditions, and both are load-bearing:
+
+- **Rebase FIRST.** Tier 2a measures your tree against `origin/main`, so building a worktree that is
+  itself behind buys a green guard over a stale engine — the exact fail-open the guard exists to
+  prevent. `git rebase origin/main` before `dotnet build`, in that order.
+- **You now run YOUR build, including any `src/` edits you are carrying.** That is the kit author's
+  intended workflow, and it is why tier 2a outranks 2b. If your item edits `src/FS.GG.Coord.*`, the
+  engine executing your board writes is the code you are editing — usually what you want, occasionally
+  not, and never a surprise you should meet at `done`.
+
+Two workers found this independently mid-item (`snipe-e1d5` on `.github#1597`, `snipe-5326` on
+`.github#1635`) and one reported it as a finding rather than a fix, which is why it is written here
+rather than rediscovered a third time (`.github#1689`).
+
+**Only when neither repair is available is stopping the answer** — report it to whoever dispatched you
+and stop **before** spending the lease on a `take` the guard will refuse, not at `done`.
 
 **You own the check; the repair belongs to whoever owns the shared checkout.** It is a mutation of a
 tree N workers share, and the actor that *creates* the drift is the one merging their PRs — so the
 refresh belongs with whoever dispatched the wave, which is also the only actor that can serialise it.
-That ownership is filed as `.github#1663` and is **not** in place yet, which is precisely why the rule
-above is a floor rather than a division of labour: check every time, because whether anyone else did
-is not something you can observe from here. And note `.github#1664` — `stale_guard`'s own printed
-remedy still says `pull --ff-only`, which is why this recipe does not.
+That ownership was filed as `.github#1663` and **landed** — `drive-board` §1 now brings the shared
+checkout's engine current before it fans out. The rule above stays a floor rather than a division of
+labour, and for the reason that has not changed: check every time, because whether the host actually
+did it is not something you can observe from here.
+
+`.github#1664` also landed: `stale_guard`'s printed remedy now says `merge --ff-only` (see
+`scripts/fsgg-coord-guards.sh`, *"THE REMEDY IS `merge --ff-only`, NOT `pull --ff-only`"*), so this
+recipe and the message agree. What the message still does **not** carry is the tier 2a branch above —
+it names only the shared checkout — which is why that branch is written out here in full.
 
 ```sh
 scripts/fsgg-coord take --repo <r>     # pick + claim the next SCHEDULABLE item, retrying a lost race
