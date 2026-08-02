@@ -946,8 +946,29 @@ gh api -X POST repos/FS-GG/<repo>/pulls \
   -f body="$(git log -1 --format=%b)" \
   -f head="item/<n>-<slug>" -f base=main --jq '"PR #\(.number)  \(.html_url)"'
 
-scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declaration?
+scripts/fsgg-coord verify-paths --pr <pr>    # did the PR stay inside its declaration? AND: does the
+                                              # body's own closing keyword actually link (.github#2107)?
 ```
+
+> **Write `Closes #<n>`, NEVER `Closes <repo>#<n>` — the board's own shorthand is not GitHub's grammar
+> (.github#2107).**
+>
+> Every recipe in this skill, `take`/`claim`/`widen`/`Blocked by`, every issue body — the canonical way
+> to name work here is `<repo>#<n>`, e.g. `.github#2095`. That habit is correct EVERYWHERE except one
+> place: a closing keyword in a PR body targeting the *same* repo. There, GitHub wants a **bare
+> `#2095`**, or `owner/repo#2095` for a **cross-repo** link — `.github#2095` is neither, and GitHub
+> renders it as plain text with **no warning**. The PR looks correct to a reader, `closingIssuesReferences`
+> stays empty, and the merge never closes the issue.
+>
+> Confirmed twice within an hour of each other on live board work: `Closes .github#2095` (PR #2099) and
+> `Closes .github#2098` (PR #2103) both merged with their issue left OPEN. Both needed a **manual**
+> `gh issue close` — editing a merged PR's body does not replay the close, the same unrecoverable
+> shape as the box above.
+>
+> `verify-paths` now reads the PR's own body and prints `FSGG-CLOSES DEFECT` — naming the exact match
+> and both corrected forms — the moment you run it after opening the PR, which is the one moment fixing
+> it is still free. Do not wait for `done` to refuse with "the issue is still OPEN"; that is the same
+> defect, found late.
 
 > **Put `Closes #<n>` in the commit BODY, never in the subject — and know why.**
 >
