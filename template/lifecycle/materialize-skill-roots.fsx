@@ -1,11 +1,18 @@
 // Feature 231 — the ONE standalone-lane skill-root materialize step (ADR-0014 §Decision 2).
 //
 // Fans the union under `.agents/skills/` (the provider source root) into the remaining
-// declared agent-skill roots (`.claude/`, `.codex/`) as byte-identical copies, then verifies
-// the three-root invariant against the shipped skill-manifest: present in each root ∧
+// declared agent-skill root (`.claude/`) as byte-identical copies, then verifies
+// the two-root invariant against the shipped skill-manifest: present in each root ∧
 // byte-identical across roots ∧ SKILL.md matches the manifest digest. Pure BCL — no restore,
 // no network. Invoked by the `FsGgMaterializeSkillRoots` MSBuild target on build (advisory)
 // and by release/composition gates with `--enforce` (non-zero exit on drift).
+//
+// Issue #1121 (ADR-0067 §5, executed by `.github#1636`): the declared root set narrowed from
+// ADR-0011's three to ADR-0065's two — `.claude/skills`, `.agents/skills`. `.codex/skills` is
+// retired (`.agents/skills` is Codex CLI's own second native discovery root, so the third root
+// carried no runtime the other two did not). The root set itself lives in the vendored
+// `agentSkillRoots` constant (skill-mirror-vendored.fs), transliterated from the pinned
+// FS.GG.Contracts package's `Fsgg.Schemas.agentSkillRoots` — this file only consumes it.
 //
 // This file ships only in the standalone spec-kit lane; under an orchestrated (sdd) scaffold
 // the fsgg-sdd CLI is the mirror authority and this script is never emitted (ADR-0011 §2).

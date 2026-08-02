@@ -25,7 +25,6 @@ Wrappers: `60`
 | --- | --- | --- | --- | --- |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 23 | 23 | 0 | 0 |
-| fs-gg-game-shell | 1 | 1 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
@@ -36,7 +35,7 @@ Wrappers: `60`
 | fs-gg-symbol-design | 6 | 6 | 0 | 0 |
 | fs-gg-symbology | 20 | 20 | 0 | 0 |
 | fs-gg-testing | 12 | 12 | 0 | 0 |
-| fs-gg-ui-widgets | 44 | 44 | 0 | 0 |
+| fs-gg-ui-widgets | 49 | 49 | 0 | 0 |
 
 ## Guarded Theme Coverage
 | Theme | Scoped | Resolved | Dangling | Unnamed |
@@ -53,7 +52,7 @@ No intentional exceptions were applied.
 
 ## Caveats
 - Global Codex skill installation paths are excluded from required repository parity.
-- 4 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-grids, fs-gg-line-drawing, fs-gg-visibility.
+- 5 skill(s) show F# examples that name no public API symbol, so none was judged: fs-gg-collision, fs-gg-game-shell, fs-gg-grids, fs-gg-line-drawing, fs-gg-visibility.
 
 ## Regenerate
 

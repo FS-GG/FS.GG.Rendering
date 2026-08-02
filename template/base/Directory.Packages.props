@@ -14,7 +14,7 @@
          0.3.0 (ADR-0104, Rendering#269): adds `Loop`, the double step buffer that supersedes the
          deprecated FS.GG.UI.Canvas.Loop. A scaffold cannot reach it below this version. -->
 
-    <FsGgGameVersion>0.12.0</FsGgGameVersion>
+    <FsGgGameVersion>0.13.0</FsGgGameVersion>
     <!-- The standalone FS.GG.Audio component (own repo FS-GG/FS.GG.Audio, released on its OWN
          axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). App/game/sample-pack scaffolds pin it here
          to get the REAL host-side audio realization (named buses, fades/ducking, 3D, device backend)
@@ -29,7 +29,7 @@
          `lib/net10.0/`). Do NOT move this pin below 7.4.0 — `scripts/refresh-api-surface-mirror.fsx`
          now reads Contracts like every other package and the pre-#782 hand-copy bridge is deleted,
          so a pre-7.4.0 pin has no surface to generate from and hard-fails the generator. -->
-    <FsGgContractsVersion>7.4.0</FsGgContractsVersion>
+    <FsGgContractsVersion>7.5.2</FsGgContractsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- 043 (FR-013): the published governance engine consumed in-process by the

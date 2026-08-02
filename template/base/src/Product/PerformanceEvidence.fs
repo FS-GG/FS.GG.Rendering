@@ -2,6 +2,7 @@ module AppRoot.PerformanceEvidence
 
 //#if (profile == "game")
 open System
+open System.Collections
 open System.Diagnostics
 open System.Globalization
 open System.IO
@@ -10,6 +11,7 @@ open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
 open System.Xml.Linq
+open Microsoft.FSharp.Reflection
 open Fsgg.Schemas
 open FS.GG.Game.Harness
 open FS.GG.UI.KeyboardInput
@@ -400,15 +402,210 @@ let private workloadSourceFingerprint id =
             |> sha256Text
             |> Some
 
+/// Normalize line endings and Unicode form before hashing, so the same logical fingerprint text
+/// hashes identically across hosts. Not itself the encoding step: see `canonicalWrite` below for
+/// why `%A` cannot be that step.
+let private normalizeFingerprintText (text: string) =
+    if isNull text || text.IndexOf '\u0000' >= 0 then
+        None
+    else
+        Some(text.Replace("\r\n", "\n").Replace("\r", "\n").Normalize(NormalizationForm.FormC))
+
+let private canonicalEscape (builder: StringBuilder) (value: string) =
+    builder.Append '"' |> ignore
+
+    for character in value do
+        match character with
+        | '\\' -> builder.Append "\\\\" |> ignore
+        | '"' -> builder.Append "\\\"" |> ignore
+        | '\n' -> builder.Append "\\n" |> ignore
+        | '\r' -> builder.Append "\\r" |> ignore
+        | '\t' -> builder.Append "\\t" |> ignore
+        | c when Char.IsControl c ->
+            builder.Append("\\u").Append((int c).ToString("x4", CultureInfo.InvariantCulture)) |> ignore
+        | c -> builder.Append c |> ignore
+
+    builder.Append '"' |> ignore
+
+/// Round-trip float text that is stable across hosts. NaN and the infinities are named rather than
+/// culture-formatted, since their formatted text has varied between runtimes.
+let private canonicalFloat (builder: StringBuilder) (value: float) =
+    if Double.IsNaN value then builder.Append "nan" |> ignore
+    elif Double.IsPositiveInfinity value then builder.Append "inf" |> ignore
+    elif Double.IsNegativeInfinity value then builder.Append "-inf" |> ignore
+    else builder.Append(value.ToString("R", CultureInfo.InvariantCulture)) |> ignore
+
+let private canonicalFloat32 (builder: StringBuilder) (value: float32) =
+    if Single.IsNaN value then builder.Append "nan" |> ignore
+    elif Single.IsPositiveInfinity value then builder.Append "inf" |> ignore
+    elif Single.IsNegativeInfinity value then builder.Append "-inf" |> ignore
+    else builder.Append(value.ToString("R", CultureInfo.InvariantCulture)) |> ignore
+
+let private keyValuePairDefinition = typedefof<System.Collections.Generic.KeyValuePair<_, _>>
+
+/// TOTAL, length-unlimited structural encoding used to fingerprint a workload's `InitialState()`
+/// and its sampled `MessageAt` frames (#1180).
+///
+/// WHY NOT `sprintf "%A"`. F#'s default printer applies a 100-element print length to any
+/// collection and appends an ellipsis instead of the tail — measured on this toolchain:
+///
+///     sprintf "%A" [1..600] = sprintf "%A" ([1..599] @ [999])   // true: both print identically
+///
+/// A maximum-content workload's own sampled message-frame list is already past that boundary
+/// (`SampleFrames` runs 120-720 per the declarations below), so a `%A` fingerprint could not see a
+/// divergence in its tail — the exact class of workload `definitionDigest` exists to gate. This
+/// encoder instead walks the value structurally with NO length limit, in an order that is a
+/// function of the value alone: record fields in declaration order, union case name plus fields,
+/// tuples positionally, sequences (list/array/Set/Map/...) by enumeration order — Set and Map
+/// enumerate in their own deterministic comparison order, so their encoding is value-determined,
+/// not insertion-order-determined — and numbers with invariant round-trip formatting so a host's
+/// culture cannot change a byte.
+///
+/// The bottom case of `canonicalWriteStructured` FAILS LOUDLY on a value shape it does not
+/// recognize, rather than falling back to a lossy stringify such as `Convert.ToString`: a silent
+/// string fallback would reintroduce exactly this defect's blind spot for whatever leaf type
+/// reached it, ambiguously collapsing distinct values to the same text. `structuralFingerprint`
+/// below already treats any exception here as "cannot fingerprint safely" and fails the workload's
+/// authorship (see `workloadDefinitionFingerprint`'s `unreadable-workload-definition` fallback)
+/// rather than accept an ambiguous definition — so failing loudly here is what makes that existing
+/// contract true instead of aspirational.
+let rec private canonicalWrite (builder: StringBuilder) (value: obj) : unit =
+    match value with
+    | null -> builder.Append "~" |> ignore
+    | :? bool as flag -> builder.Append(if flag then "true" else "false") |> ignore
+    | :? string as text -> canonicalEscape builder text
+    | :? char as character -> canonicalEscape builder (string character)
+    | :? float as number -> canonicalFloat builder number
+    | :? float32 as number -> canonicalFloat32 builder number
+    | :? sbyte as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? byte as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? int16 as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? uint16 as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? int as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? uint32 as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? int64 as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? uint64 as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? decimal as number -> builder.Append(number.ToString(CultureInfo.InvariantCulture)) |> ignore
+    | :? Guid as id -> builder.Append(id.ToString("D", CultureInfo.InvariantCulture)) |> ignore
+    | :? TimeSpan as span -> builder.Append(span.ToString("c", CultureInfo.InvariantCulture)) |> ignore
+    | :? DateTimeOffset as instant -> builder.Append(instant.ToString("O", CultureInfo.InvariantCulture)) |> ignore
+    | :? DateTime as instant -> builder.Append(instant.ToString("O", CultureInfo.InvariantCulture)) |> ignore
+    | _ -> canonicalWriteStructured builder value
+
+and private canonicalWriteStructured (builder: StringBuilder) (value: obj) : unit =
+    let valueType = value.GetType()
+
+    if valueType.IsEnum then
+        builder.Append(valueType.Name).Append('.').Append(Enum.GetName(valueType, value)) |> ignore
+    elif valueType.IsGenericType && valueType.GetGenericTypeDefinition() = keyValuePairDefinition then
+        let key = valueType.GetProperty "Key"
+        let item = valueType.GetProperty "Value"
+        canonicalWrite builder (key.GetValue value)
+        builder.Append "=>" |> ignore
+        canonicalWrite builder (item.GetValue value)
+    elif FSharpType.IsRecord(valueType, true) then
+        let fields = FSharpType.GetRecordFields(valueType, true)
+        builder.Append(valueType.Name).Append '{' |> ignore
+
+        fields
+        |> Array.iteri (fun index field ->
+            if index > 0 then builder.Append ';' |> ignore
+            builder.Append(field.Name).Append '=' |> ignore
+            canonicalWrite builder (field.GetValue value))
+
+        builder.Append '}' |> ignore
+    elif FSharpType.IsTuple valueType then
+        let fields = FSharpValue.GetTupleFields value
+        builder.Append '(' |> ignore
+
+        fields
+        |> Array.iteri (fun index field ->
+            if index > 0 then builder.Append ',' |> ignore
+            canonicalWrite builder field)
+
+        builder.Append ')' |> ignore
+    // Sequences are matched BEFORE unions on purpose: an F# list is itself a union, and walking a
+    // 600-cons list recursively as a union would both nest deep and lose this flat, enumeration-
+    // order encoding that is exactly what closes #1180 (no per-collection length limit).
+    elif (value :? IEnumerable) then
+        let items = value :?> IEnumerable
+        builder.Append(valueType.Name).Append '[' |> ignore
+        let mutable index = 0
+
+        for item in items do
+            if index > 0 then builder.Append ';' |> ignore
+            canonicalWrite builder item
+            index <- index + 1
+
+        builder.Append ']' |> ignore
+    elif FSharpType.IsUnion(valueType, true) then
+        let case, fields = FSharpValue.GetUnionFields(value, valueType, true)
+        builder.Append(valueType.Name).Append('.').Append(case.Name) |> ignore
+
+        if fields.Length > 0 then
+            builder.Append '(' |> ignore
+
+            fields
+            |> Array.iteri (fun index field ->
+                if index > 0 then builder.Append ',' |> ignore
+                canonicalWrite builder field)
+
+            builder.Append ')' |> ignore
+    elif FSharpType.IsFunction valueType then
+        // A function value has no observable structure; naming its type keeps the encoding total
+        // without pretending two different closures are distinguishable.
+        builder.Append("fun<").Append(valueType.FullName).Append('>') |> ignore
+    else
+        // FAIL LOUDLY (see the doc comment on `canonicalWrite`). A `Convert.ToString` fallback here
+        // would silently collapse every value of this type to its own `.ToString()`, ambiguously —
+        // precisely the blind spot this encoder exists to close. Extend this match instead.
+        failwithf
+            "structuralFingerprint has no total, unambiguous encoding for type %s; extend canonicalWriteStructured instead of adding a lossy string fallback"
+            valueType.FullName
+
+let private structuralFingerprint value =
+    try
+        let builder = StringBuilder(1024)
+        canonicalWrite builder (box value)
+
+        builder.ToString()
+        |> normalizeFingerprintText
+        |> Option.map sha256Text
+    with _ ->
+        None
+
+let private initialStateFingerprint workload =
+    try
+        workload.InitialState() |> structuralFingerprint
+    with _ ->
+        None
+
+let private messageFramesFingerprint workload =
+    try
+        // The sampler restarts frame numbering for warmup and sample passes. Fingerprint their
+        // complete union, so an external helper that changes a later executed frame cannot hide.
+        [ for frame in 0 .. max workload.WarmupFrames workload.SampleFrames - 1 ->
+              frame, workload.MessageAt frame ]
+        |> structuralFingerprint
+    with _ ->
+        None
+
+let private workloadDefinitionFingerprint workload =
+    match workloadSourceFingerprint workload.Id, initialStateFingerprint workload, messageFramesFingerprint workload with
+    | Some source, Some initialState, Some messages -> Some(source, initialState, messages)
+    | _ -> None
+
 let definitionDigest workload =
     let budget =
         workload.Budget
         |> Option.map (fun b -> $"{b.P95Ms:R}|{b.P99Ms:R}|{b.MaximumSceneNodes}|{b.AllowSustainedCatchUp}")
         |> Option.defaultValue "none"
 
-    let executableSource =
-        workloadSourceFingerprint workload.Id
-        |> Option.defaultValue "missing-workload-source-block"
+    let executableDefinition =
+        workloadDefinitionFingerprint workload
+        |> Option.map (fun (source, initialState, messages) ->
+            $"source={source}|initial={initialState}|messages={messages}")
+        |> Option.defaultValue "unreadable-workload-definition"
 
     let structuralBudgets = String.concat "," performanceIntentSeed.StructuralCostBudgets
 
@@ -421,7 +618,7 @@ let definitionDigest workload =
     let costDriverIds = String.concat "," workload.CostDriverIds
 
     let canonical =
-        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{provenanceDefinitionToken workload.Provenance}|{compositionToken workload.Composition}|{costDriverIds}|{budget}|{intentPolicy}|{executableSource}"
+        $"{workload.Id}|{workload.Definition}|{classToken workload.Classification}|{workload.WarmupFrames}|{workload.SampleFrames}|{workload.EventsPerFrame}|{workload.PointerEventsPerFrame}|{provenanceDefinitionToken workload.Provenance}|{compositionToken workload.Composition}|{costDriverIds}|{budget}|{intentPolicy}|{executableDefinition}"
 
     sha256Text canonical
 
@@ -495,11 +692,11 @@ let evaluateBudget workload p95 p99 catchUpFrames sceneNodes =
 let evaluateAuthorship workload =
     let actualDigest = definitionDigest workload
 
-    match workloadSourceFingerprint workload.Id, workload.Authorship with
+    match workloadDefinitionFingerprint workload, workload.Authorship with
     | None, _ ->
         { Passed = false
           Reasons =
-            [ $"workload '{workload.Id}' has no readable WORKLOAD-SOURCE block; executable state/message authorship cannot be verified" ] }
+            [ $"workload '{workload.Id}' has no safely readable WORKLOAD-SOURCE block, initial state, or executed message frames; executable state/message authorship cannot be verified" ] }
     | Some _, Placeholder requiredWork ->
         { Passed = false
           Reasons = [ $"required workload '{workload.Id}' is still a placeholder: {requiredWork}" ] }

@@ -18,8 +18,16 @@ module SkillMirror =
         | Process
         | Product
 
-    /// Vendored `Fsgg.Schemas.agentSkillRoots` (AGENT_SKILL_ROOTS, ADR-0014 §Decision 5).
-    let agentSkillRoots: string list = [ ".claude"; ".codex"; ".agents" ]
+    /// Vendored `Fsgg.Schemas.agentSkillRoots` (AGENT_SKILL_ROOTS, ADR-0014 §Decision 5, narrowed by
+    /// ADR-0067 §5 / ADR-0065's amendment, executed 2026-07-28 by `.github#1636`). `.codex/skills` is
+    /// retired: `.agents/skills` is Codex CLI's own second native discovery root, so the third root
+    /// carried no runtime the other two did not, and only produced a duplicate model-visible catalog
+    /// entry. Issue #1121: this vendored copy must track the PINNED FS.GG.Contracts value exactly —
+    /// the G-PARITY gate (Feature231SkillManifestTests) asserts equality against
+    /// `Fsgg.Schemas.agentSkillRoots` from the package this repo pins
+    /// (`Directory.Packages.local.props`), so a change here must land in the SAME commit as a pin
+    /// bump to a published FS.GG.Contracts whose own constant already moved (7.5.2+).
+    let agentSkillRoots: string list = [ ".claude"; ".agents" ]
 
     let providerSourceRoot = ".agents"
 

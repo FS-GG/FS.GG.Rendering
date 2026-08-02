@@ -106,6 +106,42 @@ If you write your own cue seam by analogy (a `SaveCues.forTransition`, say), you
 inherit this blind spot along with the pattern. Give it a `Started` too, and test it
 here.
 
+## Persistence effects: requested is not durable
+
+The same sink-not-model shape, once more, for save/settings state: a component-only
+or headless host harness can prove your product REQUESTED a save — the
+`ViewerEffect.Persist` batch reached the sink — but it cannot prove a backend
+actually wrote or later reloaded it, because no such backend was ever wired into
+the harness. Keep the two claims separate in what you assert and what you write
+down:
+
+- **Requested (record-only).** Collect the `ViewerEffect.Persist` values a run
+  produced and assert on THOSE — the same shape `audioRequests` above uses. This is
+  the claim a headless test can make honestly, every time.
+- **Durable (backend save/load).** A round-trip through the actual save file,
+  registry key, or platform store — reading back what a previous run wrote. This
+  needs the real backend wired in and is a different test, not a stronger assertion
+  on the same one.
+
+Label evidence for what it is. A readiness report that calls requested-only proof
+"persistence verified" invites the reader to believe the second claim from the
+first; say "persist requested" and "persist durable" as distinct rows instead.
+
+This split also settles how many batches a run is allowed to produce: count the
+requested effects per preference, not per keystroke or per frame. Each preference
+your product actually changed this run must contribute exactly one batch to the
+count; a preference the run never touched must contribute none. Asserting a total
+count alone hides a preference that fired twice while another fired zero times —
+name the preference the count is FOR.
+
+See [[fs-gg-game-shell]] for a concrete rebind/pause-boundary journey that asserts this
+per-preference count one seam upstream of a host sink: this template wires no
+`ViewerEffect.Persist` sink at all (no host here calls `runAppWithPersistence`), so
+the observable point there is the `GameShell.Effect` list `GameShell.update` itself
+returns, not a sink collection. The rule is identical either way — count per
+preference, not per keystroke — assert it on whichever of the two your product
+actually wires.
+
 ## Seeded generation — pin it byte-for-byte, and prove the streams are independent
 
 This one is for products that generate content from a seed — the `game` and
@@ -394,6 +430,13 @@ play, stress, throughput, and live-compositor workloads separately classified. A
 deliberate baseline capture, but that baseline never satisfies acceptance. This is bounded headless
 update + scene-route evidence, not live compositor or vsync proof.
 
+The marked workload source block is not the complete definition by itself. A workload digest also
+binds the complete deterministic value returned by `InitialState()` and every `MessageAt` value the
+warmup and sample passes execute. Keep helper-produced state and later-frame messages deterministic:
+changing a helper-only model field or frame 2 must stale `Authored` until the digest is reviewed again.
+The generated canonicalizer normalizes text across hosts and fails closed if it cannot represent a
+state or message safely; do not replace that failure with a hand-authored hash or prose acknowledgement.
+
 Run the machine gate before the representativeness critic. Each normal-play row must carry an opaque
 FS.GG.Game runner-issued journey receipt. Put a canonical factory at that journey's boot seam;
 caller-authored labels/hashes are not provenance. Disclose direct assembly as
@@ -415,6 +458,11 @@ order. Second, measure normal movement+aiming separately and require p95 below 1
 `ViewerPointerPacingOptions.OnMetrics` sink and records raw/folded/coalesced samples, model updates,
 presented frames, repaint causes, and full-render fallbacks.
 
+For a Controls `InteractiveAppHost`, keep the product on its published Controls launch seam and test
+the Viewer queue boundary separately; do not copy a source-only combined pacing helper into a product
+wrapper. Assert that an authored binding is delivered before any raw fallback and retain the lower
+viewer metrics receipt.
+
 Keep assertion and evidence logic pure over value records; let your test runner
 and `Verify` target perform the actual file and process I/O.
 
@@ -435,6 +483,92 @@ them in this skill's **Sources** / durable-lessons line (and any product-local `
 location). Offline, the mandate degrades to recording "research blocked — <why>"
 rather than hard-failing the phase.
 
+## Supplemental UI performance — bind semantic identities, not totals
+
+Control/node totals are useful cost counters, but they are not composition evidence. A required HUD
+region can disappear while an unrelated node replaces it and the total stays green. For a
+product-authored supplemental UI route, derive the observed identities from the same production
+helpers that rendering calls, then compare them with the product's closed identity inventory.
+
+Keep the identities typed and central. The layout helper, production view, and evidence route all
+consume these values; none retypes a string list or a magic count:
+
+```fsharp
+type HudRegionId = Hearts | Currency | ActiveCharge | Minimap | FloorName
+
+module HudRegionId =
+    let all = [ Hearts; Currency; ActiveCharge; Minimap; FloorName ]
+
+type NamedHudRegion = { Id: HudRegionId; Bounds: HudBounds }
+
+let hudRegionsForSize (size: OutputSize) : NamedHudRegion list =
+    HudRegionId.all
+    |> List.map (fun id -> { Id = id; Bounds = boundsForHudRegion size id })
+
+let hudSceneForSize size model =
+    renderHud model (hudRegionsForSize size)
+```
+
+The evidence test asks the production helper for both required outputs and checks exact identities,
+finite in-bounds rectangles, and pairwise non-overlap. It does not rebuild the identities from labels
+or assert only `hudRegions.Length = 5`:
+
+```fsharp
+let requiredOutputs = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
+
+for output in requiredOutputs do
+    let hudRegions = hudRegionsForSize output
+    Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region appears"
+    Expect.all hudRegions (fun region -> finiteAndInside output region.Bounds) "HUD bounds are finite and on-screen"
+    Expect.isFalse (anyOverlap hudRegions) "no HUD region overlaps another"
+```
+
+A concrete receipt from that helper should retain the names *and* bounds, not reduce them to a count.
+For example, a 1280x720/1920x1080 HUD using the layout above records:
+
+| Output | Region | `(X, Y, Width, Height)` |
+| --- | --- | --- |
+| 1280x720 | `hearts` | `(24, 20, 384, 32)` |
+| 1280x720 | `currency` | `(24, 60, 230, 28)` |
+| 1280x720 | `active-charge` | `(1180, 20, 72, 40)` |
+| 1280x720 | `minimap` | `(1140, 70, 120, 120)` |
+| 1280x720 | `floor-name` | `(490, 668, 300, 32)` |
+| 1920x1080 | `hearts` | `(24, 20, 384, 32)` |
+| 1920x1080 | `currency` | `(24, 60, 230, 28)` |
+| 1920x1080 | `active-charge` | `(1820, 20, 72, 40)` |
+| 1920x1080 | `minimap` | `(1780, 70, 120, 120)` |
+| 1920x1080 | `floor-name` | `(810, 1028, 300, 32)` |
+
+Serialize those rows from `hudRegionsForSize`; do not duplicate the numeric table in the assertion.
+The asserted contract is the typed identity inventory plus geometry invariants, while the receipt makes
+the exact output of the production helper reviewable.
+
+Use the same shape for KPIs: define `KpiId = Deepest | Runs | WinRate | Kills` with
+`KpiId.all = [ Deepest; Runs; WinRate; Kills ]`, let `statsKpis model` return `(KpiId * string)` values,
+feed that exact list to `statsView`, and compare `statsKpis model |> List.map fst` with `KpiId.all`.
+The receipt records the exact stable identities `deepest`, `runs`, `win-rate`, and `kills` from a single
+`KpiId.toStableId` function. A deletion, rename, duplicate, or replacement then fails even if tile/node
+counts remain unchanged. If the identity inventory or stable-id mapping changes, the supplemental
+workload's source-bound `definitionDigest` must stale and require renewed authorship.
+
+This route remains `ComponentOnlySupplemental "HUD/stats view only"` unless it traverses the complete
+production composition. It can report bounded-headless update/view/render timing and deterministic
+reference rasters. It cannot claim native compositor, swapchain/vsync, input ergonomics, legibility,
+or usability evidence.
+
+For charts, structural evidence must bind each typed series identity to its authored color and to the
+same scene consumed by the production view. Require distinct colors, then render that production scene
+to a PNG and make the PNG current and content-addressed:
+
+- compute SHA-256 from the PNG bytes and require both `image-identity: sha256:<digest>` and the basename
+  `sha256-<digest>.png`;
+- require exactly one referenced PNG for the subject and remove superseded files;
+- inspect or pixel-test the raster for every authored series color at the required output size.
+
+Names such as “Dealt” and “Taken”, two series records, or two paths are not proof that the traces are
+visibly distinct. A green result needs all three bindings: exact series identities, pairwise-distinct
+authored colors used by the production scene, and the current raster bytes.
+
 ## Related
 
 - [[fs-gg-elmish]] — the runnable interaction-driver recipe (`Perf.runScriptToModel`,
@@ -445,6 +579,9 @@ rather than hard-failing the phase.
 - [[fs-gg-game:fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
   assertions reuse.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
+- [[fs-gg-game-shell]] — the pause-safe rebind journey that asserts the same
+  per-preference count on its own `GameShell.Effect` list, one seam upstream of the
+  sink this section describes.
 
 ## Sources / links
 

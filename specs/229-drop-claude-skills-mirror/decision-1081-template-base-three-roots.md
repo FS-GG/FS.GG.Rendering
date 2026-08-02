@@ -2,7 +2,48 @@
 
 **Status**: Decided 2026-07-27 (maintainer call recorded on
 [FS.GG.Rendering#1081](https://github.com/FS-GG/FS.GG.Rendering/issues/1081)). Implemented in the same
-item.
+item. **SUPERSEDED 2026-08-02 by
+[FS.GG.Rendering#1121](https://github.com/FS-GG/FS.GG.Rendering/issues/1121), in the same change that
+removed `template/base/.codex/`.**
+
+> **Why "superseded" and not "reverted".** ADR-0067 §5, executed 2026-07-28 by
+> [`.github#1636`](https://github.com/FS-GG/.github/issues/1636) — **one day** after this decision was
+> recorded — narrowed the org's ordered agent-skill root set from ADR-0011's three to ADR-0065's two:
+> `.claude/skills`, `.agents/skills`. `.agents/skills` is Codex CLI's own second native discovery root
+> (re-measured against `codex debug prompt-input` on Codex CLI 0.145.0), so `.codex/skills` carried no
+> runtime the other two did not, and its only observable effect was a duplicate model-visible catalog
+> entry per skill. ADR-0065 §Retiring a root is explicit that a root leaves the declared set by
+> **contract migration, never by deletion** — the distinction is between *hiding* a duplicate and
+> *deciding* one is unnecessary. This decision's premise (ADR-0011's three-root union as the correct
+> shape for a scaffolding base tree) was correct when it was made and stopped being correct the next
+> day for a reason external to it, not because the reasoning below was wrong. **Everything below this
+> notice is the ORIGINAL 2026-07-27 record, preserved for the "why" — it is history, not current
+> instruction. Its concrete claims (`template/base/.codex/` exists; three roots; the `.codex/**`
+> exclude entry) are FALSE as of #1121; do not act on them.**
+>
+> **#1121's disposition, recorded here per that item's acceptance criterion 1:** `template/base/.codex/`
+> is deleted (git history preserves the original three-root tree this record documents), the
+> `.codex/`-gated source row and the now-vacuous `.codex/**` exclude entry are removed from
+> `.template.config/template.json`, `template/lifecycle/materialize-skill-roots.fsx` (via its vendored
+> `agentSkillRoots` constant) no longer fans into `.codex/skills`, and
+> `Issue1081TemplateBaseSkillRootsTests.fs` / `Feature231SkillManifestTests.fs` /
+> `Feature204LifecycleTemplateTests.fs` assert TWO roots plus the retired root's absence.
+>
+> **The template's own emitted root set (issue #1121 acceptance criterion 6): a TEMPLATE CONSTANT,
+> not derived per-scaffold from a live pin.** The standalone spec-kit lane's materialize script
+> (`template/lifecycle/materialize-skill-roots.fsx`) is a vendored, dependency-free `.fsx` — no
+> restore, no network — that is copied byte-for-byte into every scaffolded product at scaffold time.
+> Its root set comes from the vendored `agentSkillRoots` constant in
+> `template/lifecycle/skill-mirror-vendored.fs`, which this repo keeps in parity with the PINNED
+> `FS.GG.Contracts` package (`Directory.Packages.local.props`, test-only) via the G-PARITY gate
+> (`Feature231SkillManifestTests`). Nothing in a scaffolded product re-reads that pin at build or run
+> time — a product scaffolded today carries whatever root set was vendored into this repo's
+> `template/lifecycle/` at the commit it was scaffolded from, permanently. So the next bump is
+> expected to come from **this repo**, deliberately: an ADR-0065 root-set change bumps
+> `template/lifecycle/skill-mirror-vendored.fs`'s `agentSkillRoots` constant, in the same change as
+> the `FS.GG.Contracts` pin bump the G-PARITY gate requires (see the comment on that pin in
+> `Directory.Packages.local.props`) — never a runtime auto-derivation, and never a silent drift
+> between what a product ships and what a later reader of this repo would expect it to ship.
 
 **Read this before concluding that `template/base/.claude/skills/` or `template/base/.codex/skills/`
 contradicts the feature this directory documents. It does not, and this file exists so that

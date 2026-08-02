@@ -574,6 +574,20 @@ let packageContractTests =
                 "FS_SKIA_RUN_PACKAGE_CONSUMER_SMOKE: \"1\""
                 "release.yml must enable the package consumer smoke; never-by-default is not a cadence"
         }
+
+        test "the release package-consumption lane generates every template source view" {
+            let release = File.ReadAllText(repositoryPath ".github/workflows/release.yml")
+            let packageStart = release.IndexOf("package-tests:", StringComparison.Ordinal)
+            let productStart = release.IndexOf("template-product-tests:", StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual packageStart 0 "release workflow has the package-consumption job"
+            Expect.isGreaterThan productStart packageStart "generated-product job follows package-consumption"
+            let packageBlock = release.Substring(packageStart, productStart - packageStart)
+
+            Expect.stringContains
+                packageBlock
+                "- uses: ./.github/actions/skill-view"
+                "Package.Tests scans template.json source roots, so the release-only bare checkout must generate .agents/skills"
+        }
     ]
 
     let deferredPackageSmokeTests =

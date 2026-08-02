@@ -1,5 +1,5 @@
 // See skill: fs-gg-testing
-// Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Harness/Journey.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Harness/Journey.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Harness
 
 open FS.GG.Game.Core

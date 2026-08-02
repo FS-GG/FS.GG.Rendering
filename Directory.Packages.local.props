@@ -17,7 +17,7 @@
          product's `update` emits, and so `runAppWithAudio` can take an `AudioEffect list -> unit`
          sink. Core ONLY — Audio.Host/Engine (IAudioBackend, OpenAL, buses) stay out of the
          rendering core; the generated template supplies the backend at its own boundary. -->
-    <PackageVersion Include="FS.GG.Audio.Core" Version="0.3.0" />
+    <PackageVersion Include="FS.GG.Audio.Core" Version="0.5.0" />
     <PackageVersion Include="Fable.Elmish" Version="5.0.2" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1" />
@@ -36,9 +36,20 @@
   <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here.
        FS.GG.Contracts (Feature 231): the published skill-mirror contract authority the
        Package.Tests parity gate compares the vendored template/lifecycle copy against
-       (ADR-0014 / roadmap §6). Exact pin; test-only; NOT shipped in any product. -->
+       (ADR-0014 / roadmap §6). Exact pin; test-only; NOT shipped in any product.
+
+       7.5.2 (issue #1121): bumped from 7.0.0 in the SAME change that narrows the vendored
+       template/lifecycle/skill-mirror-vendored.fs `agentSkillRoots` constant from ADR-0011's three
+       to ADR-0065's two. 7.0.0's `Fsgg.Schemas.agentSkillRoots` still returned the retired three-root
+       list (measured by loading the published DLL and reading the value via reflection); had the
+       vendored copy narrowed without this bump, the G-PARITY gate (Feature231SkillManifestTests)
+       would have compared a two-root vendored copy against a three-root pinned library and correctly
+       failed. 7.5.2 is the first cached version whose own constant already reads
+       `[".claude"; ".agents"]` (ADR-0067 §5 / `.github#1636`, executed 2026-07-28) — the same version
+       `template/base/Directory.Packages.props` (`FsGgContractsVersion`) already pins for the
+       scaffolded product's own build. -->
   <ItemGroup>
-    <PackageVersion Include="FS.GG.Contracts" Version="[7.0.0]" />
+    <PackageVersion Include="FS.GG.Contracts" Version="[7.5.2]" />
     <!-- ADR-0022 P5: the game-sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) moved
          to the FS.GG.Game.Core bottom layer. Canvas.Tests compiles the re-homed game-profile fragment
          sources (collision/visibility/grids/line-drawing), which now `open FS.GG.Game.Core`, so the

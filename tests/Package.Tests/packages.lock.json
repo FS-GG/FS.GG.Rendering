@@ -14,9 +14,9 @@
       },
       "FS.GG.Contracts": {
         "type": "Direct",
-        "requested": "[7.0.0, 7.0.0]",
-        "resolved": "7.0.0",
-        "contentHash": "rKLirb5qpv/+Y+U/sp8tEr3NaJNZHVL9S0trxNdsKdPJ8FR/WvdmQyZqlSNbp1T2dClynHcQQBtRq9IX9A/fmg==",
+        "requested": "[7.5.2, 7.5.2]",
+        "resolved": "7.5.2",
+        "contentHash": "1Y2r/C1ibQTY1pJP6RzJdsUrV2d2PccLm+mTrOg74Okz6RgxXmogYrLWqv7Cq7pm+IhVyXSiFsfVAytBVzJU4A==",
         "dependencies": {
           "FSharp.Core": "10.1.302"
         }
@@ -269,7 +269,7 @@
       "FS.GG.UI.SkiaViewer": {
         "type": "Project",
         "dependencies": {
-          "FS.GG.Audio.Core": "[0.3.0, )",
+          "FS.GG.Audio.Core": "[0.5.0, )",
           "FS.GG.UI.Canvas": "[0.4.0-preview.1, )",
           "FS.GG.UI.Diagnostics": "[0.4.0-preview.1, )",
           "FS.GG.UI.KeyboardInput": "[0.4.0-preview.1, )",
@@ -332,9 +332,9 @@
       },
       "FS.GG.Audio.Core": {
         "type": "CentralTransitive",
-        "requested": "[0.3.0, )",
-        "resolved": "0.3.0",
-        "contentHash": "lqP3VrVNoBccD8yGGFlJKmZjLlb6pLG4mJH9O1fLDrQIxt285K8Rhg8wHCpgmELSlH6FmlzQO8oGaFb0/oXDmw==",
+        "requested": "[0.5.0, )",
+        "resolved": "0.5.0",
+        "contentHash": "/KJED8y0h/lfKZ3cBTNr4UIgYe4s/N3N9sXcFnlK+zqUTVCz7bixJDlB+zPtdl3AH31admjcUBSpUEDWN01VrQ==",
         "dependencies": {
           "FSharp.Core": "10.1.301"
         }

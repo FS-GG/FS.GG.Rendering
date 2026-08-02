@@ -35,9 +35,10 @@ shape (a pure Elmish state machine plus view + host seams):
   the only screen the shell does not draw over (your game owns it).
 - `DisplayMode` = `Windowed | Borderless | Fullscreen`; `DisplaySettings =
   { Resolution: Size; Mode: DisplayMode }`.
-- `Config = { Title; DefaultKeymap; DisplayModes; Resolutions; InitialDisplay }` —
-  what YOUR game supplies (its name, its rebindable key→command `Keymap`, the
-  offered resolutions/modes).
+- `Config = { Title; Actions; DisplayModes; Resolutions; InitialDisplay }` —
+  what YOUR game supplies (its name, its rebindable `KeyRebindAction` catalog, the
+  offered resolutions/modes). The `Keymap` itself is NOT supplied directly — `init`
+  derives it from `Actions` via `KeyRebind.restoreDefaults`.
 - `Model`, `Msg`, `Effect` — the shell state, its messages, and the intents the
   host interprets (`ExitRequested`, `DisplayChanged`, `KeymapChanged`).
 - `init`, `update : Msg -> Model -> Model * Effect list` — deterministic, host-free.
@@ -51,14 +52,16 @@ Embed the shell in your model and thread its `Msg`:
 
 ```fsharp
 open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 
 let config : GameShell.Config =
     { Title = "My Game"
-      DefaultKeymap =
-        Keymap.ofBindings
-            [ { Key = "ArrowLeft"; Command = "move-left" }
-              { Key = "Space"; Command = "fire" } ]
+      Actions =
+        [ { Command = "move-left"; Label = "Move Left"; Order = 0
+            Binding = None; DefaultBinding = Some "ArrowLeft" }
+          { Command = "fire"; Label = "Fire"; Order = 1
+            Binding = None; DefaultBinding = Some "Space" } ]
       DisplayModes = [ GameShell.Windowed; GameShell.Borderless; GameShell.Fullscreen ]
       Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
       InitialDisplay = { Resolution = { Width = 1280; Height = 720 }; Mode = GameShell.Windowed } }
@@ -133,6 +136,123 @@ for both flagged and unflagged launches. One native pointer coordinate must iden
 the same point in the authored Controls layout; do not rely on a different overload's
 implicit startup behavior.
 
+### Pause-safe rebind and exact persistence (the production-host journey)
+
+A settings screen that reports a successful rebind, and a `Playing` transition that
+is truly zero-input-safe, are two different claims. Only a journey that runs BOTH
+through the real seams — starting at `Screen = MainMenu` and actually REACHING
+`Screen = Playing` before the held-key/pause sequence — tells you which one you
+actually have. A test that never drives `Screen` to `Playing` at all proves nothing:
+the retained command can never become `Some` in the first place, so a final `None`
+assertion passes whether or not the pause-safety fix below is even present. A test
+that constructs a resolved gameplay `Msg` by hand skips the raw key too, so it
+cannot see a capture that silently fails to rearm.
+
+The trap is exactly where the up edge lands. A shell that clears its retained
+command only on the matching `GameEdge(_, false)` misses the one order that matters
+here: the up edge can legally arrive one `Screen` transition later than the down
+that started the hold, while `Screen = Paused`. So the retained-command snapshot
+must ALSO clear the moment `Screen` leaves `Playing` — not only on release — or a
+key released during a pause resumes play still moving.
+
+Drive the whole journey through `GameShell.routeKeyEvent` and `GameShell.update` —
+never a hand-built `Msg` — and assert the persistence side on the SAME list
+`GameShell.update` actually returns: the `Effect list`. This template wires no
+`ViewerEffect.Persist` sink (no host here calls `runAppWithPersistence`; see
+[[fs-gg-testing]] for the requested-versus-durable split that applies once one is
+wired), so `GameShell.Effect` is the observable point, one seam upstream of any host
+sink. Thread it through every step — do not discard it as `_` — and count it per
+preference: the one capture that actually changed the keymap must contribute exactly
+one `KeymapChanged`, and `DisplaySettings`, untouched this run, must contribute zero
+`DisplayChanged`. Menu navigation (`Start`, `OpenSettings`, `ArmRebind`,
+`LeaveSettings`, `ResumeGame`) is dispatched directly, exactly as the shell's own
+button rows do — only NATIVE KEY edges (the rebind capture, the pause, the resume)
+go through `routeKeyEvent`:
+
+```fsharp
+// Drive every NATIVE KEY edge through routeKeyEvent + update — the raw-key mapping and the
+// retained semantic-command boundary — never a hand-built game Msg. Menu buttons dispatch
+// their Msg directly, same as the shell's own rows. Every returned Effect list is threaded
+// through and accumulated below — none is discarded as `_` — because "unchanged preferences
+// emit none" is an assertion on that list, not narration.
+let step shell heldCommand key isDown =
+    match GameShell.routeKeyEvent (fun command -> commandToMsg command) key isDown shell with
+    | GameShell.ShellEdge m ->
+        let next, effects = GameShell.update m shell
+        // Leaving Playing must drop any retained command NOW: the matching up edge, if
+        // one ever arrives, lands after Paused and must not find something to release.
+        let stillHeld = if next.Screen = GameShell.Playing then heldCommand else None
+        next, stillHeld, effects
+    | GameShell.GameEdge(gameMsg, true) -> shell, Some gameMsg, []
+    | GameShell.GameEdge(_, false) -> shell, None, []
+    | GameShell.NoKeyEvent -> shell, heldCommand, []
+
+// shell0 is explicit — GameShell.init's actual starting state — not left for the reader to
+// guess: `Screen = MainMenu`, which is the only Screen every journey legally starts from.
+let shell0 = GameShell.init config
+
+// Reach Playing for real, through the shell's own button-row Msgs — MainMenu -> Playing ->
+// Paused -> Settings, so ArmRebind actually arms (it only does while Screen = Settings).
+let shell1, effects1 = GameShell.update GameShell.Start shell0                 // MainMenu -> Playing
+let shell2, effects2 = GameShell.update GameShell.EscapePressed shell1         // Playing -> Paused
+let shell3, effects3 = GameShell.update GameShell.OpenSettings shell2          // Paused -> Settings
+let shell4, effects4 = GameShell.update (GameShell.ArmRebind "move-up") shell3 // arms; still Settings
+
+// 1. Complete the capture with the next native key — the shipped raw-key seam, not a Msg.
+let shell5, held5, effects5 = step shell4 None "KeyW" true
+
+let shell6, effects6 = GameShell.update GameShell.LeaveSettings shell5         // Settings -> Paused
+let shell7, effects7 = GameShell.update GameShell.ResumeGame shell6            // Paused -> Playing
+
+// 2. Ordinary play: the SAME key now genuinely resolves through the retained semantic
+//    boundary (Screen really is Playing here, so this actually becomes Some).
+let shell8, held8, effects8 = step shell7 held5 "KeyW" true
+
+// 3. Pause BEFORE the "KeyW" up edge ever arrives — through the same native-key seam.
+let shell9, held9, effects9 = step shell8 held8 "Escape" true
+
+// 4. The up edge lands while paused, then resume.
+let shell10, held10, effects10 = step shell9 held9 "KeyW" false
+let _shell11, held11, effects11 = step shell10 held10 "Escape" true
+
+// The FULL accumulation, every step included — the list "unchanged preferences emit none"
+// is actually asserted against, not a single call assumed representative of the rest.
+let allEffects =
+    effects1 @ effects2 @ effects3 @ effects4 @ effects5
+    @ effects6 @ effects7 @ effects8 @ effects9 @ effects10 @ effects11
+
+let keymapPersisted = allEffects |> List.filter (function GameShell.KeymapChanged _ -> true | _ -> false)
+let displayPersisted = allEffects |> List.filter (function GameShell.DisplayChanged _ -> true | _ -> false)
+
+Expect.equal shell7.Screen GameShell.Playing
+    "the journey must actually reach Playing, or the assertion below is vacuous"
+Expect.isSome held8
+    "the rebound key must actually become held, or the assertion below is vacuous"
+Expect.isNone held11
+    "a rebound key whose up edge lands during a pause must not still be retained after resume"
+Expect.equal (List.length keymapPersisted) 1
+    "the one changed preference (the rebind) must appear in the Effect list exactly once"
+Expect.isEmpty displayPersisted
+    "a preference the run never touched (DisplaySettings) must contribute no Effect at all"
+```
+
+`keymapPersisted`/`displayPersisted` are filtered from `allEffects`, the FULL
+accumulation across every step of the journey — not the capture step alone — so
+"unchanged preferences emit none" is verified over the same nine other
+`update`/`step` calls, not merely asserted in prose. Every one of those other calls
+genuinely returns `[]` in the real shell (menu navigation, arming, pausing, and
+resuming touch neither `Keymap` nor `DisplaySettings`), which is exactly what
+`displayPersisted`'s emptiness proves.
+
+Delete the `if next.Screen = GameShell.Playing then heldCommand else None` line above
+— replace it with plain `heldCommand`, the pre-fix behavior — and `held11` becomes
+`Some`, reddening `Expect.isNone held11`: the trace above is not vacuous, and this is
+what it actually catches. The count assertions are equally falsifiable: fold in the
+effects of an extra `GameShell.update (GameShell.SetResolution otherSize) shellN`
+dispatched anywhere in the journey — `SetResolution` really does emit `DisplayChanged`
+every time it fires — and `displayPersisted` stops being empty, reddening
+`Expect.isEmpty displayPersisted`.
+
 ## Capability boundary — the shell needs the pointer-aware host
 
 The generated game shell already launches through `InteractiveAppHost`
@@ -154,6 +274,13 @@ Also change 1280x720 to 1920x1080 and activate the same semantic control through
 corresponding physical point; this proves the visible fit and retained hit geometry use
 one policy rather than merely proving that the resolution value persisted.
 
+Extend that same rebound key one step further: pause BEFORE its key-up edge arrives,
+release while paused, resume, and assert zero movement intent — see
+[Pause-safe rebind and exact persistence](#pause-safe-rebind-and-exact-persistence-the-production-host-journey)
+for the worked journey. Also assert the persistence side at the sink: the one capture
+that actually changed a preference must reach the host boundary exactly once, and a
+preference the run never touched must reach it zero times.
+
 ## Evidence
 
 Record deterministic menu/settings/rebind **evidence** under this game's `readiness/`
@@ -167,6 +294,8 @@ the legacy file only after the platform write succeeds.
 - [[fs-gg-skiaviewer]] — the interactive host + `LogicalCanvas` the settings drive.
 - [[fs-gg-ui-widgets]] — the typed `Controls` the menu is authored with.
 - [[fs-gg-elmish]] — thread the shell `Msg` through the pure adapter.
+- [[fs-gg-testing]] — the assert-at-the-sink pattern this journey's persistence count
+  reuses, and the record-only-versus-durable distinction it depends on.
 
 ## Persistent problems
 

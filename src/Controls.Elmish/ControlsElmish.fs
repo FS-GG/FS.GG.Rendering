@@ -143,6 +143,14 @@ type LiveScriptRunResult =
     { Outcome: ViewerLaunchOutcome
       Metrics: FrameMetrics list }
 
+/// Deterministic, headless evidence for the Controls paced-pointer composition.  The queue drains
+/// come from the Viewer runner; `ModelUpdates` counts messages actually folded through the Controls
+/// host, so a receipt cannot claim a coalesced aim merely because it was accepted by the lower queue.
+type internal DeterministicPointerPacingResult<'model> =
+    { Model: 'model
+      Drains: ViewerFrameDrain list
+      Metrics: ViewerPointerPacingMetrics list }
+
 type InteractiveAppHost<'model, 'msg> =
     { Init: unit -> 'model * ViewerEffect list
       Update: 'msg -> 'model -> 'model * ViewerEffect list
@@ -1099,6 +1107,20 @@ module ControlsElmish =
             // so existing EventBinding/MapPointer routing is bit-for-bit unchanged (additive).
             state', messages @ canvasPointerMessages rendered current (pointerSampleOf input)
 
+    /// Issue #1159: the Controls-first composition used by the paced launcher. The raw mapper is
+    /// deliberately invoked after the normal routing result, so an authored binding remains first and
+    /// a product's continuous-pointer message cannot replace Controls hit-testing.
+    let routeInteractivePointerWithRawFallback
+        (host: InteractiveAppHost<'model, 'msg>)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+        (state: PointerState)
+        (size: Size)
+        (model: 'model)
+        (input: ViewerPointerInput)
+        : PointerState * 'msg list =
+        let state', messages = routeInteractivePointer host state size model input
+        state', messages @ mapRawPointer input size model
+
     // Feature 110 (FR-002/FR-003): resolve a single interaction's authored bindings from the RETAINED
     // frame — the mirror of `bindingMessagesFor`, reading the retained frame's `EventBindings` instead
     // of a freshly rendered tree. `Some msgs` = an authored binding consumed the interaction (MapPointer
@@ -1651,9 +1673,12 @@ module ControlsElmish =
     // launcher so `runInteractiveApp` (default windowed-fullscreen) and
     // `runInteractiveAppWithWindowBehavior` (explicit window behavior) reuse the EXACT same
     // message→update→retained-step + clock/visual-state/pointer wiring — no parallel logic.
+    let private ignoreRawPointer (_: ViewerPointerInput) (_: Size) (_: 'model) : 'msg list = []
+
     let runInteractiveAppWithLauncher
         (launch: ViewerOptions -> InteractiveViewerHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>)
         (options: ViewerOptions)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
         (host: InteractiveAppHost<'model, 'msg>)
         =
         // Feature 182/issue #1046: the interpreter-edge cells and their pointer/diagnostic transitions
@@ -1936,14 +1961,16 @@ module ControlsElmish =
                         |> ScrollState.withExtent contentHeight viewportHeight
                         |> ScrollState.applyScrollDelta (-deltaY * wheelScrollStep)
                     loopState.ScrollOffsets <- Map.add svId next loopState.ScrollOffsets
-                messages, fallbacks
+                // The viewer's pacing policy has already selected this sample. Preserve the Controls
+                // route first, then offer that same folded sample to the raw fallback.
+                messages @ mapRawPointer input size model, fallbacks
             | _ ->
                 // No retained frame yet (a pointer sample before the first paint seeded the frame, not
                 // expected in the live loop where paint precedes input): fall back to the preserved
                 // oracle so routing is still correct, counting the full render it performs.
                 let state', messages = routeInteractivePointer host loopState.PointerState size model input
                 loopState.PointerState <- state'
-                messages, 1
+                messages @ mapRawPointer input size model, 1
 
         // Feature 108 (US4, FR-011/012): pointer-move coalescing on the live loop. A MOVE sample is
         // buffered (latest position wins) and the PREVIOUSLY-buffered move is processed at the next
@@ -2117,7 +2144,21 @@ module ControlsElmish =
         launch options viewerHost
 
     let runInteractiveApp (options: ViewerOptions) (host: InteractiveAppHost<'model, 'msg>) =
-        runInteractiveAppWithLauncher Viewer.runInteractiveViewer options host
+        runInteractiveAppWithLauncher Viewer.runInteractiveViewer options ignoreRawPointer host
+
+    /// Issue #1159: compose the lower viewer's frame-paced input route with the retained Controls host.
+    /// The raw callback sees only folded samples and is invoked after Controls hit-testing/bindings.
+    let runInteractiveAppWithPointerPacing
+        (options: ViewerOptions)
+        (pointerPacing: ViewerPointerPacingOptions)
+        (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+        (host: InteractiveAppHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithPointerPacing launchOptions pointerPacing viewerHost)
+            options
+            mapRawPointer
+            host
 
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit window behavior threaded into
     /// the live launch (startup-state / resize / maximize / position / backend), so a generated app's
@@ -2132,6 +2173,7 @@ module ControlsElmish =
             (fun launchOptions viewerHost ->
                 Viewer.runInteractiveViewerWithWindowBehavior launchOptions behavior viewerHost)
             options
+            ignoreRawPointer
             host
 
     // Issue #429: audio reaches the Controls host family the same way window behavior does — by
@@ -2146,6 +2188,7 @@ module ControlsElmish =
         runInteractiveAppWithLauncher
             (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithAudio launchOptions audioSink viewerHost)
             options
+            ignoreRawPointer
             host
 
     /// Issue #429: `runInteractiveAppWithAudio` with an explicit window behavior — the audio-capable
@@ -2160,6 +2203,7 @@ module ControlsElmish =
             (fun launchOptions viewerHost ->
                 Viewer.runInteractiveViewerWithWindowBehaviorAndAudio launchOptions behavior audioSink viewerHost)
             options
+            ignoreRawPointer
             host
 
     /// Issue #641 — every sound request in an effect batch, flattened in dispatch order; non-audio
@@ -2176,6 +2220,93 @@ module ControlsElmish =
         GeneratedAppHost.audioRequests effects
 
     module Live =
+        let internal runDeterministicPointerPacing policy receivedAt frames =
+            Viewer.runDeterministicPacing policy receivedAt frames
+
+        /// Issue #1159: deterministic counterpart of the live paced launcher.  It deliberately uses
+        /// the Viewer queue/drain runner, then feeds every drained sample through the normal Controls
+        /// pointer router plus the additive raw fallback before folding its messages through `Update`.
+        /// This gives product tests a no-window receipt for raw/folded/update/present counters while
+        /// retaining authored bindings and discrete ordering.
+        let internal runDeterministicPointerPacingThroughControls
+            (policy: ViewerContinuousPointerPolicy)
+            (receivedAt: DateTimeOffset)
+            (size: Size)
+            (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
+            (host: InteractiveAppHost<'model, 'msg>)
+            (frames: ViewerPointerInput list list)
+            : DeterministicPointerPacingResult<'model> =
+            let payloads = System.Collections.Generic.Dictionary<string, ViewerPointerInput>()
+            let mutable nextPayload = 0
+            let queueFrames =
+                frames
+                |> List.map (fun samples ->
+                    samples
+                    |> List.map (fun input ->
+                        let payload = string nextPayload
+                        nextPayload <- nextPayload + 1
+                        payloads.Add(payload, input)
+                        let kind =
+                            match input.Phase with
+                            | ViewerPointerPhaseKind.Moved -> ViewerResponsivenessInputKind.PointerMove
+                            | _ -> ViewerResponsivenessInputKind.PointerDiscrete
+                        kind, payload))
+
+            let drains = Viewer.runDeterministicPacing policy receivedAt queueFrames
+            let mutable model, _effects = host.Init()
+            let mutable pointerState = Pointer.init ()
+            let metrics = ResizeArray<ViewerPointerPacingMetrics>()
+
+            drains
+            |> List.iteri (fun frameIndex drain ->
+                let inputs =
+                    drain.DiscreteInputs
+                    @ (drain.CoalescedPointer |> Option.toList)
+                    |> List.map (fun envelope -> payloads.[envelope.Payload])
+                let mutable updateCount = 0
+                for input in inputs do
+                    let nextState, messages =
+                        routeInteractivePointerWithRawFallback host mapRawPointer pointerState size model input
+                    pointerState <- nextState
+                    for message in messages do
+                        let nextModel, _ = host.Update message model
+                        model <- nextModel
+                        updateCount <- updateCount + 1
+                let repaintCause =
+                    match drain.DiscreteInputs.IsEmpty, drain.CoalescedPointer.IsSome with
+                    | false, true -> ViewerPointerRepaintCause.MixedPointer
+                    | false, false -> ViewerPointerRepaintCause.DiscretePointer
+                    | true, true -> ViewerPointerRepaintCause.ContinuousPointer
+                    | true, false -> ViewerPointerRepaintCause.ContinuousPointer
+                metrics.Add
+                    { RawSamplesReceived = frames.[frameIndex].Length
+                      FoldedSamplesApplied = inputs.Length
+                      CoalescedSamples = drain.CoalescedMovementCount
+                      ModelUpdates = updateCount
+                      PresentedFrames = int64 (frameIndex + 1)
+                      RepaintCause = repaintCause
+                      FullRenderFallbacks = 0 })
+
+            { Model = model
+              Drains = drains
+              Metrics = metrics |> Seq.toList }
+
+        /// Issue #1159: drive a raw viewer script through the public paced Controls launcher.
+        let runPointerPacingScript options pointerPacing mapRawPointer host script =
+            let observed = ResizeArray<FrameMetrics>()
+            let observingHost = { host with OnFrameMetrics = fun metric -> observed.Add metric; host.OnFrameMetrics metric }
+
+            match
+                runInteractiveAppWithLauncher
+                    (fun launchOptions viewerHost ->
+                        Viewer.runInteractiveViewerScriptWithPointerPacing launchOptions pointerPacing script viewerHost)
+                    options
+                    mapRawPointer
+                    observingHost
+            with
+            | Result.Ok outcome -> Result.Ok { Outcome = outcome; Metrics = observed |> Seq.toList }
+            | Result.Error failure -> Result.Error failure
+
         let private viewerButton button =
             match button with
             | PointerButton.Primary -> ViewerPointerButtonKind.Primary
@@ -2274,6 +2405,7 @@ module ControlsElmish =
                             audioSink
                             viewerHost)
                     options
+                    ignoreRawPointer
                     observingHost
             with
             | Result.Ok outcome ->

@@ -163,6 +163,12 @@ module Viewer =
             ViewerInputEnvelope * ViewerInputQueue
     /// Drain pending inputs for one frame/update pass.
     val drainInputQueue: batchId: int64 -> drainReason: string -> queue: ViewerInputQueue -> ViewerFrameDrain * ViewerInputQueue
+    /// Deterministically apply frame-bounded inputs through the same paced queue transition as the live host.
+    val runDeterministicPacing:
+        policy: ViewerContinuousPointerPolicy ->
+        receivedAt: DateTimeOffset ->
+        frames: (ViewerResponsivenessInputKind * string) list list ->
+            ViewerFrameDrain list
     /// Build the dirty-state decision from product/runtime/size/theme change facts.
     val dirtyState:
         productModelChanged: bool ->

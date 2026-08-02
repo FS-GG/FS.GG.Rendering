@@ -198,7 +198,7 @@ pkg    FS.GG.UI.Canvas
 # ------------------------------------------------------------------------------------------
 file   Contracts/Schemas.fsi
 skill  fs-gg-testing
-header // Mirrored from FS-GG/FS.GG.SDD @ 7.4.0 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
+header // Mirrored from FS-GG/FS.GG.SDD @ 7.5.2 (src/FS.GG.Contracts/Schemas.fsi); regenerate when $(FsGgContractsVersion) moves.
 ns     Fsgg
 pkg    FS.GG.Contracts
 +      Schemas.fsi type Schemas.PerformanceIntentDeclaration
@@ -998,7 +998,7 @@ open   FS.GG.UI.SkiaViewer
 # ------------------------------------------------------------------------------------------
 file   Game.Harness/Journey.fsi
 skill  fs-gg-testing
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Harness/Journey.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Harness/Journey.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Harness
 pkg    FS.GG.Game.Harness
 open   FS.GG.Game.Core
@@ -1034,7 +1034,7 @@ open   FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Ai.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Ai.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Ai.fsi type AgentId
@@ -1062,7 +1062,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Ballistics.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Ballistics.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Ballistics.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Ballistics.fsi type Projectile
@@ -1076,7 +1076,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Dice.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Dice.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Dice.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Dice.fsi type Distribution
@@ -1096,7 +1096,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Effects.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Effects.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Effects.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Effects.fsi type Source
@@ -1120,7 +1120,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Fov.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Fov.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Fov.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Fov.fsi val Fov.fov
@@ -1128,7 +1128,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Los.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Los.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Los.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Los.fsi type LineMode
@@ -1141,7 +1141,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Visibility.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Visibility.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Visibility.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Visibility.fsi type Visibility.Segment
@@ -1154,7 +1154,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/FixedStep.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/FixedStep.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      FixedStep.fsi val FixedStep.defaultMaxFrameTime
@@ -1164,7 +1164,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Geometry.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Geometry.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Geometry.fsi val Geometry.intersects
@@ -1186,7 +1186,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Loop.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Loop.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Loop.fsi type StepState`1
@@ -1197,7 +1197,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Pathfinding.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Pathfinding.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Pathfinding.fsi type Neighbourhood
@@ -1212,7 +1212,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Physics.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Physics.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Physics.fsi type Physics.BodyKind
@@ -1235,7 +1235,7 @@ proseat Physics.fsi type Physics.Config ::: { Gravity: Point
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Primitives.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Primitives.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Primitives.fsi type Point
@@ -1250,7 +1250,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Resolution.fsi
 skill  fs-gg-collision
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Resolution.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Resolution.fsi val Resolution.pushOut
@@ -1264,7 +1264,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/Rng.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/Rng.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      Rng.fsi type Rng
@@ -1277,7 +1277,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/SpatialGrid.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/SpatialGrid.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      SpatialGrid.fsi type SpatialGrid`1
@@ -1290,7 +1290,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/MapAnalysis.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/MapAnalysis.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/MapAnalysis.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      MapAnalysis.fsi type Rule
@@ -1315,7 +1315,7 @@ pkg    FS.GG.Game.Core
 # ------------------------------------------------------------------------------------------
 file   Game.Core/MapGen.fsi
 skill  fs-gg-game-core
-header // Mirrored from FS-GG/FS.GG.Game @ 0.12.0 (src/Game.Core/MapGen.fsi); regenerate when $(FsGgGameVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Game @ 0.13.0 (src/Game.Core/MapGen.fsi); regenerate when $(FsGgGameVersion) moves.
 ns     FS.GG.Game.Core
 pkg    FS.GG.Game.Core
 +      MapGen.fsi type Grid`1
@@ -2208,6 +2208,7 @@ waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.MultiFileSkillDrift
 waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillDrift
 waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillFile
 waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.SkillFileDrift
+waive FS.GG.Contracts SkillMirror.fsi type SkillMirror.UnobservedSkillFiles
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.decodeBody
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.mirror
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.mirrorFiles
@@ -2222,6 +2223,8 @@ waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.skillPath
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verify
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyFileSet
 waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyFiles
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyObservedFileSet
+waive FS.GG.Contracts SkillMirror.fsi val SkillMirror.verifyObservedFiles
 waive FS.GG.Contracts Version.fsi type Version.Version
 waive FS.GG.Contracts Version.fsi val Version.compare
 waive FS.GG.Contracts Version.fsi val Version.tryParse

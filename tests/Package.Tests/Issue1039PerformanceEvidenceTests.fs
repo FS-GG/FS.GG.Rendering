@@ -319,7 +319,9 @@ let performanceEvidenceContract =
               // first published release that does. So a second trigger for this literal now exists: any
               // change to how the mirror generator sources a package can force the pin, independently of
               // the feed. Steps 1-5 of the routine were all still required.
-              Expect.stringContains packages "<FsGgContractsVersion>7.4.0</FsGgContractsVersion>" "producer version is exact"
+              // #1156 advances the pin to 7.5.2 for the published skill-observation contract and
+              // reconciles its deliberately curated SkillMirror surface through the same routine.
+              Expect.stringContains packages "<FsGgContractsVersion>7.5.2</FsGgContractsVersion>" "producer version is exact"
               Expect.stringContains
                   project
                   "<PackageReference Include=\"FS.GG.Contracts\" />"
@@ -368,7 +370,11 @@ let performanceEvidenceContract =
                 "| Some _, Authored _ -> { Passed = true; Reasons = [] }"
                 "let mutable model = workload.InitialState()"
                 "update (workload.MessageAt frame) model"
-                "let scene = view model" ]
+                "let scene = view model"
+                "let private initialStateFingerprint workload"
+                "let private messageFramesFingerprint workload"
+                "NormalizationForm.FormC"
+                "max workload.WarmupFrames workload.SampleFrames - 1" ]
               |> List.iter (fun token ->
                   Expect.stringContains source token $"authored workload contract carries {token}")
 
@@ -615,7 +621,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       duplicateMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "ambiguous marker ownership receives the fail-closed diagnosis"
 
                   let missingMarkerSource =
@@ -631,7 +637,7 @@ let performanceEvidenceContract =
 
                   Expect.stringContains
                       missingMarker.Output
-                      "workload 'idle' has no readable WORKLOAD-SOURCE block"
+                      "workload 'idle' has no safely readable WORKLOAD-SOURCE block"
                       "unbounded executable source cannot retain an authored acknowledgement"
 
                   let duplicateIdSource =
@@ -661,6 +667,58 @@ let performanceEvidenceContract =
                   Expect.equal stale.ExitCode 1 "route change with the old declaration digest fails closed"
                   Expect.stringContains stale.Output "authored declaration is stale" "stale route is diagnosed"
                   Expect.stringContains stale.Output "workload 'idle'" "changed workload is identified"
+
+                  let helperBoundPlaceholderSource =
+                      placeholderSource
+                      |> fun source ->
+                          source.Replace(
+                              "let expectedWorkloads =",
+                              """let private helperBoundInitialState () = initialModel
+
+let private helperBoundMessage frame =
+    if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)
+
+let expectedWorkloads =""",
+                              StringComparison.Ordinal
+                          )
+                      |> rewriteWorkloadBlock
+                          "idle"
+                          (fun block ->
+                              block
+                                  .Replace("InitialState = (fun () -> initialModel)", "InitialState = helperBoundInitialState")
+                                  .Replace("MessageAt = (fun _ -> Tick(1.0 / 60.0))", "MessageAt = helperBoundMessage"))
+
+                  File.WriteAllText(evidenceSourcePath, helperBoundPlaceholderSource)
+                  let helperBoundPending = runEvidence ()
+                  Expect.equal helperBoundPending.ExitCode 1 "helper-bound workloads remain unauthored before their digest is acknowledged"
+                  let helperBoundDigests = workloadDigests artifactPath
+                  let helperBoundAuthoredSource = authorWorkloads helperBoundDigests helperBoundPlaceholderSource
+
+                  let helperOnlyModelMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "let private helperBoundInitialState () = initialModel",
+                          "let private helperBoundInitialState () = { initialModel with TickCount = 1 }",
+                          StringComparison.Ordinal
+                      )
+
+                  File.WriteAllText(evidenceSourcePath, helperOnlyModelMutation)
+                  let helperOnlyModel = runEvidence ()
+                  Expect.equal helperOnlyModel.ExitCode 1 "a helper-only initial-model mutation invalidates Authored"
+                  Expect.stringContains helperOnlyModel.Output "authored declaration is stale" "helper-only model mutation is diagnosed as stale"
+                  Expect.stringContains helperOnlyModel.Output "workload 'idle'" "the helper-backed workload is identified"
+
+                  let frameTwoOnlyMessageMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)",
+                          "if frame = 2 then Tick(2.0 / 60.0) else Tick(1.0 / 60.0)",
+                          StringComparison.Ordinal
+                      )
+
+                  File.WriteAllText(evidenceSourcePath, frameTwoOnlyMessageMutation)
+                  let frameTwoOnlyMessage = runEvidence ()
+                  Expect.equal frameTwoOnlyMessage.ExitCode 1 "a frame-2-only helper message mutation invalidates Authored"
+                  Expect.stringContains frameTwoOnlyMessage.Output "authored declaration is stale" "frame-2 helper mutation is diagnosed as stale"
+                  Expect.stringContains frameTwoOnlyMessage.Output "workload 'idle'" "the later-frame workload is identified"
 
                   let staleIntent = runIntent ()
                   Expect.equal staleIntent.ExitCode 1 "route changes invalidate the old early intent acknowledgement"
@@ -708,6 +766,44 @@ let performanceEvidenceContract =
                       invalidDebt.Output
                       "baseline capture requires a linked blocking performance-debt issue"
                       "invalid debt syntax receives an actionable fail-closed diagnosis"
+
+                  // #1180 regression: `sprintf "%A"` truncates a collection after 100 elements, so
+                  // `messageFramesFingerprint`'s 120-entry sampled frame list (WarmupFrames 20,
+                  // SampleFrames 120 -> frames 0..119) could not see a divergence past its 100th
+                  // entry. This is the frame-2 regression above (#1164) rerun past that boundary:
+                  // mutating ONLY the 106th sampled frame (index 105) must ALSO invalidate the same
+                  // authored declaration the frame-2 case already proves catches an earlier change.
+                  // With the `%A` encoding reverted, this assertion reddens while the frame-2 one
+                  // above stays green — that gap between them IS the defect.
+                  File.WriteAllText(evidenceSourcePath, helperBoundAuthoredSource)
+
+                  let frameOneOhFiveOnlyMessageMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)",
+                          "if frame = 2 then Tick(1.0 / 60.0) elif frame = 105 then Tick(2.0 / 60.0) else Tick(1.0 / 60.0)",
+                          StringComparison.Ordinal
+                      )
+
+                  Expect.notEqual
+                      frameOneOhFiveOnlyMessageMutation
+                      helperBoundAuthoredSource
+                      "fixture changes only the 106th sampled message frame (index 105, past `%A`'s 100-element print length)"
+
+                  File.WriteAllText(evidenceSourcePath, frameOneOhFiveOnlyMessageMutation)
+                  let frameOneOhFiveOnlyMessage = runEvidence ()
+
+                  Expect.equal
+                      frameOneOhFiveOnlyMessage.ExitCode
+                      1
+                      "a frame-105-only helper message mutation invalidates Authored, past `%A`'s 100-element print length (#1180)"
+                  Expect.stringContains
+                      frameOneOhFiveOnlyMessage.Output
+                      "authored declaration is stale"
+                      "frame-105 helper mutation is diagnosed as stale — a `%A`-truncated fingerprint would leave this identical to the unmutated digest"
+                  Expect.stringContains
+                      frameOneOhFiveOnlyMessage.Output
+                      "workload 'idle'"
+                      "the tail-frame workload is identified"
               finally
                   if Directory.Exists fixtureRoot then
                       Directory.Delete(fixtureRoot, true)
@@ -727,4 +823,8 @@ let performanceEvidenceContract =
                   Expect.stringContains skill "Placeholder" $"{path} teaches fail-closed workload authoring"
                   Expect.stringContains skill "definitionDigest" $"{path} teaches stale-evidence invalidation"
                   Expect.stringContains prose "before feature implementation" $"{path} moves authoring early")
+
+              let testingSkill = read "template/product-skills/fs-gg-testing/SKILL.md"
+              Expect.stringContains testingSkill "complete deterministic value returned by `InitialState()`" "testing guidance closes helper-backed initial-state evidence"
+              Expect.stringContains testingSkill "frame 2" "testing guidance closes helper-backed later-frame evidence"
           } ]

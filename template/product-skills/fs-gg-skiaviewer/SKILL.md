@@ -151,6 +151,13 @@ A game is the first row: it draws a `SceneNode`, so it wants **`InteractiveViewe
 right model for a UI, the wrong one for reading a bare aim cursor. Reach for it only when your product
 is a control tree.)
 
+For a Controls host that also needs continuous raw aim, keep the Controls launch/routing contract
+above and verify pacing at the Viewer queue boundary. The product pin does not yet expose a combined
+Controls-paced launcher, so do not copy a source-only helper into generated product code. A future
+published launcher must deliver the folded `ViewerPointerInput` only after retained Controls
+hit-testing and authored bindings, while retaining the raw/folded/update/present receipt. Existing
+`InteractiveAppHost` records and `MapPointer` consumers stay unchanged.
+
 **`MapPointer` is model-aware, and that is the whole reason it is a different seam from `MapKey`.**
 `MapKey : ViewerKey -> bool -> 'msg list` sees only the key edge — it is a stateless key→message wrapper.
 `MapPointer : ViewerPointerInput -> Size -> 'model -> 'msg list` also gets the current viewport `Size` and

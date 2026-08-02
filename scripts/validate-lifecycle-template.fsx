@@ -524,7 +524,8 @@ let private verifyBaseDocsNeutral () =
     // base CLAUDE.md must be excluded from the ungated base source.
     assertTrue (baseUngatedExcludes.Contains "CLAUDE.md") "template/base/ source must exclude CLAUDE.md (gated agent-context)"
 
-    // Issue #1081 — EVERY ADR-0011 agent-skill root must be excluded from the UNGATED base source.
+    // Issue #1081 (root set narrowed by #1121, ADR-0067 §5) — EVERY declared agent-skill root must be
+    // excluded from the UNGATED base source.
     //
     // Each of these is re-emitted only by a `lifecycle == "spec-kit"`-gated source, so an exclusion
     // missing here does not merely duplicate content: it makes the provider write that root on the
@@ -533,11 +534,13 @@ let private verifyBaseDocsNeutral () =
     // SC-001). Until #1081 the whole of that invariant was carried by a `comment` field — and #1081
     // is the item that found a DIFFERENT prose-only claim about this same tree ("copyOnly keeps the
     // fs-gg-project body byte-identical") had been false for three commits with nothing able to see
-    // it. A comment is not a gate; this is the gate. `.codex/**` is listed here because #1081 added
-    // `template/base/.codex/`, and the other two are listed because the reason is identical for all
-    // three and enumerating only the new one would leave the older two exactly as unguarded as the
-    // claim that failed.
-    for root in [ ".agents/**"; ".claude/**"; ".codex/**" ] do
+    // it. A comment is not a gate; this is the gate.
+    //
+    // Issue #1121: `.codex/**` was listed here from 2026-07-27 (#1081) to 2026-07-28 (ADR-0067 §5).
+    // `.codex/skills` is now retired org-wide — `template/base/.codex/` was deleted, so there is
+    // nothing left for that entry to exclude — and it is dropped from this list rather than kept as
+    // a vacuous match against a directory that no longer exists.
+    for root in [ ".agents/**"; ".claude/**" ] do
         assertTrue
             (baseUngatedExcludes.Contains root)
             (sprintf
@@ -671,11 +674,12 @@ type private ProfileVerdict =
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
       NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
       SddClaudeProductSkills: int   // ADR-0011: .claude/skills/fs-gg-* product count under sdd (must be 0)
-      SddCodexProductSkills: int    // ADR-0011: .codex/skills/fs-gg-* product count under sdd (must be 0)
+      SddCodexRootAbsent: bool      // ADR-0067 §5 (#1121): .codex/ must not exist at all under sdd (retired root)
       NoneClaudeProductSkills: int  // ADR-0011: .claude/skills/fs-gg-* product count under none (must be 0)
-      NoneCodexProductSkills: int   // ADR-0011: .codex/skills/fs-gg-* product count under none (must be 0)
-      SpecKitMirror: string     // 231: three-root-mirror=ok (materialized) when the single materialize
-                                //      step yields byte-identical .agents==.claude==.codex roots
+      NoneCodexRootAbsent: bool     // ADR-0067 §5 (#1121): .codex/ must not exist at all under none (retired root)
+      SpecKitMirror: string     // 231: two-root-mirror=ok (materialized) when the single materialize
+                                //      step yields byte-identical .agents==.claude roots (#1121: was
+                                //      three-root, .codex/skills is retired, ADR-0067 §5)
       SpecKitDigests: string    // 231: manifest-digests=ok when --enforce verify exits 0 (ADR-0014 §3)
       DanglingRoutes: int }     // 231: fs-gg-* skill-body path refs unresolvable in the product (must be 0)
 
@@ -852,8 +856,11 @@ let private runMaterialize (dir: string) (expectFail: bool) =
         failwithf "%s: materialize --enforce failed (exit %d):\n%s\n%s" dir code out err
     code, out + err
 
-/// Full byte-identity of the three agent-skill roots' skills trees (files, not just dir sets —
-/// covers extra skill files like fs-gg-symbology/reference.fsx and skill-manifest.json).
+/// Full byte-identity of the two agent-skill roots' skills trees (files, not just dir sets —
+/// covers extra skill files like fs-gg-symbology/reference.fsx and skill-manifest.json), PLUS the
+/// retired third root's absence (issue #1121, ADR-0067 §5 / .github#1636: `.codex/skills` no longer
+/// materializes anywhere in the standalone spec-kit lane — the single materialize step no longer
+/// fans into it, and `template/base/.codex/` no longer ships it at scaffold time either).
 let private assertRootsByteIdentical (dir: string) (label: string) =
     let files root =
         let d = Path.Combine(dir, root, "skills")
@@ -863,7 +870,7 @@ let private assertRootsByteIdentical (dir: string) (label: string) =
             |> Set.ofSeq
         else Set.empty
     let agents = files ".agents"
-    for root in [ ".claude"; ".codex" ] do
+    for root in [ ".claude" ] do
         let other = files root
         if agents <> other then
             failwithf "%s: %s/skills file set differs from .agents/skills: only-in-agents=%A only-in-%s=%A"
@@ -872,6 +879,8 @@ let private assertRootsByteIdentical (dir: string) (label: string) =
             let a = File.ReadAllBytes(Path.Combine(dir, ".agents", "skills", rel.Replace('/', Path.DirectorySeparatorChar)))
             let b = File.ReadAllBytes(Path.Combine(dir, root, "skills", rel.Replace('/', Path.DirectorySeparatorChar)))
             if a <> b then failwithf "%s: %s/skills/%s bytes diverge from .agents copy" label root rel
+    if Directory.Exists(Path.Combine(dir, ".codex")) then
+        failwithf "%s: .codex/ exists — .codex/skills is retired (ADR-0067 §5 / .github#1636); its presence resurrects the root #1121 removed" label
 
 /// Feature 231 (R2.4 / audit F3): extract path-like references from the fs-gg-* skill bodies and
 /// resolve each against the scaffold tree. Backtick-quoted tokens with a product-root path prefix
@@ -943,8 +952,9 @@ let private frameworkSkillCount (dir: string) =
     else 0
 
 /// Feature 230 / ADR-0011: the `fs-gg-*` skill dir set under a given agent-skill root (dirs with a
-/// SKILL.md). Under spec-kit the three roots MIRROR (equal sets); under sdd/none the .claude/.codex roots
-/// hold ZERO product skills (a write under sdd is the `scaffold.providerWroteSddTree` intrusion, #47/#55).
+/// SKILL.md). Under spec-kit the two roots MIRROR (equal sets); under sdd/none the .claude/ root
+/// holds ZERO product skills (a write under sdd is the `scaffold.providerWroteSddTree` intrusion,
+/// #47/#55) and the retired `.codex/` root does not exist at all (issue #1121, ADR-0067 §5).
 let private skillSetUnder (dir: string) (root: string) =
     let skillsDir = Path.Combine(dir, root, "skills")
     if Directory.Exists skillsDir then
@@ -960,7 +970,12 @@ let private orchestratorRootProductSkillCount (dir: string) (root: string) =
     skillSetUnder dir root |> Set.remove "fs-gg-project" |> Set.count
 
 let private claudeProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".claude"
-let private codexProductSkillCount (dir: string) = orchestratorRootProductSkillCount dir ".codex"
+
+/// Issue #1121 (ADR-0067 §5 / .github#1636): `.codex/skills` is retired, so under sdd/none the
+/// correct state is no `.codex/` directory at all — a stronger claim than "zero product skills in
+/// it", and the one that actually catches a resurrected root (#1081's shape) rather than only a
+/// resurrected WRITE into an existing one.
+let private codexRootAbsent (dir: string) = not (Directory.Exists(Path.Combine(dir, ".codex")))
 
 /// Feature 231: the emitted fs-gg-* dir set must be EXACTLY the expected profile set (+ the
 /// spec-kit-only authoring/conditional skills) — any extra dir is a vendored wrapper (F3).
@@ -1056,7 +1071,8 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
 
     // ---- spec-kit lane integrity (Feature 231 / ADR-0014), now on the EXPLICIT lane ----
     // Under spec-kit (standalone, no orchestrator) the SINGLE materialize step fans .agents/skills/
-    // into .claude/ + .codex/ and verifies content-addressed against the shipped skill-manifest.
+    // into .claude/ and verifies content-addressed against the shipped skill-manifest. Issue #1121
+    // (ADR-0067 §5): it no longer fans into .codex/ — that root is retired.
     if not (manifestPresent specKit) then
         failwithf "%s/spec-kit: .agents/skills/skill-manifest.json missing (ADR-0014 §1)" profile
     let _, materializeOut = runMaterialize specKit false
@@ -1098,11 +1114,12 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if File.Exists(Path.Combine(sdd, ".specify", "scripts", "fs-gg", "materialize-skill-roots.fsx")) then
         failwithf "%s/sdd: standalone materialize script leaked into an orchestrated scaffold" profile
     assertNoWrapperDirs sdd profile false
-    // Feature 230 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/ OR .codex/.
+    // Feature 230 (negative): NO fs-gg-* product skill leaks into the orchestrator-owned .claude/.
+    // Issue #1121 (ADR-0067 §5): .codex/ is a retired root and must not exist AT ALL under sdd.
     let sddClaudeProduct = claudeProductSkillCount sdd
-    let sddCodexProduct = codexProductSkillCount sdd
+    let sddCodexAbsent = codexRootAbsent sdd
     if sddClaudeProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .claude/skills/ (providerWroteSddTree, #47)" profile sddClaudeProduct
-    if sddCodexProduct <> 0 then failwithf "%s/sdd: %d fs-gg-* product skills leaked into .codex/skills/ (providerWroteSddTree, #47)" profile sddCodexProduct
+    if not sddCodexAbsent then failwithf "%s/sdd: .codex/ exists — .codex/skills is retired (ADR-0067 §5 / .github#1636, #1121)" profile
     // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
     if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // FR-009 (post-ADR-0056): the spec-kit lane == the default (sdd) lane PLUS exactly the gated
@@ -1126,9 +1143,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if not (manifestPresent none_) then failwithf "%s/none: .agents/skills/skill-manifest.json missing" profile
     assertNoWrapperDirs none_ profile false
     let noneClaudeProduct = claudeProductSkillCount none_
-    let noneCodexProduct = codexProductSkillCount none_
+    let noneCodexAbsent = codexRootAbsent none_
     if noneClaudeProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .claude/skills/ (#47)" profile noneClaudeProduct
-    if noneCodexProduct <> 0 then failwithf "%s/none: %d fs-gg-* product skills leaked into .codex/skills/ (#47)" profile noneCodexProduct
+    if not noneCodexAbsent then failwithf "%s/none: .codex/ exists — .codex/skills is retired (ADR-0067 §5 / .github#1636, #1121)" profile
     if not (catalogAbsent none_) then failwithf "%s/none: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
     // none carries NO guard sentinel — the intent-keyed distinction from sdd (ADR-0056 §D2).
     if hasGuardSentinel none_ then
@@ -1160,9 +1177,9 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       SddSkillCount = sddSkills
       NoneSkillCount = noneSkills
       SddClaudeProductSkills = sddClaudeProduct
-      SddCodexProductSkills = sddCodexProduct
+      SddCodexRootAbsent = sddCodexAbsent
       NoneClaudeProductSkills = noneClaudeProduct
-      NoneCodexProductSkills = noneCodexProduct
+      NoneCodexRootAbsent = noneCodexAbsent
       SpecKitMirror = specKitMirror
       SpecKitDigests = specKitDigests
       DanglingRoutes = dangling.Length }
@@ -1234,7 +1251,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "spec-kit/%s: generate=pass %s" v.Profile v.SpecKitDiff)
     for v in verdicts do
-        line (sprintf "spec-kit/%s: three-root-mirror=%s" v.Profile v.SpecKitMirror)
+        line (sprintf "spec-kit/%s: two-root-mirror=%s" v.Profile v.SpecKitMirror)
     for v in verdicts do
         line (sprintf "spec-kit/%s: manifest-digests=%s dangling-routes=%d" v.Profile v.SpecKitDigests v.DanglingRoutes)
     for v in verdicts do
@@ -1246,13 +1263,13 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.SddSkillCount)
     for v in verdicts do
-        line (sprintf "sdd/%s: claude-product-skills=%d codex-product-skills=%d" v.Profile v.SddClaudeProductSkills v.SddCodexProductSkills)
+        line (sprintf "sdd/%s: claude-product-skills=%d codex-root-absent=%b" v.Profile v.SddClaudeProductSkills v.SddCodexRootAbsent)
     for v in verdicts do
         line (sprintf "none/%s: generate=pass %s" v.Profile v.None_)
     for v in verdicts do
         line (sprintf "none/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.NoneSkillCount)
     for v in verdicts do
-        line (sprintf "none/%s: claude-product-skills=%d codex-product-skills=%d" v.Profile v.NoneClaudeProductSkills v.NoneCodexProductSkills)
+        line (sprintf "none/%s: claude-product-skills=%d codex-root-absent=%b" v.Profile v.NoneClaudeProductSkills v.NoneCodexRootAbsent)
     line ""
     line (sprintf "provenance: %s" provenance)
     line "result: pass"
@@ -1279,12 +1296,13 @@ let private synthVerdicts () =
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
           NoneSkillCount = 1
-          // Feature 230 / ADR-0011: under sdd/none the orchestrator owns .claude/.codex, so the template
-          // authors 0 product skills there; under spec-kit the three roots mirror (self-fan-out).
+          // Feature 230 / ADR-0011: under sdd/none the orchestrator owns .claude/, so the template
+          // authors 0 product skills there; under spec-kit the two roots mirror (self-fan-out).
+          // Issue #1121 (ADR-0067 §5): .codex/ is retired and must be absent under every lane.
           SddClaudeProductSkills = 0
-          SddCodexProductSkills = 0
+          SddCodexRootAbsent = true
           NoneClaudeProductSkills = 0
-          NoneCodexProductSkills = 0
+          NoneCodexRootAbsent = true
           // Feature 231 / ADR-0014: the single materialize step yields byte-identical roots whose
           // SKILL.md digests match the shipped manifest; zero dangling routes (verdict-core synth).
           SpecKitMirror = "ok (materialized)"

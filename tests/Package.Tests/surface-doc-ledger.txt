@@ -472,6 +472,11 @@ vocabulary  stackConfig
 # reason. Restoring it — which #692 asked for, written before #663 landed — would red the gate.
 vocabulary  arc
 vocabulary  black
+# #1168: `bareCite` credited this from `fs-gg-ui-widgets`' `GraphView.nodes [ "form"; "chart"; "grid" ]` —
+# the node LABEL string "chart", not a citation of `Scene.chart`. Fixing the string-literal homonym
+# un-credits it; the surface is a Scene shape constructor same as its neighbours, so it lists here rather
+# than growing a paragraph nobody asked for.
+vocabulary  chart
 vocabulary  circleEvidence
 vocabulary  classify
 vocabulary  clipped
@@ -621,6 +626,12 @@ owner-sourced  playMusic
 owner-sourced  playSfx
 owner-sourced  playSfx3D
 owner-sourced  runInteractiveAppWithWindowBehaviorAndAudio
+# #1168: `bareCite` credited this from `fs-gg-elmish`'s `DispatchHostCommand "save"` — a host-command
+# PAYLOAD string, not a citation of `Persistence.save`. Fixing the string-literal homonym un-credits it;
+# `Persistence.save` is the same owner-sourced save-slot surface as its neighbours below (retired under
+# ADR-0063 alongside `saveEnvelope`/`deleteSlot`/`emptyEvidence`/`minVersion`), just never listed here
+# because the homonym had been standing in for the decision.
+owner-sourced  save
 owner-sourced  saveEnvelope
 owner-sourced  setBusVolume
 owner-sourced  setMasterVolume
