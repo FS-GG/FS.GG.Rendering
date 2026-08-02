@@ -1331,6 +1331,27 @@ let c = '"' in Expect.isTrue true "a message mentioning chart here"
                  `'\\''` — mis-consuming that literal must not strand a quote that swallows the real \
                  string's opener and leaves `chart` looking like bare code"
         }
+
+        test "an unbalanced quote inside a block comment does not swallow real code after it (#1173)" {
+            // #1173's own acceptance names this third case explicitly (a `(* ... *)` block comment,
+            // alongside the char-literal and line-comment reproductions above): the SAME false-negative
+            // direction as the line-comment fixture, through the other F# comment form. Before this repair,
+            // the stray `"` in `isn"t` was read as a real string's opener; with no second `"` before the end
+            // of input to close it, the walk gave up at end of line — blanking everything from the phantom
+            // open onward, INCLUDING the genuine, real citation `Scene.chart` sitting outside the comment
+            // entirely.
+            let markdown =
+                """
+```fsharp
+(* isn"t a string opener *) Scene.chart
+```
+"""
+
+            Expect.isTrue
+                (cites markdown "chart")
+                "`Scene.chart` is real code AFTER the block comment closes — a stray `\"` inside `isn\"t` \
+                 must not desync the walk into blanking it as if it were string content"
+        }
         // ---- end #1173 ------------------------------------------------------------------------------
         // ---- end #1168 ------------------------------------------------------------------------------
 
