@@ -164,11 +164,11 @@ let png   = Render.toPng { Width = 920; Height = 660 } board "./readiness/symbol
 // -> read `png` back, critique at the target size, TWEAK mapUnit ONLY, repeat.
 ```
 
-**A runnable version ships with this product**: [`reference.fsx`](reference.fsx), beside this file. Run it
-with `dotnet fsi` — it drives the *whole* loop end to end (roster → ChannelMap → LINT → TWEAK → re-lint →
-`galleryIn` across all three grammars → `Render.toPng`), and is the fastest way to see a `Warning` raised
-and then tuned away. Pin its `#r "nuget: FS.GG.UI.*"` lines to your `FsGgUiVersion` from
-`Directory.Packages.props` for version coherence; unpinned resolves the latest published set.
+**A runnable version ships with this product**: [`reference.fsx`](reference.fsx), beside this file. The generated `load-Product.fsx` intentionally opens only the app; loading it does not let a later script open framework namespaces directly.
+Run `reference.fsx` with `dotnet fsi`, or copy its four pinned `#r` directives for `FS.GG.UI.Scene`, `FS.GG.UI.SkiaViewer`, `FS.GG.UI.Symbology`, and `FS.GG.UI.Symbology.Render` ahead of the example above.
+Those exact directives are the executable preamble, and the template's version-coherence gate keeps them aligned with `FsGgUiVersion`.
+The reference drives the whole loop end to end (roster → ChannelMap → LINT → TWEAK → re-lint → `galleryIn` across all three grammars → `Render.toPng`).
+It is the fastest way to see a `Warning` raised and then tuned away; do not add its hand-maintained framework dependency list to `load-Product.fsx`.
 
 ### The golden reference (upstream)
 
