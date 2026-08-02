@@ -250,8 +250,20 @@ module Harness =
     /// shifts the three fs-gg-testing self-contained keys below by the same +6 lines. It covers origin, body,
     /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
     /// classification/compilation and must be deliberately re-audited.
+    /// Re-audited for Rendering#1171: the fs-gg-game-shell/SKILL.md Public Contract line-38 field list
+    /// and the `## Usage` fenced example both still described the pre-#1018 `Config.DefaultKeymap :
+    /// Keymap` shape (an incomplete migration in c12a7606, which replaced it with
+    /// `Config.Actions : KeyRebindAction list`); the example did not compile against the shipped
+    /// `GameShell.Config`. Corrected both spots to construct `Actions: KeyRebindAction list` (matching
+    /// the real `KeyRebindAction` catalog shape from `src/Controls/KeyRebind.fs`, `Binding = None` with
+    /// `DefaultBinding = Some key` as the shipped `Product.Tests/ShellBehaviorTests.fs` fixture does —
+    /// the live `Keymap` is derived inside `init` via `KeyRebind.restoreDefaults`, never supplied
+    /// directly). This fence remains Contextual (unchanged classification, only its body moved), so it
+    /// is still not fed to the compiler here; verified separately against the real shipped
+    /// `AppRoot.GameShell`/`FS.GG.UI.Controls` types via a scratch `dotnet fsi` probe (compiles with the
+    /// fix, fails FS0001 on `Config` having no field `DefaultKeymap` with it reverted).
     let private expectedProductSkillInventory =
-        "34aafcd7c870b50e73c7975e5b5088fc0a3774156177927a4567bf06f29ab4b3"
+        "e689fac95fb00214828718b65d96cca6e6f47dfc6bd46ca0963b913770374d4e"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product

@@ -28,7 +28,7 @@
     {
       "id": "fs-gg-game-shell",
       "scope": "product",
-      "sha256": "e532b8a13b4324cc105ca26c9aa7501a924b7454f1e0cfedb99e2eb787bf198a",
+      "sha256": "c54e19c95ff8d881bdaa0eca2b04aed9b7e066412a159db5d334510e385ad690",
       "resolvablePath": ".agents/skills/fs-gg-game-shell/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-game-shell/"
