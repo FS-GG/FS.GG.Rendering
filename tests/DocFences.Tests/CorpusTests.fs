@@ -4,6 +4,27 @@ open Expecto
 open FS.GG.DocFences
 open FS.GG.DocFences.Corpus
 
+/// Executable companion to fs-gg-testing's numbered-scenario recipe. The index is
+/// deliberately data, rather than inferred from test names, so omissions and duplicates
+/// both make the guard red.
+let private scenarioIndex total scenarios =
+    let indexed = scenarios |> List.sort
+    if indexed = [ 1 .. total ] then None else Some indexed
+
+type private PauseModel =
+    { Paused: bool
+      EnemyTurns: int
+      NewlyAddedFuse: int }
+
+let private encodePauseModel model =
+    $"{model.Paused}|{model.EnemyTurns}|{model.NewlyAddedFuse}"
+
+/// Deliberately defective pause transition: it freezes the old field but advances a
+/// field added later. The whole-state encoding must expose that regression.
+let private brokenFixedTick model =
+    if model.Paused then { model with NewlyAddedFuse = model.NewlyAddedFuse + 1 }
+    else { model with EnemyTurns = model.EnemyTurns + 1; NewlyAddedFuse = model.NewlyAddedFuse + 1 }
+
 /// Foundational tests for the corpus/fence map (spec 255, T004). These are deterministic — they read the
 /// in-tree corpora and need no package restore. The build-against-the-pin harness (US1) is separate.
 [<Tests>]
@@ -30,6 +51,19 @@ let tests =
                       (sprintf "fence at %s:%d has no body" f.Doc f.StartLine)
 
                   Expect.isGreaterThan f.StartLine 0 (sprintf "fence in %s has no line number" f.Doc)
+          }
+
+          test "scenario-index guard reddens for N-minus-one and duplicate coverage" {
+              Expect.isNone (scenarioIndex 3 [ 1; 2; 3 ]) "complete 1..N coverage is accepted"
+              Expect.isSome (scenarioIndex 3 [ 1; 2 ]) "N-minus-one coverage must fail even when its remaining tests pass"
+              Expect.isSome (scenarioIndex 3 [ 1; 2; 2 ]) "a duplicate cannot stand in for the missing scenario"
+          }
+
+          test "whole-state pause encoding reddens when a newly added field advances" {
+              let before = { Paused = true; EnemyTurns = 4; NewlyAddedFuse = 9 }
+              let after = brokenFixedTick before
+              Expect.notEqual (encodePauseModel after) (encodePauseModel before)
+                  "the encoded pause invariant must catch an advancing field added after the test was written"
           }
 
           test "no shipped skill document ends inside an unclosed fence" {
