@@ -524,12 +524,13 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "sdd/%s: framework-skills-present=ok" p)
                       (sprintf "sdd/%s framework fs-gg-* skills present (FR-001)" p)
-                  // Feature 230 / ADR-0011 (G-204.4): under sdd the orchestrator owns .claude/.codex, so the
-                  // template authors zero UI product skills into EITHER tree (#47/providerWroteSddTree).
+                  // Feature 230 / ADR-0011 (G-204.4): under sdd the orchestrator owns .claude/, so the
+                  // template authors zero UI product skills into it (#47/providerWroteSddTree). Issue
+                  // #1121 (ADR-0067 §5): .codex/ is retired and must not exist under sdd at all.
                   Expect.stringContains
                       report
-                      (sprintf "sdd/%s: claude-product-skills=0 codex-product-skills=0" p)
-                      (sprintf "sdd/%s .claude+.codex hold zero product skills (ADR-0011)" p)
+                      (sprintf "sdd/%s: claude-product-skills=0 codex-root-absent=true" p)
+                      (sprintf "sdd/%s .claude holds zero product skills (ADR-0011) and .codex/ is absent (ADR-0067 §5)" p)
               Expect.stringContains report "dangling-refs: none" "no directive agent-context doc references a suppressed path (CC-1)"
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a catalog listing absent skills (FR-005/FR-006)"
           }
@@ -549,22 +550,27 @@ let feature204LifecycleTemplateTests =
                       report
                       (sprintf "none/%s: framework-skills-present=ok" p)
                       (sprintf "none/%s framework fs-gg-* skills present (FR-001)" p)
-                  // Feature 230 / ADR-0011 (G-204.4): zero UI product skills in .claude+.codex under none (none ≡ sdd).
+                  // Feature 230 / ADR-0011 (G-204.4): zero UI product skills in .claude under none (none ≡ sdd).
+                  // Issue #1121 (ADR-0067 §5): .codex/ is retired and must not exist under none either.
                   Expect.stringContains
                       report
-                      (sprintf "none/%s: claude-product-skills=0 codex-product-skills=0" p)
-                      (sprintf "none/%s .claude+.codex hold zero product skills (ADR-0011)" p)
+                      (sprintf "none/%s: claude-product-skills=0 codex-root-absent=true" p)
+                      (sprintf "none/%s .claude holds zero product skills (ADR-0011) and .codex/ is absent (ADR-0067 §5)" p)
           }
 
-          // GV-4b (Feature 230 / ADR-0011 §1 / SC-001): under spec-kit the standalone product's three
-          // agent-skill roots MIRROR — the .claude/skills/ and .codex/skills/ fs-gg-* set equals .agents/skills/.
-          test "GV-4b spec-kit mirrors the skill union across .agents/.claude/.codex" {
+          // GV-4b (Feature 230 / ADR-0065 §1 / SC-001, narrowed by issue #1121 / ADR-0067 §5): under
+          // spec-kit the standalone product's two agent-skill roots MIRROR — the .claude/skills/
+          // fs-gg-* set equals .agents/skills/. `.codex/skills` is retired (ADR-0067 §5 /
+          // `.github#1636`): it is no longer a third mirror target, and `assertRootsByteIdentical`
+          // also asserts `.codex/` does not exist at all — folded into this same verdict, so its
+          // reappearance fails this line rather than passing silently.
+          test "GV-4b spec-kit mirrors the skill union across .agents/.claude (.codex retired)" {
               let report = readValidationReport ()
               for p in profiles do
                   Expect.stringContains
                       report
-                      (sprintf "spec-kit/%s: three-root-mirror=ok" p)
-                      (sprintf "spec-kit/%s .agents==.claude==.codex skill set (ADR-0011 §1)" p)
+                      (sprintf "spec-kit/%s: two-root-mirror=ok" p)
+                      (sprintf "spec-kit/%s .agents==.claude skill set (ADR-0065 §1), .codex/ absent (ADR-0067 §5)" p)
           }
 
           // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.

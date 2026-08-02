@@ -8,27 +8,31 @@ name: template-base-skill-union
 # (docs/coordination/skill-union-assertion.md, .github#1504/#628):
 #
 #   * the RECEIVER caller — `product-path` at its default `.` — audits THIS REPOSITORY'S OWN
-#     committed runtime roots (`.claude/skills`, `.codex/skills`, `.agents/skills`). That is the
-#     shape `receives: skill-union` means, it is a different subject from this one, and it is
-#     wired by FS.GG.Rendering#1080 in its own `skill-union.yml`.
+#     committed runtime roots (`.claude/skills`, `.agents/skills`). That is the shape
+#     `receives: skill-union` means, it is a different subject from this one, and it is wired by
+#     FS.GG.Rendering#1080 in its own `skill-union.yml`.
 #   * this one — a GENERATED-PRODUCT-shaped caller passing `product-path: template/base` — audits a
 #     subdirectory tree. It deliberately does NOT satisfy this repo's `receives: skill-union` row,
 #     and must not be mistaken for it. Two subjects, two workflows, two greens.
 #
-# WHAT IT PROVES. Over ADR-0011's three roots, for every skill in the union of `template/base/`:
-# present in every root (`[partitioned]`), byte-identical across them (`[divergent]`), and — because
-# `manifest:` is supplied — its `SKILL.md` canonical digest equals the digest the shipped
-# `template/skill-manifest/skill-manifest.json` declares (`[drifted]`). The manifest cross-check is
-# not decoration: the defect this gate was built after was `template/base/.claude/skills/
-# fs-gg-project/SKILL.md` sitting three commits behind the canonical `.agents/` body while
-# `.template.config/template.json` asserted in prose that copyOnly kept them byte-identical.
+# WHAT IT PROVES. Over ADR-0065's two roots (narrowed from ADR-0011's three by ADR-0067 §5,
+# executed 2026-07-28 by `.github#1636`; `.codex/skills` is retired — see issue #1121), for every
+# skill in the union of `template/base/`: present in every root (`[partitioned]`), byte-identical
+# across them (`[divergent]`), and — because `manifest:` is supplied — its `SKILL.md` canonical
+# digest equals the digest the shipped `template/skill-manifest/skill-manifest.json` declares
+# (`[drifted]`). The manifest cross-check is not decoration: the defect this gate was built after was
+# `template/base/.claude/skills/fs-gg-project/SKILL.md` sitting three commits behind the canonical
+# `.agents/` body while `.template.config/template.json` asserted in prose that copyOnly kept them
+# byte-identical.
 #
-# WHY IT IS ARMED THE WAY IT IS. `paths:` must cover all three base roots or the gate is armed on
+# WHY IT IS ARMED THE WAY IT IS. `paths:` must cover every base root or the gate is armed on
 # nothing — the .github#332/#334/#880 class, where the check is correct and its trigger fails open.
-# The manifest is included because it is the reference the digest check reads: a manifest edit can
-# turn this gate red without any root changing, and a gate that cannot see its own reference is the
-# .github#266 shape all over again. The workflow file itself is included so a change to the gate
-# re-runs the gate.
+# `template/base/.codex/**` was dropped from this list by issue #1121 in the same change that deleted
+# the directory it named — a filter entry for a path that can no longer exist is not defense, it is
+# a stale trigger nobody will notice is dead. The manifest is included because it is the reference the
+# digest check reads: a manifest edit can turn this gate red without any root changing, and a gate
+# that cannot see its own reference is the .github#266 shape all over again. The workflow file itself
+# is included so a change to the gate re-runs the gate.
 #
 # REPRODUCE LOCALLY (the command a reviewer runs; expected exit code 0):
 #
@@ -44,7 +48,6 @@ on:
   pull_request:
     paths:
       - "template/base/.claude/**"
-      - "template/base/.codex/**"
       - "template/base/.agents/**"
       - "template/skill-manifest/**"
       - ".github/workflows/template-base-skill-union.yml"
@@ -52,7 +55,6 @@ on:
     branches: [main]
     paths:
       - "template/base/.claude/**"
-      - "template/base/.codex/**"
       - "template/base/.agents/**"
       - "template/skill-manifest/**"
       - ".github/workflows/template-base-skill-union.yml"
@@ -66,9 +68,10 @@ jobs:
     uses: FS-GG/.github/.github/workflows/skill-union-assert.yml@main
     with:
       product-path: "template/base"
-      # `roots` is left at ADR-0011's three on purpose. The reusable gate always passes them
-      # explicitly and never consults a `.agent-skill-roots` declaration found inside the subject
-      # (.github#517) — letting the audited tree scope its own audit is the fail-open this gate
-      # exists to catch. Narrowing the set here would be a smaller audit than the decision on #1081
-      # asked for.
+      # `roots` is deliberately NOT set here — the reusable gate's own default IS the org root set
+      # (ADR-0065's two, `.claude/skills` + `.agents/skills`, since ADR-0067 §5 / .github#1636), and
+      # it never consults a `.agent-skill-roots` declaration found inside the subject (.github#517) —
+      # letting the audited tree scope its own audit is the fail-open this gate exists to catch. Issue
+      # #1121 relies on that reusable default rather than pinning a local copy of the root count here,
+      # so this caller tracks the org root set automatically the next time it moves.
       manifest: "template/skill-manifest/skill-manifest.json"
