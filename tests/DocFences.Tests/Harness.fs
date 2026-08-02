@@ -271,8 +271,12 @@ module Harness =
     /// Expecto dependency, neither of which the published-pin probe supplies in isolation.
     /// Re-audited for Rendering#1175: the new restaging fence is contextual because
     /// its model, fixture, guarded action, and room staging helpers are product-owned.
+    /// Re-audited for Rendering#1176: the new fs-gg-scene empty-group and handle probes are `text`
+    /// fences because their assertions are product-test examples; `Expect`, `Render`, the model, and
+    /// the handle are not part of the published Scene package. The surrounding framework prose is the
+    /// shipped contract, while the product-specific sketches remain contextual.
     let private expectedProductSkillInventory =
-        "01a3675c6152cc290bf6f324e5bac82c1dca9de84f5d186828f599cadb133f3b"
+        "b47ece9cfd8b377e1f31063b605ba9ed5c0fb859ca6349291fa35516671a4922"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -288,9 +292,9 @@ module Harness =
               "template/product-skills/fs-gg-layout/SKILL.md", 44
               "template/product-skills/fs-gg-ui-widgets/SKILL.md", 97
               "template/product-skills/fs-gg-scene/SKILL.md", 25
-              "template/product-skills/fs-gg-scene/SKILL.md", 47
-              "template/product-skills/fs-gg-scene/SKILL.md", 108
-              "template/product-skills/fs-gg-scene/SKILL.md", 182
+              "template/product-skills/fs-gg-scene/SKILL.md", 78
+              "template/product-skills/fs-gg-scene/SKILL.md", 139
+              "template/product-skills/fs-gg-scene/SKILL.md", 213
               "template/product-skills/fs-gg-styling/SKILL.md", 83
               "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
 
