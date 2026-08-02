@@ -77,7 +77,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "608d000c3db5df398794accfeea14adb27459b0e6462d016d650d15764561797"
+        "value": "62f330555533af8e031ee33cfe060162229417111522fd6aa6d9c147dded3c2b"
       }
     },
     {
@@ -465,7 +465,7 @@
           "path": "work/1196-windowed-fullscreen/evidence.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "608d000c3db5df398794accfeea14adb27459b0e6462d016d650d15764561797"
+            "value": "62f330555533af8e031ee33cfe060162229417111522fd6aa6d9c147dded3c2b"
           },
           "schemaVersion": 1
         },
@@ -496,7 +496,7 @@
       ],
       "outputDigest": {
         "algorithm": "sha256",
-        "value": "06ecfb08bedfe684271ac8fac132855ee81e02d6129aea2dd14798f124bc5809"
+        "value": "82656270df64526b6ce8506975989c7afe10cd3f5815f86b34735c745ed43a89"
       },
       "currency": "current"
     }

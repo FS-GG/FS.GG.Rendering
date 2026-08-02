@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1196-windowed-fullscreen/analysis.json
-    digest: b61041c430f8de3c665d7b8f947e79b00ea1d9331948a9f821060561ae131ca4
+    digest: 41aaf78ac89a34ace8c723621d6eb9fb303abc9e284d77344a40c6df3e44b884
     schemaVersion: 1
   - label: checklist
     path: work/1196-windowed-fullscreen/checklist.md
@@ -54,7 +54,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:ded96a79da18aee513439af8c5b37729fdff0d9897e9329725916473314cac16"
+      digest: "sha256:11dd9dc46867db19866cb9e16a3c6817dada438bd19b302c99af4a9ead459e65"
       outcome: passed
       passed: 9
       failed: 0
@@ -80,7 +80,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:ded96a79da18aee513439af8c5b37729fdff0d9897e9329725916473314cac16"
+      digest: "sha256:11dd9dc46867db19866cb9e16a3c6817dada438bd19b302c99af4a9ead459e65"
       outcome: passed
       passed: 9
       failed: 0
@@ -106,7 +106,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:ded96a79da18aee513439af8c5b37729fdff0d9897e9329725916473314cac16"
+      digest: "sha256:11dd9dc46867db19866cb9e16a3c6817dada438bd19b302c99af4a9ead459e65"
       outcome: passed
       passed: 9
       failed: 0
@@ -132,7 +132,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:ded96a79da18aee513439af8c5b37729fdff0d9897e9329725916473314cac16"
+      digest: "sha256:11dd9dc46867db19866cb9e16a3c6817dada438bd19b302c99af4a9ead459e65"
       outcome: passed
       passed: 9
       failed: 0
@@ -158,7 +158,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:ded96a79da18aee513439af8c5b37729fdff0d9897e9329725916473314cac16"
+      digest: "sha256:11dd9dc46867db19866cb9e16a3c6817dada438bd19b302c99af4a9ead459e65"
       outcome: passed
       passed: 9
       failed: 0
