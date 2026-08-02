@@ -162,11 +162,11 @@ jobs:
       # ADR-0067 phase 4 retires INTO both of its headline invariants become tautologies: the reusable
       # gate enumerates with `find` and no `-L`, so a view root contributes ZERO ids, and its presence
       # test is `[ -d ]` THROUGH the symlink, which cannot fail. Its replacement is the required
-      # `skill-view-check` context (.github/workflows/skill-view-check.yml). Do not read the loss as a
-      # narrowing of THIS step: the cross-root byte comparison below still runs, and — for every class
-      # except the kit's four — it still has a root that is a genuinely separate object to compare
-      # against, because `.codex/skills` is still in this script's own DEFAULT_ROOTS. See the note on
-      # FS.GG.Rendering#1120 there before narrowing that set.
+      # `skill-view-check` context (.github/workflows/skill-view-check.yml). #1120 retires the last
+      # separate `.codex/skills` projection; the remaining `.agents/skills` path is a generated view,
+      # so cross-root `diff` would compare one object to itself. This required step therefore asserts
+      # the non-vacuous producer-attribution subject, while `skill-view check` independently asserts
+      # the two runtime roots.
       #
       # `.agents/skills` is a GENERATED VIEW as of this change, so it is present here only because the
       # generate step above ran. Shell + python3 only otherwise: no SDK, no restore, no network. It is

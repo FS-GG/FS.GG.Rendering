@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# materialize-skill-roots.sh — project this repository's agent-skill union into ADR-0011's three roots.
+# materialize-skill-roots.sh — verify this repository's agent-skill union in ADR-0065's two roots.
 #
 #   scripts/materialize-skill-roots.sh             # apply: write the union into every derived root
-#   scripts/materialize-skill-roots.sh --check     # verify only; exit 1 on drift. No writes.
+#   scripts/materialize-skill-roots.sh --check     # generate the runtime view, then verify; exit 1 on drift.
 #   scripts/materialize-skill-roots.sh --list      # print the attributed union and exit 0
 #
 # WHY THIS EXISTS (FS.GG.Rendering#1080 / #1082 / .github#1504)
 #
-# ADR-0011 requires every agent-skill root — `.claude/skills`, `.codex/skills`, `.agents/skills` — to
-# hold the BYTE-IDENTICAL UNION of the skills produced for this repo, so the Claude, Codex and generic
-# agent runtimes are interchangeable. This repo did not hold it. Measured on `main` (ee5e6c3):
+# ADR-0065's ordered agent-skill root set is `.claude/skills`, `.agents/skills`. ADR-0067 §5 retired
+# `.codex/skills`: Codex discovers `.agents/skills` natively, so the third root had no distinct runtime
+# consumer and only created duplicate catalog entries. This script verifies that each surviving skill
+# is attributable to a producer and that its producer contract remains intact.
 #
 #   union 50 — .claude 50 / .codex 4 / .agents 50
 #   46 PARTITIONED (absent from .codex), and — independently — 30 of the 50 DIVERGENT between
@@ -107,22 +108,11 @@
 #     `kit / coordination-kit` context, and it is comparing against a PIN rather than against a
 #     sibling root. Nothing was lost; it moved.
 #
-# WHAT IS NOT VACUOUS, AND WHY THAT DEPENDS ON `DEFAULT_ROOTS` STAYING THREE. Every non-kit id is still
-# compared against `.codex/skills`, which is a genuinely separate tree of 46 directories this repo owns
-# — so the projection half of this gate still has a real subject for 46 of the 50 ids. The ATTRIBUTION
-# half (manifest digests, extension registry, wrapper route resolution, the speckit-implement override,
-# `[orphan]`) never compared roots at all and is untouched.
-#
-# SO THIS FILE AND FS.GG.Rendering#1120 INTERACT, AND NEITHER OF THEM ALONE IS THE PROBLEM. #1120 wants
-# `DEFAULT_ROOTS` narrowed from three to two, to match ADR-0065's contract set after ADR-0067 §5
-# retired `.codex/skills`. That is a correct and separate contract change — but landing it AFTER this
-# retirement removes the last root that is a separate object, and the projection half of this gate then
-# compares every one of the 50 ids with itself and can never fail. The retirement alone does not do
-# that (`.codex/skills` still absorbs it); #1120 alone would not have done it either (the two remaining
-# roots were separate committed trees until today). Together they do. **Whoever lands #1120 owes a
-# decision about what the projection half asserts afterwards** — the honest options are to drop it and
-# keep the attribution half, or to give it a subject that is not a root (the manifest digests already
-# are one). Do not narrow `DEFAULT_ROOTS` as a tidy-up. Recorded on #1120.
+# WHAT REMAINS NON-VACUOUS. The active roots are intentionally not byte-compared: they resolve to one
+# object. This script instead verifies manifest digests, enabled-extension declarations, wrapper routes,
+# the local override, and orphaned directories against their producer sets. `scripts/skill-view check`
+# independently verifies that both runtime discovery roots resolve the declared catalog. These subjects
+# can fail after `.codex/skills` retires; sibling-root `diff` cannot.
 #
 # THE KIT SKILLS ARE VERIFIED HERE, NEVER WRITTEN (a deliberate divergence from Governance's precedent)
 #
@@ -148,9 +138,8 @@
 # OWN 46 skills stay in `.codex/skills`, because §Retiring a root withdraws the KIT's copies from a
 # retired root — it does not empty the root, and this script must not either.
 #
-# So a kit skill is now expected in TWO roots while every other class is expected in this repo's three,
-# and conflating those two facts is exactly what broke. Before this change the kit class was verified
-# across `$ROOTS`; the moment the pin moved to 0.15.0 this script reported
+# So a kit skill is expected in TWO roots. Before the kit retirement the class was verified across the
+# repository roots; the moment the pin moved to 0.15.0 this script reported
 # `[kit-partitioned] <id> absent from .codex/skills — re-run the kit receiver` for all four, blaming the
 # receiver for a sweep the receiver had just performed correctly, and pointing the reader at a repair
 # (re-run the receiver) that reproduces the same state. The kit's output was right; the expectation was stale.
@@ -184,7 +173,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SPECIFY="$REPO_ROOT/.specify"
 CLAUDE_MANIFEST="$SPECIFY/integrations/claude.manifest.json"
 EXT_REGISTRY="$SPECIFY/extensions/.registry"
-DEFAULT_ROOTS=".claude/skills .codex/skills .agents/skills"
+DEFAULT_ROOTS=".claude/skills .agents/skills"
+RETIRED_ROOTS=".codex/skills"
 
 # The repo-native provider root: ADR-0011 §3 confines a provider to `.agents/skills/`.
 NATIVE_SOURCE=".agents/skills"
@@ -193,6 +183,10 @@ NATIVE_SOURCE=".agents/skills"
 # ATTRIBUTE them, not to check them — duplicating that gate here would be a restatement that can
 # disagree with it.
 KIT_SKILLS="cross-repo-coordination intra-repo-parallel-work check-board pnext-item"
+
+# Repo-native skills are the `fs-gg-*` provider wrappers plus this one local lifecycle skill.
+# Everything else must be declared by the Spec Kit manifest, enabled extension registry, or kit.
+NATIVE_SKILLS="speckit-merge"
 
 # Spec-kit rows whose on-disk body intentionally differs from the install receipt. id -> marker that
 # proves the override is still in force.
@@ -225,7 +219,7 @@ command -v python3 >/dev/null 2>&1 || {
 
 # ---------------------------------------------------------------------------------------------------
 # Roots. Same precedence as coordination-sync / skill-union-assert.sh: $AGENT_SKILL_ROOTS, else a
-# checked-in .agent-skill-roots, else ADR-0011's three. An ABSENT root is a hard error at every level —
+# checked-in .agent-skill-roots, else ADR-0065's two. An ABSENT root is a hard error at every level —
 # declaring roots narrows what is asked for, it never weakens the answer (.github#517 / #266).
 # ---------------------------------------------------------------------------------------------------
 if [ -n "${AGENT_SKILL_ROOTS:-}" ]; then
@@ -235,7 +229,7 @@ elif [ -f "$REPO_ROOT/.agent-skill-roots" ]; then
   ROOTS_SRC=".agent-skill-roots"
   [ -n "$ROOTS" ] || die ".agent-skill-roots parses to nothing — a tree that checked it in meant to say something."
 else
-  ROOTS="$DEFAULT_ROOTS"; ROOTS_SRC="default (ADR-0011's three)"
+  ROOTS="$DEFAULT_ROOTS"; ROOTS_SRC="default (ADR-0065's two; ADR-0067 §5 / .github#1636)"
 fi
 
 # The spec-kit producer's output root, derived from the manifest's own paths rather than hardcoded.
@@ -253,6 +247,21 @@ if len(roots) != 1:
 print(roots.pop())
 PY
 )" || die "could not derive the spec-kit output root from $CLAUDE_MANIFEST"
+
+# `.agents/skills` is an intentionally untracked runtime view. A fresh checkout does not have it,
+# so this public entry point establishes the declared view before it asks any root-presence or
+# attribution question. This is deliberate even for `--check`: checking a view that has never been
+# materialized would only prove checkout history, not the materializer's contract. `skill-view`
+# owns the view mechanism and refuses tracked or malformed targets.
+SKILL_VIEW="$SCRIPT_DIR/skill-view"
+RECEIVER_PROJ="$REPO_ROOT/.config/kit/FS.GG.Kit.receiver.proj"
+[ -f "$SKILL_VIEW" ] || die "cannot establish generated runtime view: $SKILL_VIEW is absent."
+[ -f "$RECEIVER_PROJ" ] || die "cannot establish generated runtime view: $RECEIVER_PROJ is absent."
+if [ ! -d "$REPO_ROOT/.agents/skills" ]; then
+  note "generating declared runtime view .agents/skills before $mode"
+  bash "$SKILL_VIEW" generate --receiver-proj "$RECEIVER_PROJ" --tree "$REPO_ROOT" \
+    || die "could not establish generated runtime view before $mode."
+fi
 
 for r in $ROOTS; do
   [ -d "$REPO_ROOT/$r" ] || die "configured root is absent: $r (roots from $ROOTS_SRC)"
@@ -301,11 +310,12 @@ note "spec-kit source:    $SPECKIT_SOURCE (derived from $(basename "$CLAUDE_MANI
 # Emits TSV: <id>\t<class>\t<source-root>\t<verdict>\t<detail>
 # ---------------------------------------------------------------------------------------------------
 ATTRIB="$(python3 - "$REPO_ROOT" "$NATIVE_SOURCE" "$SPECKIT_SOURCE" "$CLAUDE_MANIFEST" "$EXT_REGISTRY" \
-                   "$KIT_SKILLS" "$OVERRIDE_IDS" "$ROOTS" <<'PY'
+                   "$KIT_SKILLS" "$NATIVE_SKILLS" "$OVERRIDE_IDS" "$ROOTS" <<'PY'
 import hashlib, json, os, re, sys
 
-repo, native_src, speckit_src, manifest_p, ext_registry, kit_s, override_s, roots_s = sys.argv[1:9]
+repo, native_src, speckit_src, manifest_p, ext_registry, kit_s, native_s, override_s, roots_s = sys.argv[1:10]
 kit = set(kit_s.split())
+native = set(native_s.split())
 overrides = set(override_s.split())
 roots = roots_s.split()
 
@@ -314,10 +324,6 @@ OVERRIDE_MARKERS = {"speckit-implement": "## Repository Evidence Rules (Feature 
 def ids_in(root):
     d = os.path.join(repo, root)
     return {n for n in os.listdir(d) if os.path.isdir(os.path.join(d, n))} if os.path.isdir(d) else set()
-
-union = set()
-for r in roots:
-    union |= ids_in(r)
 
 def sha(p):
     with open(p, "rb") as f:
@@ -342,10 +348,13 @@ if os.path.isfile(ext_registry):
                 # `speckit.git.commit` -> `speckit-git-commit`
                 ext_ids.add(c.replace(".", "-"))
 
+native |= {sid for sid in ids_in(native_src) if sid.startswith("fs-gg-")}
+expected = kit | set(declared) | ext_ids | native
+
 rows = []
-for sid in sorted(union):
+for sid in sorted(expected):
     if sid in kit:
-        # Externally owned. Verified below (presence + cross-root identity), never written.
+        # Externally owned. Its pinned producer is verified by coordination-coherence, never written.
         rows.append((sid, "kit", "-", "ok", "FS.GG.Kit / coordination-coherence"))
         continue
 
@@ -416,62 +425,12 @@ if [ "$mode" = "list" ]; then
 fi
 
 # ---------------------------------------------------------------------------------------------------
-# Project each attributed skill from its source root into every other root. Kit skills are verified,
-# never written (see the header).
-# ---------------------------------------------------------------------------------------------------
-# `while read` in a pipeline runs in a subshell, so counters set there would be lost. Use a temp file.
-COUNTS="$(mktemp)"
-trap 'rm -f "$COUNTS"' EXIT
-echo "0 0" > "$COUNTS"
-
-echo "$ATTRIB" | {
-  drift=0; changed=0
-  while IFS="$(printf '\t')" read -r id cls src verdict detail; do
-    [ -n "$id" ] || continue
-    if [ "$cls" = "kit" ]; then
-      # Verify only: present in every root THE KIT WRITES, byte-identical across those, and swept from
-      # every root it does not. Never written or deleted here (see the header).
-      first=""
-      for r in $KIT_ROOTS; do
-        d="$REPO_ROOT/$r/$id"
-        if [ ! -d "$d" ]; then
-          echo "materialize-skill-roots: [kit-partitioned] $id absent from $r — re-run the kit receiver" >&2
-          drift=$((drift + 1)); continue
-        fi
-        if [ -z "$first" ]; then first="$d"; elif ! diff -qr "$first" "$d" >/dev/null 2>&1; then
-          echo "materialize-skill-roots: [kit-divergent] $id differs between roots — re-run the kit receiver" >&2
-          drift=$((drift + 1))
-        fi
-      done
-      for r in $KIT_NONROOTS; do
-        if [ -d "$REPO_ROOT/$r/$id" ]; then
-          echo "materialize-skill-roots: [kit-leftover] $id survives in $r, a root the kit does not write — re-run the kit receiver, which sweeps it" >&2
-          drift=$((drift + 1))
-        fi
-      done
-      continue
-    fi
-    SRC_DIR="$REPO_ROOT/$src/$id"
-    for r in $ROOTS; do
-      [ "$r" = "$src" ] && continue
-      DST_DIR="$REPO_ROOT/$r/$id"
-      if [ "$mode" = "check" ]; then
-        if [ ! -d "$DST_DIR" ] || ! diff -qr "$SRC_DIR" "$DST_DIR" >/dev/null 2>&1; then
-          echo "materialize-skill-roots: [drift] $r/$id differs from $src/$id" >&2
-          drift=$((drift + 1))
-        fi
-      else
-        if [ ! -d "$DST_DIR" ] || ! diff -qr "$SRC_DIR" "$DST_DIR" >/dev/null 2>&1; then
-          rm -rf "$DST_DIR"
-          cp -R "$SRC_DIR" "$DST_DIR"
-          changed=$((changed + 1))
-        fi
-      fi
-    done
-  done
-  echo "$drift $changed" > "$COUNTS"
-}
-read -r drift changed < "$COUNTS"
+# `.agents/skills` is a generated view of `.claude/skills`. Once the retired `.codex/skills` root
+# leaves this repo's set, comparing these two paths compares one object with itself and can never
+# detect drift. The view/runtime contract is asserted by `scripts/skill-view check`; this script's
+# independent subject is producer attribution below. Do not restore a cross-root `diff` here without
+# first giving it a genuinely independent subject.
+drift=0
 
 # An id present in a root that the attributed union does not contain is a leftover projection: it would
 # survive a producer REMOVING a skill, which is the regression this whole apparatus exists to catch.
@@ -487,13 +446,40 @@ for r in $ROOTS; do
   done
 done
 
+# The retired root is swept only through this declared constant. Its contents used to be projections
+# of this repo's skills; hand-deleting a mirror would hide a producer error, but leaving it recreates
+# duplicate runtime discovery. In check mode every surviving directory is a failure; apply removes
+# only directories under the root ADR-0067 §5 retired.
+for r in $RETIRED_ROOTS; do
+  retired="$REPO_ROOT/$r"
+  [ -d "$retired" ] || continue
+  leftovers="$(find "$retired" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)"
+  [ -z "$leftovers" ] && continue
+  if [ "$mode" = "check" ]; then
+    while IFS= read -r id; do
+      [ -n "$id" ] || continue
+      echo "materialize-skill-roots: [retired-leftover] $r/$id survives in a retired root — run scripts/materialize-skill-roots.sh" >&2
+      drift=$((drift + 1))
+    done <<EOF
+$leftovers
+EOF
+  else
+    while IFS= read -r id; do
+      [ -n "$id" ] || continue
+      rm -rf "$retired/$id"
+    done <<EOF
+$leftovers
+EOF
+  fi
+done
+
 total="$(echo "$ATTRIB" | grep -c . || true)"
 if [ "$mode" = "check" ]; then
   if [ "$drift" -ne 0 ]; then
     die "$drift drift finding(s) across $total attributed skill(s) — run scripts/materialize-skill-roots.sh"
   fi
-  note "$total skill(s) attributed; every root is the byte-identical union. No drift."
+  note "$total skill(s) attributed; every surviving root is producer-attributed. No drift."
 else
   [ "$drift" -eq 0 ] || die "$drift finding(s) this script must not repair (above)."
-  note "$total skill(s) attributed; $changed projection(s) written."
+  note "$total skill(s) attributed; retired-root projections swept."
 fi
