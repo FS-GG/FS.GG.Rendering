@@ -242,10 +242,16 @@ module Harness =
     /// is genuinely `Some` before the pause) alongside the original zero-intent and persistence-count checks.
     /// Verified against the real `template/base/src/Product/GameShell.fs` (not a stub) via a scratch
     /// `dotnet fsi` script, both with the fix present (passes) and with the fix removed (reddens) — see the PR
-    /// discussion for the script. It covers origin, body, skip reason, and extra opens. Any added, removed,
-    /// moved, or edited fence fails before classification/compilation and must be deliberately re-audited.
+    /// discussion for the script. Re-audited once more after review round 3 (finding 3): the acceptance text
+    /// was corrected to require asserting "unchanged preferences emit none" on the `GameShell.Effect` list
+    /// itself (this template wires no `ViewerEffect.Persist` sink), so the fs-gg-game-shell fence now threads
+    /// every step's effects instead of discarding most as `_`, and fs-gg-testing's two cross-references were
+    /// reworded to describe that same seam instead of a sink that does not exist here — a prose-only edit that
+    /// shifts the three fs-gg-testing self-contained keys below by the same +6 lines. It covers origin, body,
+    /// skip reason, and extra opens. Any added, removed, moved, or edited fence fails before
+    /// classification/compilation and must be deliberately re-audited.
     let private expectedProductSkillInventory =
-        "c924783fe8b2b2d198c37c9f4eb53c3b698de78a4c18b077d0621ef509abe7fa"
+        "34aafcd7c870b50e73c7975e5b5088fc0a3774156177927a4567bf06f29ab4b3"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -254,9 +260,9 @@ module Harness =
         Set.ofList
             [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
               "template/product-skills/fs-gg-symbology/SKILL.md", 226
-              "template/product-skills/fs-gg-testing/SKILL.md", 239
-              "template/product-skills/fs-gg-testing/SKILL.md", 264
-              "template/product-skills/fs-gg-testing/SKILL.md", 330
+              "template/product-skills/fs-gg-testing/SKILL.md", 245
+              "template/product-skills/fs-gg-testing/SKILL.md", 270
+              "template/product-skills/fs-gg-testing/SKILL.md", 336
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44

@@ -134,7 +134,13 @@ count; a preference the run never touched must contribute none. Asserting a tota
 count alone hides a preference that fired twice while another fired zero times —
 name the preference the count is FOR.
 
-See [[fs-gg-game-shell]] for the concrete rebind/pause-boundary journey this backs.
+See [[fs-gg-game-shell]] for a concrete rebind/pause-boundary journey that asserts this
+per-preference count one seam upstream of a host sink: this template wires no
+`ViewerEffect.Persist` sink at all (no host here calls `runAppWithPersistence`), so
+the observable point there is the `GameShell.Effect` list `GameShell.update` itself
+returns, not a sink collection. The rule is identical either way — count per
+preference, not per keystroke — assert it on whichever of the two your product
+actually wires.
 
 ## Seeded generation — pin it byte-for-byte, and prove the streams are independent
 
@@ -573,8 +579,9 @@ authored colors used by the production scene, and the current raster bytes.
 - [[fs-gg-game:fs-gg-persistence]] — the product-owned `serialize` the byte-identical fixture
   assertions reuse.
 - [[fs-gg-project]] — product-level wiring of expectations and readiness gates.
-- [[fs-gg-game-shell]] — the pause-safe rebind journey that drives the persistence
-  count this section asserts.
+- [[fs-gg-game-shell]] — the pause-safe rebind journey that asserts the same
+  per-preference count on its own `GameShell.Effect` list, one seam upstream of the
+  sink this section describes.
 
 ## Sources / links
 
