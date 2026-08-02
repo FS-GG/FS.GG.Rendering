@@ -191,8 +191,8 @@ let private classifySource (row: SourceRow) : string * string list =
             "capability"
         elif isGatedTarget || isGeneratedTree || isSkillistException then
             breaks "workspace/spec-kit-clause" (condition.Contains SPEC_KIT_COND)
-            // Feature 231 (F3): the repo-root blanket vendors ONLY the speckit-* process skills.
-            if source = ".agents/skills/" then
+            // Issue #1126: the tracked root vendors ONLY the speckit-* process skills.
+            if source = ".claude/skills/" then
                 breaks "workspace/speckit-blanket-target" (target = ".agents/skills/")
                 breaks "workspace/speckit-blanket-include" (row.Includes = [ "speckit-*/**" ])
             // ADR-0014 §Decision 2/3: exactly one spec-kit-gated materialize step.
@@ -313,10 +313,10 @@ let private agreementFixture: (string * SourceRow) list =
       row "template/skill-manifest/" ".agents/skills/" "(lifecycle == \"spec-kit\")" [] []
       "manifest: wrong target root",
       row "template/skill-manifest/" ".agents/skillsets/" "" [] verbatim
-      "workspace: the narrowed repo-root speckit-* blanket, clean",
-      row ".agents/skills/" ".agents/skills/" "(lifecycle == \"spec-kit\")" [ "speckit-*/**" ] verbatim
-      "workspace: the blanket widened to the dev surface and re-pointed at .claude/ (F3)",
-      row ".agents/skills/" ".claude/skills/" "(lifecycle == \"spec-kit\")" [ "**/*" ] verbatim
+      "workspace: the narrowed tracked speckit-* blanket, clean",
+      row ".claude/skills/" ".agents/skills/" "(lifecycle == \"spec-kit\")" [ "speckit-*/**" ] verbatim
+      "workspace: the tracked blanket widened to the dev surface and re-pointed at .claude/ (F3)",
+      row ".claude/skills/" ".claude/skills/" "(lifecycle == \"spec-kit\")" [ "**/*" ] verbatim
       "workspace: the single materialize step, clean",
       row "template/lifecycle/" ".specify/scripts/fs-gg/" "(lifecycle == \"spec-kit\")" [] verbatim
       "workspace: materialize step re-pointed off .specify/scripts/fs-gg/",

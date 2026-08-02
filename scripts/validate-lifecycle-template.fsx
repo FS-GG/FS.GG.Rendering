@@ -189,7 +189,7 @@ let private sourceRows (arrayElement: JsonElement) =
 /// the capability-gated skill (by shape), then the ungated skill-manifest row (named exception),
 /// then lifecycle-workspace (by `target` prefix / generated tree / the named skillist exception),
 /// then product. Feature 231's two structural ADR-0014 facts live in the workspace branch: the
-/// repo-root `.agents/skills/` source vendors ONLY the `speckit-*` process skills (no dev surface,
+/// tracked `.claude/skills/` source vendors ONLY the `speckit-*` process skills (no dev surface,
 /// F3), and the single spec-kit-gated materialize step (template/lifecycle/ ->
 /// .specify/scripts/fs-gg/) replaces the Feature 230 per-skill `.claude`/`.codex` twins.
 ///
@@ -244,7 +244,7 @@ let private classifySource (row: SourceRow) : string * string list =
         // skillist catalog — the named exception).
         elif isGatedTarget || isGeneratedTree || isSkillistCatalogSource target row.Includes then
             require "workspace/spec-kit-clause" (condition.Contains SPEC_KIT_COND)
-            if source = ".agents/skills/" then
+            if source = ".claude/skills/" then
                 require "workspace/speckit-blanket-target" (target = ".agents/skills/")
                 require "workspace/speckit-blanket-include" (row.Includes = [ "speckit-*/**" ])
             if source = "template/lifecycle/" then
@@ -328,12 +328,12 @@ let private verifyGatedSources () =
     let workspaceSourced source =
         countWhere (fun (row, (c, _)) -> c = "workspace" && row.Source.Replace('\\', '/') = source)
     let materializeChecked = workspaceSourced "template/lifecycle/"
-    let speckitNarrowChecked = workspaceSourced ".agents/skills/"
+    let speckitNarrowChecked = workspaceSourced ".claude/skills/"
     assertTrue (frameworkChecked = 17) (sprintf "expected exactly 17 framework product-skill sources (.agents/skills/ provider surface; ADR-0063 (FS.GG.Rendering#965) retired the 4 game-owned copies game-core/audio/persistence/model-swap, now owner-sourced from FS.GG.Game.Skills; incl. fs-gg-project + fs-gg-collision + fs-gg-visibility + fs-gg-grids + fs-gg-line-drawing + fs-gg-symbol-design + fs-gg-samples (re-gated profile-only under #939) + fs-gg-game-shell (#991), no twins), checked %d" frameworkChecked)
     assertTrue (capabilityChecked = 1) (sprintf "expected exactly 1 capability-scope skill source (fs-gg-feedback-report — ungated since #434), checked %d" capabilityChecked)
     assertTrue (manifestChecked = 1) (sprintf "expected exactly 1 ungated skill-manifest source, checked %d" manifestChecked)
     assertTrue (materializeChecked = 1) (sprintf "expected exactly 1 spec-kit-gated materialize source (template/lifecycle/), checked %d" materializeChecked)
-    assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed repo-root .agents/skills/ source, checked %d" speckitNarrowChecked)
+    assertTrue (speckitNarrowChecked = 1) (sprintf "expected exactly 1 narrowed tracked .claude/skills/ source, checked %d" speckitNarrowChecked)
     assertTrue (workspaceChecked >= 6) (sprintf "expected >=6 lifecycle-workspace sources, checked %d" workspaceChecked)
     assertTrue (productChecked >= 3) (sprintf "expected >=3 ungated product sources, checked %d" productChecked)
     frameworkChecked, workspaceChecked, productChecked

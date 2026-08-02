@@ -204,10 +204,10 @@ let feature219EmitFrameworkSkillsTests =
                          Condition = str "condition"
                          Include = arr "include"
                          CopyOnly = arr "copyOnly" |} ]
-              // 1. the repo-root blanket vendors ONLY the speckit-* process skills (audit F3 fix).
-              let speckit = rows |> List.filter (fun r -> r.Source = ".agents/skills/")
-              Expect.equal speckit.Length 1 "exactly one repo-root .agents/skills/ source"
-              Expect.equal speckit.Head.Include [ "speckit-*/**" ] "the repo-root blanket includes ONLY speckit-*/** (no dev-surface wrappers)"
+              // 1. the tracked-root blanket vendors ONLY the speckit-* process skills (issue #1126).
+              let speckit = rows |> List.filter (fun r -> r.Source = ".claude/skills/")
+              Expect.equal speckit.Length 1 "exactly one tracked .claude/skills/ source"
+              Expect.equal speckit.Head.Include [ "speckit-*/**" ] "the tracked-root blanket includes ONLY speckit-*/** (no dev-surface wrappers)"
               Expect.stringContains speckit.Head.Condition SPEC_KIT_COND "the speckit process-skill copy is spec-kit-gated"
               // 2. the ungated skill-manifest row ships provider data in every lifecycle.
               let manifest = rows |> List.filter (fun r -> r.Source = "template/skill-manifest/")
