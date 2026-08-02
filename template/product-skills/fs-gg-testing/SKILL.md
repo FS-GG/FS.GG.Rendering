@@ -415,6 +415,57 @@ same two of them subtly wrong. Write them once, from here.
       ]
   ```
 
+## Restaging a guarded test — keep the assertion's seeded state alive
+
+Adding a guard or precondition often means an existing test must enter a different
+state before it can perform the action under test. Restage that caller, but do not
+stop at proving the new guard is satisfied. A convenient staging helper can also
+replace or clear the very state the test is meant to inspect. The original assertion
+then turns green vacuously: it no longer distinguishes the behaviour it claims to
+cover.
+
+Assert the seeded, non-default state immediately after restaging and before the
+guarded action. This makes the test prove two independent facts: the precondition is
+met, and the test still reaches the action with the state its later assertion is
+about. Prefer a focused sanity assertion over trusting a helper name such as
+`loadRoom`; names do not describe all of a helper's side effects.
+
+For example, suppose a descent test seeds three room-local collections and needs to
+restage an already-cleared boss room for a newly introduced trapdoor guard. Reusing
+`loadM5Room` satisfies the guard, but that helper is correct for its usual purpose
+because it replaces every room-local collection with the cleared room's empty
+contents. Without the checks marked below, the later assertions inspect empty
+collections before `descendFloor` runs and cannot catch a regression in descent.
+
+```fsharp
+let assertSeededRoomState (model: Model) =
+    Expect.equal model.Enemies.Length 7 "the actor fixture must survive restaging"
+    Expect.equal model.M5Enemies.Length 7 "the M5 actor fixture must survive restaging"
+    Expect.equal model.EnemyBullets.Length 3 "the bullet fixture must survive restaging"
+
+let descendFromClearedBossRoom () =
+    let seeded = fixtureWithEnemies 7 7 3
+    let staged =
+        seeded
+        |> markBossCleared bossId
+        |> standOnTrapdoor bossId
+        // Do not use `loadM5Room` here merely to satisfy the guard: it clears the
+        // seeded collections this test must exercise.
+
+    Expect.isTrue (isStandingOnTrapdoor staged) "the new descent guard is satisfied"
+    assertSeededRoomState staged // this reddens if a staging helper silently clears state
+
+    let after = descendFloor staged
+    Expect.equal after.Enemies.Length 0 "descent clears the old room's actors"
+    Expect.equal after.M5Enemies.Length 0 "descent clears M5-local actors"
+    Expect.equal after.EnemyBullets.Length 0 "descent clears room-local bullets"
+```
+
+To prove the sanity check bites, temporarily insert `|> loadM5Room` into the staged
+pipeline (or drive an equivalent test-local silent-clear double): the guard still
+passes, but `assertSeededRoomState` must red *before* `descendFloor`. Remove the
+mutation and confirm the intended restaging and descent assertions green together.
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
