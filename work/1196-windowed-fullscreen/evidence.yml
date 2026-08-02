@@ -1,0 +1,133 @@
+schemaVersion: 1
+workId: 1196-windowed-fullscreen
+stage: evidence
+status: needsEvidenceCorrection
+sourceSpec: work/1196-windowed-fullscreen/spec.md
+sourceClarifications: work/1196-windowed-fullscreen/clarifications.md
+sourceChecklist: work/1196-windowed-fullscreen/checklist.md
+sourcePlan: work/1196-windowed-fullscreen/plan.md
+sourceTasks: work/1196-windowed-fullscreen/tasks.yml
+sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1196-windowed-fullscreen/analysis.json
+    digest: 0234a78c036960ca461b09592bb138d7a95babc0584d2f8777b51bb7683fbce8
+    schemaVersion: 1
+  - label: checklist
+    path: work/1196-windowed-fullscreen/checklist.md
+    digest: ab050901a90e7c7e64d2a7b710d8b3cc6bc661ab3c707b4d94f656d21c96d2ff
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1196-windowed-fullscreen/clarifications.md
+    digest: a9d9294f6c09a71e737fee34d0e8602a227730ddd2bd193a4d7942d782683004
+    schemaVersion: 1
+  - label: plan
+    path: work/1196-windowed-fullscreen/plan.md
+    digest: e2c6902b2edc9717f3dd79748b10e6e3ac1bdca95d742f2735aa19e068268bb9
+    schemaVersion: 1
+  - label: spec
+    path: work/1196-windowed-fullscreen/spec.md
+    digest: c046b97d40053db9271e66ba6952f72a9c02e0cbb1002e0d51afc4ffdde4b86a
+    schemaVersion: 1
+  - label: tasks
+    path: work/1196-windowed-fullscreen/tasks.yml
+    digest: f5fc7d28c8373081d996faff73565d1b0f975908be88d4f0f8b043b3e92baee3
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: missing
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: missing
+    synthetic: false
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: missing
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV002]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: missing
+    synthetic: false
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: missing
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV003]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: missing
+    synthetic: false
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: missing
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV004]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: missing
+    synthetic: false
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: missing
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: missing
+    synthetic: false
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

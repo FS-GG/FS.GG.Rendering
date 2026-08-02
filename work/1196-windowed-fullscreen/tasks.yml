@@ -25,7 +25,7 @@ sources:
     schemaVersion: 1
   - label: plan
     path: work/1196-windowed-fullscreen/plan.md
-    digest: 5c53480db93f4c289706ce85f8ee186538b8651f95530144704ad931a5637c23
+    digest: e2c6902b2edc9717f3dd79748b10e6e3ac1bdca95d742f2735aa19e068268bb9
     schemaVersion: 1
 tasks:
   - id: T001

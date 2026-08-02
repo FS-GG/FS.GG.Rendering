@@ -27,22 +27,22 @@ Prose status: planned
 - Checklist result count: 1.
 
 ## Plan Decisions
-- PD-001 [AC-001] [FR-001] complete: Plan requirement FR-001 through the plan command contract.
+- PD-001 [AC-001] [FR-001] complete: Defer WindowedFullscreen geometry resolution to the live native window and select its current monitor's bounds; this prevents a primary-monitor plan from moving a secondary-monitor window off screen.
 
 ## Contract Impact
-- PC-001 [PD-001] command report: fsgg-sdd plan, work/1196-windowed-fullscreen/plan.md, and command-report JSON are tool-facing and compatibility-preserving.
+- PC-001 [PD-001] public API: RuntimeWindowTarget gains a work-area reader used only for WindowedFullscreen; its fake implementation makes the native transition policy testable without a compositor.
 
 ## Verification Obligations
-- VO-001 [PD-001] [PC-001] semanticTest: Run focused command tests, FSI/prelude evidence, and CLI smoke evidence before task generation.
+- VO-001 [PD-001] [PC-001] semanticTest: Build SkiaViewer and run the Issue1022 native-target regression proving that the active monitor work area overrides stale planned geometry; inspect the game-shell guidance for safe defaults and field-overlay semantics.
 
 ## Performance Intent
 No performance intent is declared for this work item.
 
 ## Migration Posture
-- PM-001 [PC-001] diagnoseOnly: Plan schemaVersion 1 is accepted; unsupported plan schemas diagnose before write.
+- PM-001 [PC-001] none: This is an additive internal test seam; no persisted format or consumer migration is required.
 
 ## Generated View Impact
-- GV-001 [PD-001] workModel: readiness/1196-windowed-fullscreen/work-model.json refreshes from current plan sources or reports staleGeneratedView.
+- GV-001 [PD-001] workModel: Refresh readiness views after authoring this decision so their source digests bind the implementation route and verification evidence.
 
 ## Accepted Deferrals
 No accepted plan deferrals recorded.
