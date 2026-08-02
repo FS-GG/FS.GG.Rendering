@@ -766,6 +766,44 @@ let expectedWorkloads =""",
                       invalidDebt.Output
                       "baseline capture requires a linked blocking performance-debt issue"
                       "invalid debt syntax receives an actionable fail-closed diagnosis"
+
+                  // #1180 regression: `sprintf "%A"` truncates a collection after 100 elements, so
+                  // `messageFramesFingerprint`'s 120-entry sampled frame list (WarmupFrames 20,
+                  // SampleFrames 120 -> frames 0..119) could not see a divergence past its 100th
+                  // entry. This is the frame-2 regression above (#1164) rerun past that boundary:
+                  // mutating ONLY the 106th sampled frame (index 105) must ALSO invalidate the same
+                  // authored declaration the frame-2 case already proves catches an earlier change.
+                  // With the `%A` encoding reverted, this assertion reddens while the frame-2 one
+                  // above stays green — that gap between them IS the defect.
+                  File.WriteAllText(evidenceSourcePath, helperBoundAuthoredSource)
+
+                  let frameOneOhFiveOnlyMessageMutation =
+                      helperBoundAuthoredSource.Replace(
+                          "if frame = 2 then Tick(1.0 / 60.0) else Tick(1.0 / 60.0)",
+                          "if frame = 2 then Tick(1.0 / 60.0) elif frame = 105 then Tick(2.0 / 60.0) else Tick(1.0 / 60.0)",
+                          StringComparison.Ordinal
+                      )
+
+                  Expect.notEqual
+                      frameOneOhFiveOnlyMessageMutation
+                      helperBoundAuthoredSource
+                      "fixture changes only the 106th sampled message frame (index 105, past `%A`'s 100-element print length)"
+
+                  File.WriteAllText(evidenceSourcePath, frameOneOhFiveOnlyMessageMutation)
+                  let frameOneOhFiveOnlyMessage = runEvidence ()
+
+                  Expect.equal
+                      frameOneOhFiveOnlyMessage.ExitCode
+                      1
+                      "a frame-105-only helper message mutation invalidates Authored, past `%A`'s 100-element print length (#1180)"
+                  Expect.stringContains
+                      frameOneOhFiveOnlyMessage.Output
+                      "authored declaration is stale"
+                      "frame-105 helper mutation is diagnosed as stale — a `%A`-truncated fingerprint would leave this identical to the unmutated digest"
+                  Expect.stringContains
+                      frameOneOhFiveOnlyMessage.Output
+                      "workload 'idle'"
+                      "the tail-frame workload is identified"
               finally
                   if Directory.Exists fixtureRoot then
                       Directory.Delete(fixtureRoot, true)
