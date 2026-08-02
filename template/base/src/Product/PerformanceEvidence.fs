@@ -461,6 +461,13 @@ let private keyValuePairDefinition = typedefof<System.Collections.Generic.KeyVal
 /// not insertion-order-determined — and numbers with invariant round-trip formatting so a host's
 /// culture cannot change a byte.
 ///
+/// Structured values are tagged with their CLR `FullName`, not the shorter `Name`: two records in
+/// different modules, or two unions with the same case name, are different model shapes and must
+/// not encode identically. This deliberately means that renaming or moving a declared type changes
+/// the fingerprint even when its fields do not; for an authorship-drift fingerprint, that source
+/// identity change is part of the model change. Multi-case unions use the declaring union's full
+/// name rather than the generated case subtype's redundant `Union+Case` full name.
+///
 /// The bottom case of `canonicalWriteStructured` FAILS LOUDLY on a value shape it does not
 /// recognize, rather than falling back to a lossy stringify such as `Convert.ToString`: a silent
 /// string fallback would reintroduce exactly this defect's blind spot for whatever leaf type
@@ -496,7 +503,7 @@ and private canonicalWriteStructured (builder: StringBuilder) (value: obj) : uni
     let valueType = value.GetType()
 
     if valueType.IsEnum then
-        builder.Append(valueType.Name).Append('.').Append(Enum.GetName(valueType, value)) |> ignore
+        builder.Append(valueType.FullName).Append('.').Append(Enum.GetName(valueType, value)) |> ignore
     elif valueType.IsGenericType && valueType.GetGenericTypeDefinition() = keyValuePairDefinition then
         let key = valueType.GetProperty "Key"
         let item = valueType.GetProperty "Value"
@@ -505,7 +512,7 @@ and private canonicalWriteStructured (builder: StringBuilder) (value: obj) : uni
         canonicalWrite builder (item.GetValue value)
     elif FSharpType.IsRecord(valueType, true) then
         let fields = FSharpType.GetRecordFields(valueType, true)
-        builder.Append(valueType.Name).Append '{' |> ignore
+        builder.Append(valueType.FullName).Append '{' |> ignore
 
         fields
         |> Array.iteri (fun index field ->
@@ -529,7 +536,7 @@ and private canonicalWriteStructured (builder: StringBuilder) (value: obj) : uni
     // order encoding that is exactly what closes #1180 (no per-collection length limit).
     elif (value :? IEnumerable) then
         let items = value :?> IEnumerable
-        builder.Append(valueType.Name).Append '[' |> ignore
+        builder.Append(valueType.FullName).Append '[' |> ignore
         let mutable index = 0
 
         for item in items do
@@ -540,7 +547,13 @@ and private canonicalWriteStructured (builder: StringBuilder) (value: obj) : uni
         builder.Append ']' |> ignore
     elif FSharpType.IsUnion(valueType, true) then
         let case, fields = FSharpValue.GetUnionFields(value, valueType, true)
-        builder.Append(valueType.Name).Append('.').Append(case.Name) |> ignore
+        let declaringType =
+            match valueType.BaseType with
+            | null -> valueType
+            | baseType when FSharpType.IsUnion(baseType, true) -> baseType
+            | _ -> valueType
+
+        builder.Append(declaringType.FullName).Append('.').Append(case.Name) |> ignore
 
         if fields.Length > 0 then
             builder.Append '(' |> ignore

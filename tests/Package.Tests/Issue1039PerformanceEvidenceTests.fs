@@ -14,6 +14,15 @@ let private root = RepositoryRoot.value
 let private read (relative: string) =
     File.ReadAllText(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)))
 
+let private sliceBetween (startMarker: string) (endMarker: string) (text: string) =
+    let start = text.IndexOf(startMarker, StringComparison.Ordinal)
+    let finish = text.IndexOf(endMarker, start + startMarker.Length, StringComparison.Ordinal)
+
+    if start < 0 || finish < 0 then
+        failwith $"could not extract source between '{startMarker}' and '{endMarker}'"
+
+    text.Substring(start, finish - start)
+
 let private occurrences (needle: string) (text: string) =
     let rec loop start count =
         let found = text.IndexOf(needle, start, System.StringComparison.Ordinal)
@@ -804,6 +813,70 @@ let expectedWorkloads =""",
                       frameOneOhFiveOnlyMessage.Output
                       "workload 'idle'"
                       "the tail-frame workload is identified"
+              finally
+                  if Directory.Exists fixtureRoot then
+                      Directory.Delete(fixtureRoot, true)
+          }
+
+          test "structural fingerprint distinguishes same-named records and union cases" {
+              let fixtureRoot =
+                  Path.Combine(Path.GetTempPath(), $"fsgg-canonical-types-{Guid.NewGuid():N}")
+
+              let dotnetHome = Path.Combine(fixtureRoot, "dotnet-home")
+              let scriptPath = Path.Combine(fixtureRoot, "canonical-types.fsx")
+              let source = read "template/base/src/Product/PerformanceEvidence.fs"
+
+              let encoder =
+                  sliceBetween
+                      "let private canonicalEscape"
+                      "let private structuralFingerprint"
+                      source
+
+              let script =
+                  $"""open System
+open System.Collections
+open System.Globalization
+open System.Text
+open Microsoft.FSharp.Reflection
+
+module Weather =
+    type WeatherKind = Sunny | Storm of int
+
+module Alerts =
+    type AlertLevel = Calm | Storm of int
+
+module Left =
+    type Pos = {{ Slot: int }}
+
+module Right =
+    type Pos = {{ Slot: int }}
+
+{encoder}
+
+let encode value =
+    let builder = StringBuilder()
+    canonicalWrite builder (box value)
+    builder.ToString()
+
+let weather = encode (Weather.WeatherKind.Storm 5)
+let alert = encode (Alerts.AlertLevel.Storm 5)
+let left = encode ({{ Left.Pos.Slot = 1 }}: Left.Pos)
+let right = encode ({{ Right.Pos.Slot = 1 }}: Right.Pos)
+
+if weather = alert then failwith ("different unions collided: " + weather)
+if left = right then failwith ("different records collided: " + left)
+"""
+
+              Directory.CreateDirectory fixtureRoot |> ignore
+
+              try
+                  File.WriteAllText(scriptPath, script)
+                  let result = runDotnet fixtureRoot dotnetHome [ "fsi"; "--define:DEBUG"; scriptPath ]
+
+                  Expect.equal
+                      result.ExitCode
+                      0
+                      $"same-named declared types have distinct structural encodings:{Environment.NewLine}{result.Output}"
               finally
                   if Directory.Exists fixtureRoot then
                       Directory.Delete(fixtureRoot, true)
