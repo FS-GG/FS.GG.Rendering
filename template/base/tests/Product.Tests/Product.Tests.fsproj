@@ -16,6 +16,7 @@
          the product's model/view), and game-profile-only inside (`//#if profile == "game"`), so it
          compiles to an empty module and adds nothing on the other profiles. -->
     <Compile Include="CoverageGateTests.fs" />
+    <Compile Include="AudioCueResolutionTests.fs" />
     <Compile Include="BehaviorTests.fs" />
     <!-- Issue #1002 (child of #991): release-lane BEHAVIOUR coverage for the generic game shell.
          Drives GameShell.fs's pure `update` + host-free seams (router, Esc routing, rebind capture,

@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- #1210: authored WAV content is a product artifact. Copy only real cue assets into the
+         actual build/publish output; the asset-less scaffold therefore stays deliberately red. -->
+    <Content Include="..\..\assets\audio\*.wav" Link="assets\audio\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!--#if (profile == "game" || profile == "sample-pack") -->
     <!-- Feature 250: the collision-safe Vec2 helper (fs-gg-model-swap / fs-gg-game-core skills).
          Consumer-owned, adaptable source — compiled before Model.fs so the starter (and your own model)

@@ -1,0 +1,654 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "1.2.0",
+  "workId": "1210-audio-cue-resolution",
+  "project": {
+    "id": "rendering-1194",
+    "defaultWorkRoot": "work",
+    "profile": null
+  },
+  "sources": [
+    {
+      "path": ".fsgg/agents.yml",
+      "kind": "agentsConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+      }
+    },
+    {
+      "path": ".fsgg/project.yml",
+      "kind": "projectConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+      }
+    },
+    {
+      "path": ".fsgg/sdd.yml",
+      "kind": "sddConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/checklist.md",
+      "kind": "checklist",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "ad2a0d28a361ce4c1fa6c7118e633c7005b2e0df0b59b24115123f5182ac6b62"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/clarifications.md",
+      "kind": "clarifications",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "cc7223dc77bee75c4ff67a64c2d8396e99a6404eccbadf683e0b806763a7989e"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/evidence.yml",
+      "kind": "evidence",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "80433d032b4a59ad04cf8bc002e36d2d0511be9650b598a240052a34615c4d21"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/plan.md",
+      "kind": "plan",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "ddc6cb63f56b22832c8d87c9bbf06c943eb0bd6b855d88b14e10c160a0d44218"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/spec.md",
+      "kind": "spec",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "5afd84f024b7df4a065b6f38a4fe9e9f23cbd6ea370f378101662ddd72667d5e"
+      }
+    },
+    {
+      "path": "work/1210-audio-cue-resolution/tasks.yml",
+      "kind": "tasks",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "c87741854cf37c731c3d2a85f7fd2aa9422b111ac9fe4ada43ae224e51278495"
+      }
+    }
+  ],
+  "workItem": {
+    "id": "1210-audio-cue-resolution",
+    "title": "Generated audio cue resolution readiness",
+    "stage": "specify",
+    "changeTier": "tier1",
+    "status": "specified"
+  },
+  "performanceIntent": null,
+  "requirements": [
+    {
+      "id": "FR-001",
+      "title": "every declared cue id is resolved through the product resolver and missing or malformed assets report the id and expected path. (Stories: US-001; Acceptance: AC-001)",
+      "text": "every declared cue id is resolved through the product resolver and missing or malformed assets report the id and expected path. (Stories: US-001; Acceptance: AC-001)",
+      "acceptanceCriteria": [
+        "AC-001"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1210-audio-cue-resolution/spec.md",
+      "sourceLocation": {
+        "line": 31,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T001"
+      ],
+      "linkedEvidenceIds": [
+        "EV001"
+      ]
+    },
+    {
+      "id": "FR-002",
+      "title": "request evidence and resolution evidence remain separately observable. (Stories: US-001; Acceptance: AC-001)",
+      "text": "request evidence and resolution evidence remain separately observable. (Stories: US-001; Acceptance: AC-001)",
+      "acceptanceCriteria": [
+        "AC-001"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1210-audio-cue-resolution/spec.md",
+      "sourceLocation": {
+        "line": 32,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T002"
+      ],
+      "linkedEvidenceIds": [
+        "EV002"
+      ]
+    },
+    {
+      "id": "FR-003",
+      "title": "a fresh scaffold with declared ids but no valid assets fails audio-content readiness. (Stories: US-001; Acceptance: AC-001)",
+      "text": "a fresh scaffold with declared ids but no valid assets fails audio-content readiness. (Stories: US-001; Acceptance: AC-001)",
+      "acceptanceCriteria": [
+        "AC-001"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1210-audio-cue-resolution/spec.md",
+      "sourceLocation": {
+        "line": 33,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T003"
+      ],
+      "linkedEvidenceIds": [
+        "EV003"
+      ]
+    }
+  ],
+  "decisions": [],
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Implement requirement FR-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-001"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "FR-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV001"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "T002",
+      "title": "Implement requirement FR-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-002"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "FR-002",
+        "PD-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV002"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "T003",
+      "title": "Implement requirement FR-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-003"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "FR-003",
+        "PD-003"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV003"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "T004",
+      "title": "Update contract surface PC-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV004"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "T005",
+      "title": "Record verification evidence VO-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001",
+        "VO-001"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV005"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "T006",
+      "title": "Handle migration posture PM-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PM-001"
+      ],
+      "requiredSkills": [
+        "schema-versioning"
+      ],
+      "requiredEvidence": [
+        "EV006"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "T007",
+      "title": "Refresh generated view impact GV-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "GV-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "deterministic-json"
+      ],
+      "requiredEvidence": [
+        "EV007"
+      ],
+      "source": "work/1210-audio-cue-resolution/tasks.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EV001",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T001",
+      "taskRefs": [
+        "T001"
+      ],
+      "requirementRefs": [
+        "FR-001"
+      ],
+      "artifactRefs": [
+        "template/base/tests/Product.Tests/AudioCueResolutionTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV002",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T002",
+      "taskRefs": [
+        "T002"
+      ],
+      "requirementRefs": [
+        "FR-002"
+      ],
+      "artifactRefs": [
+        "template/base/tests/Product.Tests/AudioCueResolutionTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV003",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T003",
+      "taskRefs": [
+        "T003"
+      ],
+      "requirementRefs": [
+        "FR-003"
+      ],
+      "artifactRefs": [
+        "template/base/tests/Product.Tests/AudioCueResolutionTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV004",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T004",
+      "taskRefs": [
+        "T004"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/Issue1210AudioResolutionReadinessTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV005",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T005",
+      "taskRefs": [
+        "T005"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "work/1210-audio-cue-resolution/test-results/audio-resolution.trx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV006",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T006",
+      "taskRefs": [
+        "T006"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "template/base/src/Product/AudioCues.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV007",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T007",
+      "taskRefs": [
+        "T007"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/1210-audio-cue-resolution/work-model.json"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1210-audio-cue-resolution/evidence.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    }
+  ],
+  "generatedViews": [
+    {
+      "path": "readiness/1210-audio-cue-resolution/work-model.json",
+      "kind": "workModel",
+      "schemaVersion": 1,
+      "generator": {
+        "id": "FS.GG.SDD.Artifacts",
+        "version": "1.0.0"
+      },
+      "sources": [
+        {
+          "path": ".fsgg/agents.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/project.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/sdd.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/checklist.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "ad2a0d28a361ce4c1fa6c7118e633c7005b2e0df0b59b24115123f5182ac6b62"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/clarifications.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "cc7223dc77bee75c4ff67a64c2d8396e99a6404eccbadf683e0b806763a7989e"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/evidence.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "80433d032b4a59ad04cf8bc002e36d2d0511be9650b598a240052a34615c4d21"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/plan.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "ddc6cb63f56b22832c8d87c9bbf06c943eb0bd6b855d88b14e10c160a0d44218"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/spec.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "5afd84f024b7df4a065b6f38a4fe9e9f23cbd6ea370f378101662ddd72667d5e"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1210-audio-cue-resolution/tasks.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "c87741854cf37c731c3d2a85f7fd2aa9422b111ac9fe4ada43ae224e51278495"
+          },
+          "schemaVersion": 1
+        }
+      ],
+      "outputDigest": {
+        "algorithm": "sha256",
+        "value": "760942dc11dc42319d19fde03c8db9e1ea20c8fa9b8a245cd66bb3989bb08f46"
+      },
+      "currency": "current"
+    }
+  ],
+  "diagnostics": [],
+  "governanceBoundaries": []
+}

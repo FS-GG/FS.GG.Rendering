@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "viewVersion": "1.0",
+  "workId": "1210-audio-cue-resolution",
+  "stage": "ship",
+  "status": "shipReady",
+  "generator": "FS.GG.SDD.Artifacts/1.0.0",
+  "sourcesDigest": {
+    "algorithm": "sha256",
+    "value": "ca683deed1425850a0e98927beb3411ab63450b87038c25710867d0f1998d5a0"
+  },
+  "verificationReadiness": {
+    "status": "verificationReady",
+    "evidenceSupportedCount": 7,
+    "evidenceSelfAttestedCount": 0,
+    "evidenceObservedCount": 7
+  },
+  "disposition": {
+    "state": "shipReady",
+    "blockingFindingIds": []
+  },
+  "readiness": "shipReady"
+}
