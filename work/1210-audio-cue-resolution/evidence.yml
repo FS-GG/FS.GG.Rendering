@@ -1,0 +1,220 @@
+schemaVersion: 1
+workId: 1210-audio-cue-resolution
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1210-audio-cue-resolution/spec.md
+sourceClarifications: work/1210-audio-cue-resolution/clarifications.md
+sourceChecklist: work/1210-audio-cue-resolution/checklist.md
+sourcePlan: work/1210-audio-cue-resolution/plan.md
+sourceTasks: work/1210-audio-cue-resolution/tasks.yml
+sourceAnalysis: readiness/1210-audio-cue-resolution/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1210-audio-cue-resolution/analysis.json
+    digest: b04bbbab774b55e8f9c12fc46aaa272d92848e9412bcd038154ffbea21a62e93
+    schemaVersion: 1
+  - label: checklist
+    path: work/1210-audio-cue-resolution/checklist.md
+    digest: ad2a0d28a361ce4c1fa6c7118e633c7005b2e0df0b59b24115123f5182ac6b62
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1210-audio-cue-resolution/clarifications.md
+    digest: cc7223dc77bee75c4ff67a64c2d8396e99a6404eccbadf683e0b806763a7989e
+    schemaVersion: 1
+  - label: plan
+    path: work/1210-audio-cue-resolution/plan.md
+    digest: ddc6cb63f56b22832c8d87c9bbf06c943eb0bd6b855d88b14e10c160a0d44218
+    schemaVersion: 1
+  - label: spec
+    path: work/1210-audio-cue-resolution/spec.md
+    digest: 5afd84f024b7df4a065b6f38a4fe9e9f23cbd6ea370f378101662ddd72667d5e
+    schemaVersion: 1
+  - label: tasks
+    path: work/1210-audio-cue-resolution/tasks.yml
+    digest: c87741854cf37c731c3d2a85f7fd2aa9422b111ac9fe4ada43ae224e51278495
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [template/base/tests/Product.Tests/AudioCueResolutionTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: template/base/tests/Product.Tests/AudioCueResolutionTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [template/base/tests/Product.Tests/AudioCueResolutionTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: template/base/tests/Product.Tests/AudioCueResolutionTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [template/base/tests/Product.Tests/AudioCueResolutionTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: template/base/tests/Product.Tests/AudioCueResolutionTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV004]
+    artifacts: [tests/Package.Tests/Issue1210AudioResolutionReadinessTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Issue1210AudioResolutionReadinessTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: [work/1210-audio-cue-resolution/test-results/audio-resolution.trx]
+    sourceRefs:
+      - kind: verification
+        path: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV006]
+    artifacts: [template/base/src/Product/AudioCues.fs]
+    sourceRefs:
+      - kind: verification
+        path: template/base/src/Product/AudioCues.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV007]
+    artifacts: [readiness/1210-audio-cue-resolution/work-model.json]
+    sourceRefs:
+      - kind: verification
+        path: readiness/1210-audio-cue-resolution/work-model.json
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1210-audio-cue-resolution/test-results/audio-resolution.trx
+      digest: "sha256:05e6f695921544b722cd8fc23dbd3956da477c3f75f2873dccd074685f792718"
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

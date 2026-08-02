@@ -70,6 +70,7 @@
     <Compile Include="Feature238SkillMaterializesWhenTests.fs" />
     <Compile Include="Feature240GameCoreSkillTests.fs" />
     <Compile Include="AudioProfileWiringTests.fs" />
+    <Compile Include="Issue1210AudioResolutionReadinessTests.fs" />
     <Compile Include="AudioSkillSurfaceTests.fs" />
     <Compile Include="ApiSurfaceMirrorTests.fs" />
     <Compile Include="SkillPackageReachTests.fs" />

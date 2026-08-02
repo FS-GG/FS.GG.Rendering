@@ -47,9 +47,66 @@ open AppRoot.Model
 [<Literal>]
 let assetRoot = "assets/audio"
 
-let private tryReadAsset (name: string) =
-    let path = Path.Combine(assetRoot, name + ".wav")
-    if File.Exists path then Some(File.ReadAllBytes path) else None
+/// One product-owned entry point for the cue vocabulary.  Keep ids here rather than
+/// duplicating a hand-counted list in a test: adding a request without declaring its
+/// asset is intentionally visible, and adding a declaration without an asset is red.
+let declaredCueIds : SoundId list =
+//#if (profile == "game")
+    [ SoundId "start"; SoundId "score"; SoundId "bounce" ]
+//#else
+    [ SoundId "start"; SoundId "save"; SoundId "select"; SoundId "navigate" ]
+//#endif
+
+/// A resolver finding is deliberately separate from `AudioEvidence`: the latter proves
+/// that an effect was requested; this proves that packaged product content can realize it.
+type CueResolution =
+    { CueId: SoundId
+      ExpectedPath: string
+      Problem: string option }
+
+let private expectedPath root (SoundId id) = Path.Combine(root, id + ".wav")
+
+/// A small, deterministic WAV sanity check. It is not an audio decoder; malformed headers
+/// are rejected here so a text file renamed to `.wav` cannot make readiness green.
+let private isWave (bytes: byte[]) =
+    bytes.Length >= 44
+    && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) = "RIFF"
+    && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) = "WAVE"
+
+let private tryReadAsset (id: SoundId) =
+    let path = expectedPath assetRoot id
+    try
+        if File.Exists path then
+            let bytes = File.ReadAllBytes path
+            if isWave bytes then Some bytes else None
+        else None
+    with
+    | :? IOException -> None
+
+/// Run this in a product build/publish readiness check. It names every missing or malformed
+/// cue and its expected packaged path; a request-only test must never stand in for it.
+let resolutionEvidenceAt (root: string) : CueResolution list =
+    declaredCueIds
+    |> List.map (fun id ->
+        let path = expectedPath root id
+        let problem =
+            try
+                if not (File.Exists path) then Some "missing"
+                elif isWave (File.ReadAllBytes path) then None
+                else Some "malformed WAV"
+            with
+            | :? IOException -> Some "unreadable"
+
+        { CueId = id; ExpectedPath = path; Problem = problem })
+
+let resolutionEvidence () : CueResolution list = resolutionEvidenceAt assetRoot
+
+/// Readiness is false for the intentionally asset-less scaffold. Add real assets, or generate
+/// deterministic reviewable PCM WAV bytes from committed source, before a build/publish gate says
+/// audio content is ready. Runtime playback may still degrade safely to silence.
+let audioContentReadyAt root = resolutionEvidenceAt root |> List.forall (fun finding -> finding.Problem.IsNone)
+
+let audioContentReady () = audioContentReadyAt assetRoot
 
 /// The product owns the id -> asset mapping; the framework never does (FS.GG.Audio FR-005).
 /// An id with no file on disk resolves to `None`, which the backend treats as a recorded no-op —
@@ -58,8 +115,8 @@ let private tryReadAsset (name: string) =
 /// Model-agnostic on purpose: this half survives a model swap even though `forTransition` does not,
 /// which is why it sits above the per-starter split below.
 let resolver: AssetResolver =
-    { ResolveSound = fun (SoundId id) -> tryReadAsset id
-      ResolveTrack = fun (TrackId id) -> tryReadAsset id }
+    { ResolveSound = tryReadAsset
+      ResolveTrack = fun (TrackId id) -> tryReadAsset (SoundId id) }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // `Started`, and the trap it exists to close (issue #458)

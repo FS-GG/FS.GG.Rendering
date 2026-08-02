@@ -1,0 +1,106 @@
+schemaVersion: 1
+work:
+  id: 1210-audio-cue-resolution
+  title: "Generated audio cue resolution readiness"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/1210-audio-cue-resolution/spec.md
+  sourceClarifications: work/1210-audio-cue-resolution/clarifications.md
+  sourceChecklist: work/1210-audio-cue-resolution/checklist.md
+  sourcePlan: work/1210-audio-cue-resolution/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/1210-audio-cue-resolution/spec.md
+    digest: 5afd84f024b7df4a065b6f38a4fe9e9f23cbd6ea370f378101662ddd72667d5e
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1210-audio-cue-resolution/clarifications.md
+    digest: cc7223dc77bee75c4ff67a64c2d8396e99a6404eccbadf683e0b806763a7989e
+    schemaVersion: 1
+  - label: checklist
+    path: work/1210-audio-cue-resolution/checklist.md
+    digest: ad2a0d28a361ce4c1fa6c7118e633c7005b2e0df0b59b24115123f5182ac6b62
+    schemaVersion: 1
+  - label: plan
+    path: work/1210-audio-cue-resolution/plan.md
+    digest: 4b2f731774ea5ffbc4014499e1f8933508a1fd9ba62145f325b4670af0617745
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Implement requirement FR-002
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-002]
+    decisions: []
+    sourceIds: [AC-001, FR-002, PD-002]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Implement requirement FR-003
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-003]
+    decisions: []
+    sourceIds: [AC-001, FR-003, PD-003]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Update contract surface PC-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Record verification evidence VO-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV005]
+  - id: T006
+    title: Handle migration posture PM-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV006]
+  - id: T007
+    title: Refresh generated view impact GV-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV007]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work 1210-audio-cue-resolution."
