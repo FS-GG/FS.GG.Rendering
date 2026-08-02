@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites tests="28" failures="0" errors="0" skipped="0">
+  <testsuite name="Package.Tests" tests="28" failures="0" errors="0" skipped="0">
+    <testcase name="[fs-gg-feedback-report schema v2.complete actionable audit binds every finding and verified evidence digest]" time="0.034"/>
+    <testcase name="[fs-gg-feedback-report schema v2.stale audit-binding ledger citation is reported rather than rejected]" time="0.008"/>
+    <testcase name="[fs-gg-feedback-report schema v2.valid zero-event activation receipt proves an exercised event-free cycle]" time="0.007"/>
+    <testcase name="[fs-gg-feedback-report schema v2.checkpoint append is valid JSONL and preserves the complete event]" time="0.006"/>
+    <testcase name="[fs-gg-feedback-report schema v2.valid schema-v2 report passes]" time="0.003"/>
+    <testcase name="[fs-gg-feedback-report schema v2.Rogue2 green-testing claim without production route stays incomplete]" time="0.002"/>
+    <testcase name="[fs-gg-feedback-report schema v2.scheme-prefixed absolute paths and secret arguments fail closed]" time="0.002"/>
+    <testcase name="[fs-gg-feedback-report schema v2.stale non-ledger evidence remains fail-closed]" time="0.002"/>
+    <testcase name="[fs-gg-feedback-report schema v2.malformed zero-event activation receipt fails closed]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.checkpoint event state cannot escape the workspace through a symlink]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.zero-event receipt rejects event-only and arbitrary private fields]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.non-reproducing command cannot support actionable disposition]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.null status and result plus malformed digest all fail closed]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.workspace-relative evidence cannot escape through a symlink]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.symlinked workspace root recognizes the ledger by its resolved path]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.canonical skill ships its deterministic helper]" time="0.001"/>
+    <testcase name="[fs-gg-feedback-report schema v2.unreadable zero-event activation receipt is not reported as merely missing]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.empty checkpoint JSONL cannot impersonate an intentional zero-event cycle]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.missing checkpoint state is distinct from a verified zero-event receipt]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.expected and observed fields that say the same thing fail]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.loose finding and incomplete coverage fail]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.well-grounded positive pattern requires positive-pattern disposition]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.critic dispositions preserve invented-root-cause and missed-dedupe findings honestly]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.an unrelated live audit locator cannot green the report's dead evidence]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.dead source locator and stale digest invalidate an actionable audit]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.polished fact-free and circular finding stays incomplete]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.null finding id is a validation error rather than an exception]" time="0.000"/>
+    <testcase name="[fs-gg-feedback-report schema v2.null evidence locator is a validation error rather than an exception]" time="0.000"/>
+  </testsuite>
+</testsuites>

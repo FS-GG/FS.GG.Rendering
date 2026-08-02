@@ -348,6 +348,38 @@ let private normalizedJsonString value =
     | null -> ""
     | text -> (unbox<string> text).Trim()
 
+/// The sole mutable ledger used by the audit-binding checker. A citation to
+/// this file cannot retain a digest: every legitimate excuse rewrites it.
+let auditBindingExceptionsPath = "scripts/audit-binding-exceptions.json"
+
+let private auditBindingExceptionsReason =
+    "this is the audit-binding excuse ledger itself: excusing any binding rewrites it and invalidates the digest just pinned"
+
+/// A citation whose digest was intentionally not compared because it points to
+/// the one file that cannot have a stable binding.
+type NotBoundCitation =
+    { findingId: string
+      locator: string
+      path: string
+      reason: string }
+
+type AuditValidation =
+    { errors: string list
+      notBound: NotBoundCitation list }
+
+let private workspaceRelative (workspaceRoot: string) (resolved: string) =
+    let canonicalRoot = canonicalizeExistingSegments workspaceRoot
+
+    Path
+        .GetRelativePath(canonicalRoot, resolved)
+        .Replace(Path.DirectorySeparatorChar, '/')
+
+let private digestExemption relative =
+    if String.Equals(relative, auditBindingExceptionsPath, StringComparison.Ordinal) then
+        Some auditBindingExceptionsReason
+    else
+        None
+
 let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
     if
         String.IsNullOrWhiteSpace locator
@@ -374,13 +406,14 @@ let private resolveEvidencePath (workspaceRoot: string) (locator: string) =
                 else
                     None
 
-let validateActionabilityAudit
+let validateActionabilityAuditDetailed
     (workspaceRoot: string)
     (reportPath: string)
     (reportText: string)
     (auditText: string)
     =
     let errors = ResizeArray<string>()
+    let notBound = ResizeArray<NotBoundCitation>()
 
     let audit =
         try
@@ -564,15 +597,25 @@ let validateActionabilityAudit
                         | Some path when not (File.Exists path) ->
                             errors.Add(sprintf "audit: %s evidence file is missing: %s" id locator)
                         | Some path ->
-                            match digest with
-                            | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
-                            | Some digest ->
-                                let actual = File.ReadAllText path |> sha256Text
+                            let relative = workspaceRelative workspaceRoot path
 
-                                if digest <> actual then
-                                    errors.Add(
-                                        sprintf "audit: %s evidence digest is stale: %s" id locator
-                                    )
+                            match digestExemption relative with
+                            | Some reason ->
+                                notBound.Add
+                                    { findingId = id
+                                      locator = locator
+                                      path = relative
+                                      reason = reason }
+                            | None ->
+                                match digest with
+                                | None -> errors.Add(sprintf "audit: %s file evidence needs sha256" id)
+                                | Some digest ->
+                                    let actual = File.ReadAllText path |> sha256Text
+
+                                    if digest <> actual then
+                                        errors.Add(
+                                            sprintf "audit: %s evidence digest is stale: %s" id locator
+                                        )
                     elif not (String.IsNullOrWhiteSpace locator) && Path.IsPathRooted locator then
                         errors.Add(sprintf "audit: %s evidence locator exposes an absolute path" id)
 
@@ -586,7 +629,21 @@ let validateActionabilityAudit
             elif not (Set.contains findingId expectedIds) then
                 errors.Add(sprintf "audit: unknown finding '%s'" findingId)
 
-    List.ofSeq errors
+    { errors = List.ofSeq errors
+      notBound =
+        notBound
+        |> Seq.distinctBy (fun citation -> citation.findingId, citation.locator)
+        |> Seq.sortBy (fun citation -> citation.findingId, citation.locator)
+        |> List.ofSeq }
+
+/// Compatibility wrapper for existing callers that only need validation errors.
+let validateActionabilityAudit
+    (workspaceRoot: string)
+    (reportPath: string)
+    (reportText: string)
+    (auditText: string)
+    =
+    (validateActionabilityAuditDetailed workspaceRoot reportPath reportText auditText).errors
 
 type Checkpoint =
     { timestampUtc: string

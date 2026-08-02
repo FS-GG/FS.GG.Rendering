@@ -51,16 +51,29 @@ match argv with
 
     let reportText = File.ReadAllText path
 
-    let errors =
-        validateReportText reportText
-        @ validateActionabilityAudit
+    let audit =
+        validateActionabilityAuditDetailed
             (Directory.GetCurrentDirectory())
             (Path.GetFullPath path)
             reportText
             (File.ReadAllText auditPath)
 
+    let errors = validateReportText reportText @ audit.errors
+
+    if not (List.isEmpty audit.notBound) then
+        printfn
+            "feedback-tool: %d citation(s) NOT BOUND -- reported rather than checked:"
+            audit.notBound.Length
+
+        for citation in audit.notBound do
+            printfn "  %s %s" citation.findingId citation.locator
+            printfn "    %s" citation.reason
+
     if List.isEmpty errors then
         printfn "feedback-tool: valid actionability-bound schema-v2 report: %s" path
+
+        if not (List.isEmpty audit.notBound) then
+            printfn "feedback-tool: %d citation(s) were not checked (listed above)." audit.notBound.Length
     else
         fail errors
 | [| "validate"; _ |] ->

@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "id": "FS.GG.SDD.Artifacts",
+    "version": "0.32.0"
+  },
+  "requiredMinimumCliVersion": null,
+  "providerName": "",
+  "providerContractVersion": "",
+  "templateRef": "",
+  "outcome": "devRepoInit",
+  "producedPaths": [
+    {
+      "path": ".agents/skills/fs-gg-sdd-analyze/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-authoring-contracts/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-charter/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-checklist/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-clarify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-evidence/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-getting-started/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-lifecycle/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-plan/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-refresh-agents/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-ship/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-specify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-tasks/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-troubleshooting/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-validate/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".agents/skills/fs-gg-sdd-verify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-analyze/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-authoring-contracts/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-charter/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-checklist/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-clarify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-evidence/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-getting-started/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-lifecycle/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-plan/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-refresh-agents/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-ship/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-specify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-tasks/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-troubleshooting/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-validate/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".claude/skills/fs-gg-sdd-verify/SKILL.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".fsgg/early-stage-guidance.md",
+      "owner": "sdd"
+    },
+    {
+      "path": ".gitignore",
+      "owner": "sdd"
+    }
+  ],
+  "mirroredPaths": [],
+  "sddOwnedPaths": [],
+  "driverPaths": [],
+  "gameSkillPaths": [],
+  "effectiveParameters": []
+}
