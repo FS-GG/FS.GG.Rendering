@@ -34,6 +34,37 @@ let hud : Scene =
           Scene.textAt { X = 12.0; Y = 30.0 } "tally: 0" ink ]
 ```
 
+### Coverage checks — an empty group is still one node
+
+`Scene.group []` has the documented shape `{ Nodes = [ Group [] ] }`. It therefore has
+`Nodes.Length = 1`: a composed projection that degenerates to an empty group has the same
+top-level shape. Do not use `Expect.isNonEmpty scene.Nodes` (or a node-count check) to prove
+that a gameplay element was emitted; the assertion passes even when the projection emitted
+nothing meaningful.
+
+```fsharp
+let noDoorWasEmitted = Scene.group []
+
+Expect.isNonEmpty noDoorWasEmitted.Nodes
+    "This passes: the empty Group node is present, but no door was rendered."
+```
+
+Instead, make the coverage assertion about the specific element's stable identity or handle in
+your product's rendered output. For example, if the product's render probe exposes the handles
+it emitted, assert the expected door handle rather than the existence of an enclosing node:
+
+```text
+let rendered = Render.renderedElements model
+
+Expect.contains rendered DoorHiddenWall.handle
+    "The production model emits the hidden-wall door handle."
+```
+
+This is a product-specific sketch, not a framework API: use the product's equivalent
+identity/handle query when its render probe has a different name.
+The important distinction is that the assertion must fail when that particular binding is absent;
+the outer `Scene.group` is structural and is not evidence of element coverage.
+
 ### Self-positioning HUD text — measure, don't guess
 
 `Scene.measureText : string -> FontSpec -> TextMetrics` is a **pure, host-independent**
