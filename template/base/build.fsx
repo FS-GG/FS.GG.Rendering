@@ -223,6 +223,132 @@ let runProcess (target: string) (fileName: string) (arguments: string) =
     if proc.ExitCode <> 0 then
         failwithf "%s failed with exit code %d; see %s" target proc.ExitCode logPath
 
+// #1174: `runProcess` above buffers the ENTIRE child output and writes the readiness log only after
+// `WaitForExit()` returns — correct for every OTHER caller (Restore, Build, Test, Pack, the Performance
+// targets), because each of those wraps a command that is expected to run to completion and exit on its
+// own. `Run` (below) is the one target that wraps `dotnet run --project src/<Product>` — an interactive,
+// window-owning process that, on a real display, keeps running until a human closes it (docs/product.md
+// documents that contract, and the separate `setsid … &` idiom for keeping it open past this target's own
+// lifetime). Reusing `runProcess` for it gives a caller ZERO signal for as long as it runs: a live but
+// slow launch and a genuinely deadlocked one both read as silence, and there is no bound on either.
+//
+// This wrapper keeps `runProcess` and every one of its other callers byte-identical (Test/Verify's bodies
+// are FROZEN, see the comment above `run`) and instead:
+//   - streams stdout/stderr to the console AND appends each line to the readiness log AS IT ARRIVES, so a
+//     stall is visible in readiness/logs/Run.txt while it is still stalled, not only after (acceptance #2);
+//   - bounds only the SILENCE before the first byte of output: if the wrapped process has produced nothing
+//     at all within `launchTimeoutSeconds` (default 120s — generous next to a cold `dotnet run` compile,
+//     tiny next to the 6+ minute stall this defect reports; overridable via
+//     `FSGG_RUN_LAUNCH_TIMEOUT_SECONDS` for a slower host), it is killed and the target fails with a
+//     diagnostic naming the timeout and the log to inspect (acceptance #1). The underlying stall's exact
+//     mechanism is unestablished (#1174 root cause: bounded unknown) — this mitigates the observable
+//     symptom (unbounded, undiagnosed silence) rather than a mechanism nobody has pinned down;
+//   - once ANY output has been observed, the process is confirmed alive, so no further timeout applies —
+//     `Run` wraps a persistent, window-owning process by contract, and a live session that keeps running
+//     until a human (or the process itself) closes the window is the documented, correct outcome, not a
+//     stall. This target then waits it out exactly as `runProcess` does, and applies the same NU1603 /
+//     exit-code checks on the way out.
+let runInteractiveProcess (target: string) (fileName: string) (arguments: string) =
+    Directory.CreateDirectory("readiness/logs") |> ignore
+    let logPath = Path.Combine("readiness", "logs", target + ".txt")
+
+    // Truncate up front: the log is now written incrementally as the child produces output, so a
+    // previous invocation's tail must not survive to be misread as part of this one.
+    (match tryWriteTextLog logPath "" with
+     | Some diagnostic -> failwithf "%s failed readiness log write; %s" target diagnostic
+     | None -> ())
+
+    let launchTimeoutSeconds =
+        match Environment.GetEnvironmentVariable "FSGG_RUN_LAUNCH_TIMEOUT_SECONDS" with
+        | null
+        | "" -> 120.0
+        | raw ->
+            match Double.TryParse raw with
+            | true, seconds when seconds > 0.0 -> seconds
+            | _ -> 120.0
+
+    let startInfo = ProcessStartInfo(fileName, arguments)
+    startInfo.RedirectStandardOutput <- true
+    startInfo.RedirectStandardError <- true
+    startInfo.UseShellExecute <- false
+    startInfo.WorkingDirectory <- Directory.GetCurrentDirectory()
+
+    let outputLock = obj ()
+    let mutable sawOutput = false
+
+    let onDataReceived (args: DataReceivedEventArgs) =
+        if not (isNull args.Data) then
+            lock outputLock (fun () ->
+                sawOutput <- true
+                File.AppendAllText(logPath, args.Data + Environment.NewLine))
+
+            printfn "%s" args.Data
+
+    let proc =
+        try
+            Process.Start(startInfo) |> Option.ofObj
+        with ex ->
+            failwithf "%s failed command launch: %s %s; diagnostics=%s" target fileName arguments ex.Message
+
+    use proc =
+        match proc with
+        | Some proc -> proc
+        | None -> failwithf "%s failed command launch: %s %s" target fileName arguments
+
+    proc.OutputDataReceived.Add onDataReceived
+    proc.ErrorDataReceived.Add onDataReceived
+    proc.BeginOutputReadLine()
+    proc.BeginErrorReadLine()
+
+    let started = DateTime.UtcNow
+
+    // Poll rather than block outright: a bare `proc.WaitForExit()` would give us back exactly the
+    // unbounded, unobservable wait this function exists to replace. `WaitForExit(200)` returns `true`
+    // the moment the process exits early (a fast failure still reports promptly), so this never adds
+    // more than ~200ms of latency to a quick command.
+    let rec waitForFirstSignOfLife () =
+        if proc.WaitForExit(200) then
+            () // exited before producing a byte, or before the timeout — either way, fall through
+        elif lock outputLock (fun () -> sawOutput) then
+            () // confirmed alive: stop bounding it, exactly like a direct terminal launch
+        elif (DateTime.UtcNow - started).TotalSeconds >= launchTimeoutSeconds then
+            let killDiagnostic =
+                try
+                    proc.Kill(true)
+                    None
+                with ex ->
+                    Some ex.Message
+
+            let killNote =
+                match killDiagnostic with
+                | Some message -> sprintf " (the stalled process could also not be killed: %s)" message
+                | None -> ""
+
+            failwithf
+                "%s produced no output within %.0fs of launching %s %s and was killed after the timeout.%s See %s — this is #1174's mitigation for the target's undiagnosed stall, not a fix for its root cause."
+                target
+                launchTimeoutSeconds
+                fileName
+                arguments
+                killNote
+                logPath
+        else
+            waitForFirstSignOfLife ()
+
+    waitForFirstSignOfLife ()
+
+    // Confirmed alive (or already exited): wait out the rest unbounded, matching what a human gets
+    // running the same command directly in a terminal.
+    proc.WaitForExit()
+
+    let output = lock outputLock (fun () -> sawOutput)
+
+    if output && File.Exists logPath && (File.ReadAllText logPath).IndexOf("NU1603", StringComparison.OrdinalIgnoreCase) >= 0 then
+        failwithf "%s failed package-resolution: NU1603 fallback is not authoritative generated-product evidence" target
+
+    if proc.ExitCode <> 0 then
+        failwithf "%s failed with exit code %d; see %s" target proc.ExitCode logPath
+
 let runGeneratedTests () =
     runProcess "Test" "dotnet" "test tests/Product.Tests/Product.Tests.fsproj -m:1 --disable-build-servers"
     printfn "Test completed for generated product"
@@ -274,7 +400,7 @@ let run target =
     // (FR-010, no divergence). Test/Verify below are FROZEN — their bodies are unchanged.
     | "Restore" -> runProcess "Restore" "dotnet" (sprintf "restore \"%s\"" (singleRootSolution ()))
     | "Build" -> runProcess "Build" "dotnet" (sprintf "build \"%s\"" (singleRootSolution ()))
-    | "Run" -> runProcess "Run" "dotnet" (sprintf "run --project src/%s" (singleSrcProject ()))
+    | "Run" -> runInteractiveProcess "Run" "dotnet" (sprintf "run --project src/%s" (singleSrcProject ()))
     | "Pack" -> runProcess "Pack" "dotnet" (sprintf "pack \"%s\" -c Release" (singleRootSolution ()))
     | "Test" ->
         runGeneratedTests ()
@@ -325,7 +451,12 @@ let helpBanner =
     + "           The first Verify on a fresh scaffold fails until you generate the headless evidence baseline\n"
     + "           (readiness/layout-evidence.txt + headless-scene-evidence.txt) and author performance workloads.\n"
     + "           A linked performance-debt issue permits baseline capture but never satisfies acceptance.\n\n"
-    + "  Restore | Build | Run | Pack   Pass-through to stock `dotnet` over the single root .slnx.\n\n"
+    + "  Restore | Build | Pack   Pass-through to stock `dotnet` over the single root .slnx.\n"
+    + "  Run      Pass-through to `dotnet run` over the single root .slnx; fails fast with a diagnostic\n"
+    + "           if it produces no output at all within FSGG_RUN_LAUNCH_TIMEOUT_SECONDS (default 120s)\n"
+    + "           of launching, instead of stalling silently (#1174). Streams to readiness/logs/Run.txt\n"
+    + "           as it runs, and waits out a confirmed-alive interactive session unbounded, same as\n"
+    + "           running the command directly.\n\n"
     + "  Help:  ./build.sh --help   |   dotnet fsi build.fsx help   (fsi reserves --help/-h on the script path)"
 
 let private isHelpToken (token: string) =
