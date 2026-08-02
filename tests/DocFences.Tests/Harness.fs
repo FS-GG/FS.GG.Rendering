@@ -275,8 +275,11 @@ module Harness =
     /// fences because their assertions are product-test examples; `Expect`, `Render`, the model, and
     /// the handle are not part of the published Scene package. The surrounding framework prose is the
     /// shipped contract, while the product-specific sketches remain contextual.
+    /// Re-audited for Rendering#1196: the fs-gg-game-shell guidance adds prose-only safe-default and
+    /// record-overlay rules before its existing fences. Their bodies and contextual classification are
+    /// unchanged; only their source line numbers moved with the inserted guidance.
     let private expectedProductSkillInventory =
-        "b47ece9cfd8b377e1f31063b605ba9ed5c0fb859ca6349291fa35516671a4922"
+        "9de2fc57bb13c267972dae9b84dc3c4c8611ca9bea43cca6cb7e7f7c24230f15"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product

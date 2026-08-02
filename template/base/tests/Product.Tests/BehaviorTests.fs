@@ -6,6 +6,7 @@ open AppRoot.Program
 open AppRoot.Model
 open FS.GG.UI.Scene
 
+//#if (profile == "app" || profile == "sample-pack" || profile == "game")
 [<Tests>]
 let windowOptionOverlayTests =
     testList "window option overlay" [
@@ -28,6 +29,7 @@ let windowOptionOverlayTests =
                 if args.Head <> "--window-backend" then Expect.equal overlay.Backend baseline.Backend "unrelated backend remains default"
         }
     ]
+//#endif
 
 // Feature 060 (FR-005): replaceable scaffold-BEHAVIOR tests. These call the scaffold
 // product's `view`/`update`/host/scene-text directly, so when you replace the scaffold
@@ -1105,9 +1107,9 @@ let behaviorTests =
             // four FS.GG.Audio packages; it now shares the game family's expression, which is the one
             // it always should have had — the two families already shared `generatedHost`.
             //#if (profile == "app")
-            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family normal launch uses the pointer-aware persistent host, with the #429/#436 audio sink"
+            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost" "controls-family normal launch uses the pointer-aware persistent host with the parsed window behavior and #429/#436 audio sink"
             //#else
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
+            Expect.stringContains defaultBranch "Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost" "game/sample-pack normal launch uses the keyboard-only persistent host with the parsed window behavior and #245 audio sink"
             //#endif
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"

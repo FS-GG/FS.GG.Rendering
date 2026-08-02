@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1196-windowed-fullscreen/analysis.json
-    digest: 93efd2e1e9ef33ec4ab60476d2b30561b2225bc7a17a959fa93b269d8d1409f4
+    digest: 3b8e8d13250475afb387903ddad6eedb6e65df7c3ae999113104eeefb694e6c3
     schemaVersion: 1
   - label: checklist
     path: work/1196-windowed-fullscreen/checklist.md
@@ -54,7 +54,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
@@ -81,7 +81,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
@@ -108,7 +108,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
@@ -135,7 +135,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
@@ -162,7 +162,7 @@ evidence:
     synthetic: false
     observedRun:
       source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
-      digest: "sha256:24bded2b81a4cae80849458d139637689cf65fd21321d3c293e369575806d7ab"
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 9
