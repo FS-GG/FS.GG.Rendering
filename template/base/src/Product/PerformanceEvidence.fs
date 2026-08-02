@@ -108,6 +108,9 @@ type PerformanceCostDriver =
     { Id: string
       Category: CostDriverCategory
       ScaleSource: string
+      /// Product-owned exact per-frame observation.  `None` deliberately reports no scale so a
+      /// required driver fails the coverage gate rather than borrowing a category default.
+      ScaleObserver: (RoutedStimulus -> Model -> int option) option
       MaximumExpected: int
       VisualElement: string option
       Disposition: CostDriverDisposition }
@@ -118,54 +121,88 @@ let performanceCostDrivers =
     [ { Id = "simulation.fixed-step"
         Category = Simulation
         ScaleSource = "Model; one shipped update per sampled frame"
+        ScaleObserver = Some(fun _ _ -> Some 1)
         MaximumExpected = 1
         VisualElement = None
         Disposition = RequiredIn [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ] }
       { Id = "input.viewer-route"
         Category = Input
         ScaleSource = "shipped host-input mapping and routed-input receipt"
+        ScaleObserver = Some(fun routed _ -> Some routed.RawInputSamples)
         MaximumExpected = 1
         VisualElement = None
         Disposition = RequiredIn [ "movement-aiming"; "firing" ] }
       { Id = "scene.ball"
         Category = SceneRender
         ScaleSource = "GameplayVisualInventory.Ball"
+        ScaleObserver =
+            Some(fun _ model ->
+                GameplayVisualInventory.project model
+                |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = "Ball")
+                |> List.length
+                |> Some)
         MaximumExpected = 1
         VisualElement = Some "Ball"
         Disposition = RequiredIn [ "movement-aiming"; "firing"; "maximum-content" ] }
       { Id = "scene.left-paddle"
         Category = SceneRender
         ScaleSource = "GameplayVisualInventory.LeftPaddle"
+        ScaleObserver =
+            Some(fun _ model ->
+                GameplayVisualInventory.project model
+                |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = "LeftPaddle")
+                |> List.length
+                |> Some)
         MaximumExpected = 1
         VisualElement = Some "LeftPaddle"
         Disposition = RequiredIn [ "movement-aiming"; "maximum-content" ] }
       { Id = "scene.right-paddle"
         Category = SceneRender
         ScaleSource = "GameplayVisualInventory.RightPaddle"
+        ScaleObserver =
+            Some(fun _ model ->
+                GameplayVisualInventory.project model
+                |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = "RightPaddle")
+                |> List.length
+                |> Some)
         MaximumExpected = 1
         VisualElement = Some "RightPaddle"
         Disposition = RequiredIn [ "maximum-content" ] }
       { Id = "ui.score"
         Category = UiControl
         ScaleSource = "GameplayVisualInventory.Score"
+        ScaleObserver =
+            Some(fun _ model ->
+                GameplayVisualInventory.project model
+                |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = "Score")
+                |> List.length
+                |> Some)
         MaximumExpected = 1
         VisualElement = Some "Score"
         Disposition = RequiredIn [ "firing"; "maximum-content" ] }
       { Id = "scene.playfield"
         Category = SceneRender
         ScaleSource = "GameplayVisualInventory.Playfield"
+        ScaleObserver =
+            Some(fun _ model ->
+                GameplayVisualInventory.project model
+                |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = "Playfield")
+                |> List.length
+                |> Some)
         MaximumExpected = 1
         VisualElement = Some "Playfield"
         Disposition = RequiredIn [ "idle"; "movement-aiming"; "firing"; "effects-fog"; "maximum-content" ] }
       { Id = "effects.product"
         Category = EffectsParticles
         ScaleSource = "starter has no effect/particle system; replace this disposition when one is added"
+        ScaleObserver = None
         MaximumExpected = 1
         VisualElement = None
         Disposition = NonPerformance "no effect/particle system exists in the generated starter" }
       { Id = "host.presentation"
         Category = HostPresentation
         ScaleSource = "protected live-compositor host"
+        ScaleObserver = None
         MaximumExpected = 1
         VisualElement = None
         Disposition =
@@ -734,16 +771,12 @@ let private observeRoutedStimulus message =
 
 let private observeCostScale driverId routed model =
     match performanceCostDrivers |> List.tryFind (fun driver -> driver.Id = driverId) with
-    | Some driver ->
-        match driver.Category, driver.VisualElement with
-        | Simulation, _ -> 1
-        | Input, _ -> routed.RawInputSamples
-        | (SceneRender | UiControl), Some elementId ->
-            GameplayVisualInventory.project model
-            |> List.filter (fun item -> GameplayVisualInventory.elementId item.Element = elementId)
-            |> List.length
-        | _ -> 0
+    | Some { ScaleObserver = Some observe } ->
+        observe routed model
+        |> Option.filter (fun value -> value >= 0)
+        |> Option.defaultValue 0
     | None -> 0
+    | Some _ -> 0
 
 let private runWorkload workload =
     let mutable model = workload.InitialState()
@@ -1028,6 +1061,11 @@ let private costDriverProblems (results: WorkloadResult list) =
       for driver in performanceCostDrivers do
           if String.IsNullOrWhiteSpace driver.ScaleSource || driver.MaximumExpected <= 0 then
               $"cost driver '{driver.Id}' has no inspectable positive scale source"
+
+          match driver.Disposition, driver.ScaleObserver with
+          | RequiredIn _, None ->
+              $"cost driver '{driver.Id}' has no product-declared exact scale observer; required drivers fail closed until one is supplied"
+          | _ -> ()
 
           match driver.Disposition with
           | NonPerformance reason when String.IsNullOrWhiteSpace reason ->

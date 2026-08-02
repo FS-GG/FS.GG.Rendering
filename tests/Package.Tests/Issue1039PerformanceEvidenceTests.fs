@@ -882,6 +882,88 @@ if left = right then failwith ("different records collided: " + left)
                       Directory.Delete(fixtureRoot, true)
           }
 
+          test "generated collision-scale observers distinguish 120 stored entities from zero candidates" {
+              let runCandidate observer expectedExit expectedCandidate =
+                  let fixtureRoot =
+                      Path.Combine(Path.GetTempPath(), $"fsgg-collision-scale-{Guid.NewGuid():N}")
+                  let dotnetHome = Path.Combine(fixtureRoot, "dotnet-home")
+                  let productRoot = Path.Combine(fixtureRoot, "CollisionFixture")
+                  let artifactPath = Path.Combine(productRoot, "readiness", "performance-evidence.json")
+                  let criticRequestPath = Path.Combine(productRoot, "readiness", "performance-critic-request.json")
+                  let evidenceSourcePath = Path.Combine(productRoot, "src", "CollisionFixture", "PerformanceEvidence.fs")
+
+                  let runEvidence () =
+                      runDotnet productRoot dotnetHome
+                          [ "run"; "-c"; "Release"; "--project"; "src/CollisionFixture"; "--"
+                            "--performance-evidence"; "readiness/performance-evidence.json" ]
+                  let runCriticRequest () =
+                      runDotnet productRoot dotnetHome
+                          [ "run"; "-c"; "Release"; "--project"; "src/CollisionFixture"; "--"
+                            "--performance-critic-request"; "readiness/performance-critic-request.json" ]
+
+                  Directory.CreateDirectory fixtureRoot |> ignore
+                  try
+                      let install = runDotnet fixtureRoot dotnetHome [ "new"; "install"; root; "--force" ]
+                      Expect.equal install.ExitCode 0 $"template install succeeds:{Environment.NewLine}{install.Output}"
+                      let instantiate =
+                          runDotnet fixtureRoot dotnetHome
+                              [ "new"; "fs-gg-ui"; "--name"; "CollisionFixture"; "--profile"; "game"
+                                "--lifecycle"; "none"; "--output"; productRoot ]
+                      Expect.equal instantiate.ExitCode 0 $"collision fixture instantiates:{Environment.NewLine}{instantiate.Output}"
+
+                      let placeholderSource = File.ReadAllText evidenceSourcePath
+                      let candidateSource =
+                          placeholderSource
+                          |> fun source ->
+                              source.Replace("let expectedWorkloads =", machineJourneyHelper + "let expectedWorkloads =", StringComparison.Ordinal)
+                          |> fun source ->
+                              Regex.Replace(source, @"Provenance = SyntheticConstructed ""[^""]*""",
+                                  "Provenance = RunnerIssuedJourney(machineIssuedJourneyReceipt ())", RegexOptions.CultureInvariant)
+                          |> fun source ->
+                              source.Replace(
+                                  "ScaleObserver = Some(fun _ _ -> Some 1)",
+                                  $"""ScaleObserver =
+            Some(fun _ model ->
+                let storedEntities = List.replicate 120 model.Ball
+                let candidatesConsidered = {observer}
+                storedEntities |> ignore
+                Some candidatesConsidered)""",
+                                  StringComparison.Ordinal)
+                          |> rewriteWorkloadBlock "movement-aiming" (fun block ->
+                              block.Replace("PointerEventsPerFrame = 1", "PointerEventsPerFrame = 0")
+                                   .Replace("frame % 2 = 0", "frame % 1 = 0"))
+                          |> rewriteWorkloadBlock "firing" (fun block ->
+                              block.Replace("PointerEventsPerFrame = 1", "PointerEventsPerFrame = 0")
+                                   .Replace("MessageAt = (fun _ -> NoOp)", "MessageAt = (fun _ -> ViewerInput(Letter 'F', true))"))
+
+                      File.WriteAllText(evidenceSourcePath, candidateSource)
+                      let pending = runEvidence ()
+                      Expect.equal pending.ExitCode 1 "candidate fixture remains fail-closed until authored"
+                      Expect.isTrue (File.Exists artifactPath) $"failing evidence still emits digests for authoring:{Environment.NewLine}{pending.Output}"
+                      let authored = authorWorkloads (workloadDigests artifactPath) candidateSource
+                      File.WriteAllText(evidenceSourcePath, authored)
+                      let evidence = runEvidence ()
+                      Expect.equal evidence.ExitCode expectedExit $"observer-reported candidates produce the expected coverage verdict:{Environment.NewLine}{evidence.Output}"
+                      Expect.stringContains evidenceSourcePath "PerformanceEvidence.fs" "the exercised product owns its observer"
+                      if expectedExit = 1 then
+                          Expect.stringContains evidence.Output "simulation.fixed-step" "zero candidates fail the coverage gate despite 120 stored entities"
+                      use artifact = JsonDocument.Parse(File.ReadAllText artifactPath)
+                      let observed =
+                          artifact.RootElement.GetProperty("workloads").EnumerateArray()
+                          |> Seq.map (fun workload -> workload.GetProperty("observedScale").GetProperty("simulation.fixed-step").GetInt32())
+                          |> Seq.distinct |> Seq.toList
+                      Expect.equal observed [ expectedCandidate ] "the observer result is aggregated into every required workload"
+                      let critic = runCriticRequest ()
+                      Expect.equal critic.ExitCode expectedExit "critic request preserves the machine coverage outcome"
+                      use request = JsonDocument.Parse(File.ReadAllText criticRequestPath)
+                      Expect.equal (request.RootElement.GetProperty("machineExitCode").GetInt32()) expectedExit "critic input records the zero/positive candidate machine outcome"
+                  finally
+                      if Directory.Exists fixtureRoot then Directory.Delete(fixtureRoot, true)
+
+              runCandidate 0 1 0
+              runCandidate 1 0 1
+          }
+
           test "all four generated-product skills teach one bounded-versus-live recipe" {
               [ "template/base/.agents/skills/fs-gg-project/SKILL.md"
                 "template/product-skills/fs-gg-testing/SKILL.md"

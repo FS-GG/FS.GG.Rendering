@@ -41,11 +41,24 @@ let performanceRepresentativeness =
                 "GameplayVisualInventory.all"
                 "performance visual coverage differs from GameplayVisualInventory"
                 "let private observeCostScale"
+                "ScaleObserver: (RoutedStimulus -> Model -> int option) option"
+                "has no product-declared exact scale observer"
                 "GameplayVisualInventory.project model"
                 "has no required workload binding"
                 "maximum scale is underrepresented"
                 "names unknown cost driver" ]
               |> List.iter (fun token -> Expect.stringContains source token $"coverage contract carries {token}")
+
+              let observation =
+                  source.Substring(
+                      source.IndexOf("let private observeCostScale", StringComparison.Ordinal),
+                      source.IndexOf("let private runWorkload", StringComparison.Ordinal)
+                      - source.IndexOf("let private observeCostScale", StringComparison.Ordinal)
+                  )
+
+              Expect.isFalse
+                  (observation.Contains("| Simulation, _ -> 1", StringComparison.Ordinal))
+                  "simulation does not receive a category-level constant that can mask zero query pressure"
           }
 
           test "Rogue2-shaped confident evidence is rejected by named machine reasons" {
