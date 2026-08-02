@@ -324,6 +324,20 @@ complete stable finding coverage, critic vocabulary/mode, unresolved actionabili
 and evidence digests. Changing or deleting cited evidence invalidates a previously green audit.
 It intentionally does not validate old schema-v1 reports.
 
+## Commit-time audit invalidation check
+
+Before a commit lands, pass its changed repository-relative paths to the selective checker:
+
+```sh
+dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- \
+  check-invalidation --changed "src/Changed.fs;docs/roadmap.md"
+```
+
+It indexes only digest-bearing `file:` citations in `feedback/audits/*.audit.json` and fails with the
+audit path, merged report, finding ID, and locator for each touched citation. It does not run the full
+historical validator or read the cited files. Malformed audit metadata fails closed so a broken index
+cannot make a commit look safe.
+
 ## Final roll-up
 
 When a roadmap contains multiple cycle reports, aggregate rather than concatenate:

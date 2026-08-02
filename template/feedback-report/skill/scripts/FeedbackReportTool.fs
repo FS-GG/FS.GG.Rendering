@@ -367,6 +367,84 @@ type AuditValidation =
     { errors: string list
       notBound: NotBoundCitation list }
 
+/// A digest-bound citation from a merged feedback audit whose cited path was
+/// touched by the candidate commit. This is deliberately an index lookup, not
+/// a replay of historical report validation.
+type InvalidatedAuditBinding =
+    { audit: string
+      report: string
+      findingId: string
+      locator: string
+      path: string }
+
+type AuditInvalidationCheck =
+    { errors: string list
+      invalidated: InvalidatedAuditBinding list }
+
+let private normalizeWorkspacePath (path: string) =
+    path.Trim().Replace('\\', '/').TrimStart('/')
+
+/// Selectively find digest-bearing `file:` citations in committed audit JSON
+/// whose paths intersect `changedPaths`. It never reads reports or evidence
+/// bytes, so historical audits unrelated to this commit are not revalidated.
+let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string list) =
+    let errors = ResizeArray<string>()
+    let changed = changedPaths |> List.map normalizeWorkspacePath |> Set.ofList
+    let auditRoot = Path.Combine(workspaceRoot, "feedback", "audits")
+    let invalidated = ResizeArray<InvalidatedAuditBinding>()
+
+    if not (Directory.Exists auditRoot) then
+        { errors = []
+          invalidated = [] }
+    else
+        for auditPath in Directory.EnumerateFiles(auditRoot, "*.audit.json", SearchOption.AllDirectories) do
+            let relativeAudit = Path.GetRelativePath(workspaceRoot, auditPath).Replace(Path.DirectorySeparatorChar, '/')
+
+            try
+                let parsed = JsonSerializer.Deserialize<ActionabilityAudit>(File.ReadAllText auditPath)
+
+                if obj.ReferenceEquals(parsed, null) then
+                    errors.Add(sprintf "invalidation: malformed audit %s: expected a JSON object" relativeAudit)
+                else
+                    let audit = unbox<ActionabilityAudit> (box parsed)
+
+                    if isNull (box audit.findings) then
+                        errors.Add(sprintf "invalidation: malformed audit %s: findings is required" relativeAudit)
+                    else
+                        for finding in audit.findings do
+                            if obj.ReferenceEquals(box finding, null) then
+                                errors.Add(sprintf "invalidation: malformed audit %s: findings must not contain null entries" relativeAudit)
+                            elif isNull (box finding.checkedEvidence) then
+                                errors.Add(sprintf "invalidation: malformed audit %s: %s has no checkedEvidence" relativeAudit (normalizedJsonString finding.id))
+                            else
+                                for evidence in finding.checkedEvidence do
+                                    if obj.ReferenceEquals(box evidence, null) then
+                                        errors.Add(sprintf "invalidation: malformed audit %s: %s has null checkedEvidence" relativeAudit (normalizedJsonString finding.id))
+                                    else
+                                        let locator = normalizedJsonString evidence.locator
+                                        let digest = evidence.sha256 |> Option.map normalizedJsonString
+
+                                        if locator.StartsWith("file:", StringComparison.Ordinal) && digest.IsSome then
+                                            let path = locator.Substring("file:".Length) |> normalizeWorkspacePath
+
+                                            if String.IsNullOrWhiteSpace path then
+                                                errors.Add(sprintf "invalidation: malformed audit %s: %s has an empty file locator" relativeAudit (normalizedJsonString finding.id))
+                                            elif changed.Contains path then
+                                                invalidated.Add
+                                                    { audit = relativeAudit
+                                                      report = normalizedJsonString audit.report
+                                                      findingId = normalizedJsonString finding.id
+                                                      locator = locator
+                                                      path = path }
+            with ex ->
+                errors.Add(sprintf "invalidation: malformed audit %s: %s" relativeAudit ex.Message)
+
+        { errors = errors |> Seq.sort |> List.ofSeq
+          invalidated =
+              invalidated
+              |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator)
+              |> List.ofSeq }
+
 let private workspaceRelative (workspaceRoot: string) (resolved: string) =
     let canonicalRoot = canonicalizeExistingSegments workspaceRoot
 

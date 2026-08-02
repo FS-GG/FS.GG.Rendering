@@ -1003,6 +1003,43 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "commit-time audit invalidation check is selective, deterministic, and fail-closed" {
+              let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-invalidation-" + Guid.NewGuid().ToString "N")
+
+              try
+                  let audits = Path.Combine(root, "feedback", "audits")
+                  Directory.CreateDirectory audits |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let evidence locator = [| {| locator = locator; result = "verified"; sha256 = Some(sha256Text "old") |} |]
+
+                  File.WriteAllText(Path.Combine(audits, "positive.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Changed.fs"))
+                  File.WriteAllText(Path.Combine(audits, "negative.audit.json"), auditJson root reportPath validReport "actionable" (evidence "file:src/Untouched.fs"))
+
+                  let positive = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.isEmpty positive.errors "a valid path-index scan has no parse errors"
+                  Expect.equal positive.invalidated.Length 1 "only the touched citation is selected"
+                  Expect.equal positive.invalidated.Head.findingId "§4.1" "diagnostic names the finding"
+                  Expect.equal positive.invalidated.Head.report "feedback/report.md" "diagnostic names the merged report"
+
+                  let negative = findInvalidatedAuditBindings root [ "src/Other.fs" ]
+                  Expect.isEmpty negative.invalidated "unrelated paths do not revalidate or invalidate audits"
+
+                  File.WriteAllText(Path.Combine(audits, "malformed.audit.json"), "{")
+                  let malformed = findInvalidatedAuditBindings root [ "src/Other.fs" ]
+                  Expect.exists malformed.errors (fun error -> error.Contains("malformed audit feedback/audits/malformed.audit.json")) "malformed audit metadata fails closed"
+
+                  File.Delete(Path.Combine(audits, "malformed.audit.json"))
+
+                  for index in 1 .. 200 do
+                      File.WriteAllText(Path.Combine(audits, sprintf "scale-%03d.audit.json" index), auditJson root reportPath validReport "actionable" (evidence "file:src/Changed.fs"))
+
+                  let scale = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.equal scale.invalidated.Length 201 "all and only indexed citations are selected at scale"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "unreadable zero-event activation receipt is not reported as merely missing" {
               let root =
                   Path.Combine(

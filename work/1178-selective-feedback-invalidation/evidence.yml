@@ -1,0 +1,158 @@
+schemaVersion: 1
+workId: 1178-selective-feedback-invalidation
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1178-selective-feedback-invalidation/spec.md
+sourceClarifications: work/1178-selective-feedback-invalidation/clarifications.md
+sourceChecklist: work/1178-selective-feedback-invalidation/checklist.md
+sourcePlan: work/1178-selective-feedback-invalidation/plan.md
+sourceTasks: work/1178-selective-feedback-invalidation/tasks.yml
+sourceAnalysis: readiness/1178-selective-feedback-invalidation/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1178-selective-feedback-invalidation/analysis.json
+    digest: cdb445713662d9a27cd0c3840cd9be373b97b4b13af5de01e09472bc8120c87c
+    schemaVersion: 1
+  - label: checklist
+    path: work/1178-selective-feedback-invalidation/checklist.md
+    digest: ca7c6b7f6224b4cb62c7239626eec70b45db4c67c613ffd6c4bb72b869d9f4e9
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1178-selective-feedback-invalidation/clarifications.md
+    digest: 8e6822c708af9b5d8b52abc8083798be4b2daf86189a98947f793fd0b3d9f19c
+    schemaVersion: 1
+  - label: plan
+    path: work/1178-selective-feedback-invalidation/plan.md
+    digest: 31259cc611b9902ef3c9150cb934790cf6c78a32e3c7eea6e93293c5377314b9
+    schemaVersion: 1
+  - label: spec
+    path: work/1178-selective-feedback-invalidation/spec.md
+    digest: 5ffaff2464829777a8aea3a37c28b88f63a7727750898cb1f34e66894cfebb17
+    schemaVersion: 1
+  - label: tasks
+    path: work/1178-selective-feedback-invalidation/tasks.yml
+    digest: 0f45bb7f27be115498168766cbbcb6276029bd8e14c1c09c4da1ff20920a579c
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: []
+    artifacts: []
+    sourceRefs: []
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1178-selective-feedback-invalidation/feedback-invalidation.trx
+      digest: "sha256:eea83bf565a506af3413e8ff25b51a2a11b25ca63b12ee71c2693a1e3ef77758"
+      outcome: passed
+      passed: 30
+      failed: 0
+      skipped: 0
+    notes: []
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: []
+    artifacts: []
+    sourceRefs: []
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1178-selective-feedback-invalidation/feedback-invalidation.trx
+      digest: "sha256:eea83bf565a506af3413e8ff25b51a2a11b25ca63b12ee71c2693a1e3ef77758"
+      outcome: passed
+      passed: 30
+      failed: 0
+      skipped: 0
+    notes: []
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: []
+    artifacts: []
+    sourceRefs: []
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1178-selective-feedback-invalidation/feedback-invalidation.trx
+      digest: "sha256:eea83bf565a506af3413e8ff25b51a2a11b25ca63b12ee71c2693a1e3ef77758"
+      outcome: passed
+      passed: 30
+      failed: 0
+      skipped: 0
+    notes: []
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: []
+    artifacts: []
+    sourceRefs: []
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1178-selective-feedback-invalidation/feedback-invalidation.trx
+      digest: "sha256:eea83bf565a506af3413e8ff25b51a2a11b25ca63b12ee71c2693a1e3ef77758"
+      outcome: passed
+      passed: 30
+      failed: 0
+      skipped: 0
+    notes: []
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: []
+    artifacts: []
+    sourceRefs: []
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1178-selective-feedback-invalidation/feedback-invalidation.trx
+      digest: "sha256:eea83bf565a506af3413e8ff25b51a2a11b25ca63b12ee71c2693a1e3ef77758"
+      outcome: passed
+      passed: 30
+      failed: 0
+      skipped: 0
+    notes: []
+lifecycleNotes:
+  - "Next lifecycle action: verify."

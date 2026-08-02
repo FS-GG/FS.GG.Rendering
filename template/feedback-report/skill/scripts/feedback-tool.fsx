@@ -83,6 +83,23 @@ match argv with
         fail errors
 | [| "validate"; _ |] ->
     fail [ "validate requires --audit <feedback/audits/report.audit.json>" ]
+| args when args.Length > 0 && args.[0] = "check-invalidation" ->
+    let options = parseOptions args.[1..]
+    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+    let changed = required options "changed" |> fun value -> value.Split(';') |> Array.toList
+    let result = findInvalidatedAuditBindings root changed
+
+    if not (List.isEmpty result.errors) then
+        fail result.errors
+    elif List.isEmpty result.invalidated then
+        pass "no merged feedback-audit bindings were invalidated"
+    else
+        printfn "feedback-tool: %d merged feedback-audit binding(s) invalidated:" result.invalidated.Length
+
+        for item in result.invalidated do
+            eprintfn "feedback-tool: invalidated %s %s %s (%s)" item.audit item.findingId item.locator item.report
+
+        fail [ "commit touches evidence cited by merged feedback audit(s)" ]
 | [| "validate-checkpoints"; path |] ->
     let errors = validateCheckpointFile path
 
@@ -143,5 +160,6 @@ match argv with
           "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
           "  feedback-tool.fsx -- digest <text-file>"
           "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
+          "  feedback-tool.fsx -- check-invalidation --changed \"path;path\" [--root PATH]"
           "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
           "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]

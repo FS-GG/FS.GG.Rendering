@@ -1,0 +1,86 @@
+schemaVersion: 1
+work:
+  id: 1178-selective-feedback-invalidation
+  title: "Detect feedback-audit invalidation at commit time"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/1178-selective-feedback-invalidation/spec.md
+  sourceClarifications: work/1178-selective-feedback-invalidation/clarifications.md
+  sourceChecklist: work/1178-selective-feedback-invalidation/checklist.md
+  sourcePlan: work/1178-selective-feedback-invalidation/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/1178-selective-feedback-invalidation/spec.md
+    digest: 5ffaff2464829777a8aea3a37c28b88f63a7727750898cb1f34e66894cfebb17
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1178-selective-feedback-invalidation/clarifications.md
+    digest: 8e6822c708af9b5d8b52abc8083798be4b2daf86189a98947f793fd0b3d9f19c
+    schemaVersion: 1
+  - label: checklist
+    path: work/1178-selective-feedback-invalidation/checklist.md
+    digest: ca7c6b7f6224b4cb62c7239626eec70b45db4c67c613ffd6c4bb72b869d9f4e9
+    schemaVersion: 1
+  - label: plan
+    path: work/1178-selective-feedback-invalidation/plan.md
+    digest: 31259cc611b9902ef3c9150cb934790cf6c78a32e3c7eea6e93293c5377314b9
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Update contract surface PC-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Record verification evidence VO-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Handle migration posture PM-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Refresh generated view impact GV-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV005]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work 1178-selective-feedback-invalidation."
