@@ -1,0 +1,376 @@
+schemaVersion: 1
+workId: 1120-retire-codex-skill-root
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1120-retire-codex-skill-root/spec.md
+sourceClarifications: work/1120-retire-codex-skill-root/clarifications.md
+sourceChecklist: work/1120-retire-codex-skill-root/checklist.md
+sourcePlan: work/1120-retire-codex-skill-root/plan.md
+sourceTasks: work/1120-retire-codex-skill-root/tasks.yml
+sourceAnalysis: readiness/1120-retire-codex-skill-root/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1120-retire-codex-skill-root/analysis.json
+    digest: b2837324dd9d76d01d622a869000aac0178c6d5c378b554268e844da3fab616e
+    schemaVersion: 1
+  - label: checklist
+    path: work/1120-retire-codex-skill-root/checklist.md
+    digest: c1006ec2c1f71564d1b19eb657491fb73667035b4dd894ebb3e0cd65cc371612
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1120-retire-codex-skill-root/clarifications.md
+    digest: 4d245f20c326951f62ec4d08bb42e6f0427c0b5bd4cf70746e093ce8f6346673
+    schemaVersion: 1
+  - label: plan
+    path: work/1120-retire-codex-skill-root/plan.md
+    digest: c4dfdde43dd5c59b71c45be676a5e43c579319329ff7def471219f611455af85
+    schemaVersion: 1
+  - label: spec
+    path: work/1120-retire-codex-skill-root/spec.md
+    digest: 1894509e372c93c3c7fb358bea3f2f8c4d91148d593168dc844761b3b97ac7c2
+    schemaVersion: 1
+  - label: tasks
+    path: work/1120-retire-codex-skill-root/tasks.yml
+    digest: e1e03221a304b7e8d0293a5b0fa1b5cf98c7d133c93899d202af225420f27d11
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV005]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV006]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV007]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-003]
+    obligationRefs: [EV008]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV009]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV010]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV011]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV012]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV013
+    kind: verification
+    subject:
+      type: task
+      id: T013
+    taskRefs: [T013]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV013]
+    artifacts: []
+    sourceRefs:
+      - kind: verification
+        path: tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1120-retire-codex-skill-root/harness-all.trx
+      digest: "sha256:2635db0d7704f5cf7ad1ad515c6e5dd53f50d0997aca240f706ff26eff78bd55"
+      outcome: passed
+      passed: 370
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."
