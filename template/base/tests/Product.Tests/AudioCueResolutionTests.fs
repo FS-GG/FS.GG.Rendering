@@ -22,6 +22,10 @@ let private writeCue root (FS.GG.Audio.Core.SoundId id) (bytes: byte[]) =
     Directory.CreateDirectory root |> ignore
     File.WriteAllBytes(Path.Combine(root, id + ".wav"), bytes)
 
+let private populateCompleteMap root =
+    for id in AppRoot.AudioCues.declaredCueIds do
+        AppRoot.AudioCues.writeDeterministicPlaceholder root id |> ignore
+
 [<Tests>]
 let audioCueResolutionTests =
     testList "audio cue resolution readiness (#1210)" [
@@ -32,18 +36,22 @@ let audioCueResolutionTests =
                 writeCue root first (validWave ())
                 Expect.isFalse (AppRoot.AudioCues.audioContentReadyAt root) "one valid asset cannot hide every other missing declared cue")
         }
-        test "malformed, complete, build-output and publish-output fixtures are classified by resolver readiness" {
+        test "malformed and complete fixtures are classified by resolver readiness" {
             withFixture (fun root ->
-                for id in AppRoot.AudioCues.declaredCueIds do writeCue root id (validWave ())
+                populateCompleteMap root
                 Expect.isTrue (AppRoot.AudioCues.audioContentReadyAt root) "complete map is ready"
                 let damaged = AppRoot.AudioCues.declaredCueIds |> List.head
                 writeCue root damaged (Encoding.UTF8.GetBytes "not-a-wave")
                 let malformed = AppRoot.AudioCues.resolutionEvidenceAt root |> List.find (fun finding -> finding.CueId = damaged)
                 Expect.equal malformed.Problem (Some "malformed WAV") "malformed asset is named rather than silently resolving"
-                let buildOutput = Path.Combine(root, "build", "assets", "audio")
-                let publishOutput = Path.Combine(root, "publish", "assets", "audio")
-                Expect.isFalse (AppRoot.AudioCues.audioContentReadyAt buildOutput) "build output without copied cues is red"
-                Expect.isFalse (AppRoot.AudioCues.audioContentReadyAt publishOutput) "publish output without copied cues is red")
+                Expect.isFalse (AppRoot.AudioCues.audioContentReadyAt root) "corrupting a complete map returns it to red")
+        }
+        test "placeholder option is deterministic and carries a reviewable digest" {
+            let cue = AppRoot.AudioCues.declaredCueIds |> List.head
+            let first = AppRoot.AudioCues.deterministicPlaceholderWave cue
+            let second = AppRoot.AudioCues.deterministicPlaceholderWave cue
+            Expect.equal first second "same source parameters emit byte-identical WAV bytes"
+            Expect.equal (AppRoot.AudioCues.placeholderSha256 first) (AppRoot.AudioCues.placeholderSha256 second) "digest is reproducible"
         }
     ]
 //#endif

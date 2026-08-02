@@ -1,6 +1,7 @@
 module AppRoot.AudioCues
 
 open System.IO
+open System.Security.Cryptography
 open FS.GG.Audio.Core
 open FS.GG.Audio.Host
 //#if (profile == "game")
@@ -72,6 +73,40 @@ let private isWave (bytes: byte[]) =
     bytes.Length >= 44
     && System.Text.Encoding.ASCII.GetString(bytes, 0, 4) = "RIFF"
     && System.Text.Encoding.ASCII.GetString(bytes, 8, 4) = "WAVE"
+
+/// Deterministic, reviewable placeholder bytes for the *scaffold author* to opt into.
+/// This is intentionally not invoked by the default scaffold: an author chooses a cue id,
+/// writes the bytes, commits the resulting WAV, and then verifies its SHA-256 in build/publish
+/// output. The bytes are a valid silent PCM WAV, useful only as a temporary audible-content seam.
+let deterministicPlaceholderWave (SoundId id) =
+    let pcm = Array.zeroCreate<byte> 44
+    let write (offset: int) (text: string) = System.Text.Encoding.ASCII.GetBytes(text).CopyTo(pcm, offset)
+    write 0 "RIFF"
+    System.BitConverter.GetBytes(36).CopyTo(pcm, 4)
+    write 8 "WAVE"
+    write 12 "fmt "
+    System.BitConverter.GetBytes(16).CopyTo(pcm, 16)
+    System.BitConverter.GetBytes(uint16 1).CopyTo(pcm, 20)
+    System.BitConverter.GetBytes(uint16 1).CopyTo(pcm, 22)
+    System.BitConverter.GetBytes(8000).CopyTo(pcm, 24)
+    System.BitConverter.GetBytes(8000).CopyTo(pcm, 28)
+    System.BitConverter.GetBytes(uint16 1).CopyTo(pcm, 32)
+    System.BitConverter.GetBytes(uint16 8).CopyTo(pcm, 34)
+    write 36 "data"
+    System.BitConverter.GetBytes(0).CopyTo(pcm, 40)
+    id |> ignore
+    pcm
+
+let placeholderSha256 (bytes: byte[]) =
+    SHA256.HashData bytes |> System.Convert.ToHexString |> fun (digest: string) -> digest.ToLowerInvariant()
+
+/// Writes a committed-source reproducible placeholder and returns the digest that build/publish
+/// probes must observe. It is an explicit author action, never a silent readiness bypass.
+let writeDeterministicPlaceholder root id =
+    let bytes = deterministicPlaceholderWave id
+    Directory.CreateDirectory root |> ignore
+    File.WriteAllBytes(expectedPath root id, bytes)
+    placeholderSha256 bytes
 
 let private tryReadAsset (id: SoundId) =
     let path = expectedPath assetRoot id

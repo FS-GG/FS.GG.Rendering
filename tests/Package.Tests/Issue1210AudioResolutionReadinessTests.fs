@@ -17,6 +17,7 @@ let audioResolutionReadinessTests =
             Expect.stringContains text "let declaredCueIds : SoundId list" "one product-owned declaration owns the cue vocabulary"
             Expect.stringContains text "let resolutionEvidence () : CueResolution list" "the resolver produces distinct content evidence"
             Expect.stringContains text "let audioContentReady ()" "build/publish checks have an explicit readiness predicate"
+            Expect.stringContains text "let writeDeterministicPlaceholder" "scaffold authors have an executable placeholder option"
             Expect.stringContains text "request-only test must never stand in for it" "guidance forbids request evidence from certifying assets"
         }
 
@@ -33,5 +34,7 @@ let audioResolutionReadinessTests =
             Expect.isFalse (Directory.Exists assetDirectory) "the base scaffold has no pretend audio assets"
             Expect.stringContains (source ()) "intentionally asset-less scaffold" "the red default is documented beside its executable predicate"
             Expect.stringContains (source ()) "deterministic reviewable PCM WAV bytes from committed source" "generated binary placeholders are a reviewable option, not hidden output"
+            let project = File.ReadAllText(Path.Combine(RepositoryRoot.value, "template/base/src/Product/Product.fsproj"))
+            Expect.stringContains project "CopyToOutputDirectory=\"PreserveNewest\"" "authored WAVs are copied into real build/publish output"
         }
     ]
