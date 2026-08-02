@@ -1,0 +1,173 @@
+schemaVersion: 1
+workId: 1196-windowed-fullscreen
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1196-windowed-fullscreen/spec.md
+sourceClarifications: work/1196-windowed-fullscreen/clarifications.md
+sourceChecklist: work/1196-windowed-fullscreen/checklist.md
+sourcePlan: work/1196-windowed-fullscreen/plan.md
+sourceTasks: work/1196-windowed-fullscreen/tasks.yml
+sourceAnalysis: readiness/1196-windowed-fullscreen/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1196-windowed-fullscreen/analysis.json
+    digest: 3b8e8d13250475afb387903ddad6eedb6e65df7c3ae999113104eeefb694e6c3
+    schemaVersion: 1
+  - label: checklist
+    path: work/1196-windowed-fullscreen/checklist.md
+    digest: ab050901a90e7c7e64d2a7b710d8b3cc6bc661ab3c707b4d94f656d21c96d2ff
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1196-windowed-fullscreen/clarifications.md
+    digest: a9d9294f6c09a71e737fee34d0e8602a227730ddd2bd193a4d7942d782683004
+    schemaVersion: 1
+  - label: plan
+    path: work/1196-windowed-fullscreen/plan.md
+    digest: e2c6902b2edc9717f3dd79748b10e6e3ac1bdca95d742f2735aa19e068268bb9
+    schemaVersion: 1
+  - label: spec
+    path: work/1196-windowed-fullscreen/spec.md
+    digest: c046b97d40053db9271e66ba6952f72a9c02e0cbb1002e0d51afc4ffdde4b86a
+    schemaVersion: 1
+  - label: tasks
+    path: work/1196-windowed-fullscreen/tasks.yml
+    digest: 915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [src/SkiaViewer/Host/OpenGl.fs, tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 9
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV002]
+    artifacts: [src/SkiaViewer/Host/OpenGl.fs, src/SkiaViewer/Host/OpenGl.fsi]
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 9
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV003]
+    artifacts: [readiness/1196-windowed-fullscreen/issue1022-tests.xml]
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 9
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV004]
+    artifacts: [work/1196-windowed-fullscreen/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 9
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: [readiness/1196-windowed-fullscreen/work-model.json]
+    sourceRefs:
+      - kind: verification
+        path: tests/SkiaViewer.Tests/Issue1022RuntimeWindowBehaviorTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/1196-windowed-fullscreen/test-results/issue1022.trx
+      digest: "sha256:905755cd5098f66bed227e946a39e9f97e093352cd75a7c7dbb8a6ac59d8c270"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 9
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

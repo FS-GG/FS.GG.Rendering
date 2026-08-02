@@ -149,7 +149,8 @@ module GlHost =
           GetPosition: unit -> Silk.NET.Maths.Vector2D<int>
           SetPosition: Silk.NET.Maths.Vector2D<int> -> unit
           GetSize: unit -> Silk.NET.Maths.Vector2D<int>
-          SetSize: Silk.NET.Maths.Vector2D<int> -> unit }
+          SetSize: Silk.NET.Maths.Vector2D<int> -> unit
+          GetWorkArea: unit -> (Silk.NET.Maths.Vector2D<int> * Silk.NET.Maths.Vector2D<int>) option }
 
     /// Per-window state that remembers normal-window geometry across fullscreen/borderless modes.
     type internal RuntimeWindowController

@@ -1,0 +1,467 @@
+{
+  "schemaVersion": 1,
+  "viewVersion": "1.0",
+  "workId": "1196-windowed-fullscreen",
+  "stage": "verify",
+  "status": "verificationReady",
+  "generator": "FS.GG.SDD.Artifacts/1.0.0",
+  "sources": [
+    {
+      "path": ".fsgg/agents.yml",
+      "kind": "agentsConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": ".fsgg/project.yml",
+      "kind": "projectConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": ".fsgg/sdd.yml",
+      "kind": "sddConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "readiness/1196-windowed-fullscreen/analysis.json",
+      "kind": "analysis",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "3b8e8d13250475afb387903ddad6eedb6e65df7c3ae999113104eeefb694e6c3"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "readiness/1196-windowed-fullscreen/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "72f5592cc83ccf9d03ffd7304ffa49ee1a9bcaf03df0bbb1d17379780c12efa2"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/checklist.md",
+      "kind": "checklist",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "ab050901a90e7c7e64d2a7b710d8b3cc6bc661ab3c707b4d94f656d21c96d2ff"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/clarifications.md",
+      "kind": "clarification",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "a9d9294f6c09a71e737fee34d0e8602a227730ddd2bd193a4d7942d782683004"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/evidence.yml",
+      "kind": "evidence",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "74e0e7e04251c95330e32e5fe72b8591ca6db3b9aa95c71ef51e2470d50eda4b"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/plan.md",
+      "kind": "plan",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "e2c6902b2edc9717f3dd79748b10e6e3ac1bdca95d742f2735aa19e068268bb9"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/spec.md",
+      "kind": "specification",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "c046b97d40053db9271e66ba6952f72a9c02e0cbb1002e0d51afc4ffdde4b86a"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1196-windowed-fullscreen/tasks.yml",
+      "kind": "tasks",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "915f609cb084dc42c8e1d238afaf6d66771e9e8fd87c5b1f40ed64fe915dbb66"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    }
+  ],
+  "lifecycleReadiness": {
+    "status": "implementationReady",
+    "stages": [
+      {
+        "stage": "analyze",
+        "status": "implementationReady"
+      },
+      {
+        "stage": "checklist",
+        "status": "current"
+      },
+      {
+        "stage": "clarify",
+        "status": "current"
+      },
+      {
+        "stage": "evidence",
+        "status": "evidenceReady"
+      },
+      {
+        "stage": "plan",
+        "status": "current"
+      },
+      {
+        "stage": "specify",
+        "status": "current"
+      },
+      {
+        "stage": "tasks",
+        "status": "current"
+      }
+    ]
+  },
+  "taskGraph": {
+    "taskCount": 5,
+    "dependencyCount": 4,
+    "dependenciesValid": true,
+    "statusesValid": true,
+    "findingIds": []
+  },
+  "evidenceDispositions": [
+    {
+      "id": "ED-EV001",
+      "obligationId": "EV001",
+      "state": "supported",
+      "observed": true,
+      "classifiedRequirement": false,
+      "journeyRequirement": false,
+      "evidenceIds": [
+        "EV001"
+      ],
+      "affectedTaskIds": [
+        "T001"
+      ],
+      "affectedSourceIds": [
+        "AC-001",
+        "FR-001",
+        "PD-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "ED-EV002",
+      "obligationId": "EV002",
+      "state": "supported",
+      "observed": true,
+      "classifiedRequirement": false,
+      "journeyRequirement": false,
+      "evidenceIds": [
+        "EV002"
+      ],
+      "affectedTaskIds": [
+        "T002"
+      ],
+      "affectedSourceIds": [
+        "PC-001",
+        "PD-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "ED-EV003",
+      "obligationId": "EV003",
+      "state": "supported",
+      "observed": true,
+      "classifiedRequirement": false,
+      "journeyRequirement": false,
+      "evidenceIds": [
+        "EV003"
+      ],
+      "affectedTaskIds": [
+        "T003"
+      ],
+      "affectedSourceIds": [
+        "PC-001",
+        "PD-001",
+        "VO-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "ED-EV004",
+      "obligationId": "EV004",
+      "state": "supported",
+      "observed": true,
+      "classifiedRequirement": false,
+      "journeyRequirement": false,
+      "evidenceIds": [
+        "EV004"
+      ],
+      "affectedTaskIds": [
+        "T004"
+      ],
+      "affectedSourceIds": [
+        "PC-001",
+        "PM-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "ED-EV005",
+      "obligationId": "EV005",
+      "state": "supported",
+      "observed": true,
+      "classifiedRequirement": false,
+      "journeyRequirement": false,
+      "evidenceIds": [
+        "EV005"
+      ],
+      "affectedTaskIds": [
+        "T005"
+      ],
+      "affectedSourceIds": [
+        "GV-001",
+        "PD-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    }
+  ],
+  "testDispositions": [
+    {
+      "id": "TD-EV001",
+      "obligationId": "EV001",
+      "state": "satisfied",
+      "observed": true,
+      "evidenceIds": [
+        "EV001"
+      ],
+      "affectedTaskIds": [
+        "T001"
+      ],
+      "affectedRequirementIds": [
+        "FR-001"
+      ],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "TD-EV002",
+      "obligationId": "EV002",
+      "state": "satisfied",
+      "observed": true,
+      "evidenceIds": [
+        "EV002"
+      ],
+      "affectedTaskIds": [
+        "T002"
+      ],
+      "affectedRequirementIds": [],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "TD-EV003",
+      "obligationId": "EV003",
+      "state": "satisfied",
+      "observed": true,
+      "evidenceIds": [
+        "EV003"
+      ],
+      "affectedTaskIds": [
+        "T003"
+      ],
+      "affectedRequirementIds": [],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "TD-EV004",
+      "obligationId": "EV004",
+      "state": "satisfied",
+      "observed": true,
+      "evidenceIds": [
+        "EV004"
+      ],
+      "affectedTaskIds": [
+        "T004"
+      ],
+      "affectedRequirementIds": [],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "id": "TD-EV005",
+      "obligationId": "EV005",
+      "state": "satisfied",
+      "observed": true,
+      "evidenceIds": [
+        "EV005"
+      ],
+      "affectedTaskIds": [
+        "T005"
+      ],
+      "affectedRequirementIds": [],
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    }
+  ],
+  "skillVisibility": [
+    {
+      "skill": "automated-tests",
+      "requiringTaskIds": [
+        "T003"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "skill": "deterministic-json",
+      "requiringTaskIds": [
+        "T005"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "skill": "fsharp",
+      "requiringTaskIds": [
+        "T001",
+        "T002"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "skill": "implementation",
+      "requiringTaskIds": [
+        "T001"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "skill": "readiness-evidence",
+      "requiringTaskIds": [
+        "T003"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    },
+    {
+      "skill": "schema-versioning",
+      "requiringTaskIds": [
+        "T004"
+      ],
+      "visibility": "visible",
+      "sourceArtifactPath": "work/1196-windowed-fullscreen/tasks.yml",
+      "severity": "ready",
+      "diagnosticIds": [],
+      "correction": ""
+    }
+  ],
+  "generatedViews": [
+    {
+      "path": "readiness/1196-windowed-fullscreen/analysis.json",
+      "kind": "verification",
+      "currency": "current",
+      "diagnosticIds": []
+    },
+    {
+      "path": "readiness/1196-windowed-fullscreen/work-model.json",
+      "kind": "workModel",
+      "currency": "current",
+      "diagnosticIds": []
+    }
+  ],
+  "findings": [],
+  "governanceCompatibility": [
+    {
+      "path": ".fsgg/policy.yml",
+      "relationship": "optionalGovernancePolicy",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    },
+    {
+      "path": ".fsgg/capabilities.yml",
+      "relationship": "optionalGovernanceCapabilities",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    },
+    {
+      "path": ".fsgg/tooling.yml",
+      "relationship": "optionalGovernanceTooling",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    }
+  ],
+  "diagnostics": [],
+  "readiness": "verificationReady",
+  "nextAction": {
+    "actionId": "verify.next.ship",
+    "command": null,
+    "reason": "Verification readiness is current and ready for ship."
+  }
+}

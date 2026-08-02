@@ -189,35 +189,25 @@ let main args =
         // viewer launcher swapped, so sound cannot drift away from the live loop.
         let launchResult =
             //#if (profile == "game")
-            // One launch overload owns both paths. With no flags, the shell's authored default
-            // (1280x720, Windowed) is explicit rather than inheriting a viewer default that can select
-            // different surface/window behavior. Flagged launches replace that request, not the host.
-            let launchRequest =
-                if AppRoot.WindowOptions.windowFlagSupplied args then
-                    AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
-                else
-                    AppRoot.GameShell.windowBehavior AppRoot.EvidenceCommands.shellConfig.InitialDisplay
+            // One launch overload owns both paths. With no flags, WindowOptions supplies the safe
+            // exclusive-fullscreen default; every supplied flag overlays just its named field on that
+            // request. The host therefore never selects a different implicit window behavior.
+            let launchRequest = AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
 
             ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest audioSink interactiveHost
             //#else
-            if AppRoot.WindowOptions.windowFlagSupplied args then
-                ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
-            else
-                ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost
+            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
             //#endif
         //#else
-        // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). A window flag
-        // routes through the window-behavior overload; otherwise the durable default path stays
-        // reachable and inherits the framework windowed-fullscreen default.
+        // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). Flagged and
+        // unflagged launches share the window-behavior overload, so the safe default and record overlay
+        // are applied by the same native host path.
         //
         // #436 folded sample-pack onto this sink-carrying expression rather than leaving it on the
         // sinkless `Viewer.runApp`. It had referenced all four FS.GG.Audio packages since ADR-0024 and
         // wired none of them — shipping the dependency and the silence together.
         let launchResult =
-            if AppRoot.WindowOptions.windowFlagSupplied args then
-                Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
-            else
-                Viewer.runAppWithAudio viewerOptions audioSink generatedHost
+            Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
         //#endif
 
         match launchResult with

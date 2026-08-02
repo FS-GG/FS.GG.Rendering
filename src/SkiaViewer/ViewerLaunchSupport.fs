@@ -144,6 +144,7 @@ module internal ViewerLaunchSupport =
         with _ ->
             None
 
+
     let tryObserved read =
         try
             Observed(read ())

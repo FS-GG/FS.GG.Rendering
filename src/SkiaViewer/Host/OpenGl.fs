@@ -15,6 +15,9 @@ open Silk.NET.Core.Contexts
 open Silk.NET.Input
 open Silk.NET.Maths
 open Silk.NET.Windowing
+open Microsoft.FSharp.NativeInterop
+
+#nowarn "9"
 open Silk.NET.OpenGL
 open SkiaSharp
 open FS.GG.UI.Scene
@@ -285,6 +288,17 @@ module internal LoopDispatch =
             ran
 
 module GlHost =
+    let private tryResolveMonitorWorkArea (monitor: IMonitor) =
+        try
+            let glfw = Silk.NET.GLFW.Glfw.GetApi()
+            let mutable count = 0
+            let monitors = glfw.GetMonitors(&count)
+            if NativePtr.toNativeInt monitors = 0n || monitor.Index < 0 || monitor.Index >= count then None
+            else
+                let mutable x, y, width, height = 0, 0, 0, 0
+                glfw.GetMonitorWorkarea(NativePtr.get monitors monitor.Index, &x, &y, &width, &height)
+                if width > 0 && height > 0 then Some(Vector2D<int>(x, y), Vector2D<int>(width, height)) else None
+        with _ -> None
     /// The single source of truth for the graphics backend this viewer host actually initializes.
     /// The live window is always created with `ContextAPI.OpenGL` (see `createWindow`) and Skia
     /// wraps it through `GRContext.CreateGl` (see `createSkiaContext`); Vulkan/software preferences
@@ -301,7 +315,9 @@ module GlHost =
           GetPosition: unit -> Vector2D<int>
           SetPosition: Vector2D<int> -> unit
           GetSize: unit -> Vector2D<int>
-          SetSize: Vector2D<int> -> unit }
+          SetSize: Vector2D<int> -> unit
+          /// Resolves the work area of the output that currently owns this window.
+          GetWorkArea: unit -> (Vector2D<int> * Vector2D<int>) option }
 
     type private RuntimeWindowSnapshot =
         { State: WindowState
@@ -368,6 +384,13 @@ module GlHost =
 
         let desiredPosition, desiredSize =
             match behavior.Mode with
+            // A runtime request must be resolved on the native-loop target, not against the
+            // process default monitor captured when the effect was planned. On multi-output
+            // desktops those are legitimately different outputs.
+            | RuntimeWindowMode.WindowedFullscreen ->
+                match target.GetWorkArea() with
+                | Some(origin, extent) -> Some origin, Some extent
+                | None -> requestedPosition, requestedSize
             | RuntimeWindowMode.Normal ->
                 requestedPosition |> Option.orElse controller.WindowedPosition,
                 requestedSize |> Option.orElse (Some controller.WindowedSize)
@@ -1799,7 +1822,11 @@ module GlHost =
                           GetPosition = fun () -> activeWindow.Position
                           SetPosition = fun value -> activeWindow.Position <- value
                           GetSize = fun () -> activeWindow.Size
-                          SetSize = fun value -> activeWindow.Size <- value }
+                          SetSize = fun value -> activeWindow.Size <- value
+                          GetWorkArea = fun () ->
+                              try
+                                  tryResolveMonitorWorkArea activeWindow.Monitor
+                              with _ -> None }
 
                     match applyRuntimeWindowBehavior runtimeWindowController target behavior with
                     | Ok changed ->

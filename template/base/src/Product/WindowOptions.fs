@@ -82,9 +82,9 @@ let parseWindowBehavior args =
         args
         { Resize = "resizable"
           Maximize = "maximizable"
-          // Windowed fullscreen is the no-flag default; an explicit --window-startup
+          // Exclusive fullscreen is the safe no-flag default; an explicit --window-startup
           // selection overrides it (the last-specified value wins on conflict).
-          Startup = "windowed-fullscreen"
+          Startup = "fullscreen"
           Position = "centered"
           Backend = "default" }
 

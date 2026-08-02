@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "2.0.0",
+  "generatorVersion": "FS.GG.SDD.Artifacts/1.0.0",
+  "workId": "1196-windowed-fullscreen",
+  "sources": [
+    {
+      "path": "readiness/1196-windowed-fullscreen/ship.json",
+      "digest": "sha256:08fa10d31a69ba35965ccf6979645350ca5e098e44d635e090f782ca45f6c65d",
+      "schemaVersion": 1
+    },
+    {
+      "path": "readiness/1196-windowed-fullscreen/verify.json",
+      "digest": "sha256:193e016136dd603dc8f0cf04f68f36829ee0c853ed02b10fe9f363a65bf5532e",
+      "schemaVersion": 1
+    },
+    {
+      "path": "readiness/1196-windowed-fullscreen/work-model.json",
+      "digest": "sha256:72f5592cc83ccf9d03ffd7304ffa49ee1a9bcaf03df0bbb1d17379780c12efa2",
+      "schemaVersion": 1
+    }
+  ],
+  "evidence": {
+    "nodes": [
+      {
+        "id": "evidence:EV001",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV002",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV003",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV004",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV005",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T001",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T002",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T003",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T004",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T005",
+        "state": "real",
+        "rationale": null
+      }
+    ],
+    "dependencies": [
+      {
+        "dependent": "evidence:EV001",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "evidence:EV002",
+        "dependency": "task:T002"
+      },
+      {
+        "dependent": "evidence:EV003",
+        "dependency": "task:T003"
+      },
+      {
+        "dependent": "evidence:EV004",
+        "dependency": "task:T004"
+      },
+      {
+        "dependent": "evidence:EV005",
+        "dependency": "task:T005"
+      },
+      {
+        "dependent": "task:T001",
+        "dependency": "evidence:EV001"
+      },
+      {
+        "dependent": "task:T002",
+        "dependency": "evidence:EV002"
+      },
+      {
+        "dependent": "task:T002",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T003",
+        "dependency": "evidence:EV003"
+      },
+      {
+        "dependent": "task:T003",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T004",
+        "dependency": "evidence:EV004"
+      },
+      {
+        "dependent": "task:T004",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T005",
+        "dependency": "evidence:EV005"
+      },
+      {
+        "dependent": "task:T005",
+        "dependency": "task:T001"
+      }
+    ]
+  },
+  "performanceEvidence": [],
+  "governedReferences": [],
+  "governanceConfig": {
+    "policyPresent": false,
+    "capabilitiesPresent": false,
+    "toolingPresent": false
+  },
+  "readiness": {
+    "shipDisposition": "shipReady",
+    "verificationReadiness": "verificationReady",
+    "counts": {
+      "advisory": 0,
+      "warning": 0,
+      "blocking": 0,
+      "classifiedObligationsUnmet": 0,
+      "journeyObligationsUnmet": 0
+    },
+    "blockingDiagnosticIds": [],
+    "perViewState": [
+      {
+        "view": "ship.json",
+        "state": "current"
+      },
+      {
+        "view": "verify.json",
+        "state": "current"
+      },
+      {
+        "view": "work-model.json",
+        "state": "current"
+      }
+    ]
+  },
+  "diagnostics": []
+}

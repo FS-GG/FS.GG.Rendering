@@ -6,6 +6,31 @@ open AppRoot.Program
 open AppRoot.Model
 open FS.GG.UI.Scene
 
+//#if (profile == "app" || profile == "sample-pack" || profile == "game")
+[<Tests>]
+let windowOptionOverlayTests =
+    testList "window option overlay" [
+        test "safe default and every single option overlay preserve unspecified fields" {
+            let baseline: AppRoot.WindowOptions.WindowBehaviorSettings = AppRoot.WindowOptions.parseWindowBehavior []
+            Expect.equal baseline.Startup "fullscreen" "no flags use the safe exclusive-fullscreen default"
+            let cases: (string list * (AppRoot.WindowOptions.WindowBehaviorSettings -> bool)) list =
+                [ [ "--window-resize"; "fixed-size" ], fun v -> v.Resize = "fixed-size"
+                  [ "--window-maximize"; "not-maximizable" ], fun v -> v.Maximize = "not-maximizable"
+                  [ "--window-startup"; "normal" ], fun v -> v.Startup = "normal"
+                  [ "--window-position"; "10,20" ], fun v -> v.Position = "10,20"
+                  [ "--window-backend"; "opengl" ], fun v -> v.Backend = "opengl" ]
+            for args, changed in cases do
+                let overlay: AppRoot.WindowOptions.WindowBehaviorSettings = AppRoot.WindowOptions.parseWindowBehavior args
+                Expect.isTrue (changed overlay) "the supplied flag changes its own field"
+                if args.Head <> "--window-resize" then Expect.equal overlay.Resize baseline.Resize "unrelated resize remains default"
+                if args.Head <> "--window-maximize" then Expect.equal overlay.Maximize baseline.Maximize "unrelated maximize remains default"
+                if args.Head <> "--window-startup" then Expect.equal overlay.Startup baseline.Startup "omitted startup remains safe default"
+                if args.Head <> "--window-position" then Expect.equal overlay.Position baseline.Position "unrelated position remains default"
+                if args.Head <> "--window-backend" then Expect.equal overlay.Backend baseline.Backend "unrelated backend remains default"
+        }
+    ]
+//#endif
+
 // Feature 060 (FR-005): replaceable scaffold-BEHAVIOR tests. These call the scaffold
 // product's `view`/`update`/host/scene-text directly, so when you replace the scaffold
 // model with your own you rewrite THIS file. `GovernanceTests.fs` (compiled first) keeps
@@ -1082,9 +1107,9 @@ let behaviorTests =
             // four FS.GG.Audio packages; it now shares the game family's expression, which is the one
             // it always should have had — the two families already shared `generatedHost`.
             //#if (profile == "app")
-            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithAudio viewerOptions audioSink interactiveHost" "controls-family normal launch uses the pointer-aware persistent host, with the #429/#436 audio sink"
+            Expect.stringContains defaultBranch "ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost" "controls-family normal launch uses the pointer-aware persistent host with the parsed window behavior and #429/#436 audio sink"
             //#else
-            Expect.stringContains defaultBranch "Viewer.runAppWithAudio viewerOptions audioSink generatedHost" "game/sample-pack normal launch uses the keyboard-only persistent host (with the #245 audio sink)"
+            Expect.stringContains defaultBranch "Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost" "game/sample-pack normal launch uses the keyboard-only persistent host with the parsed window behavior and #245 audio sink"
             //#endif
             Expect.isFalse (defaultBranch.Contains("--launch-evidence")) "launch evidence flag stays out of normal launch branch"
             Expect.isFalse (defaultBranch.Contains("--bounded-smoke")) "bounded smoke flag stays out of normal launch branch"

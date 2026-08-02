@@ -1,0 +1,86 @@
+schemaVersion: 1
+work:
+  id: 1196-windowed-fullscreen
+  title: "Windowed Fullscreen"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/1196-windowed-fullscreen/spec.md
+  sourceClarifications: work/1196-windowed-fullscreen/clarifications.md
+  sourceChecklist: work/1196-windowed-fullscreen/checklist.md
+  sourcePlan: work/1196-windowed-fullscreen/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/1196-windowed-fullscreen/spec.md
+    digest: c046b97d40053db9271e66ba6952f72a9c02e0cbb1002e0d51afc4ffdde4b86a
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1196-windowed-fullscreen/clarifications.md
+    digest: a9d9294f6c09a71e737fee34d0e8602a227730ddd2bd193a4d7942d782683004
+    schemaVersion: 1
+  - label: checklist
+    path: work/1196-windowed-fullscreen/checklist.md
+    digest: ab050901a90e7c7e64d2a7b710d8b3cc6bc661ab3c707b4d94f656d21c96d2ff
+    schemaVersion: 1
+  - label: plan
+    path: work/1196-windowed-fullscreen/plan.md
+    digest: e2c6902b2edc9717f3dd79748b10e6e3ac1bdca95d742f2735aa19e068268bb9
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Update contract surface PC-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Record verification evidence VO-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Handle migration posture PM-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Refresh generated view impact GV-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV005]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work 1196-windowed-fullscreen."

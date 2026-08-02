@@ -23,7 +23,7 @@ let generatedInteractiveHostContract =
               "if persistShellSettings migrated then" ]
             |> List.iter (fun token -> Expect.stringContains host token $"generated host carries `{token}`")
 
-            Expect.stringContains program "shellConfig.InitialDisplay" "default launch derives behavior from the authored shell display"
+            Expect.stringContains program "let launchRequest = AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior" "default and flagged launch behavior comes from the same parsed safe-default overlay"
             Expect.stringContains program "runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest" "default and flagged game launches select one explicit overload"
             Expect.stringContains host "ApplyLogicalCanvas(AppRoot.GameShell.logicalSize settings)" "DisplayChanged reaches the dynamic viewer-owned logical canvas"
             Expect.stringContains host "LogicalSize = Some { Width = 1280; Height = 720 }" "the generated game seeds the initial logical canvas"
