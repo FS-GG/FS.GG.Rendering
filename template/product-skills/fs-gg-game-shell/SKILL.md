@@ -35,9 +35,10 @@ shape (a pure Elmish state machine plus view + host seams):
   the only screen the shell does not draw over (your game owns it).
 - `DisplayMode` = `Windowed | Borderless | Fullscreen`; `DisplaySettings =
   { Resolution: Size; Mode: DisplayMode }`.
-- `Config = { Title; DefaultKeymap; DisplayModes; Resolutions; InitialDisplay }` —
-  what YOUR game supplies (its name, its rebindable key→command `Keymap`, the
-  offered resolutions/modes).
+- `Config = { Title; Actions; DisplayModes; Resolutions; InitialDisplay }` —
+  what YOUR game supplies (its name, its rebindable `KeyRebindAction` catalog, the
+  offered resolutions/modes). The `Keymap` itself is NOT supplied directly — `init`
+  derives it from `Actions` via `KeyRebind.restoreDefaults`.
 - `Model`, `Msg`, `Effect` — the shell state, its messages, and the intents the
   host interprets (`ExitRequested`, `DisplayChanged`, `KeymapChanged`).
 - `init`, `update : Msg -> Model -> Model * Effect list` — deterministic, host-free.
@@ -51,14 +52,16 @@ Embed the shell in your model and thread its `Msg`:
 
 ```fsharp
 open FS.GG.UI.KeyboardInput
+open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 
 let config : GameShell.Config =
     { Title = "My Game"
-      DefaultKeymap =
-        Keymap.ofBindings
-            [ { Key = "ArrowLeft"; Command = "move-left" }
-              { Key = "Space"; Command = "fire" } ]
+      Actions =
+        [ { Command = "move-left"; Label = "Move Left"; Order = 0
+            Binding = None; DefaultBinding = Some "ArrowLeft" }
+          { Command = "fire"; Label = "Fire"; Order = 1
+            Binding = None; DefaultBinding = Some "Space" } ]
       DisplayModes = [ GameShell.Windowed; GameShell.Borderless; GameShell.Fullscreen ]
       Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
       InitialDisplay = { Resolution = { Width = 1280; Height = 720 }; Mode = GameShell.Windowed } }
