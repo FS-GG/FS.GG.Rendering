@@ -553,7 +553,6 @@ vocabulary  ring
 # ---- Testing/Testing.fsi
 vocabulary  buildValidationContractOutput
 vocabulary  classifyDrift
-vocabulary  field
 vocabulary  parseScreenshotEvidenceRecord
 vocabulary  selectVisualEvidence
 vocabulary  statusText
