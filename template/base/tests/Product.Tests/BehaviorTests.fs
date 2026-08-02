@@ -10,16 +10,16 @@ open FS.GG.UI.Scene
 let windowOptionOverlayTests =
     testList "window option overlay" [
         test "safe default and every single option overlay preserve unspecified fields" {
-            let baseline = AppRoot.WindowOptions.parseWindowBehavior []
+            let baseline: AppRoot.WindowOptions.WindowBehaviorSettings = AppRoot.WindowOptions.parseWindowBehavior []
             Expect.equal baseline.Startup "fullscreen" "no flags use the safe exclusive-fullscreen default"
-            let cases =
+            let cases: (string list * (AppRoot.WindowOptions.WindowBehaviorSettings -> bool)) list =
                 [ [ "--window-resize"; "fixed-size" ], fun v -> v.Resize = "fixed-size"
                   [ "--window-maximize"; "not-maximizable" ], fun v -> v.Maximize = "not-maximizable"
                   [ "--window-startup"; "normal" ], fun v -> v.Startup = "normal"
                   [ "--window-position"; "10,20" ], fun v -> v.Position = "10,20"
                   [ "--window-backend"; "opengl" ], fun v -> v.Backend = "opengl" ]
             for args, changed in cases do
-                let overlay = AppRoot.WindowOptions.parseWindowBehavior args
+                let overlay: AppRoot.WindowOptions.WindowBehaviorSettings = AppRoot.WindowOptions.parseWindowBehavior args
                 Expect.isTrue (changed overlay) "the supplied flag changes its own field"
                 if args.Head <> "--window-resize" then Expect.equal overlay.Resize baseline.Resize "unrelated resize remains default"
                 if args.Head <> "--window-maximize" then Expect.equal overlay.Maximize baseline.Maximize "unrelated maximize remains default"
