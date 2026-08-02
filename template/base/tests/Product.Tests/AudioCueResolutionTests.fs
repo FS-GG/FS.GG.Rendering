@@ -26,6 +26,11 @@ let private populateCompleteMap root =
     for id in AppRoot.AudioCues.declaredCueIds do
         AppRoot.AudioCues.writeDeterministicPlaceholder root id |> ignore
 
+let private optionalEnvironment name =
+    match Environment.GetEnvironmentVariable name with
+    | null | "" -> None
+    | value -> Some value
+
 [<Tests>]
 let audioCueResolutionTests =
     testList "audio cue resolution readiness (#1210)" [
@@ -52,6 +57,30 @@ let audioCueResolutionTests =
             let second = AppRoot.AudioCues.deterministicPlaceholderWave cue
             Expect.equal first second "same source parameters emit byte-identical WAV bytes"
             Expect.equal (AppRoot.AudioCues.placeholderSha256 first) (AppRoot.AudioCues.placeholderSha256 second) "digest is reproducible"
+        }
+        // The repository-owned integration probe filters these two tests by name. The writer creates
+        // source assets through the production helper; the probe then checks real Release build and
+        // publish directories, plus mutated missing/malformed controls, through production readiness.
+        test "artifact fixture writer" {
+            match optionalEnvironment "FSGG_AUDIO_FIXTURE_SOURCE_ROOT" with
+            | None -> ()
+            | Some root ->
+                populateCompleteMap root
+                Expect.isTrue (AppRoot.AudioCues.audioContentReadyAt root) "source fixture is complete"
+        }
+        test "artifact output readiness probe" {
+            match optionalEnvironment "FSGG_AUDIO_FIXTURE_PROBE_ROOT", optionalEnvironment "FSGG_AUDIO_FIXTURE_EXPECT" with
+            | Some root, Some "complete" ->
+                Expect.isTrue (AppRoot.AudioCues.audioContentReadyAt root) "actual artifact output is complete"
+                for id in AppRoot.AudioCues.declaredCueIds do
+                    let expected = AppRoot.AudioCues.deterministicPlaceholderWave id |> AppRoot.AudioCues.placeholderSha256
+                    let (FS.GG.Audio.Core.SoundId raw) = id
+                    let actual = File.ReadAllBytes(Path.Combine(root, raw + ".wav")) |> AppRoot.AudioCues.placeholderSha256
+                    Expect.equal actual expected $"{raw} artifact digest equals committed-source generation"
+            | Some root, Some expectedProblem ->
+                let findings = AppRoot.AudioCues.resolutionEvidenceAt root
+                Expect.isTrue (findings |> List.exists (fun finding -> finding.Problem = Some expectedProblem)) $"actual artifact reports {expectedProblem}"
+            | _ -> ()
         }
     ]
 //#endif

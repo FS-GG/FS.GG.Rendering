@@ -77,7 +77,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "c2d3a327c0ebcd11e6e117f6cd1e02513f995d0f24497c7aa29cfed1852d17b6"
+        "value": "f3b119c2c7321d1493a70d356440d9417adf6f6bcc4b21fad6d74d8c4e1e050f"
       }
     },
     {
@@ -566,7 +566,7 @@
       "schemaVersion": 1,
       "generator": {
         "id": "FS.GG.SDD.Artifacts",
-        "version": "0.32.0"
+        "version": "1.0.0"
       },
       "sources": [
         {
@@ -613,7 +613,7 @@
           "path": "work/1210-audio-cue-resolution/evidence.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "c2d3a327c0ebcd11e6e117f6cd1e02513f995d0f24497c7aa29cfed1852d17b6"
+            "value": "f3b119c2c7321d1493a70d356440d9417adf6f6bcc4b21fad6d74d8c4e1e050f"
           },
           "schemaVersion": 1
         },
@@ -644,7 +644,7 @@
       ],
       "outputDigest": {
         "algorithm": "sha256",
-        "value": "dfbc8351fd7464668b3b8416b86cd458b632a1a1db02b42435058478f23b156d"
+        "value": "1f79bbe6c27419f19653533ec0ad3bd4fc745cc6524ff44daa09b765f9752820"
       },
       "currency": "current"
     }

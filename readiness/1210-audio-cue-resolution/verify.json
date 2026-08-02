@@ -4,7 +4,7 @@
   "workId": "1210-audio-cue-resolution",
   "stage": "verify",
   "status": "verificationReady",
-  "generator": "FS.GG.SDD.Artifacts/0.32.0",
+  "generator": "FS.GG.SDD.Artifacts/1.0.0",
   "sources": [
     {
       "path": ".fsgg/agents.yml",
@@ -51,7 +51,7 @@
       "kind": "workModel",
       "digest": {
         "algorithm": "sha256",
-        "value": "23f76d95faf2ffb148ee447d3caa4d469163057e8fafac0cd2c06fa40ed456cc"
+        "value": "2528d6586e5bd9af37752c8fc6b56a92c2ce1ba8e2c62c961499f77cbd8de054"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -81,7 +81,7 @@
       "kind": "evidence",
       "digest": {
         "algorithm": "sha256",
-        "value": "c2d3a327c0ebcd11e6e117f6cd1e02513f995d0f24497c7aa29cfed1852d17b6"
+        "value": "f3b119c2c7321d1493a70d356440d9417adf6f6bcc4b21fad6d74d8c4e1e050f"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"

@@ -4,10 +4,10 @@
   "workId": "1210-audio-cue-resolution",
   "stage": "ship",
   "status": "shipReady",
-  "generator": "FS.GG.SDD.Artifacts/0.32.0",
+  "generator": "FS.GG.SDD.Artifacts/1.0.0",
   "sourcesDigest": {
     "algorithm": "sha256",
-    "value": "b5ea75052d6427eb47f6fdb024a6baa754321ae418a70ce81a46cabd33f7c990"
+    "value": "852d5737769f01fc0f40b373d9c670988056f8826f221a5a22119fbf4cc09e16"
   },
   "verificationReadiness": {
     "status": "verificationReady",
