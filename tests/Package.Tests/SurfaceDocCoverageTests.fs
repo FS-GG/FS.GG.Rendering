@@ -227,6 +227,113 @@ type private SkillCode =
       UnclosedFence: bool
       UntaggedFences: int }
 
+/// #1168: `bareCite`/`citedQualifiers`/`bindsName` are raw-text regexes with no concept of "inside a string
+/// literal". An ordinary English word sitting in an `Expect.*` assertion message — "HUD regions do not
+/// overlap", "…is present" — can spell an unrelated public API name (`MapGen.regions`, `SkiaViewer.present`)
+/// and gets credited exactly as if it were a real citation, flipping `isDocumented` false -> true for a
+/// surface no skill actually teaches. #654 and #664 both narrowed WHERE a match may come from (prose -> code,
+/// any fence -> F#-only fences); this narrows it one step further, to code that ISN'T inside a quoted string.
+///
+/// #695 (closed epic, "Compile the docs instead of parsing them") recorded the ideal answer for S-DOC
+/// coverage specifically: "cited" should mean "appears in a fence that COMPILED against the pin" —
+/// i.e. adopt `DocFences`/`tests/DocFences.Tests` membership instead of a citation regex at all. That is the
+/// right destination but a materially larger change: a second, already-separate compiled-fence harness would
+/// have to become S-DOC's coverage oracle, which reaches well outside this item's declared touch-set (this one
+/// file) and outside a `defect` fix's scope. The gap #695 left is answerable locally without it: strip what a
+/// real F# lexer would call a STRING from the corpus before any citation regex ever sees it, so a message
+/// string cannot spell a citation by accident. A future move to compiled-fence membership remains open and is
+/// not foreclosed by this — it would simply retire this function along with the regexes below it.
+///
+/// THIS IS A LEXER FOR ONE TOKEN, not a parser: it walks the corpus once and blanks (space-for-space, so
+/// positions and line breaks survive) the CONTENTS of the three F# string forms a citation matcher needs to
+/// not be fooled by — triple-quoted `"""…"""`, verbatim `@"…"` (where `""` is a doubled, embedded quote, not
+/// the terminator), and ordinary `"…"` (where `\` escapes the next character, including a `"`). It never
+/// blanks the delimiters themselves, so the corpus is not accidentally re-joined across the gap.
+///
+/// AN INTERPOLATION HOLE IS CODE, NOT TEXT, and is deliberately left untouched: `$"'{id}' must be a bound
+/// control"` cites `id` inside the `{ }`, same as anywhere else, so only the literal text around the hole is
+/// blanked. `{{` inside an interpolated string is the escaped, literal brace — not a hole — and is blanked
+/// like any other literal character.
+let private stripStringLiterals (code: string) : string =
+    let n = code.Length
+    let sb = Text.StringBuilder(n)
+    let mutable i = 0
+
+    let startsWith (s: string) =
+        i + s.Length <= n && String.CompareOrdinal(code, i, s, 0, s.Length) = 0
+
+    let keep () =
+        sb.Append(code.[i]) |> ignore
+        i <- i + 1
+
+    let blank () =
+        sb.Append(if code.[i] = '\n' then '\n' else ' ') |> ignore
+        i <- i + 1
+
+    // A balanced `{ … }` interpolation hole, kept VERBATIM — it is code, and may itself hold a nested string
+    // (with its own braces), so depth is tracked rather than assumed to be exactly one level.
+    let keepInterpolationHole () =
+        keep () // '{'
+        let mutable depth = 1
+        while i < n && depth > 0 do
+            match code.[i] with
+            | '{' -> depth <- depth + 1
+            | '}' -> depth <- depth - 1
+            | _ -> ()
+            keep ()
+
+    // Consumes one string literal starting AT `i` (sitting on its opening delimiter), blanking its literal
+    // spans and keeping any interpolation holes untouched.
+    let consumeLiteral (opener: string) (terminator: string) (doubledQuoteEscapes: bool) (interpolated: bool) =
+        for _ in 1 .. opener.Length do
+            keep ()
+
+        let mutable closed = false
+
+        while i < n && not closed do
+            if startsWith terminator then
+                for _ in 1 .. terminator.Length do
+                    keep ()
+
+                closed <- true
+            elif doubledQuoteEscapes && code.[i] = '"' && i + 1 < n && code.[i + 1] = '"' then
+                keep ()
+                keep () // the doubled, embedded quote — not the terminator
+            elif not doubledQuoteEscapes && code.[i] = '\\' && i + 1 < n then
+                blank ()
+                blank () // the escape and the character it escapes
+            elif interpolated && code.[i] = '{' && i + 1 < n && code.[i + 1] = '{' then
+                blank ()
+                blank () // `{{` — the escaped, literal brace, not a hole
+            elif interpolated && code.[i] = '{' then
+                keepInterpolationHole ()
+            elif not doubledQuoteEscapes && code.[i] = '\n' then
+                // An ordinary F# string cannot contain a raw newline; give up cleanly rather than consume
+                // past a line the lexer never would have.
+                closed <- true
+            else
+                blank ()
+
+    while i < n do
+        if startsWith "$\"\"\"" then
+            consumeLiteral "$\"\"\"" "\"\"\"" true true
+        elif startsWith "\"\"\"" then
+            consumeLiteral "\"\"\"" "\"\"\"" true false
+        elif startsWith "$@\"" then
+            consumeLiteral "$@\"" "\"" true true
+        elif startsWith "@$\"" then
+            consumeLiteral "@$\"" "\"" true true
+        elif startsWith "@\"" then
+            consumeLiteral "@\"" "\"" true false
+        elif startsWith "$\"" then
+            consumeLiteral "$\"" "\"" false true
+        elif code.[i] = '"' then
+            consumeLiteral "\"" "\"" false false
+        else
+            keep ()
+
+    sb.ToString()
+
 let private codeReferencesIn (markdown: string) =
     let scanned = MarkdownFences.scan markdown
     let code = Text.StringBuilder()
@@ -245,7 +352,10 @@ let private codeReferencesIn (markdown: string) =
     for m in inlineCodeRegex.Matches(prose.ToString()) do
         code.AppendLine m.Groups.["code"].Value |> ignore
 
-    { Code = code.ToString()
+    // #1168: strip F# string-literal CONTENTS before any citation regex sees this corpus, so a word that
+    // merely spells a public API name inside a quoted message (an Expecto assertion, a log line, anything a
+    // skill's example happens to say) cannot be mistaken for a citation of it.
+    { Code = stripStringLiterals (code.ToString())
       UnclosedFence = scanned.UnclosedFence
       UntaggedFences = scanned.UntaggedFences }
 
@@ -957,6 +1067,115 @@ let adapterProgram =
                  walk that skipped the line would silently file it under the namespace instead"
         }
         // ---- end #713 -------------------------------------------------------------------------------
+
+
+        // ---- #1168: a word inside a string literal is not a citation. -----------------------------------
+        //
+        // The bug, reproduced at source. #654 moved the corpus from prose to code; #664 restricted it to
+        // F#-tagged fences; #692/#713 taught it that a BINDING site or a foreign module's qualifier is not a
+        // citation. None of them taught it that an F# STRING LITERAL is not code a citation can come from —
+        // so an ordinary English word inside an `Expect.*` assertion message, sitting in an otherwise
+        // legitimate `fsharp` fence, was credited exactly as if it were a real use of the API it happens to
+        // spell. Latent in the corpus today (see #1168's own investigation: the reproducing skill text has
+        // since been reworded), so it is pinned directly, the way #692/#713's own bugs are pinned above.
+
+        test "a name occurring only inside a string literal does not document the API it spells" {
+            // The bug, exactly as it shipped: two Expecto assertion messages spelling `MapGen.regions` and
+            // `SkiaViewer.present` as ordinary English words, credited as citations of surfaces neither
+            // fence teaches, demonstrates, or even mentions as code.
+            let markdown =
+                """
+```fsharp
+Expect.isFalse (anyOverlap hudRegions) "HUD regions do not overlap"
+Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
+```
+"""
+
+            Expect.isFalse
+                (cites markdown "regions")
+                "`regions` appears only inside a quoted assertion message — it does not cite `MapGen.regions`"
+
+            Expect.isFalse
+                (cites markdown "present")
+                "`present` appears only inside a quoted assertion message — it does not cite `SkiaViewer.present`"
+
+            // ...and the fence's real, non-literal occurrence of `hudRegions` (a bare argument, twice) is
+            // UNCHANGED by the fix — it is not inside any string, so it still cites, the way any ordinary
+            // identifier use does. (It happens to name no shipped surface here; the point is only that the
+            // fix does not touch code outside a literal.)
+            Expect.isTrue
+                (cites markdown "hudRegions")
+                "`hudRegions` is used as a real, unquoted argument — the string-literal fix must not touch it"
+        }
+
+        test "a literal alongside a real citation elsewhere still credits" {
+            // The acceptance's other half: excluding string content must not cost the corpus an HONEST
+            // citation sitting next to a message string in the same fence, or the fix is a blunt instrument.
+            let markdown =
+                """
+```fsharp
+let model = Resolution.push model shot
+Expect.isTrue true "push should not appear as a bare citation only because of this message"
+```
+"""
+
+            Expect.isTrue
+                (cites markdown "push")
+                "`Resolution.push` is a real, unqualified citation in the same fence — the string alongside it \
+                 does not un-credit it"
+        }
+
+        test "triple-quoted and verbatim string contents do not credit either" {
+            // The other two F# string FORMS a real lexer has to tell apart from `"…"` — a triple-quoted
+            // literal (no escapes, ends at the next `\"\"\"`) and a verbatim literal (`@\"…\"`, where `\"\"` is
+            // a doubled, embedded quote rather than the terminator). Both are common in Expecto messages that
+            // themselves quote something.
+            let tripleQuoted =
+                "```fsharp\nExpect.isTrue true \"\"\"the series does not regress\"\"\"\n```\n"
+
+            let verbatim =
+                "```fsharp\nExpect.isTrue true @\"a path like C:\\Charts\\series\\ is fine\"\n```\n"
+
+            Expect.isFalse (cites tripleQuoted "series") "a triple-quoted message's words are not citations"
+            Expect.isFalse (cites verbatim "series") "a verbatim string's words are not citations either"
+        }
+
+        test "an interpolation hole is still code, not string content" {
+            // The trap the obvious fix (blank everything between the quotes) falls into: an interpolated
+            // string's `{ … }` hole holds a real expression — `$"'{id}' must be a bound control"` cites `id`
+            // exactly as #654 established backticks do — so only the literal TEXT around the hole may be
+            // blanked, never the hole's own contents.
+            let markdown =
+                """
+```fsharp
+Expect.isTrue true $"{present} value stays silent"
+```
+"""
+
+            Expect.isTrue
+                (cites markdown "present")
+                "`present` sits INSIDE the interpolation hole — that is code, not message text"
+
+            Expect.isFalse
+                (cites markdown "silent")
+                "`silent` sits in the string's literal text around the hole — it is not a citation"
+        }
+
+        test "known bare collisions still credit through real, non-literal code (no regression)" {
+            // #1168's own trap: three names already credit today via legitimate, pre-existing skill content —
+            // `Layout.bounds`/`Scene.bounds`, `Attributes.on`, and `Charts.series`. Stripping string literals
+            // must not silently un-credit them — that would replace one false report (a false POSITIVE, the
+            // homonym) with another (a false NEGATIVE, an undeclared surface that is actually documented) —
+            // so this pins them against the LIVE product-skill corpus, not a synthetic fixture, the same way
+            // the responsiveness-mandate test above does.
+            for name in [ "bounds"; "on"; "series" ] do
+                Expect.isTrue
+                    (isDocumented name)
+                    $"`{name}` was documented via real code in the product skills before #1168's string-literal \
+                      fix — it must still be documented after it, or the fix traded a false positive for a \
+                      false negative"
+        }
+        // ---- end #1168 ------------------------------------------------------------------------------
 
 
         test "a fence indented inside a list item still opens a block" {
