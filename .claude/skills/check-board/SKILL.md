@@ -26,8 +26,11 @@ scripts/fsgg-coord reconcile --json
 scripts/fsgg-coord lint --json
 ```
 
-Never translate a failed read into an empty board. Exit 75 means back off until the reported reset.
+Never translate a failed read into an empty board. `reconcile --apply` reports a repair as applied only when its own fresh post-mutation scan observes every intended field value; an accepted mutation with a stale or missing row is failed, not clean. Exit 75 means back off until the reported reset.
 A queued write is not landed until `flush` and the final fresh pass confirm it.
+Run the bounded executable positive, partial-projection, and missing-row receipt examples in
+[mechanical reconciliation](references/mechanical-reconciliation.md#executable-receipt-examples) when
+validating automation that consumes the apply document.
 
 ## Judgement boundary
 

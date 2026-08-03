@@ -98,6 +98,27 @@ findings or add them to a private follow-up queue; the critic owns their disposi
 
 ## 5. Independent critique
 
+### Typed delivery receipt
+
+Where a claim-to-done snapshot is available, ask the engine for its one current action before a
+handoff, landing, obligation, or cleanup transition:
+
+```bash
+scripts/fsgg-coord delivery --snapshot <fresh-delivery-snapshot.json> --json
+```
+
+Before a PR can be landed through the live delivery path, add one exact machine declaration to that PR's
+comments, bound to its current head: `<!-- fsgg:delivery-obligations none head=<sha> -->`. A missing or
+stale declaration is a repair action, never an implicit assertion that no publication/deployment work is owed.
+For each real obligation, use `<!-- fsgg:delivery-obligation id=<stable-id> kind=<kind> head=<sha> -->`
+and complete it with `<!-- fsgg:delivery-receipt id=<stable-id> head=<sha> evidence=<url-or-id> -->`.
+
+The receipt binds the item, claim generation, executor, worktree, branch, PR, head SHA, declared
+paths, and board state. `delivery --apply` consumes that receipt and re-reads the winning claim marker
+immediately before its merge request. A changed head, claim, or unreadable fact invalidates it; obtain a fresh live
+snapshot rather than carrying a previous action forward in prose. The receipt supplies deterministic
+ordering only—requirements, review materiality, and repair judgement remain authored by the agents.
+
 Push the candidate, open its PR, and ask the host to assign a fresh critic agent. Keep the implementing worker and
 claim alive, set the item to `In review`, and freshly verify that row while the critic independently
 reviews the exact head SHA. The critic does not edit the
@@ -106,9 +127,11 @@ searches code/history and existing work for each candidate root cause; and files
 distinct **material** work. For a meaningful runtime behavior reachable through more than one route,
 the handoff supplies a built artifact and runnable production-route evidence so the critic can execute
 or measure the comparison required by `independent-review`, not infer it from source alone. The same
-critic reviews up to three numbered repair rounds. If material
-findings remain after round three, park the item on `Blocked on: human/action`, release the claim, and
-escalate to a human; never start round four or merge.
+critic reviews up to three numbered repair rounds. If material findings remain after round three,
+never start round four or merge that PR: close it without merging and automatically enter the one
+fresh-worker, fresh-critic repair phase defined by `independent-review`. Park the item on `Blocked on:
+human/action` and release the claim only if that repair phase exhausts or its required route is
+unavailable.
 
 [independent-review](references/independent-review.md) is the binding contract for materiality, critic
 ownership, the durable PR marker, direct filing, confirmation, and host verification. Do not merge
