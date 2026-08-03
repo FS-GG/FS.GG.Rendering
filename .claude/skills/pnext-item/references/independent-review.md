@@ -1,5 +1,42 @@
 # Independent review and material filing
 
+<!-- BEGIN GENERATED: fsgg-protocol:review-policy -->
+*Generated review contract. The marker parser and receipt validator consume these exact values.*
+
+| fact | value |
+|---|---|
+| initial marker | `fsgg:independent-review:v1` |
+| confirmation marker | `fsgg:independent-review-confirmation:v1` |
+| host acceptance marker | `fsgg:review-accepted:v1` |
+| escalation marker | `fsgg:independent-review-escalation:v1` |
+| repair-phase marker | `fsgg:independent-review-repair-phase:v1` |
+| ordinary repair ceiling | 3 |
+| repair-phase ceiling | 10 |
+
+<!-- END GENERATED: fsgg-protocol:review-policy -->
+
+<!-- BEGIN GENERATED: fsgg-protocol:lifecycle-policy -->
+*Generated lifecycle boundary. These are machine-owned prerequisites; judgement about the work remains authored.*
+
+Required housekeeping: `host-identity`, `stale-claim`, `engine-currency`, `pending-writes`, `reconcile`, `triage`.
+
+Host acceptance fields: `accepted-head`, `initial-review`, `latest-confirmation`.
+
+Terminal transition evidence: `merge` → `post-merge-obligations` → `done-stamp`.
+
+<!-- END GENERATED: fsgg-protocol:lifecycle-policy -->
+
+<!-- BEGIN GENERATED: fsgg-protocol:ledger-policy -->
+*Generated ledger schema. The receipt id binds these fields; prose does not substitute for the ledger.*
+
+Schema: `fsgg.coord.planning-receipt/1`.
+
+Observation fields: `kind`, `observedAt`, `sourceSha`, `outcome`, `receiptId`.
+
+Receipt fields: `schema`, `observedAt`, `sourceSha`, `complete`, `consolidationApproved`, `observations`.
+
+<!-- END GENERATED: fsgg-protocol:ledger-policy -->
+
 Every item gets one independent critique cycle before merge. The implementer and critic are different
 agents. The critic receives the issue, acceptance criteria, declared `Paths:`, exact PR head SHA,
 complete diff, and test evidence; it does not receive the implementer's conclusions. The critic may
@@ -123,9 +160,9 @@ These machine-readable literals are part of the review contract:
 
 - `max-automated-repair-rounds: 3`
 - `round-numbering: 1-based`
-- `round-four-action: human-escalation`
+- `round-four-action: automatic-repair-phase`
 - `human-escalation-sentinel: Blocked on: human/action`
-- `repair-phase-entry: operator-authorized`
+- `repair-phase-entry: automatic-after-ordinary-exhaustion`
 - `repair-phase-max-rounds: 10`
 - `repair-phase-round-numbering: 1-based`
 - `repair-phase-exhausted-action: human-escalation`
@@ -150,13 +187,12 @@ minor observations. Before routing any repair, the host validates the current ch
 when the latest round is less than three; this count-before-routing gate prevents a failed third
 confirmation from racing into repair four while the escalation writes settle.
 
-If the third confirmation still reports any unresolved material finding, automation is exhausted. The
+If the third confirmation still reports any unresolved material finding, the ordinary chain is exhausted. The
 critic posts one durable comment beginning with
 `<!-- fsgg:independent-review-escalation:v1 -->` that names the current head SHA, all three ordered
-confirmation URLs, the unresolved material findings and attempted repairs, and the concrete decision or
-action required from a human. This is a fork, not always a park: without operator authorization for the
-repair phase below, the worker or host proceeds directly through steps 1-4; with it, the repair phase
-below runs first and this park is reached only if that phase also exhausts.
+confirmation URLs, the unresolved material findings and attempted repairs, and the remaining repair
+objective. The host closes the exhausted PR without merging and automatically enters the repair phase
+below. Steps 1-4 are reached only if that phase also exhausts or its required route is unavailable.
 
 1. adds `Blocked on: human/action` to the issue body without disturbing its `Paths:` declaration;
 2. records who, when, and why in an issue comment that links the escalation marker (and, if a repair
@@ -164,34 +200,34 @@ below runs first and this park is reached only if that phase also exhausts.
 3. sets `Status: Blocked` and releases the claim; and
 4. stops without merging, filing a replacement review issue, or starting another automated round.
 
-Only a human may retire that sentinel and decide whether to take ownership or change the acceptance
-boundary. The exhausted PR cannot reset its counter or begin another automated cycle.
+Only a human or the automatic repair-phase transition may retire that sentinel; a human alone may
+change the acceptance boundary. The exhausted PR cannot reset its counter or begin another automated
+cycle. An already parked item whose evidence proves an ordinary three-round exhaustion is automatically
+eligible for that transition on the next board-driver pass: the host removes the sentinel, sets
+`Status: Ready`, records the transition, and dispatches the repair phase without human interaction.
 
 ### Repair phase
 
-One bounded escalated attempt is available between an exhausted three-round chain and the human park —
+One bounded escalated attempt runs between an exhausted three-round chain and the human park —
 not a fourth round of the same chain, and not a substitute for the park if it too exhausts.
 
-Entry is **operator-authorized, never inferred**: a declared parameter of the invocation, present
-*before* the chain exhausts. An agent must not infer authorization from a passing check, a new commit,
-or its own judgement that the item is "nearly there" — the same prohibition the escalation steps above
-already state, binding here without exception. Absent explicit authorization, an exhausted chain goes
-straight to the human park exactly as steps 1-4 describe; the repair phase never runs by default and
-never runs retroactively on an already-parked item without a fresh authorized invocation.
+Entry is **automatic only after validated ordinary exhaustion**. A passing check, a new commit, or an
+agent's judgement that the item is "nearly there" is not an entry trigger. The host verifies the exact
+three-round marker chain and escalation marker before entering. An already parked item with that valid
+evidence enters automatically on the next board-driver pass; the transition records why it cleared the
+human-action sentinel and resumed automation.
 
-When authorized:
+On automatic entry:
 
-1. The exhausted PR is closed without merging, exactly as the unauthorized path would leave it; its
+1. The exhausted PR is closed without merging; its
    counter is never rewound and never reused.
 2. A separately scoped PR opens with a **fresh implementing worker and a fresh critic**, both dispatched
-   at the escalated route the invoking driver skill's own routing table names (the `-best`/`-normal`
-   variants are the precedent for where that table lives) — never chosen ad hoc by the host. A driver
-   invocation with no routing table of its own (the bare canonical `drive-board`/`work-board`, run
-   without a `-best`/`-normal` override) has no escalated route to supply, so it cannot authorize entry
-   into this phase; its exhaustion goes straight to the human park. When a route is available but the
-   active runtime cannot request that exact model and effort, report the unsupported route and stop —
-   never downgrade, substitute, or fall back — the same rule the routing tables already enforce for the
-   ordinary chain.
+   at the escalated route the invoking driver skill names — never chosen ad hoc by the host. The
+   `-best`/`-normal` variants use their explicit repair-phase tables; the bare canonical `drive-board`
+   and `work-board` use the corresponding `-best` repair route. If the active runtime cannot request
+   that exact model and effort, the host applies steps 1-4 and records the unsupported route as the
+   concrete human action required; never downgrade, substitute, or fall back — the same rule the
+   routing tables already enforce for the ordinary chain.
 3. The new PR's initial review comment carries `<!-- fsgg:independent-review:v1 -->` as usual. The same
    comment, or an accompanying one, additionally carries `<!-- fsgg:independent-review-repair-phase:v1 -->`
    naming the exhausted PR and its `fsgg:independent-review-escalation:v1` marker URL, so a reader can
@@ -211,13 +247,11 @@ When authorized:
    beyond `repair-phase-max-rounds`: the human park is reached from at most one repair-phase attempt, and
    remains the only terminal outcome an exhausted chain can reach.
 
-Every entry — authorization, the escalated route used, the fresh critic's identity, and the outcome — is
+Every entry — the automatic trigger evidence, the escalated route used, the fresh critic's identity,
+and the outcome — is
 recorded on both PRs and the item, so a completion report cannot describe a repair-phase landing as an
-ordinary one. If a human later directs renewed automation on an item already parked with the sentinel
-(rather than authorizing the repair phase before exhaustion), close the exhausted PR without merging and
-start a separately scoped PR with a fresh critic and initial marker that links the escalation; absent
-that explicit instruction, automation remains stopped. An agent must not infer permission from a new
-commit or a passing check.
+ordinary one. A new commit or passing check alone never resets either chain or creates another repair
+phase.
 
 The critic may file new work only when all of these are true:
 
@@ -242,9 +276,9 @@ If a filed material issue blocks the current item, the critic reports it to the 
 the real `Blocked by` edge, parks the item `Blocked`, releases the claim, and stops. Otherwise the
 critic returns `pass` only after every material finding is repaired, deduplicated, or filed. The host
 verifies the marker, ordered round/URL/SHA chain, critic independence, dispositions, and every filed
-issue against GitHub before merge or terminal acceptance. An exhausted three-round chain is a human
-escalation — via the repair phase above when authorized, otherwise straight to the park — never a
-passing terminal acceptance either way. After verification of a passing chain (ordinary or
+issue against GitHub before merge or terminal acceptance. An exhausted three-round chain automatically
+enters the repair phase above; only unavailable routing or repair-phase exhaustion reaches the human
+park, and neither exhaustion is a passing terminal acceptance. After verification of a passing chain (ordinary or
 repair-phase), the host posts `<!-- fsgg:review-accepted:v1 -->` with the accepted head SHA, initial
 review URL, and confirmation URL when a repair occurred, and — for a repair-phase landing — the
 `fsgg:independent-review-repair-phase:v1` marker URL so acceptance evidence itself shows which path

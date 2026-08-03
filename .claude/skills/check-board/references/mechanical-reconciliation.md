@@ -8,6 +8,16 @@ Use `--repo NAME` to narrow the reported and applied subjects; omit it for the o
 Use `--json` when another tool consumes the dry-run result. Apply after inspecting that result;
 `--apply` is deliberately human-readable so mutation output cannot corrupt a JSON document.
 
+## Executable receipt examples
+
+These offline probes are bounded and make no board writes. The positive receipt proves both intended
+values were freshly observed. The partial receipt proves a failed comparison retains both actual
+values, including the stale dependency. The missing-row receipt proves no observation is invented.
+
+```bash
+bash .agents/skills/check-board/references/receipt-examples.sh
+```
+
 <!-- BEGIN GENERATED: fsgg-protocol:reconcile-rules -->
 <!--
   DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
