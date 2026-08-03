@@ -130,6 +130,8 @@ let updateInteractive msg model =
             // Issue #400: the PHYSICAL framebuffer size, distinct from the logical `Resized` this model
             // tracks. This harness reasons in logical coordinates, so the native-resolution signal is inert.
             model, Cmd.none
+        | FramePresented ->
+            model, emit (Dispatch FrameRendered)
         | CloseRequested ->
             { model with Closing = true },
             emit Shutdown

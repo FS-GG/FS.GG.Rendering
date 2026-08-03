@@ -28,6 +28,7 @@ type private LegacyHostMsg<'msg> =
     | LegacyPointer of ViewerPointerInput
     | LegacyResized of Size
     | LegacyFramebufferResized of Size
+    | LegacyFramePresented
     | LegacyCloseRequested
     | LegacyDiagnosticReported of Host.RenderDiagnostic
     | LegacyHostEffect of Host.ViewerEffect<LegacyHostMsg<'msg>>
@@ -233,7 +234,7 @@ module internal ViewerRuntime =
           FailureClass = failureClass
           Message = message }
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs pointerPacing getModelUpdateCount =
+    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick tickAtPresentation onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs pointerPacing getModelUpdateCount =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
@@ -245,6 +246,7 @@ module internal ViewerRuntime =
         let mutable scriptedIndex = 0
         let mutable scriptedCompletionFrames = 0
         let mutable presentedFrames = 0L
+        let mutable pendingTickDelta = TimeSpan.Zero
 
         let continuousPolicy =
             pointerPacing
@@ -470,27 +472,37 @@ module internal ViewerRuntime =
                 windowOpened := true
                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
             | LegacyUpdateTick elapsedSeconds ->
+                pendingTickDelta <- TimeSpan.FromSeconds elapsedSeconds
                 pumpScriptInput ()
                 let closeFromQueuedInput = drainQueuedInputs ()
                 let closeFromScript = scriptWantsClose ()
+                let closeFromOrdinaryTick =
+                    not tickAtPresentation && onTick pendingTickDelta
 
-                if closeFromQueuedInput || closeFromScript || onTick(TimeSpan.FromSeconds elapsedSeconds) then
+                if closeFromQueuedInput || closeFromScript || closeFromOrdinaryTick then
                     closeReason := Some AppRequestedClose
                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
                 else
                     (), Cmd.none
             | LegacyRenderTick _ ->
+                RenderLagTrace.emit
+                    "render-frame-requested"
+                    [ "scriptedIndex", string scriptedIndex
+                      "completionFrames", string scriptedCompletionFrames ]
+                (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+            | LegacyFramePresented ->
                 framePresented := true
                 presentedFrames <- presentedFrames + 1L
                 match scriptedInputs with
                 | Some inputs when scriptedIndex >= inputs.Length ->
                     scriptedCompletionFrames <- scriptedCompletionFrames + 1
                 | _ -> ()
-                RenderLagTrace.emit
-                    "render-frame-requested"
-                    [ "scriptedIndex", string scriptedIndex
-                      "completionFrames", string scriptedCompletionFrames ]
-                (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+
+                if tickAtPresentation && onTick pendingTickDelta then
+                    closeReason := Some AppRequestedClose
+                    (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
+                else
+                    (), Cmd.none
             | LegacyKey(rawKey, isDown) ->
                 enqueueQueuedInput
                     (if isDown then ViewerResponsivenessInputKind.KeyDown else ViewerResponsivenessInputKind.KeyUp)
@@ -555,6 +567,7 @@ module internal ViewerRuntime =
             | Host.ViewerEvent.Loaded -> Some LegacyLoaded
             | Host.ViewerEvent.UpdateTick elapsed -> Some(LegacyUpdateTick elapsed)
             | Host.ViewerEvent.RenderTick elapsed -> Some(LegacyRenderTick elapsed)
+            | Host.ViewerEvent.FramePresented -> Some LegacyFramePresented
             | Host.ViewerEvent.KeyDown key -> Some(LegacyKey(key, true))
             | Host.ViewerEvent.KeyUp key -> Some(LegacyKey(key, false))
             | Host.ViewerEvent.CloseRequested -> Some LegacyCloseRequested
@@ -1084,6 +1097,7 @@ module internal ViewerRuntime =
                     "not-applicable"
                     (fun () -> presentedFor options currentSurfaceSize scene)
                     (fun _ -> false)
+                    false
                     None
                     None
                     (Some(fun size -> currentSurfaceSize <- size))
@@ -1668,7 +1682,7 @@ module internal ViewerRuntime =
 
                 let inputVerified = makeInputVerified state
 
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None None (fun () -> 0)
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick false (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None None (fun () -> 0)
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
@@ -1968,7 +1982,7 @@ module internal ViewerRuntime =
                         state.CurrentScene <- safeView state.CurrentModel
 
                 let inputVerified = makeInputVerified state
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script pointerPacing (fun () -> modelUpdateCount)
+                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick gamepad.IsSome (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script pointerPacing (fun () -> modelUpdateCount)
                 |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =

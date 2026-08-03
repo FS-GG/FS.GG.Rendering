@@ -457,6 +457,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.ReportDiagnostic : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Shutdown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.CloseRequested : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.DiagnosticReported : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.FramePresented : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.FramebufferResized : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyDown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyUp : System.Int32
