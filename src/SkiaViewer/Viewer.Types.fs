@@ -777,6 +777,28 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+type GamepadSnapshot =
+    { LeftStickX: float
+      LeftStickY: float
+      RightStickX: float
+      RightStickY: float
+      LeftTrigger: float
+      RightTrigger: float }
+
+type GamepadFrameSource<'msg> =
+    { Poll: unit -> GamepadSnapshot option
+      Map: GamepadSnapshot -> 'msg list }
+
+type InteractiveViewerGamepadHost<'model,'msg> =
+    { Host: InteractiveViewerHost<'model,'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
+module GamepadFrameSource =
+    let poll (source: GamepadFrameSource<'msg>) =
+        match source.Poll() with
+        | Some snapshot -> source.Map snapshot
+        | None -> []
+
 [<RequireQualifiedAccess>]
 type ViewerScriptInput =
     | Key of key: ViewerKey * isDown: bool

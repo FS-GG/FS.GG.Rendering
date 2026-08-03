@@ -1283,6 +1283,21 @@ module GlHost =
         program.EventMapper event
         |> Option.iter dispatch
 
+    /// Close the renderer→application lifecycle loop only for a successful frame. RenderTick merely
+    /// requests work; this callback is what lets consumers pair state polling with frames that really
+    /// crossed the presentation boundary (including startup, excluding failed/canceled attempts).
+    let internal completePresentation program dispatch (result: Result<'frame, RenderDiagnostic>) =
+        match result with
+        | Ok frame ->
+            dispatchViewerEvent program dispatch FramePresented
+            Ok frame
+        | Result.Error diagnostic -> Result.Error diagnostic
+
+    /// The loop's cancellation edge: once shutdown or native close is observed, no renderer call can
+    /// begin and therefore no successful-presentation callback (or gamepad poll) can be manufactured.
+    let internal shouldAttemptPresentation shutdownRequested windowClosing =
+        not shutdownRequested && not windowClosing
+
     let addDisposable (items: ResizeArray<IDisposable>) dispose =
         items.Add
             { new IDisposable with
@@ -1744,6 +1759,11 @@ module GlHost =
                               "presentMs", present.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
                               "readbackBytes", string snapshot.Pixels.Length ]
 
+                        // Publish the boundary only after the successful frame is committed as the
+                        // host's last good frame. A callback may synchronously request capture or
+                        // shutdown, so every success-owned invariant must already be visible.
+                        completePresentation program dispatch (Ok()) |> ignore
+
                         // Direct present yields no readback pixels; flush any deferred captures
                         // by rendering the scene on demand through the offscreen routine (FR-004).
                         if snapshot.Pixels.Length > 0 then
@@ -1973,7 +1993,7 @@ module GlHost =
                             lastFrameTime <- now
                             createdWindow.DoUpdate()
 
-                            if not shutdownRequested && not createdWindow.IsClosing then
+                            if shouldAttemptPresentation shutdownRequested createdWindow.IsClosing then
                                 createdWindow.DoRender()
 
                         Threading.Thread.Sleep(1)

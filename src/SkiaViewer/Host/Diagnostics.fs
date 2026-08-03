@@ -74,6 +74,10 @@ type ViewerEvent =
     // break, no baseline removal). Lets the interactive host advertise native resolution to products
     // and rescale pointer input by the physical/logical ratio.
     | FramebufferResized of Size
+    // Issue #1160 repair: emitted only after the RenderFrame effect completed successfully. Appended
+    // last so every existing union-case tag stays stable. Unlike RenderTick, this is proof that the
+    // startup or paced frame actually crossed the renderer/presenter boundary.
+    | FramePresented
 
 type ScreenshotFormat =
     | Png

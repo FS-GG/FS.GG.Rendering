@@ -178,6 +178,17 @@ FS.GG.UI.SkiaViewer.Fonts.resolveText(FS.GG.UI.Scene.FontSpec, System.String) : 
 FS.GG.UI.SkiaViewer.Fonts.shapeText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
 FS.GG.UI.SkiaViewer.Fonts.shapeTextWithResolution(System.String, FS.GG.UI.Scene.FontSpec) : System.Tuple<FS.GG.UI.Scene.ShapedTextResult, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.Fonts+ResolvedChar>>
 FS.GG.UI.SkiaViewer.Fonts.shapingProviderStatus() : FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.GamepadFrameSource.poll<msg>(GamepadFrameSource<msg>) : FSharpList<msg>
+FS.GG.UI.SkiaViewer.GamepadFrameSource`1.Map : FSharpFunc<FS.GG.UI.SkiaViewer.GamepadSnapshot, FSharpList<msg>> [get]
+FS.GG.UI.SkiaViewer.GamepadFrameSource`1.Poll : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.GamepadSnapshot>> [get]
+FS.GG.UI.SkiaViewer.GamepadFrameSource`1.new(Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.SkiaViewer.GamepadSnapshot>>, FSharpFunc<FS.GG.UI.SkiaViewer.GamepadSnapshot, FSharpList<msg>>)
+FS.GG.UI.SkiaViewer.GamepadSnapshot.LeftStickX : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.LeftStickY : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.LeftTrigger : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.RightStickX : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.RightStickY : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.RightTrigger : System.Double [get]
+FS.GG.UI.SkiaViewer.GamepadSnapshot.new(System.Double, System.Double, System.Double, System.Double, System.Double, System.Double)
 FS.GG.UI.SkiaViewer.GeneratedAppHost.audioRequests(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.auditKeyWiring<model, msg>(GeneratedAppHost<model, msg>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.ViewerKeyEvent>) : SceneHostKeyWiring<msg>
 FS.GG.UI.SkiaViewer.GeneratedAppHost.dispatchKey<model, msg>(GeneratedAppHost<model, msg>, FS.GG.UI.KeyboardInput.ViewerKeyEvent, model) : Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>
@@ -446,6 +457,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.ReportDiagnostic : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEffect`1+Tags.Shutdown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.CloseRequested : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.DiagnosticReported : System.Int32
+FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.FramePresented : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.FramebufferResized : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyDown : System.Int32
 FS.GG.UI.SkiaViewer.Host.ViewerEvent+Tags.KeyUp : System.Int32
@@ -469,6 +481,9 @@ FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Subscriptions : FSharpFunc<model, FShar
 FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.Update : FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>> [get]
 FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.View : FSharpFunc<model, FS.GG.UI.Scene.Scene> [get]
 FS.GG.UI.SkiaViewer.Host.ViewerProgram`2.new(FS.GG.UI.SkiaViewer.Host.ViewerConfiguration, FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>, FSharpFunc<msg, FSharpFunc<model, Tuple<model, FSharpList<FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.Unit>>>>>, FSharpFunc<model, FS.GG.UI.Scene.Scene>, FSharpFunc<FS.GG.UI.SkiaViewer.Host.ViewerEvent, FSharpOption<msg>>, FSharpFunc<msg, FSharpOption<ViewerEffect<msg>>>, FSharpFunc<model, FSharpList<Tuple<Microsoft.FSharp.Collections.FSharpList<System.String>, FSharpFunc<FSharpFunc<msg, Microsoft.FSharp.Core.Unit>, System.IDisposable>>>>)
+FS.GG.UI.SkiaViewer.InteractiveViewerGamepadHost`2.Gamepad : GamepadFrameSource<msg> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerGamepadHost`2.Host : InteractiveViewerHost<model, msg> [get]
+FS.GG.UI.SkiaViewer.InteractiveViewerGamepadHost`2.new(InteractiveViewerHost<model, msg>, GamepadFrameSource<msg>)
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Diagnostics : FS.GG.UI.SkiaViewer.ViewerDiagnosticsOptions [get]
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.Init : FSharpFunc<Microsoft.FSharp.Core.Unit, Tuple<model, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerEffect>>> [get]
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2.MapKey : FSharpFunc<FS.GG.UI.KeyboardInput.ViewerKey, FSharpFunc<System.Boolean, FSharpList<msg>>> [get]
@@ -644,6 +659,7 @@ FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithPointerPacing<model, ms
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.SkiaViewer.ViewerScriptInput>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
+FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithGamepad<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, InteractiveViewerGamepadHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithPointerPacing<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithPointerPacingAndAudio<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerPointerPacingOptions, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.Audio.Core.AudioEffect>, Microsoft.FSharp.Core.Unit>, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>
 FS.GG.UI.SkiaViewer.Viewer.runInteractiveViewerWithWindowBehavior<model, msg>(FS.GG.UI.SkiaViewer.ViewerOptions, FS.GG.UI.SkiaViewer.ViewerWindowBehaviorRequest, InteractiveViewerHost<model, msg>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.SkiaViewer.ViewerLaunchOutcome, FS.GG.UI.SkiaViewer.ViewerRunFailure>

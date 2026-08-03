@@ -91,6 +91,9 @@ type ViewerEvent =
     // native-resolution sizing to the interactive host so a product can render at full framebuffer
     // resolution and pointer input can be rescaled by the physical/logical ratio.
     | FramebufferResized of Size
+    /// Emitted only after a `RenderFrame` effect completes successfully. Unlike `RenderTick`, this
+    /// includes the startup frame and excludes canceled or failed frame attempts.
+    | FramePresented
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ScreenshotFormat =

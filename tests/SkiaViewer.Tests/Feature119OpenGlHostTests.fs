@@ -79,8 +79,9 @@ let feature119OpenGlHostTests =
                   PointerScrolled(1.0, 2.0, 0.0, 1.0)
                   PointerExited
                   Resized { Width = 10; Height = 10 }
-                  CloseRequested ]
+                  CloseRequested
+                  FramePresented ]
 
-            Expect.equal events.Length 12 "the full host event vocabulary remains available for consumer routing"
+            Expect.equal events.Length 13 "the full host event vocabulary remains available for consumer routing"
         }
     ]

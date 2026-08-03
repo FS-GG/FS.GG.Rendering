@@ -284,8 +284,12 @@ module Harness =
     /// the tutorial is real F#. Repair round 1 adds a deliberately contextual second fence against the
     /// generated product's actual PerformanceCostDriver/ScaleObserver/expectedWorkloads surface;
     /// Package.Tests scaffolds a game and compiles/executes that fence instead of asserting substrings.
+    /// Re-audited for Rendering#1160: gamepad and pointer-pacing API guidance adds prose only. It shifts
+    /// two keyboard-input and three SkiaViewer fence origins without changing their bodies; all remain
+    /// contextual because they compose reader-owned messages, keymaps, models, host functions, effects,
+    /// and launch options.
     let private expectedProductSkillInventory =
-        "b9204ec39c0c3b4f34fdec91744aaaa61b441c9fb5b3122331808dd99dd46e8e"
+        "25d327902b8d7f7d8de0d5071c2cd89338573e13c07e529895d02b256fbacfe2"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product

@@ -44,7 +44,7 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "5a533c620b38914840807730128bb3c04dca9b98c1a7ed411ad266660c28b13f",
+      "sha256": "62ef6d874041de97e2dc256d45f4499e35551febec2ff09b2c5a70e78ad4f4f0",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/"
@@ -92,7 +92,7 @@
     {
       "id": "fs-gg-skiaviewer",
       "scope": "product",
-      "sha256": "0324f0ed64442ba8c5f426e739746f8d3891de53c9bec98724311b862b7bcd02",
+      "sha256": "93a8fc073ce7e7432cdd5ce1d282e019f3f0673f272d4d548ca0d6a9fea93758",
       "resolvablePath": ".agents/skills/fs-gg-skiaviewer/SKILL.md",
       "materializes-when": "profile in [app, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-skiaviewer/"

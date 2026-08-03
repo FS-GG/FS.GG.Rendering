@@ -84,6 +84,10 @@ the pointer-aware host driven by `Controls.Elmish.runInteractiveApp*`; preserve 
 and retained routing when adapting a generated shell rather than silently switching back to the
 scene host.
 
+Gamepad state is not a key edge. The pinned Controls host version exposes its gamepad-capable
+interactive variant; let its once-per-frame source deliver a complete snapshot and map that snapshot
+to a pure product message; do not convert analog sticks or triggers into synthetic keyboard events.
+
 ## Build Commands
 
 Run `./fake.sh build -t Dev` then `./fake.sh build -t Verify` in this product.

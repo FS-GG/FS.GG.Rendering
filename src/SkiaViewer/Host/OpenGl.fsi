@@ -132,6 +132,18 @@ module internal LoopDispatch =
 /// so a second concurrent run resets the first one's state underneath it. Call `run` once per
 /// process at a time.
 module GlHost =
+    /// Issue #1160 repair: dispatch `FramePresented` only for a successful renderer result. This is
+    /// the production renderer→application lifecycle edge; exposed internally for headless edge testing.
+    val internal completePresentation:
+        program: ViewerProgram<'model, 'msg> ->
+        dispatch: Dispatch<'msg> ->
+        result: Result<'frame, RenderDiagnostic> ->
+        Result<'frame, RenderDiagnostic>
+
+    /// True exactly while the live loop may enter the renderer/presenter. Cancellation or native
+    /// close suppresses both the render and its successful-presentation callback.
+    val internal shouldAttemptPresentation: shutdownRequested: bool -> windowClosing: bool -> bool
+
     /// The single source of truth for the graphics backend this viewer host actually initializes
     /// (always `ContextAPI.OpenGL` + Skia `GRContext.CreateGl`; Vulkan/software are rejected,
     /// feature 119). Runtime self-reports name the backend from here so a label can never drift
