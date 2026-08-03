@@ -239,6 +239,7 @@ open   FS.GG.UI.DesignSystem
 +      ControlsElmish.fsi type FrameInput`1
 +      ControlsElmish.fsi type LiveScriptRunResult
 +      ControlsElmish.fsi type InteractiveAppHost`2
++      ControlsElmish.fsi type InteractiveAppGamepadHost`2
 +      ControlsElmish.fsi type RespondsVerdict
 +      ControlsElmish.fsi type RespondsProof
 +      ControlsElmish.fsi val AdapterCmd.none
@@ -263,9 +264,12 @@ open   FS.GG.UI.DesignSystem
 +      ControlsElmish.fsi val ControlsElmish.widgetView
 +      ControlsElmish.fsi val ControlsElmish.programOfWidget
 +      ControlsElmish.fsi val ControlsElmish.routeInteractivePointer
++      ControlsElmish.fsi val ControlsElmish.routeInteractivePointerWithRawFallback
 +      ControlsElmish.fsi val ControlsElmish.respondsProofOf
 +      ControlsElmish.fsi val ControlsElmish.captureRespondsProof
 +      ControlsElmish.fsi val ControlsElmish.runInteractiveApp
++      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithGamepad
++      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithPointerPacing
 +      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithWindowBehavior
 +      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithAudio
 +      ControlsElmish.fsi val ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio
@@ -274,6 +278,7 @@ open   FS.GG.UI.DesignSystem
 +      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithWindowBehavior
 +      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithAudio
 +      ControlsElmish.fsi val ControlsElmish.Live.runScriptWithWindowBehaviorAndAudio
++      ControlsElmish.fsi val ControlsElmish.Live.runPointerPacingScript
 +      ControlsElmish.fsi val ControlsElmish.Perf.runScript
 +      ControlsElmish.fsi val ControlsElmish.Perf.runScriptToModel
 +      ControlsElmish.fsi val ControlsElmish.Perf.runScriptToEffects
@@ -1771,6 +1776,10 @@ open   FS.GG.UI.Scene
 +      Viewer.Types.fsi type ViewerPointerPacingMetrics
 +      Viewer.Types.fsi type ViewerPointerPacingOptions
 +      Viewer.Types.fsi type InteractiveViewerHost`2
++      Viewer.Types.fsi type GamepadSnapshot
++      Viewer.Types.fsi type GamepadFrameSource`1
++      Viewer.Types.fsi type InteractiveViewerGamepadHost`2
++      Viewer.Types.fsi val GamepadFrameSource.poll
 +      SkiaViewer.fsi val Viewer.init
 +      SkiaViewer.fsi val Viewer.initWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.update
@@ -1787,6 +1796,7 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val Viewer.classifyWindowObservation
 +      SkiaViewer.fsi val Viewer.desktopSessionDiagnostic
 +      SkiaViewer.fsi val Viewer.runtimeCapability
++      SkiaViewer.fsi val Viewer.runDeterministicPacing
 +      Host/Viewer.fsi val Viewer.run
 +      SkiaViewer.fsi val Viewer.runApp
 +      SkiaViewer.fsi val Viewer.runAppWithWindowBehavior
@@ -1796,6 +1806,7 @@ open   FS.GG.UI.Scene
 +      SkiaViewer.fsi val Viewer.runAppWithAudioAndPersistence
 +      SkiaViewer.fsi val Viewer.runAppWithWindowBehaviorAndAudioAndPersistence
 +      SkiaViewer.fsi val Viewer.runInteractiveViewer
++      SkiaViewer.fsi val Viewer.runInteractiveViewerWithGamepad
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehavior
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithAudio
 +      SkiaViewer.fsi val Viewer.runInteractiveViewerWithWindowBehaviorAndAudio

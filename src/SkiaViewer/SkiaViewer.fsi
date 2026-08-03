@@ -327,6 +327,12 @@ module Viewer =
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).
     val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// As `runInteractiveViewer`, polling `Gamepad.Poll` exactly once at every presented-frame
+    /// boundary and folding its mapped messages before the ordinary tick.
+    val runInteractiveViewerWithGamepad:
+        options: ViewerOptions ->
+        gamepadHost: InteractiveViewerGamepadHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// As `runInteractiveViewer` with an explicit window behavior.
     val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Default retained pointer policy: latest `Moved` sample per presented-frame boundary; discrete

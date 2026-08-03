@@ -70,6 +70,7 @@ type private CommandResult =
 
 let private runDotnet workingDirectory dotnetHome arguments =
     let argumentsDisplay = String.concat " " arguments
+    writeConsumerNugetConfig (Path.GetFullPath(Path.Combine(dotnetHome, "..")))
     let startInfo = ProcessStartInfo("dotnet")
     startInfo.WorkingDirectory <- workingDirectory
     startInfo.UseShellExecute <- false

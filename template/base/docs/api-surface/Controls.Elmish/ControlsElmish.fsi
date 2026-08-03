@@ -309,6 +309,12 @@ type InteractiveAppHost<'model, 'msg> =
       OnFrameMetrics: FrameMetrics -> unit
       Diagnostics: ViewerDiagnosticsOptions }
 
+/// Additive gamepad-capable Controls host. Existing `InteractiveAppHost` records and launchers
+/// remain source-compatible; use this variant when a product needs a native frame source.
+type InteractiveAppGamepadHost<'model, 'msg> =
+    { Host: InteractiveAppHost<'model, 'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`Before` ≠ `After`), `Inert` when
 /// it did not. An inert host (renders but does not respond) can only yield `Inert`.
@@ -476,6 +482,17 @@ module ControlsElmish =
         input: ViewerPointerInput ->
             PointerState * 'msg list
 
+    /// Issue #1159: as `routeInteractivePointer`, then invokes the raw fallback for the same sample.
+    /// Controls hit-testing and authored bindings are retained and their messages precede the fallback.
+    val routeInteractivePointerWithRawFallback:
+        host: InteractiveAppHost<'model, 'msg> ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        state: PointerState ->
+        size: Size ->
+        model: 'model ->
+        input: ViewerPointerInput ->
+            PointerState * 'msg list
+
     /// Build a responds-proof verdict from a before/after frame pair (feature 090, FR-006):
     /// `Responsive` when the frames differ, `Inert` when identical. The reusable core the pointer and
     /// text responds-proof captures share.
@@ -521,6 +538,24 @@ module ControlsElmish =
     /// (FR-008).
     val runInteractiveApp:
         options: ViewerOptions -> host: InteractiveAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Runs the retained Controls host and polls `Gamepad.Poll` once per presentation frame. The
+    /// snapshot is mapped into replayable product messages before the host's ordinary `Tick`.
+    val runInteractiveAppWithGamepad:
+        options: ViewerOptions ->
+        gamepadHost: InteractiveAppGamepadHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
+    /// Issue #1159: as `runInteractiveApp`, but composes the lower viewer's pointer pacing policy with
+    /// the retained Controls route. Controls hit-testing and authored bindings run first; the raw mapper
+    /// then receives the same folded sample, so continuous aim needs no product-local viewer wrapper.
+    /// `pointerPacing.OnMetrics` remains the observable raw/folded/update/present receipt.
+    val runInteractiveAppWithPointerPacing:
+        options: ViewerOptions ->
+        pointerPacing: ViewerPointerPacingOptions ->
+        mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Feature 122 (FR-003/005): as `runInteractiveApp` with an explicit `ViewerWindowBehaviorRequest`
     /// threaded into the live launch (startup-state / resize / maximize / position / backend), so a
@@ -569,6 +604,7 @@ module ControlsElmish =
     /// Launch `host` through the live GL-backed viewer, deliver a bounded `FrameInput` script through
     /// the viewer input queue, and return the live frame metrics observed by the adapter.
     module Live =
+
         val runScript:
             options: ViewerOptions ->
             host: InteractiveAppHost<'model, 'msg> ->
@@ -603,6 +639,15 @@ module ControlsElmish =
             audioSink: (AudioEffect list -> unit) ->
             host: InteractiveAppHost<'model, 'msg> ->
             script: FrameInput<'msg> list ->
+                Result<LiveScriptRunResult, ViewerRunFailure>
+
+        /// Issue #1159: drive raw `ViewerScriptInput` through the public paced Controls launcher.
+        val runPointerPacingScript:
+            options: ViewerOptions ->
+            pointerPacing: ViewerPointerPacingOptions ->
+            mapRawPointer: (ViewerPointerInput -> Size -> 'model -> 'msg list) ->
+            host: InteractiveAppHost<'model, 'msg> ->
+            script: ViewerScriptInput list ->
                 Result<LiveScriptRunResult, ViewerRunFailure>
 
     /// Feature 108 (US3, FR-009/010): the pure, headless, deterministic frame driver. Folds an

@@ -163,6 +163,10 @@ type InteractiveAppHost<'model, 'msg> =
       OnFrameMetrics: FrameMetrics -> unit
       Diagnostics: ViewerDiagnosticsOptions }
 
+type InteractiveAppGamepadHost<'model, 'msg> =
+    { Host: InteractiveAppHost<'model, 'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`before` ≠ `after`), `Inert` when
 /// it did not. An inert host (renders but does not respond) can only yield `Inert`.
@@ -1676,7 +1680,7 @@ module ControlsElmish =
     let private ignoreRawPointer (_: ViewerPointerInput) (_: Size) (_: 'model) : 'msg list = []
 
     let runInteractiveAppWithLauncher
-        (launch: ViewerOptions -> InteractiveViewerHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>)
+        (launch: ViewerOptions -> InteractiveViewerHost<'model, 'msg> -> 'result)
         (options: ViewerOptions)
         (mapRawPointer: ViewerPointerInput -> Size -> 'model -> 'msg list)
         (host: InteractiveAppHost<'model, 'msg>)
@@ -2145,6 +2149,28 @@ module ControlsElmish =
 
     let runInteractiveApp (options: ViewerOptions) (host: InteractiveAppHost<'model, 'msg>) =
         runInteractiveAppWithLauncher Viewer.runInteractiveViewer options ignoreRawPointer host
+
+    let internal runInteractiveAppWithGamepadLauncher
+        (launch: ViewerOptions -> InteractiveViewerGamepadHost<'model, 'msg> -> 'result)
+        (options: ViewerOptions)
+        (gamepadHost: InteractiveAppGamepadHost<'model, 'msg>)
+        =
+        runInteractiveAppWithLauncher
+            (fun launchOptions viewerHost ->
+                let viewerGamepadHost: InteractiveViewerGamepadHost<'model, 'msg> =
+                    { Host = viewerHost
+                      Gamepad = gamepadHost.Gamepad }
+
+                launch launchOptions viewerGamepadHost)
+            options
+            ignoreRawPointer
+            gamepadHost.Host
+
+    let runInteractiveAppWithGamepad
+        (options: ViewerOptions)
+        (gamepadHost: InteractiveAppGamepadHost<'model, 'msg>)
+        =
+        runInteractiveAppWithGamepadLauncher Viewer.runInteractiveViewerWithGamepad options gamepadHost
 
     /// Issue #1159: compose the lower viewer's frame-paced input route with the retained Controls host.
     /// The raw callback sees only folded samples and is invoked after Controls hit-testing/bindings.

@@ -885,6 +885,31 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+/// Framework-neutral controller values sampled at the native host edge. A source owns device
+/// discovery and normalization; the viewer owns the once-per-presented-frame poll boundary.
+type GamepadSnapshot =
+    { LeftStickX: float
+      LeftStickY: float
+      RightStickX: float
+      RightStickY: float
+      LeftTrigger: float
+      RightTrigger: float }
+
+/// Native gamepad producer plus the pure product mapping for one snapshot.
+type GamepadFrameSource<'msg> =
+    { Poll: unit -> GamepadSnapshot option
+      Map: GamepadSnapshot -> 'msg list }
+
+/// Additive gamepad-capable variant of `InteractiveViewerHost`; existing host records remain valid.
+type InteractiveViewerGamepadHost<'model,'msg> =
+    { Host: InteractiveViewerHost<'model,'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
+module GamepadFrameSource =
+    /// Poll one native snapshot and map it without retaining mutable device state. The live viewer
+    /// calls this exactly once at each presented-frame boundary; scripts can call it deterministically.
+    val poll: source: GamepadFrameSource<'msg> -> 'msg list
+
 [<RequireQualifiedAccess>]
 /// Scripted input delivered through the live persistent viewer event loop.
 type ViewerScriptInput =

@@ -70,6 +70,9 @@ FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tags
 FS.GG.UI.SkiaViewer.Fonts+FallbackResolution+Tofu
 FS.GG.UI.SkiaViewer.Fonts+ResolvedChar
 FS.GG.UI.SkiaViewer.Fonts+TextShapingProviderStatus
+FS.GG.UI.SkiaViewer.GamepadFrameSource
+FS.GG.UI.SkiaViewer.GamepadFrameSource`1
+FS.GG.UI.SkiaViewer.GamepadSnapshot
 FS.GG.UI.SkiaViewer.GeneratedAppHost
 FS.GG.UI.SkiaViewer.GeneratedAppHost`2
 FS.GG.UI.SkiaViewer.Host.DiagnosticOptions
@@ -153,6 +156,7 @@ FS.GG.UI.SkiaViewer.Host.ViewerEvent+UpdateTick
 FS.GG.UI.SkiaViewer.Host.ViewerPointerButton
 FS.GG.UI.SkiaViewer.Host.ViewerPointerButton+Tags
 FS.GG.UI.SkiaViewer.Host.ViewerProgram`2
+FS.GG.UI.SkiaViewer.InteractiveViewerGamepadHost`2
 FS.GG.UI.SkiaViewer.InteractiveViewerHost`2
 FS.GG.UI.SkiaViewer.LogicalCanvas
 FS.GG.UI.SkiaViewer.LogicalCanvasFit

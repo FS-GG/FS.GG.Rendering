@@ -712,6 +712,31 @@ type InteractiveViewerHost<'model,'msg> =
       Tick: TimeSpan -> 'msg option
       Diagnostics: ViewerDiagnosticsOptions }
 
+/// Framework-neutral controller values sampled at the native host edge. A source owns device
+/// discovery and normalization; the viewer owns the once-per-presented-frame poll boundary.
+type GamepadSnapshot =
+    { LeftStickX: float
+      LeftStickY: float
+      RightStickX: float
+      RightStickY: float
+      LeftTrigger: float
+      RightTrigger: float }
+
+/// Native gamepad producer plus the pure product mapping for one snapshot.
+type GamepadFrameSource<'msg> =
+    { Poll: unit -> GamepadSnapshot option
+      Map: GamepadSnapshot -> 'msg list }
+
+/// Additive gamepad-capable variant of `InteractiveViewerHost`; existing host records remain valid.
+type InteractiveViewerGamepadHost<'model,'msg> =
+    { Host: InteractiveViewerHost<'model,'msg>
+      Gamepad: GamepadFrameSource<'msg> }
+
+module GamepadFrameSource =
+    /// Poll one native snapshot and map it without retaining mutable device state. The live viewer
+    /// calls this exactly once at each presented-frame boundary; scripts can call it deterministically.
+    val poll: source: GamepadFrameSource<'msg> -> 'msg list
+
 /// Public contract module exposed by this FS.GG.UI package.
 module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -746,6 +771,12 @@ module Viewer =
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val runtimeCapability: unit -> ViewerRuntimeCapability
+    /// Deterministically apply frame-bounded inputs through the same paced queue transition as the live host.
+    val runDeterministicPacing:
+        policy: ViewerContinuousPointerPolicy ->
+        receivedAt: DateTimeOffset ->
+        frames: (ViewerResponsivenessInputKind * string) list list ->
+            ViewerFrameDrain list
 
     /// Public contract function exposed by this FS.GG.UI package.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
@@ -837,6 +868,12 @@ module Viewer =
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).
     val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    /// As `runInteractiveViewer`, polling `Gamepad.Poll` exactly once at every presented-frame
+    /// boundary and folding its mapped messages before the ordinary tick.
+    val runInteractiveViewerWithGamepad:
+        options: ViewerOptions ->
+        gamepadHost: InteractiveViewerGamepadHost<'model,'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// As `runInteractiveViewer` with an explicit window behavior.
     val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
     /// Issue #429 — `runInteractiveViewer` with an audio sink, so the pointer/size-aware host family
