@@ -684,6 +684,65 @@ requireCounterFailure droppedIncrementUpdate
 requireCounterFailure wrongCounterUpdate
 ```
 
+The pure fixture above makes the mutation logic easy to transplant. In a generated `game`
+product, keep a second witness in `tests/<Product>.Tests` against the scaffold's real
+`<Product>.PerformanceEvidence` surface. The concrete product below is named `CounterApiFixture`;
+replace that root with your product name. This example declares a `PerformanceCostDriver`, supplies its
+`ScaleObserver`, binds the driver into the real `expectedWorkloads` row, and derives the exact assertion
+from `MaximumExpected`. A dropped raw-input count and a swap into `PointerEvents` both fail through the
+same observer even though their surrounding behavior can remain green.
+
+```fsharp
+module CounterApiFixture.Tests.CounterCostDriverWitness
+
+open Expecto
+open CounterApiFixture.PerformanceEvidence
+
+let exactRawInputDriver: PerformanceCostDriver =
+    { Id = "input.raw-samples-exact"
+      Category = Input
+      ScaleSource = "RoutedStimulus.RawInputSamples from the shipped input route"
+      ScaleObserver = Some(fun routed _ -> Some routed.RawInputSamples)
+      MaximumExpected = 1
+      VisualElement = None
+      Disposition = RequiredIn [ "maximum-content" ] }
+
+let expectedWorkloadsWithExactRawInput =
+    expectedWorkloads
+    |> List.map (fun workload ->
+        if workload.Id = "maximum-content" then
+            { workload with CostDriverIds = exactRawInputDriver.Id :: workload.CostDriverIds }
+        else
+            workload)
+
+let maximumContent =
+    expectedWorkloadsWithExactRawInput
+    |> List.find (fun workload -> workload.Id = "maximum-content")
+
+let exactScaleEvidence driver workload routed model =
+    match driver.ScaleObserver with
+    | None -> Error $"{workload.Id}: {driver.Id} has no ScaleObserver"
+    | Some observe ->
+        match observe routed model with
+        | Some actual when actual = driver.MaximumExpected -> Ok ()
+        | Some actual -> Error $"{workload.Id}: {driver.Id} expected {driver.MaximumExpected}, observed {actual}"
+        | None -> Error $"{workload.Id}: {driver.Id} was not observed"
+
+let correct = { Events = 1; PointerEvents = 0; RawInputSamples = 1 }
+let droppedIncrement = { correct with RawInputSamples = 0 }
+let wrongCounter = { correct with RawInputSamples = 0; PointerEvents = 1 }
+
+[<Tests>]
+let tests =
+    test "published-template counter witness rejects dropped and wrong-target mutations" {
+        Expect.contains maximumContent.CostDriverIds exactRawInputDriver.Id "maximum-content binds the exact counter"
+        let model = maximumContent.InitialState()
+        Expect.isOk (exactScaleEvidence exactRawInputDriver maximumContent correct model) "declared exact value passes"
+        Expect.isError (exactScaleEvidence exactRawInputDriver maximumContent droppedIncrement model) "dropped increment fails"
+        Expect.isError (exactScaleEvidence exactRawInputDriver maximumContent wrongCounter model) "wrong counter fails"
+    }
+```
+
 Before review, use this checklist:
 
 - Enumerate every changed counter write site, including reset, branch, and bulk-update paths.

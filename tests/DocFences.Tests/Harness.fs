@@ -281,9 +281,11 @@ module Harness =
     /// Re-audited for Rendering#1208: fs-gg-testing now carries a self-contained counter-preserving
     /// refactor fixture. It uses only FSharp.Core value records and executes its correct, dropped-increment,
     /// and wrong-counter variants at module initialization, so the published-pin compiler corpus verifies
-    /// the tutorial is real F# while Package.Tests holds its decision-rule and mutation anchors.
+    /// the tutorial is real F#. Repair round 1 adds a deliberately contextual second fence against the
+    /// generated product's actual PerformanceCostDriver/ScaleObserver/expectedWorkloads surface;
+    /// Package.Tests scaffolds a game and compiles/executes that fence instead of asserting substrings.
     let private expectedProductSkillInventory =
-        "48132fbb7c889e72b855ac7d62ea4230f70252d1018f834ff0b274d08f053b8d"
+        "b9204ec39c0c3b4f34fdec91744aaaa61b441c9fb5b3122331808dd99dd46e8e"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
