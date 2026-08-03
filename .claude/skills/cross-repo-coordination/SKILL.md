@@ -25,3 +25,14 @@ evidence. Use `Blocked by:` for real sequencing, not topical relationship or tem
 
 Finish by verifying the receiving issue/PR, board state, registry state, and any consumer update against
 live sources. Record durable decisions as ADRs in `.github`.
+
+## Receiver workflow migrations
+
+When migrating a receiver from a hand-copied workflow invocation to a
+declaration-driven tool mode, first look for the producer-owned behavioral
+selftest. Keep resolver behavior there and add a small inline exact pin at each
+receiver call site; do not create a second receiver-owned fixture list unless
+the tool lacks the behavior coverage. The pin must have executable wrong-call
+controls, so a retired form, wrong declaration path, or extra flag becomes red.
+See [receiver-proj migration shape](../../../docs/coordination/receiver-proj-migration-shape.md)
+for the current `skill-view generate --receiver-proj` decision and acceptance.
