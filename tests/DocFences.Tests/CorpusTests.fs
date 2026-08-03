@@ -154,9 +154,9 @@ let tests =
                       | Harness.SelfContained -> None
                       | Harness.Contextual reason -> Some reason)
 
-              Expect.equal plan.Length 91 "the reviewed whole-corpus inventory remains exact"
-              Expect.equal selfContained.Length 14 "the positive compiler corpus remains explicit"
+              Expect.equal plan.Length 93 "the reviewed whole-corpus inventory remains exact"
+              Expect.equal selfContained.Length 15 "the positive compiler corpus remains explicit"
               Expect.all selfContained (fun fence -> fence.Skip.IsNone) "positive compiler members cannot be skipped"
-              Expect.equal contextualReasons.Length 77 "every remaining teaching fragment is accounted for"
+              Expect.equal contextualReasons.Length 78 "every remaining teaching fragment is accounted for"
               Expect.all contextualReasons (System.String.IsNullOrWhiteSpace >> not) "contextual reasons are never blank"
           } ]

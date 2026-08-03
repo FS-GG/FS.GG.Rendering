@@ -278,8 +278,14 @@ module Harness =
     /// Re-audited for Rendering#1196: the fs-gg-game-shell guidance adds prose-only safe-default and
     /// record-overlay rules before its existing fences. Their bodies and contextual classification are
     /// unchanged; only their source line numbers moved with the inserted guidance.
+    /// Re-audited for Rendering#1208: fs-gg-testing now carries a self-contained counter-preserving
+    /// refactor fixture. It uses only FSharp.Core value records and executes its correct, dropped-increment,
+    /// and wrong-counter variants at module initialization, so the published-pin compiler corpus verifies
+    /// the tutorial is real F#. Repair round 1 adds a deliberately contextual second fence against the
+    /// generated product's actual PerformanceCostDriver/ScaleObserver/expectedWorkloads surface;
+    /// Package.Tests scaffolds a game and compiles/executes that fence instead of asserting substrings.
     let private expectedProductSkillInventory =
-        "9de2fc57bb13c267972dae9b84dc3c4c8611ca9bea43cca6cb7e7f7c24230f15"
+        "b9204ec39c0c3b4f34fdec91744aaaa61b441c9fb5b3122331808dd99dd46e8e"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -290,6 +296,7 @@ module Harness =
               "template/product-skills/fs-gg-symbology/SKILL.md", 226
               "template/product-skills/fs-gg-testing/SKILL.md", 337
               "template/product-skills/fs-gg-testing/SKILL.md", 362
+              "template/product-skills/fs-gg-testing/SKILL.md", 635
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44

@@ -609,6 +609,147 @@ viewer metrics receipt.
 Keep assertion and evidence logic pure over value records; let your test runner
 and `Verify` target perform the actual file and process I/O.
 
+### Counter-preserving refactors — exact equality is the cost-driver gate
+
+When a refactor changes **any write site** of an instrumentation or cost counter,
+bind that counter to a production-reachable workload. If its expected count is
+deterministic, assert **exact equality**: an upper bound can hide a dropped
+increment, while a lower bound can hide a duplicate or a redirected increment.
+Use an intentional inequality only when the product contract genuinely permits a
+range (for example, a timing-dependent retry count); name the source of the
+variation and keep the bound directional.
+
+The workload is the cost driver, not a convenient read site. Enumerate each
+changed write site, name the workload that exercises it, and bind the observed
+counter from the same production update route. This is performance/instrumentation
+evidence; it complements, never replaces, behavior tests. Behavior assertions own
+user-visible semantics, while the exact counter assertion owns the declared cost.
+
+This executable nested-record extraction fixture makes the separation concrete.
+The ordinary behavior test stays green for both mutations because both still create
+the seven entities; the exact gate names the `physicsQueries` counter and
+`maximum-content` workload when a write is dropped or redirected to another
+counter.
+
+```fsharp
+type Instrumentation = { PhysicsQueries: int; SceneNodes: int }
+type Model = { Entities: int; Instrumentation: Instrumentation }
+type Msg = Spawn | RefreshOverlay
+
+let initial = { Entities = 0; Instrumentation = { PhysicsQueries = 0; SceneNodes = 0 } }
+
+let correctUpdate msg model =
+    match msg with
+    | Spawn ->
+        { model with
+            Entities = model.Entities + 1
+            Instrumentation = { model.Instrumentation with PhysicsQueries = model.Instrumentation.PhysicsQueries + 1 } }
+    | RefreshOverlay ->
+        { model with
+            Instrumentation = { model.Instrumentation with SceneNodes = model.Instrumentation.SceneNodes + 1 } }
+
+let droppedIncrementUpdate msg model =
+    match msg with
+    | Spawn -> { model with Entities = model.Entities + 1 }
+    | RefreshOverlay -> correctUpdate msg model
+
+let wrongCounterUpdate msg model =
+    match msg with
+    | Spawn ->
+        { model with
+            Entities = model.Entities + 1
+            Instrumentation = { model.Instrumentation with SceneNodes = model.Instrumentation.SceneNodes + 1 } }
+    | RefreshOverlay -> correctUpdate msg model
+
+let maximumContentWorkload = List.replicate 7 Spawn @ List.replicate 2 RefreshOverlay
+let run update = maximumContentWorkload |> List.fold (fun model msg -> update msg model) initial
+
+let ordinaryBehaviorTest model = model.Entities = 7
+
+let exactCounterEvidence workload counter expected actual =
+    if expected = actual then Ok ()
+    else Error $"{workload}: {counter} expected {expected}, observed {actual}"
+
+let require message condition = if not condition then failwith message
+let requireCounterFailure update =
+    let observed = run update
+    require "ordinary behavior still passes" (ordinaryBehaviorTest observed)
+    match exactCounterEvidence "maximum-content" "physicsQueries" 7 observed.Instrumentation.PhysicsQueries with
+    | Error message -> require "failure names the counter and workload" (message.Contains "maximum-content: physicsQueries")
+    | Ok () -> failwith "the exact counter gate must reject the mutant"
+
+let correct = run correctUpdate
+require "correct update has the declared exact cost" (exactCounterEvidence "maximum-content" "physicsQueries" 7 correct.Instrumentation.PhysicsQueries = Ok ())
+requireCounterFailure droppedIncrementUpdate
+requireCounterFailure wrongCounterUpdate
+```
+
+The pure fixture above makes the mutation logic easy to transplant. In a generated `game`
+product, keep a second witness in `tests/<Product>.Tests` against the scaffold's real
+`<Product>.PerformanceEvidence` surface. The concrete product below is named `CounterApiFixture`;
+replace that root with your product name. This example declares a `PerformanceCostDriver`, supplies its
+`ScaleObserver`, binds the driver into the real `expectedWorkloads` row, and derives the exact assertion
+from `MaximumExpected`. A dropped raw-input count and a swap into `PointerEvents` both fail through the
+same observer even though their surrounding behavior can remain green.
+
+```fsharp
+module CounterApiFixture.Tests.CounterCostDriverWitness
+
+open Expecto
+open CounterApiFixture.PerformanceEvidence
+
+let exactRawInputDriver: PerformanceCostDriver =
+    { Id = "input.raw-samples-exact"
+      Category = Input
+      ScaleSource = "RoutedStimulus.RawInputSamples from the shipped input route"
+      ScaleObserver = Some(fun routed _ -> Some routed.RawInputSamples)
+      MaximumExpected = 1
+      VisualElement = None
+      Disposition = RequiredIn [ "maximum-content" ] }
+
+let expectedWorkloadsWithExactRawInput =
+    expectedWorkloads
+    |> List.map (fun workload ->
+        if workload.Id = "maximum-content" then
+            { workload with CostDriverIds = exactRawInputDriver.Id :: workload.CostDriverIds }
+        else
+            workload)
+
+let maximumContent =
+    expectedWorkloadsWithExactRawInput
+    |> List.find (fun workload -> workload.Id = "maximum-content")
+
+let exactScaleEvidence driver workload routed model =
+    match driver.ScaleObserver with
+    | None -> Error $"{workload.Id}: {driver.Id} has no ScaleObserver"
+    | Some observe ->
+        match observe routed model with
+        | Some actual when actual = driver.MaximumExpected -> Ok ()
+        | Some actual -> Error $"{workload.Id}: {driver.Id} expected {driver.MaximumExpected}, observed {actual}"
+        | None -> Error $"{workload.Id}: {driver.Id} was not observed"
+
+let correct = { Events = 1; PointerEvents = 0; RawInputSamples = 1 }
+let droppedIncrement = { correct with RawInputSamples = 0 }
+let wrongCounter = { correct with RawInputSamples = 0; PointerEvents = 1 }
+
+[<Tests>]
+let tests =
+    test "published-template counter witness rejects dropped and wrong-target mutations" {
+        Expect.contains maximumContent.CostDriverIds exactRawInputDriver.Id "maximum-content binds the exact counter"
+        let model = maximumContent.InitialState()
+        Expect.isOk (exactScaleEvidence exactRawInputDriver maximumContent correct model) "declared exact value passes"
+        Expect.isError (exactScaleEvidence exactRawInputDriver maximumContent droppedIncrement model) "dropped increment fails"
+        Expect.isError (exactScaleEvidence exactRawInputDriver maximumContent wrongCounter model) "wrong counter fails"
+    }
+```
+
+Before review, use this checklist:
+
+- Enumerate every changed counter write site, including reset, branch, and bulk-update paths.
+- For each counter, name a production-reachable workload and why its expected value is exact (or document the permitted range and its source).
+- Change one write site to drop an increment and one to target a different counter; both mutations must fail the counter/workload evidence while the paired behavior test remains responsible for behavior.
+- Re-run the maximum-content (or equivalent cost-driver) workload after changing its stimulus, cardinality, or routing; do not carry forward an old expected value.
+
 ## Generated Product
 
 Every profile that ships a product test project (app, headless-scene, governed,

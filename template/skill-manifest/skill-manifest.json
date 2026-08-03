@@ -124,7 +124,7 @@
     {
       "id": "fs-gg-testing",
       "scope": "product",
-      "sha256": "e6c4f053e01d4a9ae930ef40d8580943fdf3b822df53c0e5cab3b3f4bcb59f03",
+      "sha256": "37bc28dcbb7454a489aeea925c17b006715630752797a2734fcef6685dd4f037",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-testing/"
