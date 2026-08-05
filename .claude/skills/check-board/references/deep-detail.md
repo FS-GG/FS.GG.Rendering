@@ -201,6 +201,13 @@ The rows below split two authorities: chore kinds that carry a `Write` are engin
 facts; diagnostic-only findings are this skill's own procedure. Keep the former synchronized with
 `Chore.ChoreKind.Write`; do not turn the latter into invented engine protocol.
 
+A kind whose `Write` depends on the item — `BLOCKER-CLEARED` since .github#2220 — must name **every**
+column it can produce, with the condition that selects each. This table is operator-prescriptive: §6
+step 3 is a hand-run `set-field --batch <i> Status=<V>` read straight off it, so a row naming one of
+two values has an operator performing, by hand, the exact write the engine was changed to stop making.
+`RuleSubsetTests` enumerates every case of every union a kind carries and requires each resulting value
+to appear here, so a value that reaches `Write` and not this table reds.
+
 Each finding has a code, a ground truth, and a fix — or an explicit refusal to fix.
 
 | Code | Condition | Fix (`--apply`) |
@@ -208,7 +215,7 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `CLOSED-ISSUE-NOT-DONE` | **no live claim**, `state == CLOSED`, and `status != Done` | `set-field --batch <i> Status=Done` |
 | `DONE-STATUS-OPEN-ISSUE` | `status == Done` and `state == OPEN` | **ask** (§5) — is the work done, or was the flip premature? |
 | `OFF-BOARD-ISSUE` | open, **non-bot**, not `board:unlisted` issue in a rostered repo with no board item — see the note below, and §1's fourth read, which is the only read that can see it | `fsgg-coord add <i>` — idempotent; see the note below |
-| `BLOCKER-CLEARED` | **no live claim**, every blocker `closed` **or `merged`**, registry predicate `Agree`, no `Blocked on: human/...` sentinel, but `status == Blocked` | `set-field --batch <i> Status=Ready` |
+| `BLOCKER-CLEARED` | **no live claim**, every blocker `closed` **or `merged`**, registry predicate `Agree`, no `Blocked on: human/...` sentinel, but `status == Blocked` | `set-field --batch <i> Status=Ready` — **but `set-field --batch <i> Status=Backlog`** when the body declares `Paths: none`, or declares no touch-set line at all. Both are unschedulable, so `Ready` would advertise a row no scheduler can ever admit and the lane is unfillable forever (.github#2220) |
 | `BLOCKER-UNKNOWN` | a blocker ref `scan` could not resolve | resolve over REST (§3), then board the blocker if it is open |
 | `BLOCKER-UNPARSEABLE` | a `Blocked by` token is not an issue ref | **ask** (§5) — what did the prose mean? `Blocked by` is text, so the answer can be written |
 | `STATUS-NOT-BLOCKED` | **no live claim**, an open blocker, but `status` is `Ready`/`Backlog` | `set-field --batch <i> Status=Blocked` |
