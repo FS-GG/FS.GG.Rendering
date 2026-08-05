@@ -89,6 +89,137 @@ route emitted `[]` while direct dispatch emitted `[PlaySfx (SoundId "floor-desce
 looked correct in isolation, but executing both routes revealed the defect. Apply the same comparison
 discipline to any reachable behavior whose routes can diverge.
 
+## Gate-inversion evidence — every gate the change touches must be shown it can fail
+
+A gate that has never been red is equally consistent with "nothing was ever wrong" and "it cannot
+fire". Reading cannot separate those; only breaking the subject can. `.github#2223` measured **ten
+instances in one run, across six items and four repositories**, of a gate that passed green and could
+not fail on the thing it claimed — and every one was found by a critic that inverted the gate rather
+than read it. `.github#1610` found the same class three months earlier and nothing generalised from
+it. So this is a numbered step, not a virtue some critics happen to have.
+
+1. **Inventory the gates the change touches.** A gate is anything whose purpose is to refuse: a test,
+   an assertion, a fixture case, a checker script, a workflow step, a schema or parser rule. The
+   inventory is bounded to gates the diff **adds or modifies** — never the whole suite.
+2. **Invert each one exactly once, by breaking its SUBJECT.** Break the thing the gate claims to
+   protect — not the gate's own predicate — and run the suite. Record the exact mutation and the exact
+   observed result under `Verification:`. One mutation per touched gate is the bound; this step is
+   cheap by design and must not grow into a suite-wide sweep.
+
+   **Predicate inversion is not an equal alternative, and on its own it proves nothing.** Negating a
+   gate's own comparison reds necessarily, whatever the gate is pointed at. It demonstrates that the
+   assertion is reachable and executed — never that it is connected to its subject, which is the only
+   thing in question. `C4` in step 4 is the proof: it stayed 30/30 green under a subject mutation, so
+   predicate inversion would have certified as `JUSTIFIED` the exact decorative gate this section
+   exists to catch. `scripts/gate-mutate.py` breaks subjects for precisely this reason — it does not
+   read gates. Where a subject mutation genuinely cannot be constructed, say so, record predicate
+   inversion as the strictly weaker evidence it is, and grade the gate `NOT_MEASURED` — never
+   `JUSTIFIED`.
+3. **A surviving inversion is material by definition.** A gate that stays green on a mutant that broke
+   its subject is a material finding — not a judgement call, not a style note, and not something a
+   later round may absorb silently.
+4. **The test that claims a property must be the test that provides it.** Where a test is named for a
+   property, break *that test* and confirm the property is lost. Where the property is really provided
+   elsewhere, record which test provides it. A property named by one test and provided by another is
+   worse than an untested one: refactor or delete the real provider and the guarantee disappears while
+   the named test still reports the coverage. `FS.GG.Governance#385` measured exactly that — `C4` is
+   named for collision detection, but breaking `collisions()` outright left it 30/30 green, because
+   the guarantee comes from `C3`'s ownership loop.
+5. **A fixture must reproduce the production condition the gate will actually face.** A demonstration
+   run against a world simpler than production is evidence about the fixture. Where a fixture cannot
+   reproduce the condition, the demonstration records what it does not reproduce rather than omitting
+   it.
+6. **A measurement must not be taken in an environment that supplies what production would lack — and
+   must prove it did not.** Where the change concerns a tool, binary, or ambient environment
+   dependency, neutralise the confound and guard the measurement so that it **aborts** when the
+   confound is still present. A prose claim that the `PATH` was stripped is not that proof; a run that
+   self-aborts unless the tool is absent is.
+7. **A repair must catch the escape that was actually found.** When a mutation got through, the
+   repaired demonstration must red on *that* mutation — not merely pass, and not merely red on some
+   newly added one. A repair that adds cases without re-running the original escape has not been shown
+   to close it.
+8. **When a repair strengthens what a gate ASSERTS, re-check the evidence for the strengthened
+   assertion.** Making a gate's claim broader, more specific, or more confident changes what must be
+   proved, and the evidence that supported the weaker claim does not carry forward to the stronger one.
+   On `FS.GG.Templates#349` a round-1 repair strengthened a failure message to say the complete
+   published set had been compared — *"so this is not a search-depth artifact"* — while the predicate
+   still asked only whether a ceiling had been hit. A skipped download then produced a confident
+   upstream accusation in better prose than before the repair. **A gate that gains eloquence faster
+   than correctness is worse than one that stayed vague**, because the vague one did not invite
+   reliance on a claim nothing checked. So the reviewer re-derives the evidence for what the gate now
+   says, not for what it said when the evidence was gathered — and a strengthened assertion with
+   unchanged evidence is a material finding, exactly like a surviving inversion.
+
+### The sub-shape a happy-path mutation does not catch
+
+Mutating a gate's success path leaves one whole class untouched: **a non-answer reported as a
+confident answer.** Three of `.github#2223`'s instances are this and nothing else — the literal
+`always` returned itself and so matched no template, and was graded *not selected*; a row with `scope`
+**absent** fell through to *somebody else's row*; an unreadable form was graded a confident negative.
+In each, the gate received something it could not interpret and emitted a definite verdict about it.
+Inverting the happy path leaves all three green. So invert the **unreadable input** as well: feed the
+gate a form it cannot parse and confirm it refuses rather than decides (`#266` — "I could not evaluate
+this" is never "I evaluated it and it passed").
+
+Two further shapes share one root — **the world under test is not the world shipped into** — and they
+run in opposite directions, so no single rule catches both:
+
+| sub-shape | the test world | how it deceives |
+|---|---|---|
+| fixture simpler than production (`FS.GG.Templates#379`) | **less** capable | the demonstration passes for a reason production does not supply |
+| environment richer than production (`FS.GG.Templates#392`) | **more** capable | the subject passes for a reason production does not supply |
+
+The second is not hypothetical: an ambient global `fable` on the default `PATH` made the **unfixed**
+`run-cross-runtime.sh` exit 0 with 31 `cross-runtime: OK` — a green byte-identical to the fixed code's,
+same count of the same assertions. No mutation of the code surfaces that, because the code is not what
+differs. Steps 5 and 6 are the two remedies, and they are not interchangeable.
+
+Finally, **a gate's stated limits are part of what the critic verifies.** An overclaimed limit is how a
+real gap becomes invisible: grading workflow *files* is not evidence that the context executed
+anything, because `if: false` on every step and `continue-on-error` are each green and each invisible.
+
+### Worked example
+
+`FS.GG.Templates#379`'s lane-coverage guard states at `tests/composition/lib/lane-coverage.sh:37-38`
+that it exists *"so that deleting the step reds too"*. It was implemented as an **unanchored**
+`grep -qF 'tests/composition/run.sh'`, and `composition.yml` carries that string twice: once at the
+real invocation, and once inside a `#` comment. Replacing the real invocation with
+`echo skipped   # was: tests/composition/run.sh` left the gate reporting `✓ lanes: 3 of 4`, `FAIL=0`.
+Deleting the invocation did not red it.
+
+It already had a self-demonstration — 22 offline outcomes, including a counter-inversion case that
+genuinely works — so **step 2 was already satisfied and the defect still escaped**. It escaped because
+the synthetic fixture workflow carried no comment mentioning the suite path while the real
+`composition.yml` does: step 5's condition, not step 2's.
+
+The repair is the worked form of steps 5 and 7. The obvious fix — "ignore comments" — is wrong, because
+the repo names that path in prose three ways and the third is not a comment at all but prose inside a
+`run: |` block scalar. **When a gate's false positive comes from prose, the fix is not to enumerate the
+shapes prose takes**; prose has more shapes than anyone enumerates. The fix is to match the structure
+of the thing being asserted, which here is position. Three fixture properties followed, and they
+generalise:
+
+1. every fixture carries the decoys the real artifacts carry;
+2. detached and attached fixtures differ in exactly one line, so the pair is a controlled experiment
+   rather than two separately-authored worlds — which is how the original fixture became simpler than
+   production without anyone noticing; and
+3. every detach case is paired with a reattached control that must go green, so a fixture that reds for
+   the wrong reason is not read as a passing demonstration.
+
+The demonstration went 22 → 25 outcomes, and the acceptance measurement for this whole class is the
+first line of its result: **reverting only the anchor now gives `FAIL=1`, which the old demonstration
+could not detect.**
+
+### What the critic records
+
+For each touched gate the review marker names the mutation applied and the observed result; for each
+gate whose inversion could not be obtained, the reason — which is `NOT_MEASURED`, never a pass; and,
+where a property is provided by a test other than the one named for it, that provider.
+`scripts/gate-mutate.py` is this org's harness for the sweep, and its verdict vocabulary is the
+vocabulary to use: `JUSTIFIED` fired, `DECORATIVE` could not fire, `NOT_MEASURED` obtained no
+measurement. A critic report that records no inversion for a change that touches a gate is incomplete
+in the same way a source-only runtime-route claim is.
+
 ## Handoff-assertion provenance
 
 Every specific, checkable assertion in an implementation handoff, critic report, or host relay carries
@@ -115,6 +246,9 @@ A finding is **material** only when the evidence shows at least one of:
 - acceptance criteria are unmet, or observable correctness, compatibility, security, data integrity,
   performance intent, or releaseability is at risk;
 - a test or gate can report green without checking its declared subject;
+- a gate the change adds or modifies stays green when inverted, or a test named for a property does
+  not itself provide that property (`.github#2223`) — see **Gate-inversion evidence** above, which
+  makes this a finding by definition rather than a judgement call;
 - an architecture or ownership violation creates a concrete defect or blocks safe evolution;
 - bounded hardening prevents a measured recurring failure, retry, operational burden, or meaningful
   maintenance cost; or
