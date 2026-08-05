@@ -37,3 +37,40 @@ consumers as required by repository policy before the done stamp.
 <!-- END GENERATED: fsgg-protocol:release-columns -->
 
 Do not release the claim early: it is the exclusive ownership boundary for post-merge obligations.
+
+## An engine release that becomes owed is FILED by the worker who owed it
+
+If your merged PR touched `src/FS.GG.Coord.Cli`, `src/FS.GG.Coord.Core` or `src/FS.GG.Coord.GitHub`,
+run the freshness gate against the default branch after the merge:
+
+```sh
+python3 scripts/check-engine-freshness.py --repo . --ref origin/main --report /tmp/freshness.json
+```
+
+It exits **0** when unreleased commits touch no wire surface — correctly, because no receiver can be
+refused by a verb the cut does not introduce. `releaseOwed` in the report is `true` anyway. **When it
+is true and no open row carries the debt, file the row.** File it; do not cut the release inside your
+item — a release is separate work with its own obligations, which is why the two agents who hit this
+before you were right to stop. What they had no instruction to do was leave a destination behind.
+
+Dedupe over REST first, then file with `Class: hardening` and a narrow `Paths:` declaration, and board
+it with `fsgg-coord add <n>` in the same breath. **The boarding step is the whole point and it is not
+optional:** an unboarded row is invisible to `take`, which is the same silence as no row at all.
+
+This obligation is a WORKER's because no automated actor can currently discharge it, and that was
+measured rather than assumed (`.github#2231`):
+
+- A workflow that files the row files it as a **bot**, and the off-board reconcile net excludes
+  `.user.type == "Bot"` by construction (`check-board/references/deep-detail.md`). The row would be
+  filed, never boarded, and never scheduled — the original defect reproduced one level down with a
+  green check over it.
+- Boarding it from CI instead would be the org's first Projects write from a runner; no workflow does
+  one today, and `graphql-monopoly` exists to keep raw board mutations out of exactly those places.
+- Making the gate itself red is rejected on measurement, not taste: engine commits land continuously,
+  so a `drift > 0` bar is red on the happy path and teaches that red is noise. The gate's own
+  docstring records that trade.
+
+So the destination is a person or agent already holding board write at a release checkpoint — you.
+Two occurrences on 2026-08-04 reached the board only because an agent mentioned the debt in passing;
+this paragraph is what replaces that luck. If you conclude the obligation is misplaced, say so on
+`.github#2231` rather than dropping it silently.
