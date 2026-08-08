@@ -136,6 +136,9 @@ comments, bound to its current head: `<!-- fsgg:delivery-obligations none head=<
 stale declaration is a repair action, never an implicit assertion that no publication/deployment work is owed.
 For each real obligation, use `<!-- fsgg:delivery-obligation id=<stable-id> kind=<kind> head=<sha> -->`
 and complete it with `<!-- fsgg:delivery-receipt id=<stable-id> head=<sha> evidence=<url-or-id> -->`.
+`id` is lowercase and begins with an alphanumeric character; its remaining characters may be lowercase
+alphanumerics, `.`, `_`, or `-` (`[a-z0-9][a-z0-9_.-]*`). `kind` has the same leading rule but its
+remaining characters are lowercase alphanumerics, `_`, or `-` (`[a-z0-9][a-z0-9_-]*`).
 
 The receipt binds the item, claim generation, executor, worktree, branch, PR, head SHA, declared
 paths, and board state. `delivery --apply` consumes that receipt and re-reads the winning claim marker
