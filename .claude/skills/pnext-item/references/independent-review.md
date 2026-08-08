@@ -29,11 +29,11 @@ Terminal transition evidence: `merge` → `post-merge-obligations` → `done-sta
 <!-- BEGIN GENERATED: fsgg-protocol:ledger-policy -->
 *Generated ledger schema. The receipt id binds these fields; prose does not substitute for the ledger.*
 
-Schema: `fsgg.coord.planning-receipt/1`.
+Schema: `fsgg.coord.planning-receipt/3`.
 
 Observation fields: `kind`, `observedAt`, `sourceSha`, `outcome`, `receiptId`.
 
-Receipt fields: `schema`, `observedAt`, `sourceSha`, `complete`, `consolidationApproved`, `observations`.
+Receipt fields: `schema`, `observedAt`, `sourceSha`, `complete`, `consolidationApproved`, `observations`, `contentIntakes`, `contentDispositions`.
 
 <!-- END GENERATED: fsgg-protocol:ledger-policy -->
 
