@@ -13,6 +13,8 @@
 | ordinary repair ceiling | 3 |
 | repair-phase ceiling | 10 |
 
+**Quoted vs. competing markers:** A marker counts only as a canonical whole line inside a comment's own leading marker block — the run of lines from byte 0 that are each exactly one known marker's text. A marker occurring elsewhere as a quotation (inside a fence, an indented code block, or prose that only mentions it) is inert: it carries no evidence and raises no error by itself. The same marker kind occurring more than once within one comment's leading block is a competing marker and is refused — a marker kind has exactly one meaning, so no comment may carry it twice.
+
 <!-- END GENERATED: fsgg-protocol:review-policy -->
 
 <!-- BEGIN GENERATED: fsgg-protocol:lifecycle-policy -->
