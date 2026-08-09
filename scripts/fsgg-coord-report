@@ -20,13 +20,15 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-SCHEMA = "fsgg.coord.session-report/1"
+SCHEMA = "fsgg.coord.session-report/2"
 LEDGER_SCHEMA = "fsgg.coord.session-ledger/1"
 EVENT_SCHEMA = "fsgg.coord.session-event/1"
-KINDS = ("created", "boarded", "claimed", "reviewed", "blocked", "merged", "published", "done", "heartbeat")
-COUNTED = set(KINDS) - {"heartbeat"}
+LANE_SNAPSHOT_SCHEMA = "fsgg.coord.lane-snapshot/1"
+SCOPE_RECEIPT_SCHEMA = "fsgg.coord.coordination-scope-receipt/1"
+KINDS = ("created", "boarded", "claimed", "reviewed", "blocked", "merged", "published", "done", "repaired", "reconciled", "corrected", "heartbeat")
+COUNTED = set(KINDS) - {"heartbeat", "corrected"}
 ANSI = "\x1b["
-EVENT_FIELDS = {"eventSchema", "kind", "eventKey", "item", "repository", "fromStatus", "toStatus", "worker", "activity", "pr", "blocker", "freshness", "lifecycle", "sessionStart"}
+EVENT_FIELDS = {"eventSchema", "kind", "eventKey", "item", "repository", "fromStatus", "toStatus", "worker", "activity", "pr", "blocker", "freshness", "lifecycle", "sessionStart", "supersedes"}
 RESERVED_FIELDS = {"record", "schema", "sequence", "recordedAt", "session", "startedAt"}
 CAPACITY_SCHEMA = "fsgg.coord.lane-capacity/1"
 CAPACITY_REASON_KINDS = {
@@ -39,6 +41,11 @@ CAPACITY_FIELDS = {
 }
 CAPACITY_REASON_FIELDS = {"kind", "source", "freshness", "detail"}
 CACHE_SCHEMA = "fsgg.coord.session-derived-cache/1"
+PROJECT_FIELDS = {"owner", "number", "title"}
+BOARD_FIELDS = {"status", "observedAt"}
+OBSERVED_FIELDS = {"state", "observedAt", "claimHolder", "worktree", "branch", "pr", "head", "checkGate"}
+SCOPE_RECEIPT_FIELDS = {"schema", "project", "observedAt", "source"}
+SCOPE_SOURCE_FIELDS = {"kind", "repository", "receiptId"}
 
 
 def fail(message: str) -> None:
@@ -126,6 +133,13 @@ def append(root: Path, session: str, event: dict[str, Any]) -> tuple[dict[str, A
         fail("event.kind must be one of " + ", ".join(KINDS))
     if not isinstance(key, str) or not key.strip():
         fail("event.eventKey must be a stable non-empty string")
+    supersedes = event.get("supersedes")
+    if supersedes is not None and (not isinstance(supersedes, str) or not supersedes.strip()):
+        fail("event.supersedes must be a stable non-empty event key when present")
+    if kind == "corrected" and supersedes is None:
+        fail("a corrected event must name the eventKey it supersedes")
+    if kind != "corrected" and supersedes is not None:
+        fail("only a corrected event may supersede an earlier event")
     ledger, lock = paths(root, session)
     with locked(lock) as guard:
         existing = ledger_rows(ledger)
@@ -138,6 +152,12 @@ def append(root: Path, session: str, event: dict[str, Any]) -> tuple[dict[str, A
         for row in existing:
             if row.get("record") == "event" and row.get("eventKey") == key:
                 return row, False
+        if kind == "corrected":
+            targets = [row for row in existing if row.get("record") == "event" and row.get("eventKey") == supersedes]
+            if len(targets) != 1:
+                fail("a correction must supersede one existing event in this session")
+            if targets[0].get("kind") == "corrected":
+                fail("a correction may not supersede another correction")
         record = {**event, "record": "event", "schema": LEDGER_SCHEMA,
                   "sequence": sum(row.get("record") == "event" for row in existing) + 1, "recordedAt": now()}
         with open(ledger, "a", encoding="utf-8") as out:
@@ -210,7 +230,62 @@ def normalize_capacity(snapshot: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def normalize_lanes(snapshot: dict[str, Any]) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
+def project(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != PROJECT_FIELDS:
+        fail(f"{label} must contain exactly owner, number, and title")
+    owner, number, title = value.get("owner"), value.get("number"), value.get("title")
+    if not isinstance(owner, str) or not owner.strip() or not isinstance(number, int) or isinstance(number, bool) or number <= 0 or not isinstance(title, str) or not title.strip():
+        fail(f"{label} has an invalid project identity")
+    return {"owner": owner, "number": number, "title": title}
+
+
+def scope_receipt(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != SCOPE_RECEIPT_FIELDS:
+        fail("scope receipt must contain exactly schema, project, observedAt, and source")
+    if value.get("schema") != SCOPE_RECEIPT_SCHEMA:
+        fail(f"scope receipt schema must be {SCOPE_RECEIPT_SCHEMA!r}")
+    if not isinstance(value.get("observedAt"), str) or not value["observedAt"].strip():
+        fail("scope receipt observedAt must be a non-empty string")
+    source = value.get("source")
+    if not isinstance(source, dict) or set(source) != SCOPE_SOURCE_FIELDS:
+        fail("scope receipt source must contain exactly kind, repository, and receiptId")
+    if source.get("kind") != "project-scoped-driver-receipt" or not all(isinstance(source.get(name), str) and source[name].strip() for name in ("repository", "receiptId")):
+        fail("scope receipt source must be a project-scoped driver receipt")
+    return {"schema": SCOPE_RECEIPT_SCHEMA, "project": project(value.get("project"), "scope receipt project"),
+            "observedAt": value["observedAt"], "source": source}
+
+
+def evidence(value: Any, allowed: set[str], label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) - allowed:
+        fail(f"{label} must be an object with only typed evidence fields")
+    return value
+
+
+def value_from(source: dict[str, Any], name: str) -> str:
+    value = source.get(name)
+    return "unknown" if value is None or value == "" else str(value)
+
+
+def classification(board: dict[str, Any], observed: dict[str, Any]) -> str:
+    state = str(observed.get("state", "unknown")).lower()
+    holder = observed.get("claimHolder")
+    has_work = any(observed.get(name) not in (None, "", "unknown") for name in ("worktree", "branch", "pr", "head"))
+    if state == "unknown" or board["status"].lower() == "unknown":
+        return "unknown"
+    if holder not in (None, "", "unknown") and not has_work:
+        return "orphan-claim"
+    if state in ("local-repair", "in-progress", "review") and holder in (None, "", "unknown"):
+        return "work-without-claim"
+    expected = {"local-repair": "in progress", "in-progress": "in progress", "review": "in review", "merged": "done", "idle": "ready"}
+    return "aligned" if expected.get(state, board["status"].lower()) == board["status"].lower() else "projection-lag"
+
+
+def normalize_lanes(snapshot: dict[str, Any], trusted_scope: dict[str, Any]) -> tuple[list[dict[str, Any]], str, dict[str, Any], dict[str, Any]]:
+    if snapshot.get("schema") != LANE_SNAPSHOT_SCHEMA:
+        fail(f"lane snapshot schema must be {LANE_SNAPSHOT_SCHEMA!r}")
+    scope = project(snapshot.get("coordinationProject"), "lane snapshot coordinationProject")
+    if scope != trusted_scope["project"]:
+        fail("lane snapshot coordinationProject does not match the externally supplied Coordination scope receipt")
     raw = snapshot.get("lanes", snapshot.get("items", []))
     if not isinstance(raw, list):
         fail("lane snapshot must contain lanes (an array)")
@@ -219,41 +294,56 @@ def normalize_lanes(snapshot: dict[str, Any]) -> tuple[list[dict[str, Any]], str
     for lane in raw:
         if not isinstance(lane, dict):
             fail("every lane must be an object")
+        lane_scope = project(lane.get("coordinationProject"), "lane coordinationProject")
+        if lane_scope != scope:
+            fail("lane coordinationProject does not match the snapshot coordinationProject")
+        board = evidence(lane.get("board"), BOARD_FIELDS, "lane board")
+        observed = evidence(lane.get("observed"), OBSERVED_FIELDS, "lane observed")
+        if set(board) != BOARD_FIELDS or not all(isinstance(board[name], str) and board[name].strip() for name in BOARD_FIELDS):
+            fail("lane board requires non-empty status and observedAt")
+        if not isinstance(observed.get("state"), str) or not observed["state"].strip() or not isinstance(observed.get("observedAt"), str) or not observed["observedAt"].strip():
+            fail("lane observed requires non-empty state and observedAt")
         def value(name: str) -> str:
             raw_value = lane.get(name)
             return "unknown" if raw_value is None or raw_value == "" else str(raw_value)
         lanes.append({
             "item": value("item"), "repository": value("repository"),
-            "workState": value("workState"), "boardStatus": value("boardStatus"),
-            "worker": value("worker"), "activity": value("activity"), "pr": value("pr"),
+            "workState": str(observed["state"]), "boardStatus": str(board["status"]),
+            "worker": value("worker") if lane.get("worker") is not None else value_from(observed, "claimHolder"),
+            "activity": value("activity"), "pr": value("pr") if lane.get("pr") is not None else value_from(observed, "pr"),
             "blocker": value("blocker"), "freshness": value("freshness") if lane.get("freshness") is not None else freshness,
+            "boardObservedAt": board["observedAt"], "executionObservedAt": observed["observedAt"],
+            "execution": observed, "disagreement": classification(board, observed),
         })
-    return lanes, freshness, normalize_capacity(snapshot)
+    return lanes, freshness, normalize_capacity(snapshot), scope
 
 
-def derive(session: str, snapshot: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, Any]:
+def derive(session: str, snapshot: dict[str, Any], trusted_scope: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, Any]:
     header = next((row for row in records if row.get("record") == "session"), None)
     if header is None:
         fail("ledger has no session record")
     events = [row for row in records if row.get("record") == "event"]
-    totals = {kind: sum(row.get("kind") == kind for row in events) for kind in KINDS if kind in COUNTED}
-    lanes, freshness, capacity = normalize_lanes(snapshot)
+    superseded = {str(row["supersedes"]) for row in events if row.get("kind") == "corrected"}
+    effective = [row for row in events if row.get("eventKey") not in superseded and row.get("kind") != "corrected"]
+    totals = {kind: sum(row.get("kind") == kind for row in effective) for kind in KINDS if kind in COUNTED}
+    lanes, freshness, capacity, scope = normalize_lanes(snapshot, trusted_scope)
     unresolved = [lane["item"] for lane in lanes if lane["boardStatus"] not in ("Done", "done", "Closed", "closed")]
     active = [lane["item"] for lane in lanes if lane["boardStatus"] in ("In progress", "In review", "Blocked")]
     lifecycle = next((str(row["lifecycle"]) for row in reversed(events) if row.get("lifecycle") in ("active", "ended")), header.get("lifecycle", "active"))
     return {
         "session": {"id": session, "startedAt": header.get("startedAt"), "lifecycle": lifecycle},
         "lanes": lanes, "laneCapacity": capacity,
-        "sessionTotals": {**totals, "netActive": len(active), "unresolved": unresolved, "eventsRecorded": len(events)},
+        "sessionTotals": {**totals, "corrected": sum(row.get("kind") == "corrected" for row in events), "netActive": len(active), "unresolved": unresolved, "eventsRecorded": len(events)},
         "snapshot": {"freshness": freshness, "network": "not-used"},
+        "coordinationProject": {**scope, "scopeObservedAt": trusted_scope["observedAt"], "scopeReceipt": trusted_scope["source"]["receiptId"]},
     }
 
 
-def cached_report(root: Path, session: str, trigger: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, Any]:
+def cached_report(root: Path, session: str, trigger: dict[str, Any], snapshot: dict[str, Any], trusted_scope: dict[str, Any]) -> dict[str, Any]:
     ledger, lock = paths(root, session)
     if not ledger.exists():
         fail(f"session {session!r} has not been started")
-    snapshot_digest = json_digest(snapshot)
+    snapshot_digest = json_digest({"lanes": snapshot, "scope": trusted_scope})
     cache = cache_path(root, session)
     with locked(lock) as guard:
         records = ledger_rows(ledger)
@@ -278,10 +368,10 @@ def cached_report(root: Path, session: str, trigger: dict[str, Any], snapshot: d
                and cached.get("derivedSha256") == json_digest(cached.get("derived")))
         if hit:
             derived = cached["derived"]
-            required = {"session", "lanes", "laneCapacity", "sessionTotals", "snapshot"}
+            required = {"session", "lanes", "laneCapacity", "sessionTotals", "snapshot", "coordinationProject"}
             hit = set(derived) == required
         if not hit:
-            derived = derive(session, snapshot, records)
+            derived = derive(session, snapshot, trusted_scope, records)
             atomic_json(cache, {"schema": CACHE_SCHEMA, "key": key,
                                 "derivedSha256": json_digest(derived), "derived": derived})
         cache_trace("hit" if hit else "miss")
@@ -400,8 +490,8 @@ def render(doc: dict[str, Any], mode: str, width: int, color: str) -> str:
     title = f"SESSION REPORT {doc['session']['id']}"
     def facts(value: dict[str, Any]) -> list[list[str]]:
         return [[key, json.dumps(raw, sort_keys=True, separators=(",", ":")) if not isinstance(raw, str) else raw] for key, raw in sorted(value.items())]
-    fields = ("item", "repository", "workState", "boardStatus", "worker", "activity", "pr", "blocker", "freshness")
-    lane_rows = [[lane[key] for key in fields] for lane in doc["lanes"]]
+    fields = ("item", "repository", "workState", "boardStatus", "worker", "activity", "pr", "blocker", "freshness", "boardObservedAt", "executionObservedAt", "disagreement", "execution")
+    lane_rows = [[json.dumps(lane[key], sort_keys=True, separators=(",", ":")) if isinstance(lane[key], (dict, list)) else lane[key] for key in fields] for lane in doc["lanes"]]
     capacity = doc["laneCapacity"]
     capacity_rows = [[name, str(capacity[name])] for name in ("schema", "implementationCapacity", "reviewCapacity", "activeLanes", "openSlots")]
     capacity_rows.append(["reasons", str(len(capacity["reasons"]))])
@@ -410,18 +500,23 @@ def render(doc: dict[str, Any], mode: str, width: int, color: str) -> str:
             capacity_rows.append([f"reason[{index}].{name}", reason[name]])
     capacity_fact_rows = [[f"{name}={value}"] for name, value in capacity_rows]
     totals = doc["sessionTotals"]
-    totals_rows = [[kind, str(totals.get(kind, 0))] for kind in ("created", "boarded", "claimed", "reviewed", "blocked", "merged", "published", "done")]
+    totals_rows = [[kind, str(totals.get(kind, 0))] for kind in ("created", "boarded", "claimed", "reviewed", "blocked", "merged", "published", "done", "repaired", "reconciled", "corrected")]
     totals_rows.extend([["netActive", str(totals["netActive"])], ["unresolved", ", ".join(totals["unresolved"]) or "none"], ["eventsRecorded", str(totals["eventsRecorded"])]] )
-    lane_table = table(["item", "repository", "workState", "boardStatus", "worker", "activity", "pr", "blocker", "freshness"], lane_rows or [["none"] * 9], width, enabled, 3)
+    lane_table = table(list(fields), lane_rows or [["none"] * len(fields)], width, enabled, 3)
     if width < 80:
-        labels = ("item", "repository", "workState", "boardStatus", "worker", "activity", "pr", "blocker", "freshness")
+        labels = fields
         lane_table = table(["Field", "Value"], [[label, value] for row in lane_rows for label, value in zip(labels, row)] or [["Item", "none"]], width, enabled)
+    evidence_rows = [[f"{lane['item']}.observed.{name}", json.dumps(value, sort_keys=True, separators=(",", ":")) if isinstance(value, (dict, list)) else str(value)]
+                     for lane in doc["lanes"] for name, value in lane["execution"].items()]
+    evidence_rows.extend([[f"{lane['item']}.executionObservedAt", lane["executionObservedAt"]] for lane in doc["lanes"]])
     return "\n".join((*[style(line, "1;36", enabled) for line in clip(title, width)],
         style("session", "1;36", enabled), table(["field", "value"], facts(doc["session"]) + [["schema", doc["schema"]]], width, enabled),
         style("trigger", "1;36", enabled), table(["field", "value"], facts(trigger), width, enabled),
         style("snapshot", "1;36", enabled), table(["field", "value"], facts(doc["snapshot"]), width, enabled),
+        style("coordinationProject", "1;36", enabled), table(["field", "value"], facts(doc["coordinationProject"]), width, enabled),
         style("laneCapacity", "1;36", enabled), table(["capacity fact"], capacity_fact_rows, width, enabled),
         style("lanes", "1;36", enabled), lane_table,
+        style("executionEvidence", "1;36", enabled), table(["field", "value"], evidence_rows or [["none", "none"]], width, enabled),
         style("sessionTotals", "1;36", enabled), table(["transition", "count"], totals_rows, min(width, 56), enabled)))
 
 
@@ -430,7 +525,7 @@ def main() -> None:
     parser.add_argument("--state-dir")
     sub = parser.add_subparsers(dest="command", required=True)
     def common(p):
-        p.add_argument("--session", required=True); p.add_argument("--event", required=True); p.add_argument("--lanes", required=True)
+        p.add_argument("--session", required=True); p.add_argument("--event", required=True); p.add_argument("--lanes", required=True); p.add_argument("--scope", required=True)
         p.add_argument("--mode", choices=("json", "plain", "rich"), default="plain"); p.add_argument("--width", type=int, default=120)
         p.add_argument("--color", choices=("auto", "always", "never"), default="auto")
     start = sub.add_parser("start"); start.add_argument("--session", required=True); start.add_argument("--at", default=None)
@@ -444,10 +539,11 @@ def main() -> None:
         append(root, session, {"eventSchema": EVENT_SCHEMA, "kind": "heartbeat", "eventKey": f"start:{session}:{args.at or now()}", "sessionStart": args.at or now()})
         return
     event, snapshot = object_from(args.event, "event"), object_from(args.lanes, "lane snapshot")
+    trusted_scope = scope_receipt(object_from(args.scope, "scope receipt"))
     if args.command == "end": event = {**event, "kind": "heartbeat", "eventKey": f"end:{session}", "lifecycle": "ended"}
     if args.command in ("emit", "end"): trigger, _ = append(root, session, event)
     else: trigger = event
-    doc = cached_report(root, session, trigger, snapshot)
+    doc = cached_report(root, session, trigger, snapshot, trusted_scope)
     print(render(doc, args.mode, max(40, args.width), args.color))
 
 
