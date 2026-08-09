@@ -23,6 +23,12 @@ Keep `FSGG_WORKER` for the entire item. Never invent or copy a worker id.
 
 ## 1. Take one item
 
+Before `take`, claim, or a Ready-to-In-progress transition, inspect the item's current typed
+delivery-route receipt. It is an explicit agent judgement, never a complexity heuristic: the fixed
+checklist contributes facts only. Refuse a missing, unreadable, incomplete, duplicate, or stale receipt.
+For `sdd-required`, carry the governing work id, canonical spec home, and current `fsgg-sdd` receipts in
+the dispatch brief; `fsgg-coord` validates those bindings but does not recreate the SDD lifecycle.
+
 **First, check the SHARED checkout's engine, because `take` is a board write.** In `.github` every
 worktree execs the engine built in the shared checkout, and a stale one **refuses** board writes
 (`.github#1549`) — so this is the step before the first write, not a recovery from it. The check is

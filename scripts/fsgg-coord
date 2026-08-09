@@ -125,7 +125,7 @@ engine_path() { printf '%s/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-en
 # line is on the RECEIVERS' hot path … every invocation would otherwise pay for a subprocess that cannot
 # succeed"), and putting the module lookup at file scope would have re-introduced the cost that comment
 # exists to avoid. Inside the function it is paid only where a source build already resolved.
-guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the verb
+guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the verb, $4 = its first argument
   local module
   module="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/fsgg-coord-guards.sh"
   [ -f "$module" ] || die "the stale/dirty guard module is missing: $module
@@ -147,7 +147,7 @@ guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the ve
   # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
   # one never does, so it cannot swallow that refusal.
   dirty_guard "$1"
-  stale_guard "$1" "$2" "$3"
+  stale_guard "$1" "$2" "$3" "${4:-}"
 }
 
 
@@ -182,7 +182,7 @@ TOP="$(git_toplevel)"
 if [ -n "$TOP" ]; then
   CANDIDATE="$(engine_path "$TOP")"
   if [ -x "$CANDIDATE" ]; then
-    guards "$TOP" "${CANDIDATE}.dll" "${1:-}"
+    guards "$TOP" "${CANDIDATE}.dll" "${1:-}" "${2:-}"
     exec "$CANDIDATE" "$@"
   fi
 fi
@@ -234,7 +234,7 @@ SHARED=""
 if [ -n "$SHARED" ] && [ "$SHARED" != "$TOP" ]; then
   CANDIDATE="$(engine_path "$SHARED")"
   if [ -x "$CANDIDATE" ]; then
-    guards "$SHARED" "${CANDIDATE}.dll" "${1:-}"
+    guards "$SHARED" "${CANDIDATE}.dll" "${1:-}" "${2:-}"
     exec "$CANDIDATE" "$@"
   fi
 fi
