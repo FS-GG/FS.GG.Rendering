@@ -83,8 +83,8 @@ answering it, a dry run lists the questions; it just does not put them.
 
 ## The rules this pass enforces
 
-**These are the engine's, and they are GENERATED. So are five of the §2 finding codes below —
-`STALE-CLAIM`, `CLAIM-STATUS-LAG`, `CLOSED-ISSUE-NOT-DONE`, `BLOCKER-CLEARED` and `STATUS-NOT-BLOCKED`
+**These are the engine's, and they are GENERATED. So are six of the §2 finding codes below —
+`STALE-CLAIM`, `CLAIM-STATUS-LAG`, `CLAIM-REVIEW-LAG`, `LIFECYCLE-PROJECTION-LAG`, `CLOSED-ISSUE-NOT-DONE`, `BLOCKER-CLEARED` and `STATUS-NOT-BLOCKED`
 are `Chore.fsi`'s, each carrying its remedy AND its deference rules as a type. Read them there before
 you re-spell one here.**
 
@@ -226,6 +226,8 @@ Each finding has a code, a ground truth, and a fix — or an explicit refusal to
 | `CONSOLIDATION-CANDIDATE` | `lint` found overlapping open work | **report only** — the lint runner decides whether to consolidate; never automatic |
 | `CONSOLIDATION-UNREADABLE` | `lint` could not read a candidate body | **error** — no complete board read means no verdict |
 | `CLAIM-STATUS-LAG` | held claim, and board `status` is one of `Ready`/`Backlog`/*(no status)* — the columns a claim SHOULD have overwritten. A held `Blocked`/`In review` is the holder's own decision and is **deferred, not reconciled** (#331) | `set-field --batch <i> "Status=In progress"` |
+| `CLAIM-REVIEW-LAG` | held claim, a freshly observed item PR is open, and board `status != In review` | `set-field --batch <i> "Status=In review"` |
+| `LIFECYCLE-PROJECTION-LAG` | a fresh complete lifecycle observation disagrees with Project Status and no legacy Chore owns that Status write | `set-field --batch <i> Status=Ready/Backlog/In progress/Blocked/In review/Done` |
 | `AUTO-DONE-LIVE-CLAIM` | held claim and board `status == Done` — merge/issue-close automation may have projected completion while the holder still owes release, publication, dispatch, or deployment verification | **report and message the holder; never count terminal** — the holder reopens the issue and freshly restores `In review`, or produces the exact green `FSGG-DONE` evidence and drops the claim |
 | `UNDECLARED-PATHS` | open, unclaimed, not `Done`, and the issue body declares no `Paths:` | **ask** (§5) — the fix is an *issue* edit, so it takes an answer |
 | `ON-BOARD-NO-STATUS` | open, **unclaimed**, on the board, with an empty `Status` column (`""` — `NoStatus`) | **report only** — a human must choose `Ready` vs `Backlog`; the reconciler cannot invent the missing fact (§5's *never guess*), so it names the drift and writes **nothing** |
