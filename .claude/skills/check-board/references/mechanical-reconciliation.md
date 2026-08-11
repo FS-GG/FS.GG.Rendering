@@ -1,8 +1,8 @@
 # Mechanical reconciliation
 
 `scripts/fsgg-coord reconcile` owns classification. Do not recreate its finding table with `jq`.
-The five typed chores are stale-claim collection, claim/Status lag, closed issue/Done lag,
-cleared-blocker/Ready lag, and open-blocker/Blocked lag. `--apply` performs only those remedies.
+The six typed chores are stale-claim collection, claim/Status lag, claim/review lag, closed issue/Done
+lag, cleared-blocker/Ready lag, and open-blocker/Blocked lag. `--apply` performs only those remedies.
 
 Use `--repo NAME` to narrow the reported and applied subjects; omit it for the org-wide pass.
 Use `--json` when another tool consumes the dry-run result. Apply after inspecting that result;

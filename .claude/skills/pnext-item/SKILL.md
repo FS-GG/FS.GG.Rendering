@@ -159,6 +159,25 @@ immediately before its merge request. A changed head, claim, or unreadable fact 
 snapshot rather than carrying a previous action forward in prose. The receipt supplies deterministic
 ordering only—requirements, review materiality, and repair judgement remain authored by the agents.
 
+### Typed review/repair protocol
+
+Where the alternating critic/implementer transitions inside review need one typed answer instead of a
+manual re-read of PR comments and round counts, ask the engine for the current review-protocol state:
+
+```bash
+scripts/fsgg-coord review --snapshot <fresh-review-snapshot.json> --json
+```
+
+It returns exactly one closed state (awaiting initial review, changes requiring repair, awaiting
+implementer repair, awaiting the same critic's confirmation, passed awaiting checks, awaiting host
+acceptance, ordinary exhaustion, repair-phase setup, repair-phase active review, accepted, or terminal
+human park) and the one typed next action that follows from it — dispatch critic, resume implementer,
+resume the same critic, await checks, request host acceptance, enter the one permitted fresh repair
+phase, accept, or park for human action — bound to a freshness token that a changed head invalidates.
+This is a mechanical cross-check, not a substitute for the qualitative judgement below: materiality,
+same-critic continuity, and repair-phase provenance are still read from the live PR by both the worker
+and the critic.
+
 Push the candidate, open its PR, and ask the host to assign a fresh critic agent. Keep the implementing worker and
 claim alive, set the item to `In review`, and freshly verify that row while the critic independently
 reviews the exact head SHA. The critic does not edit the
