@@ -17,6 +17,17 @@
 
 <!-- END GENERATED: fsgg-protocol:review-policy -->
 
+**Protocol field syntax.** Each marker's required fields are literal column-0 lines of the exact
+form `key: value` — not markdown-bolded (`**Verdict:** pass`), not indented, not a heading, and not
+restated as prose. The initial marker (`fsgg:independent-review:v1`) requires `critic`,
+`reviewed-head`, `verdict`; the confirmation marker (`fsgg:independent-review-confirmation:v1`)
+requires `initial-review`, `critic`, `round`, `preceding-review`, `reviewed-head`, `verdict`; the
+host-acceptance marker's fields are stated in the lifecycle contract below. A faithful critic who
+writes an otherwise-correct, canonically-placed marker but decorates its fields as ordinary markdown
+produces a marker the live engine cannot read — the parser refuses it and names the exact expected
+`key: value` form in the refusal (`.github#2369`) rather than parking with no signal about what to
+fix or which field was unreadable.
+
 <!-- BEGIN GENERATED: fsgg-protocol:lifecycle-policy -->
 *Generated lifecycle boundary. These are machine-owned prerequisites; judgement about the work remains authored.*
 
@@ -341,6 +352,54 @@ change the acceptance boundary. The exhausted PR cannot reset its counter or beg
 cycle. An already parked item whose evidence proves an ordinary three-round exhaustion is automatically
 eligible for that transition on the next board-driver pass: the host removes the sentinel, sets
 `Status: Ready`, records the transition, and dispatches the repair phase without human interaction.
+
+### Critic succession — recovery when the same critic cannot act (`.github#2417`)
+
+Critics are disposable by design (ADR-0053): a fresh critic is dispatched per review handoff and does
+not persist across it. The same-critic rule above therefore has a failure mode ordinary exhaustion does
+not cover: a critic posts `changes-required`, the worker pushes the fix, and the critic despawns before
+confirming the new commit — a live `AwaitingSameCriticConfirmation` round, not an exhausted chain, with
+no critic left to resume it. `human-escalation-sentinel` and the repair phase both require *exhaustion*
+first; neither is reachable from here, and the engine's own `resumeSameCritic` action then names a critic
+that cannot act. Because a critic identity may be an agent-type string rather than a minted, distinct
+identity (`fsgg-critic-normal` is one such string — see `.github#2417`'s own evidence), the engine can
+never *detect* despawn as a fact; it only ever consumes an explicit, accountable grant.
+
+The recovery is a typed engine fact, not only prose: `scripts/fsgg-coord review`'s `inspect`/`advance`
+accept an optional critic-succession grant alongside the ordinary snapshot facts. Absent a grant, the
+chain's next action is unconditionally `resumeSameCritic` — the recovery path is never entered by
+inference, and a chain whose original critic could still confirm is never silently diverted onto it.
+A host who has confirmed the original critic is unavailable constructs a grant naming:
+
+- `original-critic`: the critic identity recorded on the stuck round's marker;
+- `successor-critic`: the fresh critic who will perform the recovery review;
+- `granted-by`: the accountable identity making this determination (typically the host);
+- `candidate-head`: the exact head SHA the stuck round is bound to.
+
+The grant is honored only when it is bound to the *exact* stuck critic and head, and only when both
+`successor-critic` and `granted-by` differ from the implementing worker's identity — an implementer can
+never manufacture its own succession or claim someone else granted it. A mismatched, stale, or
+self-granted attempt is refused and reported distinctly from "no grant was supplied at all," and the
+chain's next action remains `resumeSameCritic`.
+
+**The successor critic performs a genuinely fresh, full independent review of the current head — never
+a "confirmation" of the despawned critic's finding.** This is what preserves the property the
+same-critic rule protects: a repair is judged either by someone who saw the original finding (the same
+critic, if it is in fact still reachable) or the chain is honestly restarted by a new full review, never
+silently continued by a stranger pretending continuity. The successor critic's review is posted and
+completes the chain exactly as any other independent review does — the same `fsgg:review-accepted:v1`
+host-acceptance marker and `landable` gate apply, unchanged.
+
+**Interaction with `.github#2360` (landable does not require the host-acceptance marker):** this
+recovery path changes *who may produce* an accepted review chain; it changes nothing about *what gates
+the merge*. `landable`'s CI-check verdict is wholly independent of the review-protocol chain and is
+unaffected by a granted critic succession — a granted succession is never itself evidence of a green
+build, and a green build is never itself evidence of a satisfied review chain. Both the accepted-head
+host-acceptance marker and a green `landable` verdict remain independently required before merge,
+exactly as they are for an ordinary or repair-phase chain.
+
+Machine-readable literal: `critic-succession-requires-explicit-host-grant: true` — the recovery is never
+automatic.
 
 ### Repair phase
 

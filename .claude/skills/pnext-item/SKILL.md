@@ -153,6 +153,10 @@ and complete it with `<!-- fsgg:delivery-receipt id=<stable-id> head=<sha> evide
 alphanumerics, `.`, `_`, or `-` (`[a-z0-9][a-z0-9_.-]*`). `kind` has the same leading rule but its
 remaining characters are lowercase alphanumerics, `_`, or `-` (`[a-z0-9][a-z0-9_-]*`).
 
+If the head changes, **edit that declaration in place** to bind it to the new head, or delete it before
+posting a replacement. Declarations are not append-only: an old declaration remains parsed, and a second
+one with the same `id` also collides. Adding a new declaration cannot supersede the old one.
+
 The receipt binds the item, claim generation, executor, worktree, branch, PR, head SHA, declared
 paths, and board state. `delivery --apply` consumes that receipt and re-reads the winning claim marker
 immediately before its merge request. A changed head, claim, or unreadable fact invalidates it; obtain a fresh live

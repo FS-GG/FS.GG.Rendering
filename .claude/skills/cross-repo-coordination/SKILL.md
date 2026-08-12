@@ -34,5 +34,8 @@ selftest. Keep resolver behavior there and add a small inline exact pin at each
 receiver call site; do not create a second receiver-owned fixture list unless
 the tool lacks the behavior coverage. The pin must have executable wrong-call
 controls, so a retired form, wrong declaration path, or extra flag becomes red.
-See [receiver-proj migration shape](../../../docs/coordination/receiver-proj-migration-shape.md)
-for the current `skill-view generate --receiver-proj` decision and acceptance.
+See [receiver-proj migration shape](https://github.com/FS-GG/.github/blob/main/docs/coordination/receiver-proj-migration-shape.md)
+for the current `skill-view generate --receiver-proj` decision and acceptance. (Absolute URL, not a
+relative link: `docs/` is not part of the `kit:` transport `registry/repos.yml` declares — a
+coordination-kit receiver never materializes it, so a relative link here would dangle in every
+receiver tree. .github#2343.)
