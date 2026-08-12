@@ -69,6 +69,17 @@ So when you want the DECISION without the side effect, run **`batch --text -n 1`
 
 Poll `scripts/fsgg-coord landable <pr> --repo <repo> --wait --sha <head>`; do not parse prose.
 
+**At the merge-time call** — the one immediately before the PR is actually merged, made after the
+host's `fsgg:review-accepted:v1` acceptance marker is expected to already exist (`pnext-item` §5) —
+add `--require fsgg:review-accepted:v1`:
+`scripts/fsgg-coord landable <pr> --repo <repo> --wait --sha <head> --require fsgg:review-accepted:v1`.
+This downgrades an otherwise-green verdict to `pending` unless the PR's exact current head carries a
+valid, current host review-acceptance marker (`.github#2360`); a marker bound to any other head counts
+as absent, never as satisfaction. This is opt-in, not the default (`.github#2425`): an unattended,
+unreviewed-by-design caller such as `skill-registry-autofix.yml` must keep omitting it — its own
+`--require registry-coherence` names a different assertion and gains nothing by adding this token, since
+no PR of its ever carries the marker and doing so would wedge it forever.
+
 <!-- BEGIN GENERATED: fsgg-protocol:landable-exit-codes -->
 <!--
   DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by

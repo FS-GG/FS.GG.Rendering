@@ -1063,8 +1063,10 @@ of you:
   that is not this item's work. Answer it before merge.
 - **`regenerated (expected):`** — **not** a finding, and nothing to explain. A generated, CI-gated
   artifact §1 told you not to declare, which `verify-paths` subtracted by asking the generators
-  themselves what they emit ([ADR-0044](../../../../docs/adr/0044-generated-artifacts-are-derived-from-their-generators.md),
-  [#498](https://github.com/FS-GG/.github/issues/498)).
+  themselves what they emit ([ADR-0044](https://github.com/FS-GG/.github/blob/main/docs/adr/0044-generated-artifacts-are-derived-from-their-generators.md),
+  [#498](https://github.com/FS-GG/.github/issues/498)). (ADR-0044 is an absolute URL, not a
+  relative link: `docs/adr/` is not part of the `kit:` transport `registry/repos.yml` declares, so
+  a receiver never materializes it and a relative link here would dangle. .github#2343.)
 
 > **This used to be one undifferentiated list, and the recipe's answer was to make the WORKER sort
 > it** — *"name which one it is in the PR"*. That was the best available advice while the tool could
@@ -1097,7 +1099,12 @@ transition, not completion, and the live claim stays with you.
 ```sh
 # ONE COMMAND. Do NOT hand-roll this gate — see the box below for why that instruction is the whole
 # point. It polls until the verdict SETTLES and exits 0 ONLY on green.
-scripts/fsgg-coord landable <pr> --wait || exit 1
+#
+# `--require fsgg:review-accepted:v1`: asserted HERE, immediately before merge, because this is the
+# point after which the host's exact-SHA review-acceptance marker (§5, `independent-review.md`) is
+# expected to already exist. Its absence downgrades an otherwise-green verdict to PENDING (7) rather
+# than merging past a chain nobody accepted (.github#2360, closed loop: .github#2425).
+scripts/fsgg-coord landable <pr> --wait --require fsgg:review-accepted:v1 || exit 1
 
 # MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
 # `<pr>` is the PULL number; `<n>` is the ITEM/issue number. They are NOT the same, and this fence
@@ -1460,9 +1467,11 @@ jq -n --arg t "<title>" --rawfile b pr-body.md \
 
 # WATCH the checks  (gh pr checks is GraphQL)
 # Nothing changes here on an exhausted budget: `landable` is REST all the way down, so it is the same
-# one command as §5. This section used to carry a SECOND, hand-copied transcription of the gate — the
-# structural reason it kept rotting (#724). There is now nothing to keep in step.
-scripts/fsgg-coord landable <pr> --wait
+# one command as §5, INCLUDING `--require fsgg:review-accepted:v1` — this is still the merge-time call,
+# just made under a different budget constraint. This section used to carry a SECOND, hand-copied
+# transcription of the gate — the structural reason it kept rotting (#724). There is now nothing to
+# keep in step.
+scripts/fsgg-coord landable <pr> --wait --require fsgg:review-accepted:v1
 ```
 
 `gh pr checks <pr> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
