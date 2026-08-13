@@ -71,6 +71,17 @@ Never assume someone else did the repair. Read
 running any of it — every clause above has a measured reason, including why the check needs no `-C`
 and why the repair is not `pull --ff-only`.
 
+**Tier-2a is also a shadowing hazard, not only an escape hatch.** Once your OWN worktree has a source
+build, `scripts/fsgg-coord` keeps preferring it over the shared checkout's for the rest of this item —
+so a *later* staleness refusal from it names YOUR worktree's toplevel, never the shared checkout's, even
+after you have independently confirmed the shared checkout is current (`.github#2471`: a worker verified
+the shared checkout `Already up to date` and still hit exit 69, because an earlier `dotnet build` in
+their OWN worktree, from evidence-gathering before this item's build, had gone stale in place). The
+refusal's own message now says so explicitly and names both checkouts. When it fires: do NOT repair the
+shared checkout — it did not cause this — and do NOT merge `origin/main` into a feature branch under
+review to clear it, which moves a head an independent critic may already have confirmed. Rebuild (or
+delete the stale `bin`/`obj` under, then rebuild) the checkout the refusal names, exactly as printed.
+
 ```bash
 scripts/fsgg-coord budget
 scripts/fsgg-coord take --repo <repo> --json
@@ -207,9 +218,69 @@ Ensure the PR closes the item — with a bare `Closes #<n>` (same repo) or `owne
 **never** the board's own `<repo>#<n>` shorthand, which GitHub's closing-keyword grammar does not parse
 and which then never closes the issue and cannot be repaired once merged (.github#2107). `verify-paths`,
 run right after opening the PR (§5), now catches this while it is still free to fix — do not wait for it
-to surface at `done`. Observe the host-acceptance marker for the current head, address confirmed
-actionable feedback, and wait on the typed `landable` verdict for the exact head SHA. Merge only green
-and verify the merge on the default branch.
+to surface at `done`. Observe the host-acceptance marker for the current head and address confirmed
+actionable feedback.
+
+**Immediately after the host-acceptance marker is observed and every repair is complete — and BEFORE
+checking `landable`, not after — make one LIVE call:**
+
+```bash
+scripts/fsgg-coord delivery <ref> --pr <pr> --json
+```
+
+No `--snapshot` — §5's own read uses a different, IO-free path that never reaches this write. This is what makes
+`Client.ensureAuthorization` PATCH the PR's `fsgg:pr-authorization` marker onto the head about to be
+merged (`.github#2488`); nothing else in this documented flow reaches that write, and a worker who skips
+this step reproduces the five-for-five pattern `.github#2488` measured — a merged `item/<n>-*` PR with no
+marker at all (`.github#2496`).
+
+This step moved ahead of the `landable` check (`.github#2504`) because `.github#1858` made
+`claim-generation` a required status context on `main`: GitHub now reports the PR `BLOCKED` — and
+`landable` reads that mergeability verdict, not only its own advisory rollup — until this call's marker
+is current, so waiting for `landable` green *before* making this call is a cycle the marker can never
+break. No push should happen between this call and the merge below, and the ordinary flow does not
+produce one — but the reorder does not merely hope that holds: if a push ever did land in that window,
+`claim-generation`'s own check compares the marker's `head=` field against the PR's actual current head
+and fails closed on any mismatch (`scripts/check-claim-generation.py`), and the workflow re-runs on
+`synchronize` as well as on the marker's `edited` PATCH (`.github/workflows/coherence.yml`) — so a
+stale marker cannot silently carry a merge on a new head; it forces `claim-generation` red again until
+this call is re-issued, which is a zero-cost no-op PATCH-skip against an already-current marker and
+therefore always safe to make again. Making the call here binds the marker to the identical head
+`landable` is about to score and the one that actually merges — the same property §6 has always
+required, reached one step earlier.
+
+This call's JSON output may report `action: refreshReview, stage: reviewActive` at this point, because
+`claim-generation` and any other still-running checks have not yet reported against the marker this call
+just wrote. **That is not a refusal** — the write happens unconditionally (`.github#2488` removed the
+`--apply` gate), and the reported action is only the engine's own next-step suggestion from a review
+chain it re-inspected before the checks caught up. Do not call it a second time; proceed straight to
+waiting on `landable` below.
+
+- **Once per item, at this exact point — after the host-acceptance marker and all repairs, and before
+  `landable`'s check — never after opening the PR, and never on every push.** A call made earlier binds
+  the marker to whatever head existed then; every later push re-stales it, and nothing short of this step
+  calls `delivery` again. Calling it here is also sufficient on its own — `rebindAuthorization` makes a
+  call against an already-current marker a zero-cost no-op PATCH-skip, so this is never a routine
+  per-push network write.
+- **Only the worker currently holding this item's live claim marker may make this call, and only before
+  releasing that claim.** The live form itself refuses otherwise ("no live claim marker can authorize
+  delivery") — a fresh critic or a worker after `done --flip` released the claim cannot make it on your
+  behalf.
+- **It must run from your own credentialed shell — never CI.** The live path's first action is a
+  Coordination Projects-v2 board bootstrap (`Board.bootstrapCached`), a GraphQL read no CI credential in
+  this org's inventory carries (ADR-0019 §1, `.github#2332`); routing this call through CI is refuted by
+  that boundary, not merely undesirable.
+- **A failed call is reported, never silently swallowed — and never blocks the merge.** The write is the
+  only thing this call does; `claim-generation`'s conclusion is no longer advisory anywhere —
+  `.github#1858` armed it into `main`'s required contexts, and `.github#2517` replaced `landable`'s
+  hand-written carve-out with the DERIVED COMPLEMENT of that required set (`Landable.advisoryFrom`), so
+  the engine's own rollup scores it `Blocking` too, agreeing with branch protection rather than
+  contradicting it. Note the failure (to whoever dispatched you, or in the item's own history) and
+  proceed with the merge.
+
+Now wait on the typed `landable` verdict for that exact same head SHA — the marker this call just wrote
+is what lets `claim-generation`, and therefore `landable`, go green. Merge only once `landable` reports
+green for that exact head, and verify the merge on the default branch.
 Then complete every package, deployment, generated-registry, and downstream obligation described in
 [merge-and-release](references/merge-and-release.md).
 For uncommon failure recovery, exact REST recipes, review-thread handling, and incident rationale,
