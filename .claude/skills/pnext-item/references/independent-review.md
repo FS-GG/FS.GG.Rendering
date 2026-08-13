@@ -28,6 +28,18 @@ produces a marker the live engine cannot read — the parser refuses it and name
 `key: value` form in the refusal (`.github#2369`) rather than parking with no signal about what to
 fix or which field was unreadable.
 
+**The `critic` field must be a minted, distinguishing identity, not the bare agent-type string**
+(`.github#2451`). A critic mints one exactly the way a worker does — `eval "$(scripts/fsgg-coord
+whoami --mint)"` — and writes the minted id, never the literal agent-type name (`fsgg-critic-normal`,
+or any future `fsgg-critic-<route>`), into every `critic:` field it posts on a chain. The engine
+enforces this structurally: `Driver.isGenericCriticIdentity` recognizes the `fsgg-critic-<route>`
+shape, and both the ordinary same-critic continuity check (`Driver.parseReviewComments`'s confirmation
+loop) and the critic-succession guard (`Review.criticSuccessionValid`, below) refuse to treat a
+generic value as proof of "the same critic" even when two markers name the identical generic string —
+that equality is satisfiable by any critic ever dispatched at that route and proves nothing about
+which instance posted it. A chain whose confirmation names a generic critic identity fails closed with
+a named reason instead of silently continuing.
+
 <!-- BEGIN GENERATED: fsgg-protocol:lifecycle-policy -->
 *Generated lifecycle boundary. These are machine-owned prerequisites; judgement about the work remains authored.*
 
@@ -247,6 +259,26 @@ verify that the `Verification:` field is present and contains either a reproduci
 checked. This requirement binds the host when relaying worker or critic claims onward, as well as the
 worker and critic who authored them.
 
+## Body-edit provenance — the REST timeline does not surface body edits
+
+When a check turns on whether an issue or PR **body** changed since some point — touch-set honesty,
+delivery-obligation staleness, `.github#2216`'s superseded-declaration hazard — `gh api
+repos/<owner>/<repo>/issues/<n>/timeline` (or its PR-number equivalent) is not evidence either way. That
+endpoint never emits an `edited` event for body edits, so zero results from it mean only that REST has
+nothing to say, not that no edit occurred; treating that absence as a confident "unedited" is the exact
+non-answer-graded-as-a-confident-negative shape **Gate-inversion evidence** above warns against. This
+was measured directly on `.github#2417`: its REST timeline returned zero `edited` events while GraphQL
+showed 5 real body edits, 3 of them after claim (`.github#2456`). The authoritative source for "has this
+body changed since X" is GraphQL's `userContentEdits` connection on the issue or pull request —
+`totalCount` plus, per edit, `editedAt` and `editor`; the simpler `lastEditedAt` scalar answers only
+"has it ever been edited," with no count or history. This repo's shared GraphQL budget is fleet-wide and
+worker-metered (`docs/coordination/graphql-budget.md`) — do not reach it with a hand-built `gh api
+graphql` call; that is the unmetered-principal shape `graphql-monopoly` exists to catch (`#418`, `#528`,
+`#538`). A REST-timeline-only "no edits found" is `NOT_MEASURED` for this question, not a negative
+result — the same **Handoff-assertion provenance** discipline above applies: report what was actually
+checked rather than letting silence read as confirmation, and route the GraphQL read through whatever
+metered access the org provides rather than around it.
+
 ## Root cause, dedupe, and materiality
 
 For every candidate finding, the critic searches the relevant code and history for the cause, then
@@ -365,6 +397,14 @@ that cannot act. Because a critic identity may be an agent-type string rather th
 identity (`fsgg-critic-normal` is one such string — see `.github#2417`'s own evidence), the engine can
 never *detect* despawn as a fact; it only ever consumes an explicit, accountable grant.
 
+**A generic identity cannot BE the exact stuck critic (`.github#2451`).** The same gap that keeps the
+engine from detecting despawn also means a generic `critic:` value can never satisfy the "exact stuck
+critic" requirement below, no matter how the receipt's `original-critic` is spelled: `fsgg-critic-normal`
+equals `fsgg-critic-normal` proves nothing, because every critic ever dispatched at that route would
+produce the same equality. `Review.criticSuccessionValid` refuses a grant whenever the round's recorded
+critic identity is generic (`Driver.isGenericCriticIdentity`), exactly as it refuses a mismatched one —
+see the field requirement above: mint an identity, or succession can never be granted for that round.
+
 The recovery is a typed engine fact, not only prose: `scripts/fsgg-coord review`'s `inspect`/`advance`
 accept an optional critic-succession grant alongside the ordinary snapshot facts. Absent a grant, the
 chain's next action is unconditionally `resumeSameCritic` — the recovery path is never entered by
@@ -376,11 +416,13 @@ A host who has confirmed the original critic is unavailable constructs a grant n
 - `granted-by`: the accountable identity making this determination (typically the host);
 - `candidate-head`: the exact head SHA the stuck round is bound to.
 
-The grant is honored only when it is bound to the *exact* stuck critic and head, and only when both
-`successor-critic` and `granted-by` differ from the implementing worker's identity — an implementer can
-never manufacture its own succession or claim someone else granted it. A mismatched, stale, or
-self-granted attempt is refused and reported distinctly from "no grant was supplied at all," and the
-chain's next action remains `resumeSameCritic`.
+The grant is honored only when it is bound to the *exact* stuck critic and head — which requires that
+critic's identity to be minted and distinguishing, per `.github#2451` above; a generic identity can
+never be "exact" no matter what the receipt asserts — and only when both `successor-critic` and
+`granted-by` differ from the implementing worker's identity — an implementer can never manufacture its
+own succession or claim someone else granted it. A mismatched, stale, generic-critic, or self-granted
+attempt is refused and reported distinctly from "no grant was supplied at all," and the chain's next
+action remains `resumeSameCritic`.
 
 **The successor critic performs a genuinely fresh, full independent review of the current head — never
 a "confirmation" of the despawned critic's finding.** This is what preserves the property the
