@@ -28,6 +28,57 @@ produces a marker the live engine cannot read — the parser refuses it and name
 `key: value` form in the refusal (`.github#2369`) rather than parking with no signal about what to
 fix or which field was unreadable.
 
+**A `pass` verdict additionally requires exactly one `route-applicability` field on that same marker;
+`changes-required` does not require one, though it may carry one for context.** This applies identically
+to the initial marker and to every confirmation marker whose `verdict` is `pass`. The two permitted
+values are `meaningful` and `not-meaningful`; when the value is `not-meaningful`, the accompanying
+`route-not-meaningful-reason` field is bounded to **≤ 500 characters**. Missing, duplicate, empty,
+unknown, mixed-shape, or overlong fields fail the live review-marker parser — and that parser runs only
+at host acceptance, after the whole review chain has already completed (`.github#2483`), so compose the
+field correctly now rather than discover the refusal after three rounds. **Runtime-route evidence gate**
+below states when the value must be `meaningful` versus `not-meaningful` and the full field shape for
+each; the copyable templates immediately below are ready to fill in and post as-is.
+
+Copyable, complete marker templates — fill in the bracketed placeholders and post as-is:
+
+Passing marker, route comparison meaningful for this review subject:
+
+```text
+<!-- fsgg:independent-review:v1 -->
+critic: <minted critic identity>
+reviewed-head: <exact head SHA reviewed>
+verdict: pass
+route-applicability: meaningful
+built-artifact: <artifact exercised>
+executed-command: <command or measurement performed>
+compared-routes: <production route and comparison route>
+observed-result: <observed equality or divergence>
+```
+
+Passing marker, no meaningful multi-route comparison exists for this review subject:
+
+```text
+<!-- fsgg:independent-review:v1 -->
+critic: <minted critic identity>
+reviewed-head: <exact head SHA reviewed>
+verdict: pass
+route-applicability: not-meaningful
+route-not-meaningful-reason: <reason tied to this review subject, ≤ 500 characters>
+```
+
+Changes-required marker (no `route-applicability` field required):
+
+```text
+<!-- fsgg:independent-review:v1 -->
+critic: <minted critic identity>
+reviewed-head: <exact head SHA reviewed>
+verdict: changes-required
+```
+
+The confirmation marker (`fsgg:independent-review-confirmation:v1`) follows the identical rule on its
+own `verdict` field, in addition to its own required `initial-review`, `critic`, `round`,
+`preceding-review`, `reviewed-head` fields listed above.
+
 **The `critic` field must be a minted, distinguishing identity, not the bare agent-type string**
 (`.github#2451`). A critic mints one exactly the way a worker does — `eval "$(scripts/fsgg-coord
 whoami --mint)"` — and writes the minted id, never the literal agent-type name (`fsgg-critic-normal`,
@@ -71,6 +122,31 @@ The host reserves a slot for the critic and keeps the implementing worker alive 
 The critic reviews requirements coverage, correctness, regressions, tests/evidence, architecture and
 ownership boundaries, release obligations, and touch-set honesty.
 
+**Critic dispatch belongs to the host, not the implementer.** "Ask the host to assign a fresh critic
+agent" (`pnext-item` §5) is a request the worker owes the host — never a task the worker discharges
+itself. A worker must not call the `Agent` tool (or any equivalent subagent mechanism) with
+`subagent_type: fsgg-critic-normal`, `fsgg-critic-best`, or any other `fsgg-critic-<route>` type to
+spawn its own critic. That is exactly the route two workers took independently within one run
+(`.github#2462`): each produced a complete, correctly-formed review chain — initial marker,
+`changes-required`, a repair, and a same-critic confirmation — that the host never dispatched and
+could not distinguish from a sanctioned one. Both disclosed the mechanism honestly when asked; the
+record must not depend on that disclosure.
+
+The one stated exception is a **solo `pnext-item` invocation running with no host to ask**. There,
+self-dispatch under `fsgg-critic-<route>` is the only route to review at all, and stays permitted —
+forbidding it outright would leave that supported mode with no review path whatsoever. Outside that
+exception, when no host is dispatching critics, "no independent agent mechanism is available"
+(`pnext-item` §5) applies: stop and report rather than dispatching one's own critic.
+
+**Enforcement here is by convention, not by construction, and this contract does not claim
+otherwise.** The host and every worker post from one shared GitHub account (`host-loop.md`: "every
+worker still authenticates as the one account"), so no marker field — a `dispatched-by` field, a
+host-recorded receipt, a counter-signature — can be made unforgeable between them; a self-dispatching
+worker could write any such field itself. The `critic` field's existing checks above (a minted,
+distinguishing identity; refused when it equals the implementer's own; refused when it is a generic
+agent-type string) remain the full mechanical detection this contract provides, and whether a critic
+was host-dispatched or self-dispatched is not a fact those checks can see.
+
 ## Runtime-route evidence gate
 
 Source review remains required, but it is not sufficient for a runtime-route divergence claim. When
@@ -105,9 +181,11 @@ route-applicability: not-meaningful
 route-not-meaningful-reason: <bounded reason tied to this review subject>
 ```
 
-Missing, duplicate, empty, unknown, mixed-shape, or overlong reason fields fail the live review-marker
-parser. A prose claim or `Verification:` line does not substitute for these fields; source-only review
-therefore cannot produce a valid passing chain when the critic declares the comparison meaningful.
+`route-not-meaningful-reason` is bounded to **≤ 500 characters** — the bound the field's own name
+promises. Missing, duplicate, empty, unknown, mixed-shape, or overlong reason fields fail the live
+review-marker parser. A prose claim or `Verification:` line does not substitute for these fields;
+source-only review therefore cannot produce a valid passing chain when the critic declares the
+comparison meaningful.
 
 This is reusable guidance, not an audio-specific recipe. Rogue3 exposed the shape when a built product
 route emitted `[]` while direct dispatch emitted `[PlaySfx (SoundId "floor-descend", 0.8)]`: the cue map
@@ -442,6 +520,85 @@ exactly as they are for an ordinary or repair-phase chain.
 
 Machine-readable literal: `critic-succession-requires-explicit-host-grant: true` — the recovery is never
 automatic.
+
+### A head that moves AFTER the chain was accepted (`.github#2527`)
+
+Critic succession above covers a chain that is *stuck*; the repair phase covers one that is *exhausted*.
+Neither covers the third case, and it is not exotic: a chain that **completed, passed, and was
+host-accepted**, on a head that then **moved before the merge**. It needs only an acceptance, any delay
+before merge — correctly refusing to merge over a red gate is delay — and `main` moving enough in that
+window to conflict the branch.
+
+Measured live: `.github#2512` / PR #2514 was accepted at `f1d6218d`, held back because `landable` was
+red on an arm the host declined to override, and by the time that cleared two sibling merges had
+conflicted it. The worker merged `origin/main`; the head became `8bb57aae`. The head move was not
+cosmetic — `src/FS.GG.Coord.*` genuinely changed — and the fresh review caught the PR's own release
+notes still claiming that tree was "byte-identical to 0.50.4", **true when first reviewed and false
+after the merge**, bound for an irreversible dual-feed publish through a gate that deliberately does not
+judge prose. The fresh review was not ceremony; it was the only thing standing between a false
+provenance claim and two immutable feeds.
+
+**The stale acceptance never binds the new head.** `acceptedReceipt` goes `null` the moment the head
+moves, and the freshness token changes across the push. That is correct and is not what needed fixing.
+What needed fixing is what came next: the honest response — a full fresh review of the tree that will
+actually merge — posts a **second initial marker**, and the chain then fail-closed with *"the initial
+review marker is carried by 2 comments; exactly one is required"*, which describes the symptom and names
+no remedy.
+
+**Chain retirement.** A chain is retired — excluded from the evidence the protocol classifies — when,
+and only when, a host-acceptance marker
+
+1. names that chain's initial-review comment URL in its `initial-review:` field, **and**
+2. carries an `accepted-head:` that is **not** the current head.
+
+Both facts are read from the acceptance marker's own already-required fields, rather than from a
+grant a caller supplies. That is why this is not a superseding-chain marker or a host grant: the
+one-initial-marker rule is what stops a stranger silently continuing another critic's chain, and adding a
+second, less checkable channel for the same conclusion is how that protection erodes. Two competing
+initial markers with **no** intervening accepted-then-moved head still fail closed, unchanged, and the
+refusal now names which condition of the rule was not met.
+
+**Be precise about what is observed: the marker's STRUCTURE, not the truth of its `accepted-head`.**
+Nothing verifies that the acceptance was genuine, so a forged acceptance marker will retire a live
+chain. This is not the hole it looks like, and the reason matters more than the slogan "observed, not
+asserted", which overstates it. A forged acceptance bound to the *current* head already yields an
+accepted chain outright, with a receipt. Retirement, reached from the same forgery, yields only a chain
+**awaiting a fresh host acceptance at the current head** — strictly less than the forgery it
+presupposes — and it publishes the bogus value in `retiredChains`, where a reader can see it. The
+guarantee is relative, not absolute: retirement grants an attacker who can forge acceptance markers no
+authority they did not already have, and it leaves evidence they would rather not leave.
+
+**Nothing is rewritten.** Retirement is a read-time exclusion, never an edit: the retired critic's
+marker, its confirmations, and the acceptance stay exactly as posted, and re-inspecting the same
+comments at the head that chain reviewed classifies it exactly as it always did. Demoting the superseded
+marker in place — the inert/quoted-marker rule — was considered and rejected: it is cheaper and
+mechanically sound, but it rewrites another critic's durable review evidence, which is what the marker
+rules exist to protect.
+
+**Retirement is a tie-breaker between chains, never a re-classification of one.** It applies only where
+more than one initial marker is present. A single accepted chain whose head has moved is refused exactly
+as before — the head-mismatch refusal is unchanged — so no verdict this protocol could already describe
+moves.
+
+**The fresh chain's critic performs a genuinely full, independent review of the current head**, never a
+confirmation of the retired critic's finding, and never a re-use of the retired chain's verdict. Its
+`reviewed-head` is the current head. The chain then completes exactly as any other does: the same
+`fsgg:review-accepted:v1` host-acceptance marker at the exact new head, the same `landable` verdict, the
+same `delivery` authorization. A retired chain's acceptance grants the new head nothing.
+
+`scripts/fsgg-coord review --json` reports the retirement in `retiredChains`, naming each retired
+chain's `initialReview` URL and the `acceptedHead` it was settled at — so a reader of a PR that visibly
+carries two initial markers can see which chain binds and why, rather than inferring it.
+
+**When the evidence is absent, close and reopen.** If the accepted chain's acceptance marker does not
+name the initial review (an older or hand-written marker), retirement cannot apply, and the manual
+fallback is the one used before this mechanism existed: close the PR **without merging**, reopen the
+same branch as a fresh PR so the new chain starts alone, and leave both original chains intact on the
+closed PR. It costs a PR number, a re-posted obligations declaration and a re-issued `delivery` call,
+and it loses review-thread continuity — which is why it is the fallback and not the mechanism.
+
+Machine-readable literal: `chain-retirement-requires-observed-acceptance-head-move: true` — a second
+chain is never admitted on an assertion.
 
 ### Repair phase
 
