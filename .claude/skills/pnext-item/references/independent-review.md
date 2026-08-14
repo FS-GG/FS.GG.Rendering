@@ -600,6 +600,70 @@ and it loses review-thread continuity — which is why it is the fallback and no
 Machine-readable literal: `chain-retirement-requires-observed-acceptance-head-move: true` — a second
 chain is never admitted on an assertion.
 
+### Reading `review`'s state: a designed wait is not broken evidence (`.github#2549`)
+
+`scripts/fsgg-coord review` reports one closed state and one next action, and two of those words used to
+mislead in opposite directions. Both are fixed; this section is what a host reads instead of
+re-deriving §6 by hand.
+
+**`malformedEvidence` now means the durable evidence is structurally wrong — and only that.** A broken
+or missing marker, a missing critic identity, an unordered round sequence, a round ceiling exceeded,
+missing runtime-route evidence, an unresolved diff audit, an acceptance bound to the wrong head. The
+established recovery for it — close the pull request **without merging** and start a fresh chain — is
+destructive and irreversible, and that is why the word must never appear over a healthy chain. It did:
+PR #2514 was closed and reopened as #2528 on that reading on 2026-08-13, costing a full fresh review.
+
+**`acceptedAwaitingChecks` is the designed post-acceptance window, and it is not an error.** The chain
+is complete: well-formed, host-accepted, one critic, bound to the current head. `stateErrors` is `null`.
+The state carries the pull request's live check word, and the action tells you what to do about it:
+
+| checks | action | what it means |
+|---|---|---|
+| `pending` | `authorizeDelivery` | **Every ordinary landing passes through here.** Make the one live `scripts/fsgg-coord delivery <ref> --pr <n>` call §6 places directly after acceptance. By `.github#2504` the required `claim-generation` context cannot report until that call PATCHes the authorization marker onto this head, so waiting for green *first* is a cycle the marker can never break. |
+| `red`, `conflicted` | `resumeImplementer` | The change is failing CI. That is a defect in the change, not in the review evidence — do not restart the chain. |
+| `unknown` | `park` | The check state could not be READ. Deliberately not grouped with `pending`: `Landable.settled` scores `unknown` with `conflicted` because waiting cannot improve it, `Client` maps it to `ExitNoVerdict`, and a multi-page runs list degrades to it deterministically. Establish the real check state first — it is a no-verdict on the checks, not a wait, and not a finding against the change. |
+| `merged`, `closed` | `park` | The pull request is no longer open; no routine review action remains. |
+
+Never reach for close-and-reopen from `acceptedAwaitingChecks`. Nothing about the evidence is wrong.
+
+**A repair whose subject is a pull request COMMENT rather than the tree.** A critic's findings include
+release obligations, and the obligations declaration is a standing artefact of every item — so a
+`changes-required` verdict whose subject is a comment body recurs by construction. The repair is then a
+comment edit and the head correctly does not move. Measured live on `.github#2534` / PR #2541: the
+round-1 finding was that the `none` obligations declaration did not parse, the repair was an edit to
+that comment, and the round-1 `pass` confirmation names the same `reviewed-head` as the initial review.
+That chain merged, and it is correct — `Driver`'s terminal chain parser has never required a head to
+move between rounds; the invariant it enforces is comment-id monotonicity plus an acceptance bound to
+the latest reviewed head.
+
+The engine cannot observe this on its own: a comment's current body is readable, but "it changed in
+answer to this finding" is not. So, exactly like critic succession above, it is an accountable grant the
+caller supplies to `review --snapshot` as `facts.repairAssertionGranted`, naming:
+
+- `answeredReviewUrl`: the URL of the exact `changes-required` review comment this repair answers;
+- `candidateHeadSha`: the head the repair was made at, which must be the current head;
+- `grantedBy`: the accountable identity attesting the repair is complete (typically the host);
+- `reason`: why the repair's subject was a comment rather than the tree.
+
+**Absent a grant, an unmoved head after `changes-required` still routes to the implementer, unchanged.**
+The grant is refused — and the refusal reported distinctly from "no grant was supplied" — when it names
+a different head, answers a different review comment, carries no granter, is granted by the implementing
+worker, or is granted by the round's own critic. An implementer can never unlock its own round, and a
+critic can never manufacture the trigger it will then confirm.
+
+**Do not manufacture a no-op commit to satisfy the old rule.** A moved head was only ever a proxy for
+"the implementer did work", and an empty commit satisfies that proxy while proving nothing. A grant is
+strictly stronger evidence, because it names an accountable third party who is neither of the two
+parties the round is between.
+
+**Interaction with `.github#2360`:** unchanged. `landable`'s CI verdict stays wholly independent of the
+review chain. `acceptedAwaitingChecks` is never evidence of a green build, and a green build is never
+evidence of a satisfied review chain; the host-acceptance marker and a green `landable` verdict remain
+independently required before merge.
+
+Machine-readable literals: `designed-post-acceptance-wait-is-not-malformed-evidence: true` and
+`comment-shaped-repair-requires-explicit-grant: true`.
+
 ### Repair phase
 
 One bounded escalated attempt runs between an exhausted three-round chain and the human park —
