@@ -67,4 +67,16 @@ jobs:
           target: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
 
       - name: Verify the package
+        env:
+          VERIFY_PACKAGE_JUNIT: artifacts/test-results/verify-package.junit.xml
         run: bash src/FS.GG.Rendering.Skills/verify-package.sh
+
+      # Uploaded on failure too — the receipt names the step that failed, which is the whole
+      # reason the gate writes one rather than leaving the verdict in scrollback.
+      - name: Upload the verify receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-package-junit
+          path: artifacts/test-results/verify-package.junit.xml
+          if-no-files-found: warn

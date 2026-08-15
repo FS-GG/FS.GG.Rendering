@@ -1,0 +1,13 @@
+== 1. stage + derive parity (all product rows staged and content-addressed) ==
+   18 product skill(s) staged & content-addressed
+== 2. a newly added product row is staged from the manifest, even sourced out-of-tree ==
+   synthetic out-of-tree product row flowed from manifest to staged bytes, sidecar included
+== 3. pack + content assert (bodies AND their sidecars) ==
+   nupkg carries the manifest + every delivered SKILL.md + its sidecars + the handle + README
+== 4. content-addressed: every PACKED byte matches its manifest sha256 ==
+   every packed SKILL.md verifies against the manifest — the ADR-0014 record a consumer uses
+== 5. a tampered byte is REJECTED by that same verify (fail-loud) ==
+      content-address mismatch: fs-gg-collision sha256 f8d5b327bd54dd41153b485c253294da00005b4706077a33c4ff77c6341fd362 != manifest cf22a55d88a46e26d47a4c86e35c064b9cc4e0a968b589153283a8afab709d83
+   tampered skill 'fs-gg-collision' rejected by the content-addressed verify, as required
+verify-package: wrote work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+verify-package: OK

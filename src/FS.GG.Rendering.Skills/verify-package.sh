@@ -18,14 +18,85 @@
 # STEP 5 IS THE POINT OF STEP 4. It asserts that the VERDICT of the very function step 4 passes
 # with flips under a mutation. Asserting merely that "a digest changed" would be tautological —
 # any appended byte changes a sha256 — and would pass even against a verify that never ran.
+#
+# A MACHINE-READABLE RECEIPT, OPTIONALLY. Set `VERIFY_PACKAGE_JUNIT=<path>` and the run also writes
+# a JUnit report with one testcase per numbered step. Human stdout is unchanged and the verdict is
+# unchanged; the file exists because a green log is not a receipt anything can read — SDD's
+# `evidence --from-test-report` needs a report a runner produced, and so does CI's test summary.
+# The report is written on FAILURE too (that is the point), including when a helper aborts the run
+# under `set -e`, which the EXIT trap below covers.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_ROOT="$(cd "$HERE/../.." && pwd)"
 MANIFEST="$SRC_ROOT/template/skill-manifest/skill-manifest.json"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
-fail() { echo "verify-package: FAIL — $*" >&2; exit 1; }
+
+JUNIT="${VERIFY_PACKAGE_JUNIT:-}"
+CURRENT_STEP="preconditions"
+JUNIT_WRITTEN=0
+CASE_NAMES=()
+CASE_FAILURES=()   # "" for a passing case, else the failure message
+
+xml_escape() {
+  local s="$1"
+  s="${s//&/&amp;}"; s="${s//</&lt;}"; s="${s//>/&gt;}"; s="${s//\"/&quot;}"
+  printf '%s' "$s"
+}
+
+write_junit() {
+  [ -n "$JUNIT" ] || return 0
+  [ "$JUNIT_WRITTEN" -eq 0 ] || return 0
+  JUNIT_WRITTEN=1
+  mkdir -p "$(dirname "$JUNIT")"
+  local failures=0 i
+  for i in "${!CASE_NAMES[@]}"; do
+    [ -z "${CASE_FAILURES[$i]}" ] || failures=$((failures + 1))
+  done
+  {
+    printf '<?xml version="1.0" encoding="utf-8"?>\n'
+    printf '<testsuites>\n'
+    printf '  <testsuite name="verify-package" tests="%d" failures="%d" errors="0" skipped="0">\n' \
+      "${#CASE_NAMES[@]}" "$failures"
+    for i in "${!CASE_NAMES[@]}"; do
+      printf '    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="%s"' \
+        "$(xml_escape "${CASE_NAMES[$i]}")"
+      if [ -z "${CASE_FAILURES[$i]}" ]; then
+        printf ' />\n'
+      else
+        printf '>\n      <failure message="%s" />\n    </testcase>\n' \
+          "$(xml_escape "${CASE_FAILURES[$i]}")"
+      fi
+    done
+    printf '  </testsuite>\n'
+    printf '</testsuites>\n'
+  } > "$JUNIT"
+  echo "verify-package: wrote $JUNIT"
+}
+
+# Covers both the ordinary exits and an abort under `set -e` (a helper dying mid-step), so a run
+# that ends without reaching `fail` still leaves a receipt naming the step it died in.
+on_exit() {
+  local rc=$?
+  if [ "$rc" -ne 0 ] && [ "$JUNIT_WRITTEN" -eq 0 ]; then
+    CASE_NAMES+=("$CURRENT_STEP")
+    CASE_FAILURES+=("aborted with exit $rc")
+    write_junit
+  fi
+  rm -rf "$WORK"
+}
+trap on_exit EXIT
+
+step() { CURRENT_STEP="$1"; echo "== $1 =="; }
+step_ok() { CASE_NAMES+=("$CURRENT_STEP"); CASE_FAILURES+=(""); echo "   $1"; }
+
+fail() {
+  echo "verify-package: FAIL — $*" >&2
+  CASE_NAMES+=("$CURRENT_STEP")
+  CASE_FAILURES+=("$*")
+  write_junit
+  exit 1
+}
 
 [ -f "$MANIFEST" ] || fail "template/skill-manifest/skill-manifest.json not found (is this a FS.GG.Rendering checkout?)"
 
@@ -53,7 +124,7 @@ PY
 )
 [ "${#DELIVERED_ROWS[@]}" -gt 0 ] || fail "manifest declares no product rows — nothing to deliver"
 
-echo "== 1. stage + derive parity (all product rows staged and content-addressed) =="
+step "1. stage + derive parity (all product rows staged and content-addressed)"
 python3 "$HERE/stage-skills.py" "$WORK/stage" >/dev/null
 diff -q "$MANIFEST" "$WORK/stage/skill-manifest.json" >/dev/null \
   || fail "staged skill-manifest.json is not byte-identical to template/skill-manifest/skill-manifest.json"
@@ -69,9 +140,9 @@ done
 staged_count="$(find "$WORK/stage/skills" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 [ "$staged_count" -eq "${#DELIVERED_ROWS[@]}" ] \
   || fail "staged $staged_count skill dir(s) but the manifest declares ${#DELIVERED_ROWS[@]} product row(s)"
-echo "   ${#DELIVERED_ROWS[@]} product skill(s) staged & content-addressed"
+step_ok "${#DELIVERED_ROWS[@]} product skill(s) staged & content-addressed"
 
-echo "== 2. a newly added product row is staged from the manifest, even sourced out-of-tree =="
+step "2. a newly added product row is staged from the manifest, even sourced out-of-tree"
 # Deliberately sourced from OUTSIDE template/product-skills/, because 3 of this repository's real
 # rows are (fs-gg-feedback-report, fs-gg-samples, fs-gg-project). A stager that derived the path
 # from the id instead of reading `supplied-by` would pass a fixture rooted at product-skills/ and
@@ -101,9 +172,9 @@ python3 "$fixture/src/FS.GG.Rendering.Skills/stage-skills.py" "$fixture/stage" >
   || fail "a new product row was not staged from the manifest"
 [ -f "$fixture/stage/skills/fs-gg-new-row/notes/detail.md" ] \
   || fail "a new product row's sidecar was not staged alongside its body"
-echo "   synthetic out-of-tree product row flowed from manifest to staged bytes, sidecar included"
+step_ok "synthetic out-of-tree product row flowed from manifest to staged bytes, sidecar included"
 
-echo "== 3. pack + content assert (bodies AND their sidecars) =="
+step "3. pack + content assert (bodies AND their sidecars)"
 dotnet pack "$HERE/FS.GG.Rendering.Skills.csproj" -c Release -o "$WORK/out" >/dev/null
 nupkg="$(echo "$WORK"/out/FS.GG.Rendering.Skills.*.nupkg)"
 [ -f "$nupkg" ] || fail "no nupkg produced"
@@ -123,7 +194,7 @@ for row in "${DELIVERED_ROWS[@]}"; do
       || fail "nupkg is missing sidecar rendering-skills/skills/$id/$rel (declared under $supplied)"
   done < <(cd "$SRC_ROOT/$supplied" && find . -type f ! -name SKILL.md -printf '%P\n')
 done
-echo "   nupkg carries the manifest + every delivered SKILL.md + its sidecars + the handle + README"
+step_ok "nupkg carries the manifest + every delivered SKILL.md + its sidecars + the handle + README"
 
 # content_addressed_ok <content-dir>: returns 0 iff every delivered SKILL.md under <content-dir>/skills/
 # digests to its manifest sha256; non-zero (naming the first mismatch) otherwise. This IS the check a
@@ -141,21 +212,22 @@ content_addressed_ok() {
   return 0
 }
 
-echo "== 4. content-addressed: every PACKED byte matches its manifest sha256 =="
+step "4. content-addressed: every PACKED byte matches its manifest sha256"
 unzip -q "$nupkg" "rendering-skills/*" -d "$WORK/unpacked"
 diff -q "$MANIFEST" "$WORK/unpacked/rendering-skills/skill-manifest.json" >/dev/null \
   || fail "packed rendering-skills/skill-manifest.json is not byte-identical to the committed manifest"
 content_addressed_ok "$WORK/unpacked/rendering-skills" \
   || fail "a packed SKILL.md does not match its manifest sha256 (the ADR-0014 record)"
-echo "   every packed SKILL.md verifies against the manifest — the ADR-0014 record a consumer uses"
+step_ok "every packed SKILL.md verifies against the manifest — the ADR-0014 record a consumer uses"
 
-echo "== 5. a tampered byte is REJECTED by that same verify (fail-loud) =="
+step "5. a tampered byte is REJECTED by that same verify (fail-loud)"
 cp -r "$WORK/unpacked/rendering-skills" "$WORK/tampered"
 first_id="${DELIVERED_ROWS[0]%%$'\t'*}"
 echo "CORRUPT" >> "$WORK/tampered/skills/$first_id/SKILL.md"     # bytes drift from the recorded sha256
 if content_addressed_ok "$WORK/tampered"; then
   fail "the content-addressed verify PASSED against a tampered '$first_id' — it is not firing"
 fi
-echo "   tampered skill '$first_id' rejected by the content-addressed verify, as required"
+step_ok "tampered skill '$first_id' rejected by the content-addressed verify, as required"
 
+write_junit
 echo "verify-package: OK"

@@ -1,0 +1,545 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "2.0.0",
+  "generatorVersion": "FS.GG.SDD.Artifacts/1.0.0",
+  "workId": "1240-rendering-skills-package",
+  "sources": [
+    {
+      "path": "readiness/1240-rendering-skills-package/ship.json",
+      "digest": "sha256:ceb755ee34001434022600f7f198e9f0887205b517162c008bdfc39405a27dca",
+      "schemaVersion": 1
+    },
+    {
+      "path": "readiness/1240-rendering-skills-package/verify.json",
+      "digest": "sha256:0ff1cda38d3159405140bd80121c2d4fc4c754c2f7e84dd1c0f84a3114735c75",
+      "schemaVersion": 1
+    },
+    {
+      "path": "readiness/1240-rendering-skills-package/work-model.json",
+      "digest": "sha256:7ff460b85c1450d8c87f0a29563a2173774f1bfef1bd70939563aedb3c1eb023",
+      "schemaVersion": 1
+    }
+  ],
+  "evidence": {
+    "nodes": [
+      {
+        "id": "evidence:EV001",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV002",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV003",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV004",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV005",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV006",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV007",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV008",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV009",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV010",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV011",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV012",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV013",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV014",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV015",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV016",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV017",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV018",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV019",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV020",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV021",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV022",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "evidence:EV023",
+        "state": "real",
+        "rationale": null
+      },
+      {
+        "id": "task:T001",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T002",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T003",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T004",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T005",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T006",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T007",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T008",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T009",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T010",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T011",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T012",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T013",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T014",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T015",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T016",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T017",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T018",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T019",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T020",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T021",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T022",
+        "state": "pending",
+        "rationale": null
+      },
+      {
+        "id": "task:T023",
+        "state": "pending",
+        "rationale": null
+      }
+    ],
+    "dependencies": [
+      {
+        "dependent": "evidence:EV001",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "evidence:EV002",
+        "dependency": "task:T002"
+      },
+      {
+        "dependent": "evidence:EV003",
+        "dependency": "task:T003"
+      },
+      {
+        "dependent": "evidence:EV004",
+        "dependency": "task:T004"
+      },
+      {
+        "dependent": "evidence:EV005",
+        "dependency": "task:T005"
+      },
+      {
+        "dependent": "evidence:EV006",
+        "dependency": "task:T006"
+      },
+      {
+        "dependent": "evidence:EV007",
+        "dependency": "task:T007"
+      },
+      {
+        "dependent": "evidence:EV008",
+        "dependency": "task:T008"
+      },
+      {
+        "dependent": "evidence:EV009",
+        "dependency": "task:T009"
+      },
+      {
+        "dependent": "evidence:EV010",
+        "dependency": "task:T010"
+      },
+      {
+        "dependent": "evidence:EV011",
+        "dependency": "task:T011"
+      },
+      {
+        "dependent": "evidence:EV012",
+        "dependency": "task:T012"
+      },
+      {
+        "dependent": "evidence:EV013",
+        "dependency": "task:T013"
+      },
+      {
+        "dependent": "evidence:EV014",
+        "dependency": "task:T014"
+      },
+      {
+        "dependent": "evidence:EV015",
+        "dependency": "task:T015"
+      },
+      {
+        "dependent": "evidence:EV016",
+        "dependency": "task:T016"
+      },
+      {
+        "dependent": "evidence:EV017",
+        "dependency": "task:T017"
+      },
+      {
+        "dependent": "evidence:EV018",
+        "dependency": "task:T018"
+      },
+      {
+        "dependent": "evidence:EV019",
+        "dependency": "task:T019"
+      },
+      {
+        "dependent": "evidence:EV020",
+        "dependency": "task:T020"
+      },
+      {
+        "dependent": "evidence:EV021",
+        "dependency": "task:T021"
+      },
+      {
+        "dependent": "evidence:EV022",
+        "dependency": "task:T022"
+      },
+      {
+        "dependent": "evidence:EV023",
+        "dependency": "task:T023"
+      },
+      {
+        "dependent": "task:T001",
+        "dependency": "evidence:EV001"
+      },
+      {
+        "dependent": "task:T002",
+        "dependency": "evidence:EV002"
+      },
+      {
+        "dependent": "task:T003",
+        "dependency": "evidence:EV003"
+      },
+      {
+        "dependent": "task:T004",
+        "dependency": "evidence:EV004"
+      },
+      {
+        "dependent": "task:T005",
+        "dependency": "evidence:EV005"
+      },
+      {
+        "dependent": "task:T006",
+        "dependency": "evidence:EV006"
+      },
+      {
+        "dependent": "task:T007",
+        "dependency": "evidence:EV007"
+      },
+      {
+        "dependent": "task:T007",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T008",
+        "dependency": "evidence:EV008"
+      },
+      {
+        "dependent": "task:T008",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T009",
+        "dependency": "evidence:EV009"
+      },
+      {
+        "dependent": "task:T009",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T010",
+        "dependency": "evidence:EV010"
+      },
+      {
+        "dependent": "task:T010",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T011",
+        "dependency": "evidence:EV011"
+      },
+      {
+        "dependent": "task:T011",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T012",
+        "dependency": "evidence:EV012"
+      },
+      {
+        "dependent": "task:T012",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T013",
+        "dependency": "evidence:EV013"
+      },
+      {
+        "dependent": "task:T013",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T014",
+        "dependency": "evidence:EV014"
+      },
+      {
+        "dependent": "task:T014",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T015",
+        "dependency": "evidence:EV015"
+      },
+      {
+        "dependent": "task:T015",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T016",
+        "dependency": "evidence:EV016"
+      },
+      {
+        "dependent": "task:T016",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T017",
+        "dependency": "evidence:EV017"
+      },
+      {
+        "dependent": "task:T017",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T018",
+        "dependency": "evidence:EV018"
+      },
+      {
+        "dependent": "task:T018",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T019",
+        "dependency": "evidence:EV019"
+      },
+      {
+        "dependent": "task:T019",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T020",
+        "dependency": "evidence:EV020"
+      },
+      {
+        "dependent": "task:T020",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T021",
+        "dependency": "evidence:EV021"
+      },
+      {
+        "dependent": "task:T021",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T022",
+        "dependency": "evidence:EV022"
+      },
+      {
+        "dependent": "task:T022",
+        "dependency": "task:T001"
+      },
+      {
+        "dependent": "task:T023",
+        "dependency": "evidence:EV023"
+      },
+      {
+        "dependent": "task:T023",
+        "dependency": "task:T001"
+      }
+    ]
+  },
+  "performanceEvidence": [],
+  "governedReferences": [],
+  "governanceConfig": {
+    "policyPresent": false,
+    "capabilitiesPresent": false,
+    "toolingPresent": false
+  },
+  "readiness": {
+    "shipDisposition": "shipReady",
+    "verificationReadiness": "verificationReady",
+    "counts": {
+      "advisory": 0,
+      "warning": 0,
+      "blocking": 0,
+      "classifiedObligationsUnmet": 0,
+      "journeyObligationsUnmet": 0
+    },
+    "blockingDiagnosticIds": [],
+    "perViewState": [
+      {
+        "view": "ship.json",
+        "state": "current"
+      },
+      {
+        "view": "verify.json",
+        "state": "current"
+      },
+      {
+        "view": "work-model.json",
+        "state": "current"
+      }
+    ]
+  },
+  "diagnostics": []
+}

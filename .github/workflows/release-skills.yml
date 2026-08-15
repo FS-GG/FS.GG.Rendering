@@ -101,6 +101,8 @@ jobs:
 
       # The gate, before either feed is touched. Identical bytes to the pull-request lane.
       - name: Verify the package
+        env:
+          VERIFY_PACKAGE_JUNIT: artifacts/test-results/verify-package.junit.xml
         run: bash src/FS.GG.Rendering.Skills/verify-package.sh
 
       - name: Pack
