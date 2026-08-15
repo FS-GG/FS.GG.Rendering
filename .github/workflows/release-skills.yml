@@ -1,0 +1,222 @@
+# release-skills — pack and publish FS.GG.Rendering.Skills (FS.GG.Rendering#1240).
+#
+# ITS OWN AXIS, DELIBERATELY. This repository already has two version axes: `<FsGgUiVersion>` in
+# `template/base/Directory.Packages.props` versions the FS.GG.UI.* framework set, and
+# `.template.package/FS.GG.UI.Template.fsproj`'s `<Version>` versions the template package.
+# `release-tags.yml` cuts both together. This package moves when a skill BODY changes, which is a
+# third and independent cadence, so it has its own `<Version>`, its own `skills/v*` tag, and this
+# workflow. It is NOT part of the `v*` / `fs-gg-ui-template/v*` triple.
+#
+# ⚠ RENAMING THIS FILE OR THE PACKAGE ID INVALIDATES PUBLICATION. nuget.org Trusted Publishing
+# binds its policy to the repository, the WORKFLOW FILENAME, and the package id together. Until an
+# org owner creates that policy for `FS-GG/FS.GG.Rendering` + `release-skills.yml` +
+# `FS.GG.Rendering.Skills`, the nuget.org step 401s and the release fails loud — which is the
+# correct behaviour, and is recorded as a prerequisite in
+# `work/1240-rendering-skills-package/plan.md` (PM-003) so it is not discovered at tag time.
+#
+# The gate runs BEFORE either push, so a package that cannot verify is never published. That
+# ordering is the whole reason `verify-package.sh` is a script and not inline YAML: this workflow
+# and `skills-package.yml` run the identical bytes.
+
+name: release-skills
+
+on:
+  push:
+    tags: ["skills/v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Actually push to the feeds (false = pack-only dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-skills-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Pack & publish FS.GG.Rendering.Skills
+    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+          cache: false
+
+      - name: Resolve version and publish decision
+        id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          DISPATCH_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          proj=src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
+          version="$(dotnet msbuild "$proj" -getProperty:Version | tr -d '[:space:]')"
+          if [ -z "$version" ]; then
+            echo "::error::could not read <Version> from $proj (build defect); refusing to publish."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # A `-preview` package is INVISIBLE to the shared Renovate preset (ignoreUnstable: true),
+          # so no consumer would ever be bumped to it — which defeats the point of shipping the
+          # skills as a package at all. Refuse rather than publish something nothing can see.
+          case "$version" in
+            *-*)
+              echo "::error::version '$version' is a prerelease. The org's Renovate preset sets ignoreUnstable=true, so consumers would never see it. Publish a stable 0.x version."
+              exit 1 ;;
+          esac
+
+          if [ "$EVENT" = "push" ]; then
+            # The tag is a coherence check against the evaluated version, never the source of truth.
+            tag_version="${REF#skills/v}"
+            if [ "$tag_version" != "$version" ]; then
+              echo "::error::tag $REF ($tag_version) does not match csproj <Version> ($version)."
+              exit 1
+            fi
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          elif [ "$DISPATCH_PUBLISH" = "true" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "Pack-only dry run (workflow_dispatch without publish:true)."
+          fi
+
+      - uses: ./.github/actions/locked-restore
+        with:
+          target: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
+
+      # The gate, before either feed is touched. Identical bytes to the pull-request lane.
+      - name: Verify the package
+        env:
+          VERIFY_PACKAGE_JUNIT: artifacts/test-results/verify-package.junit.xml
+        run: bash src/FS.GG.Rendering.Skills/verify-package.sh
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          dotnet pack src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj \
+            -c Release -o artifacts/packages
+
+      - name: Push to org GitHub Packages feed
+        if: steps.v.outputs.push == 'true'
+        run: |
+          set -euo pipefail
+          dotnet nuget push "artifacts/packages/FS.GG.Rendering.Skills.*.nupkg" \
+            --source https://nuget.pkg.github.com/FS-GG/index.json \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      # nuget.org dual-publish (ADR-0012/0013). Pushes the BYTE-IDENTICAL org-feed .nupkg — no
+      # re-pack — and only AFTER the org-feed push, which is the gated ordering ADR-0012 §4
+      # requires. Same user fallback as release.yml.
+      - name: NuGet login (OIDC to a short-lived nuget.org key)
+        if: steps.v.outputs.push == 'true'
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+
+      - name: Push byte-identical package to nuget.org
+        if: steps.v.outputs.push == 'true'
+        run: |
+          set -euo pipefail
+          dotnet nuget push "artifacts/packages/FS.GG.Rendering.Skills.*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --skip-duplicate
+
+      # A green push step proves the request was accepted, not that what landed is what was meant.
+      # Download both feeds' copies of the exact version and compare the PAYLOAD digest — excluding
+      # the signature and the core-properties part, which each feed rewrites — then re-derive one
+      # body's digest from the downloaded artifact and check it against the committed manifest.
+      - name: Verify the published bytes on both feeds
+        if: steps.v.outputs.push == 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          lower="fs.gg.rendering.skills"
+          work="$(mktemp -d)"
+
+          fetch() {                        # fetch <name> <base-url> <auth-header-or-empty>
+            local name="$1" url="$2" auth="$3" i
+            for i in $(seq 1 12); do
+              if [ -n "$auth" ]; then
+                curl -fsSL -H "$auth" -o "$work/$name.nupkg" "$url" && return 0
+              else
+                curl -fsSL -o "$work/$name.nupkg" "$url" && return 0
+              fi
+              echo "  $name not indexed yet (attempt $i/12); waiting 15s"
+              sleep 15
+            done
+            echo "::error::$name never served $VERSION after 12 attempts"; return 1
+          }
+
+          fetch nugetorg \
+            "https://api.nuget.org/v3-flatcontainer/$lower/$VERSION/$lower.$VERSION.nupkg" ""
+          fetch ghpkg \
+            "https://nuget.pkg.github.com/FS-GG/download/$lower/$VERSION/$lower.$VERSION.nupkg" \
+            "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+
+          payload_digest() {               # digest of the payload, feed-rewritten parts excluded
+            local pkg="$1" dir; dir="$(mktemp -d)"
+            unzip -q "$pkg" -d "$dir"
+            rm -f "$dir/.signature.p7s"
+            rm -rf "$dir/package/services/metadata/core-properties"
+            ( cd "$dir" && find . -type f | LC_ALL=C sort \
+                | xargs sha256sum | sha256sum | cut -d' ' -f1 )
+          }
+
+          a="$(payload_digest "$work/nugetorg.nupkg")"
+          b="$(payload_digest "$work/ghpkg.nupkg")"
+          echo "nuget.org payload sha256:       $a"
+          echo "GitHub Packages payload sha256: $b"
+          [ "$a" = "$b" ] || { echo "::error::the two feeds served DIFFERENT payloads for $VERSION"; exit 1; }
+
+          # Re-derive every body's digest from the PUBLISHED artifact and check it against the
+          # committed manifest — acceptance 2 of FS.GG.Rendering#1240, made against the bytes a
+          # consumer actually receives rather than against the working tree.
+          pub="$(mktemp -d)"
+          unzip -q "$work/nugetorg.nupkg" "rendering-skills/*" -d "$pub"
+          python3 - "$pub/rendering-skills" template/skill-manifest/skill-manifest.json <<'PY'
+          import hashlib, json, os, sys
+          root, manifest_path = sys.argv[1], sys.argv[2]
+          rows = [s for s in json.load(open(manifest_path))["skills"] if s.get("scope") == "product"]
+          bad = []
+          for row in rows:
+              body = os.path.join(root, "skills", row["id"], "SKILL.md")
+              if not os.path.isfile(body):
+                  bad.append(f"{row['id']}: absent from the published package"); continue
+              raw = open(body, "rb").read()
+              if raw.startswith(b"\xef\xbb\xbf"):
+                  raw = raw[3:]
+              got = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
+              if got != row["sha256"]:
+                  bad.append(f"{row['id']}: published {got} != manifest {row['sha256']}")
+          if bad:
+              print("::error::published bytes do not match the manifest:\n  " + "\n  ".join(bad))
+              raise SystemExit(1)
+          print(f"published bytes verified: {len(rows)} of {len(rows)} bodies match the manifest sha256")
+          PY
+
+          {
+            echo "### FS.GG.Rendering.Skills $VERSION"
+            echo ""
+            echo "- nuget.org: https://www.nuget.org/packages/FS.GG.Rendering.Skills/$VERSION"
+            echo "- payload sha256 (both feeds): \`$a\`"
+            echo "- every declared body re-verified against the committed manifest from published bytes"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,709 @@
+schemaVersion: 1
+workId: 1240-rendering-skills-package
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1240-rendering-skills-package/spec.md
+sourceClarifications: work/1240-rendering-skills-package/clarifications.md
+sourceChecklist: work/1240-rendering-skills-package/checklist.md
+sourcePlan: work/1240-rendering-skills-package/plan.md
+sourceTasks: work/1240-rendering-skills-package/tasks.yml
+sourceAnalysis: readiness/1240-rendering-skills-package/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1240-rendering-skills-package/analysis.json
+    digest: 26d67e324e4d99047f87f0c3d9f3d80a9e7e2b71aad09f59ce9a83022c541ba5
+    schemaVersion: 1
+  - label: checklist
+    path: work/1240-rendering-skills-package/checklist.md
+    digest: 0bc2f06785d65e799389a65dd92e804669a50f3491efad6aef82d3149b81c800
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1240-rendering-skills-package/clarifications.md
+    digest: 8daa43f68f81b90cab3dbc3fe80c09f4404a01baf561c4215ff1f2318f15b3df
+    schemaVersion: 1
+  - label: plan
+    path: work/1240-rendering-skills-package/plan.md
+    digest: 1513b6474f686d9e87e1f866a002fc4905dc4cc1c6c0d46ca4727eb19e1f99c5
+    schemaVersion: 1
+  - label: spec
+    path: work/1240-rendering-skills-package/spec.md
+    digest: a934c9abb5b32aed6761ff0b033401e10fa2db2a6b1c97e3f6f5ffe4cf2bc016
+    schemaVersion: 1
+  - label: tasks
+    path: work/1240-rendering-skills-package/tasks.yml
+    digest: e0f9e98b1603e33716a5a2296bfd0cd625b8fe8ec9684660d30b74ddbe5b5957
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-007]
+    obligationRefs: [EV001]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["verify-package.sh step 1 stages from template/skill-manifest/skill-manifest.json and asserts the staged directory count equals the declared product-row count: 18 of 18. Inversion M4 in gate-inversion-evidence.md stages one undeclared directory and the step reds."]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["stage-skills.py recomputes each SKILL.md digest from the source bytes and refuses to stage on mismatch; step 1 then re-checks all 18 against the manifest. All 18 also compare equal to the sha256 .github's registry/skills.yml declares for the same ids."]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003, PD-008]
+    obligationRefs: [EV003]
+    artifacts: [".github/workflows/release-skills.yml", src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: ".github/workflows/release-skills.yml"
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["verify-package.sh step 4 unzips the built nupkg and verifies every body from PACKED bytes, not from the working tree. release-skills.yml's published-bytes step extends the same comparison to the two feeds' downloaded artifacts; it is unexercised until the first skills/v* tag."]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/gate-inversion-evidence.md, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/gate-inversion-evidence.md
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["verify-package.sh step 5 appends CORRUPT to a packed body and requires the step-4 verdict function to reject it, naming the row and both digests. Inversion M1 neuters that function and step 5 reds with 'it is not firing'."]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV005]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/gate-inversion-evidence.md]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+      - kind: verification
+        path: work/1240-rendering-skills-package/gate-inversion-evidence.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["The unit of delivery is the row's whole directory. Step 3 asserts every non-SKILL.md file under each row's supplied-by is packed; step 2's synthetic fixture asserts the same for a new row. Inversion M2 drops sidecars and both assertions are available to catch it."]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: [FR-006]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV006]
+    artifacts: [work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["`dotnet fsi scripts/generate-skill-manifest.fsx --check` reports 'skill-manifest: up to date (18 skills)', and `git diff HEAD -- .template.config template/ scripts/` is empty: the template emission is byte-identical before and after this change."]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV007]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/gate-inversion-evidence.md]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+      - kind: verification
+        path: work/1240-rendering-skills-package/gate-inversion-evidence.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["DEC-001 (pack from where they are, nothing relocated) is realized by reading each row's supplied-by. Inversion M3 replaces that read with an id-derived path and the stager refuses at fs-gg-feedback-report, which is the decision's own justification measured."]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV008]
+    artifacts: [src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj, src/FS.GG.Rendering.Skills/build/FS.GG.Rendering.Skills.props, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/build/FS.GG.Rendering.Skills.props
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PC-001: step 3 asserts the nupkg carries build/FS.GG.Rendering.Skills.props, README.md and rendering-skills/skill-manifest.json, and one rendering-skills/skills/<id>/SKILL.md per row."]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV009]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, src/FS.GG.Rendering.Skills/verify-package.sh]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PC-002: step 3 enumerates each row's source directory and requires every file in it to appear in the nupkg under rendering-skills/skills/<id>/."]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV010]
+    artifacts: [work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PC-003: .template.config/template.json is not in this change's diff, so the fs-gg-ui template's emission contract is unchanged."]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-008]
+    obligationRefs: [EV011]
+    artifacts: [".github/workflows/release-skills.yml"]
+    sourceRefs:
+      - kind: verification
+        path: ".github/workflows/release-skills.yml"
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PC-004: release-skills.yml triggers on push of tags skills/v* only, and asserts the tag's version equals the evaluated csproj <Version> before packing."]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV012]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-001 observed: step 1 green, 18 of 18. Inverted by M4."]
+  - id: EV013
+    kind: verification
+    subject:
+      type: task
+      id: T013
+    taskRefs: [T013]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV013]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-002 observed: step 2 green — a synthetic row whose supplied-by is template/somewhere-else/new-row/skill/ staged with its sidecar. Inverted by M3 and M2."]
+  - id: EV014
+    kind: verification
+    subject:
+      type: task
+      id: T014
+    taskRefs: [T014]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV014]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-003 observed: step 4 green against bytes unzipped from the nupkg."]
+  - id: EV015
+    kind: verification
+    subject:
+      type: task
+      id: T015
+    taskRefs: [T015]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV015]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/gate-inversion-evidence.md, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/gate-inversion-evidence.md
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-004 observed: step 5 green — tampered fs-gg-collision rejected, sha256 f8d5b327.. != manifest cf22a55d... Inverted by M1."]
+  - id: EV016
+    kind: verification
+    subject:
+      type: task
+      id: T016
+    taskRefs: [T016]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV016]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1240-rendering-skills-package/test-results/verify-package.txt]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: work/1240-rendering-skills-package/test-results/verify-package.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-005 observed: step 3 green including every sidecar. Inverted by M2."]
+  - id: EV017
+    kind: verification
+    subject:
+      type: task
+      id: T017
+    taskRefs: [T017]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV017]
+    artifacts: [work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-006 observed: generate-skill-manifest.fsx --check green (18 skills), and no tracked file under .template.config/, template/ or scripts/ is modified by this change."]
+  - id: EV018
+    kind: verification
+    subject:
+      type: task
+      id: T018
+    taskRefs: [T018]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV018]
+    artifacts: [".github/workflows/release-skills.yml", src/FS.GG.Rendering.Skills/verify-package.sh]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+      - kind: verification
+        path: ".github/workflows/release-skills.yml"
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["VO-007 observed: all 18 packed digests equal the sha256 .github's registry/skills.yml declares; the same comparison is re-run against published bytes by release-skills.yml."]
+  - id: EV019
+    kind: verification
+    subject:
+      type: task
+      id: T019
+    taskRefs: [T019]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV019]
+    artifacts: [src/FS.GG.Rendering.Skills/README.md, work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/README.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PM-001: nothing is removed or re-gated; template-created trees are unaffected and no consumer must adopt the package for existing behaviour to hold."]
+  - id: EV020
+    kind: verification
+    subject:
+      type: task
+      id: T020
+    taskRefs: [T020]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV020]
+    artifacts: [work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PM-002: the .github rendering-skills contract row cannot be written until the package is live on the feed, so it is owned by .github#2639 and follows this publication."]
+  - id: EV021
+    kind: verification
+    subject:
+      type: task
+      id: T021
+    taskRefs: [T021]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV021]
+    artifacts: [".github/workflows/release-skills.yml", work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+      - kind: verification
+        path: ".github/workflows/release-skills.yml"
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["PM-003: the first nuget.org push needs an org-owner-created Trusted Publishing policy bound to this repository, release-skills.yml and FS.GG.Rendering.Skills. Recorded before tag time; the workflow fails loud rather than silently skipping if it is absent."]
+  - id: EV022
+    kind: verification
+    subject:
+      type: task
+      id: T022
+    taskRefs: [T022]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-006]
+    obligationRefs: [EV022]
+    artifacts: [work/1240-rendering-skills-package/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: work/1240-rendering-skills-package/plan.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["GV-001: no generated view in this repository changes. The producer manifest is consumed, not reproduced, so registry/skills.yml needs no reconcile."]
+  - id: EV023
+    kind: verification
+    subject:
+      type: task
+      id: T023
+    taskRefs: [T023]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV023]
+    artifacts: [src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj, src/FS.GG.Rendering.Skills/stage-skills.py]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/stage-skills.py
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1240-rendering-skills-package/test-results/verify-package.junit.xml
+      digest: "sha256:5a15632dd4d8ad69854c3f62790acc798da57940ef9b06f1a3524d4403ecde93"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: ["GV-002: the staged tree is written under $(BaseIntermediateOutputPath)skills-staging (obj/, gitignored), rebuilt from scratch on every pack, and never committed."]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

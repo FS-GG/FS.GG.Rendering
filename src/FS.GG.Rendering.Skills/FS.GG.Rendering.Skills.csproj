@@ -1,0 +1,118 @@
+<!--
+  FS.GG.Rendering.Skills — this repository's OWNER-authored PRODUCT skill bytes as ONE versioned,
+  content-addressed package (ADR-0062 substrate / ADR-0063 owner-repo byte source / ADR-0014
+  content-addressed materialize-and-verify). FS.GG.Rendering#1240, closing the byte-SOURCE gap
+  that .github#2380 measured and .github#2545 routed.
+
+  WHY THIS EXISTS. This repository's 18 `scope: product, owner: fs-gg-rendering` skill bodies have
+  had exactly one delivery channel: the `fs-gg-ui` `dotnet new` template. That template emits them
+  correctly and unconditionally — but a product scaffolded through any OTHER workspace provider
+  never restores it, so those trees receive none of them. Measured on `EHotwagner/S.I.R.`
+  (`providerName: fable-game`): 42 driver paths, 16 process skills, 2 game-skill paths, and zero
+  Rendering-owned product skills — including `fs-gg-feedback-report`, whose predicate is `always`.
+
+  This is the third instance of the class ADR-0063 named: "declared AND gated-in AND
+  supplied-from-nowhere … the `owner`/`source` fields name where the bytes are, and nothing reads
+  them for delivery." The first two (`fs-gg-playtest`, the `workRoadmap` driver) were closed by
+  publishing an owner package each. This is the third, and it takes the same shape, deliberately:
+  `.github`'s `src/FS.GG.Drivers` and `FS.GG.Game`'s `src/FS.GG.Game.Skills` are its siblings.
+
+  WHY NOT TEACH `.github` TO CARRY THESE BYTES. That route was asked for and refuted. `.github`'s
+  transport reads `REPO_ROOT/<supplied-by>/…` and its CI has no FS.GG.Rendering checkout, so it
+  would need a FROZEN COPY of this repository's SKILL.md bytes — the restatement ADR-0058 forbids,
+  ADR-0062 replaces, and ADR-0063 rules out. `.github#1308` reached that conclusion for the game
+  class and closed superseded with no `.github` change.
+
+  A C# project in an F# repository, and that is deliberate: it compiles nothing, so it needs no
+  F# toolchain, no FSharp.Core, and no lockfile entries. Same choice as both siblings.
+
+  THIS PACKAGE IS AN ADDITIONAL CHANNEL, NOT A REPLACEMENT. `.template.config/template.json` is
+  untouched by the change that introduced this project. Trees the `fs-gg-ui` template creates keep
+  getting these skills from the template; trees it does not create can now get them from here.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A content-only package: it ships skill bytes and a content handle, no assembly.
+       Directory.Build.local.props adds FSharp.Core to every project for the F# source projects;
+       this one compiles nothing, so it needs no dependency and its lockfile stays empty. -->
+  <ItemGroup>
+    <PackageReference Remove="FSharp.Core" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- A TFM is still required for `dotnet pack`; net10.0 matches global.json's SDK floor.
+         IncludeBuildOutput=false means no lib/ folder is produced or packed. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+
+    <!-- No assembly is produced, so there is no public surface to document, baseline, or validate.
+         Turn off the repo-wide expectations that assume a compiled F# project. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnablePackageValidation>false</EnablePackageValidation>
+
+    <IsPackable>true</IsPackable>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <PackageId>FS.GG.Rendering.Skills</PackageId>
+
+    <!-- OWN VERSION CADENCE, and it is neither of this repository's other two version axes.
+         `<FsGgUiVersion>` in template/base/Directory.Packages.props versions the FS.GG.UI.*
+         framework set; `.template.package/FS.GG.UI.Template.fsproj`'s `<Version>` versions the
+         template package. This package's contents move when a skill BODY changes, which is a
+         third, independent cadence — so it carries its own number and its own `skills/v*` tag,
+         and it is deliberately not a member of FS.GG.Rendering.slnx.
+         0.1.0 — first release (FS.GG.Rendering#1240). -->
+    <Version>0.1.0</Version>
+
+    <Description>FS.GG.Rendering's owner-authored product skill bytes (fs-gg-scene, fs-gg-symbology, fs-gg-feedback-report, …) as one versioned artifact, with template/skill-manifest/skill-manifest.json as the content-addressed record. A scaffold materializer pins it, restores it at build time, and materializes the skills into a product tree's skill roots at scaffold time — including trees the fs-gg-ui template does not create (ADR-0062, ADR-0063; ADR-0014 verify).</Description>
+    <PackageTags>fsgg;rendering;skills;product;scaffold;dotnet</PackageTags>
+    <PackageProjectUrl>https://github.com/FS-GG/FS.GG.Rendering/tree/main/src/FS.GG.Rendering.Skills</PackageProjectUrl>
+
+    <!-- NU5128: a package with no lib/ref assembly and no dependencies. That is exactly what a
+         content-only skills package IS (SuppressDependenciesWhenPacking above), not a defect. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <!-- Where the skill bytes are staged before packing: under obj/ (gitignored), regenerated on
+         every pack, so the derived set is never committed and cannot go stale against the manifest
+         it is derived from. BaseIntermediateOutputPath (obj/) is resolved in the SDK props imported
+         ABOVE this body; IntermediateOutputPath is not set until the SDK targets run (after the
+         body), so using it here would evaluate empty and stage into src/. -->
+    <SkillsStagingDir>$(BaseIntermediateOutputPath)skills-staging</SkillsStagingDir>
+  </PropertyGroup>
+
+  <!-- The consumer's handle to the packed content, at the well-known build/ path NuGet
+       auto-imports. There is no materialize logic here, by design — that belongs to the consuming
+       scaffold materializer, which is the only component that knows a product tree's skill roots.
+       README.md is packed to the package root by Directory.Build.local.props:124-125; do NOT
+       re-add it here or NuGet raises NU5118 (duplicate /README.md). -->
+  <ItemGroup>
+    <None Include="build/FS.GG.Rendering.Skills.props" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+  <!-- Derive the packed skill set from template/skill-manifest/skill-manifest.json at pack time,
+       then add the staged files as package content. TargetsForTfmSpecificContentInPackage is
+       NuGet's supported hook for COMPUTED package content — items added there land in the nupkg
+       without being static <None> globs, which MSBuild evaluates before StageSkills could have
+       written anything. -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddSkillsContent</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <Target Name="StageSkills" BeforeTargets="Pack">
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/stage-skills.py&quot; &quot;$(SkillsStagingDir)&quot;" />
+  </Target>
+
+  <Target Name="AddSkillsContent" DependsOnTargets="StageSkills">
+    <ItemGroup>
+      <_SkillsStaged Include="$(SkillsStagingDir)/**/*" />
+      <!-- Constant folder PackagePath: NuGet appends each glob item's RecursiveDir-relative path
+           (skill-manifest.json, skills/fs-gg-scene/SKILL.md,
+           skills/fs-gg-feedback-report/scripts/feedback-tool.fsx, …) under rendering-skills/. -->
+      <TfmSpecificPackageFile Include="@(_SkillsStaged)">
+        <PackagePath>rendering-skills/</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
+
+</Project>

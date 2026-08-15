@@ -1,0 +1,27 @@
+<!--
+  FS.GG.Rendering.Skills — the consumer handle.
+
+  NuGet auto-imports build/<PackageId>.props into any project that references this package, so a
+  consumer gets $(FsggRenderingSkillsContentDir) pointing at the packed content root without
+  hard-coding a version-shaped path under ~/.nuget/packages.
+
+  It exposes a PATH and nothing else. There is deliberately no materialize target here: laying
+  skills into a product tree's skill roots requires knowing that tree's roots and its scaffold
+  parameters, which only the consuming scaffold materializer knows. This package's job ends at
+  "here are the bytes and the record that says what they should hash to".
+
+  The `Condition` lets a consumer override the directory (a source build, a test fixture) without
+  editing this file, which is a package artifact they cannot edit.
+
+  Under $(FsggRenderingSkillsContentDir):
+    skill-manifest.json        the delivered set + per-skill canonical-body sha256 (ADR-0014)
+    skills/<id>/SKILL.md       the body for each product row
+    skills/<id>/**             that row's sidecars, where it has any
+-->
+<Project>
+
+  <PropertyGroup>
+    <FsggRenderingSkillsContentDir Condition="'$(FsggRenderingSkillsContentDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../rendering-skills'))</FsggRenderingSkillsContentDir>
+  </PropertyGroup>
+
+</Project>
