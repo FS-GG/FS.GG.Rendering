@@ -1100,11 +1100,11 @@ transition, not completion, and the live claim stays with you.
 # ONE COMMAND. Do NOT hand-roll this gate — see the box below for why that instruction is the whole
 # point. It polls until the verdict SETTLES and exits 0 ONLY on green.
 #
-# `--require fsgg:review-accepted:v1`: asserted HERE, immediately before merge, because this is the
+# `--require fsgg:review-decision/v2`: asserted HERE, immediately before merge, because this is the
 # point after which the host's exact-SHA review-acceptance marker (§5, `independent-review.md`) is
 # expected to already exist. Its absence downgrades an otherwise-green verdict to PENDING (7) rather
 # than merging past a chain nobody accepted (.github#2360, closed loop: .github#2425).
-scripts/fsgg-coord landable <pr> --wait --require fsgg:review-accepted:v1 || exit 1
+scripts/fsgg-coord landable <pr> --wait --require fsgg:review-decision/v2 || exit 1
 
 # MERGE over REST. This is the DEFAULT here, not a rate-limit workaround (#564) — see below.
 # `<pr>` is the PULL number; `<n>` is the ITEM/issue number. They are NOT the same, and this fence
@@ -1467,11 +1467,11 @@ jq -n --arg t "<title>" --rawfile b pr-body.md \
 
 # WATCH the checks  (gh pr checks is GraphQL)
 # Nothing changes here on an exhausted budget: `landable` is REST all the way down, so it is the same
-# one command as §5, INCLUDING `--require fsgg:review-accepted:v1` — this is still the merge-time call,
+# one command as §5, INCLUDING `--require fsgg:review-decision/v2` — this is still the merge-time call,
 # just made under a different budget constraint. This section used to carry a SECOND, hand-copied
 # transcription of the gate — the structural reason it kept rotting (#724). There is now nothing to
 # keep in step.
-scripts/fsgg-coord landable <pr> --wait --require fsgg:review-accepted:v1
+scripts/fsgg-coord landable <pr> --wait --require fsgg:review-decision/v2
 ```
 
 `gh pr checks <pr> --watch` itself is fine in a worktree — it is GraphQL, but it reads the API and
