@@ -1,0 +1,70 @@
+# skills-package — the pull-request gate for FS.GG.Rendering.Skills (FS.GG.Rendering#1240).
+#
+# The whole verdict lives in `src/FS.GG.Rendering.Skills/verify-package.sh`, and this workflow only
+# calls it. That is deliberate and is the same choice both sibling packages made: nothing executes
+# a workflow, so a check written as inline YAML cannot be run by the person who has to fix it, and
+# drifts from the local command the moment either is edited.
+#
+# WHY THE PATH FILTER REACHES BEYOND THE PACKAGE DIRECTORY. The package's content is DERIVED from
+# `template/skill-manifest/skill-manifest.json` and from the skill bodies that manifest points at.
+# A change to a body without a manifest regeneration makes the staged digest disagree with the
+# recorded one, and `stage-skills.py` refuses — correctly, but only if this gate runs. So the
+# filter follows the derivation, not the directory: the manifest, and every tree a `supplied-by`
+# names. Those trees are `template/product-skills/`, `template/feedback-report/skill/`,
+# `template/fragments/samples/skill/` and `template/base/.agents/skills/` — the three out-of-tree
+# ones are exactly the rows a directory-shaped filter would have missed, for the same reason a
+# directory-shaped glob would have missed them in the stager.
+
+name: skills-package
+
+on:
+  pull_request:
+    paths:
+      - "src/FS.GG.Rendering.Skills/**"
+      - "template/skill-manifest/skill-manifest.json"
+      - "template/product-skills/**"
+      - "template/feedback-report/skill/**"
+      - "template/fragments/samples/skill/**"
+      - "template/base/.agents/skills/**"
+      - ".github/workflows/skills-package.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/FS.GG.Rendering.Skills/**"
+      - "template/skill-manifest/skill-manifest.json"
+      - "template/product-skills/**"
+      - "template/feedback-report/skill/**"
+      - "template/fragments/samples/skill/**"
+      - "template/base/.agents/skills/**"
+      - ".github/workflows/skills-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skills-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify the rendering-skills package (derive, pack, content-address, fail-loud)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+          cache: false
+
+      # This project references nothing, so its committed lockfile is the empty shape. Restoring it
+      # in locked mode is still the org contract, and it keeps the assertion honest: if a dependency
+      # ever appears here, the empty lockfile reds instead of resolving quietly.
+      - uses: ./.github/actions/locked-restore
+        with:
+          target: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
+
+      - name: Verify the package
+        run: bash src/FS.GG.Rendering.Skills/verify-package.sh
