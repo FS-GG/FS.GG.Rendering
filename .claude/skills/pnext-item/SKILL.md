@@ -208,8 +208,9 @@ human/action` and release the claim only if that repair phase exhausts or its re
 unavailable.
 
 [independent-review](references/independent-review.md) is the binding contract for materiality, critic
-ownership, the durable PR marker, direct filing, confirmation, and host verification. Do not merge
-without its passing review evidence and the host's exact-SHA `fsgg:review-accepted:v1` marker. If no independent agent mechanism is available, stop and report
+ownership, the durable PR record, direct filing, confirmation, and host verification. Do not merge
+without its passing review evidence and exact-SHA structured v2 acceptance record, authored through
+`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. If no independent agent mechanism is available, stop and report
 that the review gate is unavailable; self-review does not satisfy it.
 
 ## 6. Merge and obligations

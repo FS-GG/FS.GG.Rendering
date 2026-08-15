@@ -1,5 +1,10 @@
 # Independent review and material filing
 
+> **M4 structured-authority rule:** New review, confirmation, and acceptance evidence is written only
+> as digest-chained `<!-- fsgg:review-decision/v2 -->` JSON records described in
+> `docs/coordination/structured-decisions.md`. The v1 examples below are the temporary read-only
+> compatibility projection and must not be authored for new decisions. Narrative edits are not authority.
+
 <!-- BEGIN GENERATED: fsgg-protocol:review-policy -->
 *Generated review contract. The marker parser and receipt validator consume these exact values.*
 
@@ -37,9 +42,10 @@ unknown, mixed-shape, or overlong fields fail the live review-marker parser — 
 at host acceptance, after the whole review chain has already completed (`.github#2483`), so compose the
 field correctly now rather than discover the refusal after three rounds. **Runtime-route evidence gate**
 below states when the value must be `meaningful` versus `not-meaningful` and the full field shape for
-each; the copyable templates immediately below are ready to fill in and post as-is.
+each. The shapes below document legacy v1 reads only; never post them for a new decision.
 
-Copyable, complete marker templates — fill in the bracketed placeholders and post as-is:
+**Copyable, complete marker templates (legacy read-only):** retained only to explain compatibility
+parsing; do not post these for new decisions.
 
 Passing marker, route comparison meaningful for this review subject:
 
@@ -283,7 +289,7 @@ anything, because `if: false` on every step and `continue-on-error` are each gre
 
 ### Worked example
 
-`FS.GG.Templates#379`'s lane-coverage guard states at `tests/composition/lib/lane-coverage.sh:37-38`
+`FS.GG.Templates#379`'s lane-coverage guard states at `FS-GG/FS.GG.Templates@9e59fab2de74c7190055eedd30507074301d411a:tests/composition/lib/lane-coverage.sh:122-125`
 that it exists *"so that deleting the step reds too"*. It was implemented as an **unanchored**
 `grep -qF 'tests/composition/run.sh'`, and `composition.yml` carries that string twice: once at the
 real invocation, and once inside a `#` comment. Replacing the real invocation with
@@ -336,6 +342,16 @@ verify that the `Verification:` field is present and contains either a reproduci
 `unverified`. A missing field is a detectable incomplete handoff, never evidence that the assertion was
 checked. This requirement binds the host when relaying worker or critic claims onward, as well as the
 worker and critic who authored them.
+
+### Issue and pull-request body evidence
+
+Before accepting a newly filed or materially edited issue/PR body, independently re-derive every
+checkable `path:line`, count, and suite-green claim it relies on. A local citation names the exact
+tracked path; a cross-repository citation names `OWNER/REPOSITORY@REVISION:path:line` or a stable URL.
+A count or suite verdict names the command or check URL that produced it. Record that basis in the
+handoff's `Verification:` field. If no reproducible basis exists, write `Verification: unverified` and
+do not treat the claim as acceptance evidence. This review-time check owns remote bodies because a
+source-only CI checkout cannot enumerate existing issue/PR text (`ADR-0074`, `.github#2587`).
 
 ## Body-edit provenance — the REST timeline does not surface body edits
 
@@ -425,14 +441,13 @@ These machine-readable literals are part of the review contract:
 - `repair-phase-exhausted-action: human-escalation`
 - `repair-phase-marker: fsgg:independent-review-repair-phase:v1`
 
-The critic posts one durable PR comment beginning with
-`<!-- fsgg:independent-review:v1 -->`. It names the reviewed head SHA, critic identity, verdict, and
+The critic posts one durable structured v2 initial record with
+`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. It binds the reviewed head SHA, critic identity, verdict, accepted exceptions, and
 each finding's evidence, root cause (or explicitly bounded unknown plus measurements), duplicate-search
 result, materiality, and disposition.
 
 The implementing worker repairs material findings that belong in the current PR. The same critic
-reviews each repaired head in a reply beginning with
-`<!-- fsgg:independent-review-confirmation:v1 -->` and naming the initial review comment URL and
+reviews each repaired head in a structured v2 confirmation record and names the initial review comment URL and
 confirmation SHA, the 1-based `round` number, the preceding review or confirmation URL, and every
 remaining material finding. There is exactly one initial marker and at most three ordered confirmation
 markers. Each confirmation must advance the round by one and review the exact head produced by that
@@ -507,7 +522,7 @@ a "confirmation" of the despawned critic's finding.** This is what preserves the
 same-critic rule protects: a repair is judged either by someone who saw the original finding (the same
 critic, if it is in fact still reachable) or the chain is honestly restarted by a new full review, never
 silently continued by a stranger pretending continuity. The successor critic's review is posted and
-completes the chain exactly as any other independent review does — the same `fsgg:review-accepted:v1`
+completes the chain exactly as any other independent review does — the same structured v2 acceptance
 host-acceptance marker and `landable` gate apply, unchanged.
 
 **Interaction with `.github#2360` (landable does not require the host-acceptance marker):** this
@@ -582,8 +597,8 @@ moves.
 
 **The fresh chain's critic performs a genuinely full, independent review of the current head**, never a
 confirmation of the retired critic's finding, and never a re-use of the retired chain's verdict. Its
-`reviewed-head` is the current head. The chain then completes exactly as any other does: the same
-`fsgg:review-accepted:v1` host-acceptance marker at the exact new head, the same `landable` verdict, the
+`headSha` is the current head. The chain then completes exactly as any other does: the same
+structured v2 host-acceptance record at the exact new head, the same `landable` verdict, the
 same `delivery` authorization. A retired chain's acceptance grants the new head nothing.
 
 `scripts/fsgg-coord review --json` reports the retirement in `retiredChains`, naming each retired
@@ -631,7 +646,7 @@ release obligations, and the obligations declaration is a standing artefact of e
 `changes-required` verdict whose subject is a comment body recurs by construction. The repair is then a
 comment edit and the head correctly does not move. Measured live on `.github#2534` / PR #2541: the
 round-1 finding was that the `none` obligations declaration did not parse, the repair was an edit to
-that comment, and the round-1 `pass` confirmation names the same `reviewed-head` as the initial review.
+that comment, and the round-1 `pass` confirmation names the same structured `headSha` as the initial review.
 That chain merged, and it is correct — `Driver`'s terminal chain parser has never required a head to
 move between rounds; the invariant it enforces is comment-id monotonicity plus an acceptance bound to
 the latest reviewed head.
@@ -686,8 +701,8 @@ On automatic entry:
    that exact model and effort, the host applies steps 1-4 and records the unsupported route as the
    concrete human action required; never downgrade, substitute, or fall back — the same rule the
    routing tables already enforce for the ordinary chain.
-3. The new PR's initial review comment carries `<!-- fsgg:independent-review:v1 -->` as usual. The same
-   comment, or an accompanying one, additionally carries `<!-- fsgg:independent-review-repair-phase:v1 -->`
+3. The new PR's initial review comment carries a structured v2 initial record as usual. The same
+   comment, or an accompanying one, additionally carries the legacy-compatible `<!-- fsgg:independent-review-repair-phase:v1 -->`
    naming the exhausted PR and its `fsgg:independent-review-escalation:v1` marker URL, so a reader can
    tell "landed after repair-phase escalation" from "landed normally" without reconstructing history.
 4. The repair-phase chain is a **fresh** chain: round numbering restarts at 1 and follows the identical
@@ -697,7 +712,7 @@ On automatic entry:
    before a terminal park: 3 + 10 = 13). The two literals are never conflated, and the repair phase
    never changes the ordinary chain's limit for any other item.
 5. A clean repair-phase result (an initial `pass`, or a confirmation with no remaining material finding)
-   merges under the same `fsgg:review-accepted:v1` and `landable` gates as any other PR; the repair phase
+   merges under the same structured v2 acceptance and `landable` gates as any other PR; the repair phase
    grants no shortcut around either.
 6. If material findings remain after the repair phase's own tenth confirmation, automation is exhausted a
    **second and final** time. The critic posts `<!-- fsgg:independent-review-escalation:v1 -->` on the
@@ -737,7 +752,7 @@ verifies the marker, ordered round/URL/SHA chain, critic independence, dispositi
 issue against GitHub before merge or terminal acceptance. An exhausted three-round chain automatically
 enters the repair phase above; only unavailable routing or repair-phase exhaustion reaches the human
 park, and neither exhaustion is a passing terminal acceptance. After verification of a passing chain (ordinary or
-repair-phase), the host posts `<!-- fsgg:review-accepted:v1 -->` with the accepted head SHA, initial
+repair-phase), the host posts a structured v2 acceptance record with the accepted head SHA, initial
 review URL, and confirmation URL when a repair occurred, and — for a repair-phase landing — the
 `fsgg:independent-review-repair-phase:v1` marker URL so acceptance evidence itself shows which path
 the item took.
