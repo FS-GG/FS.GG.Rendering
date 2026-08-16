@@ -1,0 +1,551 @@
+schemaVersion: 1
+workId: feedback-invalidation-base-audits
+stage: evidence
+status: evidenceReady
+sourceSpec: work/feedback-invalidation-base-audits/spec.md
+sourceClarifications: work/feedback-invalidation-base-audits/clarifications.md
+sourceChecklist: work/feedback-invalidation-base-audits/checklist.md
+sourcePlan: work/feedback-invalidation-base-audits/plan.md
+sourceTasks: work/feedback-invalidation-base-audits/tasks.yml
+sourceAnalysis: readiness/feedback-invalidation-base-audits/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/feedback-invalidation-base-audits/analysis.json
+    digest: 4b843d5728eec64e6ede6a6b6d030127851ca346cc1429a4bef77ecb6cf8c1a1
+    schemaVersion: 1
+  - label: checklist
+    path: work/feedback-invalidation-base-audits/checklist.md
+    digest: 4506132422b4ff3c38669d720994a2b19276c93ae7e6aaa55ab7b25a49bb7acd
+    schemaVersion: 1
+  - label: clarifications
+    path: work/feedback-invalidation-base-audits/clarifications.md
+    digest: b507b1cf3a69a136d6d90f9a344affef063efe3847ebf5b0533ce0efbc6963b3
+    schemaVersion: 1
+  - label: plan
+    path: work/feedback-invalidation-base-audits/plan.md
+    digest: 90a2efec3a177f69e41c2c8766319d3f0462b0f31922ebba84146b7eaa55f550
+    schemaVersion: 1
+  - label: spec
+    path: work/feedback-invalidation-base-audits/spec.md
+    digest: 1e71605736ebd1a3417acb9974513658a11399e570417677758e525dbde61835
+    schemaVersion: 1
+  - label: tasks
+    path: work/feedback-invalidation-base-audits/tasks.yml
+    digest: 8de624774c7394528053b1414e8f7affb15c8be7e623c1a02cbcc16d8bf7baf8
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV005]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV006]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV007]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV008]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-005]
+    obligationRefs: [EV009]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV010]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV011]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-002, PD-003]
+    obligationRefs: [EV012]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV013
+    kind: verification
+    subject:
+      type: task
+      id: T013
+    taskRefs: [T013]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV013]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV014
+    kind: verification
+    subject:
+      type: task
+      id: T014
+    taskRefs: [T014]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV014]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV015
+    kind: verification
+    subject:
+      type: task
+      id: T015
+    taskRefs: [T015]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV015]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV016
+    kind: verification
+    subject:
+      type: task
+      id: T016
+    taskRefs: [T016]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV016]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV017
+    kind: verification
+    subject:
+      type: task
+      id: T017
+    taskRefs: [T017]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV017]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV018
+    kind: verification
+    subject:
+      type: task
+      id: T018
+    taskRefs: [T018]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV018]
+    artifacts: [readiness/feedback-invalidation-base-audits/work-model.json]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+  - id: EV019
+    kind: verification
+    subject:
+      type: task
+      id: T019
+    taskRefs: [T019]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV019]
+    artifacts: [template/skill-manifest/skill-manifest.json]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-base-audits.trx
+      digest: "sha256:ef4363fc0d76b247e692ce1d37a7c53382095f4b0857ce339a7cba70780f7c8b"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 2
+      failed: 0
+      skipped: 0
+    notes: [Evidence required before verify.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."
