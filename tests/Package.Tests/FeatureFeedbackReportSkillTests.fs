@@ -158,6 +158,36 @@ let private git root arguments =
 
     stdout.Trim()
 
+let private writeFile (root: string) (relative: string) (text: string) =
+    let full = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar))
+
+    Path.GetDirectoryName full
+    |> Option.ofObj
+    |> Option.iter (Directory.CreateDirectory >> ignore)
+
+    File.WriteAllText(full, text)
+
+/// #1243 — the fixture below needs a REAL repository, because the defect it exists for
+/// is invisible without one: `check-invalidation --base/--head` derived its changed
+/// paths from refs and its audit index from the working tree, and no fixture built out
+/// of a directory and a path list can tell those two trees apart. Identity and signing
+/// are configured on the repository so the fixture never depends on (or is broken by)
+/// the machine's global Git configuration.
+let private initFixtureRepository (root: string) =
+    git root [ "init"; "-q" ] |> ignore
+    git root [ "config"; "user.name"; "fsgg-feedback-test" ] |> ignore
+    git root [ "config"; "user.email"; "fsgg-feedback-test@example.invalid" ] |> ignore
+    git root [ "config"; "commit.gpgsign"; "false" ] |> ignore
+
+/// Commit the current worktree onto a fresh branch started at `start`, and answer the
+/// new commit's object name.
+let private commitOnto (root: string) (branch: string) (start: string) (mutate: unit -> unit) =
+    git root [ "checkout"; "-q"; "-B"; branch; start ] |> ignore
+    mutate ()
+    git root [ "add"; "-A" ] |> ignore
+    git root [ "commit"; "-q"; "-m"; branch ] |> ignore
+    git root [ "rev-parse"; "HEAD" ]
+
 let private runPackagedValidate root reportPath auditPath =
     runProcess
         root
@@ -1251,6 +1281,175 @@ let feedbackReportSkillTests =
                       (scale.invalidated |> List.map (fun item -> item.audit))
                       (scale.invalidated |> List.map (fun item -> item.audit) |> List.sort)
                       "scale diagnostics retain deterministic audit ordering"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
+          test "commit-time invalidation indexes audits from the base tree, not the candidate" {
+              let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-base-index-" + Guid.NewGuid().ToString "N")
+              Directory.CreateDirectory root |> ignore
+
+              try
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let evidence locator = [| {| locator = locator; result = "verified"; sha256 = Some(sha256Text "old") |} |]
+                  let mergedAudit = auditJson root reportPath validReport "actionable" (evidence "file:src/Base.fs")
+                  let candidateAudit = auditJson root reportPath validReport "actionable" (evidence "file:src/Candidate.fs")
+
+                  initFixtureRepository root
+                  writeFile root "feedback/report.md" validReport
+                  writeFile root "feedback/audits/merged.audit.json" mergedAudit
+                  writeFile root "src/Base.fs" "let baseValue = 1\n"
+                  writeFile root "src/Candidate.fs" "let candidateValue = 1\n"
+                  git root [ "add"; "-A" ] |> ignore
+                  git root [ "commit"; "-q"; "-m"; "base" ] |> ignore
+                  let baseSha = git root [ "rev-parse"; "HEAD" ]
+
+                  // The index the base ref supplies: exactly the merged audit. Asserted
+                  // BEFORE any pass verdict below, because "the candidate audit was not
+                  // selected" and "nothing was ever indexed" are otherwise the same green.
+                  let baseIndex = baseTreeAuditIndex root baseSha
+                  Expect.isEmpty baseIndex.errors "a resolvable base ref yields no index error"
+                  Expect.sequenceEqual
+                      (baseIndex.audits |> List.map (fun entry -> entry.auditPath))
+                      [ "feedback/audits/merged.audit.json" ]
+                      "the base index holds exactly the audits merged into the base tree"
+                  Expect.equal baseIndex.subject (sprintf "base ref %s" baseSha) "the index names the tree it read"
+
+                  // AC-001/FR-002 — a candidate that introduces its own audit and edits only
+                  // the evidence THAT audit cites. This is #1243's exact reproduction.
+                  let selfAuditSha =
+                      commitOnto root "candidate-self-audit" baseSha (fun () ->
+                          writeFile root "feedback/audits/candidate.audit.json" candidateAudit
+                          writeFile root "src/Candidate.fs" "let candidateValue = 2\n")
+
+                  let selfAudit = checkInvalidationBetweenRefs root baseSha selfAuditSha
+                  Expect.isEmpty selfAudit.errors "the commit-aware form reports no error on resolvable refs"
+                  Expect.isEmpty
+                      selfAudit.invalidated
+                      "an audit the candidate itself introduces cannot invalidate that candidate"
+                  Expect.equal
+                      selfAudit.subject
+                      (sprintf "base ref %s" baseSha)
+                      "the commit-aware verdict names the base ref it indexed"
+
+                  // The same commit through the WORKING-TREE index — the pre-repair answer.
+                  // Without this leg the assertion above is equally consistent with a check
+                  // that never had anything to find.
+                  let selfAuditChanged =
+                      match changedPathsBetween root baseSha selfAuditSha with
+                      | Ok paths -> paths
+                      | Error detail -> failwithf "changed-path derivation failed: %s" detail
+
+                  Expect.sequenceEqual
+                      selfAuditChanged
+                      [ "feedback/audits/candidate.audit.json"; "src/Candidate.fs" ]
+                      "the changed set is still derived from base to head"
+
+                  let workingTreeAnswer = findInvalidatedAuditBindings root selfAuditChanged
+                  Expect.equal
+                      workingTreeAnswer.invalidated.Length
+                      1
+                      "the working-tree index does select the candidate's own audit -- the defect being repaired"
+                  Expect.equal
+                      workingTreeAnswer.subject
+                      "the working tree"
+                      "the working-tree verdict names the working tree"
+                  Expect.equal
+                      (baseTreeAuditIndex root selfAuditSha).audits.Length
+                      2
+                      "the candidate's own tree does contain both audits, so the base index omitted one deliberately"
+
+                  // AC-002/FR-003 — a genuinely merged audit still refuses the candidate,
+                  // and the diagnostic still names audit, report, finding and path. The
+                  // finding id is non-ASCII, so this also proves the audit survived the pipe.
+                  let touchesMergedSha =
+                      commitOnto root "candidate-touches-merged" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 2\n")
+
+                  let touchesMerged = checkInvalidationBetweenRefs root baseSha touchesMergedSha
+                  Expect.isEmpty touchesMerged.errors "a base-present audit is parsed without error"
+                  Expect.sequenceEqual
+                      (touchesMerged.invalidated
+                       |> List.map (fun item -> item.audit, item.report, item.findingId, item.path))
+                      [ "feedback/audits/merged.audit.json", "feedback/report.md", "§4.1", "src/Base.fs" ]
+                      "a merged audit still invalidates a candidate that changes its cited evidence"
+
+                  // AC-003 — deleting the durable audit in the candidate must not clear the
+                  // refusal. The index is the base tree, so there is nothing on disk to delete.
+                  let deletesAuditSha =
+                      commitOnto root "candidate-deletes-audit" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 3\n"
+                          File.Delete(Path.Combine(root, "feedback", "audits", "merged.audit.json")))
+
+                  let deletesAudit = checkInvalidationBetweenRefs root baseSha deletesAuditSha
+                  Expect.equal
+                      (deletesAudit.invalidated |> List.map (fun item -> item.audit))
+                      [ "feedback/audits/merged.audit.json" ]
+                      "deleting the merged audit in the candidate does not clear its binding"
+                  Expect.isEmpty
+                      (workingTreeAuditIndex root).audits
+                      "the candidate's own worktree has no audit left, so only the base index carried the refusal"
+
+                  // AC-004 — rename detection still contributes the old side.
+                  let renameSha =
+                      commitOnto root "candidate-renames-evidence" baseSha (fun () ->
+                          git root [ "mv"; "src/Base.fs"; "src/Renamed.fs" ] |> ignore)
+
+                  let renamed = checkInvalidationBetweenRefs root baseSha renameSha
+                  Expect.equal
+                      (renamed.invalidated |> List.map (fun item -> item.path))
+                      [ "src/Base.fs" ]
+                      "a rename's old side is still in the changed set and still detected"
+
+                  // AC-005 — neither ref may fail open, and each names its own fault.
+                  let badBase = checkInvalidationBetweenRefs root "fsgg-no-such-ref-1243" touchesMergedSha
+                  Expect.exists
+                      badBase.errors
+                      (fun error -> error.Contains "could not read the audit index at fsgg-no-such-ref-1243")
+                      "an unresolvable base ref fails closed against the index it could not read"
+                  Expect.isEmpty badBase.invalidated "an unreadable index reports no binding verdict"
+
+                  let badHead = checkInvalidationBetweenRefs root baseSha "fsgg-no-such-head-1243"
+                  Expect.exists
+                      badHead.errors
+                      (fun error -> error.Contains "could not read commit path changes")
+                      "an unresolvable head ref fails closed against the diff it could not read"
+
+                  // AC-006 — a malformed audit IN THE BASE TREE fails closed. The malformed
+                  // document is committed, so this measures the base index and not the disk.
+                  let brokenBaseSha =
+                      commitOnto root "broken-base" baseSha (fun () -> writeFile root "feedback/audits/broken.audit.json" "{")
+
+                  let afterBrokenSha =
+                      commitOnto root "after-broken" brokenBaseSha (fun () -> writeFile root "src/Other.fs" "let other = 1\n")
+
+                  let broken = checkInvalidationBetweenRefs root brokenBaseSha afterBrokenSha
+                  Expect.exists
+                      broken.errors
+                      (fun error -> error.Contains "malformed audit feedback/audits/broken.audit.json")
+                      "a malformed base audit cannot render a safe empty verdict"
+
+                  // FR-004 — the two index faults the filesystem cannot be made to produce on
+                  // demand are measured against the pure scan, which is where they are handled.
+                  let unreadableIndex =
+                      { subject = "synthetic index"
+                        audits =
+                          [ { auditPath = "feedback/audits/unreadable.audit.json"
+                              document = Error "fatal: bad object" } ]
+                        errors = [ "invalidation: could not read the audit index at deadbeef: fatal: bad object" ] }
+
+                  let unreadable = findInvalidatedAuditBindingsIn unreadableIndex [ "src/Base.fs" ]
+                  Expect.equal unreadable.subject "synthetic index" "the scan carries its index's subject into the verdict"
+                  Expect.exists
+                      unreadable.errors
+                      (fun error -> error.Contains "unreadable audit feedback/audits/unreadable.audit.json")
+                      "an audit document that could not be read has its own diagnostic"
+                  Expect.exists
+                      unreadable.errors
+                      (fun error -> error.Contains "could not read the audit index at deadbeef")
+                      "an enumeration error survives into the scan's errors rather than yielding an empty index"
+                  Expect.isEmpty unreadable.invalidated "a broken index reports no binding verdict"
               finally
                   if Directory.Exists root then
                       Directory.Delete(root, true)

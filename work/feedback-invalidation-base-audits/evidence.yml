@@ -1,0 +1,551 @@
+schemaVersion: 1
+workId: feedback-invalidation-base-audits
+stage: evidence
+status: evidenceReady
+sourceSpec: work/feedback-invalidation-base-audits/spec.md
+sourceClarifications: work/feedback-invalidation-base-audits/clarifications.md
+sourceChecklist: work/feedback-invalidation-base-audits/checklist.md
+sourcePlan: work/feedback-invalidation-base-audits/plan.md
+sourceTasks: work/feedback-invalidation-base-audits/tasks.yml
+sourceAnalysis: readiness/feedback-invalidation-base-audits/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/feedback-invalidation-base-audits/analysis.json
+    digest: 158a6744fdeec172116e5b0d4bcdc2627417e78ded455184edb945d6adc12876
+    schemaVersion: 1
+  - label: checklist
+    path: work/feedback-invalidation-base-audits/checklist.md
+    digest: 4506132422b4ff3c38669d720994a2b19276c93ae7e6aaa55ab7b25a49bb7acd
+    schemaVersion: 1
+  - label: clarifications
+    path: work/feedback-invalidation-base-audits/clarifications.md
+    digest: b507b1cf3a69a136d6d90f9a344affef063efe3847ebf5b0533ce0efbc6963b3
+    schemaVersion: 1
+  - label: plan
+    path: work/feedback-invalidation-base-audits/plan.md
+    digest: 90a2efec3a177f69e41c2c8766319d3f0462b0f31922ebba84146b7eaa55f550
+    schemaVersion: 1
+  - label: spec
+    path: work/feedback-invalidation-base-audits/spec.md
+    digest: 1e71605736ebd1a3417acb9974513658a11399e570417677758e525dbde61835
+    schemaVersion: 1
+  - label: tasks
+    path: work/feedback-invalidation-base-audits/tasks.yml
+    digest: a3f8e3d7b067b7a95895e7936942cebf59a6bb2cfdd42380d0d5628260d54e5b
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["FR-001 — baseTreeAuditIndex reads git ls-tree then git cat-file blob at the --base ref and checkInvalidationBetweenRefs pairs it with the existing base-to-head name-status derivation. Test asserts the base index holds exactly feedback/audits/merged.audit.json and that rename/copy/delete sides all reach the changed set."]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["FR-002 — a candidate-only audit is absent from the base index so it cannot select itself. Test commits an audit plus its cited evidence on top of the base and asserts zero invalidated; the same commit through the working-tree index asserts 1 which is the pre-repair answer."]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["FR-003 — a base-present audit still invalidates a candidate that changes its digest-bound cited path. Test also commits a candidate that deletes that audit and asserts the refusal survives; the working-tree index at that commit holds zero audits."]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["FR-004 — unresolvable base ref unresolvable head ref and malformed base audit each assert their own diagnostic text. The unreadable-blob and index-enumeration legs are asserted against findInvalidatedAuditBindingsIn with a synthetic AuditIndex because the filesystem cannot be made to produce them on demand."]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV005]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["FR-005 — AuditIndex.subject flows into AuditInvalidationCheck.subject and is printed on both the pass line and the failure header. Test asserts base ref <sha> for the commit-aware form and the working tree for the other."]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV006]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["DEC-001 — the index is the tree of the ref supplied as --base and never git merge-base output. No working-tree read happens in that mode so an audit's presence or content on disk cannot affect the verdict."]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV007]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["DEC-002 — --changed keeps the working tree as its index and names it in the verdict rather than only in documentation. SKILL.md and the usage text say the same thing in the same words."]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV008]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["DEC-003 — an index that could not be enumerated or read never degrades to an empty index. AuditIndex.errors is seeded into the scan's errors which feedback-tool.fsx already turns into a non-zero exit."]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-005]
+    obligationRefs: [EV009]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["PC-001 — check-invalidation keeps its exit contract and per-binding diagnostic fields and adds the indexed subject. Verified through the shipped route with dotnet fsi on a throwaway repository — pass on the candidate-only case exit 0 and both fail-closed ref cases exit 1."]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV010]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["PC-002 — findInvalidatedAuditBindings and changedPathsFromNameStatus keep their signatures and results. The pre-existing invalidation test was not edited and still passes which is what makes workingTreeAuditIndex behaviour-preserving rather than merely believed to be."]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV011]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["PC-003 — runGit pins stdout and stderr to UTF-8. The non-ASCII finding id §4.1 is asserted to survive the cat-file pipe. This also covers the pre-existing git show <head>_<path> read in resolveReportHead's neighbourhood which carries arbitrary file content through the same helper."]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-002, PD-003]
+    obligationRefs: [EV012]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["VO-001 — the fixture is a real git init repository built by the test with real commits rather than a directory and a path list. That distinction is the subject under test so a synthetic fixture could not have measured it."]
+  - id: EV013
+    kind: verification
+    subject:
+      type: task
+      id: T013
+    taskRefs: [T013]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV013]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["VO-002 — fail-closed legs run over that same real repository for the ref and malformed-audit cases and over a synthetic AuditIndex for the two the filesystem cannot produce."]
+  - id: EV014
+    kind: verification
+    subject:
+      type: task
+      id: T014
+    taskRefs: [T014]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV014]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["VO-003 — subject strings asserted on both index producers. The skill-manifest digest is re-derived independently by Feature231SkillManifestTests which is included in the cited run."]
+  - id: EV015
+    kind: verification
+    subject:
+      type: task
+      id: T015
+    taskRefs: [T015]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV015]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["VO-004 — three gate inversions each applied once by breaking the gate's SUBJECT then reverted. 1) checkInvalidationBetweenRefs baseTreeAuditIndex replaced by workingTreeAuditIndex which restores the exact pre-repair defect — RED on an audit the candidate itself introduces cannot invalidate that candidate. 2) baseTreeAuditIndex's failed helper made to emit an empty error list — RED on an unresolvable base ref fails closed against the index it could not read. 3) the fs-gg-feedback-report manifest sha256 reverted to d150342c — RED on G-MANIFEST digests are fresh against the canonical bodies and generate-skill-manifest.fsx --check printed STALE. All three JUSTIFIED. Non-vacuity is carried inside the gate itself — base index asserted to hold exactly one audit the candidate tree asserted to hold two and the same commit through the working-tree index asserted to yield 1 — so found nothing and looked at nothing are separated three ways. Gate reached via workflow gate job gate step Default local tier which has no paths filter."]
+  - id: EV016
+    kind: verification
+    subject:
+      type: task
+      id: T016
+    taskRefs: [T016]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV016]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["PM-001 — no audit or report is rewritten. A candidate failing only because of its own unmerged audit starts passing which is the intended repair; nothing that was passing starts failing because the base-tree index is a subset of the working-tree index for every genuinely merged audit."]
+  - id: EV017
+    kind: verification
+    subject:
+      type: task
+      id: T017
+    taskRefs: [T017]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV017]
+    artifacts: [tests/Package.Tests/FeatureFeedbackReportSkillTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["PM-002 — AuditInvalidationCheck gains a subject field. Every construction site is inside FeedbackReportTool.fs and no consumer reads the record positionally."]
+  - id: EV018
+    kind: verification
+    subject:
+      type: task
+      id: T018
+    taskRefs: [T018]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV018]
+    artifacts: [readiness/feedback-invalidation-base-audits/work-model.json]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["GV-001 — work-model.json regenerated with fsgg-sdd refresh after the task graph and evidence were advanced so the authoring records and the generated view describe the same digests. fsgg-sdd analyze reports zero stale sources."]
+  - id: EV019
+    kind: verification
+    subject:
+      type: task
+      id: T019
+    taskRefs: [T019]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV019]
+    artifacts: [template/skill-manifest/skill-manifest.json]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/FeatureFeedbackReportSkillTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/feedback-invalidation-base-audits/feedback-invalidation-tests.xml
+      digest: "sha256:a5cc8df3635e032ecc245c5490e018031c52ebe51812f755a24d70f159c828ad"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 46
+      failed: 0
+      skipped: 0
+    notes: ["GV-002 — skill-manifest.json regenerated with generate-skill-manifest.fsx after the SKILL.md edit. --check answers up to date with 18 skills and verify-package.sh re-derives every packed body sha256 against it."]
+lifecycleNotes:
+  - "Next lifecycle action: verify."
