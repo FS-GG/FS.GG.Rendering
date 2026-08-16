@@ -378,8 +378,37 @@ type InvalidatedAuditBinding =
       locator: string
       path: string }
 
+/// One audit document in an index: its workspace-relative path, and either the
+/// exact bytes that document had in the indexed tree or the fail-closed reason
+/// they could not be read. An unreadable document is never dropped — a document
+/// nobody could read is not a document that turned out to hold no citation.
+type IndexedAudit =
+    { auditPath: string
+      document: Result<string, string> }
+
+/// The `feedback/audits/*.audit.json` documents present in ONE tree, the name of
+/// the tree they came from, and any error met while enumerating it.
+///
+/// `subject` is part of the verdict rather than decoration. "No merged binding was
+/// invalidated" means one thing when the index was the merged tree and something
+/// else entirely when it was whatever happened to be on disk, and reading the
+/// output cannot separate those two claims unless the output says which it made.
+/// Issue #1243 is what the unstated version cost: the commit-aware `--base/--head`
+/// form derived its changed paths from the given refs but indexed its audits from
+/// the working tree, so a candidate that introduced an audit was refused by that
+/// same audit, and an authorized repair round became a fixed point.
+///
+/// `errors` never degrades into an empty index. A tree that genuinely holds no
+/// audits and a tree that could not be read are different facts, and only the
+/// first of them is a safe pass.
+type AuditIndex =
+    { subject: string
+      audits: IndexedAudit list
+      errors: string list }
+
 type AuditInvalidationCheck =
-    { errors: string list
+    { subject: string
+      errors: string list
       invalidated: InvalidatedAuditBinding list }
 
 let private normalizeWorkspacePath (path: string) =
@@ -404,24 +433,70 @@ let changedPathsFromNameStatus (text: string) =
     |> Array.sort
     |> Array.toList
 
-/// Selectively find digest-bearing `file:` citations in committed audit JSON
-/// whose paths intersect `changedPaths`. It never reads reports or evidence
-/// bytes, so historical audits unrelated to this commit are not revalidated.
-let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string list) =
-    let errors = ResizeArray<string>()
-    let changed = changedPaths |> List.map normalizeWorkspacePath |> Set.ofList
+/// The workspace-relative directory every audit index is drawn from.
+let auditIndexRoot = "feedback/audits"
+
+/// How a verdict names the checkout on disk.
+let workingTreeSubject = "the working tree"
+
+/// How a verdict names the tree of a Git ref.
+let baseRefSubject (reference: string) = sprintf "base ref %s" reference
+
+/// Index the audits in the checkout on disk.
+///
+/// This is `--changed`'s subject and it is deliberately NOT the commit-aware one:
+/// the working tree holds whatever the candidate has written, including audits the
+/// candidate itself introduced, so it cannot answer "which MERGED audit does this
+/// commit invalidate?". `baseTreeAuditIndex` is the answer to that question.
+let workingTreeAuditIndex (workspaceRoot: string) : AuditIndex =
     let auditRoot = Path.Combine(workspaceRoot, "feedback", "audits")
-    let invalidated = ResizeArray<InvalidatedAuditBinding>()
 
     if not (Directory.Exists auditRoot) then
-        { errors = []
-          invalidated = [] }
+        { subject = workingTreeSubject
+          audits = []
+          errors = [] }
     else
-        for auditPath in Directory.EnumerateFiles(auditRoot, "*.audit.json", SearchOption.AllDirectories) do
-            let relativeAudit = Path.GetRelativePath(workspaceRoot, auditPath).Replace(Path.DirectorySeparatorChar, '/')
+        let audits =
+            Directory.EnumerateFiles(auditRoot, "*.audit.json", SearchOption.AllDirectories)
+            |> Seq.map (fun auditPath ->
+                let relative =
+                    Path.GetRelativePath(workspaceRoot, auditPath).Replace(Path.DirectorySeparatorChar, '/')
+
+                let document =
+                    try
+                        Ok(File.ReadAllText auditPath)
+                    with ex ->
+                        Error ex.Message
+
+                { auditPath = relative; document = document })
+            |> List.ofSeq
+
+        { subject = workingTreeSubject
+          audits = audits
+          errors = [] }
+
+/// Selectively find digest-bearing `file:` citations in an INDEXED set of audit
+/// documents whose paths intersect `changedPaths`. It never reads reports or
+/// evidence bytes, so audits unrelated to this commit are not revalidated.
+///
+/// The index is a parameter rather than a filesystem walk because which tree is
+/// indexed is the whole contract (#1243). Any error the index carried survives
+/// into this result: an index that could not be enumerated must not be able to
+/// present as an index that found nothing.
+let findInvalidatedAuditBindingsIn (index: AuditIndex) (changedPaths: string list) =
+    let errors = ResizeArray<string>(index.errors)
+    let changed = changedPaths |> List.map normalizeWorkspacePath |> Set.ofList
+    let invalidated = ResizeArray<InvalidatedAuditBinding>()
+
+    for indexed in index.audits do
+        let relativeAudit = indexed.auditPath
+
+        match indexed.document with
+        | Error detail -> errors.Add(sprintf "invalidation: unreadable audit %s: %s" relativeAudit detail)
+        | Ok auditText ->
 
             try
-                let parsed = JsonSerializer.Deserialize<ActionabilityAudit>(File.ReadAllText auditPath)
+                let parsed = JsonSerializer.Deserialize<ActionabilityAudit>(auditText)
 
                 if obj.ReferenceEquals(parsed, null) then
                     errors.Add(sprintf "invalidation: malformed audit %s: expected a JSON object" relativeAudit)
@@ -474,11 +549,17 @@ let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string l
             with ex ->
                 errors.Add(sprintf "invalidation: malformed audit %s: %s" relativeAudit ex.Message)
 
-        { errors = errors |> Seq.sort |> List.ofSeq
-          invalidated =
-              invalidated
-              |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator)
-              |> List.ofSeq }
+    { subject = index.subject
+      errors = errors |> Seq.sort |> List.ofSeq
+      invalidated =
+          invalidated
+          |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator)
+          |> List.ofSeq }
+
+/// The working-tree spelling of the scan, preserved verbatim for `--changed` and
+/// for direct library callers. Its index subject is the checkout on disk.
+let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string list) =
+    findInvalidatedAuditBindingsIn (workingTreeAuditIndex workspaceRoot) changedPaths
 
 let private workspaceRelative (workspaceRoot: string) (resolved: string) =
     let canonicalRoot = canonicalizeExistingSegments workspaceRoot
@@ -531,6 +612,13 @@ let private runGit (workspaceRoot: string) (arguments: string list) =
         start.UseShellExecute <- false
         start.RedirectStandardOutput <- true
         start.RedirectStandardError <- true
+        // Pin the decoding rather than inherit the console's. Audit documents now
+        // travel through this pipe (`baseTreeAuditIndex`), Git writes them as the
+        // UTF-8 bytes it stored, and this repository's own audits carry non-ASCII
+        // finding ids (`§4.1`) — so an inherited encoding would decide whether an
+        // audit parses. The other callers read hex object names and are indifferent.
+        start.StandardOutputEncoding <- UTF8Encoding false
+        start.StandardErrorEncoding <- UTF8Encoding false
         arguments |> List.iter start.ArgumentList.Add
 
         match Process.Start start with
@@ -547,6 +635,73 @@ let private runGit (workspaceRoot: string) (arguments: string list) =
                   stderr = stderr.Result.Trim() }
     with ex ->
         Error ex.Message
+
+/// Index the audits present in the tree of `reference` — the MERGED state a
+/// candidate is being checked against, and the only index that can answer the
+/// question `check-invalidation` asks.
+///
+/// It reads Git, never the disk. An audit the candidate introduced is absent from
+/// this index and so cannot select itself (#1243); an audit the candidate deleted,
+/// renamed or rewrote is still IN it and so keeps guarding the evidence it cites,
+/// which closes the same defect's other half — clearing the refusal by editing the
+/// durable audit out of the way.
+///
+/// A ref that does not resolve is an error, not an empty index. A ref that resolves
+/// to a tree with no `feedback/audits` entries genuinely has no merged audits, and
+/// `git ls-tree` reports that as success with no output; the two are kept apart.
+let baseTreeAuditIndex (workspaceRoot: string) (reference: string) : AuditIndex =
+    let subject = baseRefSubject reference
+
+    let failed detail =
+        { subject = subject
+          audits = []
+          errors = [ sprintf "invalidation: could not read the audit index at %s: %s" reference detail ] }
+
+    match runGit workspaceRoot [ "ls-tree"; "-r"; "-z"; "--name-only"; reference; "--"; auditIndexRoot ] with
+    | Error detail -> failed detail
+    | Ok listing when listing.exitCode <> 0 -> failed listing.stderr
+    | Ok listing ->
+        let audits =
+            listing.stdout.Split('\000', StringSplitOptions.RemoveEmptyEntries)
+            |> Array.map normalizeWorkspacePath
+            |> Array.filter (fun entry -> entry.EndsWith(".audit.json", StringComparison.Ordinal))
+            |> Array.sort
+            |> Array.map (fun entry ->
+                let document =
+                    match runGit workspaceRoot [ "cat-file"; "blob"; reference + ":" + entry ] with
+                    | Error detail -> Error detail
+                    | Ok blob when blob.exitCode <> 0 -> Error blob.stderr
+                    | Ok blob -> Ok blob.stdout
+
+                { auditPath = entry; document = document })
+            |> List.ofArray
+
+        { subject = subject
+          audits = audits
+          errors = [] }
+
+/// The complete changed-path set between two refs: rename and copy records
+/// contribute BOTH names and deletions contribute their removed source, exactly as
+/// `changedPathsFromNameStatus` documents. Fail-closed on an unresolvable ref —
+/// "git could not tell us what changed" is never "nothing changed".
+let changedPathsBetween (workspaceRoot: string) (baseRef: string) (headRef: string) =
+    match runGit workspaceRoot [ "diff"; "--name-status"; "--find-renames"; "--find-copies"; baseRef; headRef ] with
+    | Error detail -> Error(sprintf "invalidation: could not read commit path changes: %s" detail)
+    | Ok diff when diff.exitCode <> 0 -> Error(sprintf "invalidation: could not read commit path changes: %s" diff.stderr)
+    | Ok diff -> Ok(changedPathsFromNameStatus diff.stdout)
+
+/// The commit-aware check: audits indexed from `baseRef`'s tree, changed paths
+/// derived from `baseRef`→`headRef`. Both halves share one left-hand side by
+/// construction, which is the property #1243 found missing.
+let checkInvalidationBetweenRefs (workspaceRoot: string) (baseRef: string) (headRef: string) =
+    let index = baseTreeAuditIndex workspaceRoot baseRef
+
+    match changedPathsBetween workspaceRoot baseRef headRef with
+    | Error detail ->
+        { subject = index.subject
+          errors = detail :: index.errors |> List.sort
+          invalidated = [] }
+    | Ok changed -> findInvalidatedAuditBindingsIn index changed
 
 let private reportCommit reportText =
     frontmatter reportText

@@ -2,7 +2,6 @@
 
 open System
 open System.IO
-open System.Diagnostics
 open FsGgFeedbackReportTool
 
 let fail (messages: string list) =
@@ -87,34 +86,28 @@ match argv with
 | args when args.Length > 0 && args.[0] = "check-invalidation" ->
     let options = parseOptions args.[1..]
     let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
-    let changed =
+    // The two input forms differ in their AUDIT INDEX, not only in how they learn
+    // which paths changed, and that is the whole of #1243. --base/--head indexes the
+    // base ref's tree, so an audit the candidate itself introduced is not in it;
+    // --changed has no ref to index from and states that its subject is the working
+    // tree. Both print the subject they used, so a green verdict never leaves which
+    // one it was to be inferred.
+    let result =
         match Map.tryFind "changed" options, Map.tryFind "base" options, Map.tryFind "head" options with
-        | Some value, None, None -> value.Split(';') |> Array.toList
-        | None, Some baseRef, Some headRef ->
-            let start = ProcessStartInfo("git")
-            start.WorkingDirectory <- root
-            start.RedirectStandardOutput <- true
-            start.RedirectStandardError <- true
-            start.UseShellExecute <- false
-            [ "diff"; "--name-status"; "--find-renames"; "--find-copies"; baseRef; headRef ]
-            |> List.iter start.ArgumentList.Add
-            use child = Process.Start start
-            let stdout = child.StandardOutput.ReadToEndAsync()
-            let stderr = child.StandardError.ReadToEndAsync()
-            child.WaitForExit()
-            let output = stdout.Result
-            let errors = stderr.Result
-            if child.ExitCode <> 0 then fail [ sprintf "could not read commit path changes: %s" errors ]
-            output |> changedPathsFromNameStatus
+        | Some value, None, None ->
+            value.Split(';') |> Array.toList |> findInvalidatedAuditBindings root
+        | None, Some baseRef, Some headRef -> checkInvalidationBetweenRefs root baseRef headRef
         | _ -> fail [ "check-invalidation requires either --changed \"path;path\" or --base REF --head REF" ]
-    let result = findInvalidatedAuditBindings root changed
 
     if not (List.isEmpty result.errors) then
         fail result.errors
     elif List.isEmpty result.invalidated then
-        pass "no merged feedback-audit bindings were invalidated"
+        pass (sprintf "no merged feedback-audit bindings were invalidated (audit index: %s)" result.subject)
     else
-        printfn "feedback-tool: %d merged feedback-audit binding(s) invalidated:" result.invalidated.Length
+        printfn
+            "feedback-tool: %d merged feedback-audit binding(s) invalidated (audit index: %s):"
+            result.invalidated.Length
+            result.subject
 
         for item in result.invalidated do
             eprintfn "feedback-tool: invalidated %s %s %s (%s)" item.audit item.findingId item.locator item.report
@@ -180,6 +173,9 @@ match argv with
           "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
           "  feedback-tool.fsx -- digest <text-file>"
           "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
-          "  feedback-tool.fsx -- check-invalidation (--changed \"path;path\" | --base REF --head REF) [--root PATH]"
+          "  feedback-tool.fsx -- check-invalidation --base REF --head REF [--root PATH]"
+          "      audits are indexed from --base's tree; changed paths are derived from --base to --head"
+          "  feedback-tool.fsx -- check-invalidation --changed \"path;path\" [--root PATH]"
+          "      advanced: audits are indexed from the WORKING TREE and the complete name-status path set is yours to supply"
           "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
           "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]

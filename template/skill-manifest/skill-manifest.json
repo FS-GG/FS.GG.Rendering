@@ -20,7 +20,7 @@
     {
       "id": "fs-gg-feedback-report",
       "scope": "product",
-      "sha256": "d150342ca2d72f441962c9a5ca497aa895de05e0fed800c2d96b220ca2cfbdcf",
+      "sha256": "a181389dd537861295ea6c7e1b012befa8ac91f0228e22dc07c110e56f73df15",
       "resolvablePath": ".agents/skills/fs-gg-feedback-report/SKILL.md",
       "materializes-when": "always",
       "supplied-by": "template/feedback-report/skill/"

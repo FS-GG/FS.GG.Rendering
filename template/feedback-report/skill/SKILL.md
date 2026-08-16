@@ -358,9 +358,26 @@ It derives paths with `git diff --name-status --find-renames --find-copies`: ren
 contribute both old and new sides, while deletions contribute their removed source path. It indexes only
 digest-bearing `file:` citations in `feedback/audits/*.audit.json` and fails with the audit path, merged
 report, finding ID, and locator for each touched citation. It does not run the full historical validator
-or read cited files. Malformed or unreadable audit metadata fails closed so a broken index cannot make a
-commit look safe. `--changed` is an advanced input only: callers must supply the complete name-status
-path set, including old rename/copy sides and deletions; do not feed it ordinary `git diff --name-only`.
+or read cited files.
+
+**The audit index is the tree of the ref you pass as `--base`, and never the working tree.** That is what
+makes "merged" mean merged. An audit your own candidate introduces is not in the base tree, so it cannot
+refuse the candidate that adds it — a repair round that changes evidence cited only by its own unmerged
+audit stays green. An audit that *is* in the base tree keeps guarding the evidence it cites even if the
+candidate deletes, renames or rewrites the audit file, so the refusal cannot be cleared by editing the
+durable record. The index and the changed-path set are both taken from the same `--base` ref, so the two
+halves of the verdict describe one state. Pass `origin/main`, not `git merge-base` output: an audit merged
+after your branch point is still merged and must still guard.
+
+Every verdict names the tree it indexed — `audit index: base ref origin/main` on the pass line and in the
+failure header — so a green result states what it examined. Malformed, unreadable, or unresolvable index
+input fails closed with its own diagnostic (`could not read the audit index at <ref>`, `unreadable audit
+<path>`, `malformed audit <path>`), because a broken index must not be able to look like an empty one.
+
+`--changed` is an advanced input only, and its audit index is the **working tree** — it carries no ref to
+index from, and it says so in its own verdict (`audit index: the working tree`). Callers must supply the
+complete name-status path set, including old rename/copy sides and deletions; do not feed it ordinary
+`git diff --name-only`. For a commit-time check against a candidate, use `--base/--head`.
 
 ## Final roll-up
 
