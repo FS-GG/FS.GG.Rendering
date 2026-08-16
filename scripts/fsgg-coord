@@ -125,8 +125,19 @@ engine_path() { printf '%s/src/FS.GG.Coord.Cli/bin/Release/net10.0/fsgg-coord-en
 # line is on the RECEIVERS' hot path … every invocation would otherwise pay for a subprocess that cannot
 # succeed"), and putting the module lookup at file scope would have re-introduced the cost that comment
 # exists to avoid. Inside the function it is paid only where a source build already resolved.
-guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the verb, $4 = its first argument
+#
+# SPLIT INTO LOAD AND USE, AND ONLY BECAUSE A SECOND READER ARRIVED (.github#2653). Tier 2a now asks the
+# module one question BEFORE it decides to exec — `engine_shadows_shared`, which answers whether the
+# build under the caller's own toplevel is an incidental artifact that would shadow a current shared
+# engine. That question has to be asked with the module already sourced, and sourcing it twice (once to
+# ask, once to guard) would fork the `cd … && pwd` subshell this comment block spends four paragraphs
+# refusing to pay twice. So `load_guards` is idempotent and both call sites go through it; the fail-
+# closed terms are byte-identical — a missing module is still a REFUSAL, never a silent skip, and it is
+# still reached only from tiers 2/2b where a source build ALREADY resolved.
+GUARDS_LOADED=0
+load_guards() {   # $1 = the checkout that OWNS the build (named in the refusal)
   local module
+  [ "$GUARDS_LOADED" = 1 ] && return 0
   module="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/fsgg-coord-guards.sh"
   [ -f "$module" ] || die "the stale/dirty guard module is missing: $module
             A source build resolved under $1, so this checkout CAN hand you an engine that is
@@ -143,6 +154,11 @@ guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the ve
   # for their whole life. This one is spelled to actually work, so `-x` really does cross the boundary.
   # shellcheck source=scripts/fsgg-coord-guards.sh
   . "$module"
+  GUARDS_LOADED=1
+}
+
+guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the verb, $4 = its first argument
+  load_guards "$1"
   # DIRTY BEFORE STALE, because a dirty checkout is usually WHY an engine is stale, and a refusal is
   # easier to act on when the thing that caused it is already on screen. `stale_guard` may die(); this
   # one never does, so it cannot swallow that refusal.
@@ -179,11 +195,34 @@ TOP="$(git_toplevel)"
 # AN OPERATOR WHO GENUINELY WANTS THE PACKAGED ENGINE HERE IS NOT TRAPPED — tier 1 outranks this, and it is
 # the documented way to mean it rather than to get it by accident:
 #   FSGG_COORD_ENGINE_BIN="$(command -v fsgg-coord-engine)" scripts/fsgg-coord …
+#
+# AND IT PREFERS A BUILD OF CODE THIS CHECKOUT AUTHORED, WHICH IS THE PREMISE THE SENTENCE BELOW ALWAYS
+# HAD AND NEVER STATED (.github#2653). "A worker who builds in their own worktree gets THEIR build"
+# assumes a worktree build EXPRESSES INTENT to use it as the engine. That is true of a `dotnet build`
+# somebody ran to test their edits, and FALSE of a build created transitively — `tests/skill-registry`
+# and `tests/skill-quality` build the engine as a side effect, and `scripts/generate-driver-manifest
+# --write` REFUSES without one, so a worker whose item touches no engine source is REQUIRED to create the
+# artifact and then poisoned by it: a feature branch is behind `main` under the engine's source trees by
+# construction the moment any engine commit lands after it was cut, and `stale_guard` then fail-closes
+# every board write from that worktree. Five occurrences across three agents in ONE board-driver run.
+#
+# THE MECHANISM, NAMED HERE BESIDE THE RATIONALE IT QUALIFIES, is `engine_shadows_shared` in
+# `scripts/fsgg-coord-guards.sh`: tier 2a is preferred unless this checkout authors NO engine build
+# inputs of its own AND a distinct shared checkout carries an engine that the identical staleness
+# question calls CURRENT. It is decided from git object identity — `status --porcelain` and
+# `diff --quiet <merge-base> HEAD` — never from mtimes, which .github#1572 already measured answering
+# "something was written" when asked "did somebody mean it". Every unanswerable probe prefers this
+# build, so the fall-through can only ever move to an engine that answers "current", and never at all
+# when there are edits here to discard. The kit author's workflow is untouched: they author engine
+# source, so the first probe answers yes and nothing further is even paid for.
 if [ -n "$TOP" ]; then
   CANDIDATE="$(engine_path "$TOP")"
   if [ -x "$CANDIDATE" ]; then
-    guards "$TOP" "${CANDIDATE}.dll" "${1:-}" "${2:-}"
-    exec "$CANDIDATE" "$@"
+    load_guards "$TOP"
+    if ! engine_shadows_shared "$TOP" "$CANDIDATE"; then
+      guards "$TOP" "${CANDIDATE}.dll" "${1:-}" "${2:-}"
+      exec "$CANDIDATE" "$@"
+    fi
   fi
 fi
 
@@ -211,6 +250,17 @@ fi
 # the edits they are testing. The consequence — a worker who edits `src/` here but does not build gets
 # the shared engine, which does not carry their edits — is the status quo of the note this retires, not
 # a regression this introduces.
+#
+# AND "THEIR BUILD" NOW MEANS A BUILD OF CODE THEY AUTHORED, WHICH IS WHAT THIS SENTENCE ALWAYS MEANT
+# (.github#2653). Read literally it says a build wins by sitting in the caller's tree, and that literal
+# reading is what refused five workers in one run over artifacts their gate harnesses and
+# `generate-driver-manifest --write` created for them — none of whom had edits to discard, which is the
+# only harm the sentence names. The mechanism that separates the two is `engine_shadows_shared` in
+# `scripts/fsgg-coord-guards.sh`, called from tier 2a above and documented in full there and in its
+# comment block: a checkout that authors engine build inputs of its own keeps this preference exactly,
+# and one that authors none falls through to THIS tier — but only when the engine here answers CURRENT
+# to the same staleness question, so the fall-through can never hand anyone a worse engine than the one
+# it passed over.
 #
 # THE GUARDS MEASURE THE SHARED TREE, AND THAT IS LOAD-BEARING RATHER THAN TIDY. Passing "$TOP" here
 # would compare the CALLER's `src/` against the SHARED build — and `git worktree add` writes every file

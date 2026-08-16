@@ -25,33 +25,83 @@ sub-obligations, and was explicitly host-gated — *"merge, then STOP and report
 worker verified zero `0.50.6` tags at 15:43:56Z; by 15:46:48Z all three tags existed at the merge commit
 and all three release workflows had run. `.github#2533` is that defect.
 
+**A TRIGGER IS NOT AN ACT, and row 1 turns on which version line you are on.** `kit-auto-publish.yml`
+fires on every merge. The program it runs, `scripts/kit-auto-publish.py`, deliberately admits **only a
+same-line PATCH bump** (`.github#2442`) and terminally refuses anything else. Every coherent-set release
+is a MINOR by design (`.github#2402`). So on a minor the workflow fires and cuts nothing, and the
+release is genuinely yours.
+
+**AND A TAG IS NOT A PUBLICATION.** This is `.github#2654`, and it is the third correction in the
+same series: `.github#2533` moved the question from *"the workflow fires"* to *"the program decides"*,
+`.github#2571` from *"the program decides"* to *"the program decides to **tag**"*, and this one from
+*"the program decides to tag"* to *"the artifact is **published**"*. Since `.github#2600`'s release
+saga, `release-kit` / `release-coord-engine` / `release-drivers` **do not pack anything** — each
+downloads the `coherent-set/v<version>` draft release that `release-saga-prepare.yml` prepared. That
+workflow was `workflow_dispatch`-only, and `kit-auto-publish` tags with no operator involved, so on
+the first PATCH after the saga landed the two rails met for the first time and did not join:
+`0.58.1` was tagged in all three namespaces at `a415652f` and **all three release workflows died
+within seconds on `release not found`**. Zero packages, three immutable tags. `kit-auto-publish`'s own
+run was **green**. `kit-auto-publish` now CALLS `release-saga-prepare` and pushes its tags only from a
+job that `needs:` that call, so the bytes exist before the tags that consume them — but read the last
+paragraph of this section before you treat any of that as evidence that something shipped.
+
 | act | performed automatically by | trigger | so the obligation is |
 |---|---|---|---|
-| tagging `kit/v<version>`, `coord-engine/v<version>`, `drivers/v<version>` at the merge commit, and thereby starting `release-kit` / `release-coord-engine` / `release-drivers` | `.github/workflows/kit-auto-publish.yml` | `on: push: branches: [main]`, unfiltered — **every** merge | **verify the automatic release**, never perform it |
+| preparing the coherent set — packing all three members once, preflighting them against both feeds, and placing them in the `coherent-set/v<version>` draft release — and then tagging `kit/v<version>`, `coord-engine/v<version>`, `drivers/v<version>` at the merge commit, thereby starting `release-kit` / `release-coord-engine` / `release-drivers` on bytes that already exist — **when `<Version>` is the next PATCH above both feed frontiers** | `.github/workflows/kit-auto-publish.yml`, which calls `.github/workflows/release-saga-prepare.yml` and pushes the tags only from a job that `needs:` that call (`.github#2654`) | `on: push: branches: [main]`, unfiltered — **every** merge starts it, and on a next-patch candidate `kit-auto-publish.py` answers `tag` | **verify the automatic release**, never perform it — and verify the FEEDS, not the run |
+| the same tagging — **when `<Version>` is a MINOR, which every coherent-set release is** | nothing | the same merge starts the same workflow, and `kit-auto-publish.py` refuses it terminally: `candidate-not-next-patch`. Coherent-set versions publish through `.github#2409`'s release path instead | **yours**, and it must be declared — with a token that NAMES it |
 | regenerating `registry/coordination-kit-skill-manifest.json` and the other rostered projections | `skill-registry-coherence` / `projections` autofix | scheduled + `push` | none — but a projection you did not regenerate reds `main` until the bot catches up, so regenerate it in your PR |
 | recording a published coherent set in `registry/dependencies.yml` / `registry/CHANGELOG.md`, bumping a downstream repo, filing a follow-up row | nothing | — | **yours**, and it must be declared |
 
-**For row 1, the token you want is `kind=release-verification`.** Read that twice, because the obvious
-choice is the wrong one: `package-release` — and its artifact-specific spellings `kit-release`,
+**On the PATCH line, the token you want is `kind=release-verification`.** Read that twice, because the
+obvious choice is the wrong one: `package-release` — and its artifact-specific spellings `kit-release`,
 `coord-engine-release`, `drivers-release`, `coherent-set-release` — are exactly the tokens
-`check-kit-published-coherence.py --obligation-arm` **flags**, because they name an act the merge
-performs. They are listed here so you can recognise them, not so you can use them. Declaring one on a PR
-into `main` reds `kit-published-coherence / pr-arm`, which is the gate doing its job.
+`check-kit-published-coherence.py --obligation-arm` **flags there**, because on that line they name an
+act the merge performs. Declaring one on a next-patch PR into `main` reds
+`kit-published-coherence / pr-arm`, which is the gate doing its job.
+
+**On the MINOR line those same tokens are the RIGHT ones, and the gate accepts them.** This is
+`.github#2571`, and it is worth stating plainly because the rule above used to have no exception and the
+gate used to have no second question. A worker cutting a coherent set is performing the release; the
+token should say so. Do not reach for `release-verification`, and above all do not reach for an unmapped
+token like a bare `release` to get past the gate — `.github#2527` / PR #2532 did exactly that, silently,
+and choosing a word to evade a control is the thing the control exists to prevent.
 
 | you owe | use | why |
 |---|---|---|
-| confirming the automatic release published what you meant | `release-verification` | comparing published bytes to canonical is not something any workflow does |
-| performing a release by hand | `package-release` and friends | **flagged** — the merge already did it; rewrite the obligation as verification |
+| confirming the automatic release published what you meant (patch line) | `release-verification` | comparing published bytes to canonical is not something any workflow does |
+| performing a release by hand on a candidate the merge WILL publish (patch line) | `package-release` and friends | **flagged** — the merge already did it; rewrite the obligation as verification |
+| performing a coherent-set release by hand on a MINOR the merge will NOT publish | `coherent-set-release`, or the artifact-specific spelling | **accepted** — the gate asks `kit-auto-publish.py` what it would decide, not just whether the workflow fires |
 
-Those tokens are the join key the gate uses; it reads `kit-auto-publish.yml`'s live `on:` block rather
-than trusting this table. If you change one half, change the other. `.github#2533`'s own PR declares
-`kind=release-verification`, which is the worked example — the item self-applying rather than exempting
-itself.
+Those tokens are the join key the gate uses, and it restates neither half of the answer: it reads
+`kit-auto-publish.yml`'s live `on:` block **and** calls `kit-auto-publish.py`'s own `decide()` over the
+version this PR ships and the frontier it would ship above. If you change one half, change the other.
+`.github#2533`'s own PR declares `kind=release-verification`; `.github#2571`'s does too, because it ships
+a PATCH — each item self-applying rather than exempting itself. Neither is a worked example of the minor
+leg, which is by construction: the leg that needs an example is the one you will meet at a coherent-set
+cut, and `tests/kit-published-coherence/run.sh` carries it as an executable one.
 
 **Verifying an automatic release means reading the PUBLISHED BYTES against canonical.** A green release
 workflow proves the job ran, not that what shipped is what you meant: `release-kit` run `31716998803`
 succeeded while publishing an `FS.GG.Kit 0.50.6` whose `pnext-item` was stale, because the tag preceded
 an open PR that was correcting it. Compare the artifact, not the check mark.
+
+**And a green `kit-auto-publish` run proves less than that — it does not prove a release workflow even
+STARTED successfully, let alone published.** `kit-auto-publish` ends at the tag push; everything after
+that is three separate workflows on a separate trigger, and a refusal there is invisible from the run
+you were watching. On `0.58.1` the auto-publish run succeeded, the three release runs failed seconds
+later, and both feeds sat at `0.58.0` for hours with nobody's check red (`.github#2654`). So the
+verification that discharges a `release-verification` obligation is a **feed read**, and it is
+two questions, not one:
+
+```sh
+# 1. does each feed SERVE the version at all?
+curl -fsS https://api.nuget.org/v3-flatcontainer/fs.gg.kit/index.json | jq -r '.versions[-3:]'
+gh api 'orgs/FS-GG/packages/nuget/FS.GG.Kit/versions?per_page=100' --paginate --jq '[.[].name] | .[:3]'
+# 2. do the bytes it serves match canonical, and does the served nuspec name the tagged commit?
+```
+
+Neither question is answered by looking at Actions. If the version is absent, the obligation is not
+discharged and the tags are the evidence of what still has to happen — not evidence that it did.
 
 ### A pre-act condition on an automated act belongs in a PRE-MERGE gate
 
