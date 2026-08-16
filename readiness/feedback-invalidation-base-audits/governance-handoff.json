@@ -6,17 +6,17 @@
   "sources": [
     {
       "path": "readiness/feedback-invalidation-base-audits/ship.json",
-      "digest": "sha256:e5b125a00e69fb4b8f84f7d0c33867761840946e0b5cede373744903e67788aa",
+      "digest": "sha256:effb70b53b231a0521b8a68decf47ddba26c22b1ee91cd4c86995d6188c747eb",
       "schemaVersion": 1
     },
     {
       "path": "readiness/feedback-invalidation-base-audits/verify.json",
-      "digest": "sha256:56ad12bec21e4e60d745a5fb941d4ae396f3f3374b920d7353acd7b071165fa4",
+      "digest": "sha256:bd77921451e0259a2fc0b879c2e15fe3db2a3f4463b6bf0cd0dcdae3b284ff03",
       "schemaVersion": 1
     },
     {
       "path": "readiness/feedback-invalidation-base-audits/work-model.json",
-      "digest": "sha256:5ebd4cf62685b84615b72ec9fc9dc0fe4977b55cbdb159ac15c2cc06e447be22",
+      "digest": "sha256:c243be8f9a685523257e1f64bb751fa16aafe469a9c76ece1cd7e5aff96fc9c3",
       "schemaVersion": 1
     }
   ],
@@ -119,97 +119,97 @@
       },
       {
         "id": "task:T001",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T002",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T003",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T004",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T005",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T006",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T007",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T008",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T009",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T010",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T011",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T012",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T013",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T014",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T015",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T016",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T017",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T018",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       },
       {
         "id": "task:T019",
-        "state": "pending",
+        "state": "real",
         "rationale": null
       }
     ],

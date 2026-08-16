@@ -30,7 +30,7 @@ sources:
 tasks:
   - id: T001
     title: Implement requirement FR-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: []
     requirements: [FR-001]
@@ -40,7 +40,7 @@ tasks:
     requiredEvidence: [EV001]
   - id: T002
     title: Implement requirement FR-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: []
     requirements: [FR-002]
@@ -50,7 +50,7 @@ tasks:
     requiredEvidence: [EV002]
   - id: T003
     title: Implement requirement FR-003
-    status: pending
+    status: done
     owner: sdd
     dependencies: []
     requirements: [FR-003]
@@ -60,7 +60,7 @@ tasks:
     requiredEvidence: [EV003]
   - id: T004
     title: Implement requirement FR-004
-    status: pending
+    status: done
     owner: sdd
     dependencies: []
     requirements: [FR-004]
@@ -70,7 +70,7 @@ tasks:
     requiredEvidence: [EV004]
   - id: T005
     title: Implement requirement FR-005
-    status: pending
+    status: done
     owner: sdd
     dependencies: []
     requirements: [FR-005]
@@ -80,7 +80,7 @@ tasks:
     requiredEvidence: [EV005]
   - id: T006
     title: Implement clarification decision DEC-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -90,7 +90,7 @@ tasks:
     requiredEvidence: [EV006]
   - id: T007
     title: Implement clarification decision DEC-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -100,7 +100,7 @@ tasks:
     requiredEvidence: [EV007]
   - id: T008
     title: Implement clarification decision DEC-003
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -110,7 +110,7 @@ tasks:
     requiredEvidence: [EV008]
   - id: T009
     title: Update contract surface PC-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -120,7 +120,7 @@ tasks:
     requiredEvidence: [EV009]
   - id: T010
     title: Update contract surface PC-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -130,7 +130,7 @@ tasks:
     requiredEvidence: [EV010]
   - id: T011
     title: Update contract surface PC-003
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -140,7 +140,7 @@ tasks:
     requiredEvidence: [EV011]
   - id: T012
     title: Record verification evidence VO-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -150,7 +150,7 @@ tasks:
     requiredEvidence: [EV012]
   - id: T013
     title: Record verification evidence VO-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -160,7 +160,7 @@ tasks:
     requiredEvidence: [EV013]
   - id: T014
     title: Record verification evidence VO-003
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -170,7 +170,7 @@ tasks:
     requiredEvidence: [EV014]
   - id: T015
     title: Record verification evidence VO-004
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -180,7 +180,7 @@ tasks:
     requiredEvidence: [EV015]
   - id: T016
     title: Handle migration posture PM-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -190,7 +190,7 @@ tasks:
     requiredEvidence: [EV016]
   - id: T017
     title: Handle migration posture PM-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -200,7 +200,7 @@ tasks:
     requiredEvidence: [EV017]
   - id: T018
     title: Refresh generated view impact GV-001
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []
@@ -210,7 +210,7 @@ tasks:
     requiredEvidence: [EV018]
   - id: T019
     title: Refresh generated view impact GV-002
-    status: pending
+    status: done
     owner: sdd
     dependencies: [T001]
     requirements: []

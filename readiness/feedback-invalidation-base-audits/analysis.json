@@ -37,6 +37,16 @@
       "schemaStatus": "current"
     },
     {
+      "path": "readiness/feedback-invalidation-base-audits/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "ed9075e20bf5220a300c3e14840ccec4d174e845376f04c6e6f00571ccb23103"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
       "path": "work/feedback-invalidation-base-audits/checklist.md",
       "kind": "checklist",
       "digest": {
@@ -81,7 +91,7 @@
       "kind": "tasks",
       "digest": {
         "algorithm": "sha256",
-        "value": "8de624774c7394528053b1414e8f7affb15c8be7e623c1a02cbcc16d8bf7baf8"
+        "value": "a3f8e3d7b067b7a95895e7936942cebf59a6bb2cfdd42380d0d5628260d54e5b"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -656,7 +666,7 @@
     {
       "path": "readiness/feedback-invalidation-base-audits/work-model.json",
       "kind": "workModel",
-      "currency": "missing",
+      "currency": "current",
       "diagnosticIds": []
     }
   ],
