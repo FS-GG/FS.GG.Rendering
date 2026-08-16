@@ -1,0 +1,226 @@
+schemaVersion: 1
+work:
+  id: feedback-invalidation-base-audits
+  title: "Feedback Invalidation Base Audits"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/feedback-invalidation-base-audits/spec.md
+  sourceClarifications: work/feedback-invalidation-base-audits/clarifications.md
+  sourceChecklist: work/feedback-invalidation-base-audits/checklist.md
+  sourcePlan: work/feedback-invalidation-base-audits/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/feedback-invalidation-base-audits/spec.md
+    digest: 1e71605736ebd1a3417acb9974513658a11399e570417677758e525dbde61835
+    schemaVersion: 1
+  - label: clarifications
+    path: work/feedback-invalidation-base-audits/clarifications.md
+    digest: b507b1cf3a69a136d6d90f9a344affef063efe3847ebf5b0533ce0efbc6963b3
+    schemaVersion: 1
+  - label: checklist
+    path: work/feedback-invalidation-base-audits/checklist.md
+    digest: 4506132422b4ff3c38669d720994a2b19276c93ae7e6aaa55ab7b25a49bb7acd
+    schemaVersion: 1
+  - label: plan
+    path: work/feedback-invalidation-base-audits/plan.md
+    digest: 90a2efec3a177f69e41c2c8766319d3f0462b0f31922ebba84146b7eaa55f550
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: pending
+    owner: sdd
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, AC-002, AC-004, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Implement requirement FR-002
+    status: pending
+    owner: sdd
+    dependencies: []
+    requirements: [FR-002]
+    decisions: []
+    sourceIds: [AC-001, FR-002, PD-002]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Implement requirement FR-003
+    status: pending
+    owner: sdd
+    dependencies: []
+    requirements: [FR-003]
+    decisions: []
+    sourceIds: [AC-002, AC-003, FR-003, PD-003]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Implement requirement FR-004
+    status: pending
+    owner: sdd
+    dependencies: []
+    requirements: [FR-004]
+    decisions: []
+    sourceIds: [AC-005, AC-006, FR-004, PD-004]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Implement requirement FR-005
+    status: pending
+    owner: sdd
+    dependencies: []
+    requirements: [FR-005]
+    decisions: []
+    sourceIds: [AC-007, FR-005, PD-005]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV005]
+  - id: T006
+    title: Implement clarification decision DEC-001
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: [DEC-001]
+    sourceIds: [DEC-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV006]
+  - id: T007
+    title: Implement clarification decision DEC-002
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: [DEC-002]
+    sourceIds: [DEC-002]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV007]
+  - id: T008
+    title: Implement clarification decision DEC-003
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: [DEC-003]
+    sourceIds: [DEC-003]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV008]
+  - id: T009
+    title: Update contract surface PC-001
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, PD-005]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV009]
+  - id: T010
+    title: Update contract surface PC-002
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-002, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV010]
+  - id: T011
+    title: Update contract surface PC-003
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-003, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV011]
+  - id: T012
+    title: Record verification evidence VO-001
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, PD-002, PD-003, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV012]
+  - id: T013
+    title: Record verification evidence VO-002
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-004, VO-002]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV013]
+  - id: T014
+    title: Record verification evidence VO-003
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-005, VO-003]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV014]
+  - id: T015
+    title: Record verification evidence VO-004
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PD-001, VO-004]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV015]
+  - id: T016
+    title: Handle migration posture PM-001
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV016]
+  - id: T017
+    title: Handle migration posture PM-002
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-002, PM-002]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV017]
+  - id: T018
+    title: Refresh generated view impact GV-001
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV018]
+  - id: T019
+    title: Refresh generated view impact GV-002
+    status: pending
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-002, PD-005]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV019]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work feedback-invalidation-base-audits."
