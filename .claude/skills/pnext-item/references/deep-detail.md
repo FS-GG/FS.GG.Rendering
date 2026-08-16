@@ -237,20 +237,42 @@ Gate on the code:
 ```sh
 receipt="$(scripts/fsgg-coord take --repo <r> --json)" \
   || { rc=$?; echo "no item (exit $rc)"; exit "$rc"; }
-jq -e '.markerObserved == true and .status == "In progress" and .converged == true' \
+jq -e '.markerObserved == true and .converged == true' \
   <<<"$receipt" >/dev/null \
   || { echo "claim won but board readback is NOT converged — do not start or announce work" >&2; exit 1; }
 issue="$(jq -r '.ref' <<<"$receipt")"
 # Only here is the winning marker AND the user-visible board Status freshly confirmed.
+# `.status` is REPORTED, never asserted — see below for why the literal is not the gate.
+echo "claimed $issue at $(jq -r '.status' <<<"$receipt")"
 ```
 
 **The receipt is the start gate.** Exit 0 still means the lock was won — preserving the CAS safety
-contract — while `.converged` says whether a fresh read observed that marker and `Status=In progress`.
-`statusWrite` distinguishes `written`, `deferred`, `not-on-board`, and `failed`; `statusRead` distinguishes
-an observed column from a failed read; `pendingBoardWrites` exposes the queue depth. Never announce or
-implement the item before the predicate above passes. A lagged lock stays reserved and
-[`check-board`](../../check-board/SKILL.md) retains its `CLAIM-STATUS-LAG` repair; do not release or double-claim
-merely because the projection lagged.
+contract — while `.converged` says whether a fresh read observed that marker **and a board column that
+agrees with the lifecycle projection this claim derived from the item's live facts**.
+
+**`.converged` DOES NOT MEAN `Status=In progress`, AND ASSERTING THAT LITERAL IS A BUG
+([.github#2645](https://github.com/FS-GG/.github/issues/2645)).** It used to: `claim` fed the lifecycle
+reducer a hardcoded *"this item has no PR, nothing blocks it, the issue is open"*, so the reducer had
+only one answer it could give, and `converged` was written to require exactly that answer. Both halves
+were wrong together, which is why neither looked wrong. A worker re-affirming its own lock mid-review
+had the column silently reverted from `In review` to `In progress`, and the receipt called that revert a
+success. The destination is now derived from the item's real PR / blockers / delivery / issue facts, so
+it is `In review` for a row under review, `Blocked` for a row with a live blocker, and `In progress` for
+the ordinary fresh claim — and `.converged` is the board **agreeing with whichever of those was
+derived**. A predicate that re-states one column defeats the fix and fails a correct claim.
+
+`statusWrite` distinguishes `written`, `deferred`, `not-on-board`, `failed`, and — since #2645 —
+`withheld`; `statusRead` distinguishes an observed column from a failed read; `pendingBoardWrites`
+exposes the queue depth. Never announce or implement the item before the predicate above passes.
+
+**`withheld` IS NOT A LAGGED WRITE, AND MUST NOT BE ROUTED LIKE ONE.** A lagged lock (`deferred`, or a
+`failed` mutation) stays reserved and [`check-board`](../../check-board/SKILL.md) retains its
+`CLAIM-STATUS-LAG` repair for it; do not release or double-claim merely because the projection lagged.
+`withheld` is the *other* thing: a fact the claim needed could not be READ, so it wrote nothing at all
+rather than derive a column from a fiction — the lock is held, the column is untouched, and stderr names
+the unreadable fact. The repair is to re-run `claim <ref> --json` once that read recovers (or
+`reconcile --apply`), not to treat the column as merely behind. Collapsing the two is the exact
+distinction #2645 exists to draw: "I could not look" is not "I looked, and the write is on its way".
 
 **If `take` exits 75, a rate budget is exhausted — back off until the reset it names; do not loop.**
 **Read WHICH budget it named** ([#897](https://github.com/FS-GG/.github/issues/897)): they fail

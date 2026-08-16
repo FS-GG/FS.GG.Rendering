@@ -67,6 +67,23 @@ If that ceiling is exhausted, append `escalation` then `repair-phase`. Escalatio
 repair-phase fact has no authority. Repair phase permits at most ten confirmations before human
 escalation.
 
+If the round's critic has despawned and the host grants succession, the successor performs a genuinely
+fresh, full review of the current head and records it under **its own minted identity** — never as a
+record bearing the despawned critic's id, and never as a second `initial`, which is allowed only after
+host acceptance. The record keeps whichever `kind` the chain needs (`confirmation`, `escalation` or
+`repair-phase`) and adds one object:
+
+```json
+"critic": "<successor-minted-id>",
+"succession": {"originalCritic": "<despawned-id>", "grantedBy": "<host-id>", "grantUrl": "<grant comment URL>"}
+```
+
+After a valid succession the successor IS the generation's critic: the host's `acceptance` binds the
+successor, and any further grant names the successor as its `originalCritic`. A differing critic
+carrying no grant is refused exactly as before, and a grant on an `initial` or `acceptance` record, or
+on one that changes no critic, is refused. The engine requires `grantUrl` to be present and never
+resolves it, and a grant is bound to one exact head — a moved head needs a new grant.
+
 Only the host posts `acceptance`, after the latest critic record is `pass` and all checks are green.
 It uses verdict `accepted`, binds the exact head, initial URL and latest critic URL, follows the
 critic comment, and preserves generation critic identity. When diff audit is required it carries
@@ -84,9 +101,387 @@ generation. Backlinks, head bindings, critic continuity, and digest continuity f
 
 The critic is independent of implementation context: provide the roadmap/spec, diff, exact head and
 verification evidence, but not hidden implementation reasoning. The same critic handles repairs in a
-generation. Use the explicit succession workflow if replacement is unavoidable; prose is never
+generation. Use the explicit succession workflow above if replacement is unavoidable; prose is never
 authority.
 
 Report concrete findings first, ordered by severity and linked to files or commands. A pass means no
 unresolved material finding remains at the reviewed head. The host validates the ledger and checks
 itself and never translates a prose verdict into a structured pass.
+
+## Root cause, dedupe, and materiality
+
+For every candidate finding the critic searches the relevant code and history for the **cause**, then
+searches open and closed issues, PRs, comments, and the board for that cause rather than the surface
+symptom. Rows expressing one cause routinely share no symptom text at all. Reuse an existing item that
+already carries the cause and add the new evidence there.
+
+A finding is **material** only when the evidence shows at least one of:
+
+- acceptance criteria are unmet, or observable correctness, compatibility, security, data integrity,
+  performance intent, or releaseability is at risk;
+- a test or gate can report green without checking its declared subject;
+- a gate the change adds or modifies stays green when inverted, or a test named for a property does not
+  itself provide that property — see **Gate-inversion evidence** below, which makes this a finding by
+  definition rather than a judgement call;
+- an architecture or ownership violation creates a concrete defect or blocks safe evolution;
+- bounded hardening prevents a measured recurring failure, retry, operational burden, or meaningful
+  maintenance cost; or
+- the item ships or claims reachable game functionality with no passing bot-driven headless player
+  journey (`.github#2087`) — see **Game functionality** below.
+
+Style, naming taste, speculative edge cases, optional refactors, "could be cleaner" observations, and
+findings already repaired in the current PR are **not** material new work. Record them in the review
+comment when useful, but never create an issue, board row, blocker edge, or follow-up queue entry for
+them. Uncertainty is not materiality; measure or omit.
+
+## Runtime-route evidence gate
+
+Source review is required and is **not sufficient** for a runtime-behaviour claim. When the PR's
+requirements, its claimed behaviour, or a candidate finding concern behaviour reachable through more
+than one meaningful route, the critic **executes or measures** at least one comparison through the
+production route against the built artifact. The comparison observes the behaviour that could diverge —
+a player input route against its direct dispatch, say — rather than asserting that the two source
+implementations look equivalent.
+
+The ledger seals the *shape* of that evidence: a passing record carries four ordered meaningful-route
+strings (built artifact, executed command, compared routes, observed result) or exactly one
+not-meaningful reason. It cannot decide **whether** a comparison is meaningful, and it cannot tell
+reading from executing. Both are the critic's, so a record that cites only source reading for such a
+claim is incomplete and cannot be accepted as evidence that the routes agree. Where no meaningful
+production-route comparison exists for the review subject, the critic states that boundary and why; the
+exception waives none of the rest of the source review.
+
+This is reusable guidance, not an audio-specific recipe. Rogue3 exposed the shape when a built product
+route emitted `[]` while direct dispatch emitted `[PlaySfx (SoundId "floor-descend", 0.8)]`: the cue map
+looked correct in isolation, and executing both routes revealed the defect.
+
+## Game functionality — the bot-driven player journey gate
+
+This gate is **blocking**, not advisory. When an item ships or claims reachable game functionality, the
+critic verifies a passing bot-driven headless player journey exists and reviews the journey itself, not
+only its result. Absence of that evidence is a material finding by itself — a green suite that never
+boots the product cannot distinguish "works" from "unreachable" (`2026-08-02-Rogue3.md` §4.3: eleven
+consecutive `shipReady` verdicts preceded the human launch that found an unreachable starting room).
+
+A journey is evidence only when it is driven **through the product's real input surface** — the same
+control messages a player emits — and **boots at the product's real entry point**. Direct `Msg`
+injection, a test-only API, or any seam that exists solely for tests is not evidence, and a journey
+using one is rejected by this gate rather than merely discouraged in prose. Seeding a mid-game model
+and calling the functionality "reached" is a gate failure however correct the resulting state looks.
+Functionality the item names that no journey reaches is reported as uncovered, never silently absent.
+
+Where the product's entry point is not yet test-ownable, the critic returns `changes-required` and
+records that the gate cannot run and why — fail closed, never pass by absence.
+
+One advisory input is explicitly **not** consumed as blocking here: `FS.GG.Game#563`'s
+`DegenerateVocabulary` check fires on declared-vocabulary cardinality alone, so it flags a legitimately
+single-inhabitant slot with zero `Unbound` arms. A `DegenerateVocabulary`-only finding, with no
+accompanying `Unbound`-arm evidence, is not by itself material under this gate.
+
+## Gate-inversion evidence
+
+A gate that has never been red is equally consistent with "nothing was ever wrong" and "it cannot
+fire", and reading cannot separate those. `.github#2223` measured ten such gates in one run across six
+items and four repositories, three months after `.github#1610` found the same class. So these are
+numbered steps, not a virtue some critics happen to have. The bound is one mutation per touched gate,
+plus the single non-vacuity leg step 2 names; this is never a suite-wide sweep.
+
+1. **Inventory the gates the change adds or modifies, and show each one is REACHED.** A gate is
+   anything whose purpose is to refuse: a test, an assertion, a fixture case, a checker script, a
+   workflow step, a schema or parser rule. The inventory is bounded to what the diff touches — never
+   the whole suite. For each, name the workflow, the job, and the invocation line that actually calls
+   it. Every step below measures whether a gate *can* fire; not one of them asks whether anything
+   ever *runs* it. A gate no workflow invokes is graded `NOT_MEASURED` at best and is material by the
+   same logic step 3 applies to a surviving inversion: inverting it by hand reds exactly as step 2
+   asks and certifies nothing, because the CI signal it exists to produce has never once been
+   generated. `.github#2537` is the worked instance, cross-referenced here rather than restated, and
+   its own repair belongs to it.
+
+   **"Reached" includes the trigger's own `paths:` filter, evaluated against THIS change.** Where a
+   gate runs under a `paths:`-filtered workflow, name the filter and the path in this diff that
+   matches it. A gate that is wired, invertible, and simply never triggered for the diff in hand is
+   indistinguishable from an absent one — and it is not merely accidentally silent but *selectively*
+   silent: a path filter is quietest on the additive changes that leave a stale artifact in place, and
+   loudest on the destructive ones that were easiest to notice anyway. On `.github#2230`,
+   `.github#2510`'s coverage gate fired only because that change happened to DELETE files under a
+   watched glob; the "keep both homes" variant — add the new home, leave the old one populated — would
+   have matched no path in the filter at all, and two disagreeing copies would have landed with
+   nothing watching. That variant is the one a reasonable implementer picks precisely to stay green.
+
+2. **Invert each gate exactly once by breaking its SUBJECT, and show it examined something.** Break
+   the thing the gate claims to protect — not the gate's own predicate — run the suite, and record the
+   exact mutation and the exact observed result under `Verification:`. Where a subject mutation
+   genuinely cannot be constructed, say so, record predicate inversion as the strictly weaker evidence
+   it is, and grade the gate `NOT_MEASURED` — never `JUSTIFIED`.
+
+   **Vacuous green: a gate can also pass because it examined nothing.** Breaking the subject presumes
+   the gate had a subject in front of it. Where a gate's verdict is computed over a corpus, a fixture
+   set, or any input collection, empty that collection and re-run: if the gate still passes, then
+   "found nothing" and "looked at nothing" share an exit code, which is `#266`'s shape one layer in.
+   `.github#2534` measured the need — of seven gate mutations the most load-bearing was the one that
+   emptied the scanned corpus, and only a separate non-vacuity leg caught the vacuous pass;
+   `.github#2510` measured its half-closed form, where a repair that closed "the declared root does
+   not exist" left "the root exists but is EMPTY" producing the identical confident green.
+
+   **A source-text gate has this failure mode and a behavioural gate does not.** An empty corpus
+   satisfies a gate that greps for a name in a way it cannot satisfy a gate that executes the code. So
+   a gate whose subject is source text carries a **non-vacuity leg** — the gate shown red on a
+   non-empty corpus containing a genuine offender, so the two outcomes stop being indistinguishable.
+   That leg is the one further mutation this section requires, it is owed only by source-text gates,
+   and it is why a self-test for a scanner **calls** the scanner rather than grepping for its name.
+
+3. **A surviving inversion is material by definition** — not a judgement call, not a style note, and
+   not something a later round may absorb silently. So is a gate graded `NOT_MEASURED` because nothing
+   invokes it.
+
+4. **A test that claims a property must provide it.** Where the property is supplied by a test other
+   than the one named for it, name that provider; a test named for an invariant it does not exercise
+   is a decorative gate whichever way it happens to be passing.
+
+5. **The fixture must reproduce production.** A fixture that omits the shape production has cannot go
+   red on it, so the inversion has measured the fixture rather than the subject.
+
+6. **The measurement environment must not supply what production lacks.** A run with a tool,
+   credential, path, or file that CI does not have measures a different system; say which environment
+   produced each observation.
+
+7. **Invert the unreadable input, not only the happy path.** Mutating a gate's success path leaves one
+   whole class untouched: **a non-answer reported as a confident answer.** Three of `.github#2223`'s
+   instances are this and nothing else — a literal `always` matched no template and was graded *not
+   selected*; a row with `scope` absent fell through to somebody else's row; an unreadable form was
+   graded a confident negative. In each the gate received something it could not interpret and emitted
+   a definite verdict about it, and inverting the happy path leaves all three green. So feed the gate a
+   form it cannot parse and confirm it **refuses rather than decides**: "I could not evaluate this" is
+   never "I evaluated it and it passed" (`#266`). A gate's stated limits are part of what is verified
+   here too — grading workflow *files* is not evidence that the context executed anything, because
+   `if: false` on every step and `continue-on-error` are each green and each invisible.
+
+8. **A repair must catch the escape that was actually found.** When a mutation got through, the
+   repaired gate must go red on *that* mutation — not merely pass, and not merely red on some newly
+   added case. A repair that adds cases without re-running the original escape has not been shown to
+   close it.
+
+9. **When a repair strengthens what a gate ASSERTS, re-derive the evidence for the stronger claim.**
+   Making a gate's claim broader, more specific, or more confident changes what must be proved, and
+   evidence gathered for the weaker claim does not carry forward. On `FS.GG.Templates#349` a round-1
+   repair strengthened a failure message to say the complete published set had been compared — *"so
+   this is not a search-depth artifact"* — while the predicate still asked only whether a ceiling had
+   been hit; a skipped download then produced a confident upstream accusation in better prose than
+   before the repair. **A gate that gains eloquence faster than correctness is worse than one that
+   stayed vague**, because the vague one did not invite reliance on a claim nothing checked. A
+   strengthened assertion carrying unchanged evidence is material, exactly like a surviving inversion.
+
+For each touched gate the review marker names the mutation applied, the observed result, and the
+workflow and job that invoke it — with the trigger's path filter and the path in this diff that
+matches it, wherever that trigger is filtered — and, where the gate's subject is source text, its
+non-vacuity leg. For each gate whose inversion could not be obtained, the reason, which is
+`NOT_MEASURED` and never a pass. `scripts/gate-mutate.py` is this org's harness for the sweep and its
+verdict vocabulary is the one to use: `JUSTIFIED` fired, `DECORATIVE` could not fire, `NOT_MEASURED`
+obtained no measurement.
+
+## Handoff-assertion provenance
+
+Every specific, checkable assertion in an implementation handoff, critic report, or host relay carries
+`Verification:` — the command, `file:line`, API call, or URL actually used to establish the fact, or
+exactly `Verification: unverified`. `unverified` is first-class and non-pejorative: it makes an
+unchecked claim legible without requiring every claim to be checked. **A receiver must not infer
+verification from prose**, and a missing field is a detectable incomplete handoff rather than evidence
+that the assertion was checked. This binds the host relaying worker or critic claims onward exactly as
+it binds the worker and critic who authored them.
+
+### Issue and pull-request body evidence
+
+Before accepting a newly filed or materially edited issue or PR body, independently re-derive every
+checkable `path:line`, count, and suite-green claim it relies on. A local citation names the exact
+tracked path; a cross-repository citation names `OWNER/REPOSITORY@REVISION:path:line` or a stable URL;
+a count or suite verdict names the command or check URL that produced it. Record that basis in the
+handoff's `Verification:` field, and where no reproducible basis exists write `unverified` and do not
+treat the claim as acceptance evidence.
+
+This review-time check **owns** remote bodies, and owns them by construction: a source-only CI checkout
+cannot enumerate existing issue or PR text, so ADR-0074 places those bodies deliberately outside the
+static citation gate and delegates them here. Deleting this section leaves that delegation pointing at
+nothing.
+
+### Body-edit provenance — the REST timeline does not surface body edits
+
+When a check turns on whether an issue or PR **body** changed since some point — touch-set honesty,
+delivery-obligation staleness, a superseded declaration — `gh api repos/<owner>/<repo>/issues/<n>/timeline`
+is not evidence either way. That endpoint never emits an `edited` event for a body edit, so zero results
+mean only that REST has nothing to say. Treating that absence as a confident "unedited" is precisely the
+non-answer-graded-as-a-confident-negative shape step 7 above warns against: a REST-timeline-only "no
+edits found" is `NOT_MEASURED` for this question, never a negative result.
+
+Measured directly on `.github#2417`: its REST timeline returned zero `edited` events while GraphQL showed
+five real body edits, three of them after the claim (`.github#2456`). The authoritative source is
+GraphQL's `userContentEdits` connection — `totalCount` plus each edit's `editedAt` and `editor`; the
+simpler `lastEditedAt` scalar answers only "has it ever been edited", with no count or history. Reach it
+through `scripts/fsgg-coord body-edits`, which is metered and fails closed, and **not** through a
+hand-built `gh api graphql` call: this repository's GraphQL budget is fleet-wide and worker-metered, and
+an unmetered principal is the shape `graphql-monopoly` exists to catch.
+
+## Disposition and repair bounds
+
+The implementing worker repairs the material findings that belong in the current PR; the same critic
+reviews each repaired head. Every round addresses material findings only — never minor observations.
+Where no repair is required, an initial `pass` whose reviewed head equals the candidate head **is** the
+confirmation, and no second record is required. Before routing any repair the host validates the current
+chain and permits it only while the latest round is below the ordinary ceiling; that count-before-routing
+check is what stops a failed final confirmation racing into one more repair while the escalation writes
+settle.
+
+When the ordinary chain is exhausted, the host closes the exhausted PR **without merging** and enters the
+repair phase below automatically. The human park is reached only if that phase also exhausts or its
+required route is unavailable, and then the host:
+
+1. adds `Blocked on: human/action` to the issue body without disturbing its `Paths:` declaration;
+2. records who, when, and why in a comment linking the escalation record (and the repair-phase record
+   too, where one ran);
+3. sets `Status: Blocked` and releases the claim; and
+4. stops — without merging, without filing a replacement review issue, and without starting another
+   automated round.
+
+Only a human, or the automatic repair-phase transition, may retire that sentinel; a human alone may move
+the acceptance boundary. **An exhausted PR never resets its counter and never begins another automated
+cycle.** An already-parked item whose evidence proves ordinary exhaustion becomes eligible for the
+repair-phase transition on the next board-driver pass, without human interaction.
+
+The critic — not the implementer — owns filing for review-discovered findings, and may file new work only
+when all four hold:
+
+1. the finding is material by the definition above;
+2. it is a distinct root cause that cannot remain reviewably inside the current PR;
+3. no existing issue already carries that cause; and
+4. the evidence and acceptance boundary suffice for another worker to act.
+
+It files directly in the root-cause repository — never through either agent's private follow-up queue —
+with observed behaviour, root cause or explicitly measured unknown, impact, acceptance, verification, a
+narrow `Paths:`, `Class:` and `Phase`, on the correct board at `Status: Backlog` unless it is a genuine
+blocker. Class the cause from evidence: `defect` when observed behaviour violates a current contract or
+acceptance boundary, `hardening` when no contract is broken but bounded preventative work addresses a
+measured recurring risk or cost. A finding that still needs human judgement is not actionable enough for
+critic filing; surface it to the host. If a filed issue blocks the current item, the critic reports it,
+the worker sets the real `Blocked by` edge, parks the item and releases the claim.
+
+### A head that moves after the chain was accepted
+
+Succession above covers a chain that is *stuck* and the repair phase covers one that is *exhausted*.
+Neither covers the third case, and it is not exotic: a chain that completed, passed, and was
+host-accepted on a head that then **moved before the merge**. It needs only an acceptance, any delay
+before merging — correctly refusing to merge over a red gate is delay — and `main` moving enough in that
+window to conflict the branch. Measured live: `.github#2512` / PR #2514 was accepted at `f1d6218d`, held
+while a red arm cleared, then conflicted by two sibling merges; the fresh review of the merged head
+caught release notes still claiming that tree was byte-identical to `0.50.4` — true when first reviewed,
+false afterwards, and bound for an irreversible dual-feed publish through a gate that deliberately does
+not judge prose.
+
+A chain is **retired** — excluded from the evidence the protocol classifies — when, and only when, a host
+acceptance both names that chain's initial record and carries an accepted head that is **not** the
+current head. Both facts are read from the acceptance record's own required fields rather than from a
+grant a caller supplies, because the one-initial-record rule is what stops a stranger silently continuing
+another critic's chain, and a second, less checkable channel for the same conclusion is how that
+protection erodes. Two competing initial records with no intervening accepted-then-moved head still fail
+closed.
+
+**Retirement is a read-time exclusion, never an edit.** The retired critic's records stay exactly as
+posted, and re-inspecting them at the head that chain reviewed classifies it exactly as it always did.
+Demoting the superseded record in place was considered and rejected: it is cheaper and mechanically
+sound, but it rewrites another critic's durable evidence, which is what these rules exist to protect.
+Retirement is also a tie-breaker **between** chains and never a re-classification of one — a single
+accepted chain whose head has moved is refused exactly as before.
+
+Be precise about what is observed: the acceptance's **structure**, not the truth of its accepted head.
+Nothing verifies that an acceptance was genuine, so a forged one will retire a live chain. That is a
+smaller hole than it looks. A forgery bound to the *current* head already yields an accepted chain
+outright; reached from the same forgery, retirement yields only a chain awaiting a fresh acceptance at
+the current head — strictly less — and it publishes the bogus value where a reader can see it. The
+guarantee is relative: retirement grants an attacker who can forge acceptances no authority they did not
+already have, and leaves evidence they would rather not leave.
+
+The fresh chain's critic performs a genuinely full, independent review of the current head, never a
+confirmation of the retired critic's finding and never a reuse of its verdict. **When the evidence is
+absent** — an older acceptance that does not name its initial record — retirement cannot apply, and the
+fallback is the one used before this mechanism existed: close the PR without merging, reopen the same
+branch as a fresh PR so the new chain starts alone, and leave both original chains intact on the closed
+PR. It costs a PR number, a re-posted obligations declaration and a re-issued `delivery` call, and loses
+review-thread continuity, which is why it is the fallback and not the mechanism.
+
+### Reading the review state: a designed wait is not broken evidence
+
+`scripts/fsgg-coord review` reports one closed state and one next action. Two of those words mislead in
+opposite directions, and the cost of misreading them is measured, so this is what a host reads instead of
+re-deriving the lifecycle by hand.
+
+**Structurally invalid evidence means the durable record is wrong — and only that.** A broken or missing
+record, a missing critic identity, an unordered round sequence, an exceeded ceiling, missing runtime-route
+evidence, an unresolved diff audit, an acceptance bound to the wrong head. The established recovery —
+close the PR without merging and start a fresh chain — is destructive and irreversible, which is why the
+verdict must never be read over a healthy chain. It was: PR #2514 was closed and reopened as #2528 on that
+reading, costing a full fresh review.
+
+**The post-acceptance window is designed, and it is not an error.** The chain is complete, host-accepted,
+one critic, bound to the current head. The state carries the PR's live check word and the action follows
+from it:
+
+| checks | what it means |
+|---|---|
+| `pending` | **Every ordinary landing passes through here.** Make the one live `delivery` call `pnext-item` §6 places directly after acceptance; the required `claim-generation` context cannot report until that call writes the authorization marker, so waiting for green first is a cycle the marker can never break. |
+| `red`, `conflicted` | The change is failing CI. That is a defect in the change, not in the review evidence — do not restart the chain. |
+| `unknown` | The check state could not be **read**. Deliberately not grouped with `pending`, because waiting cannot improve it. Establish the real check state first: it is a no-verdict on the checks, not a wait, and not a finding against the change. |
+| `merged`, `closed` | The PR is no longer open; no routine review action remains. |
+
+Never reach for close-and-reopen from the post-acceptance window. Nothing about the evidence is wrong.
+
+**A repair whose subject is a PR comment rather than the tree.** A critic's findings include release
+obligations, and the obligations declaration is a standing artefact of every item, so a
+`changes-required` whose subject is a comment body recurs by construction. The repair is then a comment
+edit and the head correctly does not move. Measured on `.github#2534` / PR #2541: the round-1 finding was
+that a `none` obligations declaration did not parse, the repair was an edit to that comment, and the
+round-1 `pass` names the same head as the initial review. The engine cannot observe this — a comment's
+current body is readable, but "it changed in answer to this finding" is not — so, exactly like
+succession, it is an accountable grant the caller supplies, naming the review it answers, the candidate
+head, the granter, and why the subject was a comment. Absent a grant, an unmoved head after
+`changes-required` still routes to the implementer. The grant is refused when it names a different head,
+answers a different review, carries no granter, or is granted by the implementing worker or by the
+round's own critic: an implementer can never unlock its own round, and a critic can never manufacture the
+trigger it will then confirm.
+
+**Do not manufacture a no-op commit to satisfy the old rule.** A moved head was only ever a proxy for
+"the implementer did work", and an empty commit satisfies the proxy while proving nothing. The grant is
+strictly stronger, because it names an accountable third party who is neither of the two parties the
+round is between.
+
+### Repair phase
+
+One bounded escalated attempt runs between an exhausted ordinary chain and the human park — not a fourth
+round of the same chain, and not a substitute for the park if it too exhausts.
+
+Entry is **automatic, and only after validated ordinary exhaustion**. A passing check, a new commit, or
+an agent's judgement that the item is "nearly there" is not an entry trigger; the host verifies the exact
+round chain and the escalation record before entering. On entry:
+
+1. The exhausted PR is closed without merging. **Its counter is never rewound and never reused.**
+2. A **separately scoped** PR opens with a fresh implementing worker and a fresh critic, both dispatched
+   at the escalated route the invoking driver skill names — never chosen ad hoc by the host. The
+   `-best`/`-normal` variants use their explicit repair-phase tables; the bare canonical `drive-board`
+   and `work-board` use the corresponding `-best` repair route. If the active runtime cannot request that
+   exact model and effort, the host applies the park steps above and records the unsupported route as the
+   concrete human action required. **Never downgrade, substitute, or fall back.**
+3. The new PR's initial review record carries the `repair-phase` fact naming the exhausted PR and its
+   escalation record, so a reader can tell "landed after repair-phase escalation" from "landed normally"
+   without reconstructing history.
+4. The repair-phase chain is a **fresh** chain: round numbering restarts at one under the identical
+   confirmation discipline — same critic across its own rounds, one round per repair, no skipped or
+   duplicate numbers — but under the repair-phase ceiling, a distinct literal that is never conflated
+   with the ordinary one. The repair phase never changes the ordinary ceiling for any other item.
+5. A clean repair-phase result merges under the same acceptance and `landable` gates as any other PR.
+   **The repair phase grants no shortcut around either.**
+6. If material findings remain after its final confirmation, automation is exhausted a second and final
+   time: the critic posts the escalation record on the repair-phase PR and the park steps apply verbatim.
+   **There is no second repair phase**, and the human park remains the only terminal outcome an exhausted
+   chain can reach.
+
+Every entry — the trigger evidence, the escalated route used, the fresh critic's identity, and the
+outcome — is recorded on both PRs and on the item, so a completion report cannot describe a repair-phase
+landing as an ordinary one. A new commit or a passing check alone never resets either chain, and never
+creates another repair phase.

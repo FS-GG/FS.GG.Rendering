@@ -101,8 +101,9 @@ the shim resolves no engine it fails loudly with what to do — never a silent n
 ```sh
 eval "$(scripts/fsgg-coord whoami --mint)"     # MINT one; never invent or copy one (#419, #551)
 receipt="$(scripts/fsgg-coord take --repo <this-repo> --json)"
-jq -e '.markerObserved and .status == "In progress" and .converged' <<<"$receipt" >/dev/null
+jq -e '.markerObserved and .converged' <<<"$receipt" >/dev/null
 # Do not implement or announce before that fresh marker + board readback succeeds (#1369).
+# NOT `.status == "In progress"` — that literal is no longer the contract (.github#2645); see below.
 git fetch origin                               # NOTHING else does — the base is otherwise the PAST (#622)
 git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # name the base (#319)
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
@@ -114,6 +115,16 @@ everything in flight), claims it, and — on a lost race — **re-schedules** ra
 home. Its JSON receipt is the postcondition: winning the REST lock and observing the user-visible
 board column are separate facts, and work starts only when `.converged` proves both. Use
 `claim <issue> --json` when you must have a *specific* item, and apply the same predicate.
+
+**`.converged` is agreement with the DERIVED column, not with the word `In progress`
+([.github#2645](https://github.com/FS-GG/.github/issues/2645)).** `claim` derives its destination from
+the item's live PR / blockers / delivery / issue facts, so a specific `claim` on a row already under
+review correctly lands `In review`, and one on a row with a live blocker correctly lands `Blocked`.
+Re-stating `In progress` in the predicate — as this recipe did until #2645 — turns those correct claims
+into false failures, and it is also the shape of the defect itself: the engine used to assert the same
+literal internally, by telling its own reducer the item had no PR. Read `.status` for the report; gate
+on `.converged`. A `statusWrite` of `withheld` means a fact could not be read and NOTHING was written —
+the lock is still yours; re-run the claim once the read recovers.
 
 ## 1. Declare the touch-set (on every parallelizable item)
 
