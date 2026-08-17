@@ -62,6 +62,7 @@ One total function returns one of these. There is no other answer, and there is 
 an unreachable answer is not a negative one.
 
 - **`startable`** — Nothing holds it. It can be claimed now.
+- **`not-a-unit-of-work`** — The row is NOT A UNIT OF WORK (.github#2712) — a class anchor, a register or a directive, declared by its own `Kind:` line. It has no completion condition, so no board column and no state change makes it schedulable; only a reclass does. Its `Status` is not the reason and adjusting it will not help.
 - **`issue-closed`** — The issue is CLOSED while the board still shows it open. The issue's state is the WORK; the board column is a PROJECTION of it. When they disagree, the issue wins — run /check-board.
 - **`wrong-status`** — Its board Status is not one a scheduler hands out (or it has none at all, which makes it invisible to every scheduler and is a bug, not a decision).
 - **`blocked-by`** — A `Blocked by` entry is unresolved. CLOSED and MERGED resolve; OPEN, unverifiable and unparseable all BLOCK.
