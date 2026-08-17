@@ -40,12 +40,45 @@ So the finder and the filer are separated where the repository provides a second
 - **Where a board analyst is available** — `FS-GG/.github` carries one as the `board-analyst` skill,
   `scope: operator`, resolved in the operator checkout — the finder does not file. It records a
   **finding packet** and moves on: an ordinary issue or PR comment under the `fsgg:finding-packet`
-  anchor, naming the surface, the root cause it established (or explicitly that it could not, and what
-  it measured instead), what is red today, the gate that already derives the condition if one does, the
-  open class row if one exists, why the fix could not ride the PR in hand, and the narrow `Paths:` it
-  would propose. The packet exists because the finder holds the cause and the tree *now*, and a
-  stranger re-deriving that from the board later spends a whole worker slot rebuilding it. The analyst
-  adjudicates the packet; it never re-derives it, and it never fills in evidence the packet omits.
+  anchor, carrying a fenced `json` block in the `fsgg.coord.finding-packet/v1` shape. The packet exists
+  because the finder holds the cause and the tree *now*, and a stranger re-deriving that from the board
+  later spends a whole worker slot rebuilding it. The analyst adjudicates the packet; it never
+  re-derives it, and it never fills in evidence the packet omits.
+
+  ````
+  <!-- fsgg:finding-packet -->
+  ```json
+  {
+    "schema":     "fsgg.coord.finding-packet/v1",
+    "surface":    "where it showed up — file:line, a command, or a run URL",
+    "cause":      { "established": "the root cause" },
+    "redToday":   { "found": "the command failing on main now, or the merge it blocks" },
+    "derivedBy":  { "searchedNotFound": "the search that found no scripts/check-*.py computing this" },
+    "classRow":   { "notSearched": "why you did not look" },
+    "whyNotHere": "why the fix could not ride the PR you were already pushing",
+    "paths":      ["the narrow declaration you would propose"],
+    "finder":     "your minted worker id, alone"
+  }
+  ```
+  ````
+
+  `cause` is `{"established": …}` or `{"notEstablished": "what you measured instead"}` — #1858's rule,
+  one step earlier. `redToday`, `derivedBy` and `classRow` each take exactly one of `{"found": …}`,
+  `{"searchedNotFound": "the search you ran"}` or `{"notSearched": "why you did not"}`. **Say
+  `notSearched` when you did not look.** It is an honest answer and costs you nothing; the old `none`
+  — and a bare `null` — cannot tell the analyst whether you looked, and tests 2 and 3 of the bar above
+  are precisely questions about whether a search happened and was adequate.
+
+  **Validate before you post**, while you still hold the tree:
+
+  ```sh
+  scripts/fsgg-coord packet validate my-packet.json
+  ```
+
+  It reads a file and decides — no board, no network, and **no power to refuse a post**. Nothing sits
+  between you and the register. If it refuses and you are out of time, post the prose you have: a
+  packet nobody validated still beats a finding nobody recorded. Packets already posted in free prose
+  remain valid and readable; the validator applies **forward only** (`.github#2737`).
 - **Where no analyst is available**, the finder files — and applies the same three tests to itself,
   recording which one it considered and why the finding cleared it.
 
