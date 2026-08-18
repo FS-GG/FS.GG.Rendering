@@ -123,6 +123,12 @@ A finding is **material** only when the evidence shows at least one of:
 - a gate the change adds or modifies stays green when inverted, or a test named for a property does not
   itself provide that property — see **Gate-inversion evidence** below, which makes this a finding by
   definition rather than a judgement call;
+- a verification artifact's proof of efficacy is drawn from its own author's model: a gate whose subject
+  a production writer emits and which carries no producer-agreement leg, a mutation whose only witness
+  is its sweep's own aggregate count, a "second reading" that consumes the first reading's output, or a
+  control that cannot be shown producing a second answer — see **Author-independent efficacy** below,
+  which is `.github#266`'s fifth admitted mechanism and is material on the same footing as a surviving
+  inversion;
 - an architecture or ownership violation creates a concrete defect or blocks safe evolution;
 - bounded hardening prevents a measured recurring failure, retry, operational burden, or meaningful
   maintenance cost; or
@@ -184,7 +190,8 @@ A gate that has never been red is equally consistent with "nothing was ever wron
 fire", and reading cannot separate those. `.github#2223` measured ten such gates in one run across six
 items and four repositories, three months after `.github#1610` found the same class. So these are
 numbered steps, not a virtue some critics happen to have. The bound is one mutation per touched gate,
-plus the single non-vacuity leg step 2 names; this is never a suite-wide sweep.
+plus the single non-vacuity leg step 2 names, plus whichever of steps 10–14 the gates in that same
+inventory actually owe; this is never a suite-wide sweep.
 
 1. **Inventory the gates the change adds or modifies, and show each one is REACHED.** A gate is
    anything whose purpose is to refuse: a test, an assertion, a fixture case, a checker script, a
@@ -277,7 +284,231 @@ matches it, wherever that trigger is filtered — and, where the gate's subject 
 non-vacuity leg. For each gate whose inversion could not be obtained, the reason, which is
 `NOT_MEASURED` and never a pass. `scripts/gate-mutate.py` is this org's harness for the sweep and its
 verdict vocabulary is the one to use: `JUSTIFIED` fired, `DECORATIVE` could not fire, `NOT_MEASURED`
-obtained no measurement.
+obtained no measurement. Where steps 10–14 below apply, the marker additionally names the
+producer-agreement leg's declared relation and its mutation, the per-mutation witnesses, the ladder rung
+each second reading reaches and the residual it does not escape, which of the two mutually blind methods
+produced which observation, and each leg's negative/positive control pair — or, for any of these, the
+declared boundary that closes it.
+
+### Author-independent efficacy — `#266`'s fifth mechanism
+
+Steps 1–9 measure whether a gate *can* fire. Not one of them asks whether the thing that graded that
+measurement was independent of the person who wrote it, and that is what `.github#266` admitted on
+2026-08-17 as its **fifth** mechanism: *the artifact's proof of efficacy is authored from the same model
+of the world as the artifact, so a wrong model is invariant under the proof.* The other four mechanisms
+describe what an artifact does wrong; this one describes why nobody caught it, which is why it is the
+one that explains them.
+
+It is not caught by care, and being right is not protection. One gate shipped with **ten**
+authoring-time inversions; all ten fired correctly; not one could reach the blind spot, because no
+mutation in the space asked the question the author's false premise had already foreclosed
+(`.github#2691` comment `5311706988`). The same chain later measured **65 survivors where four expert
+hand sweeps had found 5** (comment `5313644118`). Every one of those authors was reasoning correctly
+from a premise that was false, and their inversion table was not merely unhelpful — it was affirmative
+evidence pointing the wrong way, which a reader was entitled to rely on.
+
+Steps 10–14 are bounded exactly as steps 1–9 are: per gate in step 1's inventory, per second reading the
+change itself offers as evidence. Each states what it is owed on and what closes it, because a
+requirement with no terminal state is this same defect one level up.
+
+10. **Where a gate's subject is emitted by a production writer, it carries a producer-agreement leg.**
+    A fixture that writes its own marker and then asserts the gate reads it proves only that the fixture
+    and the gate agree; neither has been compared against what production emits. That is not an analogy
+    for the mechanism — it is the same authorship relation with the fixture in the author's seat. The
+    `§11.2` fencing sequence produced **four** artifacts of exactly this shape, audited at
+    `.github#1858` comment `5316937299`: `OpLock.acquire` with zero production callers, an
+    `fsgg:merge-election` reader with zero writers, a broker that refuses every real request, and a
+    six-field gate whose only producer emitted four fields. Every one passed its own tests.
+
+    So the gate carries one leg that
+
+    - **parses the producer**, not a fixture's copy of it, and fails when no producer exists at all — a
+      reader with no writer is the inert case above and is detectable in a single assertion;
+    - asserts the relation **in both directions**, so a producer that stops writing a field the gate
+      requires reds, and a gate that starts requiring a field no producer writes reds too;
+    - **names which relation it asserts, and why. Equality is the wrong default.**
+      `tests/receiver-validate/run.sh` asserted set equality until `.github#2395`, and equality *"would
+      have reddened this leg the moment the producer became correct"* (`tests/receiver-validate/run.sh:975-996`):
+      the gate it grades documents forward compatibility — it accepts additional pairs — so containment
+      is the contract and equality was an over-statement that held only while both sets were the same
+      four fields. Assert the relation the producer's contract actually states;
+    - carries a **liveness term** refusing an empty set on either side, because `∅ ⊆ ∅` holds and "both
+      sides forgot" would otherwise grade as agreement (comment `5314929995`);
+    - and ships a **mutation** showing that assertion red — drop one field the gate requires from the
+      parsed producer facts and confirm the leg fails.
+
+    Reference implementation: `tests/receiver-validate/run.sh` — producer existence at `:971-973`, the
+    declared relation and its recorded reasoning at `:975-1010`, the liveness refusal inside
+    `required_subset` at `:1002-1003`, and the mutation leg at `:1012-1036`. Its header states the point
+    in terms: *"That is the check neither slice 2 nor slice 3 had."* (`tests/receiver-validate/run.sh:20-25`).
+
+    **Bound and terminal disposition.** Owed once per gate in step 1's inventory whose subject is
+    producer-emitted, and only where that producer sits in a repository the reviewer can read. Where it
+    does not — a third-party payload, a hosted API's response shape — the leg cannot be constructed:
+    declare the boundary and the reason, grade it `NOT_MEASURED`, and that closes it. A gate whose
+    subject is not producer-emitted at all — a source-text scanner, a pure function's algebra — does not
+    owe this leg, and says so in one line rather than leaving the question open.
+
+11. **Each mutation names the test that redded for it, and the witness case sits at the mutated
+    predicate's boundary.** A sweep reporting only an aggregate — `N mutants, N killed, 0 survived` —
+    has offered its own output as its evidence, which is rung 1 of step 12. The aggregate cannot
+    distinguish a complete sweep from one whose enumeration silently shrank: **282 of 385 mutants — 73%
+    — vanished with the sweep's own non-vacuity guard green and silent** (comment `5313910040`), and
+    `0 survivors` over 385 and over 103 are the same bytes at exit 0. So the record is per mutation: the
+    mutation applied, and the **name of the test that went red for it**, where that name describes the
+    property the mutation broke. A mutation whose only witness is the sweep's own count is not
+    witnessed, and a sweep containing one fails.
+
+    **Reaching a branch is not covering its predicate**, and this clause was earned three times on one
+    row. A leg named `green: /// inside strings and (nested) block comments is not a doc comment` could
+    not detect the nesting it was named for: its nested `///` sat *before* the inner `*)` and was skipped
+    at depth one either way, so removing nesting from the lexer entirely still left the fixture at **34
+    passed, 0 failed** (comment `5311706988`). The discriminating case puts the marker *after* the inner
+    `*)`, at the boundary the predicate actually decides. `.github#2395`'s critic did the affirmative
+    version: a competing election **exactly one id lower**, not one at an arbitrary distance.
+
+    **Bound and terminal disposition.** This governs the mutations *this change's own* evidence applies
+    — the one per touched gate step 2 requires, plus whatever a sweep harness in the diff enumerates. It
+    is never a demand to name tests for mutations nobody ran. Where a mutation legitimately reds no
+    *test* — a compile error, a schema-load refusal — name that diagnostic exactly and the witness
+    stands; a bare non-zero exit does not, because it cannot say which property broke. Where the suite
+    genuinely has no named test for the property, that absence is the finding step 4 already owns, and
+    naming it closes this step.
+
+12. **Grade every "second reading" on the independence ladder, and name the rung it reaches.** Two
+    readings compared against each other are an oracle only so far as they are independent, and
+    independence has three rungs. Ask them in this order, because the cheapest question is also the one
+    that voids the others.
+
+    1. **Value — does the checker consume the checked value?** If the second reading is handed the first
+       reading's output, there is one reading wearing two names and the comparison is an identity on
+       itself. Measured: a sweep's per-operator accounting whose "second reading" was
+       `counts["dir-drop"] = len(projects)` over the *same list object* passed in as a parameter, so the
+       equality held for every input, including every wrong one (comment `5315392897`). The tell is
+       mechanical and it is in the signature: **a "second reading" whose parameters include the thing it
+       is supposed to be reading a second time.** Follow the data.
+    2. **Key — do the two readings resolve the subject through the same identifier?** Two readings that
+       call different libraries but match on the same name in the subject are one reading in two hats.
+       Measured: four of ten operators resolved through the same identifier on both sides; one ordinary
+       refactor of the *subject* — routing output through a `report()` helper — zeroed both terms of one
+       operator at once, `0 + 0 == 0` held, and 27.5% of the sweep vanished at exit 0 (comment
+       `5314929995`).
+    3. **Library or runtime — do they share a front end?** The weakest rung, and the one most often
+       disclosed. A disclosure closes nothing by itself; it names a residual.
+
+    The review record states the **highest rung the reading reaches** and the residual it does not
+    escape. A rung-3 disclosure presented as independence is the mechanism restated in good faith:
+    honest, and not operative.
+
+    Two corollaries, both cheap to apply. **An identity has a vacuous solution** — `a == b` is satisfied
+    by `0 == 0`, so every dimension an identity ranges over needs a liveness term or "both sides forgot"
+    grades as agreement. And **a hazard guarded once by hand is a hazard not generalised** — a bespoke
+    guard written for exactly one case is evidence the author saw the hazard, and its absence for the
+    siblings is the finding. Grep for the guard, then for its siblings.
+
+    **Bound and terminal disposition.** Asked once per second reading the change offers as evidence,
+    never of every comparison in the repository. A reading that reaches rung 3 with its residual stated
+    is complete: the ladder never demands escaping rung 3, which is usually impossible, and that is
+    precisely why rung 3 is named rather than required.
+
+13. **A sweep-shaped remedy owes both mutually blind detection methods.** Where the remedy under review
+    is itself a sweep or an enumerating harness, two methods are needed and **neither substitutes for
+    the other**, because each is blind exactly where the other sees (comment `5313910040`).
+
+    - **Execute it in a different environment.** A parallel-copy race reported `KILLED` at `--jobs 16`
+      and `SURVIVED` at `--jobs 4`, and its wrong answer was also `0 survivors`. No number of re-runs in
+      one environment finds that; only a different environment does.
+    - **Break its own completeness predicate.** A non-vacuity floor guard could not detect the
+      disappearance of 73% of its own mutation set. That is invisible in *every* environment, at every
+      job count, however often re-run; only breaking the subject finds it.
+
+    State which method produced which observation. One applied and the other not is an incomplete
+    measurement, reported as such rather than as coverage.
+
+    **Bound and terminal disposition.** Owed only by a sweep-shaped remedy — a harness that enumerates
+    its own subjects. An ordinary one-mutation inversion under step 2 does not inherit a second
+    environment. Where a second environment is genuinely unavailable, name the one used and what it
+    cannot distinguish; that stated residual closes the step.
+
+14. **Every control discriminates, and states what it assumed before it measured.** A control exists to
+    show the harness is not hardwired to the answer it wants, and there are three ways for one to fail
+    while looking fine.
+
+    - **Always green.** A control that passes whatever it is given is a semantic no-op. Each leg above
+      therefore carries **both** a negative control — an artifact deliberately given a wrong model,
+      shown to red — and a positive control — a known-good artifact, shown to be admitted. A rule that
+      refuses everything carries no more information than one that refuses nothing.
+    - **The right answer for the wrong reason.** On `.github#2395` an `L0` control first parsed `HEAD~1`,
+      which already carried the six-field template, and matched the expected diagnosis for a reason the
+      control was not testing. The repair was to parse `origin/main` **and assert up front** that what
+      it parsed really had the four-field shape the control assumed, and that no placeholder survived
+      substitution. Every control asserts its input's shape before it measures.
+    - **A harness that can only land where it was aimed.** `.github#2395`'s critic added an **L5 harness
+      control** whose leg lands on a *different* check from the one under test — the body unchanged, the
+      head changed, the observed verdict `[check2]` rather than the `[check4]` the other legs exercise.
+      That leg is what makes the other five mean anything, and it is the concrete form this step
+      requires: at least one control that demonstrates the harness producing an answer other than the
+      one wanted.
+
+    **Measure the artifact, not the tree.** Step 6 bounds the measurement environment; this is its
+    instrument. A critic on this contract's own watch reverted a file, confirmed a clean `git status`,
+    and then measured a built assembly still carrying its mutation. A clean tree is not a clean
+    artifact: rebuild, and compare the artifact's digest against its baseline, before attributing an
+    observation to the reverted source — as `.github#2395`'s own mutation evidence did (*"reverted, DLL
+    hash restored to baseline"*).
+
+    **A declared non-invertibility is rewarded, not penalised.** Where an assertion genuinely cannot be
+    inverted, declaring it is the required disposition, and the critic's job is then to attempt the
+    inversion the declaration says cannot be built. On `.github#2395` one assertion was declared not
+    independently invertible on the ground that a data dependency forbids a *reordering* mutation; its
+    critic then found one anyway — the test locates its indices with `List.findIndex`, so an
+    **insertion** inverts it — and the gate got stronger. The declaration was a pessimistic self-grade,
+    and it was declared rather than hidden. A found inversion after an honest declaration is a
+    strengthening, never a caught lie.
+
+**A predicted red is not a reached branch.** Guidance that tells operators which leg of a gate is
+expected to fail is making a claim about reachability, and an operator-visible summary cannot tell a
+predicted red from a branch that is never evaluated. Measured:
+`.github/workflows/fsgg-claim-fence.yml:194` tells operators that *"`check4` is expected to fail on every
+real pull request today"*, while `scripts/check-claim-fence.py` returns at **check 1** on any marker
+missing one of the six auth fields it requires (`scripts/check-claim-fence.py:286` names the six,
+`scripts/check-claim-fence.py:677` computes the absent set) — so while the production writer composed
+four fields, check 4 was never evaluated on any real pull request at all. Recorded at `.github#2719`
+comment `5319094213`; the producer half landed with `.github#2395`
+(`src/FS.GG.Coord.Cli/Client.fs:1485` now composes all six), and the guidance half belongs to
+`.github#2719`. Where guidance or a summary predicts which leg fails, one executed run must show that
+leg actually reached.
+
+**What closes steps 10–14, and the two `NOT_MEASURED` grades.** One word covers two dispositions and
+they are not interchangeable, which is what `.github#2757` records as the missing stopping rule:
+
+- **A measurement that could not be obtained** — the producer is unreadable, no second environment
+  exists, the mutation cannot be constructed — declared up front with the reason and the attempt made.
+  This is a **terminal** disposition. It closes the step, it is not itself a material finding, and it
+  does not consume a repair round. It is not a pass either: it is recorded as the boundary it is.
+- **A gate nothing invokes** (step 1) or **a surviving inversion** (step 3). Material by definition, and
+  nothing here changes that.
+
+Nothing in steps 10–14 authorises a suite-wide sweep, a repository-wide audit, or a re-derivation of
+gates the diff does not touch.
+
+**This subsection's own control set, and why its provenance is the load-bearing part.** A rule about
+proving efficacy owes its own proof, and that proof may not be drawn from this subsection's author, or
+it reproduces the mechanism one level up. Every entry below was measured and recorded by a different
+agent, with its verdict fixed before this subsection existed:
+
+| artifact | independently recorded verdict | disposition here |
+|---|---|---|
+| `Client.OpLock.acquire`, zero production callers | inert; passed its own tests (`.github#1858` c. `5316937299`) | **refused** by 10 — no producer exists |
+| an `fsgg:merge-election` reader with zero writers | inert; passed its own tests (same audit) | **refused** by 10 — reader with no writer |
+| a dispatch broker refusing every real request | inert; passed its own tests (same audit) | **refused** by 10 — the fixture supplied the only request shape |
+| a six-field gate whose producer emitted four | check 4 unreachable (same audit; `.github#2719` c. `5319094213`) | **refused** by 10 — containment fails gate→producer |
+| a ten-inversion sweep built on a wrong string model | 10/10 inversions fired; blind spot unreachable (`.github#2691` c. `5311706988`) | **refused** by 11 and 12 — no mutation named a test for the foreclosed property |
+| a sweep whose second reading was `len(projects)` over its own input | held for every input, including every wrong one (c. `5315392897`) | **refused** by 12 rung 1 — the checker consumed the checked value |
+| `tests/receiver-validate/run.sh` section F | *"the check neither slice 2 nor slice 3 had"* (its own header) | **admitted** by 10, 11 and 14 — producer parsed, relation declared and justified, liveness term present, mutation leg red |
+
+The last row is not decoration. A rule that refused all seven would carry as little information as one
+that refused none, and the admitted entry is the only thing separating those two cases.
 
 ## Handoff-assertion provenance
 
