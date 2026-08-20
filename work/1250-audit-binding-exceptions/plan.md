@@ -29,7 +29,7 @@ Prose status: planned
 ## Plan Decisions
 - PD-001 [AC-001] [AC-003] [FR-001] complete: Use `schemaVersion: 1` with a required `exceptions` array and reject unknown JSON properties so typos cannot silently weaken a disposition.
 - PD-002 [AC-001] [AC-002] [FR-002] complete: Extend each invalidated binding with its prior digest and key ledger entries by exact normalized scalar equality; no regex, prefix, or wildcard matching is accepted.
-- PD-003 [AC-002] [AC-004] [FR-003] complete: Decode and LF-normalize replacement text from the candidate subject using the feedback tool's existing digest convention, then require a non-private `command:` locator whose tokens name the exact replacement path; never execute ledger-controlled text.
+- PD-003 [AC-002] [AC-004] [FR-003] complete: Require one regular working-tree file or candidate-head mode-100644/mode-100755 blob, rejecting symlinks, trees, gitlinks, missing paths, and unreadable evidence before decoding and LF-normalizing replacement text with the feedback tool's existing digest convention; require a non-private `command:` locator whose tokens name the exact replacement path and never execute ledger-controlled text.
 - PD-004 [AC-003] [AC-004] [AC-005] [FR-004] complete: Accumulate deterministic errors for malformed, duplicate, stale, mismatched, and unused entries; return remaining invalidations and separately report applied dispositions.
 - PD-005 [AC-006] [FR-005] complete: Prove no-ledger compatibility, one-positive-only behavior, every negative class, and copied-skill execution in temporary Git repositories.
 

@@ -705,6 +705,7 @@ let private exactWorkspacePathError label (path: string) =
     elif Path.IsPathRooted path || path.StartsWith("/", StringComparison.Ordinal) then Some(sprintf "%s must be workspace-relative" label)
     elif path.Contains('\\') then Some(sprintf "%s must use '/' separators" label)
     elif path.Contains("//", StringComparison.Ordinal) then Some(sprintf "%s must use canonical single '/' separators" label)
+    elif path |> Seq.exists Char.IsControl then Some(sprintf "%s must not contain control characters" label)
     elif path.IndexOfAny([| '*'; '?'; '['; ']' |]) >= 0 then Some(sprintf "%s must be exact; wildcard paths are overbroad" label)
     elif segments |> Array.exists (fun segment -> segment = "." || segment = "..") then Some(sprintf "%s must not contain '.' or '..' segments" label)
     elif normalized.EndsWith("/", StringComparison.Ordinal) then Some(sprintf "%s must name a file, not a directory" label)
@@ -832,9 +833,11 @@ let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string l
                     let path = Path.GetFullPath(Path.Combine(root, relative))
                     let canonicalRoot = canonicalizeExistingSegments root
                     let canonicalPath = canonicalizeExistingSegments path
+                    let info = FileInfo path
                     if not (isInside canonicalRoot canonicalPath) then Error "path resolves outside the workspace"
-                    elif File.Exists path then Ok(Some(File.ReadAllBytes path))
+                    elif not (String.IsNullOrWhiteSpace info.LinkTarget) then Error "path is a symbolic link, not a regular file"
                     elif Directory.Exists path then Error "path names a directory"
+                    elif File.Exists path then Ok(Some(File.ReadAllBytes path))
                     else Ok None
                 with ex -> Error ex.Message }
 
@@ -917,35 +920,60 @@ let private runGit (workspaceRoot: string) (arguments: string list) =
         Error ex.Message
 
 let private readGitBlob (workspaceRoot: string) (reference: string) (relative: string) =
-    match runGit workspaceRoot [ "ls-tree"; "-z"; "--name-only"; reference; "--"; relative ] with
+    match runGit workspaceRoot [ "ls-tree"; "-z"; reference; "--"; relative ] with
     | Error detail -> Error detail
     | Ok listing when listing.exitCode <> 0 -> Error listing.stderr
     | Ok listing when String.IsNullOrEmpty listing.stdout -> Ok None
-    | Ok listing when listing.stdout.TrimEnd('\000') <> relative -> Error "path is not one exact blob in the candidate tree"
-    | Ok _ ->
-        try
-            let start = ProcessStartInfo("git")
-            start.WorkingDirectory <- workspaceRoot
-            start.UseShellExecute <- false
-            start.RedirectStandardOutput <- true
-            start.RedirectStandardError <- true
-            start.ArgumentList.Add "cat-file"
-            start.ArgumentList.Add "blob"
-            start.ArgumentList.Add(reference + ":" + relative)
+    | Ok listing ->
+        let records = listing.stdout.Split('\000', StringSplitOptions.RemoveEmptyEntries)
 
-            match Process.Start start with
-            | null -> Error "could not start git"
-            | child ->
-                use child = child
-                use output = new MemoryStream()
-                let copy = child.StandardOutput.BaseStream.CopyToAsync output
-                let error = child.StandardError.ReadToEndAsync()
-                child.WaitForExit()
-                copy.Wait()
+        let parsed =
+            if records.Length <> 1 then
+                Error "path does not resolve to one exact entry in the candidate tree"
+            else
+                let separator = records.[0].IndexOf '\t'
 
-                if child.ExitCode = 0 then Ok(Some(output.ToArray()))
-                else Error(error.Result.Trim())
-        with ex -> Error ex.Message
+                if separator <= 0 then
+                    Error "candidate tree entry is malformed"
+                else
+                    let header = records.[0].Substring(0, separator).Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    let path = records.[0].Substring(separator + 1)
+
+                    if header.Length <> 3 || path <> relative then
+                        Error "path does not resolve to one exact entry in the candidate tree"
+                    else
+                        Ok(header.[0], header.[1])
+
+        match parsed with
+        | Error detail -> Error detail
+        | Ok(mode, objectType) when
+            objectType <> "blob"
+            || (mode <> "100644" && mode <> "100755") ->
+            Error(sprintf "path is not a regular Git blob (mode %s type %s)" mode objectType)
+        | Ok _ ->
+            try
+                let start = ProcessStartInfo("git")
+                start.WorkingDirectory <- workspaceRoot
+                start.UseShellExecute <- false
+                start.RedirectStandardOutput <- true
+                start.RedirectStandardError <- true
+                start.ArgumentList.Add "cat-file"
+                start.ArgumentList.Add "blob"
+                start.ArgumentList.Add(reference + ":" + relative)
+
+                match Process.Start start with
+                | null -> Error "could not start git"
+                | child ->
+                    use child = child
+                    use output = new MemoryStream()
+                    let copy = child.StandardOutput.BaseStream.CopyToAsync output
+                    let error = child.StandardError.ReadToEndAsync()
+                    child.WaitForExit()
+                    copy.Wait()
+
+                    if child.ExitCode = 0 then Ok(Some(output.ToArray()))
+                    else Error(error.Result.Trim())
+            with ex -> Error ex.Message
 
 /// Index the audits present in the tree of `reference` — the MERGED state a
 /// candidate is being checked against, and the only index that can answer the

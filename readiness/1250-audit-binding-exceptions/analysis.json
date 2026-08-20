@@ -37,6 +37,16 @@
       "schemaStatus": "current"
     },
     {
+      "path": "readiness/1250-audit-binding-exceptions/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "901021ff4b1128fe5a48eb006c0ca2fce4a7e58b0401f5b8360bc3a08fc6ac0f"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
       "path": "work/1250-audit-binding-exceptions/checklist.md",
       "kind": "checklist",
       "digest": {
@@ -61,7 +71,7 @@
       "kind": "plan",
       "digest": {
         "algorithm": "sha256",
-        "value": "1e358d94100fa0e1ac0f74234ef70ab40f7be636328db2b835337df2a9361206"
+        "value": "c54d7d943755fe9b5fc5f83c6e4729fbc68e667a6d509a78072bc3f5de65e826"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -81,7 +91,7 @@
       "kind": "tasks",
       "digest": {
         "algorithm": "sha256",
-        "value": "f1419c2babd97f387071d31e90946b9b050387da6d5bf167ccd120df80c386dd"
+        "value": "b7d515dbe70594558d5037bd8c1c8da11831b3a5383129f76e02879d8b84e364"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -486,7 +496,7 @@
     {
       "path": "readiness/1250-audit-binding-exceptions/work-model.json",
       "kind": "workModel",
-      "currency": "missing",
+      "currency": "current",
       "diagnosticIds": []
     }
   ],

@@ -234,6 +234,11 @@ candidate tree as UTF-8 text with the declared LF-normalized digest. Its evidenc
 locator that explicitly names the replacement path; the checker validates that locator but never
 executes ledger-controlled command text.
 
+The replacement path must be one regular file in the selected subject: a regular working-tree file
+for `--changed`, or a mode-100644/mode-100755 Git blob in the candidate head for `--base/--head`.
+Symbolic links (including dangling links), directories/trees, submodules/gitlinks, missing paths, and
+unreadable files are rejected before digest comparison.
+
 Entries are durable while their immutable audit binding exists. Duplicate ids or bindings, entries
 that match no immutable audit binding, stale replacement digests, mismatched fields, malformed JSON,
 and unsupported schemas all fail closed. A valid entry dispositions only its exact invalidation, and

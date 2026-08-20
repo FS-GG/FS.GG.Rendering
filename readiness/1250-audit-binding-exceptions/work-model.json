@@ -77,7 +77,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "9343802981812bef83662dd799c649ff0c059457ea475f40696135099c4a7609"
+        "value": "b56feee417f43bdc40784fd4245c30e1ef172a6b4ff1a1ea6d50bfd2a5c34379"
       }
     },
     {
@@ -89,7 +89,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce"
+        "value": "c54d7d943755fe9b5fc5f83c6e4729fbc68e667a6d509a78072bc3f5de65e826"
       }
     },
     {
@@ -113,7 +113,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "17883e3bdf6eb0c0c996c8cfcd7032247331dd153f6d3139bb1d34ccddc89d44"
+        "value": "b7d515dbe70594558d5037bd8c1c8da11831b3a5383129f76e02879d8b84e364"
       }
     }
   ],
@@ -915,7 +915,7 @@
           "path": "work/1250-audit-binding-exceptions/evidence.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "9343802981812bef83662dd799c649ff0c059457ea475f40696135099c4a7609"
+            "value": "b56feee417f43bdc40784fd4245c30e1ef172a6b4ff1a1ea6d50bfd2a5c34379"
           },
           "schemaVersion": 1
         },
@@ -923,7 +923,7 @@
           "path": "work/1250-audit-binding-exceptions/plan.md",
           "digest": {
             "algorithm": "sha256",
-            "value": "5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce"
+            "value": "c54d7d943755fe9b5fc5f83c6e4729fbc68e667a6d509a78072bc3f5de65e826"
           },
           "schemaVersion": 1
         },
@@ -939,14 +939,14 @@
           "path": "work/1250-audit-binding-exceptions/tasks.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "17883e3bdf6eb0c0c996c8cfcd7032247331dd153f6d3139bb1d34ccddc89d44"
+            "value": "b7d515dbe70594558d5037bd8c1c8da11831b3a5383129f76e02879d8b84e364"
           },
           "schemaVersion": 1
         }
       ],
       "outputDigest": {
         "algorithm": "sha256",
-        "value": "d51ca16aa3aab0bffd3035faeb846085cce9a9ae21e560f7521536ea2cbea5a2"
+        "value": "2b70db35660741f4a765a06b00d2b3dfb0925844f23506ea7284a023d5e15faf"
       },
       "currency": "current"
     }

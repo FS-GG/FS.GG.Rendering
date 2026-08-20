@@ -25,7 +25,7 @@ sources:
     schemaVersion: 1
   - label: plan
     path: work/1250-audit-binding-exceptions/plan.md
-    digest: 5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce
+    digest: c54d7d943755fe9b5fc5f83c6e4729fbc68e667a6d509a78072bc3f5de65e826
     schemaVersion: 1
 tasks:
   - id: T001
