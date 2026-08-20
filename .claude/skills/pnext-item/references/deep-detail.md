@@ -811,28 +811,40 @@ just as well as an issue does:
   that graph and *nothing else*, so of two duplicate children the linked one is the one that can
   actually complete its parent; an unlinked twin lets the parent stamp `Done` over open work (#322).
 
+For a distinct cause that clears the filing bar, author this draft and omit `blockedBy` when there is
+no true sequencing dependency:
+
+```json
+{
+  "schema": "fsgg.coord.intake/v1",
+  "id": "<stable-finding-id>",
+  "owner": "FS-GG",
+  "repository": "<target>",
+  "title": "<root-cause-oriented title>",
+  "observed": "<behavior measured on main or the merge it blocks>",
+  "rootCause": "<established cause, or the measurement that remains unestablished>",
+  "acceptance": "<testable repair criteria>",
+  "verification": "<currently red command and intended proof>",
+  "paths": ["<narrow exact path or directory prefix>"],
+  "class": "<defect|hardening|capability|decision>",
+  "severity": "<low|medium|high|critical>",
+  "status": "Backlog",
+  "backlogReason": "not-yet-actionable",
+  "disposition": "create"
+}
+```
+
 ```sh
 # 1. The message: an issue in the repo that OWNS the problem, not the one that found it.
-#    The `Paths:` line is NOT optional — see below. Without it the item cannot be scheduled.
-#    REST, because `gh issue create` is GraphQL and the budget is routinely gone by now (#587).
-gh api -X POST repos/FS-GG/<target>/issues \
-  -f title='[cross-repo] <short summary>' \
-  -f 'labels[]=cross-repo' -f 'labels[]=cross-repo:request' \
-  -f body="From: <this repo>, found while working <this repo>#<n>. Contract: <id>. <what and why>
+#    Put every structured field in finding-intake.json using the complete shape below, validate it,
+#    then apply that SAME file. `paths`, `class`, `severity`, and optional `blockedBy` are draft fields;
+#    hand-authoring their projected body lines is a defect.
+scripts/fsgg-coord intake validate finding-intake.json --json
+intake_result="$(scripts/fsgg-coord intake apply finding-intake.json --json)"
+new_ref="$(jq -r .issue <<<"$intake_result")"
 
-Paths: src/Scene/ tests/Scene/" --jq .html_url
-
-# 2. Put it on the board, so it is sequenced rather than merely filed.
-#    QUALIFY EVERY REF HERE. A bare `<new>` resolves against the repo you are STANDING IN — which in
-#    this block is never the target repo — so it would silently address `.github#<new>`: a real,
-#    unrelated, usually-closed item. See "A bare ref is not a short ref" below.
-scripts/fsgg-coord add FS-GG/<target>#<new>
-scripts/fsgg-coord set-field FS-GG/<target>#<new> 'Repo Scope' <target-short-id>
-scripts/fsgg-coord set-field FS-GG/<target>#<new> Phase '<the target repo's phase>'
-scripts/fsgg-coord set-field FS-GG/<target>#<new> Status Backlog
-
-# 3. If the finding belongs under an epic, LINK it as a sub-issue — NOW, not at close-out.
-scripts/fsgg-coord child FS-GG/<repo>#<parent> FS-GG/<target>#<new>
+# 2. If the finding belongs under an epic, LINK it as a sub-issue — NOW, not at close-out.
+scripts/fsgg-coord child FS-GG/<repo>#<parent> "$new_ref"
 ```
 
 **A bare ref is not a short ref — it resolves against the repo you are STANDING IN, and this block
@@ -1505,21 +1517,20 @@ Two more that bite in the same state:
   cause is the rate limit, because it derives the repo via a GraphQL call and reads the empty result
   as "no checkout" ([#430](https://github.com/FS-GG/.github/issues/430)). Pass the repo explicitly:
   `scripts/fsgg-coord verify-paths --pr <pr> --repo FS-GG/<repo>`.
-- **`gh issue create` is GraphQL too** — which strands you in §4, at the exact moment you are filing
-  a finding after a long session, i.e. precisely when the budget is gone:
+- **The validated intake transaction owns issue creation.** It avoids the GraphQL-spending issue-create
+  surface and keeps creation bound to the same validated draft used for projection:
 
   ```sh
-  jq -n --arg t "<title>" --rawfile b body.md \
-        '{title:$t, body:$b, labels:["cross-repo","cross-repo:request"]}' \
-    | gh api -X POST repos/FS-GG/<target>/issues --input - --jq '"#\(.number) \(.html_url)"'
+  scripts/fsgg-coord intake validate finding-intake.json --json
+  scripts/fsgg-coord intake apply finding-intake.json --json
   ```
 
   The **board** placement that follows it (`add`, `set-field`) is Projects v2 and has no REST form, so
   it cannot land on an exhausted budget. It is not lost: `set-field` QUEUES the write and exits 75, and
   `scripts/fsgg-coord flush` replays it after the reset (#510 made that true of every board write;
-  #878 gave you the verb that replays them). So file the issue now, then either flush once the budget
-  is back or say on the issue that the placement is still owed — the gap should be a decision somebody
-  made rather than an omission nobody noticed.
+  #878 gave you the verb that replays them). Preserve the `intake apply` receipt, then either flush once
+  the budget is back or say on the returned issue that placement is still owed — the gap should be a
+  decision somebody made rather than an omission nobody noticed.
 
 ## 6. Clean up, then go again
 

@@ -94,10 +94,14 @@ register.
 
 ## When a row is created
 
-A new issue states observed behavior, the root cause — or, where you could not establish one, says so
-explicitly and gives what you measured instead — acceptance criteria, verification, and a **narrow**
-`Paths:` declaration. Add it to the board and set its initial Status. Use `Blocked by:` only for a real
-ordering dependency, not transient file overlap. Use a coordination room or `say` for live overlap.
+A new issue is composed from the complete `fsgg.coord.intake/v1` draft in
+[deep detail](deep-detail.md): observed behavior, root cause — or, where you could not establish one,
+what you measured instead — acceptance, verification, `paths`, `class`, `severity`, and optional
+`blockedBy` all belong in that draft. Run `scripts/fsgg-coord intake validate`, then `intake apply` on
+the same file. The transaction creates or reuses the issue and projects its initial board fields.
+Hand-authoring `Paths:` or `Class:` in the created body is a defect, not a style choice. Use
+`blockedBy` only for a real ordering dependency, not transient file overlap. Use a coordination room
+or `say` for live overlap.
 
 Declare only what the work touches. An over-broad declaration costs the whole board a lane and nothing
 in `lint` catches it: `lint` flags a row with no `Paths:` and a row whose tokens are unmatchable, never

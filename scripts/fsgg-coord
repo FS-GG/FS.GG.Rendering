@@ -166,6 +166,25 @@ guards() {   # $1 = the checkout that OWNS the build, $2 = its .dll, $3 = the ve
   stale_guard "$1" "$2" "$3" "${4:-}"
 }
 
+# THE AGENT CONTRACT VERSION IS A DISPATCH FACT, NOT REPORT PROSE (#2758). The generator owns the
+# canonical byte stream and this shim is the boundary every operator-side coordination invocation
+# crosses before a claim marker is created or renewed. Export its one answer for the typed write path;
+# never duplicate the digest algorithm here and never accept a caller-authored value as attribution.
+# Receivers that do not carry the producer remain unchanged; `.github`, where the operator's live skill
+# roots and producer coexist, fails closed if the producer cannot answer or emits anything but one digest.
+TOP="$(git_toplevel)"
+unset FSGG_AGENT_CONTRACT_VERSION
+if [ -n "$TOP" ] && [ -x "$TOP/scripts/generate-projections" ]; then
+  FSGG_AGENT_CONTRACT_VERSION="$("$TOP/scripts/generate-projections" --contract-version)" \
+    || die "the agent contract version producer could not answer: $TOP/scripts/generate-projections --contract-version"
+  case "$FSGG_AGENT_CONTRACT_VERSION" in
+    *[!0-9a-f]*)
+      die "the agent contract version producer did not emit exactly one lowercase SHA-256 digest" ;;
+  esac
+  [ "${#FSGG_AGENT_CONTRACT_VERSION}" -eq 64 ] \
+    || die "the agent contract version producer did not emit exactly one lowercase SHA-256 digest"
+  export FSGG_AGENT_CONTRACT_VERSION
+fi
 
 # AN EXPLICIT PATH IS AN INSTRUCTION, NOT A HINT (bash's rule, kept exactly): if it is set and not runnable,
 # REFUSE — do not fall through to some other engine the caller did not choose.
@@ -173,8 +192,6 @@ if [ -n "${FSGG_COORD_ENGINE_BIN:-}" ]; then
   [ -x "${FSGG_COORD_ENGINE_BIN}" ] || die "FSGG_COORD_ENGINE_BIN is set but not executable: ${FSGG_COORD_ENGINE_BIN}"
   exec "${FSGG_COORD_ENGINE_BIN}" "$@"
 fi
-
-TOP="$(git_toplevel)"
 
 # TIER 2 — THE SOURCE BUILD, AND IT OUTRANKS EVERY PACKAGED ENGINE (#1018, #1008). `.github`'s shape: the
 # engine built from source, never from the feed (ADR-0034 decision 2). This is the ONE tier with a `src/`
