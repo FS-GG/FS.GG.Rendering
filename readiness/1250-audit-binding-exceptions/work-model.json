@@ -1,0 +1,956 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "1.2.0",
+  "workId": "1250-audit-binding-exceptions",
+  "project": {
+    "id": "rendering-1194",
+    "defaultWorkRoot": "work",
+    "profile": null
+  },
+  "sources": [
+    {
+      "path": ".fsgg/agents.yml",
+      "kind": "agentsConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+      }
+    },
+    {
+      "path": ".fsgg/project.yml",
+      "kind": "projectConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+      }
+    },
+    {
+      "path": ".fsgg/sdd.yml",
+      "kind": "sddConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/checklist.md",
+      "kind": "checklist",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "cf2760d313530a1ed505a0e34f3b84cc423e7ccdfc42e3f5cbb6a35bdb615a4e"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/clarifications.md",
+      "kind": "clarifications",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "a4dc884d32d14ae24726546823357e6b18dc33ed111ec9b2a1195ecedf26efb0"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/evidence.yml",
+      "kind": "evidence",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "9343802981812bef83662dd799c649ff0c059457ea475f40696135099c4a7609"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/plan.md",
+      "kind": "plan",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/spec.md",
+      "kind": "spec",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "7bee0ec5ab81d7e8322939ee0560907215a10283811f21d1420891d63dd509ec"
+      }
+    },
+    {
+      "path": "work/1250-audit-binding-exceptions/tasks.yml",
+      "kind": "tasks",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "17883e3bdf6eb0c0c996c8cfcd7032247331dd153f6d3139bb1d34ccddc89d44"
+      }
+    }
+  ],
+  "workItem": {
+    "id": "1250-audit-binding-exceptions",
+    "title": "Audit Binding Exceptions",
+    "stage": "specify",
+    "changeTier": "tier1",
+    "status": "specified"
+  },
+  "performanceIntent": null,
+  "requirements": [
+    {
+      "id": "FR-001",
+      "title": "The invalidation checker MUST consume \u0060scripts/audit-binding-exceptions.json\u0060 only as a strict schema-version-1 JSON object and MUST preserve existing behavior when that file is absent. (covers AC-001, AC-003)",
+      "text": "The invalidation checker MUST consume \u0060scripts/audit-binding-exceptions.json\u0060 only as a strict schema-version-1 JSON object and MUST preserve existing behavior when that file is absent. (covers AC-001, AC-003)",
+      "acceptanceCriteria": [
+        "AC-001",
+        "AC-003"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1250-audit-binding-exceptions/spec.md",
+      "sourceLocation": {
+        "line": 37,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T001"
+      ],
+      "linkedEvidenceIds": [
+        "EV001"
+      ]
+    },
+    {
+      "id": "FR-002",
+      "title": "An exception MUST bind one exact audit path, finding id, original locator, cited workspace path, and lowercase SHA-256 digest from the immutable audit. (covers AC-001, AC-002)",
+      "text": "An exception MUST bind one exact audit path, finding id, original locator, cited workspace path, and lowercase SHA-256 digest from the immutable audit. (covers AC-001, AC-002)",
+      "acceptanceCriteria": [
+        "AC-001",
+        "AC-002"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1250-audit-binding-exceptions/spec.md",
+      "sourceLocation": {
+        "line": 38,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T002"
+      ],
+      "linkedEvidenceIds": [
+        "EV002"
+      ]
+    },
+    {
+      "id": "FR-003",
+      "title": "An applicable exception MUST name one exact replacement workspace path, its current lowercase SHA-256 digest, and a non-private \u0060command:\u0060 evidence locator that explicitly inspects that replacement path. (covers AC-002, AC-004)",
+      "text": "An applicable exception MUST name one exact replacement workspace path, its current lowercase SHA-256 digest, and a non-private \u0060command:\u0060 evidence locator that explicitly inspects that replacement path. (covers AC-002, AC-004)",
+      "acceptanceCriteria": [
+        "AC-002",
+        "AC-004"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1250-audit-binding-exceptions/spec.md",
+      "sourceLocation": {
+        "line": 39,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T003"
+      ],
+      "linkedEvidenceIds": [
+        "EV003"
+      ]
+    },
+    {
+      "id": "FR-004",
+      "title": "The checker MUST fail closed on malformed, stale, mismatched, duplicate, unused, or wildcard/directory-overbroad entries and MUST report applied dispositions deterministically. (covers AC-003, AC-004, AC-005)",
+      "text": "The checker MUST fail closed on malformed, stale, mismatched, duplicate, unused, or wildcard/directory-overbroad entries and MUST report applied dispositions deterministically. (covers AC-003, AC-004, AC-005)",
+      "acceptanceCriteria": [
+        "AC-003",
+        "AC-004",
+        "AC-005"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1250-audit-binding-exceptions/spec.md",
+      "sourceLocation": {
+        "line": 40,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T004"
+      ],
+      "linkedEvidenceIds": [
+        "EV004"
+      ]
+    },
+    {
+      "id": "FR-005",
+      "title": "The producer contract and focused tests MUST document and prove the immutable-audit boundary and MUST verify materialized receiver bytes with the same positive and negative cases. (covers AC-006)",
+      "text": "The producer contract and focused tests MUST document and prove the immutable-audit boundary and MUST verify materialized receiver bytes with the same positive and negative cases. (covers AC-006)",
+      "acceptanceCriteria": [
+        "AC-006"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1250-audit-binding-exceptions/spec.md",
+      "sourceLocation": {
+        "line": 41,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T005"
+      ],
+      "linkedEvidenceIds": [
+        "EV005"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "title": "answer: Do not execute ledger text. Require a non-private command: locator that explicitly names the exact replacement path; execution remains external evidence.",
+      "decision": "answer: Do not execute ledger text. Require a non-private command: locator that explicitly names the exact replacement path; execution remains external evidence.",
+      "requirementRefs": [],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1250-audit-binding-exceptions/clarifications.md",
+      "sourceLocation": {
+        "line": 26,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T006"
+      ]
+    },
+    {
+      "id": "DEC-002",
+      "title": "answer: Use the candidate head ref for the ledger and replacement bytes while retaining the immutable audit index from the base ref.",
+      "decision": "answer: Use the candidate head ref for the ledger and replacement bytes while retaining the immutable audit index from the base ref.",
+      "requirementRefs": [],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1250-audit-binding-exceptions/clarifications.md",
+      "sourceLocation": {
+        "line": 27,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T007"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Implement requirement FR-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [],
+      "requirements": [
+        "FR-001"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "AC-003",
+        "FR-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV001"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "T002",
+      "title": "Implement requirement FR-002",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [],
+      "requirements": [
+        "FR-002"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "AC-002",
+        "FR-002",
+        "PD-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV002"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "T003",
+      "title": "Implement requirement FR-003",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [],
+      "requirements": [
+        "FR-003"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-002",
+        "AC-004",
+        "FR-003",
+        "PD-003"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV003"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "T004",
+      "title": "Implement requirement FR-004",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [],
+      "requirements": [
+        "FR-004"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "FR-004",
+        "PD-004"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV004"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "T005",
+      "title": "Implement requirement FR-005",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [],
+      "requirements": [
+        "FR-005"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-006",
+        "FR-005",
+        "PD-005"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV005"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "T006",
+      "title": "Implement clarification decision DEC-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-001"
+      ],
+      "sourceIds": [
+        "DEC-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV006"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "T007",
+      "title": "Implement clarification decision DEC-002",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-002"
+      ],
+      "sourceIds": [
+        "DEC-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV007"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "T008",
+      "title": "Update contract surface PC-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV008"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 8,
+        "column": 1
+      }
+    },
+    {
+      "id": "T009",
+      "title": "Record verification evidence VO-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001",
+        "PD-002",
+        "PD-003",
+        "PD-004",
+        "PD-005",
+        "VO-001"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV009"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 9,
+        "column": 1
+      }
+    },
+    {
+      "id": "T010",
+      "title": "Handle migration posture PM-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PM-001"
+      ],
+      "requiredSkills": [
+        "schema-versioning"
+      ],
+      "requiredEvidence": [
+        "EV010"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "T011",
+      "title": "Refresh generated view impact GV-001",
+      "status": "done",
+      "owner": "tern-9cf2",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "GV-001",
+        "PD-001",
+        "PD-005"
+      ],
+      "requiredSkills": [
+        "deterministic-json"
+      ],
+      "requiredEvidence": [
+        "EV011"
+      ],
+      "source": "work/1250-audit-binding-exceptions/tasks.yml",
+      "sourceLocation": {
+        "line": 11,
+        "column": 1
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EV001",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T001",
+      "taskRefs": [
+        "T001"
+      ],
+      "requirementRefs": [
+        "FR-001"
+      ],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV002",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T002",
+      "taskRefs": [
+        "T002"
+      ],
+      "requirementRefs": [
+        "FR-002"
+      ],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV003",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T003",
+      "taskRefs": [
+        "T003"
+      ],
+      "requirementRefs": [
+        "FR-003"
+      ],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV004",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T004",
+      "taskRefs": [
+        "T004"
+      ],
+      "requirementRefs": [
+        "FR-004"
+      ],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV005",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T005",
+      "taskRefs": [
+        "T005"
+      ],
+      "requirementRefs": [
+        "FR-005"
+      ],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV006",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T006",
+      "taskRefs": [
+        "T006"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV007",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T007",
+      "taskRefs": [
+        "T007"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV008",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T008",
+      "taskRefs": [
+        "T008"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 8,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV009",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T009",
+      "taskRefs": [
+        "T009"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 9,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV010",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T010",
+      "taskRefs": [
+        "T010"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV011",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T011",
+      "taskRefs": [
+        "T011"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Package.Tests/FeatureFeedbackReportSkillTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1250-audit-binding-exceptions/evidence.yml",
+      "sourceLocation": {
+        "line": 11,
+        "column": 1
+      }
+    }
+  ],
+  "generatedViews": [
+    {
+      "path": "readiness/1250-audit-binding-exceptions/work-model.json",
+      "kind": "workModel",
+      "schemaVersion": 1,
+      "generator": {
+        "id": "FS.GG.SDD.Artifacts",
+        "version": "1.1.0"
+      },
+      "sources": [
+        {
+          "path": ".fsgg/agents.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/project.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/sdd.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/checklist.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "cf2760d313530a1ed505a0e34f3b84cc423e7ccdfc42e3f5cbb6a35bdb615a4e"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/clarifications.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "a4dc884d32d14ae24726546823357e6b18dc33ed111ec9b2a1195ecedf26efb0"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/evidence.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "9343802981812bef83662dd799c649ff0c059457ea475f40696135099c4a7609"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/plan.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/spec.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "7bee0ec5ab81d7e8322939ee0560907215a10283811f21d1420891d63dd509ec"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1250-audit-binding-exceptions/tasks.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "17883e3bdf6eb0c0c996c8cfcd7032247331dd153f6d3139bb1d34ccddc89d44"
+          },
+          "schemaVersion": 1
+        }
+      ],
+      "outputDigest": {
+        "algorithm": "sha256",
+        "value": "d51ca16aa3aab0bffd3035faeb846085cce9a9ae21e560f7521536ea2cbea5a2"
+      },
+      "currency": "current"
+    }
+  ],
+  "diagnostics": [],
+  "governanceBoundaries": []
+}

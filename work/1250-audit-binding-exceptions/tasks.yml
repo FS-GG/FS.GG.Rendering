@@ -1,0 +1,146 @@
+schemaVersion: 1
+work:
+  id: 1250-audit-binding-exceptions
+  title: "Audit Binding Exceptions"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/1250-audit-binding-exceptions/spec.md
+  sourceClarifications: work/1250-audit-binding-exceptions/clarifications.md
+  sourceChecklist: work/1250-audit-binding-exceptions/checklist.md
+  sourcePlan: work/1250-audit-binding-exceptions/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/1250-audit-binding-exceptions/spec.md
+    digest: 7bee0ec5ab81d7e8322939ee0560907215a10283811f21d1420891d63dd509ec
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1250-audit-binding-exceptions/clarifications.md
+    digest: a4dc884d32d14ae24726546823357e6b18dc33ed111ec9b2a1195ecedf26efb0
+    schemaVersion: 1
+  - label: checklist
+    path: work/1250-audit-binding-exceptions/checklist.md
+    digest: cf2760d313530a1ed505a0e34f3b84cc423e7ccdfc42e3f5cbb6a35bdb615a4e
+    schemaVersion: 1
+  - label: plan
+    path: work/1250-audit-binding-exceptions/plan.md
+    digest: 5d05baebd237bb27018f2fe700499233f574f46338bd73370bd4c21b00d674ce
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: done
+    owner: tern-9cf2
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, AC-003, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Implement requirement FR-002
+    status: done
+    owner: tern-9cf2
+    dependencies: []
+    requirements: [FR-002]
+    decisions: []
+    sourceIds: [AC-001, AC-002, FR-002, PD-002]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Implement requirement FR-003
+    status: done
+    owner: tern-9cf2
+    dependencies: []
+    requirements: [FR-003]
+    decisions: []
+    sourceIds: [AC-002, AC-004, FR-003, PD-003]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Implement requirement FR-004
+    status: done
+    owner: tern-9cf2
+    dependencies: []
+    requirements: [FR-004]
+    decisions: []
+    sourceIds: [AC-003, AC-004, AC-005, FR-004, PD-004]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Implement requirement FR-005
+    status: done
+    owner: tern-9cf2
+    dependencies: []
+    requirements: [FR-005]
+    decisions: []
+    sourceIds: [AC-006, FR-005, PD-005]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV005]
+  - id: T006
+    title: Implement clarification decision DEC-001
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: [DEC-001]
+    sourceIds: [DEC-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV006]
+  - id: T007
+    title: Implement clarification decision DEC-002
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: [DEC-002]
+    sourceIds: [DEC-002]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV007]
+  - id: T008
+    title: Update contract surface PC-001
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV008]
+  - id: T009
+    title: Record verification evidence VO-001
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, PD-002, PD-003, PD-004, PD-005, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV009]
+  - id: T010
+    title: Handle migration posture PM-001
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV010]
+  - id: T011
+    title: Refresh generated view impact GV-001
+    status: done
+    owner: tern-9cf2
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001, PD-005]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV011]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work 1250-audit-binding-exceptions."

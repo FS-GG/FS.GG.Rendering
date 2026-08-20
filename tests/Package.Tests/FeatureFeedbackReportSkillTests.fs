@@ -1286,6 +1286,106 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "audit-binding exception ledger is exact, versioned, materialized, and fails closed" {
+              let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-exceptions-" + Guid.NewGuid().ToString "N")
+
+              try
+                  let audits = Path.Combine(root, "feedback", "audits")
+                  let scripts = Path.Combine(root, "scripts")
+                  let replacement = "readiness/replacement.txt"
+                  Directory.CreateDirectory audits |> ignore
+                  Directory.CreateDirectory scripts |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let priorDigest = sha256Text "old"
+                  let replacementDigest = sha256Text "current"
+                  let evidence = [| {| locator = "file:src/Changed.fs"; result = "verified"; sha256 = Some priorDigest |} |]
+                  File.WriteAllText(Path.Combine(audits, "binding.audit.json"), auditJson root reportPath validReport "actionable" evidence)
+                  File.WriteAllText(Path.Combine(root, replacement), "current")
+
+                  let entry =
+                      {| id = "replacement-001"
+                         audit = "feedback/audits/binding.audit.json"
+                         findingId = "§4.1"
+                         locator = "file:src/Changed.fs"
+                         path = "src/Changed.fs"
+                         priorSha256 = priorDigest
+                         replacementPath = replacement
+                         replacementSha256 = replacementDigest
+                         evidenceLocator = "command:dotnet test && inspect readiness/replacement.txt" |}
+
+                  let ledger entries = JsonSerializer.Serialize({| schemaVersion = 1; exceptions = entries |})
+                  let ledgerPath = Path.Combine(scripts, "audit-binding-exceptions.json")
+                  File.WriteAllText(ledgerPath, ledger [| entry |])
+
+                  let accepted = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.isEmpty accepted.errors "one exact, current exception is valid"
+                  Expect.isEmpty accepted.invalidated "the exact exception dispositions its one invalidation"
+                  Expect.equal accepted.dispositions.Length 1 "one applied disposition stays observable"
+                  Expect.equal accepted.dispositions.Head.id "replacement-001" "the applied receipt names the ledger id"
+
+                  copyPackagedFeedbackSkill root
+                  let packagedExit, packagedOutput, packagedError =
+                      runProcess root "dotnet"
+                          [ "fsi"
+                            ".agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx"
+                            "--"
+                            "check-invalidation"
+                            "--changed"
+                            "src/Changed.fs"
+                            "--root"
+                            root ]
+
+                  Expect.equal packagedExit 0 (sprintf "the materialized skill accepts the same exact entry: %s" packagedError)
+                  Expect.stringContains packagedOutput "applied exception replacement-001" "receiver output reports the applied disposition"
+
+                  File.WriteAllText(ledgerPath, "{")
+                  let malformed = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists malformed.errors (fun error -> error.Contains "malformed JSON") "malformed JSON fails closed"
+
+                  File.WriteAllText(ledgerPath, (ledger [| entry |]).Replace("\"schemaVersion\":1", "\"schemaVersion\":2"))
+                  let unsupported = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unsupported.errors (fun error -> error.Contains "schemaVersion must be 1") "unsupported schema fails closed"
+
+                  let stale =
+                      {| entry with replacementSha256 = sha256Text "stale" |}
+                  File.WriteAllText(ledgerPath, ledger [| stale |])
+                  let staleResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists staleResult.errors (fun error -> error.Contains "replacement digest is stale") "stale replacement evidence fails closed"
+
+                  let mismatched =
+                      {| entry with priorSha256 = sha256Text "different-prior" |}
+                  File.WriteAllText(ledgerPath, ledger [| mismatched |])
+                  let mismatchedResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists mismatchedResult.errors (fun error -> error.Contains "is unused") "a mismatched prior digest cannot bind"
+
+                  File.WriteAllText(ledgerPath, ledger [| entry; entry |])
+                  let duplicate = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists duplicate.errors (fun error -> error.Contains "duplicate id") "duplicate ids fail closed"
+                  Expect.exists duplicate.errors (fun error -> error.Contains "duplicate binding") "duplicate bindings fail closed"
+
+                  let unused =
+                      {| entry with id = "unused-001"; audit = "feedback/audits/other.audit.json" |}
+                  File.WriteAllText(ledgerPath, ledger [| unused |])
+                  let unusedResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unusedResult.errors (fun error -> error.Contains "is unused") "an entry without an immutable binding fails closed"
+
+                  let overbroad =
+                      {| entry with id = "overbroad-001"; locator = "file:src/*"; path = "src/*" |}
+                  File.WriteAllText(ledgerPath, ledger [| overbroad |])
+                  let overbroadResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists overbroadResult.errors (fun error -> error.Contains "wildcard paths are overbroad") "wildcard bindings fail explicitly"
+
+                  let unknownField =
+                      (ledger [| entry |]).Replace("\"id\":\"replacement-001\"", "\"surprise\":true,\"id\":\"replacement-001\"")
+                  File.WriteAllText(ledgerPath, unknownField)
+                  let unknown = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unknown.errors (fun error -> error.Contains "unknown property 'surprise'") "unknown fields fail closed"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "commit-time invalidation indexes audits from the base tree, not the candidate" {
               let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-base-index-" + Guid.NewGuid().ToString "N")
               Directory.CreateDirectory root |> ignore
@@ -1374,6 +1474,41 @@ let feedbackReportSkillTests =
                        |> List.map (fun item -> item.audit, item.report, item.findingId, item.path))
                       [ "feedback/audits/merged.audit.json", "feedback/report.md", "§4.1", "src/Base.fs" ]
                       "a merged audit still invalidates a candidate that changes its cited evidence"
+
+                  // FR-003/DEC-002 — the exception and replacement are candidate-head facts,
+                  // never whatever bytes happen to be in the caller's checkout.
+                  let priorDigest = sha256Text "old"
+                  let replacementDigest = sha256Text "current"
+                  let replacementPath = "readiness/replacement.txt"
+                  let ledgerText =
+                      JsonSerializer.Serialize(
+                          {| schemaVersion = 1
+                             exceptions =
+                              [| {| id = "head-replacement-001"
+                                    audit = "feedback/audits/merged.audit.json"
+                                    findingId = "§4.1"
+                                    locator = "file:src/Base.fs"
+                                    path = "src/Base.fs"
+                                    priorSha256 = priorDigest
+                                    replacementPath = replacementPath
+                                    replacementSha256 = replacementDigest
+                                    evidenceLocator = "command:dotnet test && inspect readiness/replacement.txt" |} |] |}
+                      )
+
+                  let exceptionHeadSha =
+                      commitOnto root "candidate-head-exception" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 4\n"
+                          writeFile root replacementPath "current"
+                          writeFile root "scripts/audit-binding-exceptions.json" ledgerText)
+
+                  // Deliberately make the worktree copy malformed after committing. A checker
+                  // that reads disk instead of the named head now fails; the correct one passes.
+                  writeFile root "scripts/audit-binding-exceptions.json" "{"
+                  let headDisposition = checkInvalidationBetweenRefs root baseSha exceptionHeadSha
+                  Expect.isEmpty headDisposition.errors "the candidate head's valid ledger wins over malformed working-tree bytes"
+                  Expect.isEmpty headDisposition.invalidated "the candidate-head entry dispositions the touched merged binding"
+                  Expect.equal headDisposition.dispositions.Length 1 "one candidate-head disposition is reported"
+                  writeFile root "scripts/audit-binding-exceptions.json" ledgerText
 
                   // AC-003 — deleting the durable audit in the candidate must not clear the
                   // refusal. The index is the base tree, so there is nothing on disk to delete.

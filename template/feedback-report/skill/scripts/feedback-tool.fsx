@@ -101,18 +101,28 @@ match argv with
 
     if not (List.isEmpty result.errors) then
         fail result.errors
-    elif List.isEmpty result.invalidated then
-        pass (sprintf "no merged feedback-audit bindings were invalidated (audit index: %s)" result.subject)
     else
-        printfn
-            "feedback-tool: %d merged feedback-audit binding(s) invalidated (audit index: %s):"
-            result.invalidated.Length
-            result.subject
+        for disposition in result.dispositions do
+            printfn
+                "feedback-tool: applied exception %s to %s %s %s -> %s"
+                disposition.id
+                disposition.audit
+                disposition.findingId
+                disposition.locator
+                disposition.replacementPath
 
-        for item in result.invalidated do
-            eprintfn "feedback-tool: invalidated %s %s %s (%s)" item.audit item.findingId item.locator item.report
+        if List.isEmpty result.invalidated then
+            pass (sprintf "no merged feedback-audit bindings were invalidated (audit index: %s)" result.subject)
+        else
+            printfn
+                "feedback-tool: %d merged feedback-audit binding(s) invalidated (audit index: %s):"
+                result.invalidated.Length
+                result.subject
 
-        fail [ "commit touches evidence cited by merged feedback audit(s)" ]
+            for item in result.invalidated do
+                eprintfn "feedback-tool: invalidated %s %s %s (%s)" item.audit item.findingId item.locator item.report
+
+            fail [ "commit touches evidence cited by merged feedback audit(s)" ]
 | [| "validate-checkpoints"; path |] ->
     let errors = validateCheckpointFile path
 

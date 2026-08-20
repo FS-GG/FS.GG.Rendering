@@ -376,7 +376,22 @@ type InvalidatedAuditBinding =
       report: string
       findingId: string
       locator: string
-      path: string }
+      path: string
+      priorSha256: string }
+
+/// A successfully applied, exact exception-ledger entry. The immutable audit is
+/// not rewritten: this receipt names the replacement evidence that supersedes
+/// one digest-bound citation.
+type AppliedAuditBindingException =
+    { id: string
+      audit: string
+      findingId: string
+      locator: string
+      path: string
+      priorSha256: string
+      replacementPath: string
+      replacementSha256: string
+      evidenceLocator: string }
 
 /// One audit document in an index: its workspace-relative path, and either the
 /// exact bytes that document had in the indexed tree or the fail-closed reason
@@ -409,7 +424,9 @@ type AuditIndex =
 type AuditInvalidationCheck =
     { subject: string
       errors: string list
-      invalidated: InvalidatedAuditBinding list }
+      invalidated: InvalidatedAuditBinding list
+      dispositions: AppliedAuditBindingException list
+      bindings: InvalidatedAuditBinding list }
 
 let private normalizeWorkspacePath (path: string) =
     path.Trim().Replace('\\', '/').TrimStart('/')
@@ -487,6 +504,7 @@ let findInvalidatedAuditBindingsIn (index: AuditIndex) (changedPaths: string lis
     let errors = ResizeArray<string>(index.errors)
     let changed = changedPaths |> List.map normalizeWorkspacePath |> Set.ofList
     let invalidated = ResizeArray<InvalidatedAuditBinding>()
+    let bindings = ResizeArray<InvalidatedAuditBinding>()
 
     for indexed in index.audits do
         let relativeAudit = indexed.auditPath
@@ -539,13 +557,19 @@ let findInvalidatedAuditBindingsIn (index: AuditIndex) (changedPaths: string lis
 
                                             if String.IsNullOrWhiteSpace path then
                                                 errors.Add(sprintf "invalidation: malformed audit %s: %s has an empty file locator" relativeAudit (normalizedJsonString finding.id))
-                                            elif changed.Contains path then
-                                                invalidated.Add
+                                            else
+                                                let binding =
                                                     { audit = relativeAudit
                                                       report = normalizedJsonString audit.report
                                                       findingId = normalizedJsonString finding.id
                                                       locator = locator
-                                                      path = path }
+                                                      path = path
+                                                      priorSha256 = Option.get digest }
+
+                                                bindings.Add binding
+
+                                                if changed.Contains path then
+                                                    invalidated.Add binding
             with ex ->
                 errors.Add(sprintf "invalidation: malformed audit %s: %s" relativeAudit ex.Message)
 
@@ -553,13 +577,269 @@ let findInvalidatedAuditBindingsIn (index: AuditIndex) (changedPaths: string lis
       errors = errors |> Seq.sort |> List.ofSeq
       invalidated =
           invalidated
-          |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator)
+          |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator, item.priorSha256)
+          |> List.ofSeq
+      dispositions = []
+      bindings =
+          bindings
+          |> Seq.sortBy (fun item -> item.audit, item.report, item.findingId, item.path, item.locator, item.priorSha256)
           |> List.ofSeq }
+
+type private AuditBindingExceptionEntry =
+    { id: string
+      audit: string
+      findingId: string
+      locator: string
+      path: string
+      priorSha256: string
+      replacementPath: string
+      replacementSha256: string
+      evidenceLocator: string }
+
+type private CandidateEvidenceSubject =
+    { subject: string
+      readBytes: string -> Result<byte[] option, string> }
+
+let private sha256EvidenceBytes (bytes: byte[]) =
+    try
+        bytes
+        |> UTF8Encoding(false, true).GetString
+        |> sha256Text
+        |> Ok
+    with ex -> Error(sprintf "replacement evidence is not valid UTF-8 text: %s" ex.Message)
+
+let private exactObjectProperties label expected (element: JsonElement) =
+    if element.ValueKind <> JsonValueKind.Object then
+        [ sprintf "%s must be a JSON object" label ]
+    else
+        let names = element.EnumerateObject() |> Seq.map _.Name |> List.ofSeq
+        let duplicateErrors =
+            names
+            |> List.countBy id
+            |> List.choose (fun (name, count) ->
+                if count > 1 then Some(sprintf "%s contains duplicate property '%s'" label name) else None)
+
+        let actual = names |> Set.ofList
+        let expected = expected |> Set.ofList
+        let missing = Set.difference expected actual |> Seq.map (sprintf "%s is missing property '%s'" label)
+        let extra = Set.difference actual expected |> Seq.map (sprintf "%s contains unknown property '%s'" label)
+        duplicateErrors @ List.ofSeq missing @ List.ofSeq extra
+
+let private requiredJsonString (label: string) (propertyName: string) (element: JsonElement) =
+    match element.TryGetProperty propertyName with
+    | true, property when property.ValueKind = JsonValueKind.String ->
+        let value = property.GetString() |> Option.ofObj |> Option.defaultValue ""
+        if String.IsNullOrWhiteSpace value then Error(sprintf "%s.%s must not be empty" label propertyName) else Ok value
+    | true, _ -> Error(sprintf "%s.%s must be a JSON string" label propertyName)
+    | false, _ -> Error(sprintf "%s.%s is required" label propertyName)
+
+let private parseAuditBindingExceptionLedger (bytes: byte[]) =
+    let errors = ResizeArray<string>()
+    let entries = ResizeArray<AuditBindingExceptionEntry>()
+
+    try
+        use document = JsonDocument.Parse bytes
+        let root = document.RootElement
+
+        for error in exactObjectProperties "exception ledger" [ "schemaVersion"; "exceptions" ] root do
+            errors.Add error
+
+        match root.TryGetProperty "schemaVersion" with
+        | true, value when value.ValueKind = JsonValueKind.Number ->
+            match value.TryGetInt32() with
+            | true, 1 -> ()
+            | _ -> errors.Add "exception ledger schemaVersion must be 1"
+        | true, _ -> errors.Add "exception ledger schemaVersion must be the number 1"
+        | false, _ -> ()
+
+        match root.TryGetProperty "exceptions" with
+        | true, value when value.ValueKind = JsonValueKind.Array ->
+            for index, entry in value.EnumerateArray() |> Seq.indexed do
+                let label = sprintf "exception ledger entry %d" (index + 1)
+                let expected =
+                    [ "id"; "audit"; "findingId"; "locator"; "path"; "priorSha256"
+                      "replacementPath"; "replacementSha256"; "evidenceLocator" ]
+
+                for error in exactObjectProperties label expected entry do
+                    errors.Add error
+
+                let fields =
+                    expected
+                    |> List.map (fun name -> name, requiredJsonString label name entry)
+
+                for _, result in fields do
+                    match result with
+                    | Error error -> errors.Add error
+                    | Ok _ -> ()
+
+                if fields |> List.forall (snd >> Result.isOk) then
+                    let field name =
+                        fields
+                        |> List.find (fst >> (=) name)
+                        |> snd
+                        |> function Ok value -> value | Error _ -> failwith "validated above"
+
+                    entries.Add
+                        { id = field "id"
+                          audit = field "audit"
+                          findingId = field "findingId"
+                          locator = field "locator"
+                          path = field "path"
+                          priorSha256 = field "priorSha256"
+                          replacementPath = field "replacementPath"
+                          replacementSha256 = field "replacementSha256"
+                          evidenceLocator = field "evidenceLocator" }
+        | true, _ -> errors.Add "exception ledger exceptions must be a JSON array"
+        | false, _ -> ()
+    with ex ->
+        errors.Add(sprintf "exception ledger is malformed JSON: %s" ex.Message)
+
+    entries |> List.ofSeq, errors |> List.ofSeq
+
+let private exactWorkspacePathError label (path: string) =
+    let normalized = normalizeWorkspacePath path
+    let segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries)
+
+    if path <> path.Trim() then Some(sprintf "%s must not have surrounding whitespace" label)
+    elif String.IsNullOrWhiteSpace normalized then Some(sprintf "%s must not be empty" label)
+    elif Path.IsPathRooted path || path.StartsWith("/", StringComparison.Ordinal) then Some(sprintf "%s must be workspace-relative" label)
+    elif path.Contains('\\') then Some(sprintf "%s must use '/' separators" label)
+    elif path.Contains("//", StringComparison.Ordinal) then Some(sprintf "%s must use canonical single '/' separators" label)
+    elif path.IndexOfAny([| '*'; '?'; '['; ']' |]) >= 0 then Some(sprintf "%s must be exact; wildcard paths are overbroad" label)
+    elif segments |> Array.exists (fun segment -> segment = "." || segment = "..") then Some(sprintf "%s must not contain '.' or '..' segments" label)
+    elif normalized.EndsWith("/", StringComparison.Ordinal) then Some(sprintf "%s must name a file, not a directory" label)
+    else None
+
+let private exceptionBindingKey (entry: AuditBindingExceptionEntry) =
+    entry.audit, entry.findingId, entry.locator, entry.path, entry.priorSha256
+
+let private auditBindingKey (binding: InvalidatedAuditBinding) =
+    binding.audit, binding.findingId, binding.locator, binding.path, binding.priorSha256
+
+let private explicitlyNamesWorkspacePath (locator: string) (path: string) =
+    Regex.IsMatch(
+        locator,
+        @"(^|[\s""'=:(,])" + Regex.Escape(path) + @"($|[\s""',;)])",
+        RegexOptions.CultureInvariant
+    )
+
+let private applyAuditBindingExceptions (candidate: CandidateEvidenceSubject) (result: AuditInvalidationCheck) =
+    match candidate.readBytes auditBindingExceptionsPath with
+    | Error detail ->
+        { result with errors = (sprintf "invalidation: could not read exception ledger from %s: %s" candidate.subject detail) :: result.errors |> List.sort }
+    | Ok None -> result
+    | Ok(Some ledgerBytes) ->
+        let entries, parseErrors = parseAuditBindingExceptionLedger ledgerBytes
+        let errors = ResizeArray<string>(parseErrors)
+        let digestPattern = "^[0-9a-f]{64}$"
+
+        entries
+        |> List.countBy _.id
+        |> List.iter (fun (id, count) ->
+            if count > 1 then errors.Add(sprintf "exception ledger contains duplicate id '%s'" id))
+
+        entries
+        |> List.countBy exceptionBindingKey
+        |> List.iter (fun ((audit, findingId, locator, path, prior), count) ->
+            if count > 1 then
+                errors.Add(sprintf "exception ledger contains duplicate binding %s %s %s %s %s" audit findingId locator path prior))
+
+        let bindingCounts = result.bindings |> List.countBy auditBindingKey |> Map.ofList
+        let knownBindings = bindingCounts |> Map.keys |> Set.ofSeq
+
+        for entry in entries do
+            if not (Regex.IsMatch(entry.id, "^[a-z0-9][a-z0-9._-]*$")) then
+                errors.Add(sprintf "exception ledger entry '%s' has an invalid id" entry.id)
+
+            for label, path in [ "audit", entry.audit; "path", entry.path; "replacementPath", entry.replacementPath ] do
+                match exactWorkspacePathError (sprintf "exception ledger entry '%s' %s" entry.id label) path with
+                | Some error -> errors.Add error
+                | None -> ()
+
+            if not (entry.audit.EndsWith(".audit.json", StringComparison.Ordinal)) then
+                errors.Add(sprintf "exception ledger entry '%s' audit must name one .audit.json file" entry.id)
+
+            if entry.locator <> "file:" + entry.path then
+                errors.Add(sprintf "exception ledger entry '%s' locator must be exactly file:%s" entry.id entry.path)
+
+            if not (Regex.IsMatch(entry.priorSha256, digestPattern)) then
+                errors.Add(sprintf "exception ledger entry '%s' priorSha256 must be 64 lowercase hex characters" entry.id)
+
+            if not (Regex.IsMatch(entry.replacementSha256, digestPattern)) then
+                errors.Add(sprintf "exception ledger entry '%s' replacementSha256 must be 64 lowercase hex characters" entry.id)
+
+            if not (entry.evidenceLocator.StartsWith("command:", StringComparison.Ordinal)) then
+                errors.Add(sprintf "exception ledger entry '%s' evidenceLocator must be a command: locator" entry.id)
+            elif containsPrivateLocatorMaterial entry.evidenceLocator then
+                errors.Add(sprintf "exception ledger entry '%s' evidenceLocator contains private or host-specific material" entry.id)
+            elif not (explicitlyNamesWorkspacePath entry.evidenceLocator entry.replacementPath) then
+                errors.Add(sprintf "exception ledger entry '%s' evidenceLocator must explicitly inspect %s" entry.id entry.replacementPath)
+
+            if not (knownBindings.Contains(exceptionBindingKey entry)) then
+                errors.Add(sprintf "exception ledger entry '%s' is unused: no immutable audit binding matches it exactly" entry.id)
+            elif bindingCounts.[exceptionBindingKey entry] <> 1 then
+                errors.Add(sprintf "exception ledger entry '%s' is overbroad: it matches multiple immutable audit bindings" entry.id)
+
+            match exactWorkspacePathError (sprintf "exception ledger entry '%s' replacementPath" entry.id) entry.replacementPath with
+            | Some _ -> ()
+            | None ->
+                match candidate.readBytes entry.replacementPath with
+                | Error detail -> errors.Add(sprintf "exception ledger entry '%s' replacement evidence is unreadable: %s" entry.id detail)
+                | Ok None -> errors.Add(sprintf "exception ledger entry '%s' replacement evidence is missing: %s" entry.id entry.replacementPath)
+                | Ok(Some bytes) ->
+                    match sha256EvidenceBytes bytes with
+                    | Error detail -> errors.Add(sprintf "exception ledger entry '%s' %s" entry.id detail)
+                    | Ok actual when actual <> entry.replacementSha256 ->
+                        errors.Add(sprintf "exception ledger entry '%s' replacement digest is stale: expected %s, got %s" entry.id entry.replacementSha256 actual)
+                    | Ok _ -> ()
+
+        if errors.Count > 0 then
+            { result with errors = (result.errors @ List.ofSeq errors) |> List.sort }
+        else
+            let byBinding = entries |> List.map (fun entry -> exceptionBindingKey entry, entry) |> Map.ofList
+            let applied, remaining =
+                result.invalidated
+                |> List.partition (auditBindingKey >> byBinding.ContainsKey)
+
+            let dispositions : AppliedAuditBindingException list =
+                applied
+                |> List.map (fun binding ->
+                    let entry : AuditBindingExceptionEntry = byBinding.[auditBindingKey binding]
+                    let disposition : AppliedAuditBindingException =
+                        { id = entry.id
+                          audit = entry.audit
+                          findingId = entry.findingId
+                          locator = entry.locator
+                          path = entry.path
+                          priorSha256 = entry.priorSha256
+                          replacementPath = entry.replacementPath
+                          replacementSha256 = entry.replacementSha256
+                          evidenceLocator = entry.evidenceLocator }
+                    disposition)
+                |> List.sortBy (fun (disposition: AppliedAuditBindingException) -> disposition.audit, disposition.findingId, disposition.path, disposition.id)
+
+            { result with invalidated = remaining; dispositions = dispositions }
 
 /// The working-tree spelling of the scan, preserved verbatim for `--changed` and
 /// for direct library callers. Its index subject is the checkout on disk.
 let findInvalidatedAuditBindings (workspaceRoot: string) (changedPaths: string list) =
+    let root = Path.GetFullPath workspaceRoot
+    let candidate =
+        { subject = workingTreeSubject
+          readBytes =
+            fun relative ->
+                try
+                    let path = Path.GetFullPath(Path.Combine(root, relative))
+                    let canonicalRoot = canonicalizeExistingSegments root
+                    let canonicalPath = canonicalizeExistingSegments path
+                    if not (isInside canonicalRoot canonicalPath) then Error "path resolves outside the workspace"
+                    elif File.Exists path then Ok(Some(File.ReadAllBytes path))
+                    elif Directory.Exists path then Error "path names a directory"
+                    else Ok None
+                with ex -> Error ex.Message }
+
     findInvalidatedAuditBindingsIn (workingTreeAuditIndex workspaceRoot) changedPaths
+    |> applyAuditBindingExceptions candidate
 
 let private workspaceRelative (workspaceRoot: string) (resolved: string) =
     let canonicalRoot = canonicalizeExistingSegments workspaceRoot
@@ -636,6 +916,37 @@ let private runGit (workspaceRoot: string) (arguments: string list) =
     with ex ->
         Error ex.Message
 
+let private readGitBlob (workspaceRoot: string) (reference: string) (relative: string) =
+    match runGit workspaceRoot [ "ls-tree"; "-z"; "--name-only"; reference; "--"; relative ] with
+    | Error detail -> Error detail
+    | Ok listing when listing.exitCode <> 0 -> Error listing.stderr
+    | Ok listing when String.IsNullOrEmpty listing.stdout -> Ok None
+    | Ok listing when listing.stdout.TrimEnd('\000') <> relative -> Error "path is not one exact blob in the candidate tree"
+    | Ok _ ->
+        try
+            let start = ProcessStartInfo("git")
+            start.WorkingDirectory <- workspaceRoot
+            start.UseShellExecute <- false
+            start.RedirectStandardOutput <- true
+            start.RedirectStandardError <- true
+            start.ArgumentList.Add "cat-file"
+            start.ArgumentList.Add "blob"
+            start.ArgumentList.Add(reference + ":" + relative)
+
+            match Process.Start start with
+            | null -> Error "could not start git"
+            | child ->
+                use child = child
+                use output = new MemoryStream()
+                let copy = child.StandardOutput.BaseStream.CopyToAsync output
+                let error = child.StandardError.ReadToEndAsync()
+                child.WaitForExit()
+                copy.Wait()
+
+                if child.ExitCode = 0 then Ok(Some(output.ToArray()))
+                else Error(error.Result.Trim())
+        with ex -> Error ex.Message
+
 /// Index the audits present in the tree of `reference` — the MERGED state a
 /// candidate is being checked against, and the only index that can answer the
 /// question `check-invalidation` asks.
@@ -700,8 +1011,16 @@ let checkInvalidationBetweenRefs (workspaceRoot: string) (baseRef: string) (head
     | Error detail ->
         { subject = index.subject
           errors = detail :: index.errors |> List.sort
-          invalidated = [] }
-    | Ok changed -> findInvalidatedAuditBindingsIn index changed
+          invalidated = []
+          dispositions = []
+          bindings = [] }
+    | Ok changed ->
+        let candidate =
+            { subject = sprintf "head ref %s" headRef
+              readBytes = readGitBlob workspaceRoot headRef }
+
+        findInvalidatedAuditBindingsIn index changed
+        |> applyAuditBindingExceptions candidate
 
 let private reportCommit reportText =
     frontmatter reportText
