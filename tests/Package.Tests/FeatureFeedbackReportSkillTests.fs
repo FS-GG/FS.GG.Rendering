@@ -1286,6 +1286,140 @@ let feedbackReportSkillTests =
                       Directory.Delete(root, true)
           }
 
+          test "audit-binding exception ledger is exact, versioned, materialized, and fails closed" {
+              let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-exceptions-" + Guid.NewGuid().ToString "N")
+
+              try
+                  let audits = Path.Combine(root, "feedback", "audits")
+                  let scripts = Path.Combine(root, "scripts")
+                  let replacement = "readiness/replacement.txt"
+                  Directory.CreateDirectory audits |> ignore
+                  Directory.CreateDirectory scripts |> ignore
+                  Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                  let reportPath = Path.Combine(root, "feedback", "report.md")
+                  let priorDigest = sha256Text "old"
+                  let replacementDigest = sha256Text "current"
+                  let evidence = [| {| locator = "file:src/Changed.fs"; result = "verified"; sha256 = Some priorDigest |} |]
+                  File.WriteAllText(Path.Combine(audits, "binding.audit.json"), auditJson root reportPath validReport "actionable" evidence)
+                  File.WriteAllText(Path.Combine(root, replacement), "current")
+
+                  let entry =
+                      {| id = "replacement-001"
+                         audit = "feedback/audits/binding.audit.json"
+                         findingId = "§4.1"
+                         locator = "file:src/Changed.fs"
+                         path = "src/Changed.fs"
+                         priorSha256 = priorDigest
+                         replacementPath = replacement
+                         replacementSha256 = replacementDigest
+                         evidenceLocator = "command:dotnet test && inspect readiness/replacement.txt" |}
+
+                  let ledger entries = JsonSerializer.Serialize({| schemaVersion = 1; exceptions = entries |})
+                  let ledgerPath = Path.Combine(scripts, "audit-binding-exceptions.json")
+                  File.WriteAllText(ledgerPath, ledger [| entry |])
+
+                  let accepted = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.isEmpty accepted.errors "one exact, current exception is valid"
+                  Expect.isEmpty accepted.invalidated "the exact exception dispositions its one invalidation"
+                  Expect.equal accepted.dispositions.Length 1 "one applied disposition stays observable"
+                  Expect.equal accepted.dispositions.Head.id "replacement-001" "the applied receipt names the ledger id"
+
+                  copyPackagedFeedbackSkill root
+                  let packagedExit, packagedOutput, packagedError =
+                      runProcess root "dotnet"
+                          [ "fsi"
+                            ".agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx"
+                            "--"
+                            "check-invalidation"
+                            "--changed"
+                            "src/Changed.fs"
+                            "--root"
+                            root ]
+
+                  Expect.equal packagedExit 0 (sprintf "the materialized skill accepts the same exact entry: %s" packagedError)
+                  Expect.stringContains packagedOutput "applied exception replacement-001" "receiver output reports the applied disposition"
+
+                  if OperatingSystem.IsLinux() then
+                      File.Delete(Path.Combine(root, replacement))
+                      File.CreateSymbolicLink(Path.Combine(root, replacement), "missing-evidence.txt") |> ignore
+
+                      let dangling = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                      Expect.exists dangling.errors (fun error -> error.Contains "symbolic link, not a regular file") "the direct route rejects dangling symlink evidence"
+
+                      let danglingExit, _, danglingError =
+                          runProcess root "dotnet"
+                              [ "fsi"
+                                ".agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx"
+                                "--"
+                                "check-invalidation"
+                                "--changed"
+                                "src/Changed.fs"
+                                "--root"
+                                root ]
+
+                      Expect.equal danglingExit 1 "the materialized route rejects dangling symlink evidence"
+                      Expect.stringContains danglingError "symbolic link, not a regular file" "the materialized diagnostic names the non-regular evidence"
+
+                      File.Delete(Path.Combine(root, replacement))
+                      Directory.CreateDirectory(Path.Combine(root, replacement)) |> ignore
+                      let directory = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                      Expect.exists directory.errors (fun error -> error.Contains "path names a directory") "the direct route rejects directory evidence"
+                      Directory.Delete(Path.Combine(root, replacement))
+
+                  if File.Exists(Path.Combine(root, replacement)) then
+                      File.Delete(Path.Combine(root, replacement))
+
+                  let missing = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists missing.errors (fun error -> error.Contains "replacement evidence is missing") "the direct route rejects missing evidence"
+                  File.WriteAllText(Path.Combine(root, replacement), "current")
+
+                  File.WriteAllText(ledgerPath, "{")
+                  let malformed = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists malformed.errors (fun error -> error.Contains "malformed JSON") "malformed JSON fails closed"
+
+                  File.WriteAllText(ledgerPath, (ledger [| entry |]).Replace("\"schemaVersion\":1", "\"schemaVersion\":2"))
+                  let unsupported = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unsupported.errors (fun error -> error.Contains "schemaVersion must be 1") "unsupported schema fails closed"
+
+                  let stale =
+                      {| entry with replacementSha256 = sha256Text "stale" |}
+                  File.WriteAllText(ledgerPath, ledger [| stale |])
+                  let staleResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists staleResult.errors (fun error -> error.Contains "replacement digest is stale") "stale replacement evidence fails closed"
+
+                  let mismatched =
+                      {| entry with priorSha256 = sha256Text "different-prior" |}
+                  File.WriteAllText(ledgerPath, ledger [| mismatched |])
+                  let mismatchedResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists mismatchedResult.errors (fun error -> error.Contains "is unused") "a mismatched prior digest cannot bind"
+
+                  File.WriteAllText(ledgerPath, ledger [| entry; entry |])
+                  let duplicate = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists duplicate.errors (fun error -> error.Contains "duplicate id") "duplicate ids fail closed"
+                  Expect.exists duplicate.errors (fun error -> error.Contains "duplicate binding") "duplicate bindings fail closed"
+
+                  let unused =
+                      {| entry with id = "unused-001"; audit = "feedback/audits/other.audit.json" |}
+                  File.WriteAllText(ledgerPath, ledger [| unused |])
+                  let unusedResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unusedResult.errors (fun error -> error.Contains "is unused") "an entry without an immutable binding fails closed"
+
+                  let overbroad =
+                      {| entry with id = "overbroad-001"; locator = "file:src/*"; path = "src/*" |}
+                  File.WriteAllText(ledgerPath, ledger [| overbroad |])
+                  let overbroadResult = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists overbroadResult.errors (fun error -> error.Contains "wildcard paths are overbroad") "wildcard bindings fail explicitly"
+
+                  let unknownField =
+                      (ledger [| entry |]).Replace("\"id\":\"replacement-001\"", "\"surprise\":true,\"id\":\"replacement-001\"")
+                  File.WriteAllText(ledgerPath, unknownField)
+                  let unknown = findInvalidatedAuditBindings root [ "src/Changed.fs" ]
+                  Expect.exists unknown.errors (fun error -> error.Contains "unknown property 'surprise'") "unknown fields fail closed"
+              finally
+                  if Directory.Exists root then
+                      Directory.Delete(root, true)
+          }
+
           test "commit-time invalidation indexes audits from the base tree, not the candidate" {
               let root = Path.Combine(Path.GetTempPath(), "fsgg-feedback-base-index-" + Guid.NewGuid().ToString "N")
               Directory.CreateDirectory root |> ignore
@@ -1375,6 +1509,78 @@ let feedbackReportSkillTests =
                       [ "feedback/audits/merged.audit.json", "feedback/report.md", "§4.1", "src/Base.fs" ]
                       "a merged audit still invalidates a candidate that changes its cited evidence"
 
+                  // FR-003/DEC-002 — the exception and replacement are candidate-head facts,
+                  // never whatever bytes happen to be in the caller's checkout.
+                  let priorDigest = sha256Text "old"
+                  let replacementDigest = sha256Text "current"
+                  let replacementPath = "readiness/replacement.txt"
+                  let headLedger id candidateReplacementPath candidateReplacementDigest =
+                      JsonSerializer.Serialize(
+                          {| schemaVersion = 1
+                             exceptions =
+                              [| {| id = id
+                                    audit = "feedback/audits/merged.audit.json"
+                                    findingId = "§4.1"
+                                    locator = "file:src/Base.fs"
+                                    path = "src/Base.fs"
+                                    priorSha256 = priorDigest
+                                    replacementPath = candidateReplacementPath
+                                    replacementSha256 = candidateReplacementDigest
+                                    evidenceLocator = "command:dotnet test && inspect " + candidateReplacementPath |} |] |}
+                      )
+
+                  let ledgerText = headLedger "head-replacement-001" replacementPath replacementDigest
+
+                  let exceptionHeadSha =
+                      commitOnto root "candidate-head-exception" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 4\n"
+                          writeFile root replacementPath "current"
+                          writeFile root "scripts/audit-binding-exceptions.json" ledgerText)
+
+                  // Deliberately make the worktree copy malformed after committing. A checker
+                  // that reads disk instead of the named head now fails; the correct one passes.
+                  writeFile root "scripts/audit-binding-exceptions.json" "{"
+                  let headDisposition = checkInvalidationBetweenRefs root baseSha exceptionHeadSha
+                  Expect.isEmpty headDisposition.errors "the candidate head's valid ledger wins over malformed working-tree bytes"
+                  Expect.isEmpty headDisposition.invalidated "the candidate-head entry dispositions the touched merged binding"
+                  Expect.equal headDisposition.dispositions.Length 1 "one candidate-head disposition is reported"
+                  writeFile root "scripts/audit-binding-exceptions.json" ledgerText
+
+                  if OperatingSystem.IsLinux() then
+                      let danglingPath = "readiness/dangling.txt"
+                      let danglingTarget = "missing-evidence.txt"
+                      let danglingSha =
+                          commitOnto root "candidate-head-dangling" baseSha (fun () ->
+                              writeFile root "src/Base.fs" "let baseValue = 5\n"
+                              Directory.CreateDirectory(Path.Combine(root, "readiness")) |> ignore
+                              File.CreateSymbolicLink(Path.Combine(root, danglingPath), danglingTarget) |> ignore
+                              writeFile root "scripts/audit-binding-exceptions.json" (headLedger "head-dangling-001" danglingPath (sha256Text danglingTarget)))
+
+                      let danglingHead = checkInvalidationBetweenRefs root baseSha danglingSha
+                      Expect.exists danglingHead.errors (fun error -> error.Contains "mode 120000 type blob") "the ref-aware route rejects a dangling Git symlink blob"
+                      Expect.isEmpty danglingHead.dispositions "a symlink blob never produces an applied disposition"
+
+                  let treePath = "readiness/replacement-tree"
+                  let treeSha =
+                      commitOnto root "candidate-head-tree" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 6\n"
+                          writeFile root (treePath + "/evidence.txt") "current"
+                          writeFile root "scripts/audit-binding-exceptions.json" (headLedger "head-tree-001" treePath replacementDigest))
+
+                  let treeHead = checkInvalidationBetweenRefs root baseSha treeSha
+                  Expect.exists treeHead.errors (fun error -> error.Contains "mode 040000 type tree") "the ref-aware route rejects a Git tree"
+                  Expect.isEmpty treeHead.dispositions "a Git tree never produces an applied disposition"
+
+                  let missingPath = "readiness/missing.txt"
+                  let missingSha =
+                      commitOnto root "candidate-head-missing" baseSha (fun () ->
+                          writeFile root "src/Base.fs" "let baseValue = 7\n"
+                          writeFile root "scripts/audit-binding-exceptions.json" (headLedger "head-missing-001" missingPath replacementDigest))
+
+                  let missingHead = checkInvalidationBetweenRefs root baseSha missingSha
+                  Expect.exists missingHead.errors (fun error -> error.Contains "replacement evidence is missing") "the ref-aware route rejects a missing candidate-head path"
+                  Expect.isEmpty missingHead.dispositions "a missing path never produces an applied disposition"
+
                   // AC-003 — deleting the durable audit in the candidate must not clear the
                   // refusal. The index is the base tree, so there is nothing on disk to delete.
                   let deletesAuditSha =
@@ -1450,6 +1656,18 @@ let feedbackReportSkillTests =
                       (fun error -> error.Contains "could not read the audit index at deadbeef")
                       "an enumeration error survives into the scan's errors rather than yielding an empty index"
                   Expect.isEmpty unreadable.invalidated "a broken index reports no binding verdict"
+
+                  let gitlinkPath = "readiness/replacement-submodule"
+                  git root [ "checkout"; "-q"; "-B"; "candidate-head-gitlink"; baseSha ] |> ignore
+                  writeFile root "src/Base.fs" "let baseValue = 8\n"
+                  writeFile root "scripts/audit-binding-exceptions.json" (headLedger "head-gitlink-001" gitlinkPath replacementDigest)
+                  git root [ "add"; "-A" ] |> ignore
+                  git root [ "update-index"; "--add"; "--cacheinfo"; sprintf "160000,%s,%s" baseSha gitlinkPath ] |> ignore
+                  git root [ "commit"; "-q"; "-m"; "candidate-head-gitlink" ] |> ignore
+                  let gitlinkSha = git root [ "rev-parse"; "HEAD" ]
+                  let gitlinkHead = checkInvalidationBetweenRefs root baseSha gitlinkSha
+                  Expect.exists gitlinkHead.errors (fun error -> error.Contains "mode 160000 type commit") "the ref-aware route rejects a Git submodule entry"
+                  Expect.isEmpty gitlinkHead.dispositions "a gitlink never produces an applied disposition"
               finally
                   if Directory.Exists root then
                       Directory.Delete(root, true)

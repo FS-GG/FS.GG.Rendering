@@ -203,6 +203,47 @@ identical to validation:
 dotnet fsi .agents/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx -- digest <text-file>
 ```
 
+## Audit-binding exceptions
+
+Feedback reports and `feedback/audits/*.audit.json` are immutable. When cited production evidence is
+deliberately superseded, the only mutable disposition surface is
+the optional workspace-root file scripts/audit-binding-exceptions.json. Omitting that file preserves the ordinary fail-closed
+invalidation behavior. When present, it is a strict schema-version-1 document:
+
+```json
+{
+  "schemaVersion": 1,
+  "exceptions": [{
+    "id": "replacement-001",
+    "audit": "feedback/audits/example.audit.json",
+    "findingId": "§4.1",
+    "locator": "file:readiness/old.json",
+    "path": "readiness/old.json",
+    "priorSha256": "<digest recorded by the immutable audit>",
+    "replacementPath": "readiness/current.json",
+    "replacementSha256": "<current lowercase SHA-256 of LF-normalized replacement text>",
+    "evidenceLocator": "command:dotnet test ... && inspect readiness/current.json"
+  }]
+}
+```
+
+Every property is required and unknown properties fail. Each entry binds one exact audit, finding,
+file locator, workspace path, and prior digest. Paths are exact workspace-relative file paths; glob,
+directory, absolute, and traversal spellings are rejected. The replacement must exist in the
+candidate tree as UTF-8 text with the declared LF-normalized digest. Its evidence locator must be a non-private `command:`
+locator that explicitly names the replacement path; the checker validates that locator but never
+executes ledger-controlled command text.
+
+The replacement path must be one regular file in the selected subject: a regular working-tree file
+for `--changed`, or a mode-100644/mode-100755 Git blob in the candidate head for `--base/--head`.
+Symbolic links (including dangling links), directories/trees, submodules/gitlinks, missing paths, and
+unreadable files are rejected before digest comparison.
+
+Entries are durable while their immutable audit binding exists. Duplicate ids or bindings, entries
+that match no immutable audit binding, stale replacement digests, mismatched fields, malformed JSON,
+and unsupported schemas all fail closed. A valid entry dispositions only its exact invalidation, and
+`check-invalidation` prints the applied entry id so the exception remains observable.
+
 ## Output contract
 
 Write `feedback/<YYYY-MM-DD>-<workspace>.md`. Never overwrite or rename an earlier report; add
