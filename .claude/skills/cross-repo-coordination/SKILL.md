@@ -19,9 +19,12 @@ file mailbox.
 For exact request/response recipes, registry details, and incident rationale, load
 [deep detail](references/deep-detail.md).
 
-Every request needs one owning repo, acceptance criteria, a narrow `Paths:` declaration, and explicit
-dependencies. File it in the receiver, add it to the org board, and set only fields you can support with
-evidence. Use `Blocked by:` for real sequencing, not topical relationship or temporary overlap.
+Every request needs one owning repo, acceptance criteria, a narrow touch-set, and explicit dependencies.
+Author the complete `fsgg.coord.intake/v1` draft shown in [deep detail](references/deep-detail.md), then
+run `scripts/fsgg-coord intake validate` followed by `intake apply` on that same file. Its `paths`,
+`class`, `severity`, and optional `blockedBy` fields own the body and board projections; hand-authoring
+`Paths:` or `Class:` in a created body is a defect. Use `blockedBy` for real sequencing, not topical
+relationship or temporary overlap.
 
 Finish by verifying the receiving issue/PR, board state, registry state, and any consumer update against
 live sources. Record durable decisions as ADRs in `.github`.
