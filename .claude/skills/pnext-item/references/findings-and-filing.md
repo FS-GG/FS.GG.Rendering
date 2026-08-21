@@ -28,6 +28,45 @@ row only if it clears all three of these:
 The bar governs **findings**. It does not govern operating changes the host or the user has already
 decided to make: a decision is not required to be red before it is recorded.
 
+## Disclosed residual — a terminal state, not an unbounded waiver
+
+Some limitations have a real, finite bound but are not worth closing further. A limitation is a
+**disclosed residual** and may be a terminal state rather than a finding only when **all four** of
+these conditions hold:
+
+1. **Measured bound.** The bound is measured against a named subject and revision, not estimated or
+   described as merely small.
+2. **Caller-facing disclosure.** The bound is stated where a caller or operator meets the affected
+   contract. A commit message or private scratch result alone is not disclosure.
+3. **Executable pin with observed red.** A checked-in assertion fails if the residual grows beyond
+   the recorded bound, and its evidence includes a mutation that widened the residual and made that
+   pin red. A pin whose failure has not been observed does not establish this condition.
+4. **Owned, durable decision.** The actor who owns disposition at that boundary records the decision,
+   their identity, and links to the measurement, disclosure, pin, and red mutation in the durable
+   artifact that owns the disposition: the item or PR for an implementer, the review record for an
+   independent critic, the packet/register disposition for a board analyst, or the decision record
+   for a human choice. Someone without disposition authority may propose a residual, but cannot
+   declare one terminal.
+
+The conditions are conjunctive. Meeting three identifies a finding about the missing fourth; an
+unbounded "known issue" remains a finding. This is also **not an exemption from the filing bar's
+red-today test**: the bar decides whether a finding becomes a row, while this rule decides whether a
+measured limitation is still a finding at all.
+
+Two existing decisions demonstrate the boundary:
+
+- `.github#2667` stopped at the plain-lift limitation after the residual was disclosed and pinned;
+  the independently measured optional improvement was deliberately declined rather than treated as
+  proof the accepted item was unfinished (`.github#2691` comment `5304344697`).
+- `.github#2712` records DEC-003 at its true `Done` bound and pins that exact outcome in
+  `LifecycleProjectionTests`. Independent confirmation changed the reducer so the formerly refuted,
+  narrower bound became true; exactly that pin went red (`.github#2745` comment `5310802698`).
+
+The `.github#266` exclusion is absolute: a check that cannot fail, an empty or unreadable subject
+reported as pass, or a pin whose widening mutation stays green has no enforceable bound to disclose.
+It is a defective verification artifact, not a disclosed residual, and must be repaired or routed as
+a finding.
+
 ## Who files
 
 **The finder is the worst available judge of whether the board needs another row**, because from inside
