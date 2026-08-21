@@ -228,13 +228,13 @@ scripts/fsgg-coord review --snapshot <fresh-review-snapshot.json> --json
 ```
 
 It returns exactly one closed state (awaiting initial review, changes requiring repair, awaiting
-implementer repair, awaiting the same critic's confirmation, passed awaiting checks, awaiting host
+implementer repair, awaiting a fresh successor's full review, passed awaiting checks, awaiting host
 acceptance, ordinary exhaustion, repair-phase setup, repair-phase active review, accepted, or terminal
 human park) and the one typed next action that follows from it — dispatch critic, resume implementer,
-resume the same critic, await checks, request host acceptance, enter the one permitted fresh repair
+dispatch a fresh successor critic, await checks, request host acceptance, enter the one permitted fresh repair
 phase, accept, or park for human action — bound to a freshness token that a changed head invalidates.
 This is a mechanical cross-check, not a substitute for the qualitative judgement below: materiality,
-same-critic continuity, and repair-phase provenance are still read from the live PR by both the worker
+critic-generation continuity, durable wait receipts, and repair-phase provenance are read from the live PR by both the worker
 and the critic.
 
 Push the candidate, open its PR, and ask the host to assign a fresh critic agent. Keep the implementing worker and
@@ -244,13 +244,21 @@ implementation: it checks requirements, diff, tests, architecture, release oblig
 searches code/history and existing work for each candidate root cause; and files only unresolved,
 distinct **material** work. For a meaningful runtime behavior reachable through more than one route,
 the handoff supplies a built artifact and runnable production-route evidence so the critic can execute
-or measure the comparison required by `independent-review`, not infer it from source alone. The same
-critic reviews up to three numbered repair rounds. If material findings remain after round three,
+or measure the comparison required by `independent-review`, not infer it from source alone. A fresh
+successor performs each numbered repair review. If material findings remain after round three,
 never start round four or merge that PR: close it without merging and automatically enter the one
 fresh-worker, fresh-critic
 [repair phase](references/independent-review.md#repair-phase). Park the item on `Blocked on:
 human/action` and release the claim only if that repair phase exhausts or its required route is
 unavailable.
+
+Before yielding at every protocol-created critic queue, write the bounded entry event with
+`scripts/fsgg-coord review wait <ref> <event.json> --pr <n> --json`. After a critic record lands, write
+the matching completion event; cancellation and bounded timeout use the same command and generation.
+Never treat a sleeping process as the receipt. On resumption, run live `review` and revalidate or
+reacquire the current claim generation before any mutation. Use the canonical generation token
+`<head>:initial-review:0` or `<head>:repair-confirmation:<round>`; dispatch and `review record` fail
+closed without the matching waiting entry, and acceptance requires its completed critic-record evidence.
 
 [independent-review](references/independent-review.md) is the binding contract for materiality, critic
 ownership, the durable PR record, direct filing, confirmation, and host verification. Its
