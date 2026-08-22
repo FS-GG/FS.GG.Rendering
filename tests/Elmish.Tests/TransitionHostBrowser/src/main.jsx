@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, useTransition } from "react";
+import React, { useEffect, useLayoutEffect, useState, useTransition } from "react";
 import { createRoot } from "react-dom/client";
 import {
   TransitionFocusTarget,
@@ -30,6 +30,7 @@ let model = TransitionHost_init(TransitionVisibility.Visible);
 let present = () => {};
 let updateControlledText = () => {};
 let resetPresentation = () => {};
+let resetRenderedRows = () => {};
 let latestPresentation;
 let requestedPresentations = 0;
 let resumePresentations = 0;
@@ -119,6 +120,7 @@ async function resetTransitionJourney() {
   awaitingResume = false;
   completion = undefined;
   resetPresentation();
+  resetRenderedRows();
   await nextPaint();
   return {
     target: document.querySelector("[data-target]")?.getAttribute("data-target"),
@@ -274,6 +276,7 @@ async function runTransitionJourney(run) {
 function App() {
   const [view, setView] = useState({ target: "Editor", revision: -1, responses: 0, token: undefined });
   const [controlledText, setControlledText] = useState("mission-0");
+  const [renderedRows, setRenderedRows] = useState(120);
   const [reactPending, startTransition] = useTransition();
 
   present = (presentation) => {
@@ -287,6 +290,7 @@ function App() {
     });
   };
   updateControlledText = setControlledText;
+  resetRenderedRows = () => setRenderedRows(120);
   resetPresentation = () => {
     setView({ target: "Editor", revision: -1, responses: 0, token: undefined });
     setControlledText("mission-0");
@@ -295,9 +299,28 @@ function App() {
   useLayoutEffect(() => {
     if (!view.token) return;
     acknowledge(view.token);
+  }, [view.token]);
+
+  const targetRows = view.target === "Simulate" ? 1200 : view.target === "Plan" ? 600 : 120;
+
+  useEffect(() => {
+    if (renderedRows === targetRows) return undefined;
+    if (renderedRows > targetRows) {
+      setRenderedRows(targetRows);
+      return undefined;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      startTransition(() => setRenderedRows((count) => Math.min(targetRows, count + 120)));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [renderedRows, startTransition, targetRows]);
+
+  useLayoutEffect(() => {
     const committed = TransitionHost_committed(model);
     if (
       completion
+      && renderedRows === targetRows
       && committed?.Target === "Simulate"
       && committed.Revision === completion.revision
       && committed.Generation.fields[0] === completion.generation.fields[0]
@@ -306,7 +329,7 @@ function App() {
       completion = undefined;
       done.resolve();
     }
-  }, [view.token]);
+  }, [renderedRows, targetRows, view.token]);
 
   return (
     <main aria-busy={reactPending || TransitionHost_isPending(model)}>
@@ -342,7 +365,7 @@ function App() {
         <h2>{view.target}</h2>
         <p>{view.responses} asynchronous responses accepted</p>
         <div className="workspace-grid">
-          {workspaceRows[view.target]}
+          {workspaceRows[view.target].slice(0, renderedRows)}
         </div>
       </section>
     </main>

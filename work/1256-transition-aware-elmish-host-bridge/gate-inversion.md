@@ -107,3 +107,18 @@ The multi-commit subject control ran the unchanged Feature209 test list with the
 `1154d053d316e27e39e9aa60da5d0df8f87a1270` made all 24 focused Feature209 tests pass and emitted the
 three ordered 0.27.0 `RELEASE-PENDING` tags. A malformed explicit base independently exits 2 with
 `GUARD ERROR`; the repair cannot gain a waiver from missing or ambiguous ancestry.
+
+## Bounded production row commits
+
+After release-base repair, exact-head hosted run 32554829089 retained 19 ordinary journeys at
+10.504--11.189 ms but run 0 spent 23.890 ms in one compositor `Commit`, making its enclosing renderer
+task 34.800 ms. Stable layout/style/prepaint/paint/layerize work in that task totaled about 10.7 ms; the
+remaining vulnerability was the atomic insertion of 1,080 rows when Simulate replaced Editor.
+
+The production fixture now materializes the same cached target descriptors in frame-aligned batches of
+120. It does not resolve the production journey until all 1,200 Simulate rows are committed and the exact
+row semantics/visibility/geometry receipt passes. The host still issues and acknowledges exactly one
+Simulate presentation; only the renderer's DOM materialization is divided into bounded concurrent React
+commits. Three restored 20-journey runs passed at max 3.778/3.914/5.090 ms, p95 at most 2.122 ms, p99 at
+most 2.674 ms, zero drops, and 220 positive frame/compositor observations each. No row, response,
+replacement, input attempt, threshold, or trace journey was removed.
