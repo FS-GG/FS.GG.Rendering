@@ -126,3 +126,11 @@ DOM materialization is divided into bounded concurrent React commits. Three rest
 passed at max 3.778/3.914/5.090 ms, p95 at most 2.122 ms, p99 at
 most 2.674 ms, zero drops, and 220 positive frame/compositor observations each. No row, response,
 replacement, input attempt, threshold, or trace journey was removed.
+
+The pending-state control was inverted by restoring only the premature `acknowledge(view.token)` layout
+effect. Each partial batch recorded the violation as data while continuing to the complete 1,200-row DOM;
+the unchanged measurement exited 1 promptly on measured journey 0 with `rows:1200`,
+`stagedPendingChecks:10`, and `stagedPendingValid:false`. Recording instead of throwing is load-bearing:
+the first form of this control threw inside React, stopped later batches, and hung on an unresolved journey
+promise rather than emitting a red verdict. The restored subject passes with
+`stagedRowsRemainPending:true` across all 20 journeys.

@@ -37,6 +37,7 @@ let resumePresentations = 0;
 let releaseEffects = 0;
 let suppressEffects = 0;
 let stagedPendingChecks = 0;
+let stagedPendingValid = true;
 let awaitingResume = false;
 let completion;
 
@@ -119,6 +120,7 @@ async function resetTransitionJourney() {
   releaseEffects = 0;
   suppressEffects = 0;
   stagedPendingChecks = 0;
+  stagedPendingValid = true;
   awaitingResume = false;
   completion = undefined;
   resetPresentation();
@@ -202,6 +204,7 @@ async function runTransitionJourney(run) {
   releaseEffects = 0;
   suppressEffects = 0;
   stagedPendingChecks = 0;
+  stagedPendingValid = true;
 
   const plan = begin("Plan");
   input(new TransitionHostInput(0, ["workspace-title", `mission-${run}`]));
@@ -274,6 +277,7 @@ async function runTransitionJourney(run) {
     pending: TransitionHost_isPending(model),
     ledgerEntries: ledgerTags.length,
     stagedPendingChecks,
+    stagedPendingValid,
   };
 }
 
@@ -321,7 +325,7 @@ function App() {
         const busy = document.querySelector("main")?.getAttribute("aria-busy") === "true";
         const status = document.getElementById("transition-status")?.textContent;
         if (!TransitionHost_isPending(model) || !busy || status !== "Simulate workspace is loading") {
-          throw new Error(`Staged Simulate rows escaped pending state at ${renderedRows}: busy=${busy}, status=${status}`);
+          stagedPendingValid = false;
         }
         stagedPendingChecks += 1;
       }
