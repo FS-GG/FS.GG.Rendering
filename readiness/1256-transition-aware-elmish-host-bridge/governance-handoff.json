@@ -6,17 +6,17 @@
   "sources": [
     {
       "path": "readiness/1256-transition-aware-elmish-host-bridge/ship.json",
-      "digest": "sha256:3cc724b9e2b27a590a9d4f329ff6d5c0479506a78b828f24cb982a39bb3ab123",
+      "digest": "sha256:1d4fa1ecc834aea98ad7152e603ec530805142464ae98c0725f9c9e42922cda5",
       "schemaVersion": 1
     },
     {
       "path": "readiness/1256-transition-aware-elmish-host-bridge/verify.json",
-      "digest": "sha256:3b977c6d1b26ece99fea21dc265cec3a9b8fb00ef28902b452d3a18ea500a747",
+      "digest": "sha256:48a4efdf6879a81424443ea93abf706fb61c2946a37d5c5ddb4d9415ba10c5bb",
       "schemaVersion": 1
     },
     {
       "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
-      "digest": "sha256:1400eeddf33ce05d10dec3097e46710c3c5aa4900a785fbc3f145650adac941d",
+      "digest": "sha256:3d68ed1c29ba6b7fbba482721ed821da7508364bac578b6ed311056cd8f66b58",
       "schemaVersion": 1
     }
   ],

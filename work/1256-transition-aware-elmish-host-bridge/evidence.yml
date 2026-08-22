@@ -1187,6 +1187,8 @@ evidence:
       measurementScope: workspace-transition-production
       requiredCapability: production-fable-react-chromium
       liveCompositorRequired: true
-    notes: ["The committed production artifact measures immutable source commit 40b863efe0b3d2cba7ff3f7648f31d6c8f541e7c and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
+    notes:
+      - "The committed production artifact measures immutable source commit 40b863efe0b3d2cba7ff3f7648f31d6c8f541e7c and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."
+      - "The filed scale remains exactly 1200 rendered workspace-row layout units. Each row is one visible data-workspace-row element carrying index/score data and an accessible label; redundant nested spans are not additional workload rows or semantics. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size."
 lifecycleNotes:
   - "Next lifecycle action: verify."
