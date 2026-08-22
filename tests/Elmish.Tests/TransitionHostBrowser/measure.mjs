@@ -200,6 +200,7 @@ try {
       || result.resumePresentations !== 1
       || result.releaseEffects !== 1
       || result.suppressEffects !== workload.maximumExpectedScale.unsafeInputAttempts
+      || result.stagedPendingChecks <= 0
       || result.pending
     ) {
       throw new Error(`Measured journey ${run} violated the production route contract: ${JSON.stringify(result)}`);
@@ -337,6 +338,7 @@ const summary = {
     unsafeInputsSuppressed: runResults.every((run) => run.suppressEffects === 4),
     deterministicLedgerObserved: runResults.every((run) => run.ledgerEntries > 0),
     independentLedgerBounded: runResults.every((run) => run.ledgerEntries === runResults[0].ledgerEntries),
+    stagedRowsRemainPending: runResults.every((run) => run.stagedPendingChecks > 0),
     semanticRows: rowContract,
   },
 };

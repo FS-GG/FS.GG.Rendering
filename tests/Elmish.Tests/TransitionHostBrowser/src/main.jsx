@@ -36,6 +36,7 @@ let requestedPresentations = 0;
 let resumePresentations = 0;
 let releaseEffects = 0;
 let suppressEffects = 0;
+let stagedPendingChecks = 0;
 let awaitingResume = false;
 let completion;
 
@@ -117,6 +118,7 @@ async function resetTransitionJourney() {
   resumePresentations = 0;
   releaseEffects = 0;
   suppressEffects = 0;
+  stagedPendingChecks = 0;
   awaitingResume = false;
   completion = undefined;
   resetPresentation();
@@ -199,6 +201,7 @@ async function runTransitionJourney(run) {
   resumePresentations = 0;
   releaseEffects = 0;
   suppressEffects = 0;
+  stagedPendingChecks = 0;
 
   const plan = begin("Plan");
   input(new TransitionHostInput(0, ["workspace-title", `mission-${run}`]));
@@ -270,6 +273,7 @@ async function runTransitionJourney(run) {
     suppressEffects,
     pending: TransitionHost_isPending(model),
     ledgerEntries: ledgerTags.length,
+    stagedPendingChecks,
   };
 }
 
@@ -296,11 +300,6 @@ function App() {
     setControlledText("mission-0");
   };
 
-  useLayoutEffect(() => {
-    if (!view.token) return;
-    acknowledge(view.token);
-  }, [view.token]);
-
   const targetRows = view.target === "Simulate" ? 1200 : view.target === "Plan" ? 600 : 120;
 
   useEffect(() => {
@@ -317,10 +316,22 @@ function App() {
   }, [renderedRows, startTransition, targetRows]);
 
   useLayoutEffect(() => {
+    if (!view.token || renderedRows !== targetRows) {
+      if (view.token && view.target === "Simulate" && renderedRows < targetRows) {
+        const busy = document.querySelector("main")?.getAttribute("aria-busy") === "true";
+        const status = document.getElementById("transition-status")?.textContent;
+        if (!TransitionHost_isPending(model) || !busy || status !== "Simulate workspace is loading") {
+          throw new Error(`Staged Simulate rows escaped pending state at ${renderedRows}: busy=${busy}, status=${status}`);
+        }
+        stagedPendingChecks += 1;
+      }
+      return;
+    }
+
+    acknowledge(view.token);
     const committed = TransitionHost_committed(model);
     if (
       completion
-      && renderedRows === targetRows
       && committed?.Target === "Simulate"
       && committed.Revision === completion.revision
       && committed.Generation.fields[0] === completion.generation.fields[0]

@@ -118,7 +118,11 @@ remaining vulnerability was the atomic insertion of 1,080 rows when Simulate rep
 The production fixture now materializes the same cached target descriptors in frame-aligned batches of
 120. It does not resolve the production journey until all 1,200 Simulate rows are committed and the exact
 row semantics/visibility/geometry receipt passes. The host still issues and acknowledges exactly one
-Simulate presentation; only the renderer's DOM materialization is divided into bounded concurrent React
-commits. Three restored 20-journey runs passed at max 3.778/3.914/5.090 ms, p95 at most 2.122 ms, p99 at
+Simulate presentation; acknowledgement is deferred until all 1,200 rows for that token are committed, so
+the state machine remains pending, `aria-busy` remains true, the live status remains loading, and unsafe
+input suppression remains active throughout every partial batch. The measurement observes at least one
+such intermediate state in every journey and fails if pending/loading clears early. Only the renderer's
+DOM materialization is divided into bounded concurrent React commits. Three restored 20-journey runs
+passed at max 3.778/3.914/5.090 ms, p95 at most 2.122 ms, p99 at
 most 2.674 ms, zero drops, and 220 positive frame/compositor observations each. No row, response,
 replacement, input attempt, threshold, or trace journey was removed.

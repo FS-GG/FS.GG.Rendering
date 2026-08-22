@@ -584,6 +584,10 @@ let transitionHostTests =
                   Expect.isTrue
                       (acceptance.GetProperty("independentLedgerBounded").GetBoolean())
                       "every independently reset journey must end with the same bounded ledger size"
+
+                  Expect.isTrue
+                      (acceptance.GetProperty("stagedRowsRemainPending").GetBoolean())
+                      "staged DOM materialization must remain pending/loading until all 1200 rows commit"
               finally
                   if retainedDirectory.IsNone then
                       if Directory.Exists artifactRoot then Directory.Delete(artifactRoot, true)
