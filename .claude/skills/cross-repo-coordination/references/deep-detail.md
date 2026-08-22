@@ -329,7 +329,7 @@ by printing a success line; **earn** it — have the tool confirm both facts fir
 ```sh
 scripts/fsgg-coord done <issue>            # verify BOTH; green FSGG-DONE stamp (exit 0) or
                                            # red FSGG-NOT-DONE stamp naming the failing check (exit 1)
-scripts/fsgg-coord done <issue> --flip     # once the PR is merged, also set Status=Done, then stamp
+scripts/fsgg-coord delivery <issue> --pr <pr> --flip --apply  # verify the merge, receipt it, then project Done
 scripts/fsgg-coord done <issue> --pr <N>   # name the closing PR explicitly (else the first merged closer)
 ```
 
@@ -403,7 +403,7 @@ wrong and the registry advertises a version the feed can't serve. The universal 
    (e.g. `FS.GG.Templates` → `providers/<provider>.providers.yml` `source: <PkgId>::<V>`); its
    own CI (e.g. `composition`) must pass.
 4. **Land + record.** Merge both PRs, confirm the producer issue closed, then close out each board
-   item with `scripts/fsgg-coord done <issue> --flip` (see *Signal an item is finished*) — it flips
+   item with `scripts/fsgg-coord delivery <issue> --pr <pr> --flip --apply` (see *Signal an item is finished*) — it flips
    `Status: Done` only after re-confirming the merge, the green stamp is your proof, and the parent
    epic rolls up to `Done` on its own once the last child stamps green.
 

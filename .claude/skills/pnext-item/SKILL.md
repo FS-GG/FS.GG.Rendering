@@ -389,9 +389,11 @@ load [deep detail](references/deep-detail.md).
 ## 7. Stamp and stop
 
 ```bash
-scripts/fsgg-coord done <ref> --flip --pr <pr>
+scripts/fsgg-coord delivery <ref> --pr <pr> --flip --apply --json
 ```
 
-The exact green done stamp, closed issue, `Done` column, released claim, zero pending board writes, and
-fresh board confirmation are completion. If any is missing, repair it before reporting. Clean the
-worktree and branch only after verification. Report the exact stamp and stop; one invocation owns one item.
+This completion call re-inspects the exact merge and declared obligations, appends the typed completion
+receipt first, and only then projects the closed issue, `Done` column, released claim, and cleanup state.
+The exact green done stamp, zero pending board writes, and fresh board confirmation are completion. If any
+is missing, repair it and repeat this same idempotent delivery call before reporting. Clean the worktree
+and branch only after verification. Report the exact receipt/stamp and stop; one invocation owns one item.

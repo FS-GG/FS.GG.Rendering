@@ -65,7 +65,7 @@ Whatever named you, the claim marker records `harness=<name> session=<id>` as pr
 | A repo owner is a **person you can ask** | Workers cannot see or talk to each other | **`who`** (what is running) + **`say`/`inbox`** (a channel) |
 
 Everything else is inherited: the board is still the source of *order*, the registry of
-*contracts*, ADRs of *decisions*; `fsgg-coord done <issue> --flip` still earns the done-stamp
+*contracts*, ADRs of *decisions*; `fsgg-coord delivery <issue> --pr <pr> --flip --apply` earns typed completion authority
 and rolls epics up.
 
 ## When to use this skill
@@ -107,7 +107,7 @@ jq -e '.markerObserved and .converged' <<<"$receipt" >/dev/null
 git fetch origin                               # NOTHING else does — the base is otherwise the PAST (#622)
 git worktree add ../<repo>-<n> -b item/<n>-<slug> origin/main   # name the base (#319)
 # ...implement, commit with the printed FSGG-Worker trailer, PR into main...
-scripts/fsgg-coord done <issue> --flip         # earn the stamp
+scripts/fsgg-coord delivery <issue> --pr <pr> --flip --apply  # verify and project completion
 ```
 
 `take` is the entry point. It asks `batch` what is schedulable *right now* (disjoint from
@@ -387,7 +387,7 @@ dead queue ([#601](https://github.com/FS-GG/.github/issues/601)).
 ## 5. Finish — the earned done-stamp (unchanged)
 
 ```sh
-scripts/fsgg-coord done <issue> --flip     # green FSGG-DONE only after PR merged AND Status=Done
+scripts/fsgg-coord delivery <issue> --pr <pr> --flip --apply  # receipt only after exact PR merge verification
 ```
 
 Same stamp and epic roll-up as cross-repo. Check your PR stayed inside its declaration:
