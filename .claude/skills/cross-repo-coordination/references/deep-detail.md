@@ -139,8 +139,8 @@ sentinel — so an omission is caught rather than sitting on the board looking l
 ```sh
 scripts/fsgg-coord issues <repo> --label cross-repo   # REST + ETag: 0 GraphQL, free on repeat.
                                                       # `gh issue list` costs 2 pts to say the same thing.
-# Post the response over REST — `gh issue comment` is GraphQL and spends the shared fleet budget.
-gh api -X POST repos/FS-GG/<repo>/issues/<n>/comments -f body="## Response ..."
+# Save the `## Response` body in an owned file. The typed verb posts it over REST and verifies readback.
+scripts/fsgg-coord comment create FS-GG/<repo>#<n> FS-GG/<repo>#<n> <owned-response-file> --text
 ```
 
 ## Track on the Coordination board (Projects v2)
