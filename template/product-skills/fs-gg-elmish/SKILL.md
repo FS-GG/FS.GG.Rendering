@@ -17,12 +17,65 @@ It also owns **driving that boundary headlessly in tests** — folding a click/k
 script through the real retained route to a final model, so you can prove the UI
 *responds* and not merely that it renders (see Drive interaction headlessly).
 
+For an expensive Fable/React workspace replacement, it additionally owns the typed
+`TransitionHost` transaction: generation-fenced async responses, exact post-commit
+acknowledgement, old-DOM input safety, controlled-input continuity, and hidden-tab
+convergence (see Transition-aware workspace presentation).
+
 ## Public Contract
 
 The signatures you consume are bundled with this product at
 `docs/api-surface/Elmish/Elmish.fsi`. `ElmishAdapter.init` and
 `ElmishAdapter.update` are pure: they return the next model and a list of
 requested effects as plain values, interpreted later at the host boundary.
+
+## Transition-aware workspace presentation
+
+Use `TransitionHost` only for expensive presentation targets such as Editor, Plan,
+or Simulate. Normal Elmish updates, simulation ticks, and controlled text/file state
+remain synchronous.
+
+```fsharp
+open FS.GG.UI.Elmish
+
+type Workspace = Editor | Plan | Simulate
+type Prepared = PlanningRows of int | ClientFeatures of string list
+
+let request target =
+    { Target = target
+      PendingFocus = { ControlId = "workspace-status"; AriaLabel = $"{target} loading" }
+      CommittedFocus = { ControlId = $"workspace-{target}"; AriaLabel = $"{target} workspace" } }
+
+let host : TransitionHostModel<Workspace, Prepared> =
+    TransitionHost.init TransitionVisibility.Visible
+
+let pending, effects = TransitionHost.beginTransition (request Plan) host
+let token = TransitionHost.authoritative pending |> Option.get
+```
+
+Capture `token.Generation` and `token.Target` with any worker/client-feature request.
+Return delayed work through `TransitionHostMsg.ResponseArrived`; a stale generation
+or mismatched target is rejected into the authoritative ledger and cannot commit.
+
+At the Fable/React boundary:
+
+- Interpret every `RequestPresentation presentation` in a fresh React
+  `startTransition`, including every response after an `await`.
+- Dispatch `Presented presentation.Token` from a layout effect only after that exact
+  generation/target/revision DOM commits.
+- Keep controlled input setters outside the transition and send
+  `ControlledValueChanged`, `ControlledFileChanged`, and `ControlledBlurred`
+  synchronously.
+- While `TransitionHost.isPending` is true, implement `ReleasePointerCapture` and
+  `SuppressInput` before obsolete global key/click/file actions dispatch. Implement
+  `MoveFocus` as the one pending or committed focus/ARIA destination.
+- Forward hidden/visible document edges. Hidden responses remain authoritative but
+  cannot present or acknowledge; the one hidden-to-visible edge requests the newest
+  exact token once.
+
+Do not wrap controlled text state in `startTransition`; React transition updates
+cannot own a controlled text input. Do not reuse the initial transition closure after
+an async boundary; schedule the resulting `RequestPresentation` afresh.
 
 ## The front door — `ControlsElmish.program`
 

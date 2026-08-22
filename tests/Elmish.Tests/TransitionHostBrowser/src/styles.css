@@ -1,0 +1,42 @@
+:root {
+  color: #182230;
+  background: #f5f7fa;
+  font: 14px/1.4 system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1180px;
+  margin: auto;
+  padding: 12px;
+}
+
+header {
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 1fr);
+  gap: 6px 12px;
+}
+
+h1 {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  contain: layout style paint;
+}
+
+.workspace-row {
+  display: flex;
+  justify-content: space-between;
+  min-height: 18px;
+  padding: 1px 4px;
+  background: #e7ecf4;
+  contain: content;
+}

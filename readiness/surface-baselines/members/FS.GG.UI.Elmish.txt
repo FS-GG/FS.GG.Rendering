@@ -9,3 +9,74 @@ FS.GG.UI.Elmish.ElmishAdapterModel`1.Viewer : FS.GG.UI.SkiaViewer.ViewerModel [g
 FS.GG.UI.Elmish.ElmishAdapterModel`1.new(model, FS.GG.UI.Scene.SceneNode, FS.GG.UI.SkiaViewer.ViewerModel)
 FS.GG.UI.Elmish.ElmishAdapterMsg`1+Tags.UserMsg : System.Int32
 FS.GG.UI.Elmish.ElmishAdapterMsg`1+Tags.ViewerMsg : System.Int32
+FS.GG.UI.Elmish.TransitionCommitToken`1.Generation : FS.GG.UI.Elmish.TransitionGeneration [get]
+FS.GG.UI.Elmish.TransitionCommitToken`1.Revision : System.Int64 [get]
+FS.GG.UI.Elmish.TransitionCommitToken`1.Target : target [get]
+FS.GG.UI.Elmish.TransitionCommitToken`1.new(FS.GG.UI.Elmish.TransitionGeneration, target, System.Int64)
+FS.GG.UI.Elmish.TransitionFocusTarget.AriaLabel : System.String [get]
+FS.GG.UI.Elmish.TransitionFocusTarget.ControlId : System.String [get]
+FS.GG.UI.Elmish.TransitionFocusTarget.new(System.String, System.String)
+FS.GG.UI.Elmish.TransitionGeneration.value(FS.GG.UI.Elmish.TransitionGeneration) : System.Int64
+FS.GG.UI.Elmish.TransitionHost.authoritative<target, response>(TransitionHostModel<target, response>) : FSharpOption<TransitionCommitToken<target>>
+FS.GG.UI.Elmish.TransitionHost.beginTransition<target, response>(TransitionRequest<target>, TransitionHostModel<target, response>) : Tuple<TransitionHostModel<target, response>, FSharpList<TransitionHostEffect<target, response>>>
+FS.GG.UI.Elmish.TransitionHost.committed<target, response>(TransitionHostModel<target, response>) : FSharpOption<TransitionCommitToken<target>>
+FS.GG.UI.Elmish.TransitionHost.controlledFile<target, response>(System.String, TransitionHostModel<target, response>) : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpOption<System.String>>
+FS.GG.UI.Elmish.TransitionHost.controlledValue<target, response>(System.String, TransitionHostModel<target, response>) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Elmish.TransitionHost.focusTarget<target, response>(TransitionHostModel<target, response>) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Elmish.TransitionFocusTarget>
+FS.GG.UI.Elmish.TransitionHost.init<target, response>(FS.GG.UI.Elmish.TransitionVisibility) : TransitionHostModel<target, response>
+FS.GG.UI.Elmish.TransitionHost.isPending<target, response>(TransitionHostModel<target, response>) : System.Boolean
+FS.GG.UI.Elmish.TransitionHost.ledger<target, response>(TransitionHostModel<target, response>) : FSharpList<TransitionLedgerEntry<target>>
+FS.GG.UI.Elmish.TransitionHost.responses<target, response>(TransitionHostModel<target, response>) : FSharpList<TransitionResponse<target, response>>
+FS.GG.UI.Elmish.TransitionHost.update<target, response>(TransitionHostMsg<target, response>, TransitionHostModel<target, response>) : Tuple<TransitionHostModel<target, response>, FSharpList<TransitionHostEffect<target, response>>>
+FS.GG.UI.Elmish.TransitionHost.visibility<target, response>(TransitionHostModel<target, response>) : FS.GG.UI.Elmish.TransitionVisibility
+FS.GG.UI.Elmish.TransitionHostEffect`2+Tags.MoveFocus : System.Int32
+FS.GG.UI.Elmish.TransitionHostEffect`2+Tags.ReleasePointerCapture : System.Int32
+FS.GG.UI.Elmish.TransitionHostEffect`2+Tags.RequestPresentation : System.Int32
+FS.GG.UI.Elmish.TransitionHostEffect`2+Tags.SuppressInput : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.ControlledBlurred : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.ControlledFileChanged : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.ControlledValueChanged : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.GlobalClickAttempted : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.GlobalFileAttempted : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.GlobalKeyAttempted : System.Int32
+FS.GG.UI.Elmish.TransitionHostInput+Tags.PointerCaptureHeld : System.Int32
+FS.GG.UI.Elmish.TransitionHostMsg`2+Tags.BeginTransition : System.Int32
+FS.GG.UI.Elmish.TransitionHostMsg`2+Tags.InputAttempted : System.Int32
+FS.GG.UI.Elmish.TransitionHostMsg`2+Tags.Presented : System.Int32
+FS.GG.UI.Elmish.TransitionHostMsg`2+Tags.ResponseArrived : System.Int32
+FS.GG.UI.Elmish.TransitionHostMsg`2+Tags.VisibilityChanged : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.Began : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.Committed : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.FocusMoved : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.InputApplied : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.InputSuppressed : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.PointerCaptureReleased : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.PresentationAcknowledged : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.PresentationRejected : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.PresentationRequested : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.PresentationWithheld : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.ResponseAccepted : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.ResponseRejected : System.Int32
+FS.GG.UI.Elmish.TransitionLedgerEntry`1+Tags.VisibilityChanged : System.Int32
+FS.GG.UI.Elmish.TransitionPresentation`2.Responses : FSharpList<TransitionResponse<target, response>> [get]
+FS.GG.UI.Elmish.TransitionPresentation`2.Token : TransitionCommitToken<target> [get]
+FS.GG.UI.Elmish.TransitionPresentation`2.new(TransitionCommitToken<target>, FSharpList<TransitionResponse<target, response>>)
+FS.GG.UI.Elmish.TransitionRejectionReason+Tags.HiddenPresentation : System.Int32
+FS.GG.UI.Elmish.TransitionRejectionReason+Tags.NoPresentationRequested : System.Int32
+FS.GG.UI.Elmish.TransitionRejectionReason+Tags.RevisionMismatch : System.Int32
+FS.GG.UI.Elmish.TransitionRejectionReason+Tags.StaleGeneration : System.Int32
+FS.GG.UI.Elmish.TransitionRejectionReason+Tags.TargetMismatch : System.Int32
+FS.GG.UI.Elmish.TransitionRequest`1.CommittedFocus : FS.GG.UI.Elmish.TransitionFocusTarget [get]
+FS.GG.UI.Elmish.TransitionRequest`1.PendingFocus : FS.GG.UI.Elmish.TransitionFocusTarget [get]
+FS.GG.UI.Elmish.TransitionRequest`1.Target : target [get]
+FS.GG.UI.Elmish.TransitionRequest`1.new(target, FS.GG.UI.Elmish.TransitionFocusTarget, FS.GG.UI.Elmish.TransitionFocusTarget)
+FS.GG.UI.Elmish.TransitionResponseKind+Tags.ClientFeatures : System.Int32
+FS.GG.UI.Elmish.TransitionResponseKind+Tags.Other : System.Int32
+FS.GG.UI.Elmish.TransitionResponseKind+Tags.PlanningWorker : System.Int32
+FS.GG.UI.Elmish.TransitionResponse`2.Generation : FS.GG.UI.Elmish.TransitionGeneration [get]
+FS.GG.UI.Elmish.TransitionResponse`2.Kind : FS.GG.UI.Elmish.TransitionResponseKind [get]
+FS.GG.UI.Elmish.TransitionResponse`2.Payload : response [get]
+FS.GG.UI.Elmish.TransitionResponse`2.Target : target [get]
+FS.GG.UI.Elmish.TransitionResponse`2.new(FS.GG.UI.Elmish.TransitionGeneration, target, FS.GG.UI.Elmish.TransitionResponseKind, response)
+FS.GG.UI.Elmish.TransitionVisibility+Tags.Hidden : System.Int32
+FS.GG.UI.Elmish.TransitionVisibility+Tags.Visible : System.Int32
