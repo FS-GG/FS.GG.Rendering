@@ -55,6 +55,7 @@ let tests =
 
           test "scenario-index guard reddens for N-minus-one and duplicate coverage" {
               Expect.isNone (scenarioIndex 3 [ 1; 2; 3 ]) "complete 1..N coverage is accepted"
+
               Expect.isSome (scenarioIndex 3 [ 1; 2 ]) "N-minus-one coverage must fail even when its remaining tests pass"
               Expect.isSome (scenarioIndex 3 [ 1; 2; 2 ]) "a duplicate cannot stand in for the missing scenario"
           }
@@ -82,6 +83,7 @@ let tests =
 
               for f in fences do
                   Expect.equal f.Kind ScaffoldSource "scaffold fences must be tagged ScaffoldSource"
+
                   Expect.isGreaterThan (List.length f.Body) 0 (sprintf "empty scaffold fence at %s:%d" f.Doc f.StartLine)
           }
 
@@ -134,6 +136,7 @@ let tests =
               let kinds = Corpus.all () |> List.map fst
               Expect.contains kinds ProductSkill "product skills must be a corpus"
               Expect.contains kinds ScaffoldSource "scaffold sources must be a corpus"
+
               Expect.equal (List.length kinds) 2 "exactly the two fence-bearing corpora — the generated mirror is not one"
           }
 
@@ -154,9 +157,9 @@ let tests =
                       | Harness.SelfContained -> None
                       | Harness.Contextual reason -> Some reason)
 
-              Expect.equal plan.Length 93 "the reviewed whole-corpus inventory remains exact"
+              Expect.equal plan.Length 94 "the reviewed whole-corpus inventory remains exact"
               Expect.equal selfContained.Length 15 "the positive compiler corpus remains explicit"
               Expect.all selfContained (fun fence -> fence.Skip.IsNone) "positive compiler members cannot be skipped"
-              Expect.equal contextualReasons.Length 78 "every remaining teaching fragment is accounted for"
+              Expect.equal contextualReasons.Length 79 "every remaining teaching fragment is accounted for"
               Expect.all contextualReasons (System.String.IsNullOrWhiteSpace >> not) "contextual reasons are never blank"
           } ]

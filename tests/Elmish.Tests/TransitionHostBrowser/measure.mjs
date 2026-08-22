@@ -23,6 +23,17 @@ const defaultOutput = resolve(repositoryRoot, "readiness/1256-transition-aware-e
 const outputIndex = process.argv.indexOf("--out");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : defaultOutput;
 const requiredWorkloadDigest = "a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb";
+const actualGitHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
+const expectedGitHead = process.env.FS_GG_EXPECTED_GIT_HEAD?.trim();
+
+if (expectedGitHead && !/^[0-9a-f]{40}$/.test(expectedGitHead)) {
+  throw new Error(`FS_GG_EXPECTED_GIT_HEAD must be a full lowercase git SHA, got ${expectedGitHead}`);
+}
+
+if (expectedGitHead && actualGitHead !== expectedGitHead) {
+  throw new Error(`Candidate checkout ${actualGitHead} does not equal required PR head ${expectedGitHead}`);
+}
+
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const read = (path) => readFileSync(path);
 
@@ -234,7 +245,7 @@ const summary = {
     workspaceRows: workload.maximumExpectedScale.workspaceRows,
   },
   candidate: {
-    gitHead: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
+    gitHead: actualGitHead,
     gitTree: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
     implementationSha256,
     releaseMetadataSha256: digestFiles(releaseMetadataPaths),

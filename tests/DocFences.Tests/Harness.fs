@@ -288,8 +288,12 @@ module Harness =
     /// two keyboard-input and three SkiaViewer fence origins without changing their bodies; all remain
     /// contextual because they compose reader-owned messages, keymaps, models, host functions, effects,
     /// and launch options.
+    /// Re-audited for Rendering#1256: fs-gg-elmish adds one transition-host example. It remains
+    /// contextual because it deliberately supplies reader-owned Workspace/Prepared types, request
+    /// construction, and host state before showing how the published typed boundary is composed. Existing
+    /// fs-gg-elmish fences only move with the inserted guidance; their contextual classification is unchanged.
     let private expectedProductSkillInventory =
-        "25d327902b8d7f7d8de0d5071c2cd89338573e13c07e529895d02b256fbacfe2"
+        "f6b4ed532c82bae25eda4019c9f0cff9420b110ccc73cbf3493e456d59df0fbf"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
