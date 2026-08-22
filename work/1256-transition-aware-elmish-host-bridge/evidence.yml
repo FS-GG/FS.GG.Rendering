@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
-    digest: 6563f2aeb4c9f6060dcf4a8bb594145ac24b8cbd6e4fb99f057e5abc44276907
+    digest: 32e6dffeceb516ffbad90eaabffc4a13f560e5483ebd0e31391aef3cea735ffb
     schemaVersion: 1
   - label: checklist
     path: work/1256-transition-aware-elmish-host-bridge/checklist.md
@@ -1180,13 +1180,13 @@ evidence:
       stressWorkloadIds: []
       workloadDefinitionDigests: ["workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"]
       currencyToken: "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e"
-      capturedAfterUtc: "2026-08-22T05:05:46.997Z"
+      capturedAfterUtc: "2026-08-22T05:21:30.919Z"
       maxP95Ms: 16
       maxP99Ms: 32
       maxCatchUpFrames: 0
       measurementScope: workspace-transition-production
       requiredCapability: production-fable-react-chromium
       liveCompositorRequired: true
-    notes: ["The filed scale remains exactly 1200 rendered workspace-row layout units. Every visible row retains its index/score data, accessible label, 20 px height, and six-column grid placement while redundant per-row flex, justify, and content-containment formatting contexts are removed. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size.", "The repair-phase production artifact measures immutable successor source commit 0a13aea123864ea560850eba281b218050ae1844 and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
+    notes: ["The filed scale remains exactly 1200 rendered workspace-row layout units. Every visible row retains its index/score data, accessible label, 20 px height, and six-column grid placement while redundant per-row flex, justify, and content-containment formatting contexts are removed. Immutable React row descriptors are cached by target so repeated journeys do not rebuild identical element metadata; React still reconciles the same 120/600/1200 keyed DOM rows. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size.", "The repair-phase production artifact measures immutable successor source commit 94fcf1117f694318fe0b9aee1421e1a493715165 and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
 lifecycleNotes:
   - "Next lifecycle action: verify."
