@@ -281,6 +281,7 @@ jobs:
         env:
           FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}
           FS_GG_EXPECTED_GIT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          FS_GG_TRANSITION_EVIDENCE_DIR: ${{ github.workspace }}/artifacts/issue-1256-transition
         run: |
           set -euo pipefail
           for proj in $(grep -oE 'tests/[^"]+\.Tests\.fsproj' FS.GG.Rendering.slnx | sort -u); do
@@ -290,6 +291,15 @@ jobs:
             dotnet test "$proj" -c Debug --no-build
             echo "::endgroup::"
           done
+
+      - name: Retain exact-head transition performance evidence
+        if: always() && hashFiles('artifacts/issue-1256-transition/**') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: transition-host-performance-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/issue-1256-transition
+          if-no-files-found: error
+          retention-days: 14
 
       # 295 — EXECUTE the one runnable artifact in the fs-gg-symbology skill.
       #

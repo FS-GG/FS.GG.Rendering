@@ -435,8 +435,21 @@ let transitionHostTests =
           test "production Fable React Chromium route stays inside the filed frame budget" {
               let fixture = Path.Combine(__SOURCE_DIRECTORY__, "TransitionHostBrowser")
 
-              let artifact =
-                  Path.Combine(Path.GetTempPath(), $"fsgg-transition-host-{Guid.NewGuid():N}.json")
+              let retainedDirectory =
+                  Environment.GetEnvironmentVariable "FS_GG_TRANSITION_EVIDENCE_DIR"
+                  |> Option.ofObj
+                  |> Option.filter (String.IsNullOrWhiteSpace >> not)
+
+              let artifactRoot, artifact, traceDirectory =
+                  match retainedDirectory with
+                  | Some directory ->
+                      let root = Path.GetFullPath directory
+                      Directory.CreateDirectory root |> ignore
+                      root, Path.Combine(root, "summary.json"), Path.Combine(root, "traces")
+                  | None ->
+                      let root = Path.Combine(Path.GetTempPath(), $"fsgg-transition-host-{Guid.NewGuid():N}")
+                      Directory.CreateDirectory root |> ignore
+                      root, Path.Combine(root, "summary.json"), Path.Combine(root, "traces")
 
               try
                   runCommand fixture "dotnet" [ "tool"; "restore" ] |> ignore
@@ -444,13 +457,28 @@ let transitionHostTests =
                   runCommand fixture "npm" [ "run"; "build" ] |> ignore
 
                   let transcript =
-                      runCommand fixture "npm" [ "run"; "measure"; "--"; "--out"; artifact ]
+                      runCommand
+                          fixture
+                          "npm"
+                          [ "run"
+                            "measure"
+                            "--"
+                            "--out"
+                            artifact
+                            "--trace-dir"
+                            traceDirectory ]
 
                   use document = JsonDocument.Parse(File.ReadAllText artifact)
                   let root = document.RootElement
                   let measurement = root.GetProperty "measurement"
                   let traceRuns = root.GetProperty "traceRuns"
                   let acceptance = root.GetProperty "acceptance"
+                  let integrity = root.GetProperty "integrity"
+
+                  let requiredString (propertyName: string) (element: JsonElement) : string =
+                      element.GetProperty(propertyName).GetString()
+                      |> Option.ofObj
+                      |> Option.defaultWith (fun () -> failtestf "%s must be a non-null string" propertyName)
 
                   let candidateHead =
                       root.GetProperty("candidate").GetProperty("gitHead").GetString()
@@ -510,10 +538,53 @@ let transitionHostTests =
                           0
                           $"trace run {run} must retain zero dropped frames"
 
+                      Expect.isLessThanOrEqual
+                          (traceRun.GetProperty("rendererTaskMaxMs").GetDouble())
+                          16.0
+                          $"trace run {run} must retain its unchanged hard renderer-task maximum"
+
+                      let tracePath =
+                          requiredString "rawTraceFile" traceRun
+                          |> fun relative -> Path.Combine(artifactRoot, relative)
+
+                      Expect.isTrue (File.Exists tracePath) $"trace run {run} raw trace must exist"
+
+                      let actualTraceDigest =
+                          File.ReadAllBytes tracePath
+                          |> Security.Cryptography.SHA256.HashData
+                          |> Convert.ToHexString
+                          |> fun value -> value.ToLowerInvariant()
+
+                      Expect.equal
+                          actualTraceDigest
+                          (requiredString "rawTraceSha256" traceRun)
+                          $"trace run {run} raw bytes must match the summary digest"
+
+                  let traceSetPayload =
+                      traceRuns.EnumerateArray()
+                      |> Seq.map (requiredString "rawTraceSha256")
+                      |> String.concat "\n"
+
+                  let traceSetDigest =
+                      Text.Encoding.UTF8.GetBytes traceSetPayload
+                      |> Security.Cryptography.SHA256.HashData
+                      |> Convert.ToHexString
+                      |> fun value -> value.ToLowerInvariant()
+
+                  Expect.equal
+                      traceSetDigest
+                      (requiredString "rawTraceSetSha256" integrity)
+                      "the ordered raw-trace set must match its retained integrity digest"
+
+                  Expect.equal
+                      (integrity.GetProperty("rawTraceCount").GetInt32())
+                      20
+                      "the retained integrity manifest must bind all twenty raw traces"
+
                   Expect.isTrue
                       (acceptance.GetProperty("independentLedgerBounded").GetBoolean())
                       "every independently reset journey must end with the same bounded ledger size"
               finally
-                  if File.Exists artifact then
-                      File.Delete artifact
+                  if retainedDirectory.IsNone then
+                      if Directory.Exists artifactRoot then Directory.Delete(artifactRoot, true)
           } ]
