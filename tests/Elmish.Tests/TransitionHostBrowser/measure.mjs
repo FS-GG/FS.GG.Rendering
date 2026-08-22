@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { cpus, platform, release } from "node:os";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { chromium } from "playwright-core";
 import { summarizeTrace } from "./trace-evidence.mjs";
@@ -22,6 +22,8 @@ const templateElmishDirectory = resolve(repositoryRoot, "template/fragments/elmi
 const defaultOutput = resolve(repositoryRoot, "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json");
 const outputIndex = process.argv.indexOf("--out");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : defaultOutput;
+const traceDirectoryIndex = process.argv.indexOf("--trace-dir");
+const traceDirectory = traceDirectoryIndex >= 0 ? resolve(process.argv[traceDirectoryIndex + 1]) : undefined;
 const requiredWorkloadDigest = "a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb";
 const actualGitHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim();
 const expectedGitHead = process.env.FS_GG_EXPECTED_GIT_HEAD?.trim();
@@ -137,6 +139,8 @@ const runResults = [];
 const traceDigests = [];
 const traceSummaries = [];
 
+if (traceDirectory) mkdirSync(traceDirectory, { recursive: true });
+
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.transitionHostReady === true);
@@ -184,6 +188,8 @@ try {
     await cdp.send("IO.close", { handle: stream });
     const traceText = chunks.join("");
     const trace = JSON.parse(traceText);
+    const traceFile = `trace-${String(run).padStart(2, "0")}.json`;
+    if (traceDirectory) writeFileSync(resolve(traceDirectory, traceFile), traceText);
     const traceSummary = summarizeTrace(trace, startId, endId);
 
     if (
@@ -294,12 +300,21 @@ const summary = {
   },
   traceRuns: traceDigests.map((digest, index) => ({
     run: index,
+    rawTraceFile: `traces/trace-${String(index).padStart(2, "0")}.json`,
     rawTraceSha256: digest,
     rendererTaskSamples: traceSummaries[index].taskMilliseconds.length,
+    rendererTaskMaxMs: Number(Math.max(...traceSummaries[index].taskMilliseconds).toFixed(3)),
+    p95Ms: Number(percentile(traceSummaries[index].taskMilliseconds, 95).toFixed(3)),
+    p99Ms: Number(percentile(traceSummaries[index].taskMilliseconds, 99).toFixed(3)),
     frameSamples: traceSummaries[index].frameSamples,
     droppedFrames: traceSummaries[index].droppedFrames,
     compositorSamples: traceSummaries[index].compositorSamples,
   })),
+  integrity: {
+    algorithm: "sha256",
+    rawTraceSetSha256: sha256(traceDigests.join("\n")),
+    rawTraceCount: traceDigests.length,
+  },
   acceptance: {
     targets: [...new Set(runResults.map((run) => run.target))],
     revisions: [...new Set(runResults.map((run) => run.revision))],
