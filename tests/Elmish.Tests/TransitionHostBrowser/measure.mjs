@@ -163,18 +163,13 @@ try {
   }
 
   const cdp = await context.newCDPSession(page);
-  for (let run = 0; run < workload.measurement.measuredRuns; run += 1) {
-    // Every filed sample is one independent journey from the mounted Editor state. Reset outside
-    // tracing so a previous run's retained ledger/view cannot become measured work in the next run.
-    await resetJourney(`Measured journey ${run}`);
-    const startId = `fsgg-transition-start-${run}`;
-    const endId = `fsgg-transition-end-${run}`;
+  const captureTrace = async (startId, endId, journey) => {
     await cdp.send("Tracing.start", {
       categories: "devtools.timeline,blink.user_timing,v8,disabled-by-default-devtools.timeline",
       transferMode: "ReturnAsStream",
     });
     await cdp.send("Tracing.recordClockSyncMarker", { syncId: startId });
-    const result = await page.evaluate((index) => window.runTransitionJourney(`measured-${index}`), run);
+    const result = await journey();
     await cdp.send("Tracing.recordClockSyncMarker", { syncId: endId });
 
     const complete = new Promise((resolveComplete) => cdp.once("Tracing.tracingComplete", resolveComplete));
@@ -187,7 +182,34 @@ try {
       if (part.eof) break;
     }
     await cdp.send("IO.close", { handle: stream });
-    const traceText = chunks.join("");
+    return { result, traceText: chunks.join("") };
+  };
+
+  // Chromium performs one-time compositor/tracing initialization during the first journey captured
+  // by a fresh CDP session. Exercise that pipeline once before the declared twenty measured journeys;
+  // this is an additional full-scale warmup and never replaces or removes a filed workload sample.
+  await resetJourney("Tracing pipeline warmup");
+  const traceWarmup = await captureTrace(
+    "fsgg-transition-trace-warmup-start",
+    "fsgg-transition-trace-warmup-end",
+    () => page.evaluate(() => window.runTransitionJourney("trace-warmup")),
+  );
+  if (traceWarmup.result.rows !== workload.maximumExpectedScale.workspaceRows || traceWarmup.result.pending) {
+    throw new Error(`Tracing pipeline warmup did not converge at the declared scale: ${JSON.stringify(traceWarmup.result)}`);
+  }
+
+  for (let run = 0; run < workload.measurement.measuredRuns; run += 1) {
+    // Every filed sample is one independent journey from the mounted Editor state. Reset outside
+    // tracing so a previous run's retained ledger/view cannot become measured work in the next run.
+    await resetJourney(`Measured journey ${run}`);
+    const startId = `fsgg-transition-start-${run}`;
+    const endId = `fsgg-transition-end-${run}`;
+    const capture = await captureTrace(
+      startId,
+      endId,
+      () => page.evaluate((index) => window.runTransitionJourney(`measured-${index}`), run),
+    );
+    const { result, traceText } = capture;
     const trace = JSON.parse(traceText);
     const traceFile = `trace-${String(run).padStart(2, "0")}.json`;
     if (traceDirectory) writeFileSync(resolve(traceDirectory, traceFile), traceText);
@@ -260,7 +282,7 @@ const summary = {
     packageVersions: ["FS.GG.UI.Elmish@source"],
     measurementMode: "live-compositor",
     capabilities: ["production-fable-react-chromium", "live-compositor"],
-    warmupPolicy: "2 complete production journeys before trace capture",
+    warmupPolicy: "2 complete production journeys plus 1 full-scale tracing-pipeline journey before 20 measured traces",
     samplePolicy: "nearest-rank over every renderer RunTask across 20 independent traced journeys; hard maximum retained separately",
     capturedAtUtc,
     currencyToken,
@@ -276,6 +298,7 @@ const summary = {
     id: workload.id,
     sha256: workloadDigest,
     warmupRuns: workload.measurement.warmupRuns,
+    tracingWarmupRuns: 1,
     measuredRuns: workload.measurement.measuredRuns,
     workspaceRows: workload.maximumExpectedScale.workspaceRows,
   },

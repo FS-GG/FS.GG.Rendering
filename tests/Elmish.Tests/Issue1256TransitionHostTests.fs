@@ -471,6 +471,7 @@ let transitionHostTests =
                   use document = JsonDocument.Parse(File.ReadAllText artifact)
                   let root = document.RootElement
                   let measurement = root.GetProperty "measurement"
+                  let workload = root.GetProperty "workload"
                   let traceRuns = root.GetProperty "traceRuns"
                   let acceptance = root.GetProperty "acceptance"
                   let integrity = root.GetProperty "integrity"
@@ -507,6 +508,16 @@ let transitionHostTests =
                   Expect.isLessThanOrEqual (measurement.GetProperty("p95Ms").GetDouble()) 16.0 transcript
                   Expect.isLessThanOrEqual (measurement.GetProperty("p99Ms").GetDouble()) 32.0 transcript
                   Expect.equal (measurement.GetProperty("droppedFrames").GetInt32()) 0 transcript
+
+                  Expect.equal
+                      (workload.GetProperty("tracingWarmupRuns").GetInt32())
+                      1
+                      "one full-scale unfiled journey must prime Chromium's tracing/compositor pipeline"
+
+                  Expect.equal
+                      (workload.GetProperty("measuredRuns").GetInt32())
+                      20
+                      "tracing priming must not replace or reduce the twenty declared measured journeys"
 
                   Expect.isGreaterThan
                       (measurement.GetProperty("compositorSamples").GetInt32())
