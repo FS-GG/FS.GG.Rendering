@@ -89,7 +89,7 @@
       "schemaStatus": "current",
       "sourceDigest": {
         "algorithm": "sha256",
-        "value": "e67258cbb756aea376f6f07aaa751a33c003e46f2f3cbaba6e51eb4a0a0171c9"
+        "value": "b56503faf107336f5f2b2c442fe0d0a2d183eebd3e896cc246b53a94dd6b84b7"
       }
     },
     {
@@ -3694,7 +3694,7 @@
           "path": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
           "digest": {
             "algorithm": "sha256",
-            "value": "e67258cbb756aea376f6f07aaa751a33c003e46f2f3cbaba6e51eb4a0a0171c9"
+            "value": "b56503faf107336f5f2b2c442fe0d0a2d183eebd3e896cc246b53a94dd6b84b7"
           },
           "schemaVersion": 1
         },
@@ -3725,7 +3725,7 @@
       ],
       "outputDigest": {
         "algorithm": "sha256",
-        "value": "3c1d9aebd231114d9cb73ab032cbbf065aa47dfb360b554a949c5c111df4bee1"
+        "value": "80dd34281507757d7258d3ba4ff2c0534e72bedaaf43a459bd39b5fbc69d2c7c"
       },
       "currency": "current"
     }
