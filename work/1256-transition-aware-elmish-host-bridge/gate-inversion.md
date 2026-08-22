@@ -76,6 +76,12 @@ unchanged measurement command. It exited 1 with `count:1200`, `semantics:false`,
 corrupting their score semantics is refused. Restoring the subject produced a passing receipt with all
 six fields valid. This is a subject mutation, not a predicate inversion.
 
+A second subject mutation added only `visibility: hidden` to `.workspace-row`. Occupied geometry remained
+1,200 rows, 20 px, and six columns, but the unchanged gate exited 1 with `semantics:true` and
+`visible:false`. The restored subject checks CSS visibility, display, content visibility, opacity, and any
+`aria-hidden` ancestor in addition to geometry, so a layout box cannot masquerade as a visible accessible
+row.
+
 The first exact-head hosted successor run showed that the remaining actionable failure included allocation
 pressure rather than stable row-layout cost: 18 journeys stayed near 10--13 ms, while one journey spent
 18.109 ms in V8 incremental marking and dropped its only frame. The production fixture now builds the

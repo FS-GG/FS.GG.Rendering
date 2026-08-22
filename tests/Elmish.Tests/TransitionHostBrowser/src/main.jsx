@@ -131,7 +131,19 @@ async function resetTransitionJourney() {
 function inspectWorkspaceRows() {
   const grid = document.querySelector(".workspace-grid");
   const rows = [...document.querySelectorAll("[data-workspace-row]")];
-  const geometry = rows.map((row) => row.getBoundingClientRect());
+  const observations = rows.map((row) => {
+    const bounds = row.getBoundingClientRect();
+    const style = getComputedStyle(row);
+    return {
+      bounds,
+      rendered: row.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+        && style.visibility === "visible"
+        && style.display !== "none"
+        && style.contentVisibility !== "hidden"
+        && Number(style.opacity) > 0
+        && !row.closest('[aria-hidden="true"]'),
+    };
+  });
   const semantics = rows.every((row, index) => {
     const score = (index * 17) % 101;
     return row.tagName === "DIV"
@@ -143,11 +155,12 @@ function inspectWorkspaceRows() {
   return {
     count: rows.length,
     semantics,
-    visible: geometry.every((bounds) => bounds.width > 0 && bounds.height === 20),
+    visible: observations.every(({ bounds, rendered }) => rendered && bounds.width > 0 && bounds.height === 20),
     columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 0,
-    distinctColumnPositions: new Set(geometry.map((bounds) => bounds.x)).size,
-    widthSpread: geometry.length
-      ? Math.max(...geometry.map((bounds) => bounds.width)) - Math.min(...geometry.map((bounds) => bounds.width))
+    distinctColumnPositions: new Set(observations.map(({ bounds }) => bounds.x)).size,
+    widthSpread: observations.length
+      ? Math.max(...observations.map(({ bounds }) => bounds.width))
+        - Math.min(...observations.map(({ bounds }) => bounds.width))
       : Number.POSITIVE_INFINITY,
   };
 }
