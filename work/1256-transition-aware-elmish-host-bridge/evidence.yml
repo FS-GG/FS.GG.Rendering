@@ -11,7 +11,7 @@ sourceAnalysis: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
-    digest: 7027320261f0e51aaa4584094caff950d8c66ba5b4266507d86ab4faa6595e57
+    digest: 7629a426488a6c9934e985ea9355d7539fffff70ad689773648c2530ae367a0f
     schemaVersion: 1
   - label: checklist
     path: work/1256-transition-aware-elmish-host-bridge/checklist.md
@@ -1180,13 +1180,13 @@ evidence:
       stressWorkloadIds: []
       workloadDefinitionDigests: ["workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"]
       currencyToken: "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e"
-      capturedAfterUtc: "2026-08-22T06:00:34.553Z"
+      capturedAfterUtc: "2026-08-22T06:06:05.558Z"
       maxP95Ms: 16
       maxP99Ms: 32
       maxCatchUpFrames: 0
       measurementScope: workspace-transition-production
       requiredCapability: production-fable-react-chromium
       liveCompositorRequired: true
-    notes: ["The filed scale remains exactly 1200 rendered workspace-row layout units. Every visible row retains its index/score data, accessible label, 20 px height, and six-column grid placement while redundant per-row flex, justify, and content-containment formatting contexts are removed. Immutable React row descriptors are cached by target so repeated journeys do not rebuild identical element metadata; React reconciles the same 120/600/1200 keyed DOM rows in frame-aligned batches of 120. Presentation acknowledgement is deferred until all target rows commit, and every journey observes pending state, aria-busy, and loading status during at least one partial Simulate batch. A premature-ack subject records stagedPendingValid:false, completes materialization, and exits red rather than hanging. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size.", "The repair-phase production artifact measures immutable successor source commit de60fac32422bb3e614f8621d8b911b0b9edb337 and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
+    notes: ["The filed scale remains exactly 1200 rendered workspace-row layout units. Every visible row retains its index/score data, accessible label, 20 px height, and six-column grid placement while redundant per-row flex, justify, and content-containment formatting contexts are removed. Immutable React row descriptors are cached by target so repeated journeys do not rebuild identical element metadata; React reconciles the same 120/600/1200 keyed DOM rows in frame-aligned batches of 120. Presentation acknowledgement is deferred until all target rows commit, and every journey observes pending state, aria-busy, and loading status during at least one partial Simulate batch. A premature-ack subject records stagedPendingValid:false, completes materialization, and exits red rather than hanging. Two ordinary production warmups plus one full-scale tracing-pipeline journey absorb Chromium's one-time trace/compositor initialization before filing samples; this additional warmup does not replace or reduce the declared workload. Every measured journey then resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size.", "The repair-phase production artifact measures immutable successor source commit d4a54aba6da10fa50d393baf634ed664c1cad8a0 and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
 lifecycleNotes:
   - "Next lifecycle action: verify."
