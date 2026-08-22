@@ -170,27 +170,25 @@ let pins =
     |> Map.ofSeq
 
 // ---------------------------------------------------------------------------------------------
-// The release window — where the pin's `.fsi` come from `src/` because the feed cannot have them yet.
+// The release window — where the pin's nupkgs come from the exact-head feed because nuget.org cannot have them yet.
 // ---------------------------------------------------------------------------------------------
 
-/// The FS.GG.UI pins this commit BUMPS, mapped to the `src/` project that will publish them.
+/// The FS.GG.UI pins this commit BUMPS, mapped to the `src/` project that the gate packs for them.
 /// Empty on every commit that is not the release bump — which is the overwhelmingly common case, and
 /// the one where `src/` is AHEAD of the pin and must NOT be read (that is the window #752 closed).
 ///
-/// WHY `src/` IS THE RIGHT SOURCE HERE, AND ONLY HERE. `release.yml` packs this very commit —
-/// `dotnet pack FS.GG.Rendering.slnx -c Release -p:Version="$pin"` — so the `.fsi` in `src/` ARE the
-/// `.fsi` that become `api-surface/` in the nupkg at the new pin. Inside the window the substitution
-/// is not an approximation of the package: it is the same bytes, one step earlier in the chain
-/// (`src/` -> nupkg -> mirror). So the mirror this commit checks in is byte-identical to the one the
-/// published package generates the moment it lands, and the first post-release commit — which reads
-/// the now-published pin — sees no drift. That is what keeps this from reintroducing the class where a
-/// stale generated file reds the required gate and blocks the whole repo (#435, #477, #515).
+/// WHY THE EXACT-HEAD LOCAL FEED IS THE RIGHT SOURCE HERE, AND ONLY HERE. The required gate packs this
+/// very commit at the template pin before invoking this script, using the same action as release.yml.
+/// Reading those nupkgs tests the actual `src/ -> nupkg -> api-surface/ -> mirror` chain while the
+/// public feed is necessarily one commit behind. The first post-release commit reads the now-published
+/// immutable pin and sees the same bytes. Outside the release window the local feed is ignored, so an
+/// ordinary source change cannot masquerade as the package a scaffolded consumer restores.
 ///
 /// FS.GG.Game.Core / FS.GG.Audio.* are NOT substituted at any time: they are released from their own
 /// repos on their own axes ($(FsGgGameVersion)/$(FsGgAudioVersion)), this repo builds no project for
 /// them, and a bump of those pins is a CONSUMER bump onto something already published. The feed is the
 /// only honest source for them, and it can answer.
-let srcBackedPins: Map<string, string> =
+let releaseWindowProjects: Map<string, string> =
     let pinsRel = "template/base/Directory.Packages.props"
 
     let bumped =
@@ -208,16 +206,37 @@ let srcBackedPins: Map<string, string> =
         |> List.choose (fun (id, _) -> projects |> Map.tryFind id |> Option.map (fun dir -> id, dir))
         |> Map.ofList
 
+/// During the release window, consume the exact-head nupkgs already packed by the required gate.
+/// Requiring every expected id/version here keeps the transient source honest: an absent or stale
+/// local feed is red, never a reason to fall back to unpublished nuget.org or hand-read a source tree.
+let releaseLocalFeed =
+    if releaseWindowProjects.IsEmpty then
+        None
+    else
+        match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
+        | null | "" -> fail "FS_GG_PRODUCT_LOCAL_FEED is required during the exact-head release window"
+        | feed when not (Path.IsPathFullyQualified feed) ->
+            fail $"FS_GG_PRODUCT_LOCAL_FEED must be an absolute path, got {feed}"
+        | feed when not (Directory.Exists feed) -> fail $"FS_GG_PRODUCT_LOCAL_FEED does not exist: {feed}"
+        | feed ->
+            for KeyValue(id, _) in releaseWindowProjects do
+                let version = pins |> Map.find id
+                let package = Path.Combine(feed, $"{id}.{version}.nupkg")
+                if not (File.Exists package) then
+                    fail $"exact-head release feed is missing {id} {version}: {package}"
+            Some feed
+
 // ---------------------------------------------------------------------------------------------
 // Restore, and read the `api-surface/` each package carries.
 // ---------------------------------------------------------------------------------------------
 
-/// Probe-private packages folder, OUTSIDE any work dir, so a cold restore is paid once per machine.
-/// It is deliberately NOT the machine's global packages folder: nothing this repo `pack`s locally may
-/// ever satisfy this restore — only the feed can — and a published (id, version) is immutable, so
-/// reuse is safe. This is the same isolation `TemplateConsumesPinnedApiTests` uses, for the same reason.
+/// Probe-private packages folder, OUTSIDE any work dir. Published steady-state pins use a reusable
+/// private cache; release-window nupkgs use a unique directory so a previous exact-head pack with the
+/// same pending version can never satisfy this restore.
 let probePackagesDir =
-    Path.Combine(Path.GetTempPath(), "fsgg-api-surface-mirror-packages")
+    match releaseLocalFeed with
+    | Some _ -> Path.Combine(Path.GetTempPath(), "fsgg-api-surface-mirror-packages-" + Guid.NewGuid().ToString("N"))
+    | None -> Path.Combine(Path.GetTempPath(), "fsgg-api-surface-mirror-packages")
 
 let restorePins () =
     let work =
@@ -226,12 +245,9 @@ let restorePins () =
     Directory.CreateDirectory work |> ignore
 
     try
-        // Inside the release window the bumped pins are deliberately absent from this probe: the feed
-        // cannot serve them yet, and asking it to is precisely the NU1102 that deadlocked the release.
         let refs =
             pins
             |> Map.toList
-            |> List.filter (fun (id, _) -> not (srcBackedPins |> Map.containsKey id))
             |> List.map (fun (id, v) -> $"""    <PackageReference Include="{id}" Version="{v}" />""")
             |> String.concat "\n"
 
@@ -256,13 +272,19 @@ let restorePins () =
         // win even though this probe had authored an isolated source list (#1069).
         let nugetConfigPath = Path.Combine(work, "NuGet.Config")
 
+        let releaseSource =
+            match releaseLocalFeed with
+            | Some feed -> $"""    <add key="exact-head-release" value="{Security.SecurityElement.Escape feed}" />
+"""
+            | None -> ""
+
         File.WriteAllText(
             nugetConfigPath,
-            """<?xml version="1.0" encoding="utf-8"?>
+            $"""<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
     <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+{releaseSource}    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
   </packageSources>
 </configuration>
 """
@@ -427,21 +449,16 @@ let loadPinSurface () =
     pins
     |> Map.toList
     |> List.map (fun (id, version) ->
-        // In the window, this package's `api-surface/` does not exist to be read — it is packed from
-        // `src/` by the release this commit performs — so read the same `.fsi` at their source paths.
+        let dir =
+            Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
+
+        let surfaceDir =
+            if Directory.Exists dir then dir else fail (noSurfaceFailure id version)
+
         let sources =
-            match srcBackedPins |> Map.tryFind id with
-            | Some projectDir -> ReleaseWindow.projectFsi projectDir
-            | None ->
-                let dir =
-                    Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
-
-                let surfaceDir =
-                    if Directory.Exists dir then dir else fail (noSurfaceFailure id version)
-
-                Directory.GetFiles(surfaceDir, "*.fsi", SearchOption.AllDirectories)
-                |> Array.toList
-                |> List.map (fun f -> Path.GetRelativePath(surfaceDir, f).Replace('\\', '/'), f)
+            Directory.GetFiles(surfaceDir, "*.fsi", SearchOption.AllDirectories)
+            |> Array.toList
+            |> List.map (fun f -> Path.GetRelativePath(surfaceDir, f).Replace('\\', '/'), f)
 
         let files =
             sources
@@ -840,12 +857,12 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
 
 // Say it out loud. A run that silently swapped its own inputs would be indistinguishable from one that
 // read the feed, and the whole argument for the swap is that it happens on exactly one commit.
-if not srcBackedPins.IsEmpty then
+if not releaseWindowProjects.IsEmpty then
     printfn
-        "RELEASE WINDOW: this commit bumps <FsGgUiVersion> to %s, which no feed can serve yet — reading the .fsi of %d package(s) from src/, which is what release.yml packs at that pin. %d pin(s) still restore from the feed."
-        (pins |> Map.find (srcBackedPins |> Map.toList |> List.head |> fst))
-        srcBackedPins.Count
-        (pins.Count - srcBackedPins.Count)
+        "RELEASE WINDOW: this commit bumps <FsGgUiVersion> to %s, which nuget.org cannot serve yet — reading %d package(s) from the exact-head local feed that release.yml packs at that pin. %d external pin(s) still restore from nuget.org."
+        (pins |> Map.find (releaseWindowProjects |> Map.toList |> List.head |> fst))
+        releaseWindowProjects.Count
+        (pins.Count - releaseWindowProjects.Count)
 
 restorePins ()
 let surface = loadPinSurface ()

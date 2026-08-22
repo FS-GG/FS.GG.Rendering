@@ -153,14 +153,23 @@ let readFile (path: string) =
 /// predicate WAIVES a fail-closed rule, so a reindent or line-ending change to the `<Version>` line
 /// must not be able to silence it. Added values must exist and differ from removed ones.
 ///
-/// Env-free by construction: `HEAD~1` is the first parent, which is the base branch for a
-/// `pull_request` merge-ref checkout AND the previous `main` commit for a squash/merge push — so the
-/// same diff answers both contexts without reading GITHUB_*. Fails closed if git cannot answer
-/// (e.g. a shallow clone with no HEAD~1): CI must use `fetch-depth: 0`, which it already does.
+/// The exact-head PR checkout supplies its immutable base through
+/// `FS_GG_VERSION_COHERENCE_BASE_SHA`; push/main falls back to `HEAD~1`. The explicit value must be a
+/// full lowercase SHA and resolvable as a commit. Fails closed if either classifier cannot answer
+/// (e.g. a shallow checkout): CI must use `fetch-depth: 0`, which it already does.
 let bumpedInCommitUnderTest (rel: string) (element: string) =
-    let ec, out = run repoRoot "git" [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ]
+    let baseRevision =
+        match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA" with
+        | null | "" -> "HEAD~1"
+        | value when Regex.IsMatch(value, "^[0-9a-f]{40}$") -> value
+        | value ->
+            raise (GuardError(sprintf "FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got %s" value))
+    let verifyEc, _ = run repoRoot "git" [ "rev-parse"; "--verify"; baseRevision + "^{commit}" ]
+    if verifyEc <> 0 then
+        raise (GuardError(sprintf "version-coherence base %s is not a resolvable commit — need full history (fetch-depth: 0); fail closed rather than waive tags" baseRevision))
+    let ec, out = run repoRoot "git" [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ]
     if ec <> 0 then
-        raise (GuardError(sprintf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence" rel))
+        raise (GuardError(sprintf "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence" baseRevision rel))
     let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
     let valuesOn (sign: char) =
         let header = String(sign, 3) // "+++" / "---" file headers are not content lines

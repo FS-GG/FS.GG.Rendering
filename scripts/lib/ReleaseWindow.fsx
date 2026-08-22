@@ -52,41 +52,53 @@ let private run (workingDir: string) (exe: string) (args: string list) =
 /// predicate WAIVES a fail-closed rule, so a reindent or line-ending change to the pin line must not
 /// be able to silence it. Added values must exist and differ from removed ones.
 ///
-/// Env-free by construction: `HEAD~1` is the first parent, which is the base branch for a
-/// `pull_request` merge-ref checkout AND the previous `main` commit for a squash/merge push — so the
-/// same diff answers both contexts without reading GITHUB_*. Returns `Error` if git cannot answer
-/// (e.g. a shallow clone with no `HEAD~1`) so the caller can fail CLOSED rather than green-by-absence;
-/// CI must use `fetch-depth: 0`, which it already does.
+/// Exact-head PR checkouts supply their immutable base through `FS_GG_VERSION_COHERENCE_BASE_SHA`;
+/// push/main falls back to `HEAD~1`. This is the same release-window input used by the independent
+/// version-coherence classifier. The explicit value must be a full lowercase SHA and resolve as a
+/// commit. Returns `Error` if the input or git history cannot be verified, so the caller fails CLOSED
+/// rather than treating an unknown release window as steady state.
 let bumpedInCommitUnderTest (repoRoot: string) (rel: string) (element: string) : Result<bool, string> =
-    let ec, out =
-        run repoRoot "git" [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ]
+    let explicitBase = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA"
 
-    if ec <> 0 then
-        Error(
-            sprintf
-                "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence"
-                rel
-        )
+    if not (String.IsNullOrEmpty explicitBase) && not (Regex.IsMatch(explicitBase, "^[0-9a-f]{40}$")) then
+        Error $"FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got {explicitBase}"
     else
-        let rx =
-            Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
+        let baseRevision = if String.IsNullOrEmpty explicitBase then "HEAD~1" else explicitBase
+        let verifyEc, _ = run repoRoot "git" [ "rev-parse"; "--verify"; baseRevision + "^{commit}" ]
 
-        let valuesOn (sign: char) =
-            let header = String(sign, 3) // "+++" / "---" file headers are not content lines
+        if verifyEc <> 0 then
+            Error $"release-window base {baseRevision} is not a resolvable commit — need full history (fetch-depth: 0); fail closed rather than green-by-absence"
+        else
+            let ec, out =
+                run repoRoot "git" [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ]
 
-            out.Replace("\r\n", "\n").Split('\n')
-            |> Array.filter (fun l ->
-                l.Length > 0
-                && l.[0] = sign
-                && not (l.StartsWith(header, StringComparison.Ordinal)))
-            |> Array.choose (fun l ->
-                let m = rx.Match l
-                if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
-            |> Set.ofArray
+            if ec <> 0 then
+                Error(
+                    sprintf
+                        "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence"
+                        baseRevision
+                        rel
+                )
+            else
+                let rx =
+                    Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
 
-        let removed = valuesOn '-'
-        let added = valuesOn '+'
-        Ok(not added.IsEmpty && added <> removed)
+                let valuesOn (sign: char) =
+                    let header = String(sign, 3) // "+++" / "---" file headers are not content lines
+
+                    out.Replace("\r\n", "\n").Split('\n')
+                    |> Array.filter (fun l ->
+                        l.Length > 0
+                        && l.[0] = sign
+                        && not (l.StartsWith(header, StringComparison.Ordinal)))
+                    |> Array.choose (fun l ->
+                        let m = rx.Match l
+                        if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+                    |> Set.ofArray
+
+                let removed = valuesOn '-'
+                let added = valuesOn '+'
+                Ok(not added.IsEmpty && added <> removed)
 
 /// `PackageId -> project directory`, for every project under `src/` that actually ships a package.
 ///

@@ -999,6 +999,33 @@ open   FS.GG.UI.SkiaViewer
 +      Elmish.fsi type ElmishAdapterEffect`1
 +      Elmish.fsi val ElmishAdapter.init
 +      Elmish.fsi val ElmishAdapter.update
++      TransitionHost.fsi type TransitionGeneration
++      TransitionHost.fsi val TransitionGeneration.value
++      TransitionHost.fsi type TransitionVisibility
++      TransitionHost.fsi type TransitionResponseKind
++      TransitionHost.fsi type TransitionFocusTarget
++      TransitionHost.fsi type TransitionRequest`1
++      TransitionHost.fsi type TransitionCommitToken`1
++      TransitionHost.fsi type TransitionResponse`2
++      TransitionHost.fsi type TransitionHostInput
++      TransitionHost.fsi type TransitionRejectionReason
++      TransitionHost.fsi type TransitionPresentation`2
++      TransitionHost.fsi type TransitionHostEffect`2
++      TransitionHost.fsi type TransitionLedgerEntry`1
++      TransitionHost.fsi type TransitionHostMsg`2
++      TransitionHost.fsi type TransitionHostModel`2
++      TransitionHost.fsi val TransitionHost.init
++      TransitionHost.fsi val TransitionHost.update
++      TransitionHost.fsi val TransitionHost.beginTransition
++      TransitionHost.fsi val TransitionHost.isPending
++      TransitionHost.fsi val TransitionHost.authoritative
++      TransitionHost.fsi val TransitionHost.committed
++      TransitionHost.fsi val TransitionHost.responses
++      TransitionHost.fsi val TransitionHost.visibility
++      TransitionHost.fsi val TransitionHost.focusTarget
++      TransitionHost.fsi val TransitionHost.controlledValue
++      TransitionHost.fsi val TransitionHost.controlledFile
++      TransitionHost.fsi val TransitionHost.ledger
 
 # ------------------------------------------------------------------------------------------
 file   Game.Harness/Journey.fsi

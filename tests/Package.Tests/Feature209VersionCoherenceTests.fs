@@ -18,6 +18,9 @@ open FS.GG.TestSupport
 
 let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
+let private releaseWindowSource = File.ReadAllText(repo "scripts/lib/ReleaseWindow.fsx")
+let private apiMirrorSource = File.ReadAllText(repo "scripts/refresh-api-surface-mirror.fsx")
+let private gateSource = File.ReadAllText(repo ".github/workflows/gate.yml")
 
 /// Run `exe args` in `workDir`; return its exit code and stdout+stderr merged. Used by the exit-code
 /// contract tests and the #514 fixture, which invoke the real guard script against a throwaway root.
@@ -55,6 +58,10 @@ let private runInWithEnv (workDir: string) (env: (string * string) list) (exe: s
     psi.Environment.Remove "FS_GG_RUN_VERSION_COHERENCE_FEED" |> ignore
     psi.Environment.Remove "FS_GG_VERSION_COHERENCE_FEED_URL" |> ignore
     psi.Environment.Remove "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN" |> ignore
+    // A PR-base binding belongs to the real checkout only. Synthetic fixture repositories own their
+    // own ancestry and must exercise the guard's HEAD~1 fallback rather than inherit an unrelated SHA.
+    if not (Path.GetFullPath(workDir).Equals(Path.GetFullPath(root), StringComparison.Ordinal)) then
+        psi.Environment.Remove "FS_GG_VERSION_COHERENCE_BASE_SHA" |> ignore
     for (k, v) in env do
         psi.Environment.[k] <- v
     args |> List.iter psi.ArgumentList.Add
@@ -403,18 +410,22 @@ let private gitTagVersions (glob: string) (prefix: string) =
 /// invariant.
 ///
 /// A bump and the tag that publishes it cannot land atomically — the tag points at the commit carrying
-/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. `HEAD~1` is the
-/// first parent: the base branch under a `pull_request` merge-ref checkout, the previous `main` commit
-/// under a squash/merge push. Both answer "did THIS change bump it?" with no env var.
+/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. Exact-head PR
+/// checkouts supply the immutable PR base; push/main falls back to `HEAD~1`.
 ///
 /// Compares VALUES, not touched lines: this predicate waives a fail-closed assertion, so a reindent of
 /// the `<Version>` line must not silence it.
 let private bumpedInCommitUnderTest (rel: string) (element: string) =
+    let baseRevision =
+        match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA" with
+        | null | "" -> "HEAD~1"
+        | value when Regex.IsMatch(value, "^[0-9a-f]{40}$") -> value
+        | value -> failwithf "FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got %s" value
     let psi = ProcessStartInfo("git")
     psi.WorkingDirectory <- root
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
-    [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
+    [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
     let ec, out =
         match Process.Start psi with
         | null -> failwith "git diff could not be started"
@@ -424,7 +435,7 @@ let private bumpedInCommitUnderTest (rel: string) (element: string) =
             p.WaitForExit()
             p.ExitCode, o
     if ec <> 0 then
-        failwithf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" rel
+        failwithf "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" baseRevision rel
     let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
     let valuesOn (sign: char) =
         let header = String(sign, 3)
@@ -518,6 +529,28 @@ let private templateExpected =
 [<Tests>]
 let feature209VersionCoherenceTests =
     testList "Feature209 version coherence (structural verdict mirror)" [
+
+        test "exact-head release window binds the PR base and consumes the packed local feed" {
+            Expect.stringContains
+                releaseWindowSource
+                "FS_GG_VERSION_COHERENCE_BASE_SHA"
+                "the API-mirror release classifier must share the exact-head PR-base input"
+
+            Expect.stringContains
+                releaseWindowSource
+                "\"rev-parse\"; \"--verify\"; baseRevision + \"^{commit}\""
+                "the release classifier must reject an unresolvable explicit base"
+
+            Expect.stringContains
+                apiMirrorSource
+                "FS_GG_PRODUCT_LOCAL_FEED is required during the exact-head release window"
+                "an unpublished pin must fail closed when the exact-head packed feed is absent"
+
+            Expect.stringContains
+                gateSource
+                "FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}"
+                "the API-surface step must receive the feed packed earlier in the same required job"
+        }
 
         // T008 — comparator self-check on the exact spec edge pairs (preview-aware, not string compare).
         test "preview-aware comparator orders the spec edge pairs" {

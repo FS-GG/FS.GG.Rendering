@@ -1,0 +1,1082 @@
+{
+  "schemaVersion": 1,
+  "viewVersion": "1.0",
+  "workId": "1256-transition-aware-elmish-host-bridge",
+  "stage": "analyze",
+  "status": "implementationReady",
+  "generator": "FS.GG.SDD.Artifacts/1.1.0",
+  "sources": [
+    {
+      "path": ".fsgg/agents.yml",
+      "kind": "agentsConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": ".fsgg/project.yml",
+      "kind": "projectConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": ".fsgg/sdd.yml",
+      "kind": "sddConfig",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "264b7b9e3268e4f60108deb688ddc72442a1f69b144dfe9920528e9358a59ce0"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "kind": "checklist",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "c1bc4c93bb4a22e25a8d8499f81aad0696794d1177a93ffac669d8b80227f7f3"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "kind": "clarification",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "bfa19139c47cb447e698341bc48e3053eaeb6999624c4889202162c1c5375a5b"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "kind": "plan",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "1901cc6e2b4bd7e9bd30e5110aa3fd3f5753fdc6c762764c67a78d37f74344f7"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "kind": "specification",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "kind": "tasks",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "d6ecb3bed7ca45ab6fb0ad11c2e028a08f749131e1d308a924e2882254272707"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    }
+  ],
+  "sourceRelationships": [
+    {
+      "id": "AR001",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "planSourceChecklist",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR002",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "taskSourceChecklist",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR003",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "checklistSourceClarifications",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR004",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-001",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR005",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-002",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR006",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-003",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR007",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-004",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR008",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-005",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR009",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "DEC-006",
+      "targetId": null,
+      "relationship": "clarificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR010",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "planSourceClarifications",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR011",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "taskSourceClarifications",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR012",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PC-001",
+      "targetId": null,
+      "relationship": "contractDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR013",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PC-002",
+      "targetId": null,
+      "relationship": "contractDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR014",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PC-003",
+      "targetId": null,
+      "relationship": "contractDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR015",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PC-004",
+      "targetId": null,
+      "relationship": "contractDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR016",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "GV-001",
+      "targetId": null,
+      "relationship": "generatedViewDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR017",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PM-001",
+      "targetId": null,
+      "relationship": "migrationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR018",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-001",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR019",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-002",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR020",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-003",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR021",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-004",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR022",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-005",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR023",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-006",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR024",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-007",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR025",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-008",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR026",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-009",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR027",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "PD-010",
+      "targetId": null,
+      "relationship": "planDecisionDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR028",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "taskSourcePlan",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR029",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-001",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR030",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-002",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR031",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-003",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR032",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-004",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR033",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-005",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR034",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-006",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR035",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-007",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR036",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-008",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR037",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "VO-009",
+      "targetId": null,
+      "relationship": "verificationDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR038",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-001",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR039",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-002",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR040",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-003",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR041",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-004",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR042",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-005",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR043",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-006",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR044",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-007",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR045",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-008",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR046",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-009",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR047",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "AC-010",
+      "targetId": null,
+      "relationship": "acceptanceDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR048",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "checklistSourceSpec",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR049",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "planSourceSpec",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR050",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-001",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR051",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-002",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR052",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-003",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR053",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-004",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR054",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-005",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR055",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-006",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR056",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-007",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR057",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-008",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR058",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-009",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR059",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "FR-010",
+      "targetId": null,
+      "relationship": "requirementDisposition",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR060",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "sourceSpec",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR061",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": null,
+      "targetId": null,
+      "relationship": "taskSourceSpec",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR062",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T011",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR063",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T012",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR064",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T013",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR065",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T014",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR066",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T015",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR067",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T016",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR068",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T017",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR069",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T018",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR070",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T019",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR071",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T020",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR072",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T021",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR073",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T022",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR074",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T023",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR075",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T024",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR076",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T025",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR077",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T026",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR078",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T027",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR079",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T028",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR080",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T029",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR081",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T030",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR082",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T031",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR083",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T032",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR084",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T033",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR085",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T034",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR086",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T035",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR087",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T036",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR088",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T037",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR089",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T038",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR090",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T039",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR091",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T040",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR092",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T041",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    },
+    {
+      "id": "AR093",
+      "sourcePath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "targetPath": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceId": "T042",
+      "targetId": "T001",
+      "relationship": "taskDependency",
+      "state": "current",
+      "diagnosticIds": []
+    }
+  ],
+  "readiness": {
+    "status": "implementationReady",
+    "readyCount": 93,
+    "advisoryCount": 0,
+    "warningCount": 0,
+    "blockingCount": 0,
+    "staleSourceCount": 0,
+    "missingDispositionCount": 0,
+    "malformedSourceCount": 0,
+    "generatedViewFindingCount": 0,
+    "acceptedDeferralCount": 0
+  },
+  "findings": [],
+  "generatedViews": [
+    {
+      "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
+      "kind": "workModel",
+      "currency": "current",
+      "diagnosticIds": []
+    }
+  ],
+  "optionalBoundaryFacts": [
+    {
+      "path": ".fsgg/policy.yml",
+      "relationship": "optionalGovernancePolicy",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    },
+    {
+      "path": ".fsgg/capabilities.yml",
+      "relationship": "optionalGovernanceCapabilities",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    },
+    {
+      "path": ".fsgg/tooling.yml",
+      "relationship": "optionalGovernanceTooling",
+      "requiredBySdd": false,
+      "state": "notEvaluated",
+      "diagnosticIds": []
+    }
+  ],
+  "diagnostics": [],
+  "nextAction": {
+    "actionId": "analysis.next.implement",
+    "command": null,
+    "reason": "Lifecycle sources are current and ready for implementation."
+  }
+}
