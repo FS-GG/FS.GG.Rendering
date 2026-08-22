@@ -226,8 +226,20 @@ let transitionHostTests =
 
               Expect.equal
                   beginEffects
-                  [ TransitionHostEffect.MoveFocus((request Plan).PendingFocus) ]
-                  "hidden begin withholds presentation"
+                  []
+                  "hidden begin withholds presentation and physical focus"
+
+              Expect.equal
+                  (TransitionHost.focusTarget hiddenPlan)
+                  (Some((request Plan).PendingFocus))
+                  "hidden begin retains the logical focus destination"
+
+              Expect.isFalse
+                  (TransitionHost.ledger hiddenPlan
+                   |> List.exists (function
+                       | TransitionLedgerEntry.FocusMoved _ -> true
+                       | _ -> false))
+                  "hidden begin does not claim that physical focus moved"
 
               let token0 = TransitionHost.authoritative hiddenPlan |> Option.get
 
@@ -236,8 +248,13 @@ let transitionHostTests =
 
               Expect.equal
                   hiddenSimulateEffects
-                  [ TransitionHostEffect.MoveFocus((request Simulate).PendingFocus) ]
-                  "hidden replacement still updates the one pending focus target"
+                  []
+                  "hidden replacement emits no physical focus directive"
+
+              Expect.equal
+                  (TransitionHost.focusTarget hiddenSimulate)
+                  (Some((request Simulate).PendingFocus))
+                  "hidden replacement retains only the latest logical focus destination"
 
               let simulate0 = TransitionHost.authoritative hiddenSimulate |> Option.get
 
@@ -261,7 +278,23 @@ let transitionHostTests =
                   afterHiddenAck
                   |> step (TransitionHostMsg.VisibilityChanged TransitionVisibility.Visible)
 
+              Expect.equal
+                  resumeEffects
+                  [ TransitionHostEffect.RequestPresentation
+                        { Token = simulate1
+                          Responses = TransitionHost.responses afterHiddenAck }
+                    TransitionHostEffect.MoveFocus((request Simulate).PendingFocus) ]
+                  "resume requests the newest revision and applies its retained logical focus"
+
               Expect.equal (tokenFrom resumeEffects) simulate1 "resume requests the newest response-set revision"
+
+              Expect.equal
+                  (TransitionHost.ledger visible
+                   |> List.filter (function
+                       | TransitionLedgerEntry.FocusMoved _ -> true
+                       | _ -> false))
+                  [ TransitionLedgerEntry.FocusMoved((request Simulate).PendingFocus) ]
+                  "the single visible-resume edge is the first physical focus movement"
 
               let stillVisible, repeatedEffects =
                   visible
@@ -416,6 +449,12 @@ let transitionHostTests =
                   use document = JsonDocument.Parse(File.ReadAllText artifact)
                   let root = document.RootElement
                   let measurement = root.GetProperty "measurement"
+                  let candidateHead =
+                      root.GetProperty("candidate").GetProperty("gitHead").GetString()
+                      |> Option.ofObj
+
+                  Expect.isSome candidateHead "the production artifact must bind an exact candidate commit"
+                  Expect.equal candidateHead.Value.Length 40 "the candidate commit binding is a full git SHA"
 
                   Expect.equal (root.GetProperty("result").GetString()) "pass" transcript
                   Expect.isLessThanOrEqual (measurement.GetProperty("rendererTaskMaxMs").GetDouble()) 16.0 transcript
@@ -427,6 +466,11 @@ let transitionHostTests =
                       (measurement.GetProperty("compositorSamples").GetInt32())
                       0
                       "the production run must observe the live Chromium compositor"
+
+                  Expect.isGreaterThan
+                      (measurement.GetProperty("frameSamples").GetInt32())
+                      0
+                      "the production run must retain usable AnimationFrame duration evidence"
               finally
                   if File.Exists artifact then
                       File.Delete artifact

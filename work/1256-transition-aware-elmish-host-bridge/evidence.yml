@@ -1,7 +1,7 @@
 schemaVersion: 1
 workId: 1256-transition-aware-elmish-host-bridge
 stage: evidence
-status: needsEvidenceCorrection
+status: evidenceReady
 sourceSpec: work/1256-transition-aware-elmish-host-bridge/spec.md
 sourceClarifications: work/1256-transition-aware-elmish-host-bridge/clarifications.md
 sourceChecklist: work/1256-transition-aware-elmish-host-bridge/checklist.md
@@ -34,6 +34,1105 @@ sourceSnapshots:
     digest: f6300fe4310df3369fb40829515bc6563a956c52d3310116bb9cb9bd620ce93c
     schemaVersion: 1
 evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: [AC-001]
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [src/Elmish/TransitionHost.fs, src/Elmish/TransitionHost.fsi, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The public opaque generation contract and pure begin transition are exercised by the focused suite.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: [AC-002]
+    clarificationDecisionRefs: [DEC-001]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV002]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused delayed-response tests prove current admission plus typed stale and target-mismatch rejection.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: [AC-003]
+    clarificationDecisionRefs: [DEC-001, DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV003]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The Editor to Plan to Simulate test proves exact token acknowledgement and latest-only commit.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: [AC-004]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV004]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused negative input tests prove pointer release and old-DOM key click and file suppression.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: [AC-005]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV005]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused tests prove one pending focus destination and committed focus and ARIA restoration.]
+  - id: EV006
+    kind: verification
+    subject:
+      type: task
+      id: T006
+    taskRefs: [T006]
+    requirementRefs: [FR-006]
+    acceptanceScenarioRefs: [AC-006]
+    clarificationDecisionRefs: [DEC-002]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV006]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Hidden-tab tests prove presentation withholding acknowledgement rejection and one resume convergence.]
+  - id: EV007
+    kind: verification
+    subject:
+      type: task
+      id: T007
+    taskRefs: [T007]
+    requirementRefs: [FR-007]
+    acceptanceScenarioRefs: [AC-007]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-007]
+    obligationRefs: [EV007]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Controlled text file and blur updates remain synchronous while unsafe global activation is suppressed.]
+  - id: EV008
+    kind: verification
+    subject:
+      type: task
+      id: T008
+    taskRefs: [T008]
+    requirementRefs: [FR-008]
+    acceptanceScenarioRefs: [AC-008]
+    clarificationDecisionRefs: [DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-008]
+    obligationRefs: [EV008]
+    artifacts: [src/Elmish/TransitionHost.fs, src/Elmish/TransitionHost.fsi, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Golden-ledger and replay assertions prove complete typed facts and deterministic ordering.]
+  - id: EV009
+    kind: verification
+    subject:
+      type: task
+      id: T009
+    taskRefs: [T009]
+    requirementRefs: [FR-009]
+    acceptanceScenarioRefs: [AC-009]
+    clarificationDecisionRefs: [DEC-004]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV009]
+    artifacts: [readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json, tests/Elmish.Tests/TransitionHostBrowser/measure.mjs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/TransitionHostBrowser/measure.mjs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The production Fable React Chromium fixture passes the unchanged hard max p95 p99 and drop-zero gates.]
+  - id: EV010
+    kind: verification
+    subject:
+      type: task
+      id: T010
+    taskRefs: [T010]
+    requirementRefs: [FR-010]
+    acceptanceScenarioRefs: [AC-010]
+    clarificationDecisionRefs: [DEC-006]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV010]
+    artifacts: [readiness/surface-baselines/FS.GG.UI.Elmish.txt, specs/209-version-staleness-guard/readiness/version-coherence.md, src/Elmish/TransitionHost.fsi, template/fragments/elmish/README.md]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [Signature implementation exact surface template documentation and coherent 0.27.0 release metadata form one source-bound set.]
+  - id: EV011
+    kind: verification
+    subject:
+      type: task
+      id: T011
+    taskRefs: [T011]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-001]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002, PD-003]
+    obligationRefs: [EV011]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Explicit presentation tokens and focused revision-fence tests implement the response-versus-commit decision.]
+  - id: EV012
+    kind: verification
+    subject:
+      type: task
+      id: T012
+    taskRefs: [T012]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-002]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV012]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The hidden-state branch records authoritative data and emits only one current resume request.]
+  - id: EV013
+    kind: verification
+    subject:
+      type: task
+      id: T013
+    taskRefs: [T013]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004, PD-005, PD-007]
+    obligationRefs: [EV013]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Typed input classes separate synchronous controlled edits from suppressed old-DOM activation.]
+  - id: EV014
+    kind: verification
+    subject:
+      type: task
+      id: T014
+    taskRefs: [T014]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-004]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV014]
+    artifacts: [readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json, work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json]
+    sourceRefs:
+      - kind: verification
+        path: work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The immutable workload and live Chromium renderer trace implement the production evidence decision.]
+  - id: EV015
+    kind: verification
+    subject:
+      type: task
+      id: T015
+    taskRefs: [T015]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-003, PD-008]
+    obligationRefs: [EV015]
+    artifacts: [src/Elmish/TransitionHost.fs, src/Elmish/TransitionHost.fsi, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Opaque generations exact commit tokens and the authoritative ledger implement the generation-identity decision.]
+  - id: EV016
+    kind: verification
+    subject:
+      type: task
+      id: T016
+    taskRefs: [T016]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: [DEC-006]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV016]
+    artifacts: [".template.package/FS.GG.UI.Template.fsproj", specs/209-version-staleness-guard/readiness/version-coherence.md, template/base/Directory.Packages.props]
+    sourceRefs:
+      - kind: verification
+        path: template/base/Directory.Packages.props
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [The coherent 0.27.0 package and template release boundary implements the public-contract release decision.]
+  - id: EV017
+    kind: verification
+    subject:
+      type: task
+      id: T017
+    taskRefs: [T017]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: [AC-001]
+    clarificationDecisionRefs: [DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV017]
+    artifacts: [src/Elmish/TransitionHost.fs, src/Elmish/TransitionHost.fsi, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Opaque monotonic generation allocation and revision-zero presentation are implemented and tested.]
+  - id: EV018
+    kind: verification
+    subject:
+      type: task
+      id: T018
+    taskRefs: [T018]
+    requirementRefs: [FR-002]
+    acceptanceScenarioRefs: [AC-002]
+    clarificationDecisionRefs: [DEC-001]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-002]
+    obligationRefs: [EV018]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Current responses queue in arrival order and stale identities are ledger-rejected.]
+  - id: EV019
+    kind: verification
+    subject:
+      type: task
+      id: T019
+    taskRefs: [T019]
+    requirementRefs: [FR-003]
+    acceptanceScenarioRefs: [AC-003]
+    clarificationDecisionRefs: [DEC-001, DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-003]
+    obligationRefs: [EV019]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Exact generation target and revision equality makes earlier presentation tokens uncommittable.]
+  - id: EV020
+    kind: verification
+    subject:
+      type: task
+      id: T020
+    taskRefs: [T020]
+    requirementRefs: [FR-004]
+    acceptanceScenarioRefs: [AC-004]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004]
+    obligationRefs: [EV020]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Typed pending input effects release pointer capture and suppress unsafe activation.]
+  - id: EV021
+    kind: verification
+    subject:
+      type: task
+      id: T021
+    taskRefs: [T021]
+    requirementRefs: [FR-005]
+    acceptanceScenarioRefs: [AC-005]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005]
+    obligationRefs: [EV021]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Pending and committed focus effects carry the correct unique destination and ARIA label.]
+  - id: EV022
+    kind: verification
+    subject:
+      type: task
+      id: T022
+    taskRefs: [T022]
+    requirementRefs: [FR-006]
+    acceptanceScenarioRefs: [AC-006]
+    clarificationDecisionRefs: [DEC-002]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-006]
+    obligationRefs: [EV022]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Hidden presentation is withheld and hidden-to-visible emits the newest token exactly once.]
+  - id: EV023
+    kind: verification
+    subject:
+      type: task
+      id: T023
+    taskRefs: [T023]
+    requirementRefs: [FR-007]
+    acceptanceScenarioRefs: [AC-007]
+    clarificationDecisionRefs: [DEC-003]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-007]
+    obligationRefs: [EV023]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Controlled text file and blur messages preserve authoritative state synchronously.]
+  - id: EV024
+    kind: verification
+    subject:
+      type: task
+      id: T024
+    taskRefs: [T024]
+    requirementRefs: [FR-008]
+    acceptanceScenarioRefs: [AC-008]
+    clarificationDecisionRefs: [DEC-005]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-008]
+    obligationRefs: [EV024]
+    artifacts: [src/Elmish/TransitionHost.fs, tests/Elmish.Tests/Issue1256TransitionHostTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The typed append-ordered ledger and replay equality test implement deterministic audit facts.]
+  - id: EV025
+    kind: verification
+    subject:
+      type: task
+      id: T025
+    taskRefs: [T025]
+    requirementRefs: [FR-009]
+    acceptanceScenarioRefs: [AC-009]
+    clarificationDecisionRefs: [DEC-004]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV025]
+    artifacts: [readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json, tests/Elmish.Tests/TransitionHostBrowser/measure.mjs, tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [A production createRoot and startTransition journey is measured across twenty live Chromium runs.]
+  - id: EV026
+    kind: verification
+    subject:
+      type: task
+      id: T026
+    taskRefs: [T026]
+    requirementRefs: [FR-010]
+    acceptanceScenarioRefs: [AC-010]
+    clarificationDecisionRefs: [DEC-006]
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV026]
+    artifacts: [readiness/surface-baselines/FS.GG.UI.Elmish.txt, specs/209-version-staleness-guard/readiness/version-coherence.md, src/Elmish/TransitionHost.fsi, template/fragments/elmish/README.md]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [All local coherent-set surfaces and release pins are updated at the same implementation head.]
+  - id: EV027
+    kind: verification
+    subject:
+      type: task
+      id: T027
+    taskRefs: [T027]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-002, PD-003]
+    obligationRefs: [EV027]
+    artifacts: [readiness/surface-baselines/FS.GG.UI.Elmish.txt, readiness/surface-baselines/members/FS.GG.UI.Elmish.txt, src/Elmish/TransitionHost.fsi]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [The additive signature and exact type and member baselines pin the public API contract.]
+  - id: EV028
+    kind: verification
+    subject:
+      type: task
+      id: T028
+    taskRefs: [T028]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV028]
+    artifacts: [readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json, work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json]
+    sourceRefs:
+      - kind: verification
+        path: work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The workload definition and raw production summary carry digests environment samples percentiles drops and verdict.]
+  - id: EV029
+    kind: verification
+    subject:
+      type: task
+      id: T029
+    taskRefs: [T029]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV029]
+    artifacts: [template/fragments/elmish/README.md, template/product-skills/fs-gg-elmish/SKILL.md, tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx]
+    sourceRefs:
+      - kind: verification
+        path: template/fragments/elmish/README.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [Template guidance teaches the production interpreter and remains exercised by its source-linked fixture.]
+  - id: EV030
+    kind: verification
+    subject:
+      type: task
+      id: T030
+    taskRefs: [T030]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV030]
+    artifacts: [".template.package/FS.GG.UI.Template.fsproj", specs/209-version-staleness-guard/readiness/version-coherence.md, template/base/Directory.Packages.props]
+    sourceRefs:
+      - kind: verification
+        path: template/base/Directory.Packages.props
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [The version-coherence gate reports the 0.27.0 package and template set as RELEASE-PENDING.]
+  - id: EV031
+    kind: verification
+    subject:
+      type: task
+      id: T031
+    taskRefs: [T031]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001, PD-002, PD-003]
+    obligationRefs: [EV031]
+    artifacts: [tests/Elmish.Tests/Issue1256TransitionHostTests.fs, work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/Issue1256TransitionHostTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused observed tests pass delayed response queuing revision fencing rejection and rapid replacement.]
+  - id: EV032
+    kind: verification
+    subject:
+      type: task
+      id: T032
+    taskRefs: [T032]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-004, PD-007]
+    obligationRefs: [EV032]
+    artifacts: [tests/Elmish.Tests/Issue1256TransitionHostTests.fs, work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/Issue1256TransitionHostTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused observed tests pass pointer release unsafe global suppression and synchronous controlled state.]
+  - id: EV033
+    kind: verification
+    subject:
+      type: task
+      id: T033
+    taskRefs: [T033]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-005, PD-006]
+    obligationRefs: [EV033]
+    artifacts: [tests/Elmish.Tests/Issue1256TransitionHostTests.fs, work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/Issue1256TransitionHostTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Focused observed tests pass unique focus restoration hidden withholding rejection and single resume.]
+  - id: EV034
+    kind: verification
+    subject:
+      type: task
+      id: T034
+    taskRefs: [T034]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-008]
+    obligationRefs: [EV034]
+    artifacts: [tests/Elmish.Tests/Issue1256TransitionHostTests.fs, work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/Issue1256TransitionHostTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The observed focused run includes golden-ledger and deterministic replay assertions.]
+  - id: EV035
+    kind: verification
+    subject:
+      type: task
+      id: T035
+    taskRefs: [T035]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV035]
+    artifacts: [readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json, tests/Elmish.Tests/TransitionHostBrowser/measure.mjs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Elmish.Tests/TransitionHostBrowser/measure.mjs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [The production summary records twenty post-warmup live-compositor samples and an independently recomputed passing verdict.]
+  - id: EV036
+    kind: verification
+    subject:
+      type: task
+      id: T036
+    taskRefs: [T036]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-009]
+    obligationRefs: [EV036]
+    artifacts: [work/1256-transition-aware-elmish-host-bridge/gate-inversion.md, tests/Elmish.Tests/TransitionHostBrowser/trace-evidence.inversion.mjs]
+    sourceRefs:
+      - kind: verification
+        path: work/1256-transition-aware-elmish-host-bridge/gate-inversion.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
+    notes: [Recorded inversions make the renderer hard-max gate fail at zero and make missing/corrupt frame durations fail closed while a 26 ms frame is counted dropped.]
+  - id: EV037
+    kind: verification
+    subject:
+      type: task
+      id: T037
+    taskRefs: [T037]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV037]
+    artifacts: [readiness/surface-baselines/FS.GG.UI.Elmish.txt, readiness/surface-baselines/members/FS.GG.UI.Elmish.txt, tests/Package.Tests/SurfaceAreaTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: readiness/surface-baselines/FS.GG.UI.Elmish.txt
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [Release build and the complete Package.Tests run pass against regenerated exact Elmish surface baselines.]
+  - id: EV038
+    kind: verification
+    subject:
+      type: task
+      id: T038
+    taskRefs: [T038]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV038]
+    artifacts: [template/fragments/elmish/README.md, template/product-skills/fs-gg-elmish/SKILL.md, tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx]
+    sourceRefs:
+      - kind: verification
+        path: template/fragments/elmish/README.md
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/release-surface.trx
+      digest: "sha256:a8bc4317884aa08b63a549ff57dd86649cf797dbba95b416c438acb0f56c3bb6"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 54
+      failed: 0
+      skipped: 0
+    notes: [Generated-product documentation names the additive API timing controlled-input visibility focus and acknowledgement rules.]
+  - id: EV039
+    kind: deferral
+    subject:
+      type: task
+      id: T039
+    taskRefs: [T039]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV039]
+    artifacts: [specs/209-version-staleness-guard/readiness/version-coherence.md, work/1256-transition-aware-elmish-host-bridge/plan.md]
+    sourceRefs:
+      - kind: verification
+        path: specs/209-version-staleness-guard/readiness/version-coherence.md
+    result: deferred
+    synthetic: false
+    rationale: "Protected exact-head hosted acceptance, merge, publication, registry projection, and consumer handoff cannot complete before this pre-merge SDD evidence cut."
+    owner: delivery host
+    scope: "Exact-head hosted acceptance and the post-merge coherent publication, registry, and consumer-handoff receipts."
+    laterLifecycleVisibility: PR delivery obligations and the coordination done stamp remain blocked until every protected and post-merge receipt is attached.
+    notes: ["Local solution, focused, package-surface, lifecycle, and release-window inputs are assembled; protected hosted and postmerge gates remain explicitly deferred delivery-host obligations."]
+  - id: EV040
+    kind: verification
+    subject:
+      type: task
+      id: T040
+    taskRefs: [T040]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV040]
+    artifacts: [src/Elmish/Elmish.fsi, src/Elmish/TransitionHost.fsi, tests/Elmish.Tests/AdapterCmdTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: src/Elmish/TransitionHost.fsi
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/adapter-compatibility.trx
+      digest: "sha256:51d1dbd2d785eb726191d4479378c71cf024baac0fa6b43b762667b61a07d6a2"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 20
+      failed: 0
+      skipped: 0
+    notes: [The new module is additive and existing ElmishAdapter callers and tests remain unchanged.]
+  - id: EV041
+    kind: generated-view
+    subject:
+      type: task
+      id: T041
+    taskRefs: [T041]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-010]
+    obligationRefs: [EV041]
+    artifacts: [readiness/surface-baselines/FS.GG.UI.Elmish.txt, scripts/api-surface-manifest.txt, template/base/docs/api-surface/Elmish/Elmish.fsi]
+    sourceRefs:
+      - kind: verification
+        path: readiness/surface-baselines/FS.GG.UI.Elmish.txt
+    result: deferred
+    synthetic: false
+    rationale: Generated-view currency is established by its generators and cannot honestly receive an observed test-run receipt.
+    owner: sdd and API-surface generators
+    scope: "Observed-run classification for generated work-model and API-surface views; their byte currency remains enforced by generator checks."
+    laterLifecycleVisibility: "Refresh, API-surface, verify, ship, and hosted deterministic gates fail closed if any generated view drifts."
+    notes: ["Generated work and API surface views were refreshed from authored source rather than copied by hand; this non-test fact is classified as a generated-view deferral."]
   - id: EV042
     kind: verification
     subject:
@@ -50,6 +1149,16 @@ evidence:
     sourceRefs:
       - kind: verification
         path: tests/Elmish.Tests/TransitionHostBrowser/measure.mjs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
+      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 6
+      failed: 0
+      skipped: 0
     performanceBudget:
       artifactPath: readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json
       intent:
@@ -57,27 +1166,27 @@ evidence:
         disposition: active
         targetFps: 60
         workloadIds: [workspace-transition-production]
-        workloadDefinitionDigests: [workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb]
-        maximumExpectedScale: 1200 workspace rows; 4 delayed responses; 2 rapid replacements; 3 controlled-input edits; 4 unsafe-input attempts
+        workloadDefinitionDigests: ["workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"]
+        maximumExpectedScale: "1200 workspace rows; 4 delayed responses; 2 rapid replacements; 3 controlled-input edits; 4 unsafe-input attempts"
         maxP95Ms: 16
         maxP99Ms: 32
         maxCatchUpFrames: 0
-        structuralCostBudgets: [renderer-task-max-ms<=16, dropped-frames<=0]
+        structuralCostBudgets: ["renderer-task-max-ms<=16", "dropped-frames<=0"]
         requiredCapability: production-fable-react-chromium
         liveCompositorRequired: true
         evidenceRefs: [FR-009, DEC-004]
       targetFps: 60
       workloadIds: [workspace-transition-production]
       stressWorkloadIds: []
-      workloadDefinitionDigests: [workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb]
-      currencyToken: implementation-sha256:6316bffc8e7c8ed04f3c48a48a34dc03fef51a5aff3bc24998693b28aa418478
-      capturedAfterUtc: 2026-08-22T00:00:00Z
+      workloadDefinitionDigests: ["workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"]
+      currencyToken: "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e"
+      capturedAfterUtc: "2026-08-22T00:00:00Z"
       maxP95Ms: 16
       maxP99Ms: 32
       maxCatchUpFrames: 0
       measurementScope: workspace-transition-production
       requiredCapability: production-fable-react-chromium
       liveCompositorRequired: true
-    result: pass
-    synthetic: false
-    notes: [Production Fable React Chromium timing is measured from renderer trace slices; the fixture separately enforces hard renderer-task maximum and dropped-frame thresholds.]
+    notes: ["The committed production artifact measures immutable source commit 40b863efe0b3d2cba7ff3f7648f31d6c8f541e7c and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

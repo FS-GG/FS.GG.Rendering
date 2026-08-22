@@ -6,7 +6,7 @@
     <PackageId>FS.GG.UI.Template</PackageId>
     <Title>FS GG UI Project Template</Title>
     <Description>Governed FS.GG.UI V3 product template with app, headless-scene, governed, and sample-pack profiles.</Description>
-    <Version>0.26.0</Version>
+    <Version>0.27.0</Version>
     <Authors>FS-Skia-UI Contributors</Authors>
     <PackageTags>fsharp;skia;elmish;template</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -20,7 +20,7 @@
   <ItemGroup>
     <!-- Includes .template.config/template.json plus template-owned source under content/. -->
     <Content Include="..\**\*"
-             Exclude="..\.fake\**;..\.git\**;..\.template.package\**;..\artifacts\**;..\bin\**;..\obj\**;..\**\bin\**;..\**\obj\**;..\specs\**;..\.specify\feature.json;..\.specify\memory\constitution.md"
+             Exclude="..\.fake\**;..\.git\**;..\.template.package\**;..\artifacts\**;..\bin\**;..\obj\**;..\**\bin\**;..\**\obj\**;..\specs\**;..\.specify\feature.json;..\.specify\memory\constitution.md;..\tests\Elmish.Tests\TransitionHostBrowser\node_modules\**;..\tests\Elmish.Tests\TransitionHostBrowser\dist\**;..\tests\Elmish.Tests\TransitionHostBrowser\generated\**"
              PackagePath="content" />
   </ItemGroup>
 
