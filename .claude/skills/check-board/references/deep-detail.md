@@ -741,7 +741,7 @@ scripts/fsgg-coord set-field --batch FS.GG.Game#211 Status=Done
 
 # 2. record the judgement BEFORE the close — a comment on a closed issue is easy to miss, and if the
 #    close fails you have still written down what was decided.
-gh api -X POST repos/FS-GG/FS.GG.Game/issues/211/comments -f body='…'
+scripts/fsgg-coord comment create FS-GG/FS.GG.Game#211 FS-GG/FS.GG.Game#211 <owned-body-file> --text
 
 # 3. close over REST. `gh issue close` is GraphQL against the budget the fleet shares; this is 0 pts,
 #    and it is the spelling `check-graphql-monopoly` prescribes for every issue write.
