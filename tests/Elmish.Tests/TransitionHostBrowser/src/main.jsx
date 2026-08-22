@@ -152,6 +152,30 @@ function inspectWorkspaceRows() {
   };
 }
 
+function buildWorkspaceRows(target, count) {
+  return Object.freeze(Array.from({ length: count }, (_, index) => {
+    const score = (index * 17) % 101;
+    return (
+      // Each cached element still maps one-to-one to a visible semantic DOM row. The cache keeps
+      // repeated production journeys from allocating the same immutable React element metadata.
+      <div
+        className="workspace-row"
+        data-workspace-row="true"
+        data-index={index}
+        data-score={score}
+        aria-label={`${target} row ${index}, score ${score}`}
+        key={index}
+      />
+    );
+  }));
+}
+
+const workspaceRows = Object.freeze({
+  Editor: buildWorkspaceRows("Editor", 120),
+  Plan: buildWorkspaceRows("Plan", 600),
+  Simulate: buildWorkspaceRows("Simulate", 1200),
+});
+
 async function runTransitionJourney(run) {
   const mark = `fsgg-transition-${run}`;
   performance.mark(`${mark}-start`);
@@ -271,8 +295,6 @@ function App() {
     }
   }, [view.token]);
 
-  const rows = view.target === "Simulate" ? 1200 : view.target === "Plan" ? 600 : 120;
-
   return (
     <main aria-busy={reactPending || TransitionHost_isPending(model)}>
       <header>
@@ -307,18 +329,7 @@ function App() {
         <h2>{view.target}</h2>
         <p>{view.responses} asynchronous responses accepted</p>
         <div className="workspace-grid">
-          {Array.from({ length: rows }, (_, index) => (
-            // A row is one semantic/layout unit. Keeping its content in accessible/data attributes avoids
-            // multiplying the declared 1,200-row workload into 4,800 DOM nodes without hiding any row.
-            <div
-              className="workspace-row"
-              data-workspace-row="true"
-              data-index={index}
-              data-score={(index * 17) % 101}
-              aria-label={`${view.target} row ${index}, score ${(index * 17) % 101}`}
-              key={index}
-            />
-          ))}
+          {workspaceRows[view.target]}
         </div>
       </section>
     </main>

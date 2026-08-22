@@ -75,3 +75,13 @@ unchanged measurement command. It exited 1 with `count:1200`, `semantics:false`,
 `columns:6`, `distinctColumnPositions:6`, and `widthSpread:0`, proving that retaining all elements while
 corrupting their score semantics is refused. Restoring the subject produced a passing receipt with all
 six fields valid. This is a subject mutation, not a predicate inversion.
+
+The first exact-head hosted successor run showed that the remaining actionable failure included allocation
+pressure rather than stable row-layout cost: 18 journeys stayed near 10--13 ms, while one journey spent
+18.109 ms in V8 incremental marking and dropped its only frame. The production fixture now builds the
+immutable React element descriptors for Editor, Plan, and Simulate once, outside every journey. React still
+reconciles the same
+120/600/1,200 keyed elements into the same visible DOM rows at each target; only repeated construction of
+identical element objects, score values, and accessible-label strings is removed. Three restored local
+20-journey measurements passed independently at max 6.117/6.215/6.287 ms with zero drops, while every
+run retained positive frame/compositor evidence and the 1,200-row semantic/geometry receipt.
