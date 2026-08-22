@@ -24,7 +24,7 @@ Wrappers: `60`
 | Skill | Documented | Exercised | Unexercised | Unresolved |
 | --- | --- | --- | --- | --- |
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
-| fs-gg-elmish | 23 | 23 | 0 | 0 |
+| fs-gg-elmish | 26 | 26 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
 | fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |

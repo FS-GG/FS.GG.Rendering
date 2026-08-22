@@ -183,9 +183,8 @@ module TransitionHost =
             baseModel
             |> append
                 [ TransitionLedgerEntry.Began token
-                  TransitionLedgerEntry.PresentationWithheld token
-                  TransitionLedgerEntry.FocusMoved request.PendingFocus ],
-            [ TransitionHostEffect.MoveFocus request.PendingFocus ]
+                  TransitionLedgerEntry.PresentationWithheld token ],
+            []
 
     let private acceptResponse
         (response: TransitionResponse<'target, 'response>)
@@ -213,7 +212,7 @@ module TransitionHost =
                 FocusTarget = Some current.Request.PendingFocus }
 
         let focusLedger, focusEffects =
-            if wasPending then
+            if wasPending || model.Visibility = TransitionVisibility.Hidden then
                 [], []
             else
                 [ TransitionLedgerEntry.FocusMoved current.Request.PendingFocus ],
@@ -289,12 +288,17 @@ module TransitionHost =
                         | TransitionVisibility.Visible -> model.Requested }
                 |> append [ TransitionLedgerEntry.VisibilityChanged visibility ]
 
-            match visibility, changed.Current with
-            | TransitionVisibility.Visible, Some current when pending changed ->
-                { changed with
-                    Requested = Some current.Token }
-                |> append [ TransitionLedgerEntry.PresentationRequested current.Token ],
-                [ TransitionHostEffect.RequestPresentation(presentation current) ]
+            match visibility, changed.Current, changed.FocusTarget with
+            | TransitionVisibility.Visible, Some current, Some focusTarget when pending changed ->
+                { changed with Requested = Some current.Token }
+                |> append
+                    [ TransitionLedgerEntry.PresentationRequested current.Token
+                      TransitionLedgerEntry.FocusMoved focusTarget ],
+                [ TransitionHostEffect.RequestPresentation(presentation current)
+                  TransitionHostEffect.MoveFocus focusTarget ]
+            | TransitionVisibility.Visible, _, Some focusTarget ->
+                changed |> append [ TransitionLedgerEntry.FocusMoved focusTarget ],
+                [ TransitionHostEffect.MoveFocus focusTarget ]
             | _ -> changed, []
 
     let private presented (token: TransitionCommitToken<'target>) (model: TransitionHostModel<'target, 'response>) =

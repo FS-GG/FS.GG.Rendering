@@ -6,12 +6,19 @@ import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { chromium } from "playwright-core";
+import { summarizeTrace } from "./trace-evidence.mjs";
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(fixtureDirectory, "../../..");
 const distDirectory = resolve(fixtureDirectory, "dist");
 const workloadPath = resolve(repositoryRoot, "work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json");
 const implementationPath = resolve(repositoryRoot, "src/Elmish/TransitionHost.fs");
+const releaseMetadataPaths = [
+  resolve(repositoryRoot, ".template.package/FS.GG.UI.Template.fsproj"),
+  resolve(repositoryRoot, "src/Meta/FS.GG.UI.nuspec"),
+  resolve(repositoryRoot, "template/base/Directory.Packages.props"),
+];
+const templateElmishDirectory = resolve(repositoryRoot, "template/fragments/elmish");
 const defaultOutput = resolve(repositoryRoot, "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json");
 const outputIndex = process.argv.indexOf("--out");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : defaultOutput;
@@ -37,59 +44,19 @@ function buildDigest() {
   return hash.digest("hex");
 }
 
+function digestFiles(paths, base = repositoryRoot) {
+  const hash = createHash("sha256");
+  for (const path of paths.sort()) {
+    hash.update(path.slice(base.length + 1));
+    hash.update(read(path));
+  }
+  return hash.digest("hex");
+}
+
 function percentile(values, percentage) {
   if (!values.length) throw new Error("No renderer RunTask samples were recorded");
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.max(0, Math.ceil((percentage / 100) * sorted.length) - 1)];
-}
-
-function marker(events, id) {
-  return events.find((event) => event.args?.sync_id === id && Number(event.ts) > 0);
-}
-
-function summarizeTrace(trace, startId, endId) {
-  const events = Array.isArray(trace.traceEvents) ? trace.traceEvents : [];
-  const start = marker(events, startId);
-  const end = marker(events, endId);
-  if (!start || !end || Number(end.ts) <= Number(start.ts)) {
-    throw new Error(`Trace window ${startId}..${endId} is missing or invalid`);
-  }
-
-  const threads = new Map(
-    events
-      .filter((event) => event.name === "thread_name")
-      .map((event) => [event.tid, event.args?.name || event.args?.name || ""]),
-  );
-  const inside = events.filter((event) => Number(event.ts) >= Number(start.ts) && Number(event.ts) <= Number(end.ts));
-  const rendererThreadIds = new Set(
-    [...threads]
-      .filter(([, name]) => /CrRendererMain|RendererMain/i.test(name))
-      .map(([threadId]) => threadId),
-  );
-  const taskEvents = inside.filter(
-    (event) => event.name === "RunTask" && Number(event.dur) >= 0
-      && (rendererThreadIds.size === 0 || rendererThreadIds.has(event.tid)),
-  );
-  const taskMilliseconds = taskEvents.map((event) => Number((Number(event.dur) / 1000).toFixed(3)));
-  const frames = inside.filter(
-    (event) => event.name === "AnimationFrame" && event.ph === "b" && Number(event.ts) > 0,
-  );
-  const frameDurations = frames
-    .map((event) => Number(event.args?.animation_frame_timing_info?.duration_ms))
-    .filter(Number.isFinite)
-    .map((duration) => Number(duration.toFixed(3)));
-  const compositorSamples = inside.filter(
-    (event) => event.name === "DrawFrame" || event.name === "CompositeLayers" || event.name === "AnimationFrame::Presentation",
-  ).length;
-
-  return {
-    taskMilliseconds,
-    rendererThreadNames: [...rendererThreadIds].map((threadId) => threads.get(threadId)),
-    frameSamples: frameDurations.length,
-    frameDurations,
-    droppedFrames: frameDurations.filter((duration) => duration > 25).length,
-    compositorSamples,
-  };
 }
 
 function mime(path) {
@@ -268,7 +235,10 @@ const summary = {
   },
   candidate: {
     gitHead: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
+    gitTree: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
     implementationSha256,
+    releaseMetadataSha256: digestFiles(releaseMetadataPaths),
+    templateElmishSha256: digestFiles(filesRecursively(templateElmishDirectory), templateElmishDirectory),
     productionBuildSha256: buildDigest(),
   },
   environment: {
@@ -317,5 +287,15 @@ const summary = {
 };
 
 writeFileSync(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
-console.log(JSON.stringify({ result, maximum, p95, p99, droppedFrames, samples: taskMilliseconds.length, output: outputPath }));
+console.log(JSON.stringify({
+  result,
+  candidateGitHead: summary.candidate.gitHead,
+  maximum,
+  p95,
+  p99,
+  droppedFrames,
+  frameSamples: summary.measurement.frameSamples,
+  samples: taskMilliseconds.length,
+  output: outputPath,
+}));
 if (result !== "pass") process.exitCode = 1;

@@ -77,6 +77,14 @@ Do not wrap controlled text state in `startTransition`; React transition updates
 cannot own a controlled text input. Do not reuse the initial transition closure after
 an async boundary; schedule the resulting `RequestPresentation` afresh.
 
+Inspect the pure model through the matching observers instead of maintaining a second
+host-side shadow state: `TransitionHost.committed` returns the exact acknowledged
+token, `TransitionHost.responses` returns current-generation payloads in deterministic
+arrival order, and `TransitionHost.visibility` plus `TransitionHost.focusTarget`
+describe the current host edge. Bind form controls from `TransitionHost.controlledValue`
+and `TransitionHost.controlledFile`; their values are the authoritative synchronous
+state preserved across a pending presentation.
+
 ## The front door — `ControlsElmish.program`
 
 This is where an Elmish product starts, and your scaffold already calls it: `View.fs` builds

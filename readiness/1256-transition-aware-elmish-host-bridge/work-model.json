@@ -1,0 +1,3735 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "1.2.0",
+  "workId": "1256-transition-aware-elmish-host-bridge",
+  "project": {
+    "id": "rendering-1194",
+    "defaultWorkRoot": "work",
+    "profile": null
+  },
+  "sources": [
+    {
+      "path": ".fsgg/agents.yml",
+      "kind": "agentsConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+      }
+    },
+    {
+      "path": ".fsgg/project.yml",
+      "kind": "projectConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+      }
+    },
+    {
+      "path": ".fsgg/sdd.yml",
+      "kind": "sddConfig",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+      }
+    },
+    {
+      "path": "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+      "kind": "performanceEvidence",
+      "owner": "sdd",
+      "schemaVersion": 0,
+      "rawSchemaVersion": null,
+      "schemaStatus": "malformed",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "3fa72737fd40ca665b4336045d0d0b5a8807534e7ffcc19a02a8b6cb166d019a"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+      "kind": "checklist",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "kind": "clarifications",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "bfa19139c47cb447e698341bc48e3053eaeb6999624c4889202162c1c5375a5b"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "kind": "evidence",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "e67258cbb756aea376f6f07aaa751a33c003e46f2f3cbaba6e51eb4a0a0171c9"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+      "kind": "plan",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "ba499ee7c3c1da93e58df13889ddfc819109b5394968f17b0f3b5fd069e8d0d6"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "kind": "spec",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c"
+      }
+    },
+    {
+      "path": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "kind": "tasks",
+      "owner": "sdd",
+      "schemaVersion": 1,
+      "rawSchemaVersion": "1",
+      "schemaStatus": "current",
+      "sourceDigest": {
+        "algorithm": "sha256",
+        "value": "f6300fe4310df3369fb40829515bc6563a956c52d3310116bb9cb9bd620ce93c"
+      }
+    }
+  ],
+  "workItem": {
+    "id": "1256-transition-aware-elmish-host-bridge",
+    "title": "Transition Aware Elmish Host Bridge",
+    "stage": "specify",
+    "changeTier": "tier1",
+    "status": "specified"
+  },
+  "performanceIntent": {
+    "id": "PI-001",
+    "disposition": "active",
+    "targetFps": 60,
+    "workloadIds": [
+      "workspace-transition-production"
+    ],
+    "workloadDefinitionDigests": [
+      "workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"
+    ],
+    "maximumExpectedScale": "1200 workspace rows; 4 delayed responses; 2 rapid replacements; 3 controlled-input edits; 4 unsafe-input attempts",
+    "maxP95Ms": 16,
+    "maxP99Ms": 32,
+    "maxCatchUpFrames": 0,
+    "structuralCostBudgets": [
+      "renderer-task-max-ms\u003C=16",
+      "dropped-frames\u003C=0"
+    ],
+    "requiredCapability": "production-fable-react-chromium",
+    "liveCompositorRequired": true,
+    "deferralIssue": null,
+    "evidenceRefs": [
+      "FR-009",
+      "DEC-004"
+    ],
+    "rationale": null
+  },
+  "requirements": [
+    {
+      "id": "FR-001",
+      "title": "The adapter MUST expose typed transition generation and target values plus a pure begin transition that records the newest authoritative target and requests host presentation while ordinary model updates, simulation, and controlled inputs remain synchronous. (covers AC-001)",
+      "text": "The adapter MUST expose typed transition generation and target values plus a pure begin transition that records the newest authoritative target and requests host presentation while ordinary model updates, simulation, and controlled inputs remain synchronous. (covers AC-001)",
+      "acceptanceCriteria": [
+        "AC-001"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 64,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T001"
+      ],
+      "linkedEvidenceIds": [
+        "EV001",
+        "EV017"
+      ]
+    },
+    {
+      "id": "FR-002",
+      "title": "Matching delayed worker and feature responses MUST be admitted to the current transaction or explicit deferred queue, while stale or mismatched responses MUST be rejected observably and MUST NOT mutate the committed target. (covers AC-002)",
+      "text": "Matching delayed worker and feature responses MUST be admitted to the current transaction or explicit deferred queue, while stale or mismatched responses MUST be rejected observably and MUST NOT mutate the committed target. (covers AC-002)",
+      "acceptanceCriteria": [
+        "AC-002"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 65,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T002"
+      ],
+      "linkedEvidenceIds": [
+        "EV002",
+        "EV018"
+      ]
+    },
+    {
+      "id": "FR-003",
+      "title": "Commit acknowledgement MUST carry generation and target identity, MUST succeed only for the current presented generation, and MUST make rapid Editor\u2192Plan\u2192Simulate replacement commit only Simulate. (covers AC-003)",
+      "text": "Commit acknowledgement MUST carry generation and target identity, MUST succeed only for the current presented generation, and MUST make rapid Editor\u2192Plan\u2192Simulate replacement commit only Simulate. (covers AC-003)",
+      "acceptanceCriteria": [
+        "AC-003"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 66,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T003"
+      ],
+      "linkedEvidenceIds": [
+        "EV003",
+        "EV019"
+      ]
+    },
+    {
+      "id": "FR-004",
+      "title": "While pending, the bridge MUST expose host directives that release/suppress held pointer capture and suppress global key, click, and file dispatch from the old DOM without suppressing permitted synchronous controlled-input state. (covers AC-004)",
+      "text": "While pending, the bridge MUST expose host directives that release/suppress held pointer capture and suppress global key, click, and file dispatch from the old DOM without suppressing permitted synchronous controlled-input state. (covers AC-004)",
+      "acceptanceCriteria": [
+        "AC-004"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 67,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T004"
+      ],
+      "linkedEvidenceIds": [
+        "EV004",
+        "EV020"
+      ]
+    },
+    {
+      "id": "FR-005",
+      "title": "While pending, the bridge MUST describe exactly one accessible focus target and pending ARIA state, then restore the committed target\u0027s correct focus and ARIA state on current-generation acknowledgement. (covers AC-005)",
+      "text": "While pending, the bridge MUST describe exactly one accessible focus target and pending ARIA state, then restore the committed target\u0027s correct focus and ARIA state on current-generation acknowledgement. (covers AC-005)",
+      "acceptanceCriteria": [
+        "AC-005"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 68,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T005"
+      ],
+      "linkedEvidenceIds": [
+        "EV005",
+        "EV021"
+      ]
+    },
+    {
+      "id": "FR-006",
+      "title": "While hidden, the bridge MUST retain the latest authoritative target and matching data without accepting presentation or commit work; visibility resume MUST issue at most one convergence request for the latest generation. (covers AC-006)",
+      "text": "While hidden, the bridge MUST retain the latest authoritative target and matching data without accepting presentation or commit work; visibility resume MUST issue at most one convergence request for the latest generation. (covers AC-006)",
+      "acceptanceCriteria": [
+        "AC-006"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 69,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T006"
+      ],
+      "linkedEvidenceIds": [
+        "EV006",
+        "EV022"
+      ]
+    },
+    {
+      "id": "FR-007",
+      "title": "Controlled text/file/input/blur handling MUST preserve authoritative controlled values and focus intent synchronously while suppressing old-DOM global/file activation during a pending transaction. (covers AC-007)",
+      "text": "Controlled text/file/input/blur handling MUST preserve authoritative controlled values and focus intent synchronously while suppressing old-DOM global/file activation during a pending transaction. (covers AC-007)",
+      "acceptanceCriteria": [
+        "AC-007"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 70,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T007"
+      ],
+      "linkedEvidenceIds": [
+        "EV007",
+        "EV023"
+      ]
+    },
+    {
+      "id": "FR-008",
+      "title": "The bridge MUST expose a deterministic typed authoritative ledger covering messages, accepted/rejected responses, presentation requests, input suppression, visibility changes, commit acknowledgements/rejections, and commits, each bound to generation/target where applicable. (covers AC-008)",
+      "text": "The bridge MUST expose a deterministic typed authoritative ledger covering messages, accepted/rejected responses, presentation requests, input suppression, visibility changes, commit acknowledgements/rejections, and commits, each bound to generation/target where applicable. (covers AC-008)",
+      "acceptanceCriteria": [
+        "AC-008"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 71,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T008"
+      ],
+      "linkedEvidenceIds": [
+        "EV008",
+        "EV024"
+      ]
+    },
+    {
+      "id": "FR-009",
+      "title": "A production Fable/React generated-product qualification fixture MUST exercise delayed responses and rapid workspace replacement through the real host route and MUST fail when any renderer task exceeds 16 ms, p95 exceeds 16 ms, p99 exceeds 32 ms, or dropped frames are non-zero. (covers AC-009)",
+      "text": "A production Fable/React generated-product qualification fixture MUST exercise delayed responses and rapid workspace replacement through the real host route and MUST fail when any renderer task exceeds 16 ms, p95 exceeds 16 ms, p99 exceeds 32 ms, or dropped frames are non-zero. (covers AC-009)",
+      "acceptanceCriteria": [
+        "AC-009"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 72,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T009"
+      ],
+      "linkedEvidenceIds": [
+        "EV009",
+        "EV025",
+        "EV042"
+      ]
+    },
+    {
+      "id": "FR-010",
+      "title": "The additive public surface MUST ship coherently across \u0060Elmish.fsi\u0060, implementation, surface baseline, Elmish template fragment, focused/package tests, documentation, package-set release metadata, registry projection when the public contract requires it, and a source-bound consumer handoff. (covers AC-010)",
+      "text": "The additive public surface MUST ship coherently across \u0060Elmish.fsi\u0060, implementation, surface baseline, Elmish template fragment, focused/package tests, documentation, package-set release metadata, registry projection when the public contract requires it, and a source-bound consumer handoff. (covers AC-010)",
+      "acceptanceCriteria": [
+        "AC-010"
+      ],
+      "priority": null,
+      "classification": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+      "sourceLocation": {
+        "line": 73,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T010"
+      ],
+      "linkedEvidenceIds": [
+        "EV010",
+        "EV026"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "title": "Responses can make the current generation presentation-ready but never committed; only a matching current-generation/current-target host acknowledgement commits, and every mismatch is recorded as a rejection.",
+      "decision": "Responses can make the current generation presentation-ready but never committed; only a matching current-generation/current-target host acknowledgement commits, and every mismatch is recorded as a rejection.",
+      "requirementRefs": [
+        "FR-002",
+        "FR-003"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 30,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T011"
+      ]
+    },
+    {
+      "id": "DEC-002",
+      "title": "Hidden mode accepts authoritative target replacement and matching response data only; it records presentation as withheld, rejects acknowledgements, and the hidden\u2192visible edge emits exactly one request for the newest generation unless that generation is already committed.",
+      "decision": "Hidden mode accepts authoritative target replacement and matching response data only; it records presentation as withheld, rejects acknowledgements, and the hidden\u2192visible edge emits exactly one request for the newest generation unless that generation is already committed.",
+      "requirementRefs": [
+        "FR-006"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 31,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T012"
+      ]
+    },
+    {
+      "id": "DEC-003",
+      "title": "Controlled value and blur reconciliation are explicit synchronous bridge messages; old-DOM pointer capture plus global key/click/file activation are explicit host inputs whose dispatch policy is \u0060Suppress\u0060 while pending, with exactly one pending focus target until a matching commit restores target focus/ARIA.",
+      "decision": "Controlled value and blur reconciliation are explicit synchronous bridge messages; old-DOM pointer capture plus global key/click/file activation are explicit host inputs whose dispatch policy is \u0060Suppress\u0060 while pending, with exactly one pending focus target until a matching commit restores target focus/ARIA.",
+      "requirementRefs": [
+        "FR-004",
+        "FR-005",
+        "FR-007"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 32,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T013"
+      ]
+    },
+    {
+      "id": "DEC-004",
+      "title": "Ship evidence uses a production-built Fable/React browser fixture and renderer-task/frame observations over the consumer-shaped route; it fails on any task over 16 ms, p95 over 16 ms, p99 over 32 ms, or any dropped frame, and no synthetic/headless surrogate satisfies this obligation.",
+      "decision": "Ship evidence uses a production-built Fable/React browser fixture and renderer-task/frame observations over the consumer-shaped route; it fails on any task over 16 ms, p95 over 16 ms, p99 over 32 ms, or any dropped frame, and no synthetic/headless surrogate satisfies this obligation.",
+      "requirementRefs": [
+        "FR-009"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 33,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T014"
+      ]
+    },
+    {
+      "id": "DEC-005",
+      "title": "Generations are opaque monotonically increasing \u0060int64\u0060 values allocated by the pure bridge state; targets are caller-owned comparable typed values, and the ledger is an append-ordered immutable list exposed for authoritative host/test inspection.",
+      "decision": "Generations are opaque monotonically increasing \u0060int64\u0060 values allocated by the pure bridge state; targets are caller-owned comparable typed values, and the ledger is an append-ordered immutable list exposed for authoritative host/test inspection.",
+      "requirementRefs": [
+        "FR-001",
+        "FR-003",
+        "FR-008"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 34,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T015"
+      ]
+    },
+    {
+      "id": "DEC-006",
+      "title": "The API is additive under \u0060TransitionHost\u0060; existing \u0060ElmishAdapter\u0060 behavior stays source/binary compatible, while the coherent release updates the \u0060.fsi\u0060, implementation, surface snapshot, fragment documentation/fixture, package acceptance, and handoff together.",
+      "decision": "The API is additive under \u0060TransitionHost\u0060; existing \u0060ElmishAdapter\u0060 behavior stays source/binary compatible, while the coherent release updates the \u0060.fsi\u0060, implementation, surface snapshot, fragment documentation/fixture, package acceptance, and handoff together.",
+      "requirementRefs": [
+        "FR-010"
+      ],
+      "storyRefs": [],
+      "acceptanceRefs": [],
+      "source": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+      "sourceLocation": {
+        "line": 35,
+        "column": 1
+      },
+      "linkedTaskIds": [
+        "T016"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Implement requirement FR-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-001"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "FR-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV001"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "T002",
+      "title": "Implement requirement FR-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-002"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-002",
+        "FR-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV002"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "T003",
+      "title": "Implement requirement FR-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-003"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-003",
+        "FR-003"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV003"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "T004",
+      "title": "Implement requirement FR-004",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-004"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-004",
+        "FR-004"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV004"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "T005",
+      "title": "Implement requirement FR-005",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-005"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-005",
+        "FR-005"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV005"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "T006",
+      "title": "Implement requirement FR-006",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-006"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-006",
+        "FR-006"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV006"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "T007",
+      "title": "Implement requirement FR-007",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-007"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-007",
+        "FR-007"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV007"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "T008",
+      "title": "Implement requirement FR-008",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-008"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-008",
+        "FR-008"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV008"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 8,
+        "column": 1
+      }
+    },
+    {
+      "id": "T009",
+      "title": "Implement requirement FR-009",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-009"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-009",
+        "FR-009"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV009"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 9,
+        "column": 1
+      }
+    },
+    {
+      "id": "T010",
+      "title": "Implement requirement FR-010",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [],
+      "requirements": [
+        "FR-010"
+      ],
+      "decisions": [],
+      "sourceIds": [
+        "AC-010",
+        "FR-010"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV010"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "T011",
+      "title": "Implement clarification decision DEC-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-001"
+      ],
+      "sourceIds": [
+        "DEC-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV011"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 11,
+        "column": 1
+      }
+    },
+    {
+      "id": "T012",
+      "title": "Implement clarification decision DEC-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-002"
+      ],
+      "sourceIds": [
+        "DEC-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV012"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "T013",
+      "title": "Implement clarification decision DEC-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-003"
+      ],
+      "sourceIds": [
+        "DEC-003"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV013"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 13,
+        "column": 1
+      }
+    },
+    {
+      "id": "T014",
+      "title": "Implement clarification decision DEC-004",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-004"
+      ],
+      "sourceIds": [
+        "DEC-004"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV014"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 14,
+        "column": 1
+      }
+    },
+    {
+      "id": "T015",
+      "title": "Implement clarification decision DEC-005",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-005"
+      ],
+      "sourceIds": [
+        "DEC-005"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV015"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 15,
+        "column": 1
+      }
+    },
+    {
+      "id": "T016",
+      "title": "Implement clarification decision DEC-006",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [
+        "DEC-006"
+      ],
+      "sourceIds": [
+        "DEC-006"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV016"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 16,
+        "column": 1
+      }
+    },
+    {
+      "id": "T017",
+      "title": "Implement plan decision PD-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-001",
+        "DEC-005",
+        "FR-001",
+        "PD-001"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV017"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 17,
+        "column": 1
+      }
+    },
+    {
+      "id": "T018",
+      "title": "Implement plan decision PD-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-002",
+        "DEC-001",
+        "FR-002",
+        "PD-002"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV018"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 18,
+        "column": 1
+      }
+    },
+    {
+      "id": "T019",
+      "title": "Implement plan decision PD-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-003",
+        "DEC-001",
+        "DEC-005",
+        "FR-003",
+        "PD-003"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV019"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 19,
+        "column": 1
+      }
+    },
+    {
+      "id": "T020",
+      "title": "Implement plan decision PD-004",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-004",
+        "DEC-003",
+        "FR-004",
+        "PD-004"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV020"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 20,
+        "column": 1
+      }
+    },
+    {
+      "id": "T021",
+      "title": "Implement plan decision PD-005",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-005",
+        "DEC-003",
+        "FR-005",
+        "PD-005"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV021"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 21,
+        "column": 1
+      }
+    },
+    {
+      "id": "T022",
+      "title": "Implement plan decision PD-006",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-006",
+        "DEC-002",
+        "FR-006",
+        "PD-006"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV022"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 22,
+        "column": 1
+      }
+    },
+    {
+      "id": "T023",
+      "title": "Implement plan decision PD-007",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-007",
+        "DEC-003",
+        "FR-007",
+        "PD-007"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV023"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 23,
+        "column": 1
+      }
+    },
+    {
+      "id": "T024",
+      "title": "Implement plan decision PD-008",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-008",
+        "DEC-005",
+        "FR-008",
+        "PD-008"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV024"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 24,
+        "column": 1
+      }
+    },
+    {
+      "id": "T025",
+      "title": "Implement plan decision PD-009",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-009",
+        "DEC-004",
+        "FR-009",
+        "PD-009"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV025"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 25,
+        "column": 1
+      }
+    },
+    {
+      "id": "T026",
+      "title": "Implement plan decision PD-010",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "AC-010",
+        "DEC-006",
+        "FR-010",
+        "PD-010"
+      ],
+      "requiredSkills": [
+        "fsharp",
+        "implementation"
+      ],
+      "requiredEvidence": [
+        "EV026"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 26,
+        "column": 1
+      }
+    },
+    {
+      "id": "T027",
+      "title": "Update contract surface PC-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001",
+        "PD-002",
+        "PD-003"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV027"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 27,
+        "column": 1
+      }
+    },
+    {
+      "id": "T028",
+      "title": "Update contract surface PC-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-002",
+        "PD-009"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV028"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 28,
+        "column": 1
+      }
+    },
+    {
+      "id": "T029",
+      "title": "Update contract surface PC-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-003",
+        "PD-010"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV029"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 29,
+        "column": 1
+      }
+    },
+    {
+      "id": "T030",
+      "title": "Update contract surface PC-004",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-004",
+        "PD-010"
+      ],
+      "requiredSkills": [
+        "fsharp"
+      ],
+      "requiredEvidence": [
+        "EV030"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 30,
+        "column": 1
+      }
+    },
+    {
+      "id": "T031",
+      "title": "Record verification evidence VO-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-001",
+        "PD-002",
+        "PD-003",
+        "VO-001"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV031"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 31,
+        "column": 1
+      }
+    },
+    {
+      "id": "T032",
+      "title": "Record verification evidence VO-002",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-004",
+        "PD-007",
+        "VO-002"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV032"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 32,
+        "column": 1
+      }
+    },
+    {
+      "id": "T033",
+      "title": "Record verification evidence VO-003",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-005",
+        "PD-006",
+        "VO-003"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV033"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 33,
+        "column": 1
+      }
+    },
+    {
+      "id": "T034",
+      "title": "Record verification evidence VO-004",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-008",
+        "VO-004"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV034"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "T035",
+      "title": "Record verification evidence VO-005",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-002",
+        "PD-009",
+        "VO-005"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV035"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 35,
+        "column": 1
+      }
+    },
+    {
+      "id": "T036",
+      "title": "Record verification evidence VO-006",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-002",
+        "PD-009",
+        "VO-006"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV036"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 36,
+        "column": 1
+      }
+    },
+    {
+      "id": "T037",
+      "title": "Record verification evidence VO-007",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PD-010",
+        "VO-007"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV037"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 37,
+        "column": 1
+      }
+    },
+    {
+      "id": "T038",
+      "title": "Record verification evidence VO-008",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-003",
+        "PD-010",
+        "VO-008"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV038"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 38,
+        "column": 1
+      }
+    },
+    {
+      "id": "T039",
+      "title": "Record verification evidence VO-009",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-004",
+        "PD-010",
+        "VO-009"
+      ],
+      "requiredSkills": [
+        "automated-tests",
+        "readiness-evidence"
+      ],
+      "requiredEvidence": [
+        "EV039"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "T040",
+      "title": "Handle migration posture PM-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "PC-001",
+        "PC-003",
+        "PM-001"
+      ],
+      "requiredSkills": [
+        "schema-versioning"
+      ],
+      "requiredEvidence": [
+        "EV040"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 40,
+        "column": 1
+      }
+    },
+    {
+      "id": "T041",
+      "title": "Refresh generated view impact GV-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [
+        "GV-001",
+        "PD-010"
+      ],
+      "requiredSkills": [
+        "deterministic-json"
+      ],
+      "requiredEvidence": [
+        "EV041"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 41,
+        "column": 1
+      }
+    },
+    {
+      "id": "T042",
+      "title": "Measure performance intent PI-001",
+      "status": "done",
+      "owner": "sdd",
+      "dependencies": [
+        "T001"
+      ],
+      "requirements": [],
+      "decisions": [],
+      "sourceIds": [],
+      "requiredSkills": [
+        "performance-measurement",
+        "production-fable-react-chromium"
+      ],
+      "requiredEvidence": [
+        "EV042"
+      ],
+      "source": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+      "sourceLocation": {
+        "line": 42,
+        "column": 1
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EV001",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T001",
+      "taskRefs": [
+        "T001"
+      ],
+      "requirementRefs": [
+        "FR-001"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "src/Elmish/TransitionHost.fsi",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV002",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T002",
+      "taskRefs": [
+        "T002"
+      ],
+      "requirementRefs": [
+        "FR-002"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV003",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T003",
+      "taskRefs": [
+        "T003"
+      ],
+      "requirementRefs": [
+        "FR-003"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV004",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T004",
+      "taskRefs": [
+        "T004"
+      ],
+      "requirementRefs": [
+        "FR-004"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 4,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV005",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T005",
+      "taskRefs": [
+        "T005"
+      ],
+      "requirementRefs": [
+        "FR-005"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV006",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T006",
+      "taskRefs": [
+        "T006"
+      ],
+      "requirementRefs": [
+        "FR-006"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 6,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV007",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T007",
+      "taskRefs": [
+        "T007"
+      ],
+      "requirementRefs": [
+        "FR-007"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV008",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T008",
+      "taskRefs": [
+        "T008"
+      ],
+      "requirementRefs": [
+        "FR-008"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "src/Elmish/TransitionHost.fsi",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 8,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV009",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T009",
+      "taskRefs": [
+        "T009"
+      ],
+      "requirementRefs": [
+        "FR-009"
+      ],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "tests/Elmish.Tests/TransitionHostBrowser/measure.mjs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 9,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV010",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T010",
+      "taskRefs": [
+        "T010"
+      ],
+      "requirementRefs": [
+        "FR-010"
+      ],
+      "artifactRefs": [
+        "readiness/surface-baselines/FS.GG.UI.Elmish.txt",
+        "specs/209-version-staleness-guard/readiness/version-coherence.md",
+        "src/Elmish/TransitionHost.fsi",
+        "template/fragments/elmish/README.md"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV011",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T011",
+      "taskRefs": [
+        "T011"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 11,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV012",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T012",
+      "taskRefs": [
+        "T012"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV013",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T013",
+      "taskRefs": [
+        "T013"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 13,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV014",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T014",
+      "taskRefs": [
+        "T014"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 14,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV015",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T015",
+      "taskRefs": [
+        "T015"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "src/Elmish/TransitionHost.fsi",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 15,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV016",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T016",
+      "taskRefs": [
+        "T016"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        ".template.package/FS.GG.UI.Template.fsproj",
+        "specs/209-version-staleness-guard/readiness/version-coherence.md",
+        "template/base/Directory.Packages.props"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 16,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV017",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T017",
+      "taskRefs": [
+        "T017"
+      ],
+      "requirementRefs": [
+        "FR-001"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "src/Elmish/TransitionHost.fsi",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 17,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV018",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T018",
+      "taskRefs": [
+        "T018"
+      ],
+      "requirementRefs": [
+        "FR-002"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 18,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV019",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T019",
+      "taskRefs": [
+        "T019"
+      ],
+      "requirementRefs": [
+        "FR-003"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 19,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV020",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T020",
+      "taskRefs": [
+        "T020"
+      ],
+      "requirementRefs": [
+        "FR-004"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 20,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV021",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T021",
+      "taskRefs": [
+        "T021"
+      ],
+      "requirementRefs": [
+        "FR-005"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 21,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV022",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T022",
+      "taskRefs": [
+        "T022"
+      ],
+      "requirementRefs": [
+        "FR-006"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 22,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV023",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T023",
+      "taskRefs": [
+        "T023"
+      ],
+      "requirementRefs": [
+        "FR-007"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 23,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV024",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T024",
+      "taskRefs": [
+        "T024"
+      ],
+      "requirementRefs": [
+        "FR-008"
+      ],
+      "artifactRefs": [
+        "src/Elmish/TransitionHost.fs",
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 24,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV025",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T025",
+      "taskRefs": [
+        "T025"
+      ],
+      "requirementRefs": [
+        "FR-009"
+      ],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "tests/Elmish.Tests/TransitionHostBrowser/measure.mjs",
+        "tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 25,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV026",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T026",
+      "taskRefs": [
+        "T026"
+      ],
+      "requirementRefs": [
+        "FR-010"
+      ],
+      "artifactRefs": [
+        "readiness/surface-baselines/FS.GG.UI.Elmish.txt",
+        "specs/209-version-staleness-guard/readiness/version-coherence.md",
+        "src/Elmish/TransitionHost.fsi",
+        "template/fragments/elmish/README.md"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 26,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV027",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T027",
+      "taskRefs": [
+        "T027"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/surface-baselines/FS.GG.UI.Elmish.txt",
+        "readiness/surface-baselines/members/FS.GG.UI.Elmish.txt",
+        "src/Elmish/TransitionHost.fsi"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 27,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV028",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T028",
+      "taskRefs": [
+        "T028"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "work/1256-transition-aware-elmish-host-bridge/contracts/workspace-transition-workload.json"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 28,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV029",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T029",
+      "taskRefs": [
+        "T029"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "template/fragments/elmish/README.md",
+        "template/product-skills/fs-gg-elmish/SKILL.md",
+        "tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 29,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV030",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T030",
+      "taskRefs": [
+        "T030"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        ".template.package/FS.GG.UI.Template.fsproj",
+        "specs/209-version-staleness-guard/readiness/version-coherence.md",
+        "template/base/Directory.Packages.props"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 30,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV031",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T031",
+      "taskRefs": [
+        "T031"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs",
+        "work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 31,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV032",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T032",
+      "taskRefs": [
+        "T032"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs",
+        "work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 32,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV033",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T033",
+      "taskRefs": [
+        "T033"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs",
+        "work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 33,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV034",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T034",
+      "taskRefs": [
+        "T034"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Elmish.Tests/Issue1256TransitionHostTests.fs",
+        "work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV035",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T035",
+      "taskRefs": [
+        "T035"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "tests/Elmish.Tests/TransitionHostBrowser/measure.mjs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 35,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV036",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T036",
+      "taskRefs": [
+        "T036"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "tests/Elmish.Tests/TransitionHostBrowser/trace-evidence.inversion.mjs",
+        "work/1256-transition-aware-elmish-host-bridge/gate-inversion.md"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 36,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV037",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T037",
+      "taskRefs": [
+        "T037"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/surface-baselines/FS.GG.UI.Elmish.txt",
+        "readiness/surface-baselines/members/FS.GG.UI.Elmish.txt",
+        "tests/Package.Tests/SurfaceAreaTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 37,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV038",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T038",
+      "taskRefs": [
+        "T038"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "template/fragments/elmish/README.md",
+        "template/product-skills/fs-gg-elmish/SKILL.md",
+        "tests/Elmish.Tests/TransitionHostBrowser/src/main.jsx"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 38,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV039",
+      "kind": "deferral",
+      "subjectType": "task",
+      "subjectId": "T039",
+      "taskRefs": [
+        "T039"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "specs/209-version-staleness-guard/readiness/version-coherence.md",
+        "work/1256-transition-aware-elmish-host-bridge/plan.md"
+      ],
+      "result": "deferred",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": "Protected exact-head hosted acceptance, merge, publication, registry projection, and consumer handoff cannot complete before this pre-merge SDD evidence cut.",
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV040",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T040",
+      "taskRefs": [
+        "T040"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "src/Elmish/Elmish.fsi",
+        "src/Elmish/TransitionHost.fsi",
+        "tests/Elmish.Tests/AdapterCmdTests.fs"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 40,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV041",
+      "kind": "generated-view",
+      "subjectType": "task",
+      "subjectId": "T041",
+      "taskRefs": [
+        "T041"
+      ],
+      "requirementRefs": [],
+      "artifactRefs": [
+        "readiness/surface-baselines/FS.GG.UI.Elmish.txt",
+        "scripts/api-surface-manifest.txt",
+        "template/base/docs/api-surface/Elmish/Elmish.fsi"
+      ],
+      "result": "deferred",
+      "synthetic": false,
+      "performanceBudget": null,
+      "performanceEvidenceArtifact": null,
+      "performanceMeasurements": [],
+      "rationale": "Generated-view currency is established by its generators and cannot honestly receive an observed test-run receipt.",
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 41,
+        "column": 1
+      }
+    },
+    {
+      "id": "EV042",
+      "kind": "verification",
+      "subjectType": "task",
+      "subjectId": "T042",
+      "taskRefs": [
+        "T042"
+      ],
+      "requirementRefs": [
+        "FR-009"
+      ],
+      "artifactRefs": [
+        "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json"
+      ],
+      "result": "pass",
+      "synthetic": false,
+      "performanceBudget": {
+        "artifactPath": "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+        "intent": {
+          "id": "PI-001",
+          "disposition": "active",
+          "targetFps": 60,
+          "workloadIds": [
+            "workspace-transition-production"
+          ],
+          "workloadDefinitionDigests": [
+            "workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"
+          ],
+          "maximumExpectedScale": "1200 workspace rows; 4 delayed responses; 2 rapid replacements; 3 controlled-input edits; 4 unsafe-input attempts",
+          "maxP95Ms": 16,
+          "maxP99Ms": 32,
+          "maxCatchUpFrames": 0,
+          "structuralCostBudgets": [
+            "renderer-task-max-ms\u003C=16",
+            "dropped-frames\u003C=0"
+          ],
+          "requiredCapability": "production-fable-react-chromium",
+          "liveCompositorRequired": true,
+          "deferralIssue": null,
+          "evidenceRefs": [
+            "FR-009",
+            "DEC-004"
+          ],
+          "rationale": null
+        },
+        "targetFps": 60,
+        "workloadIds": [
+          "workspace-transition-production"
+        ],
+        "stressWorkloadIds": [],
+        "workloadDefinitionDigests": [
+          "workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"
+        ],
+        "currencyToken": "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e",
+        "capturedAfterUtc": "2026-08-22T00:00:00Z",
+        "maxP95Ms": 16,
+        "maxP99Ms": 32,
+        "maxCatchUpFrames": 0,
+        "measurementScope": "workspace-transition-production",
+        "requiredCapability": "production-fable-react-chromium",
+        "liveCompositorRequired": true,
+        "deferralIssue": null
+      },
+      "performanceEvidenceArtifact": {
+        "contractVersion": "performance-evidence-v1",
+        "claimedBudgetPassed": true,
+        "sampleSets": [
+          {
+            "workloadId": "workspace-transition-production",
+            "workloadDefinitionDigest": "sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb",
+            "workloadClass": "normal-play",
+            "targetFps": 60,
+            "maxP95Ms": 16,
+            "maxP99Ms": 32,
+            "maxCatchUpFrames": 0,
+            "measurementScope": "workspace-transition-production",
+            "requiredCapability": "production-fable-react-chromium",
+            "hostProfile": "linux-x64-chromium-151",
+            "packageVersions": [
+              "FS.GG.UI.Elmish@source"
+            ],
+            "measurementMode": "live-compositor",
+            "capabilities": [
+              "production-fable-react-chromium",
+              "live-compositor"
+            ],
+            "warmupPolicy": "2 complete production journeys before trace capture",
+            "samplePolicy": "nearest-rank over every renderer RunTask across 20 independent traced journeys; hard maximum retained separately",
+            "capturedAtUtc": "2026-08-22T03:55:00.285Z",
+            "currencyToken": "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e",
+            "probeReadbackContaminated": false,
+            "durationSamplesMs": [
+              3.194,
+              0.09,
+              2.035,
+              0.051,
+              3.448,
+              0.003,
+              0.069,
+              0.007,
+              0.002,
+              0.076,
+              2.269,
+              2.711,
+              3.757,
+              0.003,
+              0.01,
+              0.002,
+              0.001,
+              0.687,
+              0.004,
+              0.02,
+              2.611,
+              3.533,
+              1.637,
+              0.045,
+              0.003,
+              0.002,
+              0.001,
+              0.597,
+              0.005,
+              0.009,
+              0.064,
+              3.317,
+              0.173,
+              0.003,
+              0.014,
+              0.003,
+              0.002,
+              2.064,
+              2.648,
+              3.8,
+              0.003,
+              0.02,
+              0.003,
+              0.002,
+              0.579,
+              0.005,
+              0.003,
+              3.296,
+              4.129,
+              2.706,
+              0.067,
+              0.004,
+              0.002,
+              0.002,
+              0.064,
+              2.792,
+              0.003,
+              0.009,
+              0.002,
+              0.001,
+              0.105,
+              1.496,
+              2.051,
+              3.512,
+              0.024,
+              0.003,
+              0.017,
+              0.002,
+              0.002,
+              0.759,
+              0.007,
+              0.005,
+              4.363,
+              3.659,
+              1.583,
+              0.056,
+              0.004,
+              0.002,
+              0.002,
+              0.074,
+              3.036,
+              0.055,
+              0.004,
+              0.014,
+              0.002,
+              0.002,
+              1.531,
+              0.104,
+              2.054,
+              0.691,
+              3.05,
+              0.005,
+              0.009,
+              0.002,
+              0.001,
+              0.085,
+              0.536,
+              0.005,
+              0.004,
+              2.837,
+              3.416,
+              2.148,
+              0.048,
+              0.004,
+              0.002,
+              0.002,
+              0.049,
+              2.972,
+              0.087,
+              0.025,
+              0.004,
+              0.019,
+              0.002,
+              0.002,
+              1.316,
+              2.051,
+              3.282,
+              0.004,
+              0.013,
+              0.002,
+              0.002,
+              0.586,
+              0.006,
+              0.005,
+              2.598,
+              3.177,
+              1.212,
+              0.047,
+              0.004,
+              0.002,
+              0.002,
+              0.054,
+              0.062,
+              3.418,
+              1.614,
+              0.005,
+              0.009,
+              0.002,
+              0.001,
+              1.94,
+              0.589,
+              3.576,
+              0.008,
+              0.016,
+              0.003,
+              0.003,
+              0.54,
+              0.006,
+              0.005,
+              2.511,
+              3.256,
+              1.548,
+              0.059,
+              0.004,
+              0.002,
+              0.002,
+              0.072,
+              0.068,
+              4.063,
+              2.168,
+              0.032,
+              0.005,
+              0.01,
+              0.002,
+              0.002,
+              2.655,
+              4.35,
+              0.005,
+              0.013,
+              0.003,
+              0.002,
+              0.64,
+              0.005,
+              0.004,
+              2.423,
+              3.855,
+              1.954,
+              0.041,
+              0.003,
+              0.006,
+              0.003,
+              0.05,
+              3.047,
+              0.062,
+              0.003,
+              0.011,
+              0.002,
+              0.002,
+              1.552,
+              2.283,
+              0.743,
+              3.69,
+              0.004,
+              0.013,
+              0.002,
+              0.001,
+              0.031,
+              0.002,
+              0.536,
+              0.007,
+              0.006,
+              2.524,
+              3.177,
+              1.279,
+              0.051,
+              0.004,
+              0.002,
+              0.001,
+              0.078,
+              3.008,
+              0.071,
+              0.019,
+              0.003,
+              0.01,
+              0.002,
+              0.002,
+              1.244,
+              1.952,
+              3.249,
+              0.003,
+              0.009,
+              0.002,
+              0.002,
+              0.505,
+              0.005,
+              0.004,
+              2.629,
+              3.429,
+              1.344,
+              0.046,
+              0.004,
+              0.002,
+              0.001,
+              0.05,
+              0.074,
+              2.87,
+              1.327,
+              0.003,
+              0.008,
+              0.002,
+              0.002,
+              1.787,
+              0.586,
+              3.089,
+              0.005,
+              0.012,
+              0.002,
+              0.002,
+              0.543,
+              0.005,
+              0.006,
+              3.309,
+              3.431,
+              0.038,
+              1.368,
+              0.037,
+              0.003,
+              0.002,
+              0.002,
+              0.063,
+              0.063,
+              3.008,
+              0.004,
+              0.008,
+              0.002,
+              0.001,
+              1.326,
+              0.021,
+              1.756,
+              3.606,
+              0.004,
+              0.01,
+              0.002,
+              0.002,
+              0.49,
+              0.004,
+              0.004,
+              2.59,
+              3.87,
+              1.753,
+              0.049,
+              0.005,
+              0.002,
+              0.002,
+              0.066,
+              0.064,
+              3.889,
+              0.004,
+              0.007,
+              0.002,
+              0.001,
+              1.46,
+              1.602,
+              0.518,
+              3.574,
+              0.006,
+              0.009,
+              0.002,
+              0.001,
+              0.556,
+              0.005,
+              0.005,
+              2.464,
+              3.142,
+              1.297,
+              0.054,
+              0.005,
+              0.002,
+              0.002,
+              0.069,
+              0.079,
+              3.005,
+              1.63,
+              0.019,
+              0.003,
+              0.007,
+              0.001,
+              0.002,
+              2.005,
+              3.415,
+              0.003,
+              0.008,
+              0.003,
+              0.001,
+              0.509,
+              0.005,
+              0.004,
+              2.502,
+              3.553,
+              1.258,
+              0.049,
+              0.003,
+              0.002,
+              0.002,
+              0.047,
+              0.072,
+              3.012,
+              1.355,
+              0.004,
+              0.008,
+              0.002,
+              0.002,
+              1.695,
+              0.422,
+              0.345,
+              0.004,
+              0.005,
+              0.011,
+              0.049,
+              0.004,
+              0.007,
+              0.014,
+              0.011,
+              0.003,
+              0.006,
+              0.012,
+              0.011,
+              0.145,
+              0.019,
+              0.186,
+              0.003,
+              0.008,
+              0.043,
+              0.058,
+              1.043,
+              0.004,
+              0.008,
+              0.175,
+              1.671,
+              0.004,
+              0.001,
+              0.014,
+              0.007,
+              0.057,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.005,
+              0.002,
+              0.002,
+              0.001,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.001,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.001,
+              0.032,
+              0.002,
+              0.186,
+              0.001,
+              0.002,
+              0.001,
+              0.001,
+              0.002,
+              0.003,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.003,
+              0.002,
+              0.002,
+              0.003,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.003,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.003,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.039,
+              0.002,
+              0.001,
+              0.002,
+              0.084,
+              0.003,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.003,
+              0.023,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.012,
+              0.002,
+              0.023,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.003,
+              0.003,
+              0.002,
+              0.002,
+              0.003,
+              0.002,
+              0.003,
+              0.003,
+              0.028,
+              0.79,
+              0.006,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.002,
+              0.002,
+              0.003,
+              0.002,
+              0.002,
+              0.001,
+              0.002,
+              0.001,
+              0.002,
+              0.002,
+              0.001,
+              0.003,
+              0.002,
+              0.006,
+              3.086,
+              0.005,
+              0.015,
+              0.003,
+              0.003,
+              0.516,
+              0.004,
+              0.004,
+              3.989,
+              3.296,
+              1.72,
+              0.057,
+              0.004,
+              0.002,
+              0.001,
+              0.075,
+              2.855,
+              0.005,
+              0.009,
+              0.002,
+              0.002,
+              0.089,
+              0.025,
+              2.153,
+              2.267,
+              2.966,
+              0.004,
+              0.009,
+              0.002,
+              0.002,
+              0.709,
+              0.007,
+              0.005,
+              2.871,
+              0.003,
+              0.002,
+              3.643,
+              1.644,
+              0.064,
+              0.004,
+              0.002,
+              0.002,
+              2.808,
+              0.004,
+              0.006,
+              0.003,
+              0.067,
+              0.103,
+              2.022,
+              2.395,
+              3.346,
+              0.003,
+              0.014,
+              0.002,
+              0.002,
+              0.602,
+              0.005,
+              0.004,
+              3.925,
+              3.331,
+              2.012,
+              0.076,
+              0.005,
+              0.002,
+              0.002,
+              0.142,
+              3.028,
+              0.127,
+              0.047,
+              0.003,
+              0.002,
+              0.002,
+              1.69,
+              2.501,
+              3.582,
+              0.008,
+              0.013,
+              0.002,
+              0.001,
+              0.584,
+              0.005,
+              0.004,
+              2.873,
+              2.833,
+              1.483,
+              0.051,
+              0.003,
+              0.002,
+              0.001,
+              0.256,
+              3.14,
+              0.072,
+              0.004,
+              0.002,
+              0.002,
+              1.376,
+              1.867,
+              0.943,
+              2.983,
+              0.007,
+              0.009,
+              0.002,
+              0.001,
+              0.495,
+              0.005,
+              0.004,
+              2.278,
+              1.063,
+              0.036,
+              0.052,
+              0.103,
+              3.55,
+              1.392,
+              0.004,
+              0.002,
+              0.002,
+              1.844,
+              3.098,
+              0.003,
+              0.014,
+              0.003,
+              0.001,
+              0.52,
+              0.004,
+              0.004,
+              2.466,
+              3.342,
+              1.829,
+              0.049,
+              0.004,
+              0.002,
+              0.001,
+              0.063,
+              0.067,
+              2.931,
+              0.008,
+              1.603,
+              0.01,
+              0.002,
+              0.002,
+              1.929,
+              3.353,
+              0.022,
+              0.003,
+              0.021,
+              0.003,
+              0.002,
+              0.53,
+              0.004,
+              0.003
+            ],
+            "catchUpFrames": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "performanceMeasurements": [
+        {
+          "workloadId": "workspace-transition-production",
+          "p95Ms": 3.256,
+          "p99Ms": 3.87,
+          "maxCatchUpFrames": 0
+        }
+      ],
+      "rationale": null,
+      "source": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+      "sourceLocation": {
+        "line": 42,
+        "column": 1
+      }
+    }
+  ],
+  "generatedViews": [
+    {
+      "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
+      "kind": "workModel",
+      "schemaVersion": 1,
+      "generator": {
+        "id": "FS.GG.SDD.Artifacts",
+        "version": "1.1.0"
+      },
+      "sources": [
+        {
+          "path": ".fsgg/agents.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "c67035b1cf31b6fa802c10f761eeb1e5bf5d198c38d159b54fac299957b5aac3"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/project.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "6e92634014f58b60e7abe40bd441a9eae19fbc32d3fb3c5d63f9bb3211e26a73"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": ".fsgg/sdd.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "fe5a7c270a975153e80ab0d08a610c9b302585dcb0b5f7c654841ceced9272cb"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "readiness/1256-transition-aware-elmish-host-bridge/transition-host-production-performance.json",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "3fa72737fd40ca665b4336045d0d0b5a8807534e7ffcc19a02a8b6cb166d019a"
+          },
+          "schemaVersion": null
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/clarifications.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "bfa19139c47cb447e698341bc48e3053eaeb6999624c4889202162c1c5375a5b"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/evidence.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "e67258cbb756aea376f6f07aaa751a33c003e46f2f3cbaba6e51eb4a0a0171c9"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/plan.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "ba499ee7c3c1da93e58df13889ddfc819109b5394968f17b0f3b5fd069e8d0d6"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/spec.md",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c"
+          },
+          "schemaVersion": 1
+        },
+        {
+          "path": "work/1256-transition-aware-elmish-host-bridge/tasks.yml",
+          "digest": {
+            "algorithm": "sha256",
+            "value": "f6300fe4310df3369fb40829515bc6563a956c52d3310116bb9cb9bd620ce93c"
+          },
+          "schemaVersion": 1
+        }
+      ],
+      "outputDigest": {
+        "algorithm": "sha256",
+        "value": "3c1d9aebd231114d9cb73ab032cbbf065aa47dfb360b554a949c5c111df4bee1"
+      },
+      "currency": "current"
+    }
+  ],
+  "diagnostics": [],
+  "governanceBoundaries": []
+}
