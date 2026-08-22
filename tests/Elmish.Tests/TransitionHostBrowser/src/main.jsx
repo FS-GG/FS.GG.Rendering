@@ -29,6 +29,7 @@ const request = (target) => new TransitionRequest$1(
 let model = TransitionHost_init(TransitionVisibility.Visible);
 let present = () => {};
 let updateControlledText = () => {};
+let resetPresentation = () => {};
 let latestPresentation;
 let requestedPresentations = 0;
 let resumePresentations = 0;
@@ -106,6 +107,25 @@ function defer() {
 
 function nextPaint() {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+async function resetTransitionJourney() {
+  model = TransitionHost_init(TransitionVisibility.Visible);
+  latestPresentation = undefined;
+  requestedPresentations = 0;
+  resumePresentations = 0;
+  releaseEffects = 0;
+  suppressEffects = 0;
+  awaitingResume = false;
+  completion = undefined;
+  resetPresentation();
+  await nextPaint();
+  return {
+    target: document.querySelector("[data-target]")?.getAttribute("data-target"),
+    rows: document.querySelectorAll("[data-workspace-row]").length,
+    ledgerEntries: [...TransitionHost_ledger(model)].length,
+    pending: TransitionHost_isPending(model),
+  };
 }
 
 async function runTransitionJourney(run) {
@@ -206,6 +226,10 @@ function App() {
     });
   };
   updateControlledText = setControlledText;
+  resetPresentation = () => {
+    setView({ target: "Editor", revision: -1, responses: 0, token: undefined });
+    setControlledText("mission-0");
+  };
 
   useLayoutEffect(() => {
     if (!view.token) return;
@@ -260,9 +284,16 @@ function App() {
         <p>{view.responses} asynchronous responses accepted</p>
         <div className="workspace-grid">
           {Array.from({ length: rows }, (_, index) => (
-            <div className="workspace-row" data-workspace-row="true" key={index}>
-              <span>{view.target}</span><span>{index}</span><span>{(index * 17) % 101}</span>
-            </div>
+            // A row is one semantic/layout unit. Keeping its content in accessible/data attributes avoids
+            // multiplying the declared 1,200-row workload into 4,800 DOM nodes without hiding any row.
+            <div
+              className="workspace-row"
+              data-workspace-row="true"
+              data-index={index}
+              data-score={(index * 17) % 101}
+              aria-label={`${view.target} row ${index}, score ${(index * 17) % 101}`}
+              key={index}
+            />
           ))}
         </div>
       </section>
@@ -271,5 +302,6 @@ function App() {
 }
 
 window.runTransitionJourney = runTransitionJourney;
+window.resetTransitionJourney = resetTransitionJourney;
 window.transitionHostReady = true;
 createRoot(document.getElementById("root")).render(<App />);

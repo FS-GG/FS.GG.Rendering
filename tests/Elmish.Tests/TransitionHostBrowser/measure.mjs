@@ -142,7 +142,15 @@ try {
   await page.waitForFunction(() => window.transitionHostReady === true);
   await page.waitForTimeout(100);
 
+  const resetJourney = async (label) => {
+    const reset = await page.evaluate(() => window.resetTransitionJourney());
+    if (reset.target !== "Editor" || reset.ledgerEntries !== 0 || reset.pending) {
+      throw new Error(`${label} did not reset to an independent mounted-Editor journey: ${JSON.stringify(reset)}`);
+    }
+  };
+
   for (let warmup = 0; warmup < workload.measurement.warmupRuns; warmup += 1) {
+    await resetJourney(`Warmup ${warmup}`);
     const result = await page.evaluate((run) => window.runTransitionJourney(`warmup-${run}`), warmup);
     if (result.rows !== workload.maximumExpectedScale.workspaceRows || result.pending) {
       throw new Error(`Warmup ${warmup} did not converge at the declared scale`);
@@ -151,6 +159,9 @@ try {
 
   const cdp = await context.newCDPSession(page);
   for (let run = 0; run < workload.measurement.measuredRuns; run += 1) {
+    // Every filed sample is one independent journey from the mounted Editor state. Reset outside
+    // tracing so a previous run's retained ledger/view cannot become measured work in the next run.
+    await resetJourney(`Measured journey ${run}`);
     const startId = `fsgg-transition-start-${run}`;
     const endId = `fsgg-transition-end-${run}`;
     await cdp.send("Tracing.start", {
@@ -204,7 +215,10 @@ const p95 = Number(percentile(taskMilliseconds, 95).toFixed(3));
 const p99 = Number(percentile(taskMilliseconds, 99).toFixed(3));
 const droppedFrames = traceSummaries.reduce((total, trace) => total + trace.droppedFrames, 0);
 const compositorSamples = traceSummaries.reduce((total, trace) => total + trace.compositorSamples, 0);
-const result = maximum <= 16 && p95 <= 16 && p99 <= 32 && droppedFrames === 0 && compositorSamples > 0 ? "pass" : "fail";
+const everyTraceUsable = traceSummaries.every(
+  (trace) => trace.frameSamples > 0 && trace.compositorSamples > 0 && trace.droppedFrames === 0,
+);
+const result = maximum <= 16 && p95 <= 16 && p99 <= 32 && droppedFrames === 0 && everyTraceUsable ? "pass" : "fail";
 const implementationSha256 = sha256(read(implementationPath));
 const capturedAtUtc = new Date().toISOString();
 const currencyToken = `implementation-sha256:${implementationSha256}`;
@@ -294,6 +308,7 @@ const summary = {
     pointerCaptureReleased: runResults.every((run) => run.releaseEffects === 1),
     unsafeInputsSuppressed: runResults.every((run) => run.suppressEffects === 4),
     deterministicLedgerObserved: runResults.every((run) => run.ledgerEntries > 0),
+    independentLedgerBounded: runResults.every((run) => run.ledgerEntries === runResults[0].ledgerEntries),
   },
 };
 

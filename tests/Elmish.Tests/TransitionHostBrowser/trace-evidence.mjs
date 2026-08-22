@@ -42,6 +42,10 @@ export function summarizeTrace(trace, startId, endId) {
     (event) => event.name === "DrawFrame" || event.name === "CompositeLayers" || event.name === "AnimationFrame::Presentation",
   ).length;
 
+  if (compositorSamples === 0) {
+    throw new Error(`Trace window ${startId}..${endId} has zero compositor/presentation samples`);
+  }
+
   return {
     taskMilliseconds,
     rendererThreadNames: [...rendererThreadIds].map((threadId) => threads.get(threadId)),

@@ -449,6 +449,8 @@ let transitionHostTests =
                   use document = JsonDocument.Parse(File.ReadAllText artifact)
                   let root = document.RootElement
                   let measurement = root.GetProperty "measurement"
+                  let traceRuns = root.GetProperty "traceRuns"
+                  let acceptance = root.GetProperty "acceptance"
 
                   let candidateHead =
                       root.GetProperty("candidate").GetProperty("gitHead").GetString()
@@ -487,6 +489,30 @@ let transitionHostTests =
                       (measurement.GetProperty("frameSamples").GetInt32())
                       0
                       "the production run must retain usable AnimationFrame duration evidence"
+
+                  Expect.equal (traceRuns.GetArrayLength()) 20 "all twenty independent trace runs must be retained"
+
+                  for traceRun in traceRuns.EnumerateArray() do
+                      let run = traceRun.GetProperty("run").GetInt32()
+
+                      Expect.isGreaterThan
+                          (traceRun.GetProperty("frameSamples").GetInt32())
+                          0
+                          $"trace run {run} must retain usable frame evidence"
+
+                      Expect.isGreaterThan
+                          (traceRun.GetProperty("compositorSamples").GetInt32())
+                          0
+                          $"trace run {run} must retain compositor/presentation evidence"
+
+                      Expect.equal
+                          (traceRun.GetProperty("droppedFrames").GetInt32())
+                          0
+                          $"trace run {run} must retain zero dropped frames"
+
+                  Expect.isTrue
+                      (acceptance.GetProperty("independentLedgerBounded").GetBoolean())
+                      "every independently reset journey must end with the same bounded ledger size"
               finally
                   if File.Exists artifact then
                       File.Delete artifact

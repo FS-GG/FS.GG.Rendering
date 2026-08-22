@@ -21,6 +21,16 @@ for (const frame of [
   );
 }
 
+assert.throws(
+  () => summarizeTrace({
+    traceEvents: [
+      ...base.filter((event) => event.name !== "DrawFrame"),
+      { name: "AnimationFrame", ph: "b", ts: 130, args: { animation_frame_timing_info: { duration_ms: 4 } } },
+    ],
+  }, startId, endId),
+  /zero compositor\/presentation samples/,
+);
+
 const dropped = summarizeTrace({
   traceEvents: [
     ...base,
@@ -30,4 +40,4 @@ const dropped = summarizeTrace({
 assert.equal(dropped.frameSamples, 1);
 assert.equal(dropped.droppedFrames, 1);
 
-console.log("frame-evidence inversion passed: missing/corrupt durations fail closed; >25ms is dropped");
+console.log("frame-evidence inversion passed: missing/corrupt frames and zero compositor fail closed; >25ms is dropped");
