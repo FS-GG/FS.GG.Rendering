@@ -190,6 +190,25 @@ fi
 # REFUSE — do not fall through to some other engine the caller did not choose.
 if [ -n "${FSGG_COORD_ENGINE_BIN:-}" ]; then
   [ -x "${FSGG_COORD_ENGINE_BIN}" ] || die "FSGG_COORD_ENGINE_BIN is set but not executable: ${FSGG_COORD_ENGINE_BIN}"
+  # A packaged engine selected by its ordinary PATH is an alternate location for stable bytes, not a
+  # self-host transition. Every other explicit binary is a candidate: reads remain available for
+  # diagnosis, while write-capable verbs require the host-owned stable verifier and typed receipt.
+  PACKAGED_ENGINE="$(command -v fsgg-coord-engine 2>/dev/null || true)"
+  if [ -z "$PACKAGED_ENGINE" ] || [ "$PACKAGED_ENGINE" != "$FSGG_COORD_ENGINE_BIN" ]; then
+    CANDIDATE_TOP="$(git -C "$(dirname "$FSGG_COORD_ENGINE_BIN")" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ -n "$CANDIDATE_TOP" ]; then
+      load_guards "$CANDIDATE_TOP"
+      # A detached/current checkout with no engine inputs beyond its default branch is another stable
+      # build location (the stale-guard recovery route). Only authored engine inputs make it a candidate.
+      if authored_engine_source "$CANDIDATE_TOP"; then
+        self_host_candidate_guard "$FSGG_COORD_ENGINE_BIN" "${1:-}" "$CANDIDATE_TOP" "${2:-}"
+      fi
+    else
+      [ -n "$TOP" ] || die "an explicit candidate engine cannot be classified outside a git checkout"
+      load_guards "$TOP"
+      self_host_candidate_guard "$FSGG_COORD_ENGINE_BIN" "${1:-}" "" "${2:-}"
+    fi
+  fi
   exec "${FSGG_COORD_ENGINE_BIN}" "$@"
 fi
 

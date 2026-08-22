@@ -1161,7 +1161,7 @@ scripts/fsgg-coord set-field <issue> Status "In review"
 scripts/fsgg-coord ready --repo <repo> --all --json \
   | jq -e '.[] | select(.number == <n> and .status == "In review")' >/dev/null
 # Run and verify every named release/publication/dispatch/deployment obligation here.
-# Once all are verified, close the issue again; only then can `done --flip` earn FSGG-DONE below.
+# Once all are verified, let `delivery --apply` append the typed completion receipt and reconcile closure below.
 gh api -X PATCH repos/FS-GG/<repo>/issues/<n> -f state=closed
 ```
 
@@ -1384,7 +1384,7 @@ A red check is a finding, not an obstacle.
 Then earn the stamp:
 
 ```sh
-scripts/fsgg-coord done <issue> --flip      # green FSGG-DONE only if PR merged AND Status=Done
+scripts/fsgg-coord delivery <issue> --pr <pr> --flip --apply --json  # receipt first; then closure and Done
 ```
 
 Capture and report the exact `FSGG-DONE` line. The board's `Done` column is only a projection and may
