@@ -134,3 +134,20 @@ the unchanged measurement exited 1 promptly on measured journey 0 with `rows:120
 the first form of this control threw inside React, stopped later batches, and hung on an unresolved journey
 promise rather than emitting a red verdict. The restored subject passes with
 `stagedRowsRemainPending:true` across all 20 journeys.
+
+## Independent heap isolation
+
+Exact-head hosted run 32556145715 retained the full staged-row and semantic contract, but its fourteenth
+measured journey failed at max 26.344 ms and one dropped frame. The raw trace binds 20.714 ms of that task
+to `V8.GCIncrementalMarkingStart`: repeated harness resets had detached the previous journey's 1,200 DOM
+rows, and the shared Chromium renderer eventually scheduled collection of that cumulative garbage inside
+a later trace. This was not work owned by that independently reset journey.
+
+The measurement now synchronously invokes CDP `HeapProfiler.collectGarbage` after each reset and before
+tracing starts. It counts each successful command and fails unless the tracing warmup plus all twenty
+measured journeys were isolated this way. The declared workload remains twenty production journeys with
+1,200 visible semantic rows each; no trace, row, threshold, or in-trace event is excluded. Removing the
+pre-trace collection call is the subject inversion demonstrated by hosted run 32556145715: the unchanged
+hard-max/drop gate exits 1 on accumulated incremental marking. With the collection restored, three local
+20-journey runs passed at max 3.565/3.943/7.035 ms, p95 at most 2.662 ms, p99 at most 3.599 ms, and zero
+drops, while retaining all twenty raw traces and reporting twenty-one successful pre-trace collections.

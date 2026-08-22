@@ -519,6 +519,11 @@ let transitionHostTests =
                       20
                       "tracing priming must not replace or reduce the twenty declared measured journeys"
 
+                  Expect.equal
+                      (workload.GetProperty("garbageCollectionsBeforeTrace").GetInt32())
+                      21
+                      "the tracing warmup and all twenty independent journeys must collect detached prior-DOM garbage before tracing"
+
                   Expect.isGreaterThan
                       (measurement.GetProperty("compositorSamples").GetInt32())
                       0

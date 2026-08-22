@@ -139,6 +139,7 @@ const runResults = [];
 const traceDigests = [];
 const traceSummaries = [];
 let rowContract;
+let garbageCollectionsBeforeTrace = 0;
 
 if (traceDirectory) mkdirSync(traceDirectory, { recursive: true });
 
@@ -163,6 +164,10 @@ try {
   }
 
   const cdp = await context.newCDPSession(page);
+  const collectDetachedJourneyGarbage = async () => {
+    await cdp.send("HeapProfiler.collectGarbage");
+    garbageCollectionsBeforeTrace += 1;
+  };
   const captureTrace = async (startId, endId, journey) => {
     await cdp.send("Tracing.start", {
       categories: "devtools.timeline,blink.user_timing,v8,disabled-by-default-devtools.timeline",
@@ -189,6 +194,7 @@ try {
   // by a fresh CDP session. Exercise that pipeline once before the declared twenty measured journeys;
   // this is an additional full-scale warmup and never replaces or removes a filed workload sample.
   await resetJourney("Tracing pipeline warmup");
+  await collectDetachedJourneyGarbage();
   const traceWarmup = await captureTrace(
     "fsgg-transition-trace-warmup-start",
     "fsgg-transition-trace-warmup-end",
@@ -201,7 +207,10 @@ try {
   for (let run = 0; run < workload.measurement.measuredRuns; run += 1) {
     // Every filed sample is one independent journey from the mounted Editor state. Reset outside
     // tracing so a previous run's retained ledger/view cannot become measured work in the next run.
+    // Collect the detached previous DOM before starting the trace so cumulative harness garbage cannot
+    // schedule V8 incremental marking nondeterministically inside a later independent journey.
     await resetJourney(`Measured journey ${run}`);
+    await collectDetachedJourneyGarbage();
     const startId = `fsgg-transition-start-${run}`;
     const endId = `fsgg-transition-end-${run}`;
     const capture = await captureTrace(
@@ -261,7 +270,10 @@ const compositorSamples = traceSummaries.reduce((total, trace) => total + trace.
 const everyTraceUsable = traceSummaries.every(
   (trace) => trace.frameSamples > 0 && trace.compositorSamples > 0 && trace.droppedFrames === 0,
 );
-const result = maximum <= 16 && p95 <= 16 && p99 <= 32 && droppedFrames === 0 && everyTraceUsable ? "pass" : "fail";
+const everyTraceHeapIsolated = garbageCollectionsBeforeTrace === workload.measurement.measuredRuns + 1;
+const result = maximum <= 16 && p95 <= 16 && p99 <= 32 && droppedFrames === 0 && everyTraceUsable && everyTraceHeapIsolated
+  ? "pass"
+  : "fail";
 const implementationSha256 = sha256(read(implementationPath));
 const capturedAtUtc = new Date().toISOString();
 const currencyToken = `implementation-sha256:${implementationSha256}`;
@@ -299,6 +311,7 @@ const summary = {
     sha256: workloadDigest,
     warmupRuns: workload.measurement.warmupRuns,
     tracingWarmupRuns: 1,
+    garbageCollectionsBeforeTrace,
     measuredRuns: workload.measurement.measuredRuns,
     workspaceRows: workload.maximumExpectedScale.workspaceRows,
   },
