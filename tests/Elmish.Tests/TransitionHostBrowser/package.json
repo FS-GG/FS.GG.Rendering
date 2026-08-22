@@ -1,0 +1,18 @@
+{
+  "name": "fsgg-elmish-transition-host-browser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:fable": "dotnet tool run fable TransitionHostBrowser.fsproj --outDir generated --lang JavaScript --noCache",
+    "build": "npm run build:fable && vite build",
+    "measure": "node measure.mjs"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1",
+    "vite": "8.1.5"
+  }
+}

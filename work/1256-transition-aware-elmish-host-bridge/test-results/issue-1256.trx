@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="e65b0cb9-b859-4f19-bdc0-04c1a29422a1" name="@c2756152e150 2026-08-22 05:06:43" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-22T05:06:43.7799125+02:00" queuing="2026-08-22T05:06:43.7799125+02:00" start="2026-08-22T05:06:42.1108036+02:00" finish="2026-08-22T05:06:49.2185550+02:00" />
+  <TestSettings name="default" id="3504e519-4c72-4454-90cf-4c042b86284a">
+    <Deployment runDeploymentRoot="_c2756152e150_2026-08-22_05_06_43" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="ab6a26ea-65f6-4142-913d-b3e887696a27" testId="ca73b3c3-d031-64ab-3859-005402400767" testName="issue 1256 transition-aware Elmish host.rapid Editor to Plan to Simulate replacement rejects obsolete work and commits only Simulate" computerName="c2756152e150" duration="00:00:00.0200000" startTime="2026-08-22T05:06:42.4763900+02:00" endTime="2026-08-22T05:06:42.5024251+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ab6a26ea-65f6-4142-913d-b3e887696a27" />
+    <UnitTestResult executionId="0f154574-9e17-42f3-b656-fc0a035fa5d0" testId="81224fab-39a1-6a12-5cea-7c5ddfa4934d" testName="issue 1256 transition-aware Elmish host.hidden tabs retain the latest target and converge exactly once on resume" computerName="c2756152e150" duration="00:00:00.0200000" startTime="2026-08-22T05:06:42.4764561+02:00" endTime="2026-08-22T05:06:42.5024291+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0f154574-9e17-42f3-b656-fc0a035fa5d0" />
+    <UnitTestResult executionId="4444d3ad-f38b-45a0-a2a5-39345b75d421" testId="c0554918-d5ba-d960-2802-1aadd31234ae" testName="issue 1256 transition-aware Elmish host.the authoritative message and commit ledger is deterministic and complete" computerName="c2756152e150" duration="00:00:00.0210000" startTime="2026-08-22T05:06:42.4767822+02:00" endTime="2026-08-22T05:06:42.5024421+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4444d3ad-f38b-45a0-a2a5-39345b75d421" />
+    <UnitTestResult executionId="93b2090f-1820-44d2-98bb-f91d71b543fc" testId="35513b79-7f1b-04ba-18e4-1e92b09580ad" testName="issue 1256 transition-aware Elmish host.delayed worker and feature responses share one revision-fenced transaction" computerName="c2756152e150" duration="00:00:00.0200000" startTime="2026-08-22T05:06:42.4763871+02:00" endTime="2026-08-22T05:06:42.5024388+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="93b2090f-1820-44d2-98bb-f91d71b543fc" />
+    <UnitTestResult executionId="127fded2-a620-4b70-99aa-bbc0859f821a" testId="d25776b0-c4f5-5627-0d02-f42a3b4e5b8e" testName="issue 1256 transition-aware Elmish host.production Fable React Chromium route stays inside the filed frame budget" computerName="c2756152e150" duration="00:00:06.6950000" startTime="2026-08-22T05:06:42.4769712+02:00" endTime="2026-08-22T05:06:49.1748314+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="127fded2-a620-4b70-99aa-bbc0859f821a" />
+    <UnitTestResult executionId="be98dff1-d8a2-45f6-a820-6e6de85d1850" testId="257e0969-8d0e-1c3a-24c4-72347bafe21b" testName="issue 1256 transition-aware Elmish host.pending host suppresses capture and global dispatch while controlled input remains synchronous" computerName="c2756152e150" duration="00:00:00.0200000" startTime="2026-08-22T05:06:42.4766155+02:00" endTime="2026-08-22T05:06:42.5024335+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be98dff1-d8a2-45f6-a820-6e6de85d1850" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="issue 1256 transition-aware Elmish host.rapid Editor to Plan to Simulate replacement rejects obsolete work and commits only Simulate" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="ca73b3c3-d031-64ab-3859-005402400767">
+      <Execution id="ab6a26ea-65f6-4142-913d-b3e887696a27" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="rapid Editor to Plan to Simulate replacement rejects obsolete work and commits only Simulate" />
+    </UnitTest>
+    <UnitTest name="issue 1256 transition-aware Elmish host.hidden tabs retain the latest target and converge exactly once on resume" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="81224fab-39a1-6a12-5cea-7c5ddfa4934d">
+      <Execution id="0f154574-9e17-42f3-b656-fc0a035fa5d0" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="hidden tabs retain the latest target and converge exactly once on resume" />
+    </UnitTest>
+    <UnitTest name="issue 1256 transition-aware Elmish host.production Fable React Chromium route stays inside the filed frame budget" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="d25776b0-c4f5-5627-0d02-f42a3b4e5b8e">
+      <Execution id="127fded2-a620-4b70-99aa-bbc0859f821a" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="production Fable React Chromium route stays inside the filed frame budget" />
+    </UnitTest>
+    <UnitTest name="issue 1256 transition-aware Elmish host.delayed worker and feature responses share one revision-fenced transaction" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="35513b79-7f1b-04ba-18e4-1e92b09580ad">
+      <Execution id="93b2090f-1820-44d2-98bb-f91d71b543fc" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="delayed worker and feature responses share one revision-fenced transaction" />
+    </UnitTest>
+    <UnitTest name="issue 1256 transition-aware Elmish host.the authoritative message and commit ledger is deterministic and complete" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="c0554918-d5ba-d960-2802-1aadd31234ae">
+      <Execution id="4444d3ad-f38b-45a0-a2a5-39345b75d421" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="the authoritative message and commit ledger is deterministic and complete" />
+    </UnitTest>
+    <UnitTest name="issue 1256 transition-aware Elmish host.pending host suppresses capture and global dispatch while controlled input remains synchronous" storage="/home/developer/projects/fs.gg.rendering-item-1256-transition-aware-elmish-host-bridge/tests/elmish.tests/bin/release/net10.0/elmish.tests.dll" id="257e0969-8d0e-1c3a-24c4-72347bafe21b">
+      <Execution id="be98dff1-d8a2-45f6-a820-6e6de85d1850" />
+      <TestMethod codeBase="/home/developer/projects/FS.GG.Rendering-item-1256-transition-aware-elmish-host-bridge/tests/Elmish.Tests/bin/Release/net10.0/Elmish.Tests.dll" adapterTypeName="executor://yolodev/expecto" className="issue 1256 transition-aware Elmish host" name="pending host suppresses capture and global dispatch while controlled input remains synchronous" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="ca73b3c3-d031-64ab-3859-005402400767" executionId="ab6a26ea-65f6-4142-913d-b3e887696a27" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="81224fab-39a1-6a12-5cea-7c5ddfa4934d" executionId="0f154574-9e17-42f3-b656-fc0a035fa5d0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c0554918-d5ba-d960-2802-1aadd31234ae" executionId="4444d3ad-f38b-45a0-a2a5-39345b75d421" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="35513b79-7f1b-04ba-18e4-1e92b09580ad" executionId="93b2090f-1820-44d2-98bb-f91d71b543fc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d25776b0-c4f5-5627-0d02-f42a3b4e5b8e" executionId="127fded2-a620-4b70-99aa-bbc0859f821a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="257e0969-8d0e-1c3a-24c4-72347bafe21b" executionId="be98dff1-d8a2-45f6-a820-6e6de85d1850" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="6" executed="6" passed="6" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

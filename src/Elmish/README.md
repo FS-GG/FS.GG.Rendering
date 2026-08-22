@@ -83,6 +83,20 @@ let folded =
 - `ElmishAdapterModel<'model>` — the bridged state record holding your `UserModel`, the current `Scene` (a `SceneNode`), and the `ViewerModel`.
 - `ElmishAdapterMsg<'msg>` — message envelope: `UserMsg` carries your own messages, `ViewerMsg` carries viewer messages.
 - `ElmishAdapterEffect<'msg>` — effect envelope: `DispatchUser` for your messages and `DispatchViewer` for `ViewerEffect`s.
+- `TransitionHost.beginTransition` — allocates a newer typed generation for an expensive target and
+  returns pure presentation/focus directives for a React host.
+- `TransitionHost.update` — accepts generation-bound delayed responses, exact post-commit
+  acknowledgements, visibility edges, and controlled/global input observations. Stale work is
+  rejected into the typed ledger.
+- `TransitionHost.isPending` — identifies the interval in which old-DOM global dispatch and pointer
+  capture must be suppressed while controlled input remains synchronous.
+
+For React hosts, interpret every `RequestPresentation` in a fresh `startTransition`, including work
+that resumes after `await`. Dispatch `Presented presentation.Token` from a layout effect only after
+that exact DOM revision commits. Do not transition controlled text or file setters: send their
+`TransitionHostInput` values synchronously. Forward `document.visibilityState` edges so hidden work
+is retained and one resume request converges to the newest generation. The complete host recipe and
+typed example live in `template/fragments/elmish/README.md`.
 
 ## Versioning
 

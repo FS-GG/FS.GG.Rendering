@@ -13,6 +13,8 @@
   <ItemGroup>
     <Compile Include="Elmish.fsi" />
     <Compile Include="Elmish.fs" />
+    <Compile Include="TransitionHost.fsi" />
+    <Compile Include="TransitionHost.fs" />
     <Compile Include="AnimationTick.fsi" />
     <Compile Include="AnimationTick.fs" />
   </ItemGroup>

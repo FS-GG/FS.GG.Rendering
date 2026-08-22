@@ -1,0 +1,32 @@
+{
+  "schema": "fsgg.elmish.transition-workload/v1",
+  "id": "workspace-transition-production",
+  "route": "compiled Fable host bridge -> React createRoot -> startTransition -> Chromium renderer",
+  "targets": ["Editor", "Plan", "Simulate"],
+  "sequence": [
+    "mount Editor with one controlled text input, one controlled file input, and one focus target",
+    "begin Plan generation with delayed planning-worker and client-feature responses",
+    "while Plan is pending update controlled text synchronously and attempt pointer/global key/click/file dispatch",
+    "replace Plan with Simulate before either delayed response resolves",
+    "hide the document, deliver stale Plan responses and current Simulate responses, then attempt acknowledgement",
+    "resume visibility and accept exactly one Simulate presentation request",
+    "acknowledge the current Simulate generation and verify committed focus/ARIA plus the authoritative ledger"
+  ],
+  "maximumExpectedScale": {
+    "workspaceRows": 1200,
+    "delayedResponses": 4,
+    "rapidTargetReplacements": 2,
+    "controlledInputEdits": 3,
+    "unsafeInputAttempts": 4
+  },
+  "measurement": {
+    "capability": "production-fable-react-chromium",
+    "warmupRuns": 2,
+    "measuredRuns": 20,
+    "source": "Chromium renderer RunTask and frame/presentation trace slices bounded by User Timing marks; no injected requestAnimationFrame sampler",
+    "rendererTaskMaxMs": 16,
+    "p95Ms": 16,
+    "p99Ms": 32,
+    "droppedFrames": 0
+  }
+}
