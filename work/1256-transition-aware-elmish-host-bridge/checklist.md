@@ -21,7 +21,7 @@ Prose status: checklistReady
 - work/1256-transition-aware-elmish-host-bridge/clarifications.md
 
 ## Source Snapshot
-- spec: work/1256-transition-aware-elmish-host-bridge/spec.md sha256:7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c schemaVersion:1
+- spec: work/1256-transition-aware-elmish-host-bridge/spec.md sha256:a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00 schemaVersion:1
 - clarifications: work/1256-transition-aware-elmish-host-bridge/clarifications.md sha256:bfa19139c47cb447e698341bc48e3053eaeb6999624c4889202162c1c5375a5b schemaVersion:1
 
 ## Checklist Items

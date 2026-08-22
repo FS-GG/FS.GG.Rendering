@@ -16,10 +16,10 @@ performanceIntent:
   maxP95Ms: 16
   maxP99Ms: 32
   maxCatchUpFrames: 0
-  structuralCostBudgets: [renderer-task-max-ms<=16, dropped-frames<=0]
+  structuralCostBudgets: [dropped-frames<=0, renderer-task-max-ms<=16]
   requiredCapability: production-fable-react-chromium
   liveCompositorRequired: true
-  evidenceRefs: [FR-009, DEC-004]
+  evidenceRefs: [DEC-004, FR-009]
 ---
 
 # Transition Aware Elmish Host Bridge Specification

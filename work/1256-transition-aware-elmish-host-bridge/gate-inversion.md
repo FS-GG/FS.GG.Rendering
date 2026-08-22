@@ -59,3 +59,19 @@ The workload remains exactly 1,200 rendered workspace-row layout units. Each row
 `data-workspace-row` element whose index/score and accessible label retain the row semantics; removing three
 redundant nested spans per row avoids silently turning the declared 1,200-row scale into 4,800 DOM nodes.
 Neither the workload digest/scale nor max/p95/p99/drop thresholds changed.
+
+## Repair-phase row contract and layout-cost control
+
+The successor repair removes only redundant per-row formatting contexts: an empty semantic row no longer
+creates its own flex layout, runs an inapplicable `justify-content`, or establishes an individual content
+containment/paint boundary. The grid, all 1,200 row elements, their `data-index`/`data-score` values and
+accessible labels, the row background, and the fixed six-column/20 px rendered geometry remain unchanged.
+The production measurement now emits and gates a `semanticRows` receipt outside the trace window so the
+control itself does not inflate the timed workload.
+
+The new row-contract gate was inverted by changing only the production subject's `data-score` value from
+`(index * 17) % 101` to `((index * 17) % 101) + 1`, rebuilding the production bundle, and running the
+unchanged measurement command. It exited 1 with `count:1200`, `semantics:false`, `visible:true`,
+`columns:6`, `distinctColumnPositions:6`, and `widthSpread:0`, proving that retaining all elements while
+corrupting their score semantics is refused. Restoring the subject produced a passing receipt with all
+six fields valid. This is a subject mutation, not a predicate inversion.

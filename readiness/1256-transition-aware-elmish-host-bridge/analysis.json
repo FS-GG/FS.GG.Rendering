@@ -37,11 +37,21 @@
       "schemaStatus": "current"
     },
     {
+      "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
+      "kind": "workModel",
+      "digest": {
+        "algorithm": "sha256",
+        "value": "038285737554a188563377de542a3e40c0c2deb173761e392678a09383bc619c"
+      },
+      "schemaVersion": 1,
+      "schemaStatus": "current"
+    },
+    {
       "path": "work/1256-transition-aware-elmish-host-bridge/checklist.md",
       "kind": "checklist",
       "digest": {
         "algorithm": "sha256",
-        "value": "73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e"
+        "value": "c1bc4c93bb4a22e25a8d8499f81aad0696794d1177a93ffac669d8b80227f7f3"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -61,7 +71,7 @@
       "kind": "plan",
       "digest": {
         "algorithm": "sha256",
-        "value": "ba499ee7c3c1da93e58df13889ddfc819109b5394968f17b0f3b5fd069e8d0d6"
+        "value": "1901cc6e2b4bd7e9bd30e5110aa3fd3f5753fdc6c762764c67a78d37f74344f7"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -71,7 +81,7 @@
       "kind": "specification",
       "digest": {
         "algorithm": "sha256",
-        "value": "7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c"
+        "value": "a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -81,7 +91,7 @@
       "kind": "tasks",
       "digest": {
         "algorithm": "sha256",
-        "value": "d63761717b63b9509d1f02bd3a787dd1adfafd6fae179fdb26b1ab936bd9eba9"
+        "value": "d6ecb3bed7ca45ab6fb0ad11c2e028a08f749131e1d308a924e2882254272707"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -1036,7 +1046,7 @@
     {
       "path": "readiness/1256-transition-aware-elmish-host-bridge/work-model.json",
       "kind": "workModel",
-      "currency": "missing",
+      "currency": "current",
       "diagnosticIds": []
     }
   ],

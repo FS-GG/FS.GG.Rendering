@@ -11,11 +11,11 @@ sourceAnalysis: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
 sourceSnapshots:
   - label: analysis
     path: readiness/1256-transition-aware-elmish-host-bridge/analysis.json
-    digest: 679ae7915b79d09b7bd7b30502fe8e45c76495406022e2c0604e5e9d64ed191b
+    digest: 6563f2aeb4c9f6060dcf4a8bb594145ac24b8cbd6e4fb99f057e5abc44276907
     schemaVersion: 1
   - label: checklist
     path: work/1256-transition-aware-elmish-host-bridge/checklist.md
-    digest: 73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e
+    digest: c1bc4c93bb4a22e25a8d8499f81aad0696794d1177a93ffac669d8b80227f7f3
     schemaVersion: 1
   - label: clarifications
     path: work/1256-transition-aware-elmish-host-bridge/clarifications.md
@@ -23,15 +23,15 @@ sourceSnapshots:
     schemaVersion: 1
   - label: plan
     path: work/1256-transition-aware-elmish-host-bridge/plan.md
-    digest: ba499ee7c3c1da93e58df13889ddfc819109b5394968f17b0f3b5fd069e8d0d6
+    digest: 1901cc6e2b4bd7e9bd30e5110aa3fd3f5753fdc6c762764c67a78d37f74344f7
     schemaVersion: 1
   - label: spec
     path: work/1256-transition-aware-elmish-host-bridge/spec.md
-    digest: 7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c
+    digest: a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00
     schemaVersion: 1
   - label: tasks
     path: work/1256-transition-aware-elmish-host-bridge/tasks.yml
-    digest: f6300fe4310df3369fb40829515bc6563a956c52d3310116bb9cb9bd620ce93c
+    digest: d6ecb3bed7ca45ab6fb0ad11c2e028a08f749131e1d308a924e2882254272707
     schemaVersion: 1
 evidence:
   - id: EV001
@@ -54,7 +54,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -81,7 +81,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -108,7 +108,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -135,7 +135,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -162,7 +162,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -189,7 +189,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -216,7 +216,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -243,7 +243,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -270,7 +270,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -324,7 +324,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -351,7 +351,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -378,7 +378,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -405,7 +405,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -432,7 +432,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -486,7 +486,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -513,7 +513,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -540,7 +540,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -567,7 +567,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -594,7 +594,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -621,7 +621,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -648,7 +648,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -675,7 +675,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -702,7 +702,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -783,7 +783,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -864,7 +864,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -891,7 +891,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -918,7 +918,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -945,7 +945,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -972,7 +972,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -991,7 +991,7 @@ evidence:
     checklistResultRefs: []
     planDecisionRefs: [PD-009]
     obligationRefs: [EV036]
-    artifacts: [work/1256-transition-aware-elmish-host-bridge/gate-inversion.md, tests/Elmish.Tests/TransitionHostBrowser/trace-evidence.inversion.mjs]
+    artifacts: [tests/Elmish.Tests/TransitionHostBrowser/trace-evidence.inversion.mjs, work/1256-transition-aware-elmish-host-bridge/gate-inversion.md]
     sourceRefs:
       - kind: verification
         path: work/1256-transition-aware-elmish-host-bridge/gate-inversion.md
@@ -999,7 +999,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -1103,10 +1103,10 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/adapter-compatibility.trx
-      digest: "sha256:51d1dbd2d785eb726191d4479378c71cf024baac0fa6b43b762667b61a07d6a2"
+      digest: "sha256:c97a26385805cd697ee8e57d2ddab8522d92b8d67e3b284c9b658d48607c9d04"
       digestContract: exact-bytes-v1
       outcome: passed
-      passed: 20
+      passed: 285
       failed: 0
       skipped: 0
     notes: [The new module is additive and existing ElmishAdapter callers and tests remain unchanged.]
@@ -1153,7 +1153,7 @@ evidence:
     synthetic: false
     observedRun:
       source: work/1256-transition-aware-elmish-host-bridge/test-results/issue-1256.trx
-      digest: "sha256:6634cf746822f2ea4f0c76d5f89504268d20438dca78025db267e7ed3928508e"
+      digest: "sha256:52dc51aeb234b75f968d7d642c88e50d7a1876fe74ec8cb52435dd7943090337"
       digestContract: exact-bytes-v1
       outcome: passed
       passed: 6
@@ -1171,24 +1171,22 @@ evidence:
         maxP95Ms: 16
         maxP99Ms: 32
         maxCatchUpFrames: 0
-        structuralCostBudgets: ["renderer-task-max-ms<=16", "dropped-frames<=0"]
+        structuralCostBudgets: ["dropped-frames<=0", "renderer-task-max-ms<=16"]
         requiredCapability: production-fable-react-chromium
         liveCompositorRequired: true
-        evidenceRefs: [FR-009, DEC-004]
+        evidenceRefs: [DEC-004, FR-009]
       targetFps: 60
       workloadIds: [workspace-transition-production]
       stressWorkloadIds: []
       workloadDefinitionDigests: ["workspace-transition-production=sha256:a49fc53e890dc93961e68d821c6b680a7f10f1f8d1aadd2cc96787cdbdd73acb"]
       currencyToken: "implementation-sha256:492e4f79c7b25390fac735408e8891497a068bad7a94f3e30590f28e3a98734e"
-      capturedAfterUtc: "2026-08-22T00:00:00Z"
+      capturedAfterUtc: "2026-08-22T05:05:46.997Z"
       maxP95Ms: 16
       maxP99Ms: 32
       maxCatchUpFrames: 0
       measurementScope: workspace-transition-production
       requiredCapability: production-fable-react-chromium
       liveCompositorRequired: true
-    notes:
-      - "The committed production artifact measures immutable source commit 40b863efe0b3d2cba7ff3f7648f31d6c8f541e7c and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."
-      - "The filed scale remains exactly 1200 rendered workspace-row layout units. Each row is one visible data-workspace-row element carrying index/score data and an accessible label; redundant nested spans are not additional workload rows or semantics. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size."
+    notes: ["The filed scale remains exactly 1200 rendered workspace-row layout units. Every visible row retains its index/score data, accessible label, 20 px height, and six-column grid placement while redundant per-row flex, justify, and content-containment formatting contexts are removed. Every measured journey resets to mounted Editor outside tracing and every one of 20 traceRuns must independently retain frame/compositor evidence, zero drops, and a bounded equal ledger size.", "The repair-phase production artifact measures immutable successor source commit 0a13aea123864ea560850eba281b218050ae1844 and binds its git tree, implementation, release metadata, template Elmish tree, and production build digests; the final evidence commit is not claimed as that measured source commit and requires a separate exact-GITHUB_SHA hosted execution."]
 lifecycleNotes:
   - "Next lifecycle action: verify."

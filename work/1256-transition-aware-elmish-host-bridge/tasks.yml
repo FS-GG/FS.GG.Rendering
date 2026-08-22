@@ -13,7 +13,7 @@ work:
 sources:
   - label: spec
     path: work/1256-transition-aware-elmish-host-bridge/spec.md
-    digest: 7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c
+    digest: a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00
     schemaVersion: 1
   - label: clarifications
     path: work/1256-transition-aware-elmish-host-bridge/clarifications.md
@@ -21,11 +21,11 @@ sources:
     schemaVersion: 1
   - label: checklist
     path: work/1256-transition-aware-elmish-host-bridge/checklist.md
-    digest: 73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e
+    digest: c1bc4c93bb4a22e25a8d8499f81aad0696794d1177a93ffac669d8b80227f7f3
     schemaVersion: 1
   - label: plan
     path: work/1256-transition-aware-elmish-host-bridge/plan.md
-    digest: ba499ee7c3c1da93e58df13889ddfc819109b5394968f17b0f3b5fd069e8d0d6
+    digest: 1901cc6e2b4bd7e9bd30e5110aa3fd3f5753fdc6c762764c67a78d37f74344f7
     schemaVersion: 1
 tasks:
   - id: T001

@@ -11,7 +11,7 @@
       "kind": "workModel",
       "digest": {
         "algorithm": "sha256",
-        "value": "fa58f39a15740f84c9d04c485d797e4d9c9997cf76b8f2526af8367da85cd1f7"
+        "value": "e2af5fbe3526881ca6bc4d04f19f15a017f53439179174f5e11d4c25ca719754"
       },
       "schemaVersion": 1,
       "schemaStatus": "current"
@@ -617,5 +617,16 @@
       "kind": "skills"
     }
   ],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "id": "agents.staleGeneratedGuidance",
+      "severity": "warning",
+      "artifact": "readiness/1256-transition-aware-elmish-host-bridge/agent-commands/codex/guidance.json",
+      "message": "Generated agent guidance for target \u0027codex\u0027 no longer matches the current normalized work model.",
+      "correction": "Regenerate agent guidance so the generated view matches the current work model.",
+      "relatedIds": [
+        "codex"
+      ]
+    }
+  ]
 }

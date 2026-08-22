@@ -33,10 +33,7 @@ h1 {
 }
 
 .workspace-row {
-  display: flex;
-  justify-content: space-between;
   min-height: 18px;
   padding: 1px 4px;
   background: #e7ecf4;
-  contain: content;
 }

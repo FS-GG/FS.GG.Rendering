@@ -128,6 +128,30 @@ async function resetTransitionJourney() {
   };
 }
 
+function inspectWorkspaceRows() {
+  const grid = document.querySelector(".workspace-grid");
+  const rows = [...document.querySelectorAll("[data-workspace-row]")];
+  const geometry = rows.map((row) => row.getBoundingClientRect());
+  const semantics = rows.every((row, index) => {
+    const score = (index * 17) % 101;
+    return row.tagName === "DIV"
+      && row.dataset.index === `${index}`
+      && row.dataset.score === `${score}`
+      && row.getAttribute("aria-label") === `Simulate row ${index}, score ${score}`;
+  });
+
+  return {
+    count: rows.length,
+    semantics,
+    visible: geometry.every((bounds) => bounds.width > 0 && bounds.height === 20),
+    columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 0,
+    distinctColumnPositions: new Set(geometry.map((bounds) => bounds.x)).size,
+    widthSpread: geometry.length
+      ? Math.max(...geometry.map((bounds) => bounds.width)) - Math.min(...geometry.map((bounds) => bounds.width))
+      : Number.POSITIVE_INFINITY,
+  };
+}
+
 async function runTransitionJourney(run) {
   const mark = `fsgg-transition-${run}`;
   performance.mark(`${mark}-start`);
@@ -303,5 +327,6 @@ function App() {
 
 window.runTransitionJourney = runTransitionJourney;
 window.resetTransitionJourney = resetTransitionJourney;
+window.inspectWorkspaceRows = inspectWorkspaceRows;
 window.transitionHostReady = true;
 createRoot(document.getElementById("root")).render(<App />);

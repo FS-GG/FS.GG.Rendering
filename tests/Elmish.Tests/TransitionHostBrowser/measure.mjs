@@ -138,6 +138,7 @@ page.on("pageerror", (error) => consoleErrors.push(error.stack || error.message)
 const runResults = [];
 const traceDigests = [];
 const traceSummaries = [];
+let rowContract;
 
 if (traceDirectory) mkdirSync(traceDirectory, { recursive: true });
 
@@ -207,6 +208,18 @@ try {
     runResults.push(result);
     traceDigests.push(sha256(traceText));
     traceSummaries.push(traceSummary);
+  }
+
+  rowContract = await page.evaluate(() => window.inspectWorkspaceRows());
+  if (
+    rowContract.count !== workload.maximumExpectedScale.workspaceRows
+    || !rowContract.semantics
+    || !rowContract.visible
+    || rowContract.columns !== 6
+    || rowContract.distinctColumnPositions !== 6
+    || rowContract.widthSpread > 1
+  ) {
+    throw new Error(`Rendered row semantics/geometry drifted: ${JSON.stringify(rowContract)}`);
   }
 } finally {
   await browser.close();
@@ -324,6 +337,7 @@ const summary = {
     unsafeInputsSuppressed: runResults.every((run) => run.suppressEffects === 4),
     deterministicLedgerObserved: runResults.every((run) => run.ledgerEntries > 0),
     independentLedgerBounded: runResults.every((run) => run.ledgerEntries === runResults[0].ledgerEntries),
+    semanticRows: rowContract,
   },
 };
 

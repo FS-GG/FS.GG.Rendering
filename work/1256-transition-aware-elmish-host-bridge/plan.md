@@ -16,9 +16,9 @@ publicOrToolFacingImpact: true
 Prose status: planned
 
 ## Source Snapshot
-- spec: work/1256-transition-aware-elmish-host-bridge/spec.md sha256:7ea2b641990c0ade9d97e0913fc3eb4a1b7a1d3c904f6f87b6320d9db517d71c schemaVersion:1
+- spec: work/1256-transition-aware-elmish-host-bridge/spec.md sha256:a3d8e5a00cdbbce898c1a42a590ad97c7917f120abe2c437dd93f35a7e2d9f00 schemaVersion:1
 - clarifications: work/1256-transition-aware-elmish-host-bridge/clarifications.md sha256:bfa19139c47cb447e698341bc48e3053eaeb6999624c4889202162c1c5375a5b schemaVersion:1
-- checklist: work/1256-transition-aware-elmish-host-bridge/checklist.md sha256:73873495b03babb5b60b63468cfa5c2bb5d530c737e9410dd0b5b9aa9bea248e schemaVersion:1
+- checklist: work/1256-transition-aware-elmish-host-bridge/checklist.md sha256:c1bc4c93bb4a22e25a8d8499f81aad0696794d1177a93ffac669d8b80227f7f3 schemaVersion:1
 
 ## Plan Scope
 - Work item 1256-transition-aware-elmish-host-bridge is planned from the current specification, clarification, and checklist facts.
@@ -60,7 +60,7 @@ Prose status: planned
 
 ## Contract Impact
 - PC-001 [PD-001] [PD-002] [PD-003] publicApi: `Elmish.fsi` adds opaque generation/state plus typed request, token, response, input, message, effect, ledger, observer, `init`, and `update` contracts under `TransitionHost`; no existing signature changes.
-- PC-002 [PD-009] performanceEvidence: `workspace-transition-workload.json` is the immutable workload definition and the production browser summary carries source/workload/build digests, environment/capability, raw renderer-task/frame samples, recomputed percentiles, dropped frames, and the hard verdict.
+- PC-002 [PD-009] performanceEvidence: `workspace-transition-workload.json` is the immutable workload definition and the production browser summary carries source/workload/build digests, environment/capability, raw renderer-task/frame samples, recomputed percentiles, dropped frames, the hard verdict, and a row-contract receipt proving all 1,200 visible semantic elements retain their index/score labels and fixed six-column geometry.
 - PC-003 [PD-010] templateProjection: `template/fragments/elmish/README.md` teaches the production host transaction, delayed-response re-entry, layout-effect acknowledgement, controlled input, input capture, visibility, focus/ARIA, and exact consumer handoff.
 - PC-004 [PD-010] releaseContract: the coherent FS.GG.UI set is source-bound to one merge/release head and the public-contract registry projection is refreshed when its live generator reports a change.
 
@@ -69,7 +69,7 @@ Prose status: planned
 - VO-002 [PD-004] [PD-007] [PC-001] semanticTest: Tests prove pointer release/global suppression and synchronous controlled text/file/blur preservation, including negative old-DOM dispatch attempts.
 - VO-003 [PD-005] [PD-006] [PC-001] semanticTest: Tests prove exactly one pending focus target, committed focus/ARIA restoration, hidden withholding, acknowledgement rejection, and one resume convergence request.
 - VO-004 [PD-008] [PC-001] semanticTest: A golden ledger assertion pins the complete authoritative message/effect/commit sequence and a replay equality property proves deterministic ordering.
-- VO-005 [PD-009] [PC-002] productionBrowser: Compile the bridge source through Fable, build production React, run Chromium trace qualification for the exact workload digest, and independently recompute max/p95/p99/drop verdict from raw samples.
+- VO-005 [PD-009] [PC-002] productionBrowser: Compile the bridge source through Fable, build production React, run Chromium trace qualification for the exact workload digest, independently recompute max/p95/p99/drop verdict from raw samples, and assert the 1,200 row elements retain exact index/score accessible semantics plus visible 20 px six-column geometry.
 - VO-006 [PD-009] [PC-002] gateInversion: Mutate the hard renderer-task threshold to make the production fixture red, then restore 16 ms and record both command outcomes without weakening p95/p99/drop gates.
 - VO-007 [PD-010] [PC-001] publicSurface: Build Release, refresh the Elmish surface baseline, and prove the public-surface and package-consumer gates pass with no untracked API drift.
 - VO-008 [PD-010] [PC-003] generatedProduct: Prove the template fragment names the additive API and production host timing/controlled-input rules, and its fixture remains source-bound to the shipped bridge.
@@ -85,7 +85,7 @@ Prose status: planned
 - maxP95Ms: 16
 - maxP99Ms: 32
 - maxCatchUpFrames: 0
-- structuralCostBudgets: [renderer-task-max-ms<=16, dropped-frames<=0]
+- structuralCostBudgets: [dropped-frames<=0, renderer-task-max-ms<=16]
 - requiredCapability: production-fable-react-chromium
 - liveCompositorRequired: true
 
