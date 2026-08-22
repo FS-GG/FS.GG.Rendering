@@ -55,6 +55,10 @@ let private runInWithEnv (workDir: string) (env: (string * string) list) (exe: s
     psi.Environment.Remove "FS_GG_RUN_VERSION_COHERENCE_FEED" |> ignore
     psi.Environment.Remove "FS_GG_VERSION_COHERENCE_FEED_URL" |> ignore
     psi.Environment.Remove "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN" |> ignore
+    // A PR-base binding belongs to the real checkout only. Synthetic fixture repositories own their
+    // own ancestry and must exercise the guard's HEAD~1 fallback rather than inherit an unrelated SHA.
+    if not (Path.GetFullPath(workDir).Equals(Path.GetFullPath(root), StringComparison.Ordinal)) then
+        psi.Environment.Remove "FS_GG_VERSION_COHERENCE_BASE_SHA" |> ignore
     for (k, v) in env do
         psi.Environment.[k] <- v
     args |> List.iter psi.ArgumentList.Add
@@ -403,18 +407,22 @@ let private gitTagVersions (glob: string) (prefix: string) =
 /// invariant.
 ///
 /// A bump and the tag that publishes it cannot land atomically — the tag points at the commit carrying
-/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. `HEAD~1` is the
-/// first parent: the base branch under a `pull_request` merge-ref checkout, the previous `main` commit
-/// under a squash/merge push. Both answer "did THIS change bump it?" with no env var.
+/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. Exact-head PR
+/// checkouts supply the immutable PR base; push/main falls back to `HEAD~1`.
 ///
 /// Compares VALUES, not touched lines: this predicate waives a fail-closed assertion, so a reindent of
 /// the `<Version>` line must not silence it.
 let private bumpedInCommitUnderTest (rel: string) (element: string) =
+    let baseRevision =
+        match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA" with
+        | null | "" -> "HEAD~1"
+        | value when Regex.IsMatch(value, "^[0-9a-f]{40}$") -> value
+        | value -> failwithf "FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got %s" value
     let psi = ProcessStartInfo("git")
     psi.WorkingDirectory <- root
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
-    [ "diff"; "HEAD~1"; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
+    [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
     let ec, out =
         match Process.Start psi with
         | null -> failwith "git diff could not be started"
@@ -424,7 +432,7 @@ let private bumpedInCommitUnderTest (rel: string) (element: string) =
             p.WaitForExit()
             p.ExitCode, o
     if ec <> 0 then
-        failwithf "git diff HEAD~1 HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" rel
+        failwithf "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" baseRevision rel
     let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
     let valuesOn (sign: char) =
         let header = String(sign, 3)

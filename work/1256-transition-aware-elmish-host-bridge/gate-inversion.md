@@ -91,3 +91,19 @@ reconciles the same
 identical element objects, score values, and accessible-label strings is removed. Three restored local
 20-journey measurements passed independently at max 6.117/6.215/6.287 ms with zero drops, while every
 run retained positive frame/compositor evidence and the 1,200-row semantic/geometry receipt.
+
+## Exact-head release-base control
+
+Hosted exact-head run 32554210957 passed the performance contract but exposed a release-gate conflict:
+the gate checks out the immutable PR head, while version coherence still compared only `HEAD~1..HEAD`.
+Because the 0.27.0 bump precedes the final evidence commits, that comparison falsely classified the release
+as bump-less and demanded tags that cannot exist before merge. The gate now supplies the immutable PR base
+SHA to both the script and its independent Package.Tests mirror; push/main retains the `HEAD~1` fallback.
+The value must be a full lowercase SHA and resolve as a commit or the guard fails closed.
+
+The multi-commit subject control ran the unchanged Feature209 test list with the immediate parent
+`94fcf1117f694318fe0b9aee1421e1a493715165` as its explicit base. It exited 1 with `pin-no-tag` and
+`pkg-no-template-tag`, reproducing the hosted false classification. Binding the actual PR base
+`1154d053d316e27e39e9aa60da5d0df8f87a1270` made all 24 focused Feature209 tests pass and emitted the
+three ordered 0.27.0 `RELEASE-PENDING` tags. A malformed explicit base independently exits 2 with
+`GUARD ERROR`; the repair cannot gain a waiver from missing or ambiguous ancestry.
