@@ -18,6 +18,9 @@ open FS.GG.TestSupport
 
 let private root = RepositoryRoot.value
 let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
+let private releaseWindowSource = File.ReadAllText(repo "scripts/lib/ReleaseWindow.fsx")
+let private apiMirrorSource = File.ReadAllText(repo "scripts/refresh-api-surface-mirror.fsx")
+let private gateSource = File.ReadAllText(repo ".github/workflows/gate.yml")
 
 /// Run `exe args` in `workDir`; return its exit code and stdout+stderr merged. Used by the exit-code
 /// contract tests and the #514 fixture, which invoke the real guard script against a throwaway root.
@@ -526,6 +529,28 @@ let private templateExpected =
 [<Tests>]
 let feature209VersionCoherenceTests =
     testList "Feature209 version coherence (structural verdict mirror)" [
+
+        test "exact-head release window binds the PR base and consumes the packed local feed" {
+            Expect.stringContains
+                releaseWindowSource
+                "FS_GG_VERSION_COHERENCE_BASE_SHA"
+                "the API-mirror release classifier must share the exact-head PR-base input"
+
+            Expect.stringContains
+                releaseWindowSource
+                "\"rev-parse\"; \"--verify\"; baseRevision + \"^{commit}\""
+                "the release classifier must reject an unresolvable explicit base"
+
+            Expect.stringContains
+                apiMirrorSource
+                "FS_GG_PRODUCT_LOCAL_FEED is required during the exact-head release window"
+                "an unpublished pin must fail closed when the exact-head packed feed is absent"
+
+            Expect.stringContains
+                gateSource
+                "FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}"
+                "the API-surface step must receive the feed packed earlier in the same required job"
+        }
 
         // T008 — comparator self-check on the exact spec edge pairs (preview-aware, not string compare).
         test "preview-aware comparator orders the spec edge pairs" {

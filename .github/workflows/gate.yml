@@ -466,6 +466,8 @@ jobs:
       #     key-wiring surface shipped untaught for the whole #912 window. Stale waivers red here too.
       # The script prints which failure it is to stderr; the annotation below covers all three modes.
       - name: API-surface mirror drift + coverage (generated from the pin)
+        env:
+          FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}
         run: |
           set -euo pipefail
           if ! dotnet fsi scripts/refresh-api-surface-mirror.fsx --check; then

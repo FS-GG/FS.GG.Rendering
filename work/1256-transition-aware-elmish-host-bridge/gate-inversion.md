@@ -151,3 +151,22 @@ pre-trace collection call is the subject inversion demonstrated by hosted run 32
 hard-max/drop gate exits 1 on accumulated incremental marking. With the collection restored, three local
 20-journey runs passed at max 3.565/3.943/7.035 ms, p95 at most 2.662 ms, p99 at most 3.599 ms, and zero
 drops, while retaining all twenty raw traces and reporting twenty-one successful pre-trace collections.
+
+## Exact-head API-mirror release feed
+
+Exact-head hosted run 32556618838 passed the production performance gate (artifact 9471721058) and then
+failed the ordinary API-surface mirror gate: the mirror's release-window helper still compared only the
+last evidence commit to its parent, so it did not recognize the earlier 0.27.0 bump and tried to restore
+the unpublished packages from nuget.org. The exact-head workflow now passes the immutable PR base to the
+shared release-window classifier and supplies the runner-local feed already packed earlier in that job.
+During the bounded release window, the mirror requires an absolute existing feed containing every
+expected package at the pinned version, restores those nupkgs into a unique package directory, and reads
+their packed `api-surface/`; external pins continue to come from nuget.org. Outside that window the local
+feed is ignored, preserving the published-pin authority for ordinary source changes.
+
+With the actual PR base and exact-head 0.27.0 feed, the unchanged mirror check passed with 78 files from
+21 pinned packages and zero rewrites. The multi-commit subject inversion supplied the immediate parent
+instead: even with the same local feed present, the release-window classifier returned steady state,
+ignored the local feed, and the unchanged check exited 1 on NU1102. Missing feed, malformed base, and an
+unresolvable full SHA independently exit 1 with explicit fail-closed diagnostics. The focused independent
+Feature209 mirror now runs 25/25 and pins both the validated base binding and workflow feed handoff.
