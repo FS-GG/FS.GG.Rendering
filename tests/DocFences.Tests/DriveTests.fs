@@ -5,7 +5,8 @@ open FS.GG.DocFences
 
 /// THE FULL-CORPUS DRIVE (spec 255, T010) — ACTIVE over the explicitly self-contained corpus.
 ///
-/// Rendering#1050 re-audited the live published-pin corpus: 84 fences across 16 documents, and no whole
+/// Rendering#1050 established the whole-corpus model; through Rendering#1256 the re-audited live
+/// published-pin corpus contains 94 fences across 16 documents, and no whole
 /// document compiled in isolation. Per-document concatenation still cannot supply reader-owned values and
 /// leaks bindings between examples; a shared product prelude would invent Model/Msg/host contracts and can
 /// manufacture false greens. The supported model therefore keeps precise isolated modules and classifies

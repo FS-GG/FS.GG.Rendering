@@ -72,6 +72,10 @@ jobs:
         # closed (exit 2). fetch-depth: 0 makes the snapshot tags visible.
         with:
           fetch-depth: 0
+          # Pull-request workflows otherwise check out GitHub's synthetic merge ref. The production
+          # Chromium receipt is an exact-candidate acceptance artifact, so measure the immutable PR
+          # head itself and pass that same identity to the fail-closed assertion below.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       # SDK pinning decision: docs/ci/cadence-map.md §1 (no global.json in repo).
       - name: Set up .NET
@@ -276,6 +280,7 @@ jobs:
       - name: Default local tier (deterministic, slnx-derived)
         env:
           FS_GG_PRODUCT_LOCAL_FEED: ${{ steps.package-tests-feed.outputs.feed }}
+          FS_GG_EXPECTED_GIT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           for proj in $(grep -oE 'tests/[^"]+\.Tests\.fsproj' FS.GG.Rendering.slnx | sort -u); do

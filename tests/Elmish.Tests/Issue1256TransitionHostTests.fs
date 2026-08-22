@@ -449,12 +449,28 @@ let transitionHostTests =
                   use document = JsonDocument.Parse(File.ReadAllText artifact)
                   let root = document.RootElement
                   let measurement = root.GetProperty "measurement"
+
                   let candidateHead =
                       root.GetProperty("candidate").GetProperty("gitHead").GetString()
                       |> Option.ofObj
 
+                  let repositoryRoot = Path.GetFullPath(Path.Combine(fixture, "..", "..", ".."))
+
+                  let expectedCandidateHead =
+                      match Environment.GetEnvironmentVariable "FS_GG_EXPECTED_GIT_HEAD" with
+                      | null
+                      | "" ->
+                          runCommand repositoryRoot "git" [ "rev-parse"; "HEAD" ]
+                          |> fun value -> value.Trim()
+                      | value -> value.Trim()
+
                   Expect.isSome candidateHead "the production artifact must bind an exact candidate commit"
                   Expect.equal candidateHead.Value.Length 40 "the candidate commit binding is a full git SHA"
+
+                  Expect.equal
+                      candidateHead.Value
+                      expectedCandidateHead
+                      "the production artifact must bind the exact checkout/PR head, never a synthetic merge ref"
 
                   Expect.equal (root.GetProperty("result").GetString()) "pass" transcript
                   Expect.isLessThanOrEqual (measurement.GetProperty("rendererTaskMaxMs").GetDouble()) 16.0 transcript
