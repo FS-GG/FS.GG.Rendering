@@ -15,6 +15,9 @@ name: kit-materialize
 on:
   pull_request:
     branches: [main]
+    # Delivery refreshes the exact-head fsgg:pr-authorization marker in the PR body.
+    # Re-run the receiver with that edited payload instead of retaining the pre-marker body.
+    types: [opened, synchronize, reopened, edited]
   # THE ON-DEMAND REPAIR BUTTON (FS-GG/.github#1845, #1853).
   #
   # Actions -> kit-materialize -> Run workflow, on any branch, by anyone with WRITE access.
