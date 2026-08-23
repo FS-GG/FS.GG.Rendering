@@ -141,8 +141,9 @@ jobs:
 
       # A green push step proves the request was accepted, not that what landed is what was meant.
       # Download both feeds' copies of the exact version and compare the PAYLOAD digest — excluding
-      # the signature and the core-properties part, which each feed rewrites — then re-derive one
-      # body's digest from the downloaded artifact and check it against the committed manifest.
+      # the signature and the core-properties part, which each feed rewrites — then re-derive every
+      # declared skill file from the downloaded artifact and check the closed set against the
+      # committed schema-v2 manifest.
       - name: Verify the published bytes on both feeds
         if: steps.v.outputs.push == 'true'
         env:
@@ -187,30 +188,46 @@ jobs:
           echo "GitHub Packages payload sha256: $b"
           [ "$a" = "$b" ] || { echo "::error::the two feeds served DIFFERENT payloads for $VERSION"; exit 1; }
 
-          # Re-derive every body's digest from the PUBLISHED artifact and check it against the
-          # committed manifest — acceptance 2 of FS.GG.Rendering#1240, made against the bytes a
-          # consumer actually receives rather than against the working tree.
+          # Re-derive every declared file from the PUBLISHED artifact and check the exact closed
+          # set against the committed manifest, made against bytes a consumer actually receives.
           pub="$(mktemp -d)"
           unzip -q "$work/nugetorg.nupkg" "rendering-skills/*" -d "$pub"
           python3 - "$pub/rendering-skills" template/skill-manifest/skill-manifest.json <<'PY'
           import hashlib, json, os, sys
           root, manifest_path = sys.argv[1], sys.argv[2]
-          rows = [s for s in json.load(open(manifest_path))["skills"] if s.get("scope") == "product"]
+          manifest = json.load(open(manifest_path))
+          if manifest.get("schemaVersion") != 2:
+              raise SystemExit("::error::published verification requires schema-v2 manifest")
+          rows = [s for s in manifest["skills"] if s.get("scope") == "product"]
           bad = []
           for row in rows:
-              body = os.path.join(root, "skills", row["id"], "SKILL.md")
-              if not os.path.isfile(body):
-                  bad.append(f"{row['id']}: absent from the published package"); continue
-              raw = open(body, "rb").read()
-              if raw.startswith(b"\xef\xbb\xbf"):
-                  raw = raw[3:]
-              got = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
-              if got != row["sha256"]:
-                  bad.append(f"{row['id']}: published {got} != manifest {row['sha256']}")
+              declared = row.get("files")
+              if not isinstance(declared, list) or not declared:
+                  bad.append(f"{row['id']}: missing files declaration"); continue
+              expected = {entry.get("path"): entry.get("sha256") for entry in declared}
+              skill_root = os.path.join(root, "skills", row["id"])
+              actual = set()
+              for current, _, names in os.walk(skill_root):
+                  for name in names:
+                      actual.add(os.path.relpath(os.path.join(current, name), skill_root).replace(os.sep, "/"))
+              if actual != set(expected):
+                  bad.append(f"{row['id']}: published files {sorted(actual)} != declared {sorted(expected)}")
+              for relative, wanted in expected.items():
+                  path = os.path.join(skill_root, relative)
+                  if not os.path.isfile(path):
+                      continue
+                  raw = open(path, "rb").read()
+                  if raw.startswith(b"\xef\xbb\xbf"):
+                      raw = raw[3:]
+                  got = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
+                  if got != wanted:
+                      bad.append(f"{row['id']}/{relative}: published {got} != manifest {wanted}")
+              if expected.get("SKILL.md") != row.get("sha256"):
+                  bad.append(f"{row['id']}: legacy body sha256 must equal files/SKILL.md")
           if bad:
               print("::error::published bytes do not match the manifest:\n  " + "\n  ".join(bad))
               raise SystemExit(1)
-          print(f"published bytes verified: {len(rows)} of {len(rows)} bodies match the manifest sha256")
+          print(f"published bytes verified: {len(rows)} product skills have complete declared file sets")
           PY
 
           {
@@ -218,5 +235,5 @@ jobs:
             echo ""
             echo "- nuget.org: https://www.nuget.org/packages/FS.GG.Rendering.Skills/$VERSION"
             echo "- payload sha256 (both feeds): \`$a\`"
-            echo "- every declared body re-verified against the committed manifest from published bytes"
+            echo "- every declared skill file re-verified against the committed schema-v2 manifest from published bytes"
           } >> "$GITHUB_STEP_SUMMARY"

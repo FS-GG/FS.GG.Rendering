@@ -1,0 +1,173 @@
+schemaVersion: 1
+workId: 1261-rendering-skills-v2-manifest
+stage: evidence
+status: evidenceReady
+sourceSpec: work/1261-rendering-skills-v2-manifest/spec.md
+sourceClarifications: work/1261-rendering-skills-v2-manifest/clarifications.md
+sourceChecklist: work/1261-rendering-skills-v2-manifest/checklist.md
+sourcePlan: work/1261-rendering-skills-v2-manifest/plan.md
+sourceTasks: work/1261-rendering-skills-v2-manifest/tasks.yml
+sourceAnalysis: readiness/1261-rendering-skills-v2-manifest/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/1261-rendering-skills-v2-manifest/analysis.json
+    digest: a7c9f78300818d0c3259ddfa7131caab83c7a5606cf4195b28ecc7a21e35ff0e
+    schemaVersion: 1
+  - label: checklist
+    path: work/1261-rendering-skills-v2-manifest/checklist.md
+    digest: 21671187802ad010d077a1a4e10c562c0054fd0a3ab61594e836813957853e63
+    schemaVersion: 1
+  - label: clarifications
+    path: work/1261-rendering-skills-v2-manifest/clarifications.md
+    digest: 5b4d59fb5f2ab0d35d6ff6cebb05537c04127d5471bc29d064f78158ca70e26f
+    schemaVersion: 1
+  - label: plan
+    path: work/1261-rendering-skills-v2-manifest/plan.md
+    digest: 52dc5af8873d449441646c49cfc08bb55f2d493345dd19b69ea03f2fb309fd40
+    schemaVersion: 1
+  - label: spec
+    path: work/1261-rendering-skills-v2-manifest/spec.md
+    digest: d32725c81a706d92cec74afb5ba3ea5ad1b39b6db0f35b38a665fcee2581adc3
+    schemaVersion: 1
+  - label: tasks
+    path: work/1261-rendering-skills-v2-manifest/tasks.yml
+    digest: 5de2ea430573fa67f8737896c98c1b1f669780afef832320312d6ff10d7c3d9f
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml
+      digest: "sha256:bb6487755d1492f7be93330fbe08c4b7199138b94d7d56911bd016e8b11668c5"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: [Producer gate passes and its sidecar mutation observes red.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV002]
+    artifacts: [src/FS.GG.Rendering.Skills/stage-skills.py, work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml
+      digest: "sha256:bb6487755d1492f7be93330fbe08c4b7199138b94d7d56911bd016e8b11668c5"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: [Staging rejects missing, altered, extra, or duplicate file declarations.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV003]
+    artifacts: [src/FS.GG.Rendering.Skills/verify-package.sh, work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml
+      digest: "sha256:bb6487755d1492f7be93330fbe08c4b7199138b94d7d56911bd016e8b11668c5"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: [Packed candidate closes every declared file and is consumed by built SDD PR 899.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV004]
+    artifacts: [template/skill-manifest/skill-manifest.json, work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml
+      digest: "sha256:bb6487755d1492f7be93330fbe08c4b7199138b94d7d56911bd016e8b11668c5"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: [Schema v2 is additive and retains canonical body digest compatibility.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: [readiness/1261-rendering-skills-v2-manifest/work-model.json, work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml]
+    sourceRefs:
+      - kind: verification
+        path: src/FS.GG.Rendering.Skills/verify-package.sh
+    result: pass
+    synthetic: false
+    observedRun:
+      source: work/1261-rendering-skills-v2-manifest/test-results/rendering-skills-v2.junit.xml
+      digest: "sha256:bb6487755d1492f7be93330fbe08c4b7199138b94d7d56911bd016e8b11668c5"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 5
+      failed: 0
+      skipped: 0
+    notes: [Lifecycle generated views were refreshed after the implemented contract.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="verify-package" tests="5" failures="0" errors="0" skipped="0">
+    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="1. stage + derive parity (all product rows staged and content-addressed)" />
+    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="2. a newly added product row is staged from the manifest, even sourced out-of-tree" />
+    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="3. pack + content assert (bodies AND their sidecars)" />
+    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="4. content-addressed: every PACKED declared byte matches its schema-v2 manifest" />
+    <testcase classname="FS.GG.Rendering.Skills.verify-package" name="5. a tampered byte is REJECTED by that same verify (fail-loud)" />
+  </testsuite>
+</testsuites>

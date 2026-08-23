@@ -154,15 +154,20 @@ cp "$HERE/stage-skills.py" "$fixture/src/FS.GG.Rendering.Skills/stage-skills.py"
 printf 'new row body\n' > "$fixture/template/somewhere-else/new-row/skill/SKILL.md"
 printf 'a sidecar the body depends on\n' > "$fixture/template/somewhere-else/new-row/skill/notes/detail.md"
 new_sha="$(digest "$fixture/template/somewhere-else/new-row/skill/SKILL.md")"
-python3 - "$fixture/template/skill-manifest/skill-manifest.json" "$new_sha" <<'PY'
+new_sidecar_sha="$(digest "$fixture/template/somewhere-else/new-row/skill/notes/detail.md")"
+python3 - "$fixture/template/skill-manifest/skill-manifest.json" "$new_sha" "$new_sidecar_sha" <<'PY'
 import json, sys
-doc = {"schemaVersion": 1, "skills": [{
+doc = {"schemaVersion": 2, "skills": [{
     "id": "fs-gg-new-row",
     "scope": "product",
     "sha256": sys.argv[2],
     "resolvablePath": ".agents/skills/fs-gg-new-row/SKILL.md",
     "materializes-when": "always",
     "supplied-by": "template/somewhere-else/new-row/skill/",
+    "files": [
+        {"path": "SKILL.md", "sha256": sys.argv[2]},
+        {"path": "notes/detail.md", "sha256": sys.argv[3]},
+    ],
 }]}
 with open(sys.argv[1], "w") as handle:
     json.dump(doc, handle)
@@ -196,38 +201,58 @@ for row in "${DELIVERED_ROWS[@]}"; do
 done
 step_ok "nupkg carries the manifest + every delivered SKILL.md + its sidecars + the handle + README"
 
-# content_addressed_ok <content-dir>: returns 0 iff every delivered SKILL.md under <content-dir>/skills/
-# digests to its manifest sha256; non-zero (naming the first mismatch) otherwise. This IS the check a
-# consuming materializer performs at scaffold time — the load-bearing content-addressed verify — so the
-# gate both asserts it PASSES on the real package (step 4) and asserts it FIRES on a tampered byte
-# (step 5). Asserting the digest merely "changed" would be tautological; asserting this function's
-# VERDICT flips is what proves the verify.
-content_addressed_ok() {
-  local dir="$1" row id want got
-  for row in "${DELIVERED_ROWS[@]}"; do
-    id="${row%%$'\t'*}"; local rest="${row#*$'\t'}"; want="${rest%%$'\t'*}"
-    got="$(digest "$dir/skills/$id/SKILL.md")" || return 1
-    [ "$got" = "$want" ] || { echo "      content-address mismatch: $id sha256 $got != manifest $want" >&2; return 1; }
-  done
-  return 0
+# manifest_files_ok <content-dir>: the schema-v2 closed-set verifier used by the consumer route.
+# Every declared file must exist with its canonical text digest, SKILL.md must retain the legacy row
+# digest, and every packed skill directory must contain no undeclared sidecar.
+manifest_files_ok() {
+  python3 - "$1" <<'PY'
+import hashlib, json, os, sys
+root = sys.argv[1]
+doc = json.load(open(os.path.join(root, "skill-manifest.json"), encoding="utf-8"))
+if doc.get("schemaVersion") != 2:
+    raise SystemExit("schemaVersion is not 2")
+for row in doc.get("skills", []):
+    if row.get("scope") != "product":
+        continue
+    files = row.get("files")
+    if not isinstance(files, list) or not files:
+        raise SystemExit(f"{row.get('id')}: missing files")
+    declared = {f.get("path"): f.get("sha256") for f in files if isinstance(f, dict)}
+    if len(declared) != len(files) or "SKILL.md" not in declared or declared["SKILL.md"] != row.get("sha256"):
+        raise SystemExit(f"{row.get('id')}: invalid closed file set")
+    directory = os.path.join(root, "skills", row["id"])
+    actual = set()
+    for base, _, names in os.walk(directory):
+        for name in names:
+            actual.add(os.path.relpath(os.path.join(base, name), directory).replace(os.sep, "/"))
+    if actual != set(declared):
+        raise SystemExit(f"{row['id']}: declared set differs from packed bytes")
+    for path, want in declared.items():
+        raw = open(os.path.join(directory, path), "rb").read()
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raw = raw[3:]
+        got = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
+        if got != want:
+            raise SystemExit(f"{row['id']}/{path}: digest mismatch")
+PY
 }
 
-step "4. content-addressed: every PACKED byte matches its manifest sha256"
+step "4. content-addressed: every PACKED declared byte matches its schema-v2 manifest"
 unzip -q "$nupkg" "rendering-skills/*" -d "$WORK/unpacked"
 diff -q "$MANIFEST" "$WORK/unpacked/rendering-skills/skill-manifest.json" >/dev/null \
   || fail "packed rendering-skills/skill-manifest.json is not byte-identical to the committed manifest"
-content_addressed_ok "$WORK/unpacked/rendering-skills" \
-  || fail "a packed SKILL.md does not match its manifest sha256 (the ADR-0014 record)"
-step_ok "every packed SKILL.md verifies against the manifest — the ADR-0014 record a consumer uses"
+manifest_files_ok "$WORK/unpacked/rendering-skills" \
+  || fail "a packed declared skill file does not match the schema-v2 manifest"
+step_ok "every packed declared file verifies against the schema-v2 manifest"
 
 step "5. a tampered byte is REJECTED by that same verify (fail-loud)"
 cp -r "$WORK/unpacked/rendering-skills" "$WORK/tampered"
 first_id="${DELIVERED_ROWS[0]%%$'\t'*}"
-echo "CORRUPT" >> "$WORK/tampered/skills/$first_id/SKILL.md"     # bytes drift from the recorded sha256
-if content_addressed_ok "$WORK/tampered"; then
-  fail "the content-addressed verify PASSED against a tampered '$first_id' — it is not firing"
+echo "CORRUPT" >> "$WORK/tampered/skills/fs-gg-feedback-report/scripts/feedback-tool.fsx"
+if manifest_files_ok "$WORK/tampered"; then
+  fail "the schema-v2 verifier PASSED against a tampered feedback-report sidecar — it is not firing"
 fi
-step_ok "tampered skill '$first_id' rejected by the content-addressed verify, as required"
+step_ok "tampered feedback-report sidecar rejected by the schema-v2 verifier, as required"
 
 write_junit
 echo "verify-package: OK"
