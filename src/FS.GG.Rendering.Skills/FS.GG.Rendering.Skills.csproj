@@ -62,8 +62,9 @@
          template package. This package's contents move when a skill BODY changes, which is a
          third, independent cadence — so it carries its own number and its own `skills/v*` tag,
          and it is deliberately not a member of FS.GG.Rendering.slnx.
-         0.1.0 — first release (FS.GG.Rendering#1240). -->
-    <Version>0.1.0</Version>
+         0.1.0 — first release (FS.GG.Rendering#1240).
+         0.1.1 — schema-v2 complete per-file content record (FS.GG.Rendering#1261). -->
+    <Version>0.1.1</Version>
 
     <Description>FS.GG.Rendering's owner-authored product skill bytes (fs-gg-scene, fs-gg-symbology, fs-gg-feedback-report, …) as one versioned artifact, with template/skill-manifest/skill-manifest.json as the content-addressed record. A scaffold materializer pins it, restores it at build time, and materializes the skills into a product tree's skill roots at scaffold time — including trees the fs-gg-ui template does not create (ADR-0062, ADR-0063; ADR-0014 verify).</Description>
     <PackageTags>fsgg;rendering;skills;product;scaffold;dotnet</PackageTags>

@@ -64,7 +64,8 @@ type private ManifestEntry =
     { Id: string
       Scope: string
       Sha256: string
-      ResolvablePath: string }
+      ResolvablePath: string
+      Files: (string * string) list }
 
 let private jsonStr (e: JsonElement) : string =
     e.GetString() |> Option.ofObj |> Option.defaultValue ""
@@ -79,7 +80,10 @@ let private readManifest () =
             { Id = jsonStr (e.GetProperty "id")
               Scope = jsonStr (e.GetProperty "scope")
               Sha256 = jsonStr (e.GetProperty "sha256")
-              ResolvablePath = jsonStr (e.GetProperty "resolvablePath") } ]
+              ResolvablePath = jsonStr (e.GetProperty "resolvablePath")
+              Files =
+                  [ for file in e.GetProperty("files").EnumerateArray() do
+                      yield jsonStr (file.GetProperty "path"), jsonStr (file.GetProperty "sha256") ] } ]
     schemaVersion, entries
 
 /// Digest semantics of Fsgg.SkillMirror.sha256 / the generator: hex(SHA256(UTF8(text))).
@@ -167,14 +171,15 @@ let feature231SkillManifestTests =
         [
           // ---- G-MANIFEST ------------------------------------------------------------------
 
-          test "G-MANIFEST manifest conforms to skill-manifest schema v1 (shape, order, scope, paths)" {
+          test "G-MANIFEST manifest conforms to schema v2 complete per-file shape, order, scope, paths" {
               let schemaVersion, entries = readManifest ()
-              Expect.equal schemaVersion 1 "schemaVersion is 1 (Fsgg.Schemas.skillManifestVersion)"
+              Expect.equal schemaVersion 2 "schemaVersion is 2 for closed per-file delivery"
               Expect.equal (entries |> List.map (fun e -> e.Id)) (entries |> List.map (fun e -> e.Id) |> List.sort) "entries sorted by id (deterministic manifest)"
               for e in entries do
                   Expect.equal e.Scope "product" (sprintf "%s: provider manifest carries scope 'product' only (dev surface never ships)" e.Id)
                   Expect.equal e.ResolvablePath (sprintf ".agents/skills/%s/SKILL.md" e.Id) (sprintf "%s: resolvablePath is the provider-source-root skill path" e.Id)
                   Expect.isTrue (e.Sha256.Length = 64 && e.Sha256 |> Seq.forall (fun c -> Char.IsAsciiDigit c || (c >= 'a' && c <= 'f'))) (sprintf "%s: sha256 is 64-char lowercase hex" e.Id)
+                  Expect.isTrue (e.Files |> List.exists (fun (path, digest) -> path = "SKILL.md" && digest = e.Sha256)) (sprintf "%s: files preserves the canonical SKILL.md digest" e.Id)
           }
 
           test "G-MANIFEST digests are fresh against the canonical bodies (content-addressed, ADR-0014 §1/§3)" {
@@ -184,6 +189,14 @@ let feature231SkillManifestTests =
               for id, source in canonicalSources do
                   let body = File.ReadAllText(repositoryPath source)
                   Expect.equal (Map.find id byId).Sha256 (sha256Text body) (sprintf "%s: manifest sha256 stale vs %s — run dotnet fsi scripts/generate-skill-manifest.fsx" id source)
+                  let directory = Path.GetDirectoryName(repositoryPath source) |> Option.ofObj |> Option.defaultWith (fun () -> failwith "canonical source has no directory")
+                  let actual =
+                      Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
+                      |> Array.map (fun path ->
+                          Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/'), sha256Text (File.ReadAllText path))
+                      |> Array.sortBy fst
+                      |> Array.toList
+                  Expect.equal (Map.find id byId).Files actual (sprintf "%s: schema-v2 files closes every source byte" id)
           }
 
           test "G-MANIFEST catalog is coherent with the template.json emission rows" {

@@ -1,8 +1,8 @@
 // Feature 231 — (re)generate the fs-gg-ui product skill-manifest (ADR-0014 §Decision 1).
 //
 // Writes template/skill-manifest/skill-manifest.json: the full product-scope catalog, one
-// entry per provider skill the template can emit, each carrying the SHA256 of its canonical
-// SKILL.md body. Digest semantics match Fsgg.SkillMirror.sha256 (lowercase hex over the
+// entry per provider skill the template can emit, each carrying the legacy SHA256 of its
+// canonical SKILL.md body and a schema-v2 closed per-file digest set. Digest semantics match Fsgg.SkillMirror.sha256 (lowercase hex over the
 // UTF-8 bytes of the body TEXT, CRLF normalized to LF first — i.e.
 // hash(Encoding.UTF8.GetBytes(File.ReadAllText(path).Replace("\r\n","\n"))), so neither a BOM
 // nor a checkout's line endings enter the digest on the producing or the verifying side).
@@ -162,18 +162,32 @@ let sha256Text (body: string) : string =
     |> Array.map (fun b -> b.ToString "x2")
     |> String.concat ""
 
+let filesOf (source: string) =
+    let directory = Path.GetDirectoryName(repoPath source)
+    Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
+    |> Array.map (fun path ->
+        let relative = Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/')
+        relative, sha256Text (File.ReadAllText path))
+    |> Array.sortBy fst
+    |> Array.toList
+
 let manifestJson =
     let entries =
         catalog
         |> List.sortBy (fun (id, _, _) -> id)
         |> List.map (fun (id, source, condition) ->
             let body = File.ReadAllText(repoPath source)
+            let files =
+                filesOf source
+                |> List.map (fun (path, digest) ->
+                    sprintf "        { \"path\": \"%s\", \"sha256\": \"%s\" }" (jsonEscape path) digest)
+                |> String.concat ",\n"
             sprintf
-                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\"\n    }"
-                id (sha256Text body) id (jsonEscape (normalizeCondition condition)) (jsonEscape (suppliedByOf source)))
+                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\",\n      \"files\": [\n%s\n      ]\n    }"
+                id (sha256Text body) id (jsonEscape (normalizeCondition condition)) (jsonEscape (suppliedByOf source)) files)
         |> String.concat ",\n"
 
-    sprintf "{\n  \"schemaVersion\": 1,\n  \"skills\": [\n%s\n  ]\n}\n" entries
+    sprintf "{\n  \"schemaVersion\": 2,\n  \"skills\": [\n%s\n  ]\n}\n" entries
 
 let manifestPath = repoPath "template/skill-manifest/skill-manifest.json"
 let check = Environment.GetCommandLineArgs() |> Array.contains "--check"

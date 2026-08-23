@@ -28,7 +28,7 @@ create.
 ## What it ships
 
 ```
-rendering-skills/skill-manifest.json     the delivered set + per-skill canonical-body sha256
+rendering-skills/skill-manifest.json     schema-v2 delivered set + canonical-body and every-file sha256
 rendering-skills/skills/<id>/SKILL.md    the body for each product row
 rendering-skills/skills/<id>/**          that row's sidecars, where it has any
 build/FS.GG.Rendering.Skills.props       a consumer handle: $(FsggRenderingSkillsContentDir)
@@ -50,7 +50,9 @@ directory, not a single file.
 1. FS.GG.Rendering **publishes** these bytes plus `skill-manifest.json` as this versioned package.
 2. A scaffold materializer **pins** it and **restores** it at its own build time — online.
 3. At **scaffold time** — offline — it **materializes** each skill into the product tree's skill
-   roots from the bytes it already carries, verifying each body against the manifest `sha256`.
+   roots from the bytes it already carries, verifying every schema-v2 declared file against the
+   manifest `files` digest set. The retained row `sha256` is the compatible canonical `SKILL.md`
+   digest for schema-v1 readers.
 
 There is deliberately **no materialize target in this package**. Laying skills into a tree requires
 knowing that tree's skill roots and scaffold parameters, which only the consuming materializer

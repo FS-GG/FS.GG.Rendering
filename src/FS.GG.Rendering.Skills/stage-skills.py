@@ -49,10 +49,9 @@ as stripping a BOM, because `scripts/generate-skill-manifest.fsx` and the vendor
 agree on an LF checkout and disagree on a CRLF one — a difference that would not show up here
 and would show up in someone else's clone.
 
-Only `SKILL.md` is content-addressed against the manifest, because `SKILL.md` is the only thing
-the manifest records a digest for. Sidecars are copied and their presence is asserted by
-`verify-package.sh` step 3; they are not silently digest-checked against a record that does not
-exist.
+Schema v2 closes every skill directory with a digest for every file. The legacy top-level sha256
+remains the canonical SKILL.md digest for v1 readers, while staging refuses missing, altered, extra,
+or duplicate declared files before it copies any bytes.
 
 Exit codes: 0 staged, 2 on any misconfiguration. Pure stdlib, no network.
 """
@@ -174,6 +173,34 @@ def main() -> None:
                 "the manifest is stale (run `dotnet fsi scripts/generate-skill-manifest.fsx` "
                 "and commit)"
             )
+
+        files = row.get("files")
+        if not isinstance(files, list) or not files:
+            die(f"skill {skill_id}: schema-v2 manifest row carries no files")
+        declared = {}
+        for file in files:
+            if not isinstance(file, dict) or not isinstance(file.get("path"), str) or not isinstance(file.get("sha256"), str):
+                die(f"skill {skill_id}: malformed files row")
+            relative = file["path"].replace("\\", "/")
+            if not relative or relative.startswith("/") or ".." in relative.split("/"):
+                die(f"skill {skill_id}: declared file path '{relative}' is unsafe")
+            if relative in declared:
+                die(f"skill {skill_id}: duplicate declared file '{relative}'")
+            declared[relative] = file["sha256"]
+        actual = {}
+        for root, _, names in os.walk(src_dir):
+            for name in names:
+                full = os.path.join(root, name)
+                relative = os.path.relpath(full, src_dir).replace(os.sep, "/")
+                actual[relative] = full
+        if set(actual) != set(declared):
+            die(f"skill {skill_id}: declared files do not exactly match source directory")
+        if "SKILL.md" not in declared or declared["SKILL.md"] != want:
+            die(f"skill {skill_id}: files must preserve SKILL.md canonical sha256")
+        for relative, digest in declared.items():
+            with open(actual[relative], "rb") as handle:
+                if canonical_digest(handle.read()) != digest:
+                    die(f"skill {skill_id}: declared file '{relative}' sha256 is stale")
 
         dest = os.path.join(out, "skills", skill_id)
         # The whole row directory, so a body's sidecars travel with it (ADR-0014 clause 4).
