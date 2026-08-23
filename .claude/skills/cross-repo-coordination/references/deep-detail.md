@@ -104,7 +104,7 @@ the eventual claimant can. The rules the engine will hold you to are below, gene
   "verification": "<commands or evidence URLs>",
   "paths": ["src/Scene", "tests/Scene"],
   "class": "<defect|hardening|capability|decision>",
-  "severity": "<low|medium|high|critical>",
+  "severity": "<Low|Medium|High|Critical>",
   "status": "Backlog",
   "backlogReason": "not-yet-actionable",
   "blockedBy": "<qualified ref, only when authorship truly depends on it>",
