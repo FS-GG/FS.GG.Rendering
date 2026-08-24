@@ -37,11 +37,11 @@ let writeLog target =
     File.WriteAllText(Path.Combine("readiness", "logs", target + ".txt"), $"{target} completed for generated product.{Environment.NewLine}")
     printfn "%s completed for generated product" target
 
-// ADR-0056 §Decision.2: the fail-closed half of the sdd-lane guard. The `sdd` lane (the default)
-// emits the product only and expects an external SDD lifecycle owner (fsgg-sdd) to re-supply the
+// Fail-closed half of the SDD-lane guard. `sdd` (the default) and explicit `typed-sdd`
+// emit the product only and expect an external SDD lifecycle owner (fsgg-sdd) to supply the
 // lifecycle; the one file that distinguishes the byte-identical sdd/none trees —
-// the product-root lifecycle-scaffolding-pending.md — is present only when `--lifecycle sdd` was
-// chosen. (It formerly lived under `readiness/`, but that is an SDD-owned tree the provider may not
+// the product-root lifecycle-scaffolding-pending.md — is present when either SDD lane was
+// chosen, with distinct content preserving typed intent. (It formerly lived under `readiness/`, but that is an SDD-owned tree the provider may not
 // write under the orchestrated fsgg-sdd flow — see #954.) While it is present, the readiness/doctor
 // gate stays RED (this raises, which fails Verify): a lifecycle-less product cannot pass the
 // merge-gate audit. `none` (no sentinel) and `spec-kit` (no sentinel) never trip it. The stock
@@ -54,7 +54,7 @@ let private assertLifecycleSupplied () =
     // template symbols rewrite them to the scaffolded name); `tree` keeps it name-stable.
     if File.Exists lifecycleGuardSentinel then
         failwithf
-            "readiness/doctor: lifecycle scaffolding not yet supplied (scaffolded with --lifecycle sdd, the default) — failing closed (ADR-0056). Run `fsgg-sdd` to re-supply it (clears %s), or re-scaffold with `--lifecycle none` if a lifecycle-less tree is deliberate."
+            "readiness/doctor: lifecycle scaffolding not yet supplied (selected sdd or typed-sdd lane) — failing closed. Run `fsgg-sdd` to supply it (clears %s), or re-scaffold with `--lifecycle none` if a lifecycle-less tree is deliberate."
             lifecycleGuardSentinel
 
 let tryWriteTextLog (filePath: string) (content: string) =

@@ -24,11 +24,11 @@
 //     no-`--lifecycle` (default) and `--lifecycle spec-kit` and proves they are byte-identical
 //     (diff-vs-today=none, the explicit-vs-implicit-default invariant — same operational meaning as
 //     Feature 128; the absolute pre-feature byte diff is recorded in readiness/early-scaffold.md);
-//     scaffolds `--lifecycle sdd`/`none` and proves the gated set is absent, the product present,
+//     scaffolds `--lifecycle sdd`/`typed-sdd`/`none` and proves the gated set is absent, the product present,
 //     and that default-minus-sdd differs in ONLY gated paths (FR-009); proves none == sdd; greps
 //     the directive agent-context docs for suppressed-path refs (CC-1); runs the 12-combo
 //     composition matrix with `--designSystem ant` (ant overlay present in every case) plus the
-//     feedback-under-non-spec-kit gating; and proves an unknown value is rejected. Then it writes
+//     feedback-under-non-spec-kit gating; proves typed intent is not aliased; and proves an unknown value is rejected. Then it writes
 //     the report with `provenance: live`.
 //
 // Usage:
@@ -553,6 +553,10 @@ let private verifyBaseDocsNeutral () =
 
 let private verifyVerdictCore () =
     let values = enumerateLifecycleChoices ()
+    use doc = templateDoc ()
+    let lifecycle = doc.RootElement.GetProperty("symbols").GetProperty("lifecycle")
+    assertTrue (lifecycle.GetProperty("defaultValue").GetString() = "sdd") "lifecycle default must remain sdd"
+    assertTrue (values = [ "spec-kit"; "sdd"; "typed-sdd"; "none" ]) "lifecycle choices must remain spec-kit, sdd, typed-sdd, none in declaration order"
     let framework, workspace, product = verifyGatedSources ()
     let suppliedSkills, rootRows = verifySkillSupplyChain ()
     verifyBaseDocsNeutral ()
@@ -670,8 +674,10 @@ type private ProfileVerdict =
     { Profile: string
       SpecKitDiff: string       // "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
       Sdd: string               // "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+      TypedSdd: string          // explicit typed lane, distinct sentinel content and no provider-tree leak
       None_: string             // "gated-absent=ok product-present=ok guard-sentinel=absent"
       SddSkillCount: int        // framework `fs-gg-*` SKILL.md count under sdd (FR-001 positive fact)
+      TypedSddSkillCount: int   // framework `fs-gg-*` SKILL.md count under typed-sdd
       NoneSkillCount: int       // framework `fs-gg-*` SKILL.md count under none
       SddClaudeProductSkills: int   // ADR-0011: .claude/skills/fs-gg-* product count under sdd (must be 0)
       SddCodexRootAbsent: bool      // ADR-0067 §5 (#1121): .codex/ must not exist at all under sdd (retired root)
@@ -1044,8 +1050,8 @@ let private productPresent (dir: string) =
     File.Exists(Path.Combine(dir, "Directory.Build.props"))
     && Directory.Exists(Path.Combine(dir, "src"))
 
-// ADR-0056 §Decision.2: the one file that distinguishes the byte-identical sdd/none trees — present
-// only when `--lifecycle sdd` was chosen. `def`==`sdd` carries it; `none` and `spec-kit` do not.
+// The product-root guard distinguishes lifecycle intent: `def`==`sdd` and `typed-sdd` carry it
+// with lane-specific content; `none` and `spec-kit` do not.
 // It lives at the PRODUCT ROOT; it formerly targeted `readiness/`, an SDD-owned tree the provider
 // may not write under the orchestrated fsgg-sdd flow (#954, FS.GG.SDD#609).
 let private lifecycleGuardSentinelRel = "lifecycle-scaffolding-pending.md"
@@ -1058,6 +1064,7 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // an explicit --lifecycle spec-kit and all the spec-kit-lane integrity checks below run on it.
     let def = scaffold tmpRoot profile [] (sprintf "%s-default" profile)
     let sdd = scaffold tmpRoot profile [ "--lifecycle"; "sdd" ] (sprintf "%s-sdd" profile)
+    let typedSdd = scaffold tmpRoot profile [ "--lifecycle"; "typed-sdd" ] (sprintf "%s-typed-sdd" profile)
     let specKit = scaffold tmpRoot profile [ "--lifecycle"; "spec-kit" ] (sprintf "%s-speckit" profile)
     let none_ = scaffold tmpRoot profile [ "--lifecycle"; "none" ] (sprintf "%s-none" profile)
 
@@ -1068,6 +1075,8 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     // on the chosen intent, distinguishing it from the byte-identical `none` lane (ADR-0056 §D2).
     if not (hasGuardSentinel sdd) then
         failwithf "%s/sdd: guard sentinel %s absent (ADR-0056 §D2 fail-closed guard missing)" profile lifecycleGuardSentinelRel
+    if not (hasGuardSentinel typedSdd) then
+        failwithf "%s/typed-sdd: guard sentinel %s absent" profile lifecycleGuardSentinelRel
 
     // ---- spec-kit lane integrity (Feature 231 / ADR-0014), now on the EXPLICIT lane ----
     // Under spec-kit (standalone, no orchestrator) the SINGLE materialize step fans .agents/skills/
@@ -1122,6 +1131,26 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
     if not sddCodexAbsent then failwithf "%s/sdd: .codex/ exists — .codex/skills is retired (ADR-0067 §5 / .github#1636, #1121)" profile
     // FR-006: the full-registry catalog is NOT emitted under sdd (it would dangle).
     if not (catalogAbsent sdd) then failwithf "%s/sdd: docs/skillist-reference.md emitted (would dangle, FR-006 broken)" profile
+
+    // ---- typed-sdd lane ----
+    if not (workspaceAbsent typedSdd) then failwithf "%s/typed-sdd: lifecycle workspace not fully absent" profile
+    if not (productPresent typedSdd) then failwithf "%s/typed-sdd: product missing" profile
+    let typedSddSkills = frameworkSkillCount typedSdd
+    if typedSddSkills < 1 then failwithf "%s/typed-sdd: no framework fs-gg-* skills present" profile
+    if not (manifestPresent typedSdd) then failwithf "%s/typed-sdd: .agents/skills/skill-manifest.json missing" profile
+    if File.Exists(Path.Combine(typedSdd, ".specify", "scripts", "fs-gg", "materialize-skill-roots.fsx")) then
+        failwithf "%s/typed-sdd: standalone materialize script leaked into an orchestrated scaffold" profile
+    assertNoWrapperDirs typedSdd profile false
+    if claudeProductSkillCount typedSdd <> 0 then failwithf "%s/typed-sdd: product skills leaked into .claude/skills/" profile
+    if not (codexRootAbsent typedSdd) then failwithf "%s/typed-sdd: .codex/ exists" profile
+    if not (catalogAbsent typedSdd) then failwithf "%s/typed-sdd: docs/skillist-reference.md emitted" profile
+    let sddGuard = File.ReadAllText(Path.Combine(sdd, lifecycleGuardSentinelRel))
+    let typedGuard = File.ReadAllText(Path.Combine(typedSdd, lifecycleGuardSentinelRel))
+    if not (typedGuard.Contains "typed-sdd") then failwithf "%s/typed-sdd: sentinel does not preserve typed-sdd intent" profile
+    if typedGuard = sddGuard then failwithf "%s/typed-sdd: sentinel is byte-identical to sdd; typed intent was aliased" profile
+    let withoutGuard dir = treeFingerprint dir |> List.filter (fun (rel, _) -> rel <> lifecycleGuardSentinelRel)
+    if withoutGuard typedSdd <> withoutGuard sdd then
+        failwithf "%s: typed-sdd product differs from sdd beyond the distinct guard sentinel" profile
     // FR-009 (post-ADR-0056): the spec-kit lane == the default (sdd) lane PLUS exactly the gated
     // lifecycle set it ADDS, MINUS exactly the guard sentinel it lacks. (Pre-flip this compared the
     // default against sdd; the default IS sdd now, so the meaningful diff is spec-kit-vs-default.)
@@ -1158,7 +1187,7 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
         failwithf "%s: none tree differs from the sdd tree beyond the guard sentinel (research CC-3 broken)" profile
 
     // CC-1: directive agent-context docs carry no suppressed-path reference under sdd/none.
-    for tree in [ sdd; none_ ] do
+    for tree in [ sdd; typedSdd; none_ ] do
         for d in directiveAgentDocs do
             let p = Path.Combine(tree, d)
             if File.Exists p then
@@ -1173,8 +1202,10 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       // ADDS plus the guard it lacks; `none` == sdd minus the guard.
       SpecKitDiff = "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
       Sdd = "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+      TypedSdd = "gated-absent=ok product-present=ok distinct-intent=ok guard-sentinel=present"
       None_ = "gated-absent=ok product-present=ok guard-sentinel=absent"
       SddSkillCount = sddSkills
+      TypedSddSkillCount = typedSddSkills
       NoneSkillCount = noneSkills
       SddClaudeProductSkills = sddClaudeProduct
       SddCodexRootAbsent = sddCodexAbsent
@@ -1184,7 +1215,7 @@ let private validateProfileLive (tmpRoot: string) (profile: string) =
       SpecKitDigests = specKitDigests
       DanglingRoutes = dangling.Length }
 
-/// Composition matrix (FR-007/FR-008/SC-004): all 12 lifecycle x profile combos generate with the
+/// Composition matrix: all 16 lifecycle x profile combos generate with the
 /// ungated ant overlay present; the ungated retrospective report skill emits under sdd/none.
 let private validateCompositionMatrix (tmpRoot: string) (values: string list) =
     let mutable count = 0
@@ -1244,7 +1275,7 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     line "dangling-refs: none"
     line "catalog-dangling: none"
     line "symbology: vendored"
-    line (sprintf "composition-matrix: %d/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" matrixCount)
+    line (sprintf "composition-matrix: %d/16 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" matrixCount)
     line (sprintf "unknown-value: %s" unknown)
     line (sprintf "enforce-red-case: %s" enforceRedCase)
     line ""
@@ -1257,6 +1288,8 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
     for v in verdicts do
         line (sprintf "sdd/%s: manifest-present=ok" v.Profile)
     for v in verdicts do
+        line (sprintf "typed-sdd/%s: manifest-present=ok" v.Profile)
+    for v in verdicts do
         line (sprintf "none/%s: manifest-present=ok" v.Profile)
     for v in verdicts do
         line (sprintf "sdd/%s: generate=pass %s" v.Profile v.Sdd)
@@ -1264,6 +1297,10 @@ let private renderReport (values: string list) (provenance: string) (verdicts: P
         line (sprintf "sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.SddSkillCount)
     for v in verdicts do
         line (sprintf "sdd/%s: claude-product-skills=%d codex-root-absent=%b" v.Profile v.SddClaudeProductSkills v.SddCodexRootAbsent)
+    for v in verdicts do
+        line (sprintf "typed-sdd/%s: generate=pass %s" v.Profile v.TypedSdd)
+    for v in verdicts do
+        line (sprintf "typed-sdd/%s: framework-skills-present=ok (%d SKILL.md)" v.Profile v.TypedSddSkillCount)
     for v in verdicts do
         line (sprintf "none/%s: generate=pass %s" v.Profile v.None_)
     for v in verdicts do
@@ -1292,9 +1329,11 @@ let private synthVerdicts () =
           // gated lifecycle set it ADDS, plus the guard sentinel it lacks. `none` == sdd minus the guard.
           SpecKitDiff = "diff-vs-today=none diff-vs-default=gated-only guard-sentinel=absent"
           Sdd = "gated-absent=ok product-present=ok diff-vs-default=none guard-sentinel=present"
+          TypedSdd = "gated-absent=ok product-present=ok distinct-intent=ok guard-sentinel=present"
           None_ = "gated-absent=ok product-present=ok guard-sentinel=absent"
           // env-free synth: the live framework-skill count is profile-specific; assert presence only.
           SddSkillCount = 1
+          TypedSddSkillCount = 1
           NoneSkillCount = 1
           // Feature 230 / ADR-0011: under sdd/none the orchestrator owns .claude/, so the template
           // authors 0 product skills there; under spec-kit the two roots mirror (self-fan-out).
@@ -1335,7 +1374,7 @@ let private runValidation () =
     let liveGate = Environment.GetEnvironmentVariable "FS_GG_RUN_LIFECYCLE_VALIDATION" = "1"
 
     if emitReport && not liveGate then
-        let report = renderReport values verdictCoreProvenance (synthVerdicts ()) 12 "rejected" "ok"
+        let report = renderReport values verdictCoreProvenance (synthVerdicts ()) 16 "rejected" "ok"
         writeReport report
         0
     elif not liveGate then

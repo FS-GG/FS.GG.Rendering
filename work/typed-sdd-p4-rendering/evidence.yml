@@ -1,0 +1,173 @@
+schemaVersion: 1
+workId: typed-sdd-p4-rendering
+stage: evidence
+status: evidenceReady
+sourceSpec: work/typed-sdd-p4-rendering/spec.md
+sourceClarifications: work/typed-sdd-p4-rendering/clarifications.md
+sourceChecklist: work/typed-sdd-p4-rendering/checklist.md
+sourcePlan: work/typed-sdd-p4-rendering/plan.md
+sourceTasks: work/typed-sdd-p4-rendering/tasks.yml
+sourceAnalysis: readiness/typed-sdd-p4-rendering/analysis.json
+sourceSnapshots:
+  - label: analysis
+    path: readiness/typed-sdd-p4-rendering/analysis.json
+    digest: 7acebf78d9e85fe5711fd8940ab81f565a292e4f52f5a829d598e142934b9474
+    schemaVersion: 1
+  - label: checklist
+    path: work/typed-sdd-p4-rendering/checklist.md
+    digest: a2b528d200e9c16b5c71049636da6411afd39525cdbde4ea54637ca86a3ccec0
+    schemaVersion: 1
+  - label: clarifications
+    path: work/typed-sdd-p4-rendering/clarifications.md
+    digest: 4209ed34384386313ad4cffac2fce7293e0640d93f067b85664e9e765d39ced8
+    schemaVersion: 1
+  - label: plan
+    path: work/typed-sdd-p4-rendering/plan.md
+    digest: a4f057939143452dd5234be34bd3732e2d45747d6986cf7627d4548c1e83ac23
+    schemaVersion: 1
+  - label: spec
+    path: work/typed-sdd-p4-rendering/spec.md
+    digest: 299fc616b9cc7979f7ce97f56abdf6595847ea1aad63dce7ae0eac6fb398e2d8
+    schemaVersion: 1
+  - label: tasks
+    path: work/typed-sdd-p4-rendering/tasks.yml
+    digest: f292bdd007afc216de7235face4f534ae9c4f7ac132a92304d9be88566fb649a
+    schemaVersion: 1
+evidence:
+  - id: EV001
+    kind: verification
+    subject:
+      type: task
+      id: T001
+    taskRefs: [T001]
+    requirementRefs: [FR-001]
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV001]
+    artifacts: [readiness/typed-sdd-p4-rendering/package-tests.trx, tests/Package.Tests/Feature204LifecycleTemplateTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Feature204LifecycleTemplateTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/typed-sdd-p4-rendering/package-tests.trx
+      digest: "sha256:915f1cb44addf58326a52710de957b81a239b7fe1f69494c78cdca0e52d0c32c"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 531
+      failed: 0
+      skipped: 0
+    notes: [Live 16-combination template validation and the Package.Tests lifecycle contract suite passed.]
+  - id: EV002
+    kind: verification
+    subject:
+      type: task
+      id: T002
+    taskRefs: [T002]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV002]
+    artifacts: [readiness/typed-sdd-p4-rendering/package-tests.trx, tests/Package.Tests/Feature204LifecycleTemplateTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Feature204LifecycleTemplateTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/typed-sdd-p4-rendering/package-tests.trx
+      digest: "sha256:915f1cb44addf58326a52710de957b81a239b7fe1f69494c78cdca0e52d0c32c"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 531
+      failed: 0
+      skipped: 0
+    notes: [Live 16-combination template validation and the Package.Tests lifecycle contract suite passed.]
+  - id: EV003
+    kind: verification
+    subject:
+      type: task
+      id: T003
+    taskRefs: [T003]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV003]
+    artifacts: [readiness/typed-sdd-p4-rendering/package-tests.trx, tests/Package.Tests/Feature204LifecycleTemplateTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Feature204LifecycleTemplateTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/typed-sdd-p4-rendering/package-tests.trx
+      digest: "sha256:915f1cb44addf58326a52710de957b81a239b7fe1f69494c78cdca0e52d0c32c"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 531
+      failed: 0
+      skipped: 0
+    notes: [Live 16-combination template validation and the Package.Tests lifecycle contract suite passed.]
+  - id: EV004
+    kind: verification
+    subject:
+      type: task
+      id: T004
+    taskRefs: [T004]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: []
+    obligationRefs: [EV004]
+    artifacts: [readiness/typed-sdd-p4-rendering/package-tests.trx, tests/Package.Tests/Feature204LifecycleTemplateTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Feature204LifecycleTemplateTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/typed-sdd-p4-rendering/package-tests.trx
+      digest: "sha256:915f1cb44addf58326a52710de957b81a239b7fe1f69494c78cdca0e52d0c32c"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 531
+      failed: 0
+      skipped: 0
+    notes: [Live 16-combination template validation and the Package.Tests lifecycle contract suite passed.]
+  - id: EV005
+    kind: verification
+    subject:
+      type: task
+      id: T005
+    taskRefs: [T005]
+    requirementRefs: []
+    acceptanceScenarioRefs: []
+    clarificationDecisionRefs: []
+    checklistResultRefs: []
+    planDecisionRefs: [PD-001]
+    obligationRefs: [EV005]
+    artifacts: [readiness/typed-sdd-p4-rendering/package-tests.trx, tests/Package.Tests/Feature204LifecycleTemplateTests.fs]
+    sourceRefs:
+      - kind: verification
+        path: tests/Package.Tests/Feature204LifecycleTemplateTests.fs
+    result: pass
+    synthetic: false
+    observedRun:
+      source: readiness/typed-sdd-p4-rendering/package-tests.trx
+      digest: "sha256:915f1cb44addf58326a52710de957b81a239b7fe1f69494c78cdca0e52d0c32c"
+      digestContract: exact-bytes-v1
+      outcome: passed
+      passed: 531
+      failed: 0
+      skipped: 0
+    notes: [Live 16-combination template validation and the Package.Tests lifecycle contract suite passed.]
+lifecycleNotes:
+  - "Next lifecycle action: verify."

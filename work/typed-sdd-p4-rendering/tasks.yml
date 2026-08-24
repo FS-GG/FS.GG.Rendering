@@ -1,0 +1,86 @@
+schemaVersion: 1
+work:
+  id: typed-sdd-p4-rendering
+  title: "Typed Sdd P4 Rendering"
+  stage: tasks
+  status: tasksReady
+  sourceSpec: work/typed-sdd-p4-rendering/spec.md
+  sourceClarifications: work/typed-sdd-p4-rendering/clarifications.md
+  sourceChecklist: work/typed-sdd-p4-rendering/checklist.md
+  sourcePlan: work/typed-sdd-p4-rendering/plan.md
+  publicOrToolFacingImpact: true
+
+sources:
+  - label: spec
+    path: work/typed-sdd-p4-rendering/spec.md
+    digest: 299fc616b9cc7979f7ce97f56abdf6595847ea1aad63dce7ae0eac6fb398e2d8
+    schemaVersion: 1
+  - label: clarifications
+    path: work/typed-sdd-p4-rendering/clarifications.md
+    digest: 4209ed34384386313ad4cffac2fce7293e0640d93f067b85664e9e765d39ced8
+    schemaVersion: 1
+  - label: checklist
+    path: work/typed-sdd-p4-rendering/checklist.md
+    digest: a2b528d200e9c16b5c71049636da6411afd39525cdbde4ea54637ca86a3ccec0
+    schemaVersion: 1
+  - label: plan
+    path: work/typed-sdd-p4-rendering/plan.md
+    digest: a4f057939143452dd5234be34bd3732e2d45747d6986cf7627d4548c1e83ac23
+    schemaVersion: 1
+tasks:
+  - id: T001
+    title: Implement requirement FR-001
+    status: done
+    owner: sdd
+    dependencies: []
+    requirements: [FR-001]
+    decisions: []
+    sourceIds: [AC-001, FR-001, PD-001]
+    requiredSkills: [fsharp, implementation]
+    requiredEvidence: [EV001]
+  - id: T002
+    title: Update contract surface PC-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001]
+    requiredSkills: [fsharp]
+    requiredEvidence: [EV002]
+  - id: T003
+    title: Record verification evidence VO-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PD-001, VO-001]
+    requiredSkills: [automated-tests, readiness-evidence]
+    requiredEvidence: [EV003]
+  - id: T004
+    title: Handle migration posture PM-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [PC-001, PM-001]
+    requiredSkills: [schema-versioning]
+    requiredEvidence: [EV004]
+  - id: T005
+    title: Refresh generated view impact GV-001
+    status: done
+    owner: sdd
+    dependencies: [T001]
+    requirements: []
+    decisions: []
+    sourceIds: [GV-001, PD-001]
+    requiredSkills: [deterministic-json]
+    requiredEvidence: [EV005]
+acceptedDeferrals: []
+findings: []
+advisoryNotes:
+  - "Optional Governance pointers remain compatibility facts only."
+lifecycleNotes:
+  - "Next lifecycle action: fsgg-sdd analyze --work typed-sdd-p4-rendering."

@@ -60,7 +60,7 @@
       "type": "parameter",
       "datatype": "choice",
       "defaultValue": "sdd",
-      "description": "Lifecycle scaffolding to emit alongside the generated product. ADR-0056 (2026-07-20) makes 'sdd' the default and reclassifies 'spec-kit' as a legacy lane, frozen and scheduled for removal. 'sdd' (default) and 'none' both suppress the entire gated Spec Kit lifecycle workspace (.specify/, the project constitution, the .agents/ + .claude/ agent skill/context files, and the generated AGENTS.md/CLAUDE.md agent-context tree), emitting only the generated product (source, projects, product tests, docs, samples, and the designSystem overlay). The two are byte-identical EXCEPT that 'sdd' also emits a fail-closed guard sentinel at the product root (lifecycle-scaffolding-pending.md) — the one file that distinguishes the chosen intent — so a standalone consumer who takes the default but never re-supplies the lifecycle gets a red readiness/doctor check and a printed notice rather than a silently lifecycle-less tree. 'spec-kit' still emits the full workspace. Unknown values are rejected.",
+      "description": "Lifecycle scaffolding to emit alongside the generated product. 'sdd' remains the default; 'typed-sdd' is an additive explicit lane owned by the typed FS.GG.SDD protocol; 'none' deliberately emits no lifecycle; and 'spec-kit' remains frozen for compatibility. Both SDD lanes suppress the legacy Spec Kit workspace and emit a fail-closed lifecycle-scaffolding-pending.md sentinel until the external lifecycle owner supplies its canonical artifacts. Unknown values are rejected.",
       "choices": [
         {
           "choice": "spec-kit",
@@ -69,6 +69,10 @@
         {
           "choice": "sdd",
           "description": "Default (ADR-0056). Suppress the gated Spec Kit lifecycle set; emit only the generated product, plus the fail-closed guard sentinel lifecycle-scaffolding-pending.md at the product root. Intent: an external SDD lifecycle owner re-supplies the lifecycle scaffolding (which removes the sentinel). Until then the readiness/doctor check stays red (and the build warns)."
+        },
+        {
+          "choice": "typed-sdd",
+          "description": "Explicit typed-protocol lane. Emit the same product surface as sdd, but a distinct fail-closed sentinel records that FS.GG.SDD must supply canonical agent-authored F#, normalized AST, receipt, Markdown projection, and readiness artifacts. The raw template does not alias this choice to sdd."
         },
         {
           "choice": "none",
@@ -519,6 +523,15 @@
         "**/*"
       ],
       "comment": "ADR-0056 §Decision.2: the sdd-lane GUARD sentinel, emitted to the PRODUCT ROOT (lifecycle-scaffolding-pending.md). It formerly targeted `readiness/`, but under the orchestrated `fsgg-sdd scaffold --provider` flow `readiness/` is an SDD-OWNED tree the provider is forbidden to write, so the write tripped SDD's `scaffold.providerWroteSddTree` guard and blocked the scaffold before the skill mirror ran (FS-GG/FS.GG.Rendering#954, FS.GG.SDD#609). The product root is ordinary generatedProduct content the guard permits. 'sdd' and 'none' are byte-identical at the template level, so the guard keys on the CHOSEN INTENT — this is the ONE file that distinguishes them, present under 'sdd' and absent under 'none'. It is the fail-closed marker: the FsGgSddLifecycleGuard target in template/base/Directory.Build.props WARNS on every build while it is present (sdd warns; none is silent), and the generated product's `Verify` readiness/doctor gate fails CLOSED (red) until it is removed — which the external SDD lifecycle owner (`fsgg-sdd`) does when it re-supplies the lifecycle. copyOnly so the marker ships verbatim (no sourceName rewrite). This is the FIRST lifecycle == \"sdd\"-gated source; the source classifier (validate-lifecycle-template.fsx + its Feature204 mirror) files it under PRODUCT — its product-tree target trips neither the framework/capability/manifest tests nor the lifecycle-workspace `isGatedTarget`, and the product rule forbids only a SPEC-KIT clause, so this deliberate sdd clause is admitted. That is a benign fit, not a taxonomy hole: the guard is the single sanctioned lifecycle-gated product-tree file, and adding a dedicated category for one row would cost more drift risk (the dual classifier + agreement fixture) than it buys."
+    },
+    {
+      "condition": "(lifecycle == \"typed-sdd\")",
+      "source": "template/typed-lifecycle-guard/",
+      "target": "./",
+      "copyOnly": [
+        "**/*"
+      ],
+      "comment": "Typed SDD raw-template guard. The distinct source preserves explicit typed-sdd intent without emitting lifecycle-owned .specify, work, readiness, or provider mirror trees. FS.GG.SDD removes the product-root sentinel after supplying the typed protocol artifacts."
     }
   ],
   "postActions": [
@@ -528,6 +541,17 @@
       "manualInstructions": [
         {
           "text": "lifecycle scaffolding not yet supplied (--lifecycle sdd, the default). Run `fsgg-sdd` to re-supply the lifecycle (which clears lifecycle-scaffolding-pending.md), or re-scaffold with `--lifecycle none` if a lifecycle-less product is deliberate. Until then this product's readiness/doctor check fails closed and the build warns. See ADR-0056 and lifecycle-scaffolding-pending.md."
+        }
+      ],
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEE8AF8FD6",
+      "continueOnError": true
+    },
+    {
+      "condition": "(lifecycle == \"typed-sdd\")",
+      "description": "Typed SDD guard notice. No process is run; FS.GG.SDD must supply and validate the canonical typed lifecycle artifacts.",
+      "manualInstructions": [
+        {
+          "text": "typed-sdd lifecycle scaffolding is pending. Run the published `fsgg-sdd` typed lifecycle flow to supply canonical F#, normalized AST, receipt, Markdown projection, and readiness artifacts; it clears lifecycle-scaffolding-pending.md after successful materialization."
         }
       ],
       "actionId": "AC1156F7-BB77-4DB8-B28F-24EEE8AF8FD6",

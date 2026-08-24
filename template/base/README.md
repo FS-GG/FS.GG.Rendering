@@ -139,10 +139,10 @@ neither emits nor suppresses host warnings, and a missing assembly surfaces as a
 normal load failure.
 
 This product is generated without a bundled lifecycle workspace — the default
-`--lifecycle sdd` (or `--lifecycle none`). Governed feature work is driven by the
+`--lifecycle sdd`, explicit `--lifecycle typed-sdd`, or `--lifecycle none`. Governed feature work is driven by the
 lifecycle owner you compose this product under, which supplies the workspace and the
 governance skills. On the default `sdd` lane, run `fsgg-sdd` to re-supply the
-lifecycle; until then a readiness/doctor check stays red and the build warns (see
+lifecycle. The `typed-sdd` lane preserves explicit typed-protocol intent and expects canonical F#, normalized AST, receipt, Markdown projection, and readiness artifacts from FS.GG.SDD. On either SDD lane, until supply completes, a readiness/doctor check stays red and the build warns (see
 `lifecycle-scaffolding-pending.md` at the product root). Pass `--lifecycle none` for a
 deliberately lifecycle-less product with no such guard. To bundle the legacy Spec Kit
 lifecycle workspace in instead, scaffold with `--lifecycle spec-kit` (frozen and
