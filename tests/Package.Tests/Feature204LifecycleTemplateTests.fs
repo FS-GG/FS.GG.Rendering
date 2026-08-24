@@ -406,7 +406,14 @@ let feature204LifecycleTemplateTests =
               let covered = coveredValues report |> List.sort
               let expected = enumeratedChoices () |> List.sort
               Expect.equal covered expected "covered-values must equal the template's lifecycle choices"
-              Expect.stringContains report "covered-values: spec-kit, sdd, none" "covered-values lists the 3 values in declaration order"
+              Expect.stringContains report "covered-values: spec-kit, sdd, typed-sdd, none" "covered-values lists the 4 values in declaration order"
+          }
+
+          test "GV-1b sdd remains the default and typed-sdd remains explicit" {
+              use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
+              let lifecycle = doc.RootElement.GetProperty("symbols").GetProperty("lifecycle")
+              Expect.equal (elemStr (lifecycle.GetProperty("defaultValue"))) "sdd" "omitted lifecycle must remain sdd"
+              Expect.contains (enumeratedChoices ()) "typed-sdd" "typed-sdd must remain an explicit accepted choice"
           }
 
           // GV-2 (FR-001/FR-002/FR-003, Feature 219 3-category verdict-core fact re-derived in-test):
@@ -576,7 +583,7 @@ let feature204LifecycleTemplateTests =
           // GV-6 (Polish / FR-006/FR-007/FR-008 / SC-004): composition matrix + fail-fast.
           test "GV-6 composition matrix generates and unknown value is rejected" {
               let report = readValidationReport ()
-              Expect.stringContains report "composition-matrix: 12/12 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" "12-combo composition matrix holds"
+              Expect.stringContains report "composition-matrix: 16/16 generate; ant-overlay-present=ok; feedback-gated-under-non-speckit=ok" "16-combo composition matrix holds"
               Expect.stringContains report "unknown-value: rejected" "unknown lifecycle value fails fast"
           }
 

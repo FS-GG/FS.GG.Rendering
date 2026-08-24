@@ -1,5 +1,18 @@
 # Spec lifecycle
 
+## Raw-template lifecycle choices
+
+The product template exposes four lifecycle values. `sdd` remains the omitted-value default;
+`typed-sdd` is an additive, explicit typed-protocol lane; `none` deliberately requests no
+lifecycle; and `spec-kit` is the frozen compatibility lane. The raw template never aliases
+`typed-sdd` to `sdd`: each SDD lane emits distinct fail-closed sentinel content at
+`lifecycle-scaffolding-pending.md`, while the generated product outside that sentinel stays
+byte-identical. FS.GG.SDD owns the typed lane's canonical F#, normalized AST, receipt, Markdown
+projection, and readiness artifacts and removes the sentinel only after successful materialization.
+
+This boundary keeps the Rendering package a raw-template producer. It records the user's lifecycle
+intent but does not write lifecycle-owned `work/`, `readiness/`, `.claude/`, or `.codex/` trees.
+
 `specs/` is a build journal. It has real archaeological value — but a reader (human or agent)
 opening a spec needs to know, in one line, whether it describes **current behaviour** or behaviour
 that was replaced eighteen features ago. Before feature 187 nothing carried that signal: 150 of the
