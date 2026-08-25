@@ -22,8 +22,9 @@
 # written here today would simply start rotting tomorrow. If you want the count, run `wc -l`.
 #
 # WHAT IT DOES. It resolves ONE engine and execs it, passing argv through unchanged and returning its exit
-# code unchanged. It is a transparent pipe — it adds no output of its own on the happy path and holds no
-# state. The resolution order is:
+# code unchanged. It preserves engine stdout and exit status and holds no state. Tier 4 additionally emits
+# one stable JSON resolution receipt on stderr, because its manifest pin and executed assembly can otherwise
+# diverge invisibly with caller cwd (#2908). The resolution order is:
 #
 #   1. THE EXPLICIT BIN      — `FSGG_COORD_ENGINE_BIN`. An instruction. Honoured or REFUSED, never fallen
 #                              back from: a caller who named an engine that is not there must be told, not
@@ -36,10 +37,10 @@
 #                              therefore cannot prevent the coordination tool from being fixed."* So where a
 #                              source build exists it is the AUTHORITY, and it outranks both packaged forms.
 #   3. a global tool on PATH — `dotnet tool install -g`, or any binary an operator put on PATH.
-#   4. a LOCAL tool manifest — the receivers' shape: `.config/dotnet-tools.json` + `dotnet tool run`. A
-#                              restored local tool is NOT on PATH (it answers only to `dotnet tool run`),
-#                              so a manifest that DECLARES the engine but has not been restored is restored
-#                              here — a manifest is a wish until `dotnet tool restore` grants it (#655).
+#   4. a LOCAL tool manifest — the receivers' shape: `.config/dotnet-tools.json` + its exact restored
+#                              assembly. A restored local tool is NOT on PATH, so the wrapper-root manifest
+#                              is resolved through the SDK cache and that assembly is exec'd from the caller's
+#                              cwd. A declaration not restored yet is restored here (#655, #2908).
 #
 # THE NUMBERS MOVED, AND #1018 IS WHY (old → new: 4 → 2, 2 → 3, 3 → 4; tier 1 is unchanged). The source
 # build used to be LAST, beneath both packaged forms — an order "lifted verbatim from bash's proven
@@ -330,23 +331,53 @@ if command -v fsgg-coord-engine >/dev/null 2>&1; then
   exec fsgg-coord-engine "$@"
 fi
 
-if [ -n "$TOP" ]; then
+WRAPPER_TOP="$(git -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "$WRAPPER_TOP" ]; then
   # TIER 4 — THE RECEIVERS' SHAPE. Check the MANIFEST before probing `dotnet tool run` blindly — a `run` on
   # a repo with no manifest is a slow, noisy failure, and `.github` (whose source build is tier 2 above) has
   # no root manifest at all.
-  MANIFEST="$TOP/.config/dotnet-tools.json"
+  MANIFEST="$WRAPPER_TOP/.config/dotnet-tools.json"
   if [ -f "$MANIFEST" ] && command -v dotnet >/dev/null 2>&1 \
      && jq -e '.tools | to_entries[] | select(.value.commands // [] | index("fsgg-coord-engine"))' \
           >/dev/null 2>&1 <"$MANIFEST"; then
-    # A MANIFEST IS A DECLARATION, NOT AN INSTALLATION (#655). If the tool is not yet restored, `dotnet tool
-    # run` prints a restore hint and exits 1 — so restore it once (bookkeeping, in a subshell), then exec.
-    # Asking a worker to restore has a measured hit rate of zero; do it for them.
-    # `--` here is PROPHYLACTIC, not a fix: measured on dotnet 10.0.302, `tool run` does NOT consume
-    # `--version` (unlike `--help`/`-h`, which it does — see the exec below, #1029). It is separated anyway
-    # because this probe FAILS OPEN if that ever changes: a consumed `--version` would answer 0 from dotnet
-    # itself, the shim would read "already restored" and skip the restore, and the exec would then fail with
-    # the very hint this branch exists to pre-empt. One separator costs nothing and removes the whole class.
-    if ! ( cd "$TOP" && dotnet tool run fsgg-coord-engine -- --version ) >/dev/null 2>&1; then
+    # `dotnet tool run` has NO explicit-manifest option: it always searches from the process cwd. Calling it
+    # from $WRAPPER_TOP selects the right manifest but silently gives repository-sensitive commands the wrong
+    # cwd; calling it here preserves command scope but can select a different checkout's pin (.github#2908).
+    # Keep those two decisions separate. The manifest chooses one package+pin, the SDK's resolver cache names
+    # that restored pin's exact assembly, and `dotnet <assembly>` preserves the caller's cwd.
+    manifest_entry="$(jq -er '
+      [.tools | to_entries[]
+       | select(.value.commands // [] | index("fsgg-coord-engine"))
+       | [.key, .value.version]] as $entries
+      | if ($entries | length) == 1
+        then $entries[0] | @tsv
+        else error("expected exactly one fsgg-coord-engine declaration")
+        end' "$MANIFEST" 2>/dev/null)" \
+      || die "the engine manifest is unreadable or ambiguous: $MANIFEST"
+    TOOL_PACKAGE="${manifest_entry%%	*}"
+    TOOL_PIN="${manifest_entry#*	}"
+    TOOL_CACHE_KEY="$(printf '%s' "$TOOL_PACKAGE" | tr '[:upper:]' '[:lower:]')"
+    TOOL_RESOLVER_ROOT="${DOTNET_CLI_HOME:-${HOME:-}}/.dotnet/toolResolverCache"
+
+    resolve_manifest_engine() {
+      local resolver_file candidate resolved=""
+      [ -n "${DOTNET_CLI_HOME:-${HOME:-}}" ] || return 1
+      for resolver_file in "$TOOL_RESOLVER_ROOT"/*/"$TOOL_CACHE_KEY"; do
+        [ -f "$resolver_file" ] || continue
+        candidate="$(jq -er --arg pin "$TOOL_PIN" '
+          [.[] | select(.Version == $pin and .Name == "fsgg-coord-engine") | .PathToExecutable]
+          | if length == 1 then .[0] else empty end' "$resolver_file" 2>/dev/null)" || continue
+        [ -n "$resolved" ] && [ "$resolved" != "$candidate" ] && return 1
+        resolved="$candidate"
+      done
+      [ -n "$resolved" ] && [ -f "$resolved" ] || return 1
+      printf '%s' "$resolved"
+    }
+
+    TOOL_ASSEMBLY="$(resolve_manifest_engine || true)"
+    # A MANIFEST IS A DECLARATION, NOT AN INSTALLATION (#655). If its exact package+pin does not resolve
+    # to a present assembly, restore THAT explicit manifest; never let restore rediscover from caller cwd.
+    if [ -z "$TOOL_ASSEMBLY" ]; then
       # THE RESTORE'S OWN DIAGNOSIS IS THE EVIDENCE — DO NOT DISCARD IT AND THEN GUESS (#957).
       #
       # This was `>/dev/null 2>&1 || die "… the feed is unreachable or the version is unpublished"`:
@@ -358,7 +389,7 @@ if [ -n "$TOP" ]; then
       # checks their network; told "the version is unpublished" they go read the release workflow.
       # Neither is the remedy, and the real one was named nowhere. It cost the reporter a debugging
       # pass on an otherwise-clean checkout.
-      if ! restore_out="$( cd "$TOP" && dotnet tool restore 2>&1 )"; then
+      if ! restore_out="$(dotnet tool restore --tool-manifest "$MANIFEST" 2>&1)"; then
         # A HINT IS KEYED OFF THE OUTPUT, NEVER ASSERTED BLIND — that asymmetry IS the fix. Output we
         # do not recognise gets NO cause: the restore's own words are the finding, and inventing one on
         # top of them is the bug being removed. The two original causes survive here, demoted from
@@ -397,29 +428,30 @@ if [ -n "$TOP" ]; then
   The version declared in the manifest is not on the feed. This is the 'unpublished' case, claimed here
   only because the restore reported it." ;;
         esac
-        die "the engine is declared in $MANIFEST but 'dotnet tool restore' failed:
+        die "the engine is declared in $MANIFEST (pin=$TOOL_PACKAGE@$TOOL_PIN) but 'dotnet tool restore --tool-manifest $MANIFEST' failed:
 
 $restore_out$hint"
       fi
+      TOOL_ASSEMBLY="$(resolve_manifest_engine || true)"
+      [ -n "$TOOL_ASSEMBLY" ] \
+        || die "the engine manifest $MANIFEST pins $TOOL_PACKAGE@$TOOL_PIN, but restore produced no unique present resolver-cache assembly"
     fi
-    # exec from the ORIGINAL cwd, not $TOP: `dotnet tool run` finds the manifest by walking up from here,
-    # and the engine is cwd-sensitive (reap scopes to the checkout you stand in, #480; the git-remote repo
-    # default reads it, #430). A cd to $TOP would silently rescope those commands.
-    #
-    # `--` IS LOAD-BEARING, AND ITS ABSENCE IS WHY THIS SHIM WAS NOT THE TRANSPARENT PIPE ITS HEADER
-    # PROMISES (#1029). `dotnet tool run` has its OWN `-?, -h, --help` option, so without a separator it
-    # CONSUMES those flags and answers for itself — the engine is never reached. Measured on dotnet
-    # 10.0.302, and it is not position-dependent (`… fsgg-coord-engine next --help` is eaten too):
-    #
-    #   dotnet tool run fsgg-coord-engine --help        -> dotnet's own help, EXIT 0
-    #   dotnet tool run fsgg-coord-engine next --help   -> dotnet's own help, EXIT 0
-    #   dotnet tool run fsgg-coord-engine -- next --help -> reaches the engine
-    #
-    # Exit 0 is what made it silent: the worker asked the coordination tool for help, got dotnet's, and
-    # nothing reported a failure. THIS repo cannot reproduce it — `.github` builds from source and resolves
-    # at tier 2, which is a real `exec` — so the only repo that owns the shim is the one repo where the bug
-    # is invisible, and every RECEIVER got dotnet's help instead (ADR-0034 decision 2).
-    exec dotnet tool run fsgg-coord-engine -- "$@"
+    RESOLVED_VERSION="$(dotnet "$TOOL_ASSEMBLY" --version 2>/dev/null || true)"
+    case "$RESOLVED_VERSION" in
+      "$TOOL_PIN"|"$TOOL_PIN.0") ;;
+      *) die "engine pin mismatch: manifest=$MANIFEST pin=$TOOL_PACKAGE@$TOOL_PIN resolvedAssembly=$TOOL_ASSEMBLY resolvedVersion=${RESOLVED_VERSION:-unreadable}" ;;
+    esac
+
+    # STDERR, never stdout: stdout is the engine's machine contract (`next` is one bare ref, JSON verbs are
+    # one JSON value). The receipt is itself one deterministic JSON object so paths containing spaces or
+    # quotes remain unambiguous, and it is emitted only after the exact assembly reports the pinned version.
+    jq -cn --arg manifest "$MANIFEST" --arg package "$TOOL_PACKAGE" --arg pin "$TOOL_PIN" --arg assembly "$TOOL_ASSEMBLY" \
+      '{schema:"fsgg.coord.engine-resolution/v1",tier:4,manifest:$manifest,pin:($package+"@"+$pin),resolvedAssembly:$assembly}' >&2 \
+      || die "could not render the tier-4 engine-resolution receipt for manifest=$MANIFEST pin=$TOOL_PACKAGE@$TOOL_PIN resolvedAssembly=$TOOL_ASSEMBLY"
+
+    # No `cd`: repository-sensitive engine behaviour still observes the caller's working directory. Direct
+    # assembly execution also keeps argv transparent without `dotnet tool run` consuming -h/--help (#1029).
+    exec dotnet "$TOOL_ASSEMBLY" "$@"
   fi
 fi
 
