@@ -94,9 +94,10 @@ the durable comment or check whose change resumes it. These are authority-issued
 an agent invents.
 
 The canonical generation token is `<head>:initial-review:0` for an initial record and
-`<head>:repair-confirmation:<round>` for confirmation, escalation, or repair-phase records. Exactly one
-generation may be unconsumed. A new entry is refused until the preceding entry has a durable terminal
-event; multiple distinct unconsumed entries are invalid authority, never a latest-wins queue.
+`<head>:repair-confirmation:<round>` for confirmation, escalation, or repair-phase records. The engine
+derives that token from live authority; the host does not transcribe it. Exactly one generation may be
+unconsumed. A new entry is refused until the preceding entry has a durable terminal event; multiple
+distinct unconsumed entries are invalid authority, never a latest-wins queue.
 
 Entering a review queue writes the receipt before the actor yields. A current receipt plus the open
 item PR preserves the touch-set reservation, but it never extends or resurrects the worker's mutation
@@ -116,15 +117,27 @@ It inherits no prior clearance and performs a full independent review of that he
 structured record and the consumed receipt make the handoff re-derivable; ephemeral runtime liveness
 and a host's testimony about despawn are not review evidence.
 
-Write each entry/completion/cancellation/timeout event through the authoritative client boundary:
+Enter each critic queue through the host-owned client boundary, with no JSON event body:
+
+`scripts/fsgg-coord review wait enter <ref> --pr <n> --json`
+
+It derives the current claim generation, PR head, required kind and round, timestamps, and evidence
+anchor, then writes the one canonical entry the live review state authorizes. Do not author those fields
+by hand.
+
+Write completion/cancellation/timeout events, and compatibility-only explicit entries, through:
 
 `scripts/fsgg-coord review wait <ref> <event.json> --pr <n> --json`
 
 The writer rejects a non-current claim generation, a duplicate entry generation, or a transition with
-no matching durable entry. A terminal event is authorized by both the matching entry and that entry's
-still-current `claimGeneration`; replacing the claim cannot transfer authority to consume an older
-entry. `review record` refuses every critic record until the matching canonical entry is waiting, and
-host `acceptance` until the immediately preceding critic record is named by a completed entry. A live
+no matching durable entry. A completion's `evidenceRef` names the structured
+`fsgg.coord.review-decision/v2` record, never the prose review marker. Its canonical URL, numeric comment
+id, bare digest, or `sha256:<digest>` are accepted and normalized to the URL; a wrong or ambiguous
+reference is refused before the terminal append and the diagnostic names the required record. A terminal
+event is authorized by both the matching entry and that entry's still-current `claimGeneration`;
+replacing the claim cannot transfer authority to consume an older entry. `review record` refuses every
+critic record until the matching canonical entry is waiting, and host `acceptance` until the immediately
+preceding critic record is named by a completed entry. A live
 `review <ref> --pr <n> --json` parses those PR markers and projects
 `waiting`, `completed`, `cancelled`, `recoverable`, `invalid`, or `noReceipt` with the bound receipt.
 Dispatch actions are available only from the matching `waiting` state. `noReceipt`, malformed or
