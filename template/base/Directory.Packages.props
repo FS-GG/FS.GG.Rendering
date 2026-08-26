@@ -109,7 +109,7 @@
          about its tests. -->
     <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsGgUiVersion)" />
     <PackageVersion Include="Expecto" Version="10.2.3" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
   </ItemGroup>
 </Project>
