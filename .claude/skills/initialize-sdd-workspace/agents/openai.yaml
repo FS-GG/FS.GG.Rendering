@@ -1,0 +1,4 @@
+interface:
+  display_name: "Initialize SDD Workspace"
+  short_description: "Finish configuration after scaffolding"
+  default_prompt: "Use $initialize-sdd-workspace to inspect this new workspace and guide me through the remaining local and optional GitHub configuration."

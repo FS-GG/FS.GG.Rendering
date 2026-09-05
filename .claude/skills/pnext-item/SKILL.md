@@ -11,6 +11,40 @@ Run exactly one item from claim through verified done. The protocol is
 For directives encountered while working, apply the shared
 [control-plane provenance guidance](references/control-plane-provenance.md).
 
+## Lifecycle ledger
+
+Create the item's externally durable append-only lifecycle ledger on the canonical GitHub issue before
+the first claim transition and keep it through verified done. Record every phase boundary, its whole-minute duration and historical average,
+the exact provider/model/variant and effort, authoritative token usage, and the runtime, coordination,
+SDD CLI/contracts, and ledger-schema versions that make comparisons meaningful. Token accounting is a
+post-response operation: reconcile the completed runtime turn from its local session record or stable
+provider response before closing the corresponding phase; never estimate from visible text or a context
+window. Freeze one private usage receipt per phase when cited; never append later phases to it. Each critic and recovery worker records its own runtime identity and usage rather than assigning
+it to the implementer.
+
+**The supervising parent owns the post-child boundary.** A worker, critic, confirmation, recovery, or
+host child cannot read usage written after its own final response. It therefore returns the exact
+session/turn identity and an unposted terminal draft marked `pending final usage`; it must not convert
+that timing condition to `unavailable` or post the terminal lifecycle comment itself. After the child is
+terminal, the parent locates that completed Codex JSONL (or Claude `SubagentStop` transcript), runs the
+strict collector, seals and posts the child's terminal event, and only then accepts the handoff. Host
+acceptance, cycle completion, and Done refuse while any completed child lacks this reconciliation.
+Terminal `unavailable` is allowed only after the parent performed a post-completion lookup and records
+that no unique terminal record exists or that strict schema validation failed; “the response had not
+finished” is never a terminal reason. If an older worker already posted that reason, append a distinct
+telemetry-reconciliation recovery phase before continuing; never edit the immutable event.
+
+Never make the candidate branch contain the authoritative live ledger: review, merge, protected-main,
+projection, and cleanup facts do not exist until after that candidate head was reviewed, so appending them
+to the candidate creates an unsatisfiable exact-head loop. Repository `logs/` files are immutable exported
+snapshots only and never gate the PR that carries them. Keep raw per-response usage reports private and
+untracked; only phase aggregates and stable receipt digests enter the public issue ledger.
+
+Read [lifecycle-ledger](references/lifecycle-ledger.md) for the canonical issue-comment authority, optional
+snapshot paths, Codex and Claude collection rules, schema, and validation commands. Validate at every handoff,
+before host acceptance, and again with `--require-terminal` before the done stamp. The ledger is part of
+the item evidence in every FS.GG repository; it is not limited to roadmap-driven work.
+
 ## 0. Establish identity
 
 Each concurrent worker needs a freshly minted identity:
@@ -188,7 +222,16 @@ occurrences itself — it never substitutes the changed-file count, which is a d
 smaller quantity that let a one-file/six-occurrence rename slip under the default threshold of 5
 (.github#2144). Evidence the host cannot read requires the receipt rather than clearing it.
 
-## 5. Independent critique
+## 5. Accountable critique and acceptance
+
+One Accountable Delivery Owner authorizes the item. CI, formal checks, mutation controls, and critique
+records are decision evidence, not additional authorizers. Never require a second human, account, agent,
+critic, reviewer quorum, or external approval merely to complete this section.
+
+The same owner may perform implementation, a fresh critique pass, repair, host acceptance, and delivery.
+Where the existing wire protocol requires implementer, critic, and host identities to differ, mint distinct
+**phase identities** for those passes. Distinct phase identities prevent stale generation reuse and preserve
+ordering; they do not imply separate people or separate authorization. An external critic is optional.
 
 ### Typed delivery receipt
 
@@ -237,20 +280,21 @@ This is a mechanical cross-check, not a substitute for the qualitative judgement
 critic-generation continuity, durable wait receipts, and repair-phase provenance are read from the live PR by both the worker
 and the critic.
 
-Push the candidate, open its PR, and ask the host to assign a fresh critic agent. Keep the implementing worker and
-claim alive, set the item to `In review`, and freshly verify that row while the critic independently
-reviews the exact head SHA. The critic does not edit the
+Push the candidate, open its PR, keep the implementing worker and claim alive, set the item to `In review`,
+and freshly verify that row. Then perform a fresh critique pass against the exact head SHA under a distinct
+phase identity. The critique pass does not edit the
 implementation: it checks requirements, diff, tests, architecture, release obligations, and `Paths:`;
 searches code/history and existing work for each candidate root cause; and files only unresolved,
 distinct **material** work. For a meaningful runtime behavior reachable through more than one route,
 the handoff supplies a built artifact and runnable production-route evidence so the critic can execute
 or measure the comparison required by `independent-review`, not infer it from source alone. A fresh
-successor performs each numbered repair review. If material findings remain after round three,
+critique phase performs each numbered repair review. If material findings remain after round three,
 never start round four or merge that PR: close it without merging and automatically enter the one
-fresh-worker, fresh-critic
+fresh-worktree, fresh-phase
 [repair phase](references/independent-review.md#repair-phase). Park the item on `Blocked on:
-human/action` and release the claim only if that repair phase exhausts or its required route is
-unavailable.
+owner/action` and release the claim only if that repair phase exhausts or its required route is
+unavailable. The accountable owner decides the redesign or terminal disposition; reviewer availability
+is never the blocker.
 
 Before yielding at every protocol-created critic queue, write the bounded entry event with
 `scripts/fsgg-coord review wait <ref> <event.json> --pr <n> --json`. After a critic record lands, write
@@ -272,9 +316,9 @@ park procedure and the critic's filing preconditions;
 and
 [Reading the review state](references/independent-review.md#reading-the-review-state-a-designed-wait-is-not-broken-evidence)
 state what a moved head and a designed wait do and do not mean. Do not merge
-without its passing review evidence and exact-SHA structured v2 acceptance record, authored through
-`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. If no independent agent mechanism is available, stop and report
-that the review gate is unavailable; self-review does not satisfy it.
+without its passing critique evidence and exact-SHA structured v2 acceptance record, authored through
+`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. The accountable owner may author
+both records through distinct phase identities; absence of another agent is not a stop condition.
 
 ## 6. Merge and obligations
 

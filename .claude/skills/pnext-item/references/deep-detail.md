@@ -826,7 +826,7 @@ no true sequencing dependency:
   "acceptance": "<testable repair criteria>",
   "verification": "<currently red command and intended proof>",
   "paths": ["<narrow exact path or directory prefix>"],
-  "class": "<defect|hardening|capability|decision>",
+  "class": "<defect|hardening|decision>",
   "severity": "<low|medium|high|critical>",
   "status": "Backlog",
   "backlogReason": "not-yet-actionable",
