@@ -1,5 +1,18 @@
 # Independent review and material filing
 
+## Authority semantics
+
+This review is evidence for one Accountable Delivery Owner's decision, not a second authorization.
+The same responsible owner may perform the implementation, critic, repair, and host-acceptance phases.
+The wire contract still uses distinct minted phase identities so generations, stale records, and role-local
+mutations remain mechanically distinguishable; those identities do not require distinct people, accounts,
+agents, or approvals. In the remainder of this reference, “independent” and “fresh critic” mean a fresh
+exact-head critique phase with independent test or analysis inputs. External participation is optional.
+
+If older incident rationale below says an implementer cannot be its own critic, read that as the wire-level
+rule that one phase identity cannot occupy both fields in the same record. It does not override the single
+owner's authority or require an external reviewer.
+
 Review authority is the append-only structured ledger. Every decision is a digest-chained JSON
 record posted with `scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`.
 Narrative prose, quoted JSON, and historical marker-shaped text carry no authority.
