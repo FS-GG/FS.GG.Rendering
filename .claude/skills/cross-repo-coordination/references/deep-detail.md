@@ -103,7 +103,7 @@ the eventual claimant can. The rules the engine will hold you to are below, gene
   "acceptance": "<receiver-owned acceptance criteria>",
   "verification": "<commands or evidence URLs>",
   "paths": ["src/Scene", "tests/Scene"],
-  "class": "<defect|hardening|capability|decision>",
+  "class": "<defect|hardening|decision>",
   "severity": "<Low|Medium|High|Critical>",
   "status": "Backlog",
   "backlogReason": "not-yet-actionable",

@@ -493,7 +493,7 @@ done <<<"$body_paths"
 # library skills that `.claude/skills/<id>/SKILL.md` wraps and points an agent at, the one authoring note
 # about this very convention — and, since #723, THE WRAPPERS THEMSELVES, in both skill roots.
 AGENT_SKILLS=".agents/skills"
-# The COORDINATION KIT (§ 0c): the four bodies in the skill roots that FS-GG/.github authors and a bot
+# The COORDINATION KIT (§ 0c): the five bodies in the skill roots that FS-GG/.github authors and a bot
 # syncs. OUT OF THE SUBJECT — their refs are `.github`'s to qualify — but firmly IN the vocabulary
 # below, because an agent standing in this tree really can invoke `[[pnext-item]]`, and a body of ours
 # that points at one is CORRECT.
@@ -512,7 +512,7 @@ AGENT_SKILLS=".agents/skills"
 # polarity one PR earlier; the contrast was stale on the day it was written, and it argued for the
 # tolerance that #722 was filed about. One rule, one reading: a constant this gate narrows its own
 # behaviour by is a constant it checks.
-KIT_SKILLS=$'cross-repo-coordination\nintra-repo-parallel-work\ncheck-board\npnext-item'
+KIT_SKILLS=$'cross-repo-coordination\nintra-repo-parallel-work\ncheck-board\ninitialize-sdd-workspace\npnext-item'
 
 # The RESOLVABLE SET for a body read HERE: the skills an agent in this tree can actually INVOKE. Not
 # the manifest — § 0b is the argument, and the two sets name different bodies under the same string.

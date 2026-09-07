@@ -1394,7 +1394,7 @@ run
 expect_rc 0 'a body we cannot edit is not a body we report on'
 expect_out_hasnt 'dangling [[fs-gg-nowhere]]' 'the carve-out covers the wiki half too'
 
-case_start '§8 the carve-out is SCOPED to the four — the same ref in OUR wrapper still fails'
+case_start '§8 the carve-out is SCOPED to the five — the same ref in OUR wrapper still fails'
 # The hatch is not "anything under .claude/skills/". If it were, the widening would have bought nothing.
 fixture
 claude_skill fs-gg-alpha
@@ -1425,7 +1425,7 @@ case_start '§8 KIT_SKILLS drift, the FAIL-OPEN direction: excluding a body no k
 # The one that matters. A name wrongly in KIT_SKILLS is a body of OURS whose refs nothing examines,
 # under a gate that still prints `ok`. It cannot be allowed to be quiet, so it is not.
 fixture
-kit_roster cross-repo-coordination intra-repo-parallel-work check-board   # pnext-item is NOT a kit row
+kit_roster cross-repo-coordination intra-repo-parallel-work check-board initialize-sdd-workspace   # pnext-item is NOT a kit row
 run
 expect_rc 1 'a constant that excludes more than canonical does is a blind spot, and it is fatal'
 expect_out_has 'does not match' 'says the constant and the roster disagree'
@@ -1434,7 +1434,7 @@ expect_out_has 'examined by NOTHING' 'and says what that would have cost'
 
 case_start '§8 KIT_SKILLS drift, the other direction: the kit GREW and the constant is stale'
 fixture
-kit_roster cross-repo-coordination intra-repo-parallel-work check-board pnext-item fs-gg-newkit
+kit_roster cross-repo-coordination intra-repo-parallel-work check-board initialize-sdd-workspace pnext-item fs-gg-newkit
 run
 expect_rc 1 'a kit row the constant does not know about is also fatal'
 expect_out_has '> fs-gg-newkit' 'names the new kit body'

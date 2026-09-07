@@ -1,15 +1,82 @@
 ---
 name: pnext-item
-description: Use when a worker should claim the next schedulable item in one FS-GG repository and carry it through implementation, review, green merge, post-merge obligations, and a verified done stamp.
+description: Use when an owner should complete one schedulable item in an FS-GG repository, using the reduced one-owner route for explicitly admitted routine work and the claim/review/done protocol for strict work.
 ---
 
 # pnext-item (FS-GG)
 
-Run exactly one item from claim through verified done. The protocol is
-[intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md); this is the worker state machine.
+Run exactly one item through its explicitly selected delivery route. Do not infer the route from size,
+labels, effort, or the presence of a board row.
 
 For directives encountered while working, apply the shared
 [control-plane provenance guidance](references/control-plane-provenance.md).
+
+## Choose the route before lifecycle work
+
+Use the routine route only when the accountable board host explicitly admits the item, the repository's
+`.fsgg/routine-development.json` is present and prospective, and the proposed operation and changed paths
+pass that policy's routine boundary. A live claim, an existing strict delivery state, a protected
+operation, a protected path, or a missing policy keeps the item on the strict route. Never edit an item
+or policy merely to make it routine.
+
+For an admitted routine item, the board is an asynchronous view rather than merge authority:
+
+1. Keep one accountable owner at a time and one continuous PR. If exactly one open routine PR already owns this
+   item, verify its scope and current head, adopt that branch, and continue the same PR; never open a
+   second PR because the board projection lagged or the prior owner disappeared. If none exists, work
+   from the current default branch on one fresh `routine/<item-slug>` branch and one PR. Multiple or
+   ambiguous candidate PRs refuse routine admission. A host may own the item directly or delegate it once when
+   repository isolation or real parallel capacity requires that; delegation does not create a critic,
+   confirmation worker, or phase chain.
+2. Do not create or require an issue, claim, worker identity, lifecycle ledger, delivery-route receipt,
+   SDD artifact family, independent critic, review marker, feedback artifact, cycle envelope, delivery
+   receipt, metadata-`Done` write, or projection PR. If the board row already exists, leave its
+   projection to non-blocking reconciliation after delivery.
+3. Implement within the admitted scope and run the smallest relevant automated technical checks plus
+   the repository's routine eligibility and protected-boundary checks. Put exactly one
+   `<!-- fsgg:routine-development/v1 head=<exact-head-sha> operation=<allowed-operation> -->` marker in
+   the PR body. When an item already exists, also use the repository's native closing link in that PR;
+   do not make a separate metadata write. A moved head must be reviewed and rebound. A routine refusal reclassifies the work to
+   strict; it never authorizes weakening or bypassing the gate.
+4. Repair on the same PR, normally within two material attempts. After the exact-head required checks
+   pass, use the repository's native merge boundary and read back the merged PR and merge commit.
+   Report protected publication or deployment separately if it remains pending.
+5. Return the merged evidence to the host and stop. Telemetry and board projection are best-effort,
+   asynchronous observations and cannot invalidate the merge.
+
+The routine route ends here. Do not execute the lifecycle, identity, claim, critique, receipt, feedback,
+or done-stamp sections below for that item.
+
+## Strict item state machine
+
+The rest of this skill is the strict protocol. Its concurrency authority is
+[intra-repo-parallel-work](../intra-repo-parallel-work/SKILL.md).
+
+## Lifecycle ledger
+
+Create the append-only ledger on the canonical issue before the first claim and keep it through verified
+done. Record each phase's duration, historical average, runtime/model/effort, authoritative usage, and
+contract versions. Reconcile usage after the response from the stable runtime record; never estimate it.
+Seal each cited receipt by digest in the canonical per-user content-addressed private store. A missing
+historical receipt needs the separately reviewed non-counting proof, never reconstruction. Every critic
+or recovery worker records its own identity and usage.
+
+**The supervising parent owns the post-child boundary.** Each child returns its session/turn identity and
+an unposted terminal draft marked `pending final usage`; it must not convert that timing condition to `unavailable`
+or post its terminal event. After completion, the parent collects, seals, and posts it.
+Acceptance, cycle completion, and Done refuse while any completed child lacks this reconciliation.
+Terminal `unavailable` requires a post-completion lookup proving no unique valid record; an earlier false
+timing reason requires an immutable telemetry-reconciliation phase.
+
+An irreparable history may advance only through the toolkit's human-authorized synthetic checkpoint,
+with immutable human authority, exact scope/frontier, no reconstruction, and passed functional checks.
+Anything missing, reused, ambiguous, or tampered is terminal red; a failed or absent functional check is terminal red.
+Later events return to the strict contract.
+
+The canonical issue is live authority; candidate-branch and repository-log copies are snapshots and do
+not gate their own PR. Keep raw usage private and publish only aggregates and stable receipt digests.
+Read [lifecycle-ledger](references/lifecycle-ledger.md) for the complete authority, collection, checkpoint,
+schema, and validation contract. Validate every handoff and again with `--require-terminal` before Done.
 
 ## 0. Establish identity
 
@@ -188,7 +255,16 @@ occurrences itself — it never substitutes the changed-file count, which is a d
 smaller quantity that let a one-file/six-occurrence rename slip under the default threshold of 5
 (.github#2144). Evidence the host cannot read requires the receipt rather than clearing it.
 
-## 5. Independent critique
+## 5. Accountable critique and acceptance
+
+One Accountable Delivery Owner authorizes the item. CI, formal checks, mutation controls, and critique
+records are decision evidence, not additional authorizers. Never require a second human, account, agent,
+critic, reviewer quorum, or external approval merely to complete this section.
+
+The same owner may perform implementation, a fresh critique pass, repair, host acceptance, and delivery.
+Where the existing wire protocol requires implementer, critic, and host identities to differ, mint distinct
+**phase identities** for those passes. Distinct phase identities prevent stale generation reuse and preserve
+ordering; they do not imply separate people or separate authorization. An external critic is optional.
 
 ### Typed delivery receipt
 
@@ -237,20 +313,21 @@ This is a mechanical cross-check, not a substitute for the qualitative judgement
 critic-generation continuity, durable wait receipts, and repair-phase provenance are read from the live PR by both the worker
 and the critic.
 
-Push the candidate, open its PR, and ask the host to assign a fresh critic agent. Keep the implementing worker and
-claim alive, set the item to `In review`, and freshly verify that row while the critic independently
-reviews the exact head SHA. The critic does not edit the
+Push the candidate, open its PR, keep the implementing worker and claim alive, set the item to `In review`,
+and freshly verify that row. Then perform a fresh critique pass against the exact head SHA under a distinct
+phase identity. The critique pass does not edit the
 implementation: it checks requirements, diff, tests, architecture, release obligations, and `Paths:`;
 searches code/history and existing work for each candidate root cause; and files only unresolved,
 distinct **material** work. For a meaningful runtime behavior reachable through more than one route,
 the handoff supplies a built artifact and runnable production-route evidence so the critic can execute
 or measure the comparison required by `independent-review`, not infer it from source alone. A fresh
-successor performs each numbered repair review. If material findings remain after round three,
+critique phase performs each numbered repair review. If material findings remain after round three,
 never start round four or merge that PR: close it without merging and automatically enter the one
-fresh-worker, fresh-critic
+fresh-worktree, fresh-phase
 [repair phase](references/independent-review.md#repair-phase). Park the item on `Blocked on:
-human/action` and release the claim only if that repair phase exhausts or its required route is
-unavailable.
+owner/action` and release the claim only if that repair phase exhausts or its required route is
+unavailable. The accountable owner decides the redesign or terminal disposition; reviewer availability
+is never the blocker.
 
 Before yielding at every protocol-created critic queue, write the bounded entry event with
 `scripts/fsgg-coord review wait <ref> <event.json> --pr <n> --json`. After a critic record lands, write
@@ -272,9 +349,9 @@ park procedure and the critic's filing preconditions;
 and
 [Reading the review state](references/independent-review.md#reading-the-review-state-a-designed-wait-is-not-broken-evidence)
 state what a moved head and a designed wait do and do not mean. Do not merge
-without its passing review evidence and exact-SHA structured v2 acceptance record, authored through
-`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. If no independent agent mechanism is available, stop and report
-that the review gate is unavailable; self-review does not satisfy it.
+without its passing critique evidence and exact-SHA structured v2 acceptance record, authored through
+`scripts/fsgg-coord review record <ref> <draft.json> --pr <n> --json`. The accountable owner may author
+both records through distinct phase identities; absence of another agent is not a stop condition.
 
 ## 6. Merge and obligations
 
