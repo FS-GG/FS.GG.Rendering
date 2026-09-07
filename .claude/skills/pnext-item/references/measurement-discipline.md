@@ -17,8 +17,12 @@ Repository and pull-request observations bind both the exact head SHA and the ef
 Derive the base once with `git merge-base <base-ref> <head-sha>` and record the returned SHA. A two-dot
 diff against a moving name such as `origin/main` is invalid evidence: it compares two current trees and
 can add base-only changes to a count. Before review acceptance and again before landing, resolve the
-effective base. If it changed, the earlier CI or review observation is `Stale`; its green result remains
-historical evidence, not authorization.
+effective base. A changed base does not by itself stale an exact-head observation: the delivery gate may
+carry it forward only when complete GitHub comparisons prove the new base is a forward-only descendant
+of the accepted base and its changed-path footprint is disjoint from the reviewed candidate's complete
+footprint. GitHub must still report the PR mergeable and every exact-head check and authority gate must
+remain current. A rewritten/diverged base, path overlap (including either side of a rename), conflict,
+changed head, 300-file comparison cap, or unreadable comparison is `Stale`; rebase and revalidate.
 
 For paged APIs, follow every page until the authority reports `has_next: false` (or the equivalent
 terminal cursor). A response whose item count equals the page size is a truncation warning, never proof
@@ -96,8 +100,13 @@ Keep the recorded base SHA beside every review observation. Immediately before a
 
 ```sh
 effective_base="$(git merge-base origin/main "$HEAD_SHA")"
-test "$effective_base" = "$RECORDED_BASE_SHA"
+if test "$effective_base" != "$RECORDED_BASE_SHA"; then
+  scripts/fsgg-coord landable "$PR" --repo "$REPO" --sha "$HEAD_SHA" \
+    --require fsgg:review-decision/v2
+fi
 ```
 
-A non-zero result turns the formerly green observation `Stale`. Re-run the diff and affected gates on
-the new base/head pair; never carry the old green forward as authorization.
+Only the typed landability gate may preserve authorization across that mismatch: it reads both complete
+comparison footprints and every live merge/claim/review/check fact. A non-green result is `Stale`; re-run
+the diff and affected gates on the new base/head pair. Never infer equivalence from a clean local merge,
+an unchanged file count, or a caller-computed patch hash.
