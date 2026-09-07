@@ -182,7 +182,7 @@ NATIVE_SOURCE=".agents/skills"
 # Externally-owned, written by coordination-sync and gated by `coordination-coherence`. Named here to
 # ATTRIBUTE them, not to check them — duplicating that gate here would be a restatement that can
 # disagree with it.
-KIT_SKILLS="cross-repo-coordination intra-repo-parallel-work check-board pnext-item"
+KIT_SKILLS="cross-repo-coordination intra-repo-parallel-work check-board initialize-sdd-workspace pnext-item"
 
 # Repo-native skills are the `fs-gg-*` provider wrappers plus this one local lifecycle skill.
 # Everything else must be declared by the Spec Kit manifest, enabled extension registry, or kit.

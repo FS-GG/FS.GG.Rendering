@@ -948,7 +948,12 @@ module SkillParity =
     /// verbatim by coordination-sync. Excluded from wrapper parity (their byte-coherence is the
     /// coordination-coherence gate's job); add a kit skill here when coordination-sync introduces it.
     let private coordinationKitSkills =
-        Set.ofList [ "cross-repo-coordination"; "intra-repo-parallel-work"; "check-board"; "pnext-item" ]
+        Set.ofList
+            [ "cross-repo-coordination"
+              "intra-repo-parallel-work"
+              "check-board"
+              "initialize-sdd-workspace"
+              "pnext-item" ]
 
     /// ADR-0011's three agent-skill roots, as the path segments that identify a MIRROR copy of a skill
     /// inside a scaffolding tree under `template/`. A body found at one of these is a byte-identical

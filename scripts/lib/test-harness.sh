@@ -173,10 +173,10 @@ fixture_new() {
   echo '[]' >"$FIX/unlabelled.json"  # issues that do NOT carry it — visible only if `labels=` is dropped
   # FS-GG/.github's coordination-kit roster (#723). check-skill-refs.sh verifies its `KIT_SKILLS`
   # constant against this, because that constant decides which bodies it does NOT examine and its
-  # fail-open direction is a body of ours going unchecked. Defaults to the four real kit skills, so a
+  # fail-open direction is a body of ours going unchecked. Defaults to the five real kit skills, so a
   # fixture that does not care about the kit gets a roster that AGREES with the subject and is silent.
   # `kit_roster` overrides it to drive the drift cases.
-  printf '%s\n' cross-repo-coordination intra-repo-parallel-work check-board pnext-item >"$FIX/kit.txt"
+  printf '%s\n' cross-repo-coordination intra-repo-parallel-work check-board initialize-sdd-workspace pnext-item >"$FIX/kit.txt"
   # FS-GG/.github's SKILL registry (#722) — the other constant check-skill-refs.sh narrows itself by.
   # `MIRRORED_SKILLS` names the bodies it treats HARDER (a bare `[[ref]]` in one is a hard failure), and
   # since #714 the omission of a mirror fails OPEN, so that list is verified against `owner:` here.
