@@ -26,6 +26,6 @@
     <PackageReference Include="FS.GG.UI.SkiaViewer" Version="0.4.0-preview.1" />
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.16.1" />
   </ItemGroup>
 </Project>

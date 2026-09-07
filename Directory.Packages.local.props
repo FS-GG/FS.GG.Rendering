@@ -68,7 +68,7 @@
     <PackageVersion Include="FS.GG.Audio.Host" Version="0.5.0" />
     <PackageVersion Include="Expecto" Version="10.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.0" />
+    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.1" />
   </ItemGroup>
   <!-- Build-tooling only (build/** projects, NOT src/** and NOT shipped in any
        generated product). Consumed as ordinary NuGet libraries by the compiled
