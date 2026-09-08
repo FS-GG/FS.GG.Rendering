@@ -91,6 +91,6 @@
     <PackageVersion Include="Fake.IO.FileSystem" Version="6.1.4" />
     <PackageVersion Include="Fake.Tools.Git" Version="6.1.4" />
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
-    <PackageVersion Include="FsCheck" Version="3.3.3" />
+    <PackageVersion Include="FsCheck" Version="3.4.0" />
   </ItemGroup>
 </Project>
