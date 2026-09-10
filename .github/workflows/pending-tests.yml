@@ -33,7 +33,7 @@ jobs:
         run: dotnet test tests/Elmish.Tests/Elmish.Tests.fsproj -c Release --no-restore
       - name: Upload generated performance evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: feature-109-performance-evidence
           if-no-files-found: error
