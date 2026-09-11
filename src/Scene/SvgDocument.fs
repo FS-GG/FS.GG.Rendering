@@ -384,7 +384,7 @@ module SvgDocument =
         document.Definitions |> List.iteri (fun index definition -> validateDefinition $"/definitions/{index}" definition)
         duplicateIds "element" "/children" allElementIds
         duplicateIds "semantic" "/children" allSemanticIds
-        duplicateIds "document" "/" ((document.Definitions |> List.map _.Id) @ allElementIds)
+        duplicateIds "document" "/" (document.Id :: ((document.Definitions |> List.map _.Id) @ allElementIds))
 
         let definitionRefs (definition: SvgDefinition) =
             let rec fromElements (elements: SvgElement list) =

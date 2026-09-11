@@ -73,6 +73,9 @@ let tests =
             let codes = issues |> List.map _.Code |> Set.ofList
             [ "duplicate-id"; "missing-reference"; "cyclic-reference"; "non-finite-transform"; "node-limit"; "definition-limit"; "document-byte-limit" ]
             |> List.iter (fun code -> Expect.contains codes code $"{code} is diagnosed")
+
+            let rootCollision = SvgDocument.validate 0 SvgDocument.defaultLimits { document [] [ leaf "fixture" ] with Id = "fixture" }
+            Expect.exists rootCollision (fun value -> value.Code = "duplicate-id") "document root identity shares the global namespace"
         }
 
         test "definition kinds and direct Scene leaves cannot bypass validation" {
