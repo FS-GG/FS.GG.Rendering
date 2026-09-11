@@ -731,15 +731,134 @@ FS.GG.UI.Scene.SvgAdapterIssue.new(Microsoft.FSharp.Core.FSharpOption<System.Str
 FS.GG.UI.Scene.SvgAdapterResult+Tags.Invalid : System.Int32
 FS.GG.UI.Scene.SvgAdapterResult+Tags.Rendered : System.Int32
 FS.GG.UI.Scene.SvgAdapterResult+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.SvgAffine.A : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.B : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.C : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.D : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.E : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.F : System.Double [get]
+FS.GG.UI.Scene.SvgAffine.compose(FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgAffine) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.identity : FS.GG.UI.Scene.SvgAffine [get]
+FS.GG.UI.Scene.SvgAffine.isFinite(FS.GG.UI.Scene.SvgAffine) : System.Boolean
+FS.GG.UI.Scene.SvgAffine.new(System.Double, System.Double, System.Double, System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.SvgAffine.rotateDegrees(System.Double) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.scale(System.Double, System.Double) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.skewXDegrees(System.Double) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.skewYDegrees(System.Double) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.transformPoint(FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.Point
+FS.GG.UI.Scene.SvgAffine.translate(System.Double, System.Double) : FS.GG.UI.Scene.SvgAffine
+FS.GG.UI.Scene.SvgAffine.tryInverse(FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgAffineError>
+FS.GG.UI.Scene.SvgAffineError+Tags.NonFinite : System.Int32
+FS.GG.UI.Scene.SvgAffineError+Tags.Singular : System.Int32
+FS.GG.UI.Scene.SvgAssetDescriptor.AssetId : System.String [get]
+FS.GG.UI.Scene.SvgAssetDescriptor.Document : FS.GG.UI.Scene.SvgDocument [get]
+FS.GG.UI.Scene.SvgAssetDescriptor.License : System.String [get]
+FS.GG.UI.Scene.SvgAssetDescriptor.Sha256 : System.String [get]
+FS.GG.UI.Scene.SvgAssetDescriptor.Version : System.String [get]
+FS.GG.UI.Scene.SvgAssetDescriptor.new(System.String, System.String, System.String, System.String, FS.GG.UI.Scene.SvgDocument)
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.Capabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.EntryPoint : System.String [get]
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.ExtensionId : System.String [get]
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.Support : FS.GG.UI.Scene.SvgRuntimeSupport [get]
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.Version : System.String [get]
+FS.GG.UI.Scene.SvgBuildExtensionDescriptor.new(System.String, System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgRuntimeSupport)
 FS.GG.UI.Scene.SvgCamera.PanX : System.Double [get]
 FS.GG.UI.Scene.SvgCamera.PanY : System.Double [get]
 FS.GG.UI.Scene.SvgCamera.Zoom : System.Double [get]
 FS.GG.UI.Scene.SvgCamera.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.SvgClipShape+Tags.Intersection : System.Int32
+FS.GG.UI.Scene.SvgClipShape+Tags.Path : System.Int32
+FS.GG.UI.Scene.SvgClipShape+Tags.Rectangle : System.Int32
+FS.GG.UI.Scene.SvgCoordinateUnits+Tags.ObjectBoundingBox : System.Int32
+FS.GG.UI.Scene.SvgCoordinateUnits+Tags.UserSpaceOnUse : System.Int32
+FS.GG.UI.Scene.SvgDefinition.Content : FS.GG.UI.Scene.SvgDefinitionContent [get]
+FS.GG.UI.Scene.SvgDefinition.Id : System.String [get]
+FS.GG.UI.Scene.SvgDefinition.new(System.String, FS.GG.UI.Scene.SvgDefinitionContent)
+FS.GG.UI.Scene.SvgDefinitionContent+Tags.Clip : System.Int32
+FS.GG.UI.Scene.SvgDefinitionContent+Tags.Font : System.Int32
+FS.GG.UI.Scene.SvgDefinitionContent+Tags.Gradient : System.Int32
+FS.GG.UI.Scene.SvgDefinitionContent+Tags.Mask : System.Int32
+FS.GG.UI.Scene.SvgDefinitionContent+Tags.Symbol : System.Int32
+FS.GG.UI.Scene.SvgDocument.Children : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgElement> [get]
+FS.GG.UI.Scene.SvgDocument.Definitions : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDefinition> [get]
+FS.GG.UI.Scene.SvgDocument.Id : System.String [get]
+FS.GG.UI.Scene.SvgDocument.Schema : System.String [get]
+FS.GG.UI.Scene.SvgDocument.ViewBox : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.SvgDocument.defaultLimits : FS.GG.UI.Scene.SvgDocumentLimits [get]
+FS.GG.UI.Scene.SvgDocument.defaultPresentation : FS.GG.UI.Scene.SvgPresentation [get]
+FS.GG.UI.Scene.SvgDocument.new(System.String, System.String, FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDefinition>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgElement>)
+FS.GG.UI.Scene.SvgDocument.ofRetainedScene(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.RetainedScene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgDocument.schema : System.String [get]
+FS.GG.UI.Scene.SvgDocument.validate(System.Int32, FS.GG.UI.Scene.SvgDocumentLimits, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>
+FS.GG.UI.Scene.SvgDocumentIssue.Code : System.String [get]
+FS.GG.UI.Scene.SvgDocumentIssue.Location : System.String [get]
+FS.GG.UI.Scene.SvgDocumentIssue.Message : System.String [get]
+FS.GG.UI.Scene.SvgDocumentIssue.new(System.String, System.String, System.String)
+FS.GG.UI.Scene.SvgDocumentLimits.MaxDefinitions : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.MaxExpandedSymbolNodes : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.MaxNodes : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.MaxPathSegments : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.MaxReferenceDepth : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.MaxSerializedBytes : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentLimits.new(System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Scene.SvgElement.ClipId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgElement.Content : FS.GG.UI.Scene.SvgElementContent [get]
+FS.GG.UI.Scene.SvgElement.Id : System.String [get]
+FS.GG.UI.Scene.SvgElement.MaskId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgElement.Presentation : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgPresentation> [get]
+FS.GG.UI.Scene.SvgElement.SemanticId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgElement.Transform : FS.GG.UI.Scene.SvgAffine [get]
+FS.GG.UI.Scene.SvgElement.Visible : System.Boolean [get]
+FS.GG.UI.Scene.SvgElement.new(System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, FS.GG.UI.Scene.SvgAffine, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgPresentation>, FS.GG.UI.Scene.SvgElementContent)
+FS.GG.UI.Scene.SvgElementContent+Tags.Group : System.Int32
+FS.GG.UI.Scene.SvgElementContent+Tags.SceneLeaf : System.Int32
+FS.GG.UI.Scene.SvgElementContent+Tags.SymbolInstance : System.Int32
+FS.GG.UI.Scene.SvgFontReference.Family : System.String [get]
+FS.GG.UI.Scene.SvgFontReference.License : System.String [get]
+FS.GG.UI.Scene.SvgFontReference.Sha256 : System.String [get]
+FS.GG.UI.Scene.SvgFontReference.Source : System.String [get]
+FS.GG.UI.Scene.SvgFontReference.new(System.String, System.String, System.String, System.String)
+FS.GG.UI.Scene.SvgGradientDefinition.Geometry : FS.GG.UI.Scene.SvgGradientGeometry [get]
+FS.GG.UI.Scene.SvgGradientDefinition.InheritFrom : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgGradientDefinition.Spread : FS.GG.UI.Scene.SvgSpreadMethod [get]
+FS.GG.UI.Scene.SvgGradientDefinition.Stops : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgGradientStop> [get]
+FS.GG.UI.Scene.SvgGradientDefinition.Transform : FS.GG.UI.Scene.SvgAffine [get]
+FS.GG.UI.Scene.SvgGradientDefinition.Units : FS.GG.UI.Scene.SvgCoordinateUnits [get]
+FS.GG.UI.Scene.SvgGradientDefinition.new(FS.GG.UI.Scene.SvgGradientGeometry, FS.GG.UI.Scene.SvgCoordinateUnits, FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgSpreadMethod, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgGradientStop>, Microsoft.FSharp.Core.FSharpOption<System.String>)
+FS.GG.UI.Scene.SvgGradientGeometry+Tags.Linear : System.Int32
+FS.GG.UI.Scene.SvgGradientGeometry+Tags.Radial : System.Int32
+FS.GG.UI.Scene.SvgGradientStop.Color : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.SvgGradientStop.Offset : System.Double [get]
+FS.GG.UI.Scene.SvgGradientStop.StopOpacity : System.Double [get]
+FS.GG.UI.Scene.SvgGradientStop.new(System.Double, FS.GG.UI.Scene.Color, System.Double)
+FS.GG.UI.Scene.SvgMaskKind+Tags.Alpha : System.Int32
+FS.GG.UI.Scene.SvgMaskKind+Tags.Luminance : System.Int32
+FS.GG.UI.Scene.SvgPaintSource+Tags.Definition : System.Int32
+FS.GG.UI.Scene.SvgPaintSource+Tags.Solid : System.Int32
+FS.GG.UI.Scene.SvgPresentation.FillRule : FS.GG.UI.Scene.PathFillType [get]
+FS.GG.UI.Scene.SvgPresentation.FillSource : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgPaintSource> [get]
+FS.GG.UI.Scene.SvgPresentation.OverallOpacity : System.Double [get]
+FS.GG.UI.Scene.SvgPresentation.StrokeStyle : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgStrokePresentation> [get]
+FS.GG.UI.Scene.SvgPresentation.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgPaintSource>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgStrokePresentation>, System.Double, FS.GG.UI.Scene.PathFillType)
 FS.GG.UI.Scene.SvgRetained.project(FS.GG.UI.Scene.RetainedScene) : FS.GG.UI.Scene.SvgAdapterResult
 FS.GG.UI.Scene.SvgRetained.toScreenPoint(FS.GG.UI.Scene.SvgCamera, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.Point
 FS.GG.UI.Scene.SvgRetained.tryCreateInteraction(FS.GG.UI.Scene.RetainedScene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.RetainedInteractionState, FS.GG.UI.Scene.RetainedInteractionError>
 FS.GG.UI.Scene.SvgRetained.tryToScenePoint(FS.GG.UI.Scene.SvgCamera, FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Point>
 FS.GG.UI.Scene.SvgRetained.update(FS.GG.UI.Scene.RetainedInteractionMessage, FS.GG.UI.Scene.RetainedInteractionState) : FS.GG.UI.Scene.RetainedInteractionResult
+FS.GG.UI.Scene.SvgRuntimeSupport+Tags.ContractOnly : System.Int32
+FS.GG.UI.Scene.SvgRuntimeSupport+Tags.Supported : System.Int32
+FS.GG.UI.Scene.SvgRuntimeSupport+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.SvgSpreadMethod+Tags.Pad : System.Int32
+FS.GG.UI.Scene.SvgSpreadMethod+Tags.Reflect : System.Int32
+FS.GG.UI.Scene.SvgSpreadMethod+Tags.Repeat : System.Int32
+FS.GG.UI.Scene.SvgStrokePresentation.Cap : FS.GG.UI.Scene.StrokeCap [get]
+FS.GG.UI.Scene.SvgStrokePresentation.Dash : Microsoft.FSharp.Collections.FSharpList<System.Double> [get]
+FS.GG.UI.Scene.SvgStrokePresentation.DashOffset : System.Double [get]
+FS.GG.UI.Scene.SvgStrokePresentation.Join : FS.GG.UI.Scene.StrokeJoin [get]
+FS.GG.UI.Scene.SvgStrokePresentation.Miter : System.Double [get]
+FS.GG.UI.Scene.SvgStrokePresentation.Source : FS.GG.UI.Scene.SvgPaintSource [get]
+FS.GG.UI.Scene.SvgStrokePresentation.Width : System.Double [get]
+FS.GG.UI.Scene.SvgStrokePresentation.new(FS.GG.UI.Scene.SvgPaintSource, System.Double, FS.GG.UI.Scene.StrokeCap, FS.GG.UI.Scene.StrokeJoin, System.Double, Microsoft.FSharp.Collections.FSharpList<System.Double>, System.Double)
 FS.GG.UI.Scene.TargetCapabilityProfile.ProfileId : System.String [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.SupportedCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)

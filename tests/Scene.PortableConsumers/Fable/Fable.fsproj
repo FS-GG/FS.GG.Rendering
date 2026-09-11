@@ -8,6 +8,6 @@
     <Compile Include="Replay.fs" />
     <Compile Include="Program.fs" />
     <PackageReference Include="Fable.Core" Version="5.2.0" />
-    <PackageReference Include="FS.GG.UI.Scene" Version="0.4.0-preview.1" />
+    <PackageReference Include="FS.GG.UI.Scene" Version="0.29.0-preview.1" />
   </ItemGroup>
 </Project>

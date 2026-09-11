@@ -8,7 +8,7 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools"
 
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed"
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.29.0-preview.1
 cp -R "$repo/tests/Scene.PortableConsumers/DotNet" "$work/DotNet"
 cp -R "$repo/tests/Scene.PortableConsumers/Fable" "$work/Fable"
 cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/DotNet/Replay.fs"
@@ -36,7 +36,7 @@ dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
   "$work/retained-interaction.traces.tsv" "$work/dotnet-projections.tsv"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
-dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
+dotnet tool install fable --version 5.13.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
 node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv"
 cmp "$work/dotnet-projections.tsv" "$work/fable-projections.tsv"
@@ -70,6 +70,8 @@ expected_fable_files = {
     "fable/Types.fs",
     "fable/RetainedSvg.fsi",
     "fable/RetainedSvg.fs",
+    "fable/SvgDocument.fsi",
+    "fable/SvgDocument.fs",
 }
 if fable_files != expected_fable_files:
     raise SystemExit(f"unexpected curated Fable source view: {sorted(fable_files)}")
