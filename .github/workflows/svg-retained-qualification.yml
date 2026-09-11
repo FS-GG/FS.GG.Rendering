@@ -71,6 +71,10 @@ jobs:
               -o lmt main.go
           )
           echo '37e0b0365c2641edce40b48605471f61fa12e97c3e2376152f0e849abdc31f10  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
+      - name: Enable qualified network namespace isolation
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          /usr/bin/unshare --user --map-root-user --net -- /usr/bin/true
       - name: Qualify public installed SDD authority
         env:
           QUINT_BIN: ${{ runner.temp }}/svg-retained-tools/quint
