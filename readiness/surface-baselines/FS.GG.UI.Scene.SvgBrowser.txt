@@ -1,8 +1,15 @@
 FS.GG.UI.Scene.SvgBrowser.SvgBrowser
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+InvalidDocument
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+InvalidOptions
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+InvalidScene
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+DuplicateMountNamespace
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+InvalidDocument
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost
