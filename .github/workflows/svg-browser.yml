@@ -1,0 +1,67 @@
+name: svg-browser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Scene/**'
+      - 'src/Scene.SvgBrowser/**'
+      - 'tests/Scene.SvgBrowser.Tests/**'
+      - 'Directory.Build.props'
+      - 'Directory.Build.local.props'
+      - 'Directory.Packages.props'
+      - 'Directory.Packages.local.props'
+      - 'FS.GG.Rendering.slnx'
+      - '.github/workflows/svg-browser.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/Scene/**'
+      - 'src/Scene.SvgBrowser/**'
+      - 'tests/Scene.SvgBrowser.Tests/**'
+      - 'Directory.Build.props'
+      - 'Directory.Build.local.props'
+      - 'Directory.Packages.props'
+      - 'Directory.Packages.local.props'
+      - 'FS.GG.Rendering.slnx'
+      - '.github/workflows/svg-browser.yml'
+
+concurrency:
+  group: svg-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: SVG browser adapter (packed Fable + Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tests/Scene.SvgBrowser.Tests/package-lock.json
+      - name: Restore browser harness packages
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: npm ci
+      - name: Install Chromium and system dependencies
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: npx playwright-core install --with-deps chromium
+      - name: Exercise packed adapter in Chromium
+        run: bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/svg-browser-observations.json"
+      - name: Upload browser observation
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: svg-browser-observation
+          path: ${{ runner.temp }}/svg-browser-observations.json
+          if-no-files-found: warn

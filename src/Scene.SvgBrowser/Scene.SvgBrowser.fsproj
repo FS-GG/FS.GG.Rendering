@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackageId>FS.GG.UI.Scene.SvgBrowser</PackageId>
+    <AssemblyName>FS.GG.UI.Scene.SvgBrowser</AssemblyName>
+    <Title>FS.GG.UI.Scene.SvgBrowser</Title>
+    <Description>Retained SVG DOM adapter for the portable FS.GG.UI.Scene contract.</Description>
+    <PackageTags>fsharp;scene;svg;browser;fable-javascript</PackageTags>
+    <FablePackageType>library</FablePackageType>
+  </PropertyGroup>
+  <Target Name="CurateFableCompatibilityView" AfterTargets="CreateFablePackageFiles">
+    <ItemGroup>
+      <_PackageFiles Remove="@(_PackageFiles)" />
+      <_PackageFiles Include="SvgBrowser.fsi;SvgBrowser.fs">
+        <Pack>true</Pack>
+        <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+      <_PackageFiles Include="Fable/FS.GG.UI.Scene.SvgBrowser.fsproj">
+        <Pack>true</Pack>
+        <PackagePath>fable/FS.GG.UI.Scene.SvgBrowser.fsproj</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
+  <ItemGroup Label="fable-compatibility-metadata">
+    <None Include="Fable/compatibility-profile.v1.json" Pack="true" PackagePath="fable-compatibility/compatibility-profile.v1.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SvgBrowser.fsi" />
+    <Compile Include="SvgBrowser.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <PackageReference Include="Fable.Browser.Dom" />
+    <PackageReference Include="Fable.Package.SDK" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
+</Project>

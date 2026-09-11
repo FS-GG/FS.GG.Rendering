@@ -26,12 +26,13 @@ verify against the projects' `.fsproj` references.
 
 ## Modules
 
-Every packable product (16 libraries + the BOM metapackage) has a row. The scene, layout,
+Every packable product (17 libraries + the BOM metapackage) has a row. The scene, layout,
 input, viewer, and Elmish assemblies form **Rendering.Core**; the rest layer on top.
 
 | Area | Source module | Package | Structural area | Responsibility |
 |---|---|---|---|---|
 | Scene | `Scene` | `FS.GG.UI.Scene` | Rendering.Core | Retained scene graph, drawing primitives (incl. the `Colors` vocabulary), and animation. |
+| SVG browser adapter | `Scene.SvgBrowser` | `FS.GG.UI.Scene.SvgBrowser` | Rendering.Core | Retained SVG DOM host for the supported Scene subset, with accessible selection, camera transforms, and inverse picking. |
 | Layout | `Layout` | `FS.GG.UI.Layout` | Rendering.Core | Layout engine and layout graph with validation. |
 | Keyboard input | `KeyboardInput` | `FS.GG.UI.KeyboardInput` | Rendering.Core | Pointer + keyboard input model and dispatch — the live input path wired into viewer/controls. |
 | Viewer | `SkiaViewer` | `FS.GG.UI.SkiaViewer` | Rendering.Core | SkiaSharp-over-GL viewer/host: window, frame loop, present mode, screenshot/replay seams. |
