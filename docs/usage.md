@@ -12,7 +12,7 @@ and layer model, see [`docs/product/layering.md`](product/layering.md) and
 
 ## Mental model
 
-FS.GG.Rendering is an F# desktop UI framework. You describe **what** to draw — either
+FS.GG.Rendering is an F# UI framework. You describe **what** to draw — either
 a retained **scene** of primitives, or a tree of semantic **controls** — and the
 framework measures, lays out, and paints it with **SkiaSharp over OpenGL**. For
 interactive apps it runs a Model-View-Update (MVU) loop: state in, a view tree out,
@@ -71,13 +71,14 @@ feed (`nuget.pkg.github.com/FS-GG`). Consume them one of these ways:
 ### Package map
 
 <!-- BEGIN GENERATED: fsgg-doc:library-count (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-All 16 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md) for the owning source module of each):
+All 17 libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md) for the owning source module of each):
 <!-- END GENERATED: fsgg-doc:library-count -->
 
 | Package | What it gives you |
 |---|---|
 | `FS.GG.UI` | BOM / metapackage — a single version-coherent reference to the whole set |
 | `FS.GG.UI.Scene` | Retained scene graph, drawing primitives, animation |
+| `FS.GG.UI.Scene.SvgBrowser` | Retained SVG DOM adapter for the supported Scene subset in Fable/browser apps |
 | `FS.GG.UI.Layout` | Layout engine and layout graph |
 | `FS.GG.UI.KeyboardInput` | Pointer + keyboard models and dispatch |
 | `FS.GG.UI.SkiaViewer` | The SkiaSharp-over-OpenGL viewer/host and render loop |

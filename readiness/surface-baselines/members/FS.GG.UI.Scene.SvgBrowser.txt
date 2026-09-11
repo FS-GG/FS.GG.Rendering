@@ -1,0 +1,23 @@
+FS.GG.UI.Scene.SvgBrowser.SvgBrowser.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions, FS.GG.UI.Scene.RetainedScene, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.RetainedInteractionResult, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost, FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError>
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Dispatch(FS.GG.UI.Scene.RetainedInteractionMessage) : FS.GG.UI.Scene.RetainedInteractionResult
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.HitTest(FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.PanBy(FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.RetainedInteractionResult
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Root : Browser.Types.Element [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.State : FS.GG.UI.Scene.RetainedInteractionState [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.ZoomAt(FS.GG.UI.Scene.Point, System.Double) : FS.GG.UI.Scene.RetainedInteractionResult
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags.InvalidOptions : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags.InvalidScene : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.LayerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.ObjectCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.Revision : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.RootId : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.ScheduledFrameCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.SvgNodeCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.new(System.String, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.AccessibleLabel : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.Height : System.Double [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.WheelZoomFactor : System.Double [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.Width : System.Double [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.new(System.Double, System.Double, System.String, System.Double)

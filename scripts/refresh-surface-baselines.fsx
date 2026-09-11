@@ -100,6 +100,7 @@ let packages =
       "FS.GG.UI.Themes.Default", "Themes.Default"
       "FS.GG.UI.Elmish", "Elmish"
       "FS.GG.UI.Scene", "Scene"
+      "FS.GG.UI.Scene.SvgBrowser", "Scene.SvgBrowser"
       "FS.GG.UI.SkiaViewer", "SkiaViewer"
       "FS.GG.UI.Symbology", "Symbology"
       "FS.GG.UI.Symbology.Render", "Symbology.Render"

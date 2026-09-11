@@ -12,6 +12,7 @@
     <Project Path="src/Layout/Layout.fsproj" />
     <Project Path="src/Meta/FS.GG.UI.fsproj" />
     <Project Path="src/Scene/Scene.fsproj" />
+    <Project Path="src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" />
     <Project Path="src/SkiaViewer/SkiaViewer.fsproj" />
     <Project Path="src/Symbology/Symbology.fsproj" />
     <Project Path="src/Symbology.Render/Symbology.Render.fsproj" />

@@ -38,6 +38,7 @@
       <dependency id="FS.GG.UI.KeyboardInput" version="[$version$]" />
       <dependency id="FS.GG.UI.Layout" version="[$version$]" />
       <dependency id="FS.GG.UI.Scene" version="[$version$]" />
+      <dependency id="FS.GG.UI.Scene.SvgBrowser" version="[$version$]" />
       <dependency id="FS.GG.UI.SkiaViewer" version="[$version$]" />
       <dependency id="FS.GG.UI.Symbology" version="[$version$]" />
       <dependency id="FS.GG.UI.Symbology.Render" version="[$version$]" />

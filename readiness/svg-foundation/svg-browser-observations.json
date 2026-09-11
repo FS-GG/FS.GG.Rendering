@@ -1,0 +1,66 @@
+{
+  "schema": "fsgg.svg-foundation.browser-observation/v1",
+  "result": "pass",
+  "capturedAtUtc": "2026-09-11T12:31:04.222Z",
+  "candidate": {
+    "sourceSha256": "sha256:df9592dfd9e2192998c6c809c83b240ac223079de18317343cc3bafcf98456f4",
+    "packageSetSha256": "sha256:1d31740f8d8c6fbf1a4602b3fc3776c02d2de8495a43ad3f5a248546f2381c5b"
+  },
+  "environment": {
+    "browser": "151.0.7922.34",
+    "node": "v26.8.2",
+    "os": "linux 7.2.2-arch1-1",
+    "logicalCpuCount": 24,
+    "viewport": {
+      "width": 800,
+      "height": 600,
+      "deviceScaleFactor": 1
+    },
+    "headless": true
+  },
+  "sceneCost": {
+    "revision": 1,
+    "layers": 2,
+    "objects": 3,
+    "nodes": 10,
+    "listeners": 6,
+    "frames": 0
+  },
+  "startup": {
+    "productionFiles": 2,
+    "rawBytes": 79899,
+    "gzipBytes": 21483,
+    "coldNetworkCache": false
+  },
+  "timing": {
+    "sampleCount": 20,
+    "mountMilliseconds": {
+      "median": 0.2,
+      "maximum": 0.4
+    },
+    "inputToNextAnimationFrameMilliseconds": {
+      "median": 13.8,
+      "maximum": 14.4
+    }
+  },
+  "functional": {
+    "pointerKeyboardSameObject": true,
+    "accessibleDomRoute": true,
+    "anchoredZoomAndInversePicking": true,
+    "retainedRootAndLayersAcrossRevision": true,
+    "staleRevisionRefused": true,
+    "mountDisposeCycles": 12,
+    "finalOwnedListenerCount": 6,
+    "scheduledFrameCount": 0
+  },
+  "unavailable": [
+    "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
+    "Heap and detached-node measurements were not captured in this focused foundation fixture.",
+    "Firefox, WebKit, touch hardware, mobile GPUs and assistive-technology announcements were not observed."
+  ],
+  "claims": {
+    "thresholdEstablished": false,
+    "completeM9Qualification": false,
+    "packagePublished": false
+  }
+}

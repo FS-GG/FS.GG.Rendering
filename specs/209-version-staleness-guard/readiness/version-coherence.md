@@ -13,7 +13,7 @@ the owed tags equal the observed ones is checked live, on every run, and is what
 - provenance: verdict-core
 - single-version-source: 0.28.0 (`template/base/Directory.Packages.props:9 <FsGgUiVersion>`, occurrences=1)
 - snapshot-tag-for-pin: fs-gg-ui/v0.28.0
-- published-members: 16 · bom-deps: 16 · template-consumed-pins: 14
+- published-members: 17 · bom-deps: 17 · template-consumed-pins: 14
 - runtime-regex-resolves: true
 - template-package-version: 0.28.0 (`.template.package/FS.GG.UI.Template.fsproj:9 <Version>`)
 - release-tag-for-package: v0.28.0 · template-tag-for-package: fs-gg-ui-template/v0.28.0

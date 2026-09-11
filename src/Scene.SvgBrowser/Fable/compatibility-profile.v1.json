@@ -1,0 +1,17 @@
+{
+  "schema": "fsgg.fable-compatibility-profile/v1",
+  "package": "FS.GG.UI.Scene.SvgBrowser",
+  "runtime": "javascript-browser",
+  "publicDependencies": [
+    "FS.GG.UI.Scene",
+    "Fable.Browser.Dom"
+  ],
+  "nativeDependencies": [],
+  "scope": [
+    "retained SVG DOM reconciliation",
+    "pointer and keyboard selection",
+    "camera pan, anchored zoom, and inverse picking",
+    "accessible DOM projection",
+    "owned event-listener lifecycle"
+  ]
+}

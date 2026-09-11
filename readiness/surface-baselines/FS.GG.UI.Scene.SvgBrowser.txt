@@ -1,0 +1,8 @@
+FS.GG.UI.Scene.SvgBrowser.SvgBrowser
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+InvalidOptions
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+InvalidScene
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions
