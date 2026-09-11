@@ -1,0 +1,72 @@
+{
+  "schema": "fsgg.svg-scene.orca-observation/v1",
+  "result": "pass",
+  "assistiveTechnology": {
+    "name": "Orca",
+    "version": "50.2",
+    "transport": "AT-SPI2"
+  },
+  "environment": {
+    "display": "Xvfb",
+    "sessionBus": "isolated dbus-run-session",
+    "browser": "Playwright Chromium headed with forced renderer accessibility"
+  },
+  "candidate": {
+    "sourceDigest": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+    "packageDigest": "sha256:e391771197c4ee48e2ab677034fdcc223f5c9af66de00ff73ac25fc6130e94a8"
+  },
+  "journey": {
+    "alphaHtmlControl": {
+      "selected": "alpha",
+      "focused": "alpha"
+    },
+    "betaHtmlControl": {
+      "selected": "beta",
+      "focused": "beta"
+    },
+    "svgKeyboard": {
+      "selected": "alpha",
+      "focused": "alpha"
+    },
+    "negativeControl": {
+      "nonInteractiveDecorationFocusable": false
+    }
+  },
+  "announcements": {
+    "betaControl": true,
+    "sceneRoot": true,
+    "alphaSelection": true
+  },
+  "negativeControl": {
+    "nonInteractiveDecorationExcludedFromKeyboardFocus": true
+  },
+  "semanticIdentityAgreement": true,
+  "speechOutput": [
+    "'Screen reader on.' {'established': False}",
+    "'SVG foundation browser fixture - Google Chrome for Testing' {'established': False, 'family': {'name': '', 'gender': None, 'lang': 'C', 'dialect': '', 'variant': None}}",
+    "'SVG foundation browser fixture' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+    "'document web' {'established': False}",
+    "'Browse mode' {'established': False}",
+    "'Finished loading SVG foundation browser fixture.' {'established': False}",
+    "'Focus mode' {'established': False}",
+    "'SVG foundation browser fixture - Google Chrome for Testing' {'established': False, 'family': {'name': '', 'gender': None, 'lang': 'C', 'dialect': '', 'variant': None}}",
+    "'SVG foundation browser fixture' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+    "'document web' {'established': False}",
+    "'Browse mode' {'established': False}",
+    "'Finished loading SVG foundation browser fixture.' {'established': False}",
+    "'Focus mode' {'established': False}",
+    "'Alpha unit' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+    "'toggle button not pressed.' {'established': False}",
+    "'Browse mode' {'established': False}",
+    "'pressed' {'established': False}",
+    "'Beta unit' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+    "'toggle button not pressed.' {'established': False}",
+    "'SVG foundation scene' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+    "'Interactive retained SVG scene with an equivalent HTML object-selection control group. embedded Interactive retained SVG scene with an equivalent HTML object-selection control group.' {'established': False}",
+    "'Focus mode' {'established': False}"
+  ],
+  "claims": {
+    "actualAssistiveTechnologyProcessObserved": true,
+    "domOrAccessibilityTreeSubstitution": false
+  }
+}
