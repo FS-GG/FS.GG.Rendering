@@ -53,7 +53,10 @@ export HTTP_PROXY=http://127.0.0.1:1
 export HTTPS_PROXY=http://127.0.0.1:1
 export ALL_PROXY=http://127.0.0.1:1
 export NO_PROXY=127.0.0.1,localhost
-"$cli" typed-sdd provision --cache "$scratch/cache" --quint "$QUINT_BIN" --lmt "$LMT_BIN" > "$scratch/provision.json"
+if ! "$cli" typed-sdd provision --cache "$scratch/cache" --quint "$QUINT_BIN" --lmt "$LMT_BIN" > "$scratch/provision.json"; then
+  cat "$scratch/provision.json" >&2
+  fail 'installed SDD rejected the exact profile-2 tools'
+fi
 grep -F '"profile": "fsgg-quint-profile/2"' "$scratch/provision.json" >/dev/null || fail 'profile-2 provision report missing'
 
 author_once() {
