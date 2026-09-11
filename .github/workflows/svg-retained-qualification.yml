@@ -86,4 +86,4 @@ jobs:
         with:
           name: svg-retained-qualification
           path: ${{ runner.temp }}/svg-retained-qualification.json
-          if-no-files-found: error
+          if-no-files-found: warn

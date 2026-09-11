@@ -33,10 +33,21 @@ else
 CONFIG
 fi
 
-dotnet tool install FS.GG.SDD.Cli --version "$sdd_version" --tool-path "$scratch/tool" \
-  --configfile "$scratch/NuGet.Config" --no-cache >/dev/null
-cli="$scratch/tool/fsgg-sdd"
-"$cli" --version | grep -F "$sdd_version" >/dev/null || fail 'installed SDD identity mismatch'
+cli=''
+for attempt in 1 2 3; do
+  candidate="$scratch/tool-$attempt"
+  if dotnet tool install FS.GG.SDD.Cli --version "$sdd_version" --tool-path "$candidate" \
+    --configfile "$scratch/NuGet.Config" --no-cache; then
+    cli="$candidate/fsgg-sdd"
+    break
+  fi
+  echo "svg-retained-qualification: public SDD install attempt $attempt failed" >&2
+  [[ "$attempt" == 3 ]] || sleep 10
+done
+[[ -n "$cli" && -x "$cli" ]] || fail 'public SDD installation failed after three attempts'
+installed_version="$($cli --version)"
+echo "svg-retained-qualification: installed-cli-version=$installed_version source=$package_source"
+grep -F "$sdd_version" <<<"$installed_version" >/dev/null || fail "installed SDD identity mismatch: $installed_version"
 
 export HTTP_PROXY=http://127.0.0.1:1
 export HTTPS_PROXY=http://127.0.0.1:1
