@@ -52,7 +52,7 @@ reference and matches the source rendering at sampled interiors within two chann
 reference uses a per-channel tolerance of 28 and separately asserts the white evenodd hole and left/right
 gradient interior colors; it is not a permissive whole-image screenshot threshold.
 
-Focused verification passed 104 Scene tests, the isolated .NET/Fable consumers, and the packed Chromium
+Focused verification passed 105 Scene tests, the isolated .NET/Fable consumers, and the packed Chromium
 gallery. Firefox, WebKit, assistive-technology announcements, physical touch/mobile hardware, heap/detached-node
 measurements and compositor presentation timestamps remain explicitly unavailable here; SVG-SCENE-02.5/.6 own
 those broader qualification dimensions.
