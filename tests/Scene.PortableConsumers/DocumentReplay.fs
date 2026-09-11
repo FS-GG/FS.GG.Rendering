@@ -45,8 +45,8 @@ let private document objectAAvailable objectBAvailable =
           if objectBAvailable then element "b" ] }
 
 let private invalidDocument () =
-    let duplicate = element "invalid"
-    { document true true with Children = [ duplicate; duplicate ] }
+    let unresolved = { element "a" with ClipId = Some "missing-clip" }
+    { document true true with Children = [ unresolved ] }
 
 let private initialState () =
     match SvgDocumentInteraction.tryCreate 0 SvgAffine.identity (document true true) with
@@ -111,15 +111,25 @@ let private projection (result: SvgDocumentInteractionResult) =
 
 type ReplayResult = { Count: int; Canonical: string }
 
+[<RequireQualifiedAccess>]
+type ReplayMutation =
+    | WrongOrder
+    | AcceptStaleRevision
+    | AcceptInvalidReference
+    | PreserveReleasedCapture
+    | ApplyInvalidEdit
+
 let private optionNumber = function None -> "none" | Some value -> string value
 let private boolText value = if value then "true" else "false"
 
-let replay (text: string) =
+let private replayCore mutation (text: string) =
     let rows = text.Replace("\r\n", "\n").Split('\n') |> Array.filter (String.IsNullOrWhiteSpace >> not) |> Array.skip 1
     let mutable activeTrace = -1
     let mutable state = initialState ()
     let mutable firstDivergence = None
     let mutable count = 0
+    let mutable traceStepCount = 0
+    let mutable mutationApplied = false
     let canonical = ResizeArray<string>()
     for line in rows do
         if firstDivergence.IsNone then
@@ -127,7 +137,32 @@ let replay (text: string) =
             if expected.Trace <> activeTrace then
                 activeTrace <- expected.Trace
                 state <- initialState ()
-            let result = dispatch expected state
+                traceStepCount <- 0
+            let stateBefore = state
+            let dispatchState =
+                match mutation with
+                | Some ReplayMutation.WrongOrder
+                    when not mutationApplied && traceStepCount > 0 && state <> initialState () ->
+                    mutationApplied <- true
+                    initialState ()
+                | _ -> state
+            let actualResult = dispatch expected dispatchState
+            let result =
+                match mutation with
+                | Some ReplayMutation.AcceptStaleRevision when not mutationApplied && errorCode actualResult.Error = 1 ->
+                    mutationApplied <- true
+                    { actualResult with Error = None }
+                | Some ReplayMutation.AcceptInvalidReference when not mutationApplied && errorCode actualResult.Error = 6 ->
+                    mutationApplied <- true
+                    { actualResult with Error = None }
+                | Some ReplayMutation.PreserveReleasedCapture
+                    when not mutationApplied && expected.Action = "ReleasePointer" && actualResult.Error.IsNone ->
+                    mutationApplied <- true
+                    { actualResult with State = { actualResult.State with CapturedPointerId = stateBefore.CapturedPointerId } }
+                | Some ReplayMutation.ApplyInvalidEdit when not mutationApplied && errorCode actualResult.Error = 6 ->
+                    mutationApplied <- true
+                    { actualResult with State = { actualResult.State with Document = invalidDocument () } }
+                | _ -> actualResult
             let revision, selected, focused, camera, captured, objectAAvailable, objectBAvailable, outcome = projection result
             let actual = revision, selected, focused, camera, captured, objectAAvailable, objectBAvailable, outcome
             let expectedProjection = expected.Revision, expected.Selected, expected.Focused, expected.Camera, expected.Captured, expected.ObjectAAvailable, expected.ObjectBAvailable, expected.Outcome
@@ -136,7 +171,19 @@ let replay (text: string) =
             else
                 state <- result.State
                 count <- count + 1
+                traceStepCount <- traceStepCount + 1
                 canonical.Add(String.concat "\t" [ string expected.Trace; string expected.Step; string revision; optionNumber selected; optionNumber focused; string (int camera.E); string (int camera.F); string (int camera.A); optionNumber captured; boolText objectAAvailable; boolText objectBAvailable; string outcome ])
-    match firstDivergence with
-    | Some divergence -> Error divergence
-    | None -> Ok { Count = count; Canonical = String.concat "\n" canonical + "\n" }
+    let result =
+        match firstDivergence with
+        | Some divergence -> Error divergence
+        | None -> Ok { Count = count; Canonical = String.concat "\n" canonical + "\n" }
+    result, mutationApplied
+
+let replay text = replayCore None text |> fst
+
+let replayMutant mutation text =
+    match replayCore (Some mutation) text with
+    | Error divergence, true -> Error divergence
+    | Error divergence, false -> Error $"DOCUMENT-MUTANT-NOT-EXERCISED mutation={mutation}; replay={divergence}"
+    | Ok _, true -> Ok()
+    | Ok _, false -> Error $"DOCUMENT-MUTANT-NOT-EXERCISED mutation={mutation}"

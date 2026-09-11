@@ -1,0 +1,1402 @@
+{
+  "schema": "fsgg.svg-scene.browser-matrix-observation/v1",
+  "result": "pass",
+  "candidate": {
+    "sourceSha256": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+    "packageSetSha256": "sha256:60fea60e10398e0183b8d70a3103a1fbdfdaf5cc1126fae37ad6c50b46199cc6"
+  },
+  "automatedDimensions": {
+    "functional": {
+      "result": "pass",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    },
+    "visual": {
+      "result": "pass",
+      "browsers": [
+        {
+          "family": "chromium",
+          "reference": {
+            "browserFamily": "chromium",
+            "tolerancePerChannel": 28,
+            "samples": {
+              "evenoddHole": [
+                255,
+                255,
+                255,
+                255
+              ],
+              "gradientLeft": [
+                171,
+                51,
+                135,
+                255
+              ],
+              "gradientRight": [
+                69,
+                51,
+                237,
+                255
+              ]
+            }
+          }
+        },
+        {
+          "family": "firefox",
+          "reference": {
+            "browserFamily": "firefox",
+            "tolerancePerChannel": 28,
+            "samples": {
+              "evenoddHole": [
+                255,
+                255,
+                255,
+                255
+              ],
+              "gradientLeft": [
+                171,
+                51,
+                135,
+                255
+              ],
+              "gradientRight": [
+                69,
+                51,
+                237,
+                255
+              ]
+            }
+          }
+        },
+        {
+          "family": "webkit",
+          "reference": {
+            "browserFamily": "webkit",
+            "tolerancePerChannel": 28,
+            "samples": {
+              "evenoddHole": [
+                255,
+                255,
+                255,
+                255
+              ],
+              "gradientLeft": [
+                170,
+                50,
+                134,
+                255
+              ],
+              "gradientRight": [
+                68,
+                50,
+                237,
+                255
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "resizeDprTouchReflow": {
+      "result": "pass",
+      "browsers": [
+        {
+          "family": "chromium",
+          "cases": [
+            {
+              "name": "desktop-1280x720-dpr1",
+              "result": "pass",
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": {
+                "innerWidth": 1024,
+                "innerHeight": 640,
+                "selected": "beta",
+                "rootVisible": true
+              }
+            },
+            {
+              "name": "hidpi-800x600-dpr2",
+              "result": "pass",
+              "viewport": {
+                "width": 800,
+                "height": 600
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "touch-390x844",
+              "result": "pass",
+              "viewport": {
+                "width": 390,
+                "height": 844
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": true,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "reflow-320-css-pixels",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            },
+            {
+              "name": "zoom-400-percent-layout-equivalent",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 180
+              },
+              "physicalScreen": {
+                "width": 1280,
+                "height": 720
+              },
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": 400,
+              "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            }
+          ]
+        },
+        {
+          "family": "firefox",
+          "cases": [
+            {
+              "name": "desktop-1280x720-dpr1",
+              "result": "pass",
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": {
+                "innerWidth": 1024,
+                "innerHeight": 640,
+                "selected": "beta",
+                "rootVisible": true
+              }
+            },
+            {
+              "name": "hidpi-800x600-dpr2",
+              "result": "pass",
+              "viewport": {
+                "width": 800,
+                "height": 600
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "touch-390x844",
+              "result": "pass",
+              "viewport": {
+                "width": 390,
+                "height": 844
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": true,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "reflow-320-css-pixels",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            },
+            {
+              "name": "zoom-400-percent-layout-equivalent",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 180
+              },
+              "physicalScreen": {
+                "width": 1280,
+                "height": 720
+              },
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": 400,
+              "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            }
+          ]
+        },
+        {
+          "family": "webkit",
+          "cases": [
+            {
+              "name": "desktop-1280x720-dpr1",
+              "result": "pass",
+              "viewport": {
+                "width": 1280,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": {
+                "innerWidth": 1024,
+                "innerHeight": 640,
+                "selected": "beta",
+                "rootVisible": true
+              }
+            },
+            {
+              "name": "hidpi-800x600-dpr2",
+              "result": "pass",
+              "viewport": {
+                "width": 800,
+                "height": 600
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "touch-390x844",
+              "result": "pass",
+              "viewport": {
+                "width": 390,
+                "height": 844
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 2,
+              "touchEmulated": true,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 400,
+                "height": 240
+              },
+              "resized": null
+            },
+            {
+              "name": "reflow-320-css-pixels",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 720
+              },
+              "physicalScreen": null,
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": null,
+              "zoomMethod": null,
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            },
+            {
+              "name": "zoom-400-percent-layout-equivalent",
+              "result": "pass",
+              "viewport": {
+                "width": 320,
+                "height": 180
+              },
+              "physicalScreen": {
+                "width": 1280,
+                "height": 720
+              },
+              "deviceScaleFactor": 1,
+              "touchEmulated": false,
+              "zoomPercent": 400,
+              "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+              "horizontalOverflow": false,
+              "screenshotPixels": {
+                "width": 200,
+                "height": 120
+              },
+              "resized": null
+            }
+          ]
+        }
+      ]
+    },
+    "exportReload": {
+      "result": "pass",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    },
+    "nativeGeometryFontTiming": {
+      "result": "pass",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
+  },
+  "externalDimensions": {
+    "assistiveTechnology": {
+      "schema": "fsgg.svg-scene.orca-observation/v1",
+      "result": "pass",
+      "assistiveTechnology": {
+        "name": "Orca",
+        "version": "50.2",
+        "transport": "AT-SPI2"
+      },
+      "environment": {
+        "display": "Xvfb",
+        "sessionBus": "isolated dbus-run-session",
+        "browser": "Playwright Chromium headed with forced renderer accessibility"
+      },
+      "candidate": {
+        "sourceDigest": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+        "packageDigest": "sha256:e391771197c4ee48e2ab677034fdcc223f5c9af66de00ff73ac25fc6130e94a8"
+      },
+      "journey": {
+        "alphaHtmlControl": {
+          "selected": "alpha",
+          "focused": "alpha"
+        },
+        "betaHtmlControl": {
+          "selected": "beta",
+          "focused": "beta"
+        },
+        "svgKeyboard": {
+          "selected": "alpha",
+          "focused": "alpha"
+        },
+        "negativeControl": {
+          "nonInteractiveDecorationFocusable": false
+        }
+      },
+      "announcements": {
+        "betaControl": true,
+        "sceneRoot": true,
+        "alphaSelection": true
+      },
+      "negativeControl": {
+        "nonInteractiveDecorationExcludedFromKeyboardFocus": true
+      },
+      "semanticIdentityAgreement": true,
+      "speechOutput": [
+        "'Screen reader on.' {'established': False}",
+        "'SVG foundation browser fixture - Google Chrome for Testing' {'established': False, 'family': {'name': '', 'gender': None, 'lang': 'C', 'dialect': '', 'variant': None}}",
+        "'SVG foundation browser fixture' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+        "'document web' {'established': False}",
+        "'Browse mode' {'established': False}",
+        "'Finished loading SVG foundation browser fixture.' {'established': False}",
+        "'Focus mode' {'established': False}",
+        "'SVG foundation browser fixture - Google Chrome for Testing' {'established': False, 'family': {'name': '', 'gender': None, 'lang': 'C', 'dialect': '', 'variant': None}}",
+        "'SVG foundation browser fixture' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+        "'document web' {'established': False}",
+        "'Browse mode' {'established': False}",
+        "'Finished loading SVG foundation browser fixture.' {'established': False}",
+        "'Focus mode' {'established': False}",
+        "'Alpha unit' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+        "'toggle button not pressed.' {'established': False}",
+        "'Browse mode' {'established': False}",
+        "'pressed' {'established': False}",
+        "'Beta unit' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+        "'toggle button not pressed.' {'established': False}",
+        "'SVG foundation scene' {'established': False, 'family': {'name': 'English (Great Britain)', 'gender': None, 'lang': 'en', 'dialect': '', 'variant': None}}",
+        "'Interactive retained SVG scene with an equivalent HTML object-selection control group. embedded Interactive retained SVG scene with an equivalent HTML object-selection control group.' {'established': False}",
+        "'Focus mode' {'established': False}"
+      ],
+      "claims": {
+        "actualAssistiveTechnologyProcessObserved": true,
+        "domOrAccessibilityTreeSubstitution": false
+      }
+    }
+  },
+  "browsers": [
+    {
+      "schema": "fsgg.svg-scene.browser-observation/v2",
+      "result": "pass",
+      "capturedAtUtc": "2026-09-11T23:35:17.908Z",
+      "candidate": {
+        "sourceSha256": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+        "packageSetSha256": "sha256:60fea60e10398e0183b8d70a3103a1fbdfdaf5cc1126fae37ad6c50b46199cc6"
+      },
+      "environment": {
+        "browserFamily": "chromium",
+        "browser": "151.0.7922.34",
+        "node": "v24.20.0",
+        "os": "linux 6.17.0-1022-azure",
+        "logicalCpuCount": 4,
+        "viewport": {
+          "width": 800,
+          "height": 600,
+          "deviceScaleFactor": 1
+        },
+        "headless": true
+      },
+      "sceneCost": {
+        "revision": 1,
+        "layers": 2,
+        "objects": 3,
+        "nodes": 18,
+        "listeners": 9,
+        "frames": 0
+      },
+      "startup": {
+        "productionFiles": 2,
+        "rawBytes": 142255,
+        "gzipBytes": 40758,
+        "coldNetworkCache": false
+      },
+      "timing": {
+        "sampleCount": 20,
+        "mountMilliseconds": {
+          "median": 1.2,
+          "maximum": 1.6
+        },
+        "inputToNextAnimationFrameMilliseconds": {
+          "median": 9.1,
+          "maximum": 20.7
+        }
+      },
+      "functional": {
+        "pointerKeyboardSameObject": true,
+        "accessibleDomRoute": true,
+        "anchoredZoomAndInversePicking": true,
+        "retainedRootAndLayersAcrossRevision": true,
+        "staleRevisionRefused": true,
+        "mountDisposeCycles": 12,
+        "finalOwnedListenerCount": 9,
+        "scheduledFrameCount": 0
+      },
+      "browserMatrix": [
+        {
+          "name": "desktop-1280x720-dpr1",
+          "result": "pass",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": {
+            "innerWidth": 1024,
+            "innerHeight": 640,
+            "selected": "beta",
+            "rootVisible": true
+          }
+        },
+        {
+          "name": "hidpi-800x600-dpr2",
+          "result": "pass",
+          "viewport": {
+            "width": 800,
+            "height": 600
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "touch-390x844",
+          "result": "pass",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": true,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "reflow-320-css-pixels",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        },
+        {
+          "name": "zoom-400-percent-layout-equivalent",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 180
+          },
+          "physicalScreen": {
+            "width": 1280,
+            "height": 720
+          },
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": 400,
+          "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        }
+      ],
+      "document": {
+        "definitions": {
+          "gradients": 5,
+          "symbols": 1,
+          "clips": 3,
+          "alphaMasks": 1,
+          "luminanceMasks": 1,
+          "uses": 1
+        },
+        "stableLocalReferences": true,
+        "duplicateIdsRejectedBeforeReplacement": true,
+        "duplicateMountNamespaceRejected": true,
+        "explicitFontFailure": "font-unavailable:font:Noto Sans",
+        "completeArcSegments": 2,
+        "selectedDefinitionDetails": {
+          "explicitGradientStops": 3,
+          "explicitGradientOffsets": [
+            "0",
+            "0.4",
+            "1"
+          ],
+          "explicitGradientTransform": "matrix(0.772740661031 0.207055236082 -0.310582854123 1.159110991547 0 0)",
+          "explicitGradientInterpolation": "sRGB",
+          "hasUserSpaceGradient": true,
+          "hasObjectBoundingBoxGradient": true,
+          "nestedClip": true,
+          "maskUnits": [
+            "objectBoundingBox",
+            "userSpaceOnUse"
+          ],
+          "symbolViewport": [
+            "0",
+            "0",
+            "20",
+            "20"
+          ],
+          "symbolPointerEvents": "all",
+          "symbolHitProxy": {
+            "id": "symbol-instance",
+            "fill": "transparent",
+            "stroke": "none",
+            "pointerEvents": "all",
+            "ariaHidden": "true"
+          },
+          "textLayoutExplicit": true
+        },
+        "visualReference": {
+          "browserFamily": "chromium",
+          "tolerancePerChannel": 28,
+          "samples": {
+            "evenoddHole": [
+              255,
+              255,
+              255,
+              255
+            ],
+            "gradientLeft": [
+              171,
+              51,
+              135,
+              255
+            ],
+            "gradientRight": [
+              69,
+              51,
+              237,
+              255
+            ]
+          }
+        },
+        "isolatedExportReload": true,
+        "hitSemantics": {
+          "path": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-1",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "text": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-4",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "symbol": {
+            "api": "semantic:symbol-instance",
+            "dom": {
+              "node": null,
+              "semantic": "semantic:symbol-instance"
+            }
+          },
+          "clippedSymbol": {
+            "api": null,
+            "dom": {
+              "node": null,
+              "semantic": null
+            }
+          }
+        },
+        "maskedTransparencyPolicy": "browser-dom-painted-geometry-remains-targetable;clip-removes-target",
+        "retainedReplacement": {
+          "reorderedResult": null,
+          "changedResult": null,
+          "restoredResult": null,
+          "reorderedIds": [
+            "luminance-element",
+            "symbol-instance",
+            "gallery"
+          ],
+          "reorderedRetained": true,
+          "changedRetained": true
+        }
+      },
+      "unavailable": [
+        "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
+        "Heap and detached-node measurements were not captured in this focused foundation fixture.",
+        "Touch input was emulated; physical touch hardware and mobile GPUs were not observed.",
+        "No actual assistive-technology session or announcement stream was available to this automated harness."
+      ],
+      "claims": {
+        "thresholdEstablished": false,
+        "completeM9Qualification": false,
+        "packagePublished": false
+      }
+    },
+    {
+      "schema": "fsgg.svg-scene.browser-observation/v2",
+      "result": "pass",
+      "capturedAtUtc": "2026-09-11T23:35:27.282Z",
+      "candidate": {
+        "sourceSha256": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+        "packageSetSha256": "sha256:60fea60e10398e0183b8d70a3103a1fbdfdaf5cc1126fae37ad6c50b46199cc6"
+      },
+      "environment": {
+        "browserFamily": "firefox",
+        "browser": "153.0",
+        "node": "v24.20.0",
+        "os": "linux 6.17.0-1022-azure",
+        "logicalCpuCount": 4,
+        "viewport": {
+          "width": 800,
+          "height": 600,
+          "deviceScaleFactor": 1
+        },
+        "headless": true
+      },
+      "sceneCost": {
+        "revision": 1,
+        "layers": 2,
+        "objects": 3,
+        "nodes": 18,
+        "listeners": 9,
+        "frames": 0
+      },
+      "startup": {
+        "productionFiles": 2,
+        "rawBytes": 142255,
+        "gzipBytes": 40758,
+        "coldNetworkCache": false
+      },
+      "timing": {
+        "sampleCount": 20,
+        "mountMilliseconds": {
+          "median": 3,
+          "maximum": 6
+        },
+        "inputToNextAnimationFrameMilliseconds": {
+          "median": 35,
+          "maximum": 40
+        }
+      },
+      "functional": {
+        "pointerKeyboardSameObject": true,
+        "accessibleDomRoute": true,
+        "anchoredZoomAndInversePicking": true,
+        "retainedRootAndLayersAcrossRevision": true,
+        "staleRevisionRefused": true,
+        "mountDisposeCycles": 12,
+        "finalOwnedListenerCount": 9,
+        "scheduledFrameCount": 0
+      },
+      "browserMatrix": [
+        {
+          "name": "desktop-1280x720-dpr1",
+          "result": "pass",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": {
+            "innerWidth": 1024,
+            "innerHeight": 640,
+            "selected": "beta",
+            "rootVisible": true
+          }
+        },
+        {
+          "name": "hidpi-800x600-dpr2",
+          "result": "pass",
+          "viewport": {
+            "width": 800,
+            "height": 600
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "touch-390x844",
+          "result": "pass",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": true,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "reflow-320-css-pixels",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        },
+        {
+          "name": "zoom-400-percent-layout-equivalent",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 180
+          },
+          "physicalScreen": {
+            "width": 1280,
+            "height": 720
+          },
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": 400,
+          "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        }
+      ],
+      "document": {
+        "definitions": {
+          "gradients": 5,
+          "symbols": 1,
+          "clips": 3,
+          "alphaMasks": 1,
+          "luminanceMasks": 1,
+          "uses": 1
+        },
+        "stableLocalReferences": true,
+        "duplicateIdsRejectedBeforeReplacement": true,
+        "duplicateMountNamespaceRejected": true,
+        "explicitFontFailure": "font-unavailable:font:Noto Sans",
+        "completeArcSegments": 2,
+        "selectedDefinitionDetails": {
+          "explicitGradientStops": 3,
+          "explicitGradientOffsets": [
+            "0",
+            "0.4",
+            "1"
+          ],
+          "explicitGradientTransform": "matrix(0.772740661031 0.207055236082 -0.310582854123 1.159110991547 0 0)",
+          "explicitGradientInterpolation": "sRGB",
+          "hasUserSpaceGradient": true,
+          "hasObjectBoundingBoxGradient": true,
+          "nestedClip": true,
+          "maskUnits": [
+            "objectBoundingBox",
+            "userSpaceOnUse"
+          ],
+          "symbolViewport": [
+            "0",
+            "0",
+            "20",
+            "20"
+          ],
+          "symbolPointerEvents": "all",
+          "symbolHitProxy": {
+            "id": "symbol-instance",
+            "fill": "transparent",
+            "stroke": "none",
+            "pointerEvents": "all",
+            "ariaHidden": "true"
+          },
+          "textLayoutExplicit": true
+        },
+        "visualReference": {
+          "browserFamily": "firefox",
+          "tolerancePerChannel": 28,
+          "samples": {
+            "evenoddHole": [
+              255,
+              255,
+              255,
+              255
+            ],
+            "gradientLeft": [
+              171,
+              51,
+              135,
+              255
+            ],
+            "gradientRight": [
+              69,
+              51,
+              237,
+              255
+            ]
+          }
+        },
+        "isolatedExportReload": true,
+        "hitSemantics": {
+          "path": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-1",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "text": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-4",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "symbol": {
+            "api": "semantic:symbol-instance",
+            "dom": {
+              "node": null,
+              "semantic": "semantic:symbol-instance"
+            }
+          },
+          "clippedSymbol": {
+            "api": null,
+            "dom": {
+              "node": null,
+              "semantic": null
+            }
+          }
+        },
+        "maskedTransparencyPolicy": "browser-dom-painted-geometry-remains-targetable;clip-removes-target",
+        "retainedReplacement": {
+          "reorderedResult": null,
+          "changedResult": null,
+          "restoredResult": null,
+          "reorderedIds": [
+            "luminance-element",
+            "symbol-instance",
+            "gallery"
+          ],
+          "reorderedRetained": true,
+          "changedRetained": true
+        }
+      },
+      "unavailable": [
+        "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
+        "Heap and detached-node measurements were not captured in this focused foundation fixture.",
+        "Touch input was emulated; physical touch hardware and mobile GPUs were not observed.",
+        "No actual assistive-technology session or announcement stream was available to this automated harness."
+      ],
+      "claims": {
+        "thresholdEstablished": false,
+        "completeM9Qualification": false,
+        "packagePublished": false
+      }
+    },
+    {
+      "schema": "fsgg.svg-scene.browser-observation/v2",
+      "result": "pass",
+      "capturedAtUtc": "2026-09-11T23:35:41.703Z",
+      "candidate": {
+        "sourceSha256": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+        "packageSetSha256": "sha256:60fea60e10398e0183b8d70a3103a1fbdfdaf5cc1126fae37ad6c50b46199cc6"
+      },
+      "environment": {
+        "browserFamily": "webkit",
+        "browser": "26.5",
+        "node": "v24.20.0",
+        "os": "linux 6.17.0-1022-azure",
+        "logicalCpuCount": 4,
+        "viewport": {
+          "width": 800,
+          "height": 600,
+          "deviceScaleFactor": 1
+        },
+        "headless": true
+      },
+      "sceneCost": {
+        "revision": 1,
+        "layers": 2,
+        "objects": 3,
+        "nodes": 18,
+        "listeners": 9,
+        "frames": 0
+      },
+      "startup": {
+        "productionFiles": 2,
+        "rawBytes": 142255,
+        "gzipBytes": 40758,
+        "coldNetworkCache": false
+      },
+      "timing": {
+        "sampleCount": 20,
+        "mountMilliseconds": {
+          "median": 2,
+          "maximum": 3
+        },
+        "inputToNextAnimationFrameMilliseconds": {
+          "median": 7,
+          "maximum": 66
+        }
+      },
+      "functional": {
+        "pointerKeyboardSameObject": true,
+        "accessibleDomRoute": true,
+        "anchoredZoomAndInversePicking": true,
+        "retainedRootAndLayersAcrossRevision": true,
+        "staleRevisionRefused": true,
+        "mountDisposeCycles": 12,
+        "finalOwnedListenerCount": 9,
+        "scheduledFrameCount": 0
+      },
+      "browserMatrix": [
+        {
+          "name": "desktop-1280x720-dpr1",
+          "result": "pass",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": {
+            "innerWidth": 1024,
+            "innerHeight": 640,
+            "selected": "beta",
+            "rootVisible": true
+          }
+        },
+        {
+          "name": "hidpi-800x600-dpr2",
+          "result": "pass",
+          "viewport": {
+            "width": 800,
+            "height": 600
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "touch-390x844",
+          "result": "pass",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 2,
+          "touchEmulated": true,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 400,
+            "height": 240
+          },
+          "resized": null
+        },
+        {
+          "name": "reflow-320-css-pixels",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 720
+          },
+          "physicalScreen": null,
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": null,
+          "zoomMethod": null,
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        },
+        {
+          "name": "zoom-400-percent-layout-equivalent",
+          "result": "pass",
+          "viewport": {
+            "width": 320,
+            "height": 180
+          },
+          "physicalScreen": {
+            "width": 1280,
+            "height": 720
+          },
+          "deviceScaleFactor": 1,
+          "touchEmulated": false,
+          "zoomPercent": 400,
+          "zoomMethod": "layout-viewport equivalent (1280 physical pixels / 320 CSS pixels)",
+          "horizontalOverflow": false,
+          "screenshotPixels": {
+            "width": 200,
+            "height": 120
+          },
+          "resized": null
+        }
+      ],
+      "document": {
+        "definitions": {
+          "gradients": 5,
+          "symbols": 1,
+          "clips": 3,
+          "alphaMasks": 1,
+          "luminanceMasks": 1,
+          "uses": 1
+        },
+        "stableLocalReferences": true,
+        "duplicateIdsRejectedBeforeReplacement": true,
+        "duplicateMountNamespaceRejected": true,
+        "explicitFontFailure": "font-unavailable:font:Noto Sans",
+        "completeArcSegments": 2,
+        "selectedDefinitionDetails": {
+          "explicitGradientStops": 3,
+          "explicitGradientOffsets": [
+            "0",
+            "0.4",
+            "1"
+          ],
+          "explicitGradientTransform": "matrix(0.772740661031 0.207055236082 -0.310582854123 1.159110991547 0 0)",
+          "explicitGradientInterpolation": "sRGB",
+          "hasUserSpaceGradient": true,
+          "hasObjectBoundingBoxGradient": true,
+          "nestedClip": true,
+          "maskUnits": [
+            "objectBoundingBox",
+            "userSpaceOnUse"
+          ],
+          "symbolViewport": [
+            "0",
+            "0",
+            "20",
+            "20"
+          ],
+          "symbolPointerEvents": "all",
+          "symbolHitProxy": {
+            "id": "symbol-instance",
+            "fill": "transparent",
+            "stroke": "none",
+            "pointerEvents": "all",
+            "ariaHidden": "true"
+          },
+          "textLayoutExplicit": true
+        },
+        "visualReference": {
+          "browserFamily": "webkit",
+          "tolerancePerChannel": 28,
+          "samples": {
+            "evenoddHole": [
+              255,
+              255,
+              255,
+              255
+            ],
+            "gradientLeft": [
+              170,
+              50,
+              134,
+              255
+            ],
+            "gradientRight": [
+              68,
+              50,
+              237,
+              255
+            ]
+          }
+        },
+        "isolatedExportReload": true,
+        "hitSemantics": {
+          "path": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-1",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "text": {
+            "api": "semantic:gallery",
+            "dom": {
+              "node": "gallery-4",
+              "semantic": "semantic:gallery"
+            }
+          },
+          "symbol": {
+            "api": "semantic:symbol-instance",
+            "dom": {
+              "node": null,
+              "semantic": "semantic:symbol-instance"
+            }
+          },
+          "clippedSymbol": {
+            "api": null,
+            "dom": {
+              "node": null,
+              "semantic": null
+            }
+          }
+        },
+        "maskedTransparencyPolicy": "browser-dom-painted-geometry-remains-targetable;clip-removes-target",
+        "retainedReplacement": {
+          "reorderedResult": null,
+          "changedResult": null,
+          "restoredResult": null,
+          "reorderedIds": [
+            "luminance-element",
+            "symbol-instance",
+            "gallery"
+          ],
+          "reorderedRetained": true,
+          "changedRetained": true
+        }
+      },
+      "unavailable": [
+        "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
+        "Heap and detached-node measurements were not captured in this focused foundation fixture.",
+        "Touch input was emulated; physical touch hardware and mobile GPUs were not observed.",
+        "No actual assistive-technology session or announcement stream was available to this automated harness."
+      ],
+      "claims": {
+        "thresholdEstablished": false,
+        "completeM9Qualification": false,
+        "packagePublished": false
+      }
+    }
+  ],
+  "milestoneReady": true,
+  "claims": {
+    "allAutomatedBrowserFamiliesPassed": true,
+    "actualAssistiveTechnologyObserved": true,
+    "touchIsEmulated": true,
+    "packagePublished": false
+  },
+  "qualificationLink": {
+    "commonSourceDigest": "sha256:8371647a14d4622cec4a96915ca30dc52f422cd4b8ca635c0688f06005d2c43f",
+    "hostedPackageSetDigest": "sha256:60fea60e10398e0183b8d70a3103a1fbdfdaf5cc1126fae37ad6c50b46199cc6",
+    "assistiveTechnologyPackageSetDigest": "sha256:e391771197c4ee48e2ab677034fdcc223f5c9af66de00ff73ac25fc6130e94a8",
+    "packageBuildsClassifiedSeparately": true
+  }
+}

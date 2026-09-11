@@ -1,0 +1,40 @@
+{
+  "schema": "fsgg.svg-retained-installed-qualification/v1",
+  "sdd": {
+    "package": "FS.GG.SDD.Cli",
+    "version": "1.7.0",
+    "source": "https://api.nuget.org/v3/index.json"
+  },
+  "profile": "fsgg-quint-profile/2",
+  "offlineAuthorInspect": "passed",
+  "deterministicExtraction": "passed",
+  "committedEvidenceTreeSha256": "1ff8021811d42e2723fbbb16aeffc37a6ab0f83db290fc047479c2c3a830ae12",
+  "boundedModel": {
+    "tests": "passed",
+    "retained": {
+      "run": "passed",
+      "steps": 12,
+      "traces": 16,
+      "seed": "0x0123456789abcdef",
+      "corpusSha256": "3e4d85cd1bedd74feb024b5cdc59f8a69035934ef22eccadcd9360905ab727cf"
+    },
+    "documentAmendment": {
+      "run": "passed",
+      "steps": 12,
+      "traces": 16,
+      "seed": "0x1023456789abcdef",
+      "corpusSha256": "4030ed2449b340ac1b893406e72eeb5f33a9940c6ac66029dbcb9e092222653d"
+    }
+  },
+  "staleRangeRefusal": "passed",
+  "staleActionRefusal": "passed",
+  "tools": {
+    "quint": {
+      "version": "0.32.0",
+      "sha256": "939b64095b706017f2f202c6f99c860c40be7c31bddc2b98557316e50f42cd7f"
+    },
+    "lmt": {
+      "sha256": "37e0b0365c2641edce40b48605471f61fa12e97c3e2376152f0e849abdc31f10"
+    }
+  }
+}

@@ -55,8 +55,8 @@ module private Dom =
     [<Emit("(function sync(a,b){const key=n=>n.getAttribute?.('data-fsgg-element-id')||n.getAttribute?.('data-fsgg-node')||n.id||null;for(const n of Array.from(a.getAttributeNames()))if(!b.hasAttribute(n))a.removeAttribute(n);for(const n of Array.from(b.getAttributeNames()))a.setAttribute(n,b.getAttribute(n));const ac=Array.from(a.children),bc=Array.from(b.children),used=new Set();if(bc.length===0){if(a.textContent!==b.textContent)a.textContent=b.textContent;return a;}for(let i=0;i<bc.length;i++){const c=bc[i],k=key(c);let m=k?ac.find(x=>!used.has(x)&&key(x)===k&&x.tagName===c.tagName):ac.find((x,j)=>!used.has(x)&&!key(x)&&x.tagName===c.tagName&&j===i);if(m){used.add(m);sync(m,c);a.appendChild(m);}else a.appendChild(c.cloneNode(true));}for(const x of ac)if(!used.has(x)&&x.parentNode===a)x.remove();return a;})($0,$1)")>]
     let reconcileSvg (_existing: Element) (_candidate: Element) : Element = jsNative
 
-    [<Emit("document.fonts.check('16px ' + JSON.stringify($0))")>]
-    let fontReady (_family: string) : bool = jsNative
+    [<Emit("(function(family,source){const url=new URL(source,document.baseURI).href;const entries=performance.getEntriesByName(url);const loaded=entries.some(e=>(e.responseStatus===200)||(e.transferSize>0)||(e.decodedBodySize>0));return loaded&&document.fonts.check('16px '+JSON.stringify(family));})($0,$1)")>]
+    let fontReady (_family: string) (_source: string) : bool = jsNative
 
 module private Format =
     let number (value: float) = string value
@@ -297,7 +297,9 @@ type SvgDocumentBrowserHost internal
         |> List.choose (fun definition ->
             match definition.Content with
             | SvgDefinitionContent.Font font ->
-                let ready = Dom.fontReady font.Family
+                // FontFaceSet.check can report a locally installed family even when the declared
+                // document source failed. Bind readiness to an observed successful source load too.
+                let ready = Dom.fontReady font.Family font.Source
                 Some
                     { DefinitionId = definition.Id
                       Family = font.Family

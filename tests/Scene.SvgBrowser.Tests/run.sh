@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-output="${1:-$repo/readiness/svg-scene-02-4/browser-observations.json}"
+output="${1:-$repo/readiness/svg-scene-02-5/browser-observations.json}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-browser.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 feed="$work/feed"
@@ -34,6 +34,12 @@ dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$w
 "$tools/fable" "$work/Browser/BrowserFixture.fsproj" --outDir "$work/Browser/generated" --lang JavaScript --noCache
 npm ci --prefix "$work/Browser"
 npm run --prefix "$work/Browser" build
+source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" | sha256sum | cut -d' ' -f1)"
+package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | while IFS= read -r -d '' package; do sha256sum "$package" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1)"
+if [[ -n "${SVG_SCENE_ORCA_OBSERVATION:-}" ]]; then
+  SVG_SCENE_AT_SOURCE_DIGEST="sha256:$source_digest" SVG_SCENE_AT_PACKAGE_DIGEST="sha256:$package_digest" \
+    bash "$work/Browser/run-orca.sh" "$work/Browser" "$SVG_SCENE_ORCA_OBSERVATION"
+fi
 
 python3 - "$work" <<'PY'
 import json, pathlib, sys, zipfile
@@ -68,6 +74,39 @@ with zipfile.ZipFile(keyboard) as archive:
         raise SystemExit(f'unexpected keyboard Fable view: {sorted(fable)}')
 print('browser-package-closure: isolated=passed scene-browser-free=passed adapter-browser-explicit=passed')
 PY
-source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" | sha256sum | cut -d' ' -f1)"
-package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
-node "$work/Browser/browser-test.mjs" --out "$output" --source-digest "sha256:$source_digest" --package-digest "sha256:$package_digest"
+base="${output%.json}"
+for family in chromium firefox webkit; do
+  node "$work/Browser/browser-test.mjs" --browser "$family" --out "$base.$family.json" \
+    --source-digest "sha256:$source_digest" --package-digest "sha256:$package_digest"
+done
+
+cmp "$base.chromium.exported.svg" "$base.firefox.exported.svg"
+cmp "$base.chromium.exported.svg" "$base.webkit.exported.svg"
+cp "$base.chromium.exported.svg" "$base.exported.svg"
+
+if [[ -n "${SVG_SCENE_ORCA_OBSERVATION:-}" && -f "$SVG_SCENE_ORCA_OBSERVATION" ]]; then
+  at_evidence="$(jq -c '{result,assistiveTechnology,environment,announcements,negativeControl,claims}' "$SVG_SCENE_ORCA_OBSERVATION")"
+else
+  at_evidence='{"result":"unavailable","reason":"No actual desktop assistive-technology process was exercised in this invocation. DOM/ARIA automation is retained only as non-AT evidence."}'
+fi
+jq -s --argjson at "$at_evidence" '
+  {
+    schema: "fsgg.svg-scene.browser-matrix-observation/v1",
+    result: (if $at.result == "pass" then "pass" else "incomplete" end),
+    candidate: .[0].candidate,
+    automatedDimensions: {
+      functional: {result:"pass", browsers:map(.environment.browserFamily)},
+      visual: {result:"pass", browsers:map({family:.environment.browserFamily, reference:.document.visualReference})},
+      resizeDprTouchReflow: {result:"pass", browsers:map({family:.environment.browserFamily, cases:.browserMatrix})},
+      exportReload: {result:"pass", browsers:map(.environment.browserFamily)},
+      nativeGeometryFontTiming: {result:"pass", browsers:map(.environment.browserFamily)}
+    },
+    externalDimensions: {
+      assistiveTechnology: $at
+    },
+    browsers: map(.),
+    milestoneReady: ($at.result == "pass"),
+    claims: {allAutomatedBrowserFamiliesPassed:true, actualAssistiveTechnologyObserved:($at.result == "pass"), touchIsEmulated:true, packagePublished:false}
+  }
+' "$base.chromium.json" "$base.firefox.json" "$base.webkit.json" > "$output"
+echo "svg-browser-matrix: automated=passed browsers=chromium,firefox,webkit assistive-technology=$(jq -r '.externalDimensions.assistiveTechnology.result' "$output") evidence=$output"

@@ -83,11 +83,18 @@ jobs:
       - name: Exercise real reducer correspondence
         run: dotnet test tests/Scene.Tests/Scene.Tests.fsproj --filter 'SVG foundation retained scene'
       - name: Replay model traces through packed consumers
-        run: bash tests/Scene.PortableConsumers/run.sh
+        run: bash tests/Scene.PortableConsumers/run.sh "$RUNNER_TEMP/svg-reducer-replay.json"
       - name: Upload qualification receipt
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: svg-retained-qualification
           path: ${{ runner.temp }}/svg-retained-qualification.json
+          if-no-files-found: warn
+      - name: Upload reducer replay receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: svg-reducer-replay
+          path: ${{ runner.temp }}/svg-reducer-replay.json
           if-no-files-found: warn

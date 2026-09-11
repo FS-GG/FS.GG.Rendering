@@ -1,0 +1,115 @@
+{
+  "schema": "fsgg.svg-scene.reducer-replay/v1",
+  "result": "pass",
+  "corpora": {
+    "retainedTransitions": 192,
+    "documentTransitions": 192,
+    "relationship": "retained prefix/subject plus document interaction expansion"
+  },
+  "runtimes": [
+    "dotnet",
+    "fable-node"
+  ],
+  "matchingProjection": true,
+  "digests": {
+    "retainedProjectionSha256": "cd1b2c74c95a5f25df06ca0921af7d7af9c578d1f589ef6012fea56fadd5c0d2",
+    "documentProjectionSha256": "6eee28de98d551c738113152464834969a411470c2f90bcafb6151be6965d997",
+    "documentSha256": "92769fe60988b62b044b10c7fcd6f50b921bfeae6a82e20c6073818d2c49f31a"
+  },
+  "mutants": [
+    {
+      "runtime": "dotnet",
+      "name": "wrong-order",
+      "firstDivergence": {
+        "trace": 0,
+        "step": 3,
+        "action": "FocusNext"
+      }
+    },
+    {
+      "runtime": "dotnet",
+      "name": "stale-revision-acceptance",
+      "firstDivergence": {
+        "trace": 0,
+        "step": 1,
+        "action": "FocusNext"
+      }
+    },
+    {
+      "runtime": "dotnet",
+      "name": "invalid-reference-acceptance",
+      "firstDivergence": {
+        "trace": 5,
+        "step": 7,
+        "action": "ReplaceDocument"
+      }
+    },
+    {
+      "runtime": "dotnet",
+      "name": "lost-capture",
+      "firstDivergence": {
+        "trace": 9,
+        "step": 8,
+        "action": "ReleasePointer"
+      }
+    },
+    {
+      "runtime": "dotnet",
+      "name": "non-atomic-edit",
+      "firstDivergence": {
+        "trace": 5,
+        "step": 7,
+        "action": "ReplaceDocument"
+      }
+    },
+    {
+      "runtime": "fable-node",
+      "name": "wrong-order",
+      "firstDivergence": {
+        "trace": 0,
+        "step": 3,
+        "action": "FocusNext"
+      }
+    },
+    {
+      "runtime": "fable-node",
+      "name": "stale-revision-acceptance",
+      "firstDivergence": {
+        "trace": 0,
+        "step": 1,
+        "action": "FocusNext"
+      }
+    },
+    {
+      "runtime": "fable-node",
+      "name": "invalid-reference-acceptance",
+      "firstDivergence": {
+        "trace": 5,
+        "step": 7,
+        "action": "ReplaceDocument"
+      }
+    },
+    {
+      "runtime": "fable-node",
+      "name": "lost-capture",
+      "firstDivergence": {
+        "trace": 9,
+        "step": 8,
+        "action": "ReleasePointer"
+      }
+    },
+    {
+      "runtime": "fable-node",
+      "name": "non-atomic-edit",
+      "firstDivergence": {
+        "trace": 5,
+        "step": 7,
+        "action": "ReplaceDocument"
+      }
+    }
+  ],
+  "claims": {
+    "allFiveMutantsKilledAtFirstDivergenceInBothRuntimes": true,
+    "arbitraryImport": false
+  }
+}

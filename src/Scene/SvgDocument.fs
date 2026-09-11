@@ -1045,22 +1045,71 @@ module SvgDocument =
                     | SceneNode.CachedSubtree cached -> appendScene output $"{prefix}-cache" presentation cached.Scene
                     | _ -> failwith "unsupported Scene node reached SVG export"
 
+                let rec clipChain visited reference =
+                    if Set.contains reference visited then []
+                    else
+                        match document.Definitions |> List.tryFind (fun definition -> definition.Id = reference) with
+                        | Some { Content = SvgDefinitionContent.Clip(_, shapes) } ->
+                            let next = Set.add reference visited
+                            let inherited =
+                                shapes
+                                |> List.collect (function SvgClipShape.Intersection references -> references |> List.collect (clipChain next) | _ -> [])
+                            let hasLocalGeometry = shapes |> List.exists (function SvgClipShape.Rectangle _ | SvgClipShape.Path _ -> true | _ -> false)
+                            inherited @ (if hasLocalGeometry then [ reference ] else [])
+                        | _ -> [ reference ]
+
                 let rec appendElement output (element: SvgElement) =
+                    let symbolViewport =
+                        match element.Content with
+                        | SvgElementContent.SymbolInstance(_, viewport) -> viewport
+                        | _ -> None
                     beginTag output "g"; appendAttribute output "id" (id element.Id); appendAttribute output "data-fsgg-element-id" element.Id
                     element.SemanticId |> Option.iter (appendAttribute output "data-fsgg-semantic-id")
                     appendAttribute output "transform" (svgMatrix element.Transform)
                     if not element.Visible then appendAttribute output "display" "none"
-                    element.ClipId |> Option.iter (url >> appendAttribute output "clip-path")
-                    element.MaskId |> Option.iter (url >> appendAttribute output "mask")
+                    // A symbol viewport's transparent hit proxy intentionally remains outside the
+                    // visual mask while staying inside the transform and clip. Other content keeps
+                    // the ordinary group-level mask.
+                    match symbolViewport with
+                    | Some _ -> ()
+                    | None -> element.MaskId |> Option.iter (url >> appendAttribute output "mask")
                     element.Presentation |> Option.iter (appendPresentation output)
                     endOpen output
+                    let clipCount =
+                        match element.ClipId with
+                        | Some clip ->
+                            let chain = clipChain Set.empty clip
+                            chain |> List.iter (fun reference -> beginTag output "g"; appendAttribute output "clip-path" (url reference); endOpen output)
+                            chain.Length
+                        | None -> 0
                     match element.Content with
                     | SvgElementContent.SceneLeaf scene -> appendScene output element.Id element.Presentation scene
                     | SvgElementContent.Group children -> children |> List.iter (appendElement output)
                     | SvgElementContent.SymbolInstance(reference, viewport) ->
-                        beginTag output "use"; appendAttribute output "href" $"#{id reference}"
-                        viewport |> Option.iter (fun rect -> appendAttribute output "x" (svgNumber rect.X); appendAttribute output "y" (svgNumber rect.Y); appendAttribute output "width" (svgNumber rect.Width); appendAttribute output "height" (svgNumber rect.Height))
-                        emptyTag output
+                        // A transparent viewport proxy makes the declared masked-transparency hit policy
+                        // consistent across browser engines. It remains inside the element's clip/mask and
+                        // semantic wrapper, contributes no paint, and is hidden from accessibility APIs.
+                        viewport
+                        |> Option.iter (fun rect ->
+                            beginTag output "rect"
+                            appendAttribute output "data-fsgg-symbol-hit" element.Id
+                            appendAttribute output "x" (svgNumber rect.X)
+                            appendAttribute output "y" (svgNumber rect.Y)
+                            appendAttribute output "width" (svgNumber rect.Width)
+                            appendAttribute output "height" (svgNumber rect.Height)
+                            appendAttribute output "fill" "transparent"
+                            appendAttribute output "stroke" "none"
+                            appendAttribute output "pointer-events" "all"
+                            appendAttribute output "aria-hidden" "true"
+                            emptyTag output)
+                        let appendUse () =
+                            beginTag output "use"; appendAttribute output "href" $"#{id reference}"; appendAttribute output "pointer-events" "all"
+                            viewport |> Option.iter (fun rect -> appendAttribute output "x" (svgNumber rect.X); appendAttribute output "y" (svgNumber rect.Y); appendAttribute output "width" (svgNumber rect.Width); appendAttribute output "height" (svgNumber rect.Height))
+                            emptyTag output
+                        match element.MaskId with
+                        | Some mask -> beginTag output "g"; appendAttribute output "mask" (url mask); endOpen output; appendUse (); closeTag output "g"
+                        | None -> appendUse ()
+                    for _ in 1 .. clipCount do closeTag output "g"
                     closeTag output "g"
 
                 let appendExplicitDefinition (definition: SvgDefinition) =
@@ -1068,7 +1117,7 @@ module SvgDocument =
                     | SvgDefinitionContent.Symbol(viewBox, children) -> beginTag definitions "symbol"; appendAttribute definitions "id" (id definition.Id); viewBox |> Option.iter (fun rect -> appendAttribute definitions "viewBox" $"{svgNumber rect.X} {svgNumber rect.Y} {svgNumber rect.Width} {svgNumber rect.Height}"); endOpen definitions; children |> List.iter (appendElement definitions); closeTag definitions "symbol"
                     | SvgDefinitionContent.Clip(coordinateUnits, shapes) ->
                         beginTag definitions "clipPath"; appendAttribute definitions "id" (id definition.Id); appendAttribute definitions "clipPathUnits" (units coordinateUnits); endOpen definitions
-                        shapes |> List.iter (function SvgClipShape.Rectangle rect -> beginTag definitions "rect"; appendAttribute definitions "x" (svgNumber rect.X); appendAttribute definitions "y" (svgNumber rect.Y); appendAttribute definitions "width" (svgNumber rect.Width); appendAttribute definitions "height" (svgNumber rect.Height); emptyTag definitions | SvgClipShape.Path path -> beginTag definitions "path"; appendAttribute definitions "d" (pathData path); appendAttribute definitions "fill-rule" (match path.FillType with PathFillType.Winding -> "nonzero" | PathFillType.EvenOdd -> "evenodd"); emptyTag definitions | SvgClipShape.Intersection references -> let mutable opened = 0 in references |> List.iter (fun reference -> beginTag definitions "g"; appendAttribute definitions "clip-path" (url reference); endOpen definitions; opened <- opened + 1); beginTag definitions "rect"; appendAttribute definitions "x" (svgNumber document.ViewBox.X); appendAttribute definitions "y" (svgNumber document.ViewBox.Y); appendAttribute definitions "width" (svgNumber document.ViewBox.Width); appendAttribute definitions "height" (svgNumber document.ViewBox.Height); emptyTag definitions; for _ in 1 .. opened do closeTag definitions "g")
+                        shapes |> List.iter (function SvgClipShape.Rectangle rect -> beginTag definitions "rect"; appendAttribute definitions "x" (svgNumber rect.X); appendAttribute definitions "y" (svgNumber rect.Y); appendAttribute definitions "width" (svgNumber rect.Width); appendAttribute definitions "height" (svgNumber rect.Height); emptyTag definitions | SvgClipShape.Path path -> beginTag definitions "path"; appendAttribute definitions "d" (pathData path); appendAttribute definitions "fill-rule" (match path.FillType with PathFillType.Winding -> "nonzero" | PathFillType.EvenOdd -> "evenodd"); emptyTag definitions | SvgClipShape.Intersection _ -> ())
                         closeTag definitions "clipPath"
                     | SvgDefinitionContent.Mask(coordinateUnits, region, kind, children) -> beginTag definitions "mask"; appendAttribute definitions "id" (id definition.Id); appendAttribute definitions "maskUnits" (units coordinateUnits); appendAttribute definitions "x" (svgNumber region.X); appendAttribute definitions "y" (svgNumber region.Y); appendAttribute definitions "width" (svgNumber region.Width); appendAttribute definitions "height" (svgNumber region.Height); appendAttribute definitions "style" (match kind with SvgMaskKind.Alpha -> "mask-type:alpha" | SvgMaskKind.Luminance -> "mask-type:luminance"); endOpen definitions; children |> List.iter (appendElement definitions); closeTag definitions "mask"
                     | SvgDefinitionContent.Gradient gradient ->
