@@ -19,6 +19,30 @@ let scene : RetainedScene =
 let main args =
     match SvgRetained.project scene with
     | SvgAdapterResult.Rendered projected when projected.RootId = scene.RootId ->
+        let document = SvgDocument.ofRetainedScene { X = 0.0; Y = 0.0; Width = 20.0; Height = 20.0 } scene
+        match document with
+        | Error issues -> failwith $"document adapter failed: {issues}"
+        | Ok accepted when not (SvgDocument.validate 0 SvgDocument.defaultLimits accepted).IsEmpty -> failwith "document validation failed"
+        | Ok accepted ->
+            let asset =
+                { AssetId = "neutral-grid"
+                  Version = "0.29.0-preview.1"
+                  Sha256 = String.replicate 64 "a"
+                  License = "MIT"
+                  Document = accepted }
+            let extension =
+                { ExtensionId = "svg-scene-export"
+                  Version = "0.29.0-preview.1"
+                  EntryPoint = "FS.GG.UI.Scene.SvgDocument"
+                  Capabilities = [ "document"; "affine" ]
+                  Support = SvgRuntimeSupport.ContractOnly "serialization arrives in SVG-SCENE-02.3" }
+            if asset.Document.Id <> scene.RootId || extension.Capabilities.Length <> 2 then failwith "contract envelope drift"
+        let independent = SvgAffine.transformPoint (SvgAffine.compose (SvgAffine.translate 10.0 20.0) (SvgAffine.rotateDegrees 90.0)) { X = 2.0; Y = 3.0 }
+        if abs (independent.X - 7.0) > 1e-9 || abs (independent.Y - 22.0) > 1e-9 then failwith "affine composition drift"
+        let reflectedSkew = SvgAffine.transformPoint (SvgAffine.compose (SvgAffine.scale -1.0 2.0) (SvgAffine.skewXDegrees 45.0)) { X = 2.0; Y = 3.0 }
+        if abs (reflectedSkew.X + 5.0) > 1e-9 || abs (reflectedSkew.Y - 6.0) > 1e-9 then failwith "skew/reflection composition drift"
+        if SvgAffine.tryInverse (SvgAffine.scale 0.0 1.0) <> Error SvgAffineError.Singular then failwith "singular affine was accepted"
+        if SvgAffine.tryInverse { SvgAffine.identity with A = System.Double.NaN } <> Error SvgAffineError.NonFinite then failwith "non-finite affine was accepted"
         let corpus = File.ReadAllText args[0]
         match replay id id corpus with
         | Error divergence -> failwith divergence

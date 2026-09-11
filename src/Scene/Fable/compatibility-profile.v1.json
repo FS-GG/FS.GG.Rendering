@@ -6,7 +6,7 @@
   "target": "javascript",
   "surfaces": [
     {
-      "name": "Scene types and retained SVG contract/reducer",
+      "name": "Scene types, retained SVG reducer, identified document and affine contract",
       "grade": "Portable",
       "evidence": "isolated .NET and Fable consumers compile the locally packed candidate"
     },

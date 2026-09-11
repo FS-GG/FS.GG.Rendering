@@ -33,3 +33,18 @@ domains, and integer camera samples. It proves correspondence for those witnesse
 classes. It does not establish temporal liveness, exhaustive state-space coverage, or numerical
 equivalence for floating-point camera values; production tests separately cover finite-value
 validation, and the browser suite stays at the rendering/effect boundary.
+
+## SVG document amendment boundary
+
+SVG-SCENE-02.2 adds the static, identified `SvgDocument` envelope while deliberately preserving the
+canonical 192-transition retained reducer corpus byte for byte. The next reducer amendment, owned by
+SVG-SCENE-02.4, will replace a retained scene with a validated document at a strictly increasing
+revision. It must preserve selection and focus only when their semantic identities remain visible,
+preserve pointer capture independently, and refuse stale revisions or invalid documents without a
+state change. This is the canonical amendment boundary; no second reducer model is introduced here.
+
+The document validator is a pure precondition for that future action. Its current state-free
+contract requires unique render and semantic identities, kind-correct local references, bounded
+definition/reference expansion, finite affine transforms, and Scene leaves accepted by the existing
+portable Scene subset. Asset and extension descriptors classify packaging support only; they do not
+claim serialization, browser mounting, editor behavior, or session lifecycle support.
