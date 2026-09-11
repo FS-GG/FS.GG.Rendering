@@ -57,19 +57,30 @@ if ! "$cli" typed-sdd provision --cache "$scratch/cache" --quint "$QUINT_BIN" --
   cat "$scratch/provision.json" >&2
   fail 'installed SDD rejected the exact profile-2 tools'
 fi
-grep -F '"profile": "fsgg-quint-profile/2"' "$scratch/provision.json" >/dev/null || fail 'profile-2 provision report missing'
+jq -e '.profile == "fsgg-quint-profile/2" and .outcome == "succeeded"' "$scratch/provision.json" >/dev/null || {
+  cat "$scratch/provision.json" >&2
+  fail 'profile-2 provision report missing'
+}
+echo 'svg-retained-qualification: exact profile-2 tools provisioned'
 
 author_once() {
   local destination="$1"
   mkdir -p "$destination/models/svg-foundation"
   cp "$root/models/svg-foundation/retained-interaction.md" "$destination/models/svg-foundation/"
   cp "$root/models/svg-foundation/retained-interaction.bindings.json" "$destination/models/svg-foundation/"
-  "$cli" typed-sdd author --root "$destination" --work svg-qual-01-2 \
+  if ! "$cli" typed-sdd author --root "$destination" --work svg-qual-01-2 \
     --title 'Retained SVG reducer qualification' --agent codex --session svg-qual-01-2 \
     --backend quint-specification-v1 --cache "$scratch/cache" --profile fsgg-quint-profile/2 \
     --source models/svg-foundation/retained-interaction.md \
-    --bindings models/svg-foundation/retained-interaction.bindings.json > "$destination-author.json"
-  "$cli" typed-sdd inspect --root "$destination" --work svg-qual-01-2 > "$destination-inspect.json"
+    --bindings models/svg-foundation/retained-interaction.bindings.json > "$destination-author.json"; then
+    cat "$destination-author.json" >&2
+    fail "installed SDD author failed for $destination"
+  fi
+  if ! "$cli" typed-sdd inspect --root "$destination" --work svg-qual-01-2 > "$destination-inspect.json"; then
+    cat "$destination-inspect.json" >&2
+    fail "installed SDD inspect failed for $destination"
+  fi
+  echo "svg-retained-qualification: offline author+inspect passed for $destination"
 }
 
 author_once "$scratch/author-a"
