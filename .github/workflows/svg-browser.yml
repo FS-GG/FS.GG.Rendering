@@ -59,10 +59,10 @@ jobs:
       - name: Restore browser harness packages
         working-directory: tests/Scene.SvgBrowser.Tests
         run: npm ci
-      - name: Install Chromium and system dependencies
+      - name: Install Chromium, Firefox, WebKit and system dependencies
         working-directory: tests/Scene.SvgBrowser.Tests
-        run: npx playwright-core install --with-deps chromium
-      - name: Exercise packed adapter in Chromium
+        run: npx playwright-core install --with-deps chromium firefox webkit
+      - name: Exercise packed adapter in all browser families
         run: bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/svg-browser-observations.json"
       - name: Upload browser observation
         if: always()
@@ -70,6 +70,6 @@ jobs:
         with:
           name: svg-browser-observation
           path: |
-            ${{ runner.temp }}/svg-browser-observations.json
-            ${{ runner.temp }}/svg-browser-observations.exported.svg
+            ${{ runner.temp }}/svg-browser-observations*.json
+            ${{ runner.temp }}/svg-browser-observations*.exported.svg
           if-no-files-found: warn

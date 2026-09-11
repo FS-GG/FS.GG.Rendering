@@ -84,6 +84,17 @@ match replay id id corpus with
     | Ok documentReplayed ->
         writeFileSync documentResultPath documentReplayed.Canonical
         printfn $"document-trace-replay: runtime=fable-node transitions={documentReplayed.Count}"
+    for name, mutant in
+        [ "wrong-order", DocumentTraceReplay.ReplayMutation.WrongOrder
+          "stale-revision-acceptance", DocumentTraceReplay.ReplayMutation.AcceptStaleRevision
+          "invalid-reference-acceptance", DocumentTraceReplay.ReplayMutation.AcceptInvalidReference
+          "lost-capture", DocumentTraceReplay.ReplayMutation.PreserveReleasedCapture
+          "non-atomic-edit", DocumentTraceReplay.ReplayMutation.ApplyInvalidEdit ] do
+        match DocumentTraceReplay.replayMutant mutant (readFileSync documentTracePath "utf8") with
+        | Error divergence when divergence.StartsWith "DOCUMENT-TRACE-DIVERGENCE" && divergence.Contains "trace=" && divergence.Contains "step=" ->
+            printfn $"document-mutant: runtime=fable-node name={name} killed-at={divergence}"
+        | Error why -> failwith $"{name} mutant lacked first-divergence evidence: {why}"
+        | Ok() -> failwith $"{name} mutant survived the document model corpus"
     match replay (fun action -> if action = "Select" then "ClearSelection" else action) id corpus with
     | Error divergence when divergence.StartsWith "TRACE-DIVERGENCE" -> ()
     | _ -> failwith "incorrect action mapping mutant survived the model corpus"

@@ -163,6 +163,8 @@ let tests =
             Expect.stringContains exported "mask-type:luminance" "luminance masks are explicit"
             Expect.stringContains exported "<symbol" "symbol definitions export"
             Expect.stringContains exported "<use" "symbol instances export"
+            Expect.stringContains exported "data-fsgg-symbol-hit=\"symbol-instance\"" "symbol viewport exports the cross-browser hit proxy"
+            Expect.stringContains exported "fill=\"transparent\" stroke=\"none\" pointer-events=\"all\" aria-hidden=\"true\"" "the hit proxy is paintless, targetable, and excluded from accessibility"
             let arcSegments = exported.Split(" A ").Length - 1
             Expect.isGreaterThanOrEqual arcSegments 2 "complete revolutions split into multiple SVG arc segments"
         }
