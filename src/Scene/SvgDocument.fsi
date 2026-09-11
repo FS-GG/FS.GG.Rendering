@@ -170,3 +170,11 @@ module SvgDocument =
     val validate: serializedByteCount: int -> limits: SvgDocumentLimits -> document: SvgDocument -> SvgDocumentIssue list
     /// Checked compatibility adapter for the original retained foundation contract.
     val ofRetainedScene: viewBox: Rect -> scene: RetainedScene -> Result<SvgDocument, SvgDocumentIssue list>
+    /// Serialize one accepted typed document into the bounded canonical `fsgg.svg-document/1` wire format.
+    /// This is a typed-document codec, not an arbitrary SVG XML importer.
+    val serialize: document: SvgDocument -> Result<string, SvgDocumentIssue list>
+    /// Decode one canonical typed document and validate it before returning it.
+    /// Arbitrary SVG XML is deliberately rejected by this API.
+    val deserialize: serialized: string -> Result<SvgDocument, SvgDocumentIssue list>
+    /// Export one accepted document as standalone SVG XML with collision-free local identifiers.
+    val exportSvg: mountNamespace: string -> document: SvgDocument -> Result<string, SvgDocumentIssue list>

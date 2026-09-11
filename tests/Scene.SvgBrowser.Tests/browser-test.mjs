@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { chromium } from "playwright-core";
+import { PNG } from "pngjs";
 
 const fixture = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(fixture, "dist");
@@ -45,7 +46,10 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 800, height: 600 }, deviceScaleFactor: 1 });
 const page = await context.newPage();
 const consoleErrors = [];
-page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+page.on("console", (message) => {
+  const location = message.location();
+  if (message.type() === "error" && !location.url.endsWith("/fonts/missing-noto.woff2")) consoleErrors.push(message.text());
+});
 page.on("pageerror", (error) => consoleErrors.push(error.stack || error.message));
 await page.addInitScript(() => {
   window.__svgListenerBalance = 0;
@@ -64,9 +68,128 @@ const address = server.address();
 const mountSamples = [];
 const inputPaintSamples = [];
 let observations;
+let documentEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.svgFoundation !== undefined);
+  await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
+    throw new Error(`fixture API unavailable: ${consoleErrors.join("\n") || error.message}`);
+  });
+  const documentContract = await page.evaluate(() => {
+    const root = document.querySelector("[data-fsgg-document-id='portable-document']");
+    root.setAttribute("width", "240");
+    root.setAttribute("height", "160");
+    const references = [...root.querySelectorAll("[href], [fill^='url(#'], [stroke^='url(#'], [clip-path^='url(#'], [mask^='url(#']")]
+      .flatMap((node) => [...node.attributes].map((attribute) => attribute.value))
+      .flatMap((value) => value.startsWith("#") ? [value.slice(1)] : [...value.matchAll(/url\(#([^\)]+)\)/g)].map((match) => match[1]));
+    const ids = [...root.querySelectorAll("[id]")].map((node) => node.id);
+    const strokeOnly = root.querySelector("[data-fsgg-node='gallery-0']");
+    const evenodd = root.querySelector("[data-fsgg-node='gallery-1']");
+    const completeArc = root.querySelector("[data-fsgg-node='gallery-2']");
+    const explicitGradient = root.querySelector("linearGradient[spreadMethod='reflect']");
+    const nestedClip = [...root.querySelectorAll("clipPath")].find((clip) => clip.querySelector("g[clip-path]") !== null);
+    const symbolUse = root.querySelector("use");
+    const textNodes = [...root.querySelectorAll("text")];
+    const exported = window.svgFoundation.documentExport();
+    const beforeInvalid = { root, exported };
+    const invalid = window.svgFoundation.replaceInvalidDocument();
+    const duplicate = window.svgFoundation.duplicateDocumentMount();
+    const fonts = window.svgFoundation.documentFonts();
+    return {
+      definitionKinds: {
+        gradients: root.querySelectorAll("linearGradient, radialGradient").length,
+        symbols: root.querySelectorAll("symbol").length,
+        clips: root.querySelectorAll("clipPath").length,
+        alphaMasks: root.querySelectorAll("mask[style*='alpha']").length,
+        luminanceMasks: root.querySelectorAll("mask[style*='luminance']").length,
+        uses: root.querySelectorAll("use").length,
+      },
+      idsUnique: new Set(ids).size === ids.length,
+      referencesLocalAndResolved: references.length > 0 && references.every((id) => root.querySelector(`[id='${CSS.escape(id)}']`)),
+      strokeFill: strokeOnly?.getAttribute("fill"),
+      strokeColor: strokeOnly?.getAttribute("stroke"),
+      evenodd: evenodd?.getAttribute("fill-rule"),
+      arcSegments: (completeArc?.getAttribute("d").match(/\bA\b/g) || []).length,
+      selectedDefinitionDetails: {
+        explicitGradientStops: explicitGradient?.querySelectorAll("stop").length,
+        explicitGradientOffsets: [...(explicitGradient?.querySelectorAll("stop") || [])].map((stop) => stop.getAttribute("offset")),
+        explicitGradientTransform: explicitGradient?.getAttribute("gradientTransform"),
+        explicitGradientInterpolation: explicitGradient?.getAttribute("color-interpolation"),
+        hasUserSpaceGradient: root.querySelector("[gradientUnits='userSpaceOnUse']") !== null,
+        hasObjectBoundingBoxGradient: root.querySelector("[gradientUnits='objectBoundingBox']") !== null,
+        nestedClip: nestedClip !== undefined,
+        maskUnits: [...root.querySelectorAll("mask")].map((mask) => mask.getAttribute("maskUnits")).sort(),
+        symbolViewport: symbolUse ? ["x", "y", "width", "height"].map((name) => symbolUse.getAttribute(name)) : [],
+        textLayoutExplicit: textNodes.length > 0 && textNodes.every((text) => text.getAttribute("text-anchor") === "start" && text.getAttribute("direction") === "auto"),
+      },
+      invalid, duplicate, fonts, exported,
+      invalidPreservedRoot: beforeInvalid.root === document.querySelector("[data-fsgg-document-id='portable-document']"),
+      invalidPreservedExport: beforeInvalid.exported === window.svgFoundation.documentExport(),
+    };
+  });
+  if (documentContract.definitionKinds.gradients < 3 || documentContract.definitionKinds.symbols !== 1 || documentContract.definitionKinds.clips < 2 || documentContract.definitionKinds.alphaMasks !== 1 || documentContract.definitionKinds.luminanceMasks !== 1 || documentContract.definitionKinds.uses !== 1) {
+    throw new Error(`definition mapping incomplete: ${JSON.stringify(documentContract.definitionKinds)}`);
+  }
+  if (!documentContract.idsUnique || !documentContract.referencesLocalAndResolved || documentContract.strokeFill !== "none" || documentContract.strokeColor !== "rgb(240 120 20)" || documentContract.evenodd !== "evenodd" || documentContract.arcSegments < 2) {
+    throw new Error(`document DOM/geometry contract failed: ${JSON.stringify(documentContract)}`);
+  }
+  const details = documentContract.selectedDefinitionDetails;
+  if (details.explicitGradientStops !== 3 || details.explicitGradientOffsets.join(",") !== "0,0.4,1" || !details.explicitGradientTransform?.startsWith("matrix(") || details.explicitGradientInterpolation !== "sRGB" || !details.hasUserSpaceGradient || !details.hasObjectBoundingBoxGradient || !details.nestedClip || details.maskUnits.join(",") !== "objectBoundingBox,userSpaceOnUse" || details.symbolViewport.join(",") !== "0,0,20,20" || !details.textLayoutExplicit) {
+    throw new Error(`selected definition details incomplete: ${JSON.stringify(details)}`);
+  }
+  if (!documentContract.invalid.includes("duplicate-id:/children") || documentContract.duplicate !== "duplicate-mount-namespace:gallery-browser" || !documentContract.invalidPreservedRoot || !documentContract.invalidPreservedExport) {
+    throw new Error(`pre-mutation refusal contract failed: ${JSON.stringify(documentContract)}`);
+  }
+  if (documentContract.fonts.length !== 1 || documentContract.fonts[0].ready || documentContract.fonts[0].diagnostic !== "font-unavailable:font:Noto Sans") {
+    throw new Error(`explicit font failure missing: ${JSON.stringify(documentContract.fonts)}`);
+  }
+
+  const documentRoot = page.locator("[data-fsgg-document-id='portable-document']");
+  const originalPng = PNG.sync.read(await documentRoot.screenshot());
+  const pixel = (png, x, y) => {
+    const index = (y * png.width + x) * 4;
+    return [...png.data.subarray(index, index + 4)];
+  };
+  const visualReferences = {
+    chromium: {
+      tolerance: 28,
+      evenoddHole: [255, 255, 255, 255],
+      gradientLeft: [173, 51, 133, 255],
+      gradientRight: [71, 51, 235, 255],
+    },
+  };
+  const reference = visualReferences.chromium;
+  const samples = {
+    evenoddHole: pixel(originalPng, 40, 40),
+    gradientLeft: pixel(originalPng, 16, 20),
+    gradientRight: pixel(originalPng, 36, 20),
+  };
+  const assertColor = (name, actual, expected, tolerance) => {
+    const distance = Math.max(...actual.map((value, index) => Math.abs(value - expected[index])));
+    if (distance > tolerance) throw new Error(`visual reference ${name} exceeded tolerance ${tolerance}: actual=${actual} expected=${expected} distance=${distance}`);
+  };
+  Object.entries(samples).forEach(([name, actual]) => assertColor(name, actual, reference[name], reference.tolerance));
+
+  const reload = await context.newPage();
+  await reload.setContent(`<body style="margin:0;background:white">${documentContract.exported}</body>`, { waitUntil: "load" });
+  const reloadedRoot = reload.locator("[data-fsgg-document-id='portable-document']");
+  await reloadedRoot.evaluate((root) => { root.setAttribute("width", "240"); root.setAttribute("height", "160"); });
+  const reloadRefs = await reloadedRoot.evaluate((root) => [...root.querySelectorAll("use")].every((node) => node.getAttribute("href")?.startsWith("#") && root.querySelector(`[id='${CSS.escape(node.getAttribute("href").slice(1))}']`)));
+  if (!reloadRefs) throw new Error("isolated exported SVG lost local symbol references");
+  const reloadPng = PNG.sync.read(await reloadedRoot.screenshot());
+  Object.entries(samples).forEach(([name, expected]) => assertColor(`reload-${name}`, pixel(reloadPng, name === "evenoddHole" ? 40 : name === "gradientLeft" ? 16 : 36, name === "evenoddHole" ? 40 : 20), expected, 2));
+  await reload.close();
+  documentEvidence = {
+    definitions: documentContract.definitionKinds,
+    stableLocalReferences: documentContract.referencesLocalAndResolved,
+    duplicateIdsRejectedBeforeReplacement: documentContract.invalid.includes("duplicate-id:/children"),
+    duplicateMountNamespaceRejected: documentContract.duplicate === "duplicate-mount-namespace:gallery-browser",
+    explicitFontFailure: documentContract.fonts[0].diagnostic,
+    completeArcSegments: documentContract.arcSegments,
+    selectedDefinitionDetails: details,
+    visualReference: { browserFamily: "chromium", tolerancePerChannel: reference.tolerance, samples },
+    isolatedExportReload: true,
+    exportedSvg: documentContract.exported,
+  };
   const root = page.locator("[data-scene-root-id='svg-foundation-root']");
   const box = await root.boundingBox();
   if (!box) throw new Error("SVG root has no rendered bounds");
@@ -170,7 +293,7 @@ const rawBytes = productionFiles.reduce((sum, path) => sum + statSync(path).size
 const gzipBytes = productionFiles.reduce((sum, path) => sum + gzipSync(readFileSync(path)).length, 0);
 const round = (value) => Number(value.toFixed(3));
 const evidence = {
-  schema: "fsgg.svg-foundation.browser-observation/v1",
+  schema: "fsgg.svg-scene.browser-observation/v2",
   result: "pass",
   capturedAtUtc: new Date().toISOString(),
   candidate: { sourceSha256: sourceDigest, packageSetSha256: packageDigest },
@@ -191,6 +314,7 @@ const evidence = {
     retainedRootAndLayersAcrossRevision: true, staleRevisionRefused: true, mountDisposeCycles: 12,
     finalOwnedListenerCount: observations.listeners, scheduledFrameCount: observations.frames,
   },
+  document: { ...documentEvidence, exportedSvg: undefined },
   unavailable: [
     "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
     "Heap and detached-node measurements were not captured in this focused foundation fixture.",
@@ -198,5 +322,7 @@ const evidence = {
   ],
   claims: { thresholdEstablished: false, completeM9Qualification: false, packagePublished: false },
 };
+const exportedPath = output.replace(/\.json$/, ".exported.svg");
+writeFileSync(exportedPath, `${documentEvidence.exportedSvg}\n`);
 writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ result: evidence.result, browser: evidence.environment.browser, sceneCost: observations, rawBytes, gzipBytes, mountMedianMs: evidence.timing.mountMilliseconds.median, inputMedianMs: evidence.timing.inputToNextAnimationFrameMilliseconds.median, output }));
+console.log(JSON.stringify({ result: evidence.result, browser: evidence.environment.browser, sceneCost: observations, document: evidence.document, rawBytes, gzipBytes, mountMedianMs: evidence.timing.mountMilliseconds.median, inputMedianMs: evidence.timing.inputToNextAnimationFrameMilliseconds.median, output, exportedPath }));

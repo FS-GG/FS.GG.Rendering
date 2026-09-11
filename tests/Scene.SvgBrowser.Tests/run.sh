@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-output="${1:-$repo/readiness/svg-foundation/svg-browser-observations.json}"
+output="${1:-$repo/readiness/svg-scene-02-3/browser-observations.json}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-browser.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 feed="$work/feed"
@@ -9,9 +9,10 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools" "$(dirname "$output")"
 
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed"
-dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed"
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.29.0-preview.1
+dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.29.0-preview.1
 cp -R "$repo/tests/Scene.SvgBrowser.Tests" "$work/Browser"
+cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/Browser/DocumentRoundTrip.fs"
 rm -rf "$work/Browser/node_modules" "$work/Browser/dist" "$work/Browser/generated"
 cat > "$work/NuGet.Config" <<CONFIG
 <configuration>
@@ -47,7 +48,7 @@ for required in ('fs.gg.ui.scene/', 'fs.gg.ui.scene.svgbrowser/', 'fable.browser
 for forbidden in ('skiasharp/', 'fs.gg.ui.skiaviewer/', 'fs.gg.ui.controls.elmish/'):
     if any(name.startswith(forbidden) for name in libraries):
         raise SystemExit(f'browser closure contains forbidden dependency {forbidden}')
-scene=next((root/'feed').glob('FS.GG.UI.Scene.0.4.0-preview.1.nupkg'))
+scene=next((root/'feed').glob('FS.GG.UI.Scene.0.29.0-preview.1.nupkg'))
 adapter=next((root/'feed').glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'))
 with zipfile.ZipFile(scene) as archive:
     nuspec=archive.read('FS.GG.UI.Scene.nuspec').decode('utf-8-sig')

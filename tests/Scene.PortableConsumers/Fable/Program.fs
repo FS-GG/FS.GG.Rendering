@@ -1,6 +1,7 @@
 open FS.GG.UI.Scene
 open Fable.Core
 open RetainedTraceReplay
+open PortableDocumentFixture
 
 [<Import("readFileSync", "node:fs")>]
 let readFileSync (path: string) (encoding: string) : string = jsNative
@@ -13,6 +14,16 @@ let tracePath: string = jsNative
 
 [<Emit("process.argv[3]")>]
 let resultPath: string = jsNative
+
+[<Emit("process.argv[4]")>]
+let serializedPath: string = jsNative
+
+[<Emit("process.argv[5]")>]
+let exportedPath: string = jsNative
+
+let serialized, exported = verifyRoundTrip "fable-node"
+writeFileSync serializedPath serialized
+writeFileSync exportedPath exported
 
 let fixture : RetainedScene =
     { RootId = "isolated-fable"
@@ -45,9 +56,9 @@ match SvgRetained.project fixture with
             { ExtensionId = "svg-scene-export"
               Version = "0.29.0-preview.1"
               EntryPoint = "FS.GG.UI.Scene.SvgDocument"
-              Capabilities = [ "document"; "affine" ]
-              Support = SvgRuntimeSupport.ContractOnly "serialization arrives in SVG-SCENE-02.3" }
-        if asset.Document.Id <> fixture.RootId || extension.Capabilities.Length <> 2 then failwith "contract envelope drift"
+              Capabilities = [ "document"; "affine"; "serialization"; "svg-export" ]
+              Support = SvgRuntimeSupport.Supported }
+        if asset.Document.Id <> fixture.RootId || extension.Capabilities.Length <> 4 then failwith "contract envelope drift"
     let independent = SvgAffine.transformPoint (SvgAffine.compose (SvgAffine.translate 10.0 20.0) (SvgAffine.rotateDegrees 90.0)) { X = 2.0; Y = 3.0 }
     if abs (independent.X - 7.0) > 1e-9 || abs (independent.Y - 22.0) > 1e-9 then failwith "affine composition drift"
     let reflectedSkew = SvgAffine.transformPoint (SvgAffine.compose (SvgAffine.scale -1.0 2.0) (SvgAffine.skewXDegrees 45.0)) { X = 2.0; Y = 3.0 }

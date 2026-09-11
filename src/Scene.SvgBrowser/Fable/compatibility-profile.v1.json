@@ -12,6 +12,9 @@
     "pointer and keyboard selection",
     "camera pan, anchored zoom, and inverse picking",
     "accessible DOM projection",
-    "owned event-listener lifecycle"
+    "owned event-listener lifecycle",
+    "identified SVG document mount and atomic replacement",
+    "gradient, symbol, clip, mask and local-font observation",
+    "standalone exported-SVG reload"
   ]
 }

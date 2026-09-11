@@ -1,0 +1,130 @@
+{
+  "schema": "fsgg.svg-scene.browser-observation/v2",
+  "result": "pass",
+  "capturedAtUtc": "2026-09-11T20:52:07.658Z",
+  "candidate": {
+    "sourceSha256": "sha256:8b36d16186abf0000ec3e1a92ab94c6c5a02ef44ab2fe020c0fe52b08522cac1",
+    "packageSetSha256": "sha256:f41766032c37c74478faa10993ea18d39378d19bb0b6839d6e7e28c2b9e16999"
+  },
+  "environment": {
+    "browser": "151.0.7922.34",
+    "node": "v26.8.2",
+    "os": "linux 7.2.2-arch1-1",
+    "logicalCpuCount": 24,
+    "viewport": {
+      "width": 800,
+      "height": 600,
+      "deviceScaleFactor": 1
+    },
+    "headless": true
+  },
+  "sceneCost": {
+    "revision": 1,
+    "layers": 2,
+    "objects": 3,
+    "nodes": 16,
+    "listeners": 6,
+    "frames": 0
+  },
+  "startup": {
+    "productionFiles": 2,
+    "rawBytes": 132999,
+    "gzipBytes": 38340,
+    "coldNetworkCache": false
+  },
+  "timing": {
+    "sampleCount": 20,
+    "mountMilliseconds": {
+      "median": 0.6,
+      "maximum": 1.5
+    },
+    "inputToNextAnimationFrameMilliseconds": {
+      "median": 13.5,
+      "maximum": 15.3
+    }
+  },
+  "functional": {
+    "pointerKeyboardSameObject": true,
+    "accessibleDomRoute": true,
+    "anchoredZoomAndInversePicking": true,
+    "retainedRootAndLayersAcrossRevision": true,
+    "staleRevisionRefused": true,
+    "mountDisposeCycles": 12,
+    "finalOwnedListenerCount": 6,
+    "scheduledFrameCount": 0
+  },
+  "document": {
+    "definitions": {
+      "gradients": 5,
+      "symbols": 1,
+      "clips": 3,
+      "alphaMasks": 1,
+      "luminanceMasks": 1,
+      "uses": 1
+    },
+    "stableLocalReferences": true,
+    "duplicateIdsRejectedBeforeReplacement": true,
+    "duplicateMountNamespaceRejected": true,
+    "explicitFontFailure": "font-unavailable:font:Noto Sans",
+    "completeArcSegments": 2,
+    "selectedDefinitionDetails": {
+      "explicitGradientStops": 3,
+      "explicitGradientOffsets": [
+        "0",
+        "0.4",
+        "1"
+      ],
+      "explicitGradientTransform": "matrix(0.772740661031 0.207055236082 -0.310582854123 1.159110991547 0 0)",
+      "explicitGradientInterpolation": "sRGB",
+      "hasUserSpaceGradient": true,
+      "hasObjectBoundingBoxGradient": true,
+      "nestedClip": true,
+      "maskUnits": [
+        "objectBoundingBox",
+        "userSpaceOnUse"
+      ],
+      "symbolViewport": [
+        "0",
+        "0",
+        "20",
+        "20"
+      ],
+      "textLayoutExplicit": true
+    },
+    "visualReference": {
+      "browserFamily": "chromium",
+      "tolerancePerChannel": 28,
+      "samples": {
+        "evenoddHole": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "gradientLeft": [
+          171,
+          51,
+          135,
+          255
+        ],
+        "gradientRight": [
+          69,
+          51,
+          237,
+          255
+        ]
+      }
+    },
+    "isolatedExportReload": true
+  },
+  "unavailable": [
+    "Input timing ends at the next animation-frame callback; no compositor presentation timestamp was captured.",
+    "Heap and detached-node measurements were not captured in this focused foundation fixture.",
+    "Firefox, WebKit, touch hardware, mobile GPUs and assistive-technology announcements were not observed."
+  ],
+  "claims": {
+    "thresholdEstablished": false,
+    "completeM9Qualification": false,
+    "packagePublished": false
+  }
+}

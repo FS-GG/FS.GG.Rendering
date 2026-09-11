@@ -47,6 +47,9 @@ let options =
 let container: HTMLElement = unbox (document.getElementById("fixture"))
 let transitions = ResizeArray<RetainedInteractionResult>()
 let mutable host: SvgBrowserHost option = None
+let documentContainer: HTMLElement = unbox (document.getElementById("document-fixture"))
+let duplicateContainer: HTMLElement = unbox (document.getElementById("duplicate-fixture"))
+let mutable documentHost: SvgDocumentBrowserHost option = None
 
 let errorName = function
     | None -> null
@@ -77,6 +80,22 @@ let dispose () =
     host |> Option.iter (fun value -> (value :> IDisposable).Dispose())
     host <- None
 
+let mountDocumentFixture () =
+    documentHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    match SvgBrowser.mountDocument documentContainer "gallery-browser" PortableDocumentFixture.document with
+    | Error error -> failwithf "document mount failed: %A" error
+    | Ok value -> documentHost <- Some value
+
+let documentError = function
+    | Ok() -> null
+    | Error(SvgDocumentBrowserError.DuplicateMountNamespace value) -> "duplicate-mount-namespace:" + value
+    | Error(SvgDocumentBrowserError.InvalidDocument issues) ->
+        issues |> List.map (fun issue -> $"{issue.Code}:{issue.Location}") |> String.concat ","
+
+let invalidDocument () =
+    let duplicate = PortableDocumentFixture.document.Children.Head
+    { PortableDocumentFixture.document with Children = [ duplicate; duplicate ] }
+
 let api =
     createObj [
         "mount" ==> fun () -> mount(); stateObject()
@@ -99,10 +118,18 @@ let api =
                 "frames" ==> value.ScheduledFrameCount
             ]
         "transitionCount" ==> fun () -> transitions.Count
+        "documentExport" ==> fun () -> documentHost.Value.ExportedSvg
+        "documentFonts" ==> fun () ->
+            documentHost.Value.ObserveFonts()
+            |> List.map (fun value -> createObj [ "definitionId" ==> value.DefinitionId; "family" ==> value.Family; "ready" ==> value.Ready; "diagnostic" ==> (value.Diagnostic |> Option.toObj) ])
+            |> List.toArray
+        "replaceInvalidDocument" ==> fun () -> documentHost.Value.Replace(invalidDocument()) |> documentError
+        "duplicateDocumentMount" ==> fun () -> SvgBrowser.mountDocument duplicateContainer "gallery-browser" PortableDocumentFixture.document |> Result.map (fun value -> (value :> IDisposable).Dispose()) |> documentError
     ]
 
 [<Emit("window.svgFoundation = $0")>]
 let expose (_api: obj) : unit = jsNative
 
 mount()
+mountDocumentFixture()
 expose api

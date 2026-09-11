@@ -5,7 +5,7 @@
     <PackageId>FS.GG.UI.Scene.SvgBrowser</PackageId>
     <AssemblyName>FS.GG.UI.Scene.SvgBrowser</AssemblyName>
     <Title>FS.GG.UI.Scene.SvgBrowser</Title>
-    <Description>Retained SVG DOM adapter for the portable FS.GG.UI.Scene contract.</Description>
+    <Description>Retained and identified-document SVG DOM adapter for the portable FS.GG.UI.Scene contract.</Description>
     <PackageTags>fsharp;scene;svg;browser;fable-javascript</PackageTags>
     <FablePackageType>library</FablePackageType>
   </PropertyGroup>

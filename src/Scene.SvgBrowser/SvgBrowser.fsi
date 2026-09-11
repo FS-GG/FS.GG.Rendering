@@ -16,6 +16,34 @@ type SvgBrowserOptions =
 type SvgBrowserMountError =
     | InvalidScene of RetainedInteractionError
     | InvalidOptions of string
+    | InvalidDocument of SvgDocumentIssue list
+
+/// Why an identified SVG document could not be mounted or replaced.
+[<RequireQualifiedAccess>]
+type SvgDocumentBrowserError =
+    | InvalidDocument of SvgDocumentIssue list
+    | DuplicateMountNamespace of string
+
+/// Browser-observed state for one declared local font.
+type SvgBrowserFontObservation =
+    { DefinitionId: string
+      Family: string
+      Ready: bool
+      Diagnostic: string option }
+
+/// A mounted identified SVG document. Validation and export finish before any DOM mutation.
+[<Sealed>]
+type SvgDocumentBrowserHost =
+    interface IDisposable
+
+    member Root: Element
+    member MountNamespace: string
+    member Document: SvgDocument
+    member ExportedSvg: string
+    /// Observe declared fonts without treating browser fallback as font-fidelity success.
+    member ObserveFonts: unit -> SvgBrowserFontObservation list
+    /// Validate and export the replacement fully before replacing the mounted root.
+    member Replace: document: SvgDocument -> Result<unit, SvgDocumentBrowserError>
 
 /// Observable resource and scene state for lifecycle and early-cost evidence.
 type SvgBrowserObservation =
@@ -61,4 +89,11 @@ module SvgBrowser =
         options: SvgBrowserOptions ->
         scene: RetainedScene ->
         onTransition: (RetainedInteractionResult -> unit) ->
-            Result<SvgBrowserHost, SvgBrowserMountError>
+        Result<SvgBrowserHost, SvgBrowserMountError>
+
+    /// Mount an identified document under a unique namespace using its complete exported SVG.
+    val mountDocument:
+        container: HTMLElement ->
+        mountNamespace: string ->
+        document: SvgDocument ->
+        Result<SvgDocumentBrowserHost, SvgDocumentBrowserError>

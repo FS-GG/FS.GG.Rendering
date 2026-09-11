@@ -29,6 +29,9 @@
     <Compile Include="Feature165VisualInspectionPaintTests.fs" />
     <Compile Include="Feature187SceneBoundsInspectionTests.fs" />
     <Compile Include="SvgFoundationRetainedTests.fs" />
+    <Compile Include="..\Scene.PortableConsumers\DocumentRoundTrip.fs">
+      <Link>DocumentRoundTrip.fs</Link>
+    </Compile>
     <Compile Include="SvgDocumentTests.fs" />
     <Compile Include="Feature183CodecSymmetryTests.fs" />
     <!-- ADR-0022 P5: Scene.Geometry moved to FS.GG.Game.Core; its unit suite lives in Game.Core.Tests. -->

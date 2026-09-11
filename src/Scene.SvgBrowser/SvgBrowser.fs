@@ -32,6 +32,17 @@ module private Dom =
 
     let clear (element: Element) = element.innerHTML <- ""
 
+    [<Emit("document.importNode(new DOMParser().parseFromString($0, 'image/svg+xml').documentElement, true)")>]
+    let parseExportedSvg (_svg: string) : Element = jsNative
+
+    // Keep the source expression single-evaluation-safe. Fable substitutes Emit arguments
+    // textually, so a while expression would reparse an exported document on every test/body.
+    [<Emit("Array.from($1.childNodes).forEach(node => $0.appendChild(node))")>]
+    let appendChildren (_parent: Element) (_source: Element) : unit = jsNative
+
+    [<Emit("document.fonts.check('16px ' + JSON.stringify($0))")>]
+    let fontReady (_family: string) : bool = jsNative
+
 module private Format =
     let number (value: float) = string value
 
@@ -199,6 +210,25 @@ module private Render =
         | SceneNode.ColorSpaceNode(ColorSpace.Srgb, child) -> scene parent child
         | _ -> ()
 
+    let documentScene mountNamespace parent (value: Scene) =
+        let document =
+            { Schema = SvgDocument.schema
+              Id = "retained-document"
+              ViewBox = { X = 0.0; Y = 0.0; Width = 1.0; Height = 1.0 }
+              Definitions = []
+              Children =
+                [ { Id = "content"
+                    SemanticId = None
+                    Visible = true
+                    Transform = SvgAffine.identity
+                    ClipId = None
+                    MaskId = None
+                    Presentation = None
+                    Content = SvgElementContent.SceneLeaf value } ] }
+        match SvgDocument.exportSvg mountNamespace document with
+        | Error issues -> failwithf "validated retained Scene could not export: %A" issues
+        | Ok svg -> Dom.appendChildren parent (Dom.parseExportedSvg svg)
+
 type SvgBrowserOptions =
     { Width: float
       Height: float
@@ -209,6 +239,18 @@ type SvgBrowserOptions =
 type SvgBrowserMountError =
     | InvalidScene of RetainedInteractionError
     | InvalidOptions of string
+    | InvalidDocument of SvgDocumentIssue list
+
+[<RequireQualifiedAccess>]
+type SvgDocumentBrowserError =
+    | InvalidDocument of SvgDocumentIssue list
+    | DuplicateMountNamespace of string
+
+type SvgBrowserFontObservation =
+    { DefinitionId: string
+      Family: string
+      Ready: bool
+      Diagnostic: string option }
 
 type SvgBrowserObservation =
     { RootId: string
@@ -218,6 +260,61 @@ type SvgBrowserObservation =
       SvgNodeCount: int
       OwnedListenerCount: int
       ScheduledFrameCount: int }
+
+module private DocumentRegistry =
+    let activeNamespaces = HashSet<string>()
+
+[<Sealed>]
+type SvgDocumentBrowserHost internal
+    (container: HTMLElement,
+     mountNamespace: string,
+     initialDocument: SvgDocument,
+     initialSvg: string,
+     initialRoot: Element) =
+
+    let mutable documentValue = initialDocument
+    let mutable exportedSvg = initialSvg
+    let mutable root = initialRoot
+    let mutable disposed = false
+
+    let fontObservations () =
+        documentValue.Definitions
+        |> List.choose (fun definition ->
+            match definition.Content with
+            | SvgDefinitionContent.Font font ->
+                let ready = Dom.fontReady font.Family
+                Some
+                    { DefinitionId = definition.Id
+                      Family = font.Family
+                      Ready = ready
+                      Diagnostic = if ready then None else Some $"font-unavailable:{definition.Id}:{font.Family}" }
+            | _ -> None)
+
+    member _.Root = root
+    member _.MountNamespace = mountNamespace
+    member _.Document = documentValue
+    member _.ExportedSvg = exportedSvg
+    member _.ObserveFonts() = fontObservations ()
+    member _.Replace(document: SvgDocument) =
+        if disposed then invalidOp "The SVG document browser host is disposed."
+        match SvgDocument.exportSvg mountNamespace document with
+        | Error issues -> Error(SvgDocumentBrowserError.InvalidDocument issues)
+        | Ok candidateSvg ->
+            // Parsing happens only after portable validation/export succeeds, and replacement is the
+            // final operation so invalid candidates cannot partially mutate the live document.
+            let candidateRoot = Dom.parseExportedSvg candidateSvg
+            container.replaceChild(candidateRoot, root) |> ignore
+            root <- candidateRoot
+            documentValue <- document
+            exportedSvg <- candidateSvg
+            Ok()
+
+    interface IDisposable with
+        member _.Dispose() =
+            if not disposed then
+                if root.parentNode = container then container.removeChild(root) |> ignore
+                DocumentRegistry.activeNamespaces.Remove mountNamespace |> ignore
+                disposed <- true
 
 [<Sealed>]
 type SvgBrowserHost internal
@@ -282,7 +379,7 @@ type SvgBrowserHost internal
             for objectValue in layer.Objects do
                 let objectElement = Dom.create "g"
                 Dom.set "data-scene-object-id" objectValue.Id objectElement
-                Render.scene objectElement objectValue.Content
+                Render.documentScene $"{state.Scene.RootId}:{layer.Id}:{objectValue.Id}" objectElement objectValue.Content
                 Render.append layerElement objectElement
                 objects[objectValue.Id] <- objectElement
             Render.append viewport layerElement
@@ -426,6 +523,18 @@ type SvgBrowserHost internal
 
 [<RequireQualifiedAccess>]
 module SvgBrowser =
+    let mountDocument (container: HTMLElement) mountNamespace document =
+        if DocumentRegistry.activeNamespaces.Contains mountNamespace then
+            Error(SvgDocumentBrowserError.DuplicateMountNamespace mountNamespace)
+        else
+            match SvgDocument.exportSvg mountNamespace document with
+            | Error issues -> Error(SvgDocumentBrowserError.InvalidDocument issues)
+            | Ok svg ->
+                let root = Dom.parseExportedSvg svg
+                container.appendChild(root) |> ignore
+                DocumentRegistry.activeNamespaces.Add mountNamespace |> ignore
+                Ok(new SvgDocumentBrowserHost(container, mountNamespace, document, svg, root))
+
     let mount (container: HTMLElement) (options: SvgBrowserOptions) (scene: RetainedScene) onTransition =
         match SvgRetained.tryCreateInteraction scene with
         | Error error -> Error(SvgBrowserMountError.InvalidScene error)
@@ -436,15 +545,18 @@ module SvgBrowser =
                || String.IsNullOrWhiteSpace options.AccessibleLabel || options.WheelZoomFactor <= 1.0 then
                 Error(SvgBrowserMountError.InvalidOptions "width and height must be finite and positive; label must be nonblank; wheel zoom factor must be finite and greater than one")
             else
-                let root = Dom.create "svg"
-                Dom.set "width" (Format.number options.Width) root
-                Dom.set "height" (Format.number options.Height) root
-                Dom.set "viewBox" $"0 0 {Format.number options.Width} {Format.number options.Height}" root
-                Dom.set "role" "application" root
-                Dom.set "aria-label" options.AccessibleLabel root
-                Dom.set "tabindex" "0" root
-                let viewport = Dom.create "g"
-                Dom.set "data-scene-viewport" "true" viewport
-                root.appendChild(viewport) |> ignore
-                container.appendChild(root) |> ignore
-                Ok(new SvgBrowserHost(container, root, viewport, state, options, onTransition))
+                match SvgDocument.ofRetainedScene { X = 0.0; Y = 0.0; Width = options.Width; Height = options.Height } scene with
+                | Error issues -> Error(SvgBrowserMountError.InvalidDocument issues)
+                | Ok _ ->
+                    let root = Dom.create "svg"
+                    Dom.set "width" (Format.number options.Width) root
+                    Dom.set "height" (Format.number options.Height) root
+                    Dom.set "viewBox" $"0 0 {Format.number options.Width} {Format.number options.Height}" root
+                    Dom.set "role" "application" root
+                    Dom.set "aria-label" options.AccessibleLabel root
+                    Dom.set "tabindex" "0" root
+                    let viewport = Dom.create "g"
+                    Dom.set "data-scene-viewport" "true" viewport
+                    root.appendChild(viewport) |> ignore
+                    container.appendChild(root) |> ignore
+                    Ok(new SvgBrowserHost(container, root, viewport, state, options, onTransition))
