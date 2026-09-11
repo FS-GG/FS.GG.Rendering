@@ -25,10 +25,8 @@ contracts solely from a locally packed `FS.GG.UI.Scene 0.29.0-preview.1` candida
 asset and build-extension descriptors. Serialization remains `ContractOnly` until SVG-SCENE-02.3; no
 browser, editor, session, or extension runtime is claimed.
 
-The local candidate archive produced from this tree is
-`FS.GG.UI.Scene.0.29.0-preview.1.nupkg`, SHA-256
-`ff646aa25bd6f84050a35a84c4fd1a96c3af24c1f4e9e67609119491c3c12b31`. This hash identifies the
-rehearsal bytes only and is not a publication receipt.
+The local candidate identity is `FS.GG.UI.Scene 0.29.0-preview.1`. Its archive is a rehearsal artifact,
+not a publication receipt; exact release bytes remain owned by SVG-PREVIEW-A's candidate-first gate.
 
 The canonical retained authority records the document replacement amendment boundary in
 `models/svg-foundation/README.md`. Its existing trace corpus remains byte-for-byte unchanged: both
