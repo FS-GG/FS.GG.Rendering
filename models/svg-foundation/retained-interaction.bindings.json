@@ -1,0 +1,186 @@
+{
+  "schema": "fsgg.quint.general-bindings/v1",
+  "profile": "fsgg-quint-profile/2",
+  "moduleName": "SvgRetainedModelGenerated",
+  "exports": [
+    {
+      "id": "EXPORT-ActionCatalogue",
+      "module": "retainedInteraction",
+      "declaration": "actionCatalogue",
+      "promoteCatalogueRows": false,
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 63,
+          "column": 1
+        },
+        "end": {
+          "line": 73,
+          "column": 4
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "ACT-Init",
+      "module": "retainedInteraction",
+      "declaration": "init",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 178,
+          "column": 1
+        },
+        "end": {
+          "line": 179,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-Select",
+      "module": "retainedInteraction",
+      "declaration": "selectObject",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 180,
+          "column": 1
+        },
+        "end": {
+          "line": 184,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-ReplaceScene",
+      "module": "retainedInteraction",
+      "declaration": "replaceScene",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 185,
+          "column": 1
+        },
+        "end": {
+          "line": 189,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-ClearSelection",
+      "module": "retainedInteraction",
+      "declaration": "clearSelection",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 190,
+          "column": 1
+        },
+        "end": {
+          "line": 194,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-FocusNext",
+      "module": "retainedInteraction",
+      "declaration": "focusNext",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 195,
+          "column": 1
+        },
+        "end": {
+          "line": 199,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-FocusPrevious",
+      "module": "retainedInteraction",
+      "declaration": "focusPrevious",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 200,
+          "column": 1
+        },
+        "end": {
+          "line": 204,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-SetCamera",
+      "module": "retainedInteraction",
+      "declaration": "setCamera",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 205,
+          "column": 1
+        },
+        "end": {
+          "line": 209,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-CapturePointer",
+      "module": "retainedInteraction",
+      "declaration": "capturePointer",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 210,
+          "column": 1
+        },
+        "end": {
+          "line": 214,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-ReleasePointer",
+      "module": "retainedInteraction",
+      "declaration": "releasePointer",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 215,
+          "column": 1
+        },
+        "end": {
+          "line": 219,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-Step",
+      "module": "retainedInteraction",
+      "declaration": "step",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 220,
+          "column": 1
+        },
+        "end": {
+          "line": 237,
+          "column": 4
+        }
+      }
+    }
+  ]
+}

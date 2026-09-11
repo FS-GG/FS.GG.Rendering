@@ -18,16 +18,13 @@ packed license is MIT, copyright Mangel Maxime (2024), and the inspected nupkg S
 Fable.Core artifacts are restored from NuGet and are not copied into `FS.GG.UI.Scene`. No S.I.R.
 source, asset, or third-party donor material is included.
 
-Run the evidence:
+Run the portable package evidence:
 
 ```console
 dotnet test tests/Scene.Tests/Scene.Tests.fsproj
 bash tests/Scene.PortableConsumers/run.sh
-quint test models/svg-foundation/retainedInteractionTest.qnt --main retainedInteractionTest
-quint run models/svg-foundation/retainedInteraction.qnt --main retainedInteraction --invariant revisionNeverDecreases --witnesses currentSelectionWitness staleSelectionWitness --max-steps 20
 ```
 
-The Quint model is bounded to revisions 0–3 and two selectable object identities. The F# suite
-enumerates the corresponding reducer matrix and includes a stale-revision mutation witness. The
-installed SDD profile-2 object cache remains unavailable as recorded by SVG-FOUND-01.1; these direct
-Quint 0.32.0 witnesses do not change that qualification result.
+The original direct Quint evidence has been superseded by the installed SDD profile-2 authority and
+model-generated replay corpus described in
+`docs/reports/2026-09-11-svg-qual-01-2-retained-profile.md`.

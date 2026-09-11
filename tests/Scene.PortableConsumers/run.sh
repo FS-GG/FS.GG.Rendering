@@ -11,6 +11,9 @@ mkdir -p "$feed" "$packages" "$tools"
 dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed"
 cp -R "$repo/tests/Scene.PortableConsumers/DotNet" "$work/DotNet"
 cp -R "$repo/tests/Scene.PortableConsumers/Fable" "$work/Fable"
+cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/DotNet/Replay.fs"
+cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/Fable/Replay.fs"
+cp "$repo/models/svg-foundation/retained-interaction.traces.tsv" "$work/retained-interaction.traces.tsv"
 
 cat > "$work/NuGet.Config" <<EOF
 <configuration>
@@ -29,11 +32,16 @@ EOF
 export NUGET_PACKAGES="$packages"
 dotnet restore "$work/DotNet/DotNet.fsproj" --configfile "$work/NuGet.Config"
 dotnet build "$work/DotNet/DotNet.fsproj" --no-restore
-dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build
+dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
+  "$work/retained-interaction.traces.tsv" "$work/dotnet-projections.tsv"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
 dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
+node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv"
+cmp "$work/dotnet-projections.tsv" "$work/fable-projections.tsv"
+projection_sha="$(sha256sum "$work/dotnet-projections.tsv" | cut -d' ' -f1)"
+echo "retained-trace-projections: runtimes=dotnet,fable-node sha256=$projection_sha"
 
 python3 - "$work" <<'PY'
 import json

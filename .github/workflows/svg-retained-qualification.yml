@@ -1,0 +1,89 @@
+name: svg-retained-qualification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'models/svg-foundation/**'
+      - 'readiness/svg-qual-01-2/**'
+      - 'src/Scene/**'
+      - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
+      - 'tests/Scene.PortableConsumers/**'
+      - 'tests/svg-foundation/**'
+      - '.github/workflows/svg-retained-qualification.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'models/svg-foundation/**'
+      - 'readiness/svg-qual-01-2/**'
+      - 'src/Scene/**'
+      - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
+      - 'tests/Scene.PortableConsumers/**'
+      - 'tests/svg-foundation/**'
+      - '.github/workflows/svg-retained-qualification.yml'
+
+concurrency:
+  group: svg-retained-qualification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Installed profile-2 model and reducer replay
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Set up exact Go toolchain
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.1'
+      - name: Acquire exact profile-2 tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/svg-retained-tools"
+          curl --fail --location --retry 3 \
+            https://github.com/quint-co/quint/releases/download/v0.32.0/quint-linux-amd64 \
+            --output "$RUNNER_TEMP/svg-retained-tools/quint"
+          echo '939b64095b706017f2f202c6f99c860c40be7c31bddc2b98557316e50f42cd7f  '"$RUNNER_TEMP/svg-retained-tools/quint" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/svg-retained-tools/quint"
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/driusan/lmt/62fe18f2f6a6e11c158ff2b2209e1082a4fcd59c/main.go \
+            --output "$RUNNER_TEMP/svg-retained-tools/main.go"
+          echo '88bc47acae2c26919ab96a5cafa80b12fac762092c57840a2baad1afcc7feda3  '"$RUNNER_TEMP/svg-retained-tools/main.go" | sha256sum --check --strict
+          (
+            cd "$RUNNER_TEMP/svg-retained-tools"
+            GO111MODULE=off CGO_ENABLED=1 go build -trimpath \
+              -ldflags '-buildid=IvXAt1kJ-3iINki1alCT/Ut12KGabgkWIkwVpw-xO/c4zkZMLAubfWHvjZOY8o/8-oR_8tNNndNgfMVoD8F -B 0x03d1703027f57ed4dd2ba90b7cdfc8cdea2815da' \
+              -o lmt main.go
+          )
+          echo '37e0b0365c2641edce40b48605471f61fa12e97c3e2376152f0e849abdc31f10  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
+      - name: Qualify public installed SDD authority
+        env:
+          QUINT_BIN: ${{ runner.temp }}/svg-retained-tools/quint
+          LMT_BIN: ${{ runner.temp }}/svg-retained-tools/lmt
+        run: bash tests/svg-foundation/qualify-retained-profile.sh "$RUNNER_TEMP/svg-retained-qualification.json"
+      - name: Exercise real reducer correspondence
+        run: dotnet test tests/Scene.Tests/Scene.Tests.fsproj --filter 'SVG foundation retained scene'
+      - name: Replay model traces through packed consumers
+        run: bash tests/Scene.PortableConsumers/run.sh
+      - name: Upload qualification receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: svg-retained-qualification
+          path: ${{ runner.temp }}/svg-retained-qualification.json
+          if-no-files-found: error
