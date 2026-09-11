@@ -2580,7 +2580,7 @@ let private omissionLedger =
 /// `Schemas.PerformanceIntentDeclaration`; the new toolchain-only type continues the documented
 /// SkillMirror curation and is reconciled in the omission ledger and member manifest.
 [<Literal>]
-let private OmissionLedgerCeiling = 472
+let private OmissionLedgerCeiling = 483
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

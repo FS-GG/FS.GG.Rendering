@@ -324,8 +324,9 @@ type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
 type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
 type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
 
-# FS.GG.UI.Scene (54 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
-#                 Easing / Transform / Tween modules and types) by MIRRORING it.)
+# FS.GG.UI.Scene (65 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
+#                 Easing / Transform / Tween modules and types) by MIRRORING it; SVG-FOUND-01.2 adds
+#                 11 candidate retained-SVG names below.)
 module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
 module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
@@ -368,6 +369,22 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionCoverageStatus
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFinding
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFitStatus
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionMeasurementMode
+
+# SVG-FOUND-01.2 deliberately leaves the new retained SVG contract out of the generated-workspace
+# mirror until the roadmap's template adoption and candidate-release packet in .4/.5. The source
+# package and isolated candidate consumers prove the contract here; template/base must continue to
+# teach the currently published $(FsGgUiVersion) surface until that explicit adoption moves its pin.
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgRetained
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionError
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionMessage
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionResult
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionState
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedScene
+type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedSceneLayer
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SemanticSceneObject
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAdapterIssue
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAdapterResult
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgCamera
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNode
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNodeKind
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionPaintRole
