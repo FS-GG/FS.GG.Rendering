@@ -63,6 +63,7 @@ let stateObject () =
         "revision" ==> value.Scene.Revision
         "selected" ==> (value.SelectedObjectId |> Option.toObj)
         "focused" ==> (value.FocusedObjectId |> Option.toObj)
+        "captured" ==> (value.CapturedPointerId |> Option.map box |> Option.toObj)
         "camera" ==> createObj [ "panX" ==> value.Scene.Camera.PanX; "panY" ==> value.Scene.Camera.PanY; "zoom" ==> value.Scene.Camera.Zoom ]
     ]
 
@@ -78,7 +79,9 @@ let mount () =
 
 let dispose () =
     host |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    let disposedState = stateObject ()
     host <- None
+    disposedState
 
 let mountDocumentFixture () =
     documentHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
@@ -96,17 +99,37 @@ let invalidDocument () =
     let duplicate = PortableDocumentFixture.document.Children.Head
     { PortableDocumentFixture.document with Children = [ duplicate; duplicate ] }
 
+let reorderedDocument () =
+    { PortableDocumentFixture.document with
+        Children = PortableDocumentFixture.document.Children |> List.rev }
+
+let changedDocument () =
+    let replace (element: SvgElement) =
+        if element.Id = "luminance-element" then
+            { element with Transform = SvgAffine.translate 3.0 0.0 }
+        else element
+    { PortableDocumentFixture.document with Children = PortableDocumentFixture.document.Children |> List.map replace }
+
 let api =
     createObj [
         "mount" ==> fun () -> mount(); stateObject()
         "dispose" ==> fun () -> dispose()
         "state" ==> fun () -> stateObject()
         "replaceCurrent" ==> fun () -> host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene(retained 2 28.0)) |> resultObject
+        "replaceReordered" ==> fun () ->
+            let current = retained 3 28.0
+            let reordered =
+                { current with
+                    Layers =
+                        [ { Id = "overlay"; Visible = true; Objects = [ overlay ] }
+                          { Id = "units"; Visible = true; Objects = [ beta; alpha 28.0 ] } ] }
+            host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene reordered) |> resultObject
         "replaceStale" ==> fun () -> host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene(retained 1 35.0)) |> resultObject
         "hit" ==> fun x y -> host.Value.HitTest({ X = x; Y = y }) |> Option.toObj
         "scenePoint" ==> fun x y -> SvgRetained.tryToScenePoint host.Value.State.Scene.Camera { X = x; Y = y } |> Option.map (fun point -> createObj [ "x" ==> point.X; "y" ==> point.Y ]) |> Option.toObj
         "zoomAt" ==> fun x y zoom -> host.Value.ZoomAt({ X = x; Y = y }, zoom) |> resultObject
         "panBy" ==> fun x y -> host.Value.PanBy({ X = x; Y = y }) |> resultObject
+        "capture" ==> fun pointerId -> host.Value.Dispatch(RetainedInteractionMessage.CapturePointer(host.Value.State.Scene.Revision, pointerId)) |> resultObject
         "observe" ==> fun () ->
             let value = host.Value.Observe()
             createObj [
@@ -124,6 +147,10 @@ let api =
             |> List.map (fun value -> createObj [ "definitionId" ==> value.DefinitionId; "family" ==> value.Family; "ready" ==> value.Ready; "diagnostic" ==> (value.Diagnostic |> Option.toObj) ])
             |> List.toArray
         "replaceInvalidDocument" ==> fun () -> documentHost.Value.Replace(invalidDocument()) |> documentError
+        "replaceReorderedDocument" ==> fun () -> documentHost.Value.Replace(reorderedDocument()) |> documentError
+        "replaceChangedDocument" ==> fun () -> documentHost.Value.Replace(changedDocument()) |> documentError
+        "replaceOriginalDocument" ==> fun () -> documentHost.Value.Replace(PortableDocumentFixture.document) |> documentError
+        "documentHit" ==> fun x y -> documentHost.Value.HitTest({ X = x; Y = y }) |> Option.toObj
         "duplicateDocumentMount" ==> fun () -> SvgBrowser.mountDocument duplicateContainer "gallery-browser" PortableDocumentFixture.document |> Result.map (fun value -> (value :> IDisposable).Dispose()) |> documentError
     ]
 

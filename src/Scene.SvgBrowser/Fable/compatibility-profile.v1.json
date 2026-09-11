@@ -4,6 +4,7 @@
   "runtime": "javascript-browser",
   "publicDependencies": [
     "FS.GG.UI.Scene",
+    "FS.GG.UI.KeyboardInput",
     "Fable.Browser.Dom"
   ],
   "nativeDependencies": [],
@@ -15,6 +16,7 @@
     "owned event-listener lifecycle",
     "identified SVG document mount and atomic replacement",
     "gradient, symbol, clip, mask and local-font observation",
-    "standalone exported-SVG reload"
+    "standalone exported-SVG reload",
+    "KeyboardInput-owned intent mapping with native editing and composition preservation"
   ]
 }

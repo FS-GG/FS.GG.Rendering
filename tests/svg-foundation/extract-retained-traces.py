@@ -18,10 +18,12 @@ def state_value(state, name):
 
 
 if len(sys.argv) < 3:
-    raise SystemExit("usage: extract-retained-traces.py <output.tsv> <trace.itf.json>...")
+    raise SystemExit("usage: extract-retained-traces.py [--document] <output.tsv> <trace.itf.json>...")
 
-output = pathlib.Path(sys.argv[1])
-traces = [pathlib.Path(value) for value in sys.argv[2:]]
+document_mode = sys.argv[1] == "--document"
+offset = 2 if document_mode else 1
+output = pathlib.Path(sys.argv[offset])
+traces = [pathlib.Path(value) for value in sys.argv[offset + 1:]]
 header = [
     "trace", "step", "action", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6",
     "revision", "selected", "focused", "panX", "panY", "zoom", "captured",
@@ -51,7 +53,7 @@ for trace_index, path in enumerate(sorted(traces)):
         rows.append("\t".join(values))
 
 expected_actions = {
-    "Select", "ReplaceScene", "ClearSelection", "FocusNext", "FocusPrevious",
+    "Select", "ReplaceDocument" if document_mode else "ReplaceScene", "ClearSelection", "FocusNext", "FocusPrevious",
     "SetCamera", "CapturePointer", "ReleasePointer",
 }
 if actions != expected_actions:

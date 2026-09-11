@@ -33,6 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <ProjectReference Include="..\KeyboardInput\KeyboardInput.fsproj" />
     <PackageReference Include="Fable.Browser.Dom" />
     <PackageReference Include="Fable.Package.SDK" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
   </ItemGroup>

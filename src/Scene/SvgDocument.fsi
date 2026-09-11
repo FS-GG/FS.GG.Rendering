@@ -178,3 +178,66 @@ module SvgDocument =
     val deserialize: serialized: string -> Result<SvgDocument, SvgDocumentIssue list>
     /// Export one accepted document as standalone SVG XML with collision-free local identifiers.
     val exportSvg: mountNamespace: string -> document: SvgDocument -> Result<string, SvgDocumentIssue list>
+
+/// Immutable handoff from the minimal document editor into a play/session boundary.
+/// The canonical serialized bytes do not share later editor history.
+type SvgDocumentPlaySnapshot =
+    { SourceRevision: int
+      SerializedDocument: string
+      SelectedSemanticId: string option }
+
+/// Minimal guarded document/edit state. This is a contract foundation, not a complete editor.
+type SvgDocumentInteractionState =
+    { Revision: int
+      Document: SvgDocument
+      Camera: SvgAffine
+      SelectedSemanticId: string option
+      FocusedSemanticId: string option
+      CapturedPointerId: int option
+      UndoDocuments: SvgDocument list
+      RedoDocuments: SvgDocument list
+      PlaySnapshot: SvgDocumentPlaySnapshot option }
+
+[<RequireQualifiedAccess>]
+type SvgDocumentInteractionMessage =
+    | ReplaceDocument of expectedRevision: int * candidateRevision: int * document: SvgDocument
+    | SelectSemantic of expectedRevision: int * semanticId: string
+    | ClearSelection of expectedRevision: int
+    | FocusNext of expectedRevision: int
+    | FocusPrevious of expectedRevision: int
+    | SetCamera of expectedRevision: int * camera: SvgAffine
+    | CapturePointer of expectedRevision: int * pointerId: int
+    | ReleasePointer of expectedRevision: int * pointerId: int
+    | Undo of expectedRevision: int
+    | Redo of expectedRevision: int
+    | TakePlaySnapshot of expectedRevision: int
+
+[<RequireQualifiedAccess>]
+type SvgDocumentInteractionError =
+    | StaleRevision of expected: int * actual: int
+    | NonIncreasingRevision of candidate: int * actual: int
+    | InvalidDocument of SvgDocumentIssue list
+    | UnknownSemanticIdentity of string
+    | InvalidCamera
+    | PointerNotCaptured of int
+    | NothingToUndo
+    | NothingToRedo
+
+type SvgDocumentInteractionResult =
+    { State: SvgDocumentInteractionState
+      Error: SvgDocumentInteractionError option }
+
+[<RequireQualifiedAccess>]
+module SvgDocumentInteraction =
+    /// Validate an initial document and invertible camera before creating editor state.
+    val tryCreate:
+        revision: int ->
+        camera: SvgAffine ->
+        document: SvgDocument ->
+        Result<SvgDocumentInteractionState, SvgDocumentInteractionError>
+
+    /// Apply one synchronous, atomic minimal interaction/edit transition.
+    val update:
+        message: SvgDocumentInteractionMessage ->
+        state: SvgDocumentInteractionState ->
+        SvgDocumentInteractionResult

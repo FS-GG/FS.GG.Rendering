@@ -1,0 +1,13 @@
+{
+  "schema": "fsgg.fable-compatibility-profile/v1",
+  "package": "FS.GG.UI.KeyboardInput",
+  "runtime": "javascript-browser",
+  "publicDependencies": [
+    "FS.GG.UI.Scene"
+  ],
+  "nativeDependencies": [],
+  "scope": [
+    "portable keyboard state and keymap reducers",
+    "retained SVG intent mapping with native-edit and composition preservation"
+  ]
+}

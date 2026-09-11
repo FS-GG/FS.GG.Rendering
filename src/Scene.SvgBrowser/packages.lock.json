@@ -73,6 +73,13 @@
           "FSharp.Core": "4.7.2"
         }
       },
+      "FS.GG.UI.KeyboardInput": {
+        "type": "Project",
+        "dependencies": {
+          "FS.GG.UI.Scene": "[0.4.0-preview.1, )",
+          "FSharp.Core": "[10.1.302, )"
+        }
+      },
       "FS.GG.UI.Scene": {
         "type": "Project",
         "dependencies": {

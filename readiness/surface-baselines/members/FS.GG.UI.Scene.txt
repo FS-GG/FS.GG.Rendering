@@ -793,6 +793,40 @@ FS.GG.UI.Scene.SvgDocument.ofRetainedScene(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.R
 FS.GG.UI.Scene.SvgDocument.schema : System.String [get]
 FS.GG.UI.Scene.SvgDocument.serialize(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgDocument.validate(System.Int32, FS.GG.UI.Scene.SvgDocumentLimits, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>
+FS.GG.UI.Scene.SvgDocumentInteraction.tryCreate(System.Int32, FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocumentInteractionState, FS.GG.UI.Scene.SvgDocumentInteractionError>
+FS.GG.UI.Scene.SvgDocumentInteraction.update(FS.GG.UI.Scene.SvgDocumentInteractionMessage, FS.GG.UI.Scene.SvgDocumentInteractionState) : FS.GG.UI.Scene.SvgDocumentInteractionResult
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.InvalidCamera : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.InvalidDocument : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.NonIncreasingRevision : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.NothingToRedo : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.NothingToUndo : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.PointerNotCaptured : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.StaleRevision : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionError+Tags.UnknownSemanticIdentity : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.CapturePointer : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.ClearSelection : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.FocusNext : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.FocusPrevious : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.Redo : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.ReleasePointer : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.ReplaceDocument : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.SelectSemantic : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.SetCamera : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.TakePlaySnapshot : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionMessage+Tags.Undo : System.Int32
+FS.GG.UI.Scene.SvgDocumentInteractionResult.Error : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgDocumentInteractionError> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionResult.State : FS.GG.UI.Scene.SvgDocumentInteractionState [get]
+FS.GG.UI.Scene.SvgDocumentInteractionResult.new(FS.GG.UI.Scene.SvgDocumentInteractionState, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgDocumentInteractionError>)
+FS.GG.UI.Scene.SvgDocumentInteractionState.Camera : FS.GG.UI.Scene.SvgAffine [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.CapturedPointerId : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.Document : FS.GG.UI.Scene.SvgDocument [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.FocusedSemanticId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.PlaySnapshot : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgDocumentPlaySnapshot> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.RedoDocuments : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocument> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.Revision : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.SelectedSemanticId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.UndoDocuments : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocument> [get]
+FS.GG.UI.Scene.SvgDocumentInteractionState.new(System.Int32, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAffine, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocument>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocument>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgDocumentPlaySnapshot>)
 FS.GG.UI.Scene.SvgDocumentIssue.Code : System.String [get]
 FS.GG.UI.Scene.SvgDocumentIssue.Location : System.String [get]
 FS.GG.UI.Scene.SvgDocumentIssue.Message : System.String [get]
@@ -804,6 +838,10 @@ FS.GG.UI.Scene.SvgDocumentLimits.MaxPathSegments : System.Int32 [get]
 FS.GG.UI.Scene.SvgDocumentLimits.MaxReferenceDepth : System.Int32 [get]
 FS.GG.UI.Scene.SvgDocumentLimits.MaxSerializedBytes : System.Int32 [get]
 FS.GG.UI.Scene.SvgDocumentLimits.new(System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32)
+FS.GG.UI.Scene.SvgDocumentPlaySnapshot.SelectedSemanticId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgDocumentPlaySnapshot.SerializedDocument : System.String [get]
+FS.GG.UI.Scene.SvgDocumentPlaySnapshot.SourceRevision : System.Int32 [get]
+FS.GG.UI.Scene.SvgDocumentPlaySnapshot.new(System.Int32, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>)
 FS.GG.UI.Scene.SvgElement.ClipId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
 FS.GG.UI.Scene.SvgElement.Content : FS.GG.UI.Scene.SvgElementContent [get]
 FS.GG.UI.Scene.SvgElement.Id : System.String [get]

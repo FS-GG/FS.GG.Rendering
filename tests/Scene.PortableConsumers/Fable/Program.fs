@@ -21,6 +21,12 @@ let serializedPath: string = jsNative
 [<Emit("process.argv[5]")>]
 let exportedPath: string = jsNative
 
+[<Emit("process.argv[6]")>]
+let documentTracePath: string = jsNative
+
+[<Emit("process.argv[7]")>]
+let documentResultPath: string = jsNative
+
 let serialized, exported = verifyRoundTrip "fable-node"
 writeFileSync serializedPath serialized
 writeFileSync exportedPath exported
@@ -73,6 +79,11 @@ match replay id id corpus with
 | Ok replayed when replayed.Count < 1 -> failwith "model trace corpus was empty"
 | Ok replayed ->
     writeFileSync resultPath replayed.Canonical
+    match DocumentTraceReplay.replay (readFileSync documentTracePath "utf8") with
+    | Error divergence -> failwith divergence
+    | Ok documentReplayed ->
+        writeFileSync documentResultPath documentReplayed.Canonical
+        printfn $"document-trace-replay: runtime=fable-node transitions={documentReplayed.Count}"
     match replay (fun action -> if action = "Select" then "ClearSelection" else action) id corpus with
     | Error divergence when divergence.StartsWith "TRACE-DIVERGENCE" -> ()
     | _ -> failwith "incorrect action mapping mutant survived the model corpus"

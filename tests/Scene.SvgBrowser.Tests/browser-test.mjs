@@ -94,6 +94,8 @@ try {
     const invalid = window.svgFoundation.replaceInvalidDocument();
     const duplicate = window.svgFoundation.duplicateDocumentMount();
     const fonts = window.svgFoundation.documentFonts();
+    const invalidPreservedRoot = beforeInvalid.root === document.querySelector("[data-fsgg-document-id='portable-document']");
+    const invalidPreservedExport = beforeInvalid.exported === window.svgFoundation.documentExport();
     return {
       definitionKinds: {
         gradients: root.querySelectorAll("linearGradient, radialGradient").length,
@@ -122,8 +124,8 @@ try {
         textLayoutExplicit: textNodes.length > 0 && textNodes.every((text) => text.getAttribute("text-anchor") === "start" && text.getAttribute("direction") === "auto"),
       },
       invalid, duplicate, fonts, exported,
-      invalidPreservedRoot: beforeInvalid.root === document.querySelector("[data-fsgg-document-id='portable-document']"),
-      invalidPreservedExport: beforeInvalid.exported === window.svgFoundation.documentExport(),
+      invalidPreservedRoot,
+      invalidPreservedExport,
     };
   });
   if (documentContract.definitionKinds.gradients < 3 || documentContract.definitionKinds.symbols !== 1 || documentContract.definitionKinds.clips < 2 || documentContract.definitionKinds.alphaMasks !== 1 || documentContract.definitionKinds.luminanceMasks !== 1 || documentContract.definitionKinds.uses !== 1) {
@@ -142,7 +144,6 @@ try {
   if (documentContract.fonts.length !== 1 || documentContract.fonts[0].ready || documentContract.fonts[0].diagnostic !== "font-unavailable:font:Noto Sans") {
     throw new Error(`explicit font failure missing: ${JSON.stringify(documentContract.fonts)}`);
   }
-
   const documentRoot = page.locator("[data-fsgg-document-id='portable-document']");
   const originalPng = PNG.sync.read(await documentRoot.screenshot());
   const pixel = (png, x, y) => {
@@ -178,6 +179,42 @@ try {
   const reloadPng = PNG.sync.read(await reloadedRoot.screenshot());
   Object.entries(samples).forEach(([name, expected]) => assertColor(`reload-${name}`, pixel(reloadPng, name === "evenoddHole" ? 40 : name === "gradientLeft" ? 16 : 36, name === "evenoddHole" ? 40 : 20), expected, 2));
   await reload.close();
+  const hitSemantics = await page.evaluate(() => {
+    const root = document.querySelector("[data-fsgg-document-id='portable-document']");
+    const bounds = root.getBoundingClientRect();
+    const domAt = (x, y) => {
+      const target = document.elementFromPoint(bounds.left + x * bounds.width / 120, bounds.top + y * bounds.height / 80);
+      return {
+        node: target?.getAttribute("data-fsgg-node") ?? null,
+        semantic: target?.closest("[data-fsgg-semantic-id]")?.getAttribute("data-fsgg-semantic-id") ?? null,
+      };
+    };
+    return {
+      path: { api: window.svgFoundation.documentHit(10, 10), dom: domAt(10, 10) },
+      text: { api: window.svgFoundation.documentHit(8, 52), dom: domAt(8, 52) },
+      symbol: { api: window.svgFoundation.documentHit(75, 50), dom: domAt(75, 50) },
+      clippedSymbol: { api: window.svgFoundation.documentHit(71, 46), dom: domAt(71, 46) },
+    };
+  });
+  if (hitSemantics.path.api !== "semantic:gallery" || hitSemantics.path.dom.node !== "gallery-1" || hitSemantics.text.api !== "semantic:gallery" || hitSemantics.text.dom.node !== "gallery-4" || hitSemantics.symbol.api !== "semantic:symbol-instance" || hitSemantics.symbol.dom.semantic !== "semantic:symbol-instance" || hitSemantics.clippedSymbol.api !== null) {
+    throw new Error(`browser paint/path/text/symbol/clip hit contract failed: ${JSON.stringify(hitSemantics)}`);
+  }
+  const retainedDocument = await page.evaluate(() => {
+    const root = document.querySelector("[data-fsgg-document-id='portable-document']");
+    const stableElements = Object.fromEntries([...root.querySelectorAll("[data-fsgg-element-id]")].map((node) => [node.getAttribute("data-fsgg-element-id"), node]));
+    const stableDefinitions = Object.fromEntries([...root.querySelectorAll("defs [id]")].map((node) => [node.id, node]));
+    const reorderedResult = window.svgFoundation.replaceReorderedDocument();
+    const reorderedIds = [...root.querySelectorAll(":scope > g[data-fsgg-element-id]")].map((node) => node.getAttribute("data-fsgg-element-id"));
+    const reorderedRetained = Object.entries(stableElements).every(([id, node]) => root.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) === node)
+      && Object.entries(stableDefinitions).every(([id, node]) => root.querySelector(`[id='${CSS.escape(id)}']`) === node);
+    const changedResult = window.svgFoundation.replaceChangedDocument();
+    const changedRetained = Object.entries(stableElements).every(([id, node]) => root.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) === node);
+    const restoredResult = window.svgFoundation.replaceOriginalDocument();
+    return { reorderedResult, changedResult, restoredResult, reorderedIds, reorderedRetained, changedRetained };
+  });
+  if (retainedDocument.reorderedResult !== null || retainedDocument.changedResult !== null || retainedDocument.restoredResult !== null || !retainedDocument.reorderedRetained || !retainedDocument.changedRetained || retainedDocument.reorderedIds.join(",") !== "luminance-element,symbol-instance,gallery") {
+    throw new Error(`identified document reconciliation replaced stable nodes: ${JSON.stringify(retainedDocument)}`);
+  }
   documentEvidence = {
     definitions: documentContract.definitionKinds,
     stableLocalReferences: documentContract.referencesLocalAndResolved,
@@ -188,15 +225,43 @@ try {
     selectedDefinitionDetails: details,
     visualReference: { browserFamily: "chromium", tolerancePerChannel: reference.tolerance, samples },
     isolatedExportReload: true,
+    hitSemantics,
+    maskedTransparencyPolicy: "browser-dom-painted-geometry-remains-targetable;clip-removes-target",
+    retainedReplacement: retainedDocument,
     exportedSvg: documentContract.exported,
   };
   const root = page.locator("[data-scene-root-id='svg-foundation-root']");
   const box = await root.boundingBox();
   if (!box) throw new Error("SVG root has no rendered bounds");
 
+  await page.evaluate(() => {
+    window.__stableBeforeSelection = {
+      root: document.querySelector("[data-scene-root-id]"),
+      viewport: document.querySelector("[data-scene-viewport]"),
+      units: document.querySelector("[data-scene-layer-id='units']"),
+      alpha: document.querySelector("[data-scene-object-id='alpha']"),
+      beta: document.querySelector("[data-scene-object-id='beta']"),
+      alphaChild: document.querySelector("[data-scene-object-id='alpha'] > *"),
+      betaChild: document.querySelector("[data-scene-object-id='beta'] > *"),
+    };
+  });
   await page.mouse.click(box.x + 60, box.y + 50);
   let state = await page.evaluate(() => window.svgFoundation.state());
   if (state.selected !== "alpha" || state.focused !== "alpha") throw new Error(`inverse pointer pick failed: ${JSON.stringify(state)}`);
+  const selectionRetained = await page.evaluate(() => Object.entries(window.__stableBeforeSelection).every(([key, node]) => node === ({
+    root: document.querySelector("[data-scene-root-id]"),
+    viewport: document.querySelector("[data-scene-viewport]"),
+    units: document.querySelector("[data-scene-layer-id='units']"),
+    alpha: document.querySelector("[data-scene-object-id='alpha']"),
+    beta: document.querySelector("[data-scene-object-id='beta']"),
+    alphaChild: document.querySelector("[data-scene-object-id='alpha'] > *"),
+    betaChild: document.querySelector("[data-scene-object-id='beta'] > *"),
+  })[key]));
+  if (!selectionRetained) throw new Error("selection rebuilt retained scene children");
+
+  await page.locator("[data-scene-control-id='beta']").click();
+  state = await page.evaluate(() => window.svgFoundation.state());
+  if (state.selected !== "beta" || state.focused !== "beta") throw new Error(`HTML control selection disagreed with pointer route: ${JSON.stringify(state)}`);
 
   await page.evaluate(() => window.svgFoundation.mount());
   await root.focus();
@@ -210,11 +275,28 @@ try {
     return {
       rootRole: svg?.getAttribute("role"), rootLabel: svg?.getAttribute("aria-label"),
       objectRole: alpha?.getAttribute("role"), objectLabel: alpha?.getAttribute("aria-label"),
-      selected: alpha?.getAttribute("aria-selected"),
+      svgRole: alpha?.getAttribute("role"),
+      pressed: document.querySelector("[data-scene-control-id='alpha']")?.getAttribute("aria-pressed"),
+      status: document.querySelector("[data-scene-selection-status]")?.textContent,
     };
   });
-  if (accessibility.rootRole !== "application" || accessibility.rootLabel !== "SVG foundation scene" || accessibility.objectRole !== "button" || accessibility.objectLabel !== "Alpha unit" || accessibility.selected !== "true") {
+  if (accessibility.rootRole !== "application" || accessibility.rootLabel !== "SVG foundation scene" || accessibility.svgRole !== null || accessibility.objectLabel !== "Alpha unit" || accessibility.pressed !== "true" || accessibility.status !== "Alpha unit") {
     throw new Error(`accessible route failed: ${JSON.stringify(accessibility)}`);
+  }
+
+  const preservedNativeInput = await page.evaluate(() => {
+    const root = document.querySelector("[data-scene-root-id]");
+    const before = window.svgFoundation.transitionCount();
+    const composing = new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true, isComposing: true });
+    root.dispatchEvent(composing);
+    const input = document.createElement("input");
+    document.querySelector("[data-scene-controls]").appendChild(input);
+    const editing = new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true });
+    input.dispatchEvent(editing);
+    return { before, after: window.svgFoundation.transitionCount(), composingPrevented: composing.defaultPrevented, editingPrevented: editing.defaultPrevented };
+  });
+  if (preservedNativeInput.before !== preservedNativeInput.after || preservedNativeInput.composingPrevented || preservedNativeInput.editingPrevented) {
+    throw new Error(`native editing/composition was consumed: ${JSON.stringify(preservedNativeInput)}`);
   }
 
   const camera = await page.evaluate(() => {
@@ -240,31 +322,61 @@ try {
   });
   await page.mouse.click(box.x + 60, box.y + 50);
   const revision = await page.evaluate(() => {
+    const alpha = document.querySelector("[data-scene-object-id='alpha']");
+    const beta = document.querySelector("[data-scene-object-id='beta']");
+    const alphaChild = alpha.firstElementChild;
+    const betaChild = beta.firstElementChild;
     const accepted = window.svgFoundation.replaceCurrent();
     const retained = window.__identity.root === document.querySelector("[data-scene-root-id]")
       && window.__identity.units === document.querySelector("[data-scene-layer-id='units']")
-      && window.__identity.overlay === document.querySelector("[data-scene-layer-id='overlay']");
+      && window.__identity.overlay === document.querySelector("[data-scene-layer-id='overlay']")
+      && alpha === document.querySelector("[data-scene-object-id='alpha']")
+      && beta === document.querySelector("[data-scene-object-id='beta']")
+      && alphaChild !== alpha.firstElementChild
+      && betaChild === beta.firstElementChild;
+    const reordered = window.svgFoundation.replaceReordered();
+    const reorderedRetained = alpha === document.querySelector("[data-scene-object-id='alpha']")
+      && beta === document.querySelector("[data-scene-object-id='beta']")
+      && [...document.querySelectorAll("[data-scene-layer-id='units'] > [data-scene-object-id]")].map((node) => node.dataset.sceneObjectId).join(",") === "beta,alpha";
     const stale = window.svgFoundation.replaceStale();
-    return { accepted, stale, retained, domRevision: document.querySelector("[data-scene-root-id]")?.dataset.sceneRevision };
+    return { accepted, reordered, stale, retained, reorderedRetained, domRevision: document.querySelector("[data-scene-root-id]")?.dataset.sceneRevision };
   });
-  if (revision.accepted.error || revision.accepted.state.revision !== 2 || revision.accepted.state.selected !== "alpha" || !revision.retained || revision.stale.error !== "non-increasing-revision" || revision.domRevision !== "2") {
+  if (revision.accepted.error || revision.accepted.state.revision !== 2 || !revision.reorderedRetained || revision.reordered.error || revision.reordered.state.revision !== 3 || !revision.retained || revision.stale.error !== "non-increasing-revision" || revision.domRevision !== "3") {
     throw new Error(`retained revision/stale refusal failed: ${JSON.stringify(revision)}`);
   }
 
+  const captureRecovery = await page.evaluate(() => {
+    const root = document.querySelector("[data-scene-root-id]");
+    window.svgFoundation.capture(71);
+    const captured = window.svgFoundation.state().captured;
+    root.dispatchEvent(new PointerEvent("lostpointercapture", { pointerId: 71, bubbles: true }));
+    const lost = window.svgFoundation.state().captured;
+    window.svgFoundation.capture(72);
+    root.dispatchEvent(new Event("blur"));
+    const blurred = window.svgFoundation.state().captured;
+    window.svgFoundation.capture(73);
+    root.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 73, bubbles: true }));
+    return { captured, lost, blurred, cancelled: window.svgFoundation.state().captured };
+  });
+  if (captureRecovery.captured !== 71 || captureRecovery.lost !== null || captureRecovery.blurred !== null || captureRecovery.cancelled !== null) {
+    throw new Error(`capture recovery failed: ${JSON.stringify(captureRecovery)}`);
+  }
+
   const lifecycle = await page.evaluate(() => {
-    window.svgFoundation.dispose();
-    const afterFirstDispose = { balance: window.__svgListenerBalance, roots: document.querySelectorAll("[data-scene-root-id]").length };
+    window.svgFoundation.capture(90);
+    const disposed = window.svgFoundation.dispose();
+    const afterFirstDispose = { balance: window.__svgListenerBalance, roots: document.querySelectorAll("[data-scene-root-id]").length, controls: document.querySelectorAll("[data-scene-controls]").length, captured: disposed.captured };
     const cycles = [];
     for (let index = 0; index < 12; index += 1) {
       window.svgFoundation.mount();
       const mounted = { balance: window.__svgListenerBalance, observe: window.svgFoundation.observe() };
       window.svgFoundation.dispose();
-      cycles.push({ mounted, balanceAfter: window.__svgListenerBalance, rootsAfter: document.querySelectorAll("[data-scene-root-id]").length });
+      cycles.push({ mounted, balanceAfter: window.__svgListenerBalance, rootsAfter: document.querySelectorAll("[data-scene-root-id]").length, controlsAfter: document.querySelectorAll("[data-scene-controls]").length });
     }
     window.svgFoundation.mount();
     return { afterFirstDispose, cycles, final: window.svgFoundation.observe(), finalBalance: window.__svgListenerBalance };
   });
-  if (lifecycle.afterFirstDispose.balance !== 0 || lifecycle.afterFirstDispose.roots !== 0 || lifecycle.finalBalance !== 6 || lifecycle.final.listeners !== 6 || lifecycle.final.frames !== 0 || lifecycle.cycles.some((cycle) => cycle.mounted.balance !== 6 || cycle.mounted.observe.listeners !== 6 || cycle.mounted.observe.frames !== 0 || cycle.balanceAfter !== 0 || cycle.rootsAfter !== 0)) {
+  if (lifecycle.afterFirstDispose.balance !== 0 || lifecycle.afterFirstDispose.roots !== 0 || lifecycle.afterFirstDispose.controls !== 0 || lifecycle.afterFirstDispose.captured !== null || lifecycle.finalBalance !== 8 || lifecycle.final.listeners !== 9 || lifecycle.final.frames !== 0 || lifecycle.cycles.some((cycle) => cycle.mounted.balance !== 8 || cycle.mounted.observe.listeners !== 9 || cycle.mounted.observe.frames !== 0 || cycle.balanceAfter !== 0 || cycle.rootsAfter !== 0 || cycle.controlsAfter !== 0)) {
     throw new Error(`mount/dispose leaked owned resources: ${JSON.stringify(lifecycle)}`);
   }
 

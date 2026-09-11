@@ -53,6 +53,11 @@ let main args =
         | Ok replayed when replayed.Count < 1 -> failwith "model trace corpus was empty"
         | Ok replayed ->
             File.WriteAllText(args[1], replayed.Canonical)
+            match DocumentTraceReplay.replay (File.ReadAllText args[4]) with
+            | Error divergence -> failwith divergence
+            | Ok documentReplayed ->
+                File.WriteAllText(args[5], documentReplayed.Canonical)
+                printfn $"document-trace-replay: runtime=dotnet transitions={documentReplayed.Count}"
             match replay (fun action -> if action = "Select" then "ClearSelection" else action) id corpus with
             | Error divergence when divergence.StartsWith "TRACE-DIVERGENCE" -> ()
             | _ -> failwith "incorrect action mapping mutant survived the model corpus"

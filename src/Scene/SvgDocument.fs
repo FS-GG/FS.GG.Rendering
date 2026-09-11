@@ -1088,3 +1088,182 @@ module SvgDocument =
                 beginTag output "defs"; endOpen output; output.Append(definitions) |> ignore; closeTag output "defs"; output.Append(body) |> ignore; closeTag output "svg"
                 Ok(output.ToString())
             with error -> Error [ issue "unsupported-export" "/" error.Message ]
+
+type SvgDocumentPlaySnapshot =
+    { SourceRevision: int
+      SerializedDocument: string
+      SelectedSemanticId: string option }
+
+type SvgDocumentInteractionState =
+    { Revision: int
+      Document: SvgDocument
+      Camera: SvgAffine
+      SelectedSemanticId: string option
+      FocusedSemanticId: string option
+      CapturedPointerId: int option
+      UndoDocuments: SvgDocument list
+      RedoDocuments: SvgDocument list
+      PlaySnapshot: SvgDocumentPlaySnapshot option }
+
+[<RequireQualifiedAccess>]
+type SvgDocumentInteractionMessage =
+    | ReplaceDocument of expectedRevision: int * candidateRevision: int * document: SvgDocument
+    | SelectSemantic of expectedRevision: int * semanticId: string
+    | ClearSelection of expectedRevision: int
+    | FocusNext of expectedRevision: int
+    | FocusPrevious of expectedRevision: int
+    | SetCamera of expectedRevision: int * camera: SvgAffine
+    | CapturePointer of expectedRevision: int * pointerId: int
+    | ReleasePointer of expectedRevision: int * pointerId: int
+    | Undo of expectedRevision: int
+    | Redo of expectedRevision: int
+    | TakePlaySnapshot of expectedRevision: int
+
+[<RequireQualifiedAccess>]
+type SvgDocumentInteractionError =
+    | StaleRevision of expected: int * actual: int
+    | NonIncreasingRevision of candidate: int * actual: int
+    | InvalidDocument of SvgDocumentIssue list
+    | UnknownSemanticIdentity of string
+    | InvalidCamera
+    | PointerNotCaptured of int
+    | NothingToUndo
+    | NothingToRedo
+
+type SvgDocumentInteractionResult =
+    { State: SvgDocumentInteractionState
+      Error: SvgDocumentInteractionError option }
+
+[<RequireQualifiedAccess>]
+module SvgDocumentInteraction =
+    let private validCamera camera =
+        SvgAffine.isFinite camera
+        && match SvgAffine.tryInverse camera with Ok _ -> true | Error _ -> false
+
+    let rec private visibleSemanticIdsFromElement inheritedVisible (element: SvgElement) =
+        let visible = inheritedVisible && element.Visible
+        [ if visible then yield! element.SemanticId |> Option.toList
+          match element.Content with
+          | SvgElementContent.Group children ->
+              for child in children do
+                  yield! visibleSemanticIdsFromElement visible child
+          | _ -> () ]
+
+    let private visibleSemanticIds document =
+        document.Children
+        |> List.collect (visibleSemanticIdsFromElement true)
+
+    let private validateDocument document =
+        SvgDocument.serialize document
+        |> Result.map (fun _ -> document)
+        |> Result.mapError SvgDocumentInteractionError.InvalidDocument
+
+    let private accept state = { State = state; Error = None }
+    let private reject error state = { State = state; Error = Some error }
+
+    let tryCreate revision camera document =
+        if revision < 0 then
+            Error(SvgDocumentInteractionError.NonIncreasingRevision(revision, 0))
+        elif not (validCamera camera) then
+            Error SvgDocumentInteractionError.InvalidCamera
+        else
+            validateDocument document
+            |> Result.map (fun acceptedDocument ->
+                { Revision = revision
+                  Document = acceptedDocument
+                  Camera = camera
+                  SelectedSemanticId = None
+                  FocusedSemanticId = None
+                  CapturedPointerId = None
+                  UndoDocuments = []
+                  RedoDocuments = []
+                  PlaySnapshot = None })
+
+    let private requireRevision expected state continuation =
+        if expected <> state.Revision then
+            reject (SvgDocumentInteractionError.StaleRevision(expected, state.Revision)) state
+        else
+            continuation ()
+
+    let private retainedIdentity document identity =
+        visibleSemanticIds document |> List.contains identity
+
+    let private withDocument revision document undo redo state =
+        { state with
+            Revision = revision
+            Document = document
+            SelectedSemanticId = state.SelectedSemanticId |> Option.filter (retainedIdentity document)
+            FocusedSemanticId = state.FocusedSemanticId |> Option.filter (retainedIdentity document)
+            UndoDocuments = undo
+            RedoDocuments = redo }
+
+    let private moveFocus direction state =
+        let candidates = visibleSemanticIds state.Document
+        match candidates with
+        | [] -> accept { state with FocusedSemanticId = None }
+        | _ ->
+            let current = state.FocusedSemanticId |> Option.bind (fun id -> candidates |> List.tryFindIndex ((=) id))
+            let index =
+                match direction, current with
+                | 1, Some value -> (value + 1) % candidates.Length
+                | -1, Some value -> (value + candidates.Length - 1) % candidates.Length
+                | 1, None -> 0
+                | _, None -> candidates.Length - 1
+                | _ -> 0
+            accept { state with FocusedSemanticId = Some candidates[index] }
+
+    let update message state =
+        match message with
+        | SvgDocumentInteractionMessage.ReplaceDocument(expected, candidateRevision, candidate) ->
+            requireRevision expected state (fun () ->
+                if candidateRevision <= state.Revision then
+                    reject (SvgDocumentInteractionError.NonIncreasingRevision(candidateRevision, state.Revision)) state
+                else
+                    match validateDocument candidate with
+                    | Error error -> reject error state
+                    | Ok document ->
+                        accept (withDocument candidateRevision document (state.Document :: state.UndoDocuments) [] state))
+        | SvgDocumentInteractionMessage.SelectSemantic(expected, semanticId) ->
+            requireRevision expected state (fun () ->
+                if retainedIdentity state.Document semanticId then
+                    accept { state with SelectedSemanticId = Some semanticId; FocusedSemanticId = Some semanticId }
+                else
+                    reject (SvgDocumentInteractionError.UnknownSemanticIdentity semanticId) state)
+        | SvgDocumentInteractionMessage.ClearSelection expected ->
+            requireRevision expected state (fun () -> accept { state with SelectedSemanticId = None })
+        | SvgDocumentInteractionMessage.FocusNext expected -> requireRevision expected state (fun () -> moveFocus 1 state)
+        | SvgDocumentInteractionMessage.FocusPrevious expected -> requireRevision expected state (fun () -> moveFocus -1 state)
+        | SvgDocumentInteractionMessage.SetCamera(expected, camera) ->
+            requireRevision expected state (fun () ->
+                if validCamera camera then accept { state with Camera = camera }
+                else reject SvgDocumentInteractionError.InvalidCamera state)
+        | SvgDocumentInteractionMessage.CapturePointer(expected, pointerId) ->
+            requireRevision expected state (fun () -> accept { state with CapturedPointerId = Some pointerId })
+        | SvgDocumentInteractionMessage.ReleasePointer(expected, pointerId) ->
+            requireRevision expected state (fun () ->
+                if state.CapturedPointerId = Some pointerId then accept { state with CapturedPointerId = None }
+                else reject (SvgDocumentInteractionError.PointerNotCaptured pointerId) state)
+        | SvgDocumentInteractionMessage.Undo expected ->
+            requireRevision expected state (fun () ->
+                match state.UndoDocuments with
+                | [] -> reject SvgDocumentInteractionError.NothingToUndo state
+                | previous :: remaining ->
+                    accept (withDocument (state.Revision + 1) previous remaining (state.Document :: state.RedoDocuments) state))
+        | SvgDocumentInteractionMessage.Redo expected ->
+            requireRevision expected state (fun () ->
+                match state.RedoDocuments with
+                | [] -> reject SvgDocumentInteractionError.NothingToRedo state
+                | next :: remaining ->
+                    accept (withDocument (state.Revision + 1) next (state.Document :: state.UndoDocuments) remaining state))
+        | SvgDocumentInteractionMessage.TakePlaySnapshot expected ->
+            requireRevision expected state (fun () ->
+                match SvgDocument.serialize state.Document with
+                | Error issues -> reject (SvgDocumentInteractionError.InvalidDocument issues) state
+                | Ok serialized ->
+                    accept
+                        { state with
+                            PlaySnapshot =
+                                Some
+                                    { SourceRevision = state.Revision
+                                      SerializedDocument = serialized
+                                      SelectedSemanticId = state.SelectedSemanticId } })

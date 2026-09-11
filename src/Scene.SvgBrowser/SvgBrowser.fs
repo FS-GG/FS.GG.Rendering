@@ -6,6 +6,7 @@ open Browser.Dom
 open Browser.Types
 open Fable.Core
 open FS.GG.UI.Scene
+open FS.GG.UI.KeyboardInput
 
 module private Dom =
     [<Literal>]
@@ -26,6 +27,15 @@ module private Dom =
     [<Emit("document.elementFromPoint($0, $1)?.closest('[data-scene-object-id]')?.getAttribute('data-scene-object-id') ?? null")>]
     let objectIdAtClientPoint (_clientX: float) (_clientY: float) : string option = jsNative
 
+    [<Emit("document.elementFromPoint($0, $1)?.closest('[data-fsgg-semantic-id]')?.getAttribute('data-fsgg-semantic-id') ?? null")>]
+    let semanticIdAtClientPoint (_clientX: float) (_clientY: float) : string option = jsNative
+
+    [<Emit("!!($0 && ($0.closest?.('input,textarea,select,[contenteditable=true],[contenteditable=plaintext-only]')))")>]
+    let isNativeEditableTarget (_target: EventTarget) : bool = jsNative
+
+    [<Emit("$0.isComposing === true")>]
+    let isComposing (_event: KeyboardEvent) : bool = jsNative
+
     let create name = document.createElementNS(SvgNamespace, name)
 
     let set name value (element: Element) = element.setAttribute(name, value)
@@ -39,6 +49,11 @@ module private Dom =
     // textually, so a while expression would reparse an exported document on every test/body.
     [<Emit("Array.from($1.childNodes).forEach(node => $0.appendChild(node))")>]
     let appendChildren (_parent: Element) (_source: Element) : unit = jsNative
+
+    // Reconcile by stable exported IDs/node paths. Attribute/text changes update in place;
+    // reordered keyed children move without replacement; only an incompatible changed node is cloned.
+    [<Emit("(function sync(a,b){const key=n=>n.getAttribute?.('data-fsgg-element-id')||n.getAttribute?.('data-fsgg-node')||n.id||null;for(const n of Array.from(a.getAttributeNames()))if(!b.hasAttribute(n))a.removeAttribute(n);for(const n of Array.from(b.getAttributeNames()))a.setAttribute(n,b.getAttribute(n));const ac=Array.from(a.children),bc=Array.from(b.children),used=new Set();if(bc.length===0){if(a.textContent!==b.textContent)a.textContent=b.textContent;return a;}for(let i=0;i<bc.length;i++){const c=bc[i],k=key(c);let m=k?ac.find(x=>!used.has(x)&&key(x)===k&&x.tagName===c.tagName):ac.find((x,j)=>!used.has(x)&&!key(x)&&x.tagName===c.tagName&&j===i);if(m){used.add(m);sync(m,c);a.appendChild(m);}else a.appendChild(c.cloneNode(true));}for(const x of ac)if(!used.has(x)&&x.parentNode===a)x.remove();return a;})($0,$1)")>]
+    let reconcileSvg (_existing: Element) (_candidate: Element) : Element = jsNative
 
     [<Emit("document.fonts.check('16px ' + JSON.stringify($0))")>]
     let fontReady (_family: string) : bool = jsNative
@@ -294,6 +309,13 @@ type SvgDocumentBrowserHost internal
     member _.MountNamespace = mountNamespace
     member _.Document = documentValue
     member _.ExportedSvg = exportedSvg
+    member _.HitTest(screenPoint: Point) =
+        if disposed then invalidOp "The SVG document browser host is disposed."
+        let bounds = root.getBoundingClientRect()
+        let viewBox = documentValue.ViewBox
+        let clientX = bounds.left + (screenPoint.X - viewBox.X) * bounds.width / max 1.0 viewBox.Width
+        let clientY = bounds.top + (screenPoint.Y - viewBox.Y) * bounds.height / max 1.0 viewBox.Height
+        Dom.semanticIdAtClientPoint clientX clientY
     member _.ObserveFonts() = fontObservations ()
     member _.Replace(document: SvgDocument) =
         if disposed then invalidOp "The SVG document browser host is disposed."
@@ -303,8 +325,7 @@ type SvgDocumentBrowserHost internal
             // Parsing happens only after portable validation/export succeeds, and replacement is the
             // final operation so invalid candidates cannot partially mutate the live document.
             let candidateRoot = Dom.parseExportedSvg candidateSvg
-            container.replaceChild(candidateRoot, root) |> ignore
-            root <- candidateRoot
+            root <- Dom.reconcileSvg root candidateRoot
             documentValue <- document
             exportedSvg <- candidateSvg
             Ok()
@@ -327,7 +348,11 @@ type SvgBrowserHost internal
 
     let layers = Dictionary<string, Element>()
     let objects = Dictionary<string, Element>()
-    let listeners = ResizeArray<string * (Event -> unit)>()
+    let objectValues = Dictionary<string, SemanticSceneObject>()
+    let controlButtons = Dictionary<string, HTMLElement>()
+    let controls = document.createElement("div")
+    let status = document.createElement("div")
+    let listeners = ResizeArray<EventTarget * string * (Event -> unit)>()
     let mutable state = initialState
     let mutable disposed = false
     let mutable lastPointer: Point option = None
@@ -341,15 +366,43 @@ type SvgBrowserHost internal
         for KeyValue(id, element) in objects do
             match selectableObject id with
             | Some value ->
-                Dom.set "role" "button" element
-                Dom.set "tabindex" (if state.FocusedObjectId = Some id then "0" else "-1") element
                 Dom.set "aria-label" value.AccessibleLabel element
-                Dom.set "aria-selected" (if state.SelectedObjectId = Some id then "true" else "false") element
                 Dom.set "data-selected" (if state.SelectedObjectId = Some id then "true" else "false") element
+                Dom.set "data-focused" (if state.FocusedObjectId = Some id then "true" else "false") element
             | None ->
-                element.removeAttribute("role")
-                element.removeAttribute("tabindex")
-                element.removeAttribute("aria-selected")
+                element.removeAttribute("aria-label")
+                element.removeAttribute("data-selected")
+                element.removeAttribute("data-focused")
+
+        let selectable =
+            state.Scene.Layers
+            |> List.filter (fun layer -> layer.Visible)
+            |> List.collect (fun layer -> layer.Objects)
+            |> List.filter (fun value -> value.Selectable)
+        let wanted = selectable |> List.map _.Id |> Set.ofList
+        for id in controlButtons.Keys |> Seq.toArray do
+            if not (wanted.Contains id) then
+                controlButtons[id].remove()
+                controlButtons.Remove id |> ignore
+        for value in selectable do
+            let button =
+                match controlButtons.TryGetValue value.Id with
+                | true, existing -> existing
+                | _ ->
+                    let created = document.createElement("button")
+                    created.setAttribute("type", "button")
+                    created.setAttribute("data-scene-control-id", value.Id)
+                    controlButtons[value.Id] <- created
+                    created
+            button.textContent <- value.AccessibleLabel
+            button.setAttribute("aria-pressed", if state.SelectedObjectId = Some value.Id then "true" else "false")
+            controls.appendChild(button) |> ignore
+        let selectedLabel =
+            state.SelectedObjectId
+            |> Option.bind selectableObject
+            |> Option.map _.AccessibleLabel
+            |> Option.defaultValue "No object selected"
+        status.textContent <- selectedLabel
 
     let reconcileScene () =
         Dom.set "id" state.Scene.RootId root
@@ -364,7 +417,16 @@ type SvgBrowserHost internal
                 layers[id].remove()
                 layers.Remove id |> ignore
 
-        objects.Clear()
+        let wantedObjects =
+            state.Scene.Layers
+            |> List.collect (fun layer -> layer.Objects)
+            |> List.map _.Id
+            |> Set.ofList
+        for id in objects.Keys |> Seq.toArray do
+            if not (wantedObjects.Contains id) then
+                objects[id].remove()
+                objects.Remove id |> ignore
+                objectValues.Remove id |> ignore
         for layer in state.Scene.Layers do
             let layerElement =
                 match layers.TryGetValue layer.Id with
@@ -375,13 +437,25 @@ type SvgBrowserHost internal
                     layers[layer.Id] <- created
                     created
             Dom.set "display" (if layer.Visible then "inline" else "none") layerElement
-            Dom.clear layerElement
             for objectValue in layer.Objects do
-                let objectElement = Dom.create "g"
-                Dom.set "data-scene-object-id" objectValue.Id objectElement
-                Render.documentScene $"{state.Scene.RootId}:{layer.Id}:{objectValue.Id}" objectElement objectValue.Content
+                let objectElement, requiresRender =
+                    match objects.TryGetValue objectValue.Id with
+                    | true, existing ->
+                        let changed =
+                            match objectValues.TryGetValue objectValue.Id with
+                            | true, previous -> previous.Content <> objectValue.Content
+                            | _ -> true
+                        existing, changed
+                    | _ ->
+                        let created = Dom.create "g"
+                        Dom.set "data-scene-object-id" objectValue.Id created
+                        created, true
+                if requiresRender then
+                    Dom.clear objectElement
+                    Render.documentScene $"{state.Scene.RootId}:{layer.Id}:{objectValue.Id}" objectElement objectValue.Content
                 Render.append layerElement objectElement
                 objects[objectValue.Id] <- objectElement
+                objectValues[objectValue.Id] <- objectValue
             Render.append viewport layerElement
         syncInteraction ()
 
@@ -402,24 +476,16 @@ type SvgBrowserHost internal
             let clientY = bounds.top + screenPoint.Y * bounds.height / options.Height
             match Dom.objectIdAtClientPoint clientX clientY |> Option.filter (fun id -> selectableObject id |> Option.isSome) with
             | Some id -> Some id
-            | None ->
-                state.Scene.Layers
-                |> List.rev
-                |> List.filter (fun layer -> layer.Visible)
-                |> List.tryPick (fun layer ->
-                    layer.Objects
-                    |> List.rev
-                    |> List.tryFind (fun objectValue -> objectValue.Selectable && Geometry.containsScene scenePoint objectValue.Content)
-                    |> Option.map (fun objectValue -> objectValue.Id)))
+            | None -> None)
 
     let localPoint (pointer: PointerEvent) =
         let bounds = root.getBoundingClientRect()
         { X = (pointer.clientX - bounds.left) * options.Width / max 1.0 bounds.width
           Y = (pointer.clientY - bounds.top) * options.Height / max 1.0 bounds.height }
 
-    let addListener name handler =
-        root.addEventListener(name, handler)
-        listeners.Add(name, handler)
+    let addListener (target: EventTarget) name handler =
+        target.addEventListener(name, handler)
+        listeners.Add(target, name, handler)
 
     do
         reconcileScene ()
@@ -446,26 +512,43 @@ type SvgBrowserHost internal
                     apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, { camera with PanX = camera.PanX + delta.X; PanY = camera.PanY + delta.Y })) |> ignore
                 | None -> ()
                 lastPointer <- Some point
+        let releaseState pointerId =
+            if state.CapturedPointerId = Some pointerId then
+                apply (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId)) |> ignore
+            lastPointer <- None
         let release (event: Event) =
             let pointer = event :?> PointerEvent
             let pointerId = int pointer.pointerId
-            if state.CapturedPointerId = Some pointerId then
-                apply (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId)) |> ignore
+            releaseState pointerId
             if Dom.hasPointerCapture root pointerId then Dom.releasePointer root pointerId
-            lastPointer <- None
+        let lostCapture (event: Event) =
+            let pointer = event :?> PointerEvent
+            releaseState (int pointer.pointerId)
+        let focusLost (_event: Event) =
+            state.CapturedPointerId |> Option.iter releaseState
         let keyDown (event: Event) =
             let keyboard = event :?> KeyboardEvent
             let message =
-                match keyboard.key with
-                | "ArrowRight" | "ArrowDown" -> Some(RetainedInteractionMessage.FocusNext state.Scene.Revision)
-                | "ArrowLeft" | "ArrowUp" -> Some(RetainedInteractionMessage.FocusPrevious state.Scene.Revision)
-                | "Enter" | " " -> state.FocusedObjectId |> Option.map (fun id -> RetainedInteractionMessage.Select(state.Scene.Revision, id))
-                | _ -> None
+                match ViewerKeyboard.tryMapSvgIntent keyboard.key true (Dom.isComposing keyboard) (Dom.isNativeEditableTarget event.target) with
+                | Some SvgKeyboardIntent.FocusNext -> Some(RetainedInteractionMessage.FocusNext state.Scene.Revision)
+                | Some SvgKeyboardIntent.FocusPrevious -> Some(RetainedInteractionMessage.FocusPrevious state.Scene.Revision)
+                | Some SvgKeyboardIntent.ActivateFocused -> state.FocusedObjectId |> Option.map (fun id -> RetainedInteractionMessage.Select(state.Scene.Revision, id))
+                | Some SvgKeyboardIntent.ClearSelection -> Some(RetainedInteractionMessage.ClearSelection state.Scene.Revision)
+                | None -> None
             match message with
             | Some value ->
                 let result = apply value
                 result.State.FocusedObjectId |> Option.bind (fun id -> match objects.TryGetValue id with true, element -> Some element | _ -> None) |> Option.iter Dom.focus
                 event.preventDefault()
+            | None -> ()
+        let controlClick (event: Event) =
+            let target: Element = unbox event.target
+            let button = target.closest("[data-scene-control-id]")
+            match button with
+            | Some button ->
+                let id = button.getAttribute("data-scene-control-id")
+                if not (String.IsNullOrEmpty id) then
+                    apply (RetainedInteractionMessage.Select(state.Scene.Revision, id)) |> ignore
             | None -> ()
         let wheel (event: Event) =
             let value = event :?> WheelEvent
@@ -481,12 +564,23 @@ type SvgBrowserHost internal
                 apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, camera)) |> ignore
                 event.preventDefault()
             | None -> ()
-        addListener "pointerdown" pointerDown
-        addListener "pointermove" pointerMove
-        addListener "pointerup" release
-        addListener "pointercancel" release
-        addListener "keydown" keyDown
-        addListener "wheel" wheel
+        controls.setAttribute("data-scene-controls", state.Scene.RootId)
+        controls.setAttribute("aria-label", options.AccessibleLabel + " object selection")
+        status.setAttribute("role", "status")
+        status.setAttribute("aria-live", "polite")
+        status.setAttribute("data-scene-selection-status", "true")
+        controls.appendChild(status) |> ignore
+        container.appendChild(controls) |> ignore
+        addListener (root :> EventTarget) "pointerdown" pointerDown
+        addListener (root :> EventTarget) "pointermove" pointerMove
+        addListener (root :> EventTarget) "pointerup" release
+        addListener (root :> EventTarget) "pointercancel" release
+        addListener (root :> EventTarget) "lostpointercapture" lostCapture
+        addListener (root :> EventTarget) "blur" focusLost
+        addListener (root :> EventTarget) "keydown" keyDown
+        addListener (root :> EventTarget) "wheel" wheel
+        addListener (controls :> EventTarget) "click" controlClick
+        syncInteraction ()
 
     member _.Root = root
     member _.State = state
@@ -515,9 +609,13 @@ type SvgBrowserHost internal
     interface IDisposable with
         member _.Dispose() =
             if not disposed then
-                for name, handler in listeners do root.removeEventListener(name, handler)
+                state.CapturedPointerId |> Option.iter (fun pointerId ->
+                    if Dom.hasPointerCapture root pointerId then Dom.releasePointer root pointerId
+                    state <- (SvgRetained.update (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId)) state).State)
+                for target, name, handler in listeners do target.removeEventListener(name, handler)
                 listeners.Clear()
                 if root.parentNode = container then container.removeChild(root) |> ignore
+                if controls.parentNode = container then container.removeChild(controls) |> ignore
                 disposed <- true
                 lastPointer <- None
 
@@ -555,8 +653,14 @@ module SvgBrowser =
                     Dom.set "role" "application" root
                     Dom.set "aria-label" options.AccessibleLabel root
                     Dom.set "tabindex" "0" root
+                    let title = Dom.create "title"
+                    title.textContent <- options.AccessibleLabel
+                    let description = Dom.create "desc"
+                    description.textContent <- "Interactive retained SVG scene with an equivalent HTML object-selection control group."
                     let viewport = Dom.create "g"
                     Dom.set "data-scene-viewport" "true" viewport
+                    root.appendChild(title) |> ignore
+                    root.appendChild(description) |> ignore
                     root.appendChild(viewport) |> ignore
                     container.appendChild(root) |> ignore
                     Ok(new SvgBrowserHost(container, root, viewport, state, options, onTransition))
