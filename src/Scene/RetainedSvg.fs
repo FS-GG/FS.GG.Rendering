@@ -92,6 +92,17 @@ module SvgRetained =
         if finite stroke.Width && finite stroke.Miter && stroke.Width >= 0.0 && stroke.Miter >= 0.0 then []
         else [ issue objectId path "stroke width and miter must be finite and non-negative" ]
 
+    let private validatePathEffect objectId path = function
+        | PathEffect.NoPathEffect -> [], []
+        | PathEffect.Dash(intervals, phase) ->
+            let invalid =
+                [ if intervals.IsEmpty || intervals |> List.exists (fun value -> not (finite value) || value <= 0.0) then
+                      issue objectId path "dash intervals must be finite, positive and non-empty"
+                  if not (finite phase) then issue objectId path "dash phase must be finite" ]
+            invalid, []
+        | PathEffect.Discrete _ -> [], [ issue objectId path "discrete path effects are outside the selected SVG subset" ]
+        | PathEffect.Corner _ -> [], [ issue objectId path "corner path effects are outside the selected SVG subset" ]
+
     let private validatePaint objectId path (paint: Paint) =
         let numeric =
             [ if not (finite paint.Opacity) || paint.Opacity < 0.0 || paint.Opacity > 1.0 then
@@ -100,18 +111,51 @@ module SvgRetained =
               | Some stroke -> yield! validateStroke objectId path stroke
               | None -> () ]
 
+        let shaderInvalid, shaderUnsupported =
+            match paint.Shader with
+            | None
+            | Some(Shader.SolidColor _) -> [], []
+            | Some(Shader.LinearGradient(startPoint, finish, colors)) ->
+                let invalid = validatePoint objectId path startPoint @ validatePoint objectId path finish
+                let invalid = if colors.IsEmpty then issue objectId path "linear gradient must contain at least one color" :: invalid else invalid
+                invalid, []
+            | Some(Shader.RadialGradient(center, radius, colors)) ->
+                let invalid = validatePoint objectId path center
+                let invalid = if not (finite radius) || radius <= 0.0 then issue objectId path "radial gradient radius must be finite and positive" :: invalid else invalid
+                let invalid = if colors.IsEmpty then issue objectId path "radial gradient must contain at least one color" :: invalid else invalid
+                invalid, []
+            | Some(Shader.SweepGradient _) -> [], [ issue objectId path "sweep gradients are outside the selected SVG subset" ]
+
+        let effectInvalid, effectUnsupported = validatePathEffect objectId path paint.PathEffect
+
         let unsupported =
             [ if paint.BlendMode <> BlendMode.SrcOver then yield issue objectId path "blend mode is outside the SVG foundation subset"
-              match paint.Shader with
-              | None
-              | Some(Shader.SolidColor _) -> ()
-              | Some _ -> yield issue objectId path "gradient shader is outside the SVG foundation subset"
               if paint.ColorFilter <> ColorFilter.NoColorFilter then yield issue objectId path "color filter is outside the SVG foundation subset"
               if paint.MaskFilter <> MaskFilter.NoMaskFilter then yield issue objectId path "mask filter is outside the SVG foundation subset"
               if paint.ImageFilter <> ImageFilter.NoImageFilter then yield issue objectId path "image filter is outside the SVG foundation subset"
-              if paint.PathEffect <> PathEffect.NoPathEffect then yield issue objectId path "path effect is outside the SVG foundation subset" ]
+              yield! shaderUnsupported
+              yield! effectUnsupported ]
 
-        numeric, unsupported
+        numeric @ shaderInvalid @ effectInvalid, unsupported
+
+    let private validatePath objectId path (pathSpec: PathSpec) =
+        pathSpec.Commands
+        |> List.mapi (fun index command ->
+            let commandPath = path @ [ index ]
+            match command with
+            | PathCommand.MoveTo point
+            | PathCommand.LineTo point -> validatePoint objectId commandPath point
+            | PathCommand.QuadTo(control, point) -> validatePoint objectId commandPath control @ validatePoint objectId commandPath point
+            | PathCommand.CubicTo(control1, control2, point) ->
+                validatePoint objectId commandPath control1 @ validatePoint objectId commandPath control2 @ validatePoint objectId commandPath point
+            | PathCommand.ArcTo(bounds, startAngle, sweepAngle) ->
+                [ yield! validateRect objectId commandPath bounds
+                  if not (finite startAngle && finite sweepAngle) then
+                      yield issue objectId commandPath "arc angles must be finite"
+                  if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
+                      yield issue objectId commandPath "arc bounds must have positive width and height" ]
+            | PathCommand.Close -> [])
+        |> List.concat
 
     let rec private validateScene (objectId: string option) (prefix: int list) (scene: Scene) =
         scene.Nodes
@@ -129,9 +173,18 @@ module SvgRetained =
             |> List.mapi (fun index scene -> validateScene objectId (path @ [ index ]) scene)
             |> List.fold (fun (invalid, rejected) (nextInvalid, nextRejected) -> invalid @ nextInvalid, rejected @ nextRejected) ([], [])
         | SceneNode.Rectangle((x, y, width, height), color) ->
-            let invalid = validateRect objectId path { X = x; Y = y; Width = width; Height = height }
+            let invalid =
+                [ yield! validateRect objectId path { X = x; Y = y; Width = width; Height = height }
+                  if width < 0.0 || height < 0.0 then
+                      yield issue objectId path "rectangle width and height must be non-negative" ]
             supported (invalid @ validateColor objectId path color) []
-        | SceneNode.PaintedRectangle(bounds, paint)
+        | SceneNode.PaintedRectangle(bounds, paint) ->
+            let invalidPaint, unsupportedPaint = validatePaint objectId path paint
+            let invalidBounds =
+                [ yield! validateRect objectId path bounds
+                  if bounds.Width < 0.0 || bounds.Height < 0.0 then
+                      yield issue objectId path "rectangle width and height must be non-negative" ]
+            supported (invalidBounds @ invalidPaint) unsupportedPaint
         | SceneNode.Ellipse(bounds, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
             supported (validateRect objectId path bounds @ invalidPaint) unsupportedPaint
@@ -145,20 +198,7 @@ module SvgRetained =
             supported (validatePoint objectId path startPoint @ validatePoint objectId path endPoint @ invalidPaint) unsupportedPaint
         | SceneNode.Path(pathSpec, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
-            let commandResults =
-                pathSpec.Commands
-                |> List.mapi (fun index command ->
-                    let commandPath = path @ [ index ]
-                    match command with
-                    | PathCommand.MoveTo point
-                    | PathCommand.LineTo point -> validatePoint objectId commandPath point, []
-                    | PathCommand.QuadTo(control, point) -> validatePoint objectId commandPath control @ validatePoint objectId commandPath point, []
-                    | PathCommand.CubicTo(control1, control2, point) ->
-                        validatePoint objectId commandPath control1 @ validatePoint objectId commandPath control2 @ validatePoint objectId commandPath point, []
-                    | PathCommand.Close -> [], []
-                    | PathCommand.ArcTo _ -> [], [ issue objectId commandPath "ArcTo is outside the SVG foundation subset" ])
-                |> List.fold (fun (invalid, rejected) (nextInvalid, nextRejected) -> invalid @ nextInvalid, rejected @ nextRejected) ([], [])
-            supported (invalidPaint @ fst commandResults) (unsupportedPaint @ snd commandResults)
+            supported (invalidPaint @ validatePath objectId path pathSpec) unsupportedPaint
         | SceneNode.Text((x, y), _, color) ->
             let invalid = if finite x && finite y then [] else [ issue objectId path "text position contains a non-finite coordinate" ]
             supported (invalid @ validateColor objectId path color) []
@@ -167,24 +207,53 @@ module SvgRetained =
                 [ if not (finite x && finite y) then issue objectId path "text position contains a non-finite coordinate"
                   if not (finite size) || size <= 0.0 then issue objectId path "text size must be finite and positive" ]
             supported (invalid @ validateColor objectId path color) []
+        | SceneNode.TextRun run ->
+            let invalidPaint, unsupportedPaint = validatePaint objectId path run.Paint
+            let invalid =
+                [ yield! validatePoint objectId path run.Position
+                  if not (finite run.Font.Size) || run.Font.Size <= 0.0 then
+                      yield issue objectId path "text-run font size must be finite and positive"
+                  if run.Font.Family |> Option.exists System.String.IsNullOrWhiteSpace then
+                      yield issue objectId path "text-run font family must not be blank"
+                  if run.Font.Weight |> Option.exists (fun value -> value < 1 || value > 1000) then
+                      yield issue objectId path "text-run font weight must be between 1 and 1000"
+                  yield! invalidPaint ]
+            supported invalid unsupportedPaint
+        | SceneNode.Arc(bounds, startAngle, sweepAngle, paint) ->
+            let invalidPaint, unsupportedPaint = validatePaint objectId path paint
+            let invalid =
+                [ yield! validateRect objectId path bounds
+                  if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
+                      yield issue objectId path "arc bounds must have positive width and height"
+                  if not (finite startAngle && finite sweepAngle) then
+                      yield issue objectId path "arc angles must be finite"
+                  yield! invalidPaint ]
+            supported invalid unsupportedPaint
+        | SceneNode.ClipNode(clip, child) ->
+            let clipInvalid =
+                match clip with
+                | Clip.RectClip bounds ->
+                    [ yield! validateRect objectId path bounds
+                      if bounds.Width < 0.0 || bounds.Height < 0.0 then
+                          yield issue objectId path "clip rectangle width and height must be non-negative" ]
+                | Clip.PathClip pathSpec -> validatePath objectId path pathSpec
+            let childInvalid, childUnsupported = validateScene objectId path child
+            supported (clipInvalid @ childInvalid) childUnsupported
         | SceneNode.Translate((x, y), child) ->
             let invalid = if finite x && finite y then [] else [ issue objectId path "translation contains a non-finite coordinate" ]
             let childInvalid, childUnsupported = validateScene objectId path child
             supported (invalid @ childInvalid) childUnsupported
         | SceneNode.Points _ -> unsupported "Points is outside the SVG foundation subset"
         | SceneNode.Vertices _ -> unsupported "Vertices is outside the SVG foundation subset"
-        | SceneNode.Arc _ -> unsupported "Arc is outside the SVG foundation subset"
-        | SceneNode.TextRun _ -> unsupported "TextRun is outside the SVG foundation subset"
         | SceneNode.GlyphRun _ -> unsupported "GlyphRun is outside the SVG foundation subset"
         | SceneNode.Image _ -> unsupported "Image is outside the SVG foundation subset"
-        | SceneNode.ClipNode _ -> unsupported "clips are outside the SVG foundation subset"
         | SceneNode.RegionNode _ -> unsupported "regions are outside the SVG foundation subset"
         | SceneNode.ColorSpaceNode(ColorSpace.Srgb, child) -> validateScene objectId path child
         | SceneNode.ColorSpaceNode _ -> unsupported "non-sRGB color spaces are outside the SVG foundation subset"
         | SceneNode.PerspectiveNode _ -> unsupported "perspective transforms are outside the SVG foundation subset"
         | SceneNode.PictureNode _ -> unsupported "pictures are outside the SVG foundation subset"
         | SceneNode.Chart _ -> unsupported "charts are outside the SVG foundation subset"
-        | SceneNode.CachedSubtree _ -> unsupported "cached subtrees are outside the SVG foundation subset"
+        | SceneNode.CachedSubtree cached -> validateScene objectId path cached.Scene
 
     let private duplicateIssues kind ids =
         ids

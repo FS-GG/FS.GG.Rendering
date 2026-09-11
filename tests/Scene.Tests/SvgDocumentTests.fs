@@ -3,6 +3,7 @@ module SvgDocumentTests
 open System
 open Expecto
 open FS.GG.UI.Scene
+open PortableDocumentFixture
 
 let private point x y = { X = x; Y = y }
 let private rect x y width height = { X = x; Y = y; Width = width; Height = height }
@@ -145,5 +146,62 @@ let tests =
             match SvgDocument.ofRetainedScene (rect 0.0 0.0 10.0 10.0) hidden with
             | Ok { Children = [ layer ] } -> Expect.isFalse layer.Visible "layer visibility is preserved"
             | result -> failtestf "unexpected hidden adapter result %A" result
+        }
+
+        test "selected document surface round trips canonically on .NET" {
+            let serialized, exported = verifyRoundTrip "scene-tests"
+            match SvgDocument.deserialize serialized with
+            | Ok restored -> Expect.equal (SvgDocument.serialize restored) (Ok serialized) "the typed document canonical round trip is exact"
+            | Error issues -> failtestf "round trip failed: %A" issues
+            Expect.stringContains exported "fill=\"none\" stroke=\"rgb(240 120 20)\"" "stroke style has no interior and SolidColor overrides Fill"
+            Expect.stringContains exported "fill-rule=\"evenodd\"" "evenodd holes are preserved"
+            Expect.stringContains exported "spreadMethod=\"reflect\"" "gradient spread is preserved"
+            Expect.stringContains exported "gradientTransform=\"matrix(" "gradient transform is preserved"
+            Expect.stringContains exported "color-interpolation=\"sRGB\"" "selected gradients declare sRGB interpolation"
+            Expect.stringContains exported "text-anchor=\"start\" direction=\"auto\"" "existing text semantics are explicit in standalone export"
+            Expect.stringContains exported "mask-type:alpha" "alpha masks are explicit"
+            Expect.stringContains exported "mask-type:luminance" "luminance masks are explicit"
+            Expect.stringContains exported "<symbol" "symbol definitions export"
+            Expect.stringContains exported "<use" "symbol instances export"
+            let arcSegments = exported.Split(" A ").Length - 1
+            Expect.isGreaterThanOrEqual arcSegments 2 "complete revolutions split into multiple SVG arc segments"
+        }
+
+        test "typed codec refuses XML and unsupported content with stable location" {
+            match SvgDocument.deserialize "<svg/>" with
+            | Error [ issue ] ->
+                Expect.equal issue.Code "invalid-serialization" "arbitrary SVG XML is not treated as the typed format"
+                Expect.equal issue.Location "/" "codec diagnostics have a stable root location"
+            | result -> failtestf "unexpected arbitrary import result: %A" result
+
+            let unsupported =
+                { PortableDocumentFixture.document with
+                    Children =
+                        [ { leaf "bad-node" with
+                              Content = SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Image((0.0, 0.0, 2.0, 2.0), "remote.png") ] } } ] }
+            match SvgDocument.exportSvg "test" unsupported with
+            | Error issues ->
+                Expect.exists issues (fun issue -> issue.Code = "unsupported-scene-leaf" && issue.Location = "/children/0/scene/nodes/0") "unsupported object/node fails before export at a stable path"
+            | Ok _ -> failtest "unsupported image unexpectedly exported"
+        }
+
+        test "malformed geometry and unsafe local font declarations fail before export" {
+            let malformed =
+                { PortableDocumentFixture.document with
+                    Definitions =
+                        PortableDocumentFixture.document.Definitions
+                        |> List.map (fun definition ->
+                            match definition.Content with
+                            | SvgDefinitionContent.Font font ->
+                                { definition with Content = SvgDefinitionContent.Font { font with Family = "unsafe\";src:url(remote)" } }
+                            | _ -> definition)
+                    Children =
+                        [ { leaf "negative-rect" with
+                              Content = SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Rectangle((0.0, 0.0, -1.0, 2.0), Colors.black) ] } } ] }
+            match SvgDocument.exportSvg "test" malformed with
+            | Error issues ->
+                Expect.exists issues (fun issue -> issue.Code = "invalid-font-family" && issue.Location.EndsWith("/family")) "CSS-significant font family characters are refused"
+                Expect.exists issues (fun issue -> issue.Code = "unsupported-scene-leaf" && issue.Location = "/children/0/scene/nodes/0") "negative SVG rectangle geometry has a stable node location"
+            | Ok _ -> failtest "malformed document unexpectedly exported"
         }
     ]

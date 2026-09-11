@@ -2,6 +2,12 @@
   "name": "fsgg-scene-svg-browser-tests",
   "private": true,
   "type": "module",
-  "scripts": { "build": "vite build" },
-  "devDependencies": { "playwright-core": "1.62.1", "vite": "8.1.5" }
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1",
+    "pngjs": "7.0.0",
+    "vite": "8.1.5"
+  }
 }

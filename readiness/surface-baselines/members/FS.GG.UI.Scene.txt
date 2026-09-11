@@ -786,9 +786,12 @@ FS.GG.UI.Scene.SvgDocument.Schema : System.String [get]
 FS.GG.UI.Scene.SvgDocument.ViewBox : FS.GG.UI.Scene.Rect [get]
 FS.GG.UI.Scene.SvgDocument.defaultLimits : FS.GG.UI.Scene.SvgDocumentLimits [get]
 FS.GG.UI.Scene.SvgDocument.defaultPresentation : FS.GG.UI.Scene.SvgPresentation [get]
+FS.GG.UI.Scene.SvgDocument.deserialize(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgDocument.exportSvg(System.String, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgDocument.new(System.String, System.String, FS.GG.UI.Scene.Rect, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDefinition>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgElement>)
 FS.GG.UI.Scene.SvgDocument.ofRetainedScene(FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.RetainedScene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgDocument.schema : System.String [get]
+FS.GG.UI.Scene.SvgDocument.serialize(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgDocument.validate(System.Int32, FS.GG.UI.Scene.SvgDocumentLimits, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>
 FS.GG.UI.Scene.SvgDocumentIssue.Code : System.String [get]
 FS.GG.UI.Scene.SvgDocumentIssue.Location : System.String [get]

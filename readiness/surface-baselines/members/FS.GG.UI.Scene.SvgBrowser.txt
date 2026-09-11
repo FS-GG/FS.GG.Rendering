@@ -1,4 +1,10 @@
 FS.GG.UI.Scene.SvgBrowser.SvgBrowser.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions, FS.GG.UI.Scene.RetainedScene, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.RetainedInteractionResult, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost, FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError>
+FS.GG.UI.Scene.SvgBrowser.SvgBrowser.mountDocument(Browser.Types.HTMLElement, System.String, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.DefinitionId : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.Diagnostic : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.Family : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.Ready : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.new(System.String, System.String, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.String>)
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Dispatch(FS.GG.UI.Scene.RetainedInteractionMessage) : FS.GG.UI.Scene.RetainedInteractionResult
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.HitTest(FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpOption<System.String>
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation
@@ -6,6 +12,7 @@ FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.PanBy(FS.GG.UI.Scene.Point) : FS.GG.UI.
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.Root : Browser.Types.Element [get]
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.State : FS.GG.UI.Scene.RetainedInteractionState [get]
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost.ZoomAt(FS.GG.UI.Scene.Point, System.Double) : FS.GG.UI.Scene.RetainedInteractionResult
+FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags.InvalidDocument : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags.InvalidOptions : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError+Tags.InvalidScene : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserObservation.LayerCount : System.Int32 [get]
@@ -21,3 +28,11 @@ FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.Height : System.Double [get]
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.WheelZoomFactor : System.Double [get]
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.Width : System.Double [get]
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions.new(System.Double, System.Double, System.String, System.Double)
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags.DuplicateMountNamespace : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags.InvalidDocument : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Document : FS.GG.UI.Scene.SvgDocument [get]
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ExportedSvg : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.MountNamespace : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ObserveFonts() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation>
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Replace(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Root : Browser.Types.Element [get]

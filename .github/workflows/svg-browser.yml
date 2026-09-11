@@ -69,5 +69,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: svg-browser-observation
-          path: ${{ runner.temp }}/svg-browser-observations.json
+          path: |
+            ${{ runner.temp }}/svg-browser-observations.json
+            ${{ runner.temp }}/svg-browser-observations.exported.svg
           if-no-files-found: warn
