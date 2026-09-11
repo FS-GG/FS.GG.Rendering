@@ -8,8 +8,10 @@ remain outside this reducer model.
 
 Outcome `0` accepts a transition, `1` rejects a stale revision, `2` rejects an unknown identity, `3`
 rejects a non-increasing replacement, `4` rejects an invalid camera update, `5` rejects release of a
-pointer that is not captured, and `6` rejects an invalid replacement scene. A replacement preserves selection and focus only while their identities
-remain selectable, and preserves pointer capture independently.
+pointer that is not captured, and `6` rejects an invalid replacement scene or document. Scene and
+document replacement preserve selection and focus only while their identities remain selectable, and
+preserve pointer capture independently. Document replacement additionally checks the caller's expected
+revision and keeps the independently controlled camera unchanged.
 
 ```quint retainedInteraction.qnt +=
 module retainedInteraction {
@@ -63,6 +65,7 @@ module retainedInteraction {
   pure val actionCatalogue = Set(
     "Select",
     "ReplaceScene",
+    "ReplaceDocument",
     "ClearSelection",
     "FocusNext",
     "FocusPrevious",
@@ -172,6 +175,32 @@ module retainedInteraction {
       })
     }
 
+  pure def reduceReplaceDocument(
+    s: State,
+    expectedRevision: int,
+    candidateRevision: int,
+    objectAAvailable: bool,
+    objectBAvailable: bool,
+    validDocument: bool
+  ): Transition =
+    val observed = observe(s, "ReplaceDocument", expectedRevision, candidateRevision, boolInt(objectAAvailable), boolInt(objectBAvailable), boolInt(validDocument), 0)
+    if (expectedRevision != s.revision) reject(observed, staleRevision)
+    else if (candidateRevision <= s.revision) reject(observed, nonIncreasingRevision)
+    else if (not(validDocument)) reject(observed, invalidScene)
+    else {
+      val candidate = {
+        ...observed,
+        revision: candidateRevision,
+        objectAAvailable: objectAAvailable,
+        objectBAvailable: objectBAvailable,
+      }
+      accept({
+        ...candidate,
+        selected: if (available(candidate, s.selected)) s.selected else 0,
+        focused: if (available(candidate, s.focused)) s.focused else 0,
+      })
+    }
+
   var state: State
   var outcome: int
 
@@ -184,6 +213,11 @@ module retainedInteraction {
 
   action replaceScene(candidateRevision: int, objectAAvailable: bool, objectBAvailable: bool, panX: int, panY: int, zoom: int): bool = {
     val result = reduceReplace(state, candidateRevision, objectAAvailable, objectBAvailable, panX, panY, zoom)
+    all { state' = result.state, outcome' = result.outcome }
+  }
+
+  action replaceDocument(expectedRevision: int, candidateRevision: int, objectAAvailable: bool, objectBAvailable: bool, validDocument: bool): bool = {
+    val result = reduceReplaceDocument(state, expectedRevision, candidateRevision, objectAAvailable, objectBAvailable, validDocument)
     all { state' = result.state, outcome' = result.outcome }
   }
 
@@ -227,6 +261,26 @@ module retainedInteraction {
     nondet nextZoom = 0.to(2).oneOf()
     if (operation == 0) selectObject(expected, objectId)
     else if (operation == 1) replaceScene(expected + 1, objectAAvailable, objectBAvailable, 1, -1, nextZoom)
+    else if (operation == 2) clearSelection(expected)
+    else if (operation == 3) focusNext(expected)
+    else if (operation == 4) focusPrevious(expected)
+    else if (operation == 5) setCamera(expected, 1, -1, nextZoom)
+    else if (operation == 6) capturePointer(expected, pointerId)
+    else releasePointer(expected, pointerId)
+  }
+
+  action documentStep = {
+    nondet operation = 0.to(7).oneOf()
+    nondet expected = 0.to(2).oneOf()
+    nondet candidate = 0.to(3).oneOf()
+    nondet objectId = 0.to(2).oneOf()
+    nondet pointerId = 1.to(2).oneOf()
+    nondet objectAAvailable = Set(true, false).oneOf()
+    nondet objectBAvailable = Set(true, false).oneOf()
+    nondet validDocument = Set(true, false).oneOf()
+    nondet nextZoom = 0.to(2).oneOf()
+    if (operation == 0) selectObject(expected, objectId)
+    else if (operation == 1) replaceDocument(expected, candidate, objectAAvailable, objectBAvailable, validDocument)
     else if (operation == 2) clearSelection(expected)
     else if (operation == 3) focusNext(expected)
     else if (operation == 4) focusPrevious(expected)
@@ -281,6 +335,34 @@ module retainedInteractionTest {
       .then(selectObject(0, 2))
       .then(replaceScene(1, true, false, 2, 3, 4))
       .expect(and { state.selected == 0, state.focused == 0 })
+
+  run documentReplacementRetention =
+    init
+      .then(selectObject(0, 2))
+      .then(capturePointer(0, 9))
+      .then(setCamera(0, 4, -2, 3))
+      .then(replaceDocument(0, 1, true, true, true))
+      .expect(and {
+        state.revision == 1,
+        state.selected == 2,
+        state.focused == 2,
+        state.panX == 4,
+        state.panY == -2,
+        state.zoom == 3,
+        state.captured == 9,
+      })
+
+  run documentReplacementClearing =
+    init
+      .then(selectObject(0, 2))
+      .then(replaceDocument(0, 1, true, false, true))
+      .expect(and { state.selected == 0, state.focused == 0 })
+
+  run invalidDocumentReplacementIsNoOp =
+    init
+      .then(selectObject(0, 1))
+      .then(replaceDocument(0, 1, true, true, false))
+      .expect(and { state.revision == 0, state.selected == 1, state.focused == 1, outcome == invalidScene })
 
   run staleIsNoOp =
     init

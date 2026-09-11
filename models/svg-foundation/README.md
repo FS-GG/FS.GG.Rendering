@@ -5,12 +5,13 @@ Its explicit bindings are in `retained-interaction.bindings.json`; installed SDD
 committed evidence under `readiness/svg-qual-01-2/`. The extracted `.qnt` is generated evidence and
 must not be edited directly.
 
-The model binds every public retained interaction message to a Quint action: Select, ReplaceScene,
-ClearSelection, FocusNext, FocusPrevious, SetCamera, CapturePointer, and ReleasePointer. A fixed-seed
-bounded Quint run emits ITF witnesses, and `extract-retained-traces.py` converts those model states
-into `retained-interaction.traces.tsv`. The isolated .NET and Fable/Node package consumers replay that
-same corpus through `SvgRetained.update`, compare every resulting projection, and report the first
-divergence. Mutated Select-to-ClearSelection dispatch and stale-error acceptance must both diverge.
+The model binds every public retained interaction message plus the SVG-SCENE-02.4 document replacement
+amendment to Quint actions. The original fixed-seed run remains the byte-for-byte 192-transition
+`retained-interaction.traces.tsv`. A second fixed-seed run through `documentStep` produces the additive
+192-transition `document-interaction.traces.tsv`, substituting validated `ReplaceDocument` for the
+retained-only `ReplaceScene`. Isolated .NET and Fable/Node package consumers replay the first corpus
+through `SvgRetained.update` and the second through `SvgDocumentInteraction.update`, compare every
+resulting projection, and report the first divergence.
 
 Run the public installed qualification with exact Quint and lmt objects:
 
@@ -36,15 +37,15 @@ validation, and the browser suite stays at the rendering/effect boundary.
 
 ## SVG document amendment boundary
 
-SVG-SCENE-02.2 adds the static, identified `SvgDocument` envelope while deliberately preserving the
-canonical 192-transition retained reducer corpus byte for byte. The next reducer amendment, owned by
-SVG-SCENE-02.4, will replace a retained scene with a validated document at a strictly increasing
-revision. It must preserve selection and focus only when their semantic identities remain visible,
-preserve pointer capture independently, and refuse stale revisions or invalid documents without a
-state change. This is the canonical amendment boundary; no second reducer model is introduced here.
+SVG-SCENE-02.2 added the static, identified `SvgDocument` envelope while preserving the canonical
+192-transition retained reducer corpus byte for byte. SVG-SCENE-02.4 now owns the additive amendment:
+`ReplaceDocument` validates an identified document at a strictly increasing revision, preserves
+selection and focus only while semantic identities remain visible, keeps camera and pointer capture
+independent, and refuses stale revisions or invalid documents without a state change. The amendment
+stays in this single authority and adds its own derived corpus without overwriting retained evidence.
 
-The document validator is a pure precondition for that future action. Its current state-free
-contract requires unique render and semantic identities, kind-correct local references, bounded
-definition/reference expansion, finite affine transforms, and Scene leaves accepted by the existing
-portable Scene subset. Asset and extension descriptors classify packaging support only; they do not
-claim serialization, browser mounting, editor behavior, or session lifecycle support.
+The document validator is the pure precondition for that action. It requires unique render and semantic
+identities, kind-correct local references, bounded definition/reference expansion, finite affine
+transforms, and Scene leaves accepted by the portable subset. Undo/redo and immutable play snapshots
+are exercised directly through the same minimal production reducer; they are contract foundations,
+not complete editor, input-tooling, or session-lifecycle support.

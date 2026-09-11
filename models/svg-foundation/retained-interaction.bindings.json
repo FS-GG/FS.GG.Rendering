@@ -11,11 +11,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 63,
+          "line": 65,
           "column": 1
         },
         "end": {
-          "line": 73,
+          "line": 76,
           "column": 4
         }
       }
@@ -29,11 +29,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 178,
+          "line": 207,
           "column": 1
         },
         "end": {
-          "line": 179,
+          "line": 208,
           "column": 4
         }
       }
@@ -45,11 +45,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 180,
+          "line": 209,
           "column": 1
         },
         "end": {
-          "line": 184,
+          "line": 213,
           "column": 4
         }
       }
@@ -61,11 +61,27 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 185,
+          "line": 214,
           "column": 1
         },
         "end": {
-          "line": 189,
+          "line": 218,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-ReplaceDocument",
+      "module": "retainedInteraction",
+      "declaration": "replaceDocument",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 219,
+          "column": 1
+        },
+        "end": {
+          "line": 223,
           "column": 4
         }
       }
@@ -77,11 +93,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 190,
+          "line": 224,
           "column": 1
         },
         "end": {
-          "line": 194,
+          "line": 228,
           "column": 4
         }
       }
@@ -93,11 +109,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 195,
+          "line": 229,
           "column": 1
         },
         "end": {
-          "line": 199,
+          "line": 233,
           "column": 4
         }
       }
@@ -109,11 +125,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 200,
+          "line": 234,
           "column": 1
         },
         "end": {
-          "line": 204,
+          "line": 238,
           "column": 4
         }
       }
@@ -125,11 +141,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 205,
+          "line": 239,
           "column": 1
         },
         "end": {
-          "line": 209,
+          "line": 243,
           "column": 4
         }
       }
@@ -141,11 +157,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 210,
+          "line": 244,
           "column": 1
         },
         "end": {
-          "line": 214,
+          "line": 248,
           "column": 4
         }
       }
@@ -157,11 +173,11 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 215,
+          "line": 249,
           "column": 1
         },
         "end": {
-          "line": 219,
+          "line": 253,
           "column": 4
         }
       }
@@ -173,11 +189,27 @@
       "source": {
         "path": "models/svg-foundation/retained-interaction.md",
         "start": {
-          "line": 220,
+          "line": 254,
           "column": 1
         },
         "end": {
-          "line": 237,
+          "line": 271,
+          "column": 4
+        }
+      }
+    },
+    {
+      "id": "ACT-DocumentStep",
+      "module": "retainedInteraction",
+      "declaration": "documentStep",
+      "source": {
+        "path": "models/svg-foundation/retained-interaction.md",
+        "start": {
+          "line": 272,
+          "column": 1
+        },
+        "end": {
+          "line": 291,
           "column": 4
         }
       }

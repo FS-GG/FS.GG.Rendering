@@ -15,3 +15,10 @@ active namespaces are rejected. `ObserveFonts` distinguishes an available
 declared family from an explicit fallback diagnostic; it is not a font-fidelity
 claim. Typed document deserialization accepts only `fsgg.svg-document/1`, not
 arbitrary SVG XML.
+
+Identified replacements reconcile stable elements and definitions in place. Browser hit testing follows
+paint order and native SVG path/text/symbol/clip semantics; masked painted geometry remains targetable
+while clipping removes targets. The retained entry point projects semantic selection through pointer,
+portable keyboard intent, and sibling HTML controls. Native editable/composition targets are left alone,
+and pointer loss, cancellation, blur, and disposal clear adapter-owned capture and scheduled work. These
+are accessible interaction contract foundations, not a complete editor or input toolkit.

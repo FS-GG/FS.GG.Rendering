@@ -72,6 +72,10 @@ FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MalformedJson : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MissingField : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedFormat : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedVersion : System.Int32
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.ActivateFocused : System.Int32
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.ClearSelection : System.Int32
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.FocusNext : System.Int32
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.FocusPrevious : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowDown : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowLeft : System.Int32
 FS.GG.UI.KeyboardInput.ViewerKey+Tags.ArrowRight : System.Int32
@@ -98,3 +102,4 @@ FS.GG.UI.KeyboardInput.ViewerKeyboard.normalize(System.String) : FS.GG.UI.Keyboa
 FS.GG.UI.KeyboardInput.ViewerKeyboard.normalizeEvent(FS.GG.UI.KeyboardInput.ViewerKeyEvent) : System.Tuple<FS.GG.UI.KeyboardInput.ViewerKey, System.Boolean>
 FS.GG.UI.KeyboardInput.ViewerKeyboard.normalizeEventWithModifiers(FS.GG.UI.KeyboardInput.ViewerKeyEvent) : System.Tuple<FS.GG.UI.KeyboardInput.ViewerKey, System.Boolean, FS.GG.UI.KeyboardInput.KeyModifiers>
 FS.GG.UI.KeyboardInput.ViewerKeyboard.toKeyId(FS.GG.UI.KeyboardInput.ViewerKey) : System.String
+FS.GG.UI.KeyboardInput.ViewerKeyboard.tryMapSvgIntent(System.String, System.Boolean, System.Boolean, System.Boolean) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.KeyboardInput.SvgKeyboardIntent>

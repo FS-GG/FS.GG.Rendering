@@ -1,18 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>FS.GG.UI.Scene.SvgBrowser.Fable.Metadata</AssemblyName>
+    <AssemblyName>FS.GG.UI.KeyboardInput.Fable.Metadata</AssemblyName>
     <IsPackable>false</IsPackable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <EnableDefaultItems>false</EnableDefaultItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="SvgBrowser.fsi" />
-    <Compile Include="SvgBrowser.fs" />
+    <Compile Include="KeyboardInput.fsi" />
+    <Compile Include="KeyboardInput.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />
-    <PackageReference Include="FS.GG.UI.KeyboardInput" />
-    <PackageReference Include="Fable.Browser.Dom" />
   </ItemGroup>
 </Project>

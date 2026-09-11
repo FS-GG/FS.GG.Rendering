@@ -7,8 +7,29 @@
     <AssemblyName>FS.GG.UI.KeyboardInput</AssemblyName>
     <Title>FS.GG.UI.KeyboardInput</Title>
     <Description>Package-owned keyboard input runtime, reducer, effect, diagnostics, and state display contracts for FS.GG.UI products.</Description>
-    <PackageTags>fsharp;keyboard;input;runtime;ui</PackageTags>
+    <PackageTags>fsharp;keyboard;input;runtime;ui;fable-javascript</PackageTags>
+    <FablePackageType>library</FablePackageType>
   </PropertyGroup>
+
+  <Target Name="CurateFableCompatibilityView" AfterTargets="CreateFablePackageFiles">
+    <ItemGroup>
+      <_PackageFiles Remove="@(_PackageFiles)" />
+      <_PackageFiles Include="KeyboardInput.fsi;KeyboardInput.fs">
+        <Pack>true</Pack>
+        <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+      <_PackageFiles Include="Fable/FS.GG.UI.KeyboardInput.fsproj">
+        <Pack>true</Pack>
+        <PackagePath>fable/FS.GG.UI.KeyboardInput.fsproj</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup Label="fable-compatibility-metadata">
+    <None Include="Fable/compatibility-profile.v1.json" Pack="true" PackagePath="fable-compatibility/compatibility-profile.v1.json" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="KeyboardInput.fsi" />
@@ -19,6 +40,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />
+    <PackageReference Include="Fable.Package.SDK" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
   </ItemGroup>
 
 </Project>

@@ -31,6 +31,8 @@ FS.GG.UI.KeyboardInput.KeymapCodecError+MissingField
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags
 FS.GG.UI.KeyboardInput.KeymapCodecError+UnsupportedFormat
 FS.GG.UI.KeyboardInput.KeymapCodecError+UnsupportedVersion
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent
+FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags
 FS.GG.UI.KeyboardInput.ViewerKey
 FS.GG.UI.KeyboardInput.ViewerKey+Digit
 FS.GG.UI.KeyboardInput.ViewerKey+Function

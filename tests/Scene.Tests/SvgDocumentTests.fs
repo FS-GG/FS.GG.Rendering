@@ -204,4 +204,104 @@ let tests =
                 Expect.exists issues (fun issue -> issue.Code = "unsupported-scene-leaf" && issue.Location = "/children/0/scene/nodes/0") "negative SVG rectangle geometry has a stable node location"
             | Ok _ -> failtest "malformed document unexpectedly exported"
         }
+
+        test "minimal document reducer rejects atomically and preserves semantic state" {
+            let initialDocument = document [] [ leaf "alpha"; leaf "beta" ]
+            let initial =
+                match SvgDocumentInteraction.tryCreate 3 SvgAffine.identity initialDocument with
+                | Ok state -> state
+                | Error error -> failtestf "initial document state failed: %A" error
+            let selected =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.SelectSemantic(3, "semantic:beta"))
+                    initial
+            Expect.isNone selected.Error "known semantic identity selects"
+
+            let invalidCandidate =
+                { initialDocument with Children = [ leaf "duplicate"; leaf "duplicate" ] }
+            let rejected =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.ReplaceDocument(3, 4, invalidCandidate))
+                    selected.State
+            Expect.isSome rejected.Error "invalid edit is refused"
+            Expect.equal rejected.State selected.State "invalid edit is atomic and leaves all state unchanged"
+
+            let replacement = document [] [ leaf "beta"; leaf "gamma" ]
+            let replaced =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.ReplaceDocument(3, 4, replacement))
+                    selected.State
+            Expect.isNone replaced.Error "valid increasing replacement applies"
+            Expect.equal replaced.State.SelectedSemanticId (Some "semantic:beta") "surviving selection is retained"
+            Expect.equal replaced.State.FocusedSemanticId (Some "semantic:beta") "surviving focus is retained"
+            Expect.equal replaced.State.UndoDocuments [ initialDocument ] "prior document enters undo history"
+            Expect.isEmpty replaced.State.RedoDocuments "replacement clears redo history"
+
+            let stale =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.SelectSemantic(3, "semantic:gamma"))
+                    replaced.State
+            Expect.equal stale.State replaced.State "stale selection cannot mutate state"
+            Expect.equal stale.Error (Some(SvgDocumentInteractionError.StaleRevision(3, 4))) "stale error is explicit"
+        }
+
+        test "undo redo and play snapshot are real immutable reducer witnesses" {
+            let first = document [] [ leaf "first" ]
+            let second = document [] [ leaf "second" ]
+            let initial =
+                match SvgDocumentInteraction.tryCreate 0 SvgAffine.identity first with
+                | Ok state -> state
+                | Error error -> failtestf "initial document state failed: %A" error
+            let replaced =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.ReplaceDocument(0, 1, second))
+                    initial
+            let undone = SvgDocumentInteraction.update (SvgDocumentInteractionMessage.Undo 1) replaced.State
+            Expect.equal undone.State.Revision 2 "undo creates a new ordered revision"
+            Expect.equal undone.State.Document first "undo restores the prior accepted document"
+            let redone = SvgDocumentInteraction.update (SvgDocumentInteractionMessage.Redo 2) undone.State
+            Expect.equal redone.State.Revision 3 "redo creates a new ordered revision"
+            Expect.equal redone.State.Document second "redo restores the later accepted document"
+
+            let captured =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.CapturePointer(3, 91))
+                    redone.State
+            let snapshotted =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.TakePlaySnapshot 3)
+                    captured.State
+            let snapshot = snapshotted.State.PlaySnapshot |> Option.defaultWith (fun () -> failtest "snapshot missing")
+            Expect.equal snapshot.SourceRevision 3 "snapshot binds the accepted source revision"
+            Expect.equal (SvgDocument.deserialize snapshot.SerializedDocument) (Ok second) "snapshot contains canonical immutable document bytes"
+
+            let later =
+                SvgDocumentInteraction.update
+                    (SvgDocumentInteractionMessage.ReplaceDocument(3, 4, first))
+                    snapshotted.State
+            Expect.equal later.State.CapturedPointerId (Some 91) "document edits preserve pointer capture independently"
+            let serializedSecond =
+                match SvgDocument.serialize second with
+                | Ok value -> value
+                | Error issues -> failtestf "second document failed to serialize: %A" issues
+            Expect.equal snapshot.SerializedDocument serializedSecond "later edits do not mutate the play snapshot"
+        }
+
+        test "document camera focus and history failures are guarded no-ops" {
+            let visible = leaf "visible"
+            let hidden = { leaf "hidden" with Visible = false }
+            let initial =
+                match SvgDocumentInteraction.tryCreate 0 SvgAffine.identity (document [] [ visible; hidden ]) with
+                | Ok state -> state
+                | Error error -> failtestf "initial document state failed: %A" error
+            let focused = SvgDocumentInteraction.update (SvgDocumentInteractionMessage.FocusNext 0) initial
+            Expect.equal focused.State.FocusedSemanticId (Some "semantic:visible") "focus visits visible semantic identities only"
+            let hiddenSelection = SvgDocumentInteraction.update (SvgDocumentInteractionMessage.SelectSemantic(0, "semantic:hidden")) focused.State
+            Expect.equal hiddenSelection.State focused.State "hidden semantic identity is not interactive"
+            let singular = SvgDocumentInteraction.update (SvgDocumentInteractionMessage.SetCamera(0, SvgAffine.scale 0.0 1.0)) focused.State
+            Expect.equal singular.State focused.State "singular camera is a no-op"
+            Expect.equal singular.Error (Some SvgDocumentInteractionError.InvalidCamera) "singular camera is explicit"
+            Expect.equal (SvgDocumentInteraction.update (SvgDocumentInteractionMessage.Undo 0) focused.State).Error (Some SvgDocumentInteractionError.NothingToUndo) "empty undo is explicit"
+            Expect.equal (SvgDocumentInteraction.update (SvgDocumentInteractionMessage.Redo 0) focused.State).Error (Some SvgDocumentInteractionError.NothingToRedo) "empty redo is explicit"
+        }
     ]

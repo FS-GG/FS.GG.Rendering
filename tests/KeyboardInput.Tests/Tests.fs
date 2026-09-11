@@ -122,6 +122,17 @@ let tests =
             Expect.equal upKey Escape "key-up event normalizes key"
             Expect.isFalse isStillDown "key-up event is marked not down"
         }
+
+        test "SVG intent mapping preserves composition and native editing" {
+            Expect.equal (ViewerKeyboard.tryMapSvgIntent "ArrowRight" true false false) (Some SvgKeyboardIntent.FocusNext) "forward arrow maps once"
+            Expect.equal (ViewerKeyboard.tryMapSvgIntent "ArrowLeft" true false false) (Some SvgKeyboardIntent.FocusPrevious) "back arrow maps once"
+            Expect.equal (ViewerKeyboard.tryMapSvgIntent "Enter" true false false) (Some SvgKeyboardIntent.ActivateFocused) "activation maps"
+            Expect.equal (ViewerKeyboard.tryMapSvgIntent "Escape" true false false) (Some SvgKeyboardIntent.ClearSelection) "escape clears selection"
+            Expect.isNone (ViewerKeyboard.tryMapSvgIntent "ArrowRight" false false false) "key-up is not consumed"
+            Expect.isNone (ViewerKeyboard.tryMapSvgIntent "ArrowRight" true true false) "IME composition is not consumed"
+            Expect.isNone (ViewerKeyboard.tryMapSvgIntent "ArrowRight" true false true) "native editable controls keep their key"
+            Expect.isNone (ViewerKeyboard.tryMapSvgIntent "F8" true false false) "unsupported keys are not consumed"
+        }
     ]
 
 [<Tests>]

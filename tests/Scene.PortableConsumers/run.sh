@@ -15,7 +15,10 @@ cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/DotNet/Replay.fs"
 cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/Fable/Replay.fs"
 cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/DotNet/DocumentRoundTrip.fs"
 cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/Fable/DocumentRoundTrip.fs"
+cp "$repo/tests/Scene.PortableConsumers/DocumentReplay.fs" "$work/DotNet/DocumentReplay.fs"
+cp "$repo/tests/Scene.PortableConsumers/DocumentReplay.fs" "$work/Fable/DocumentReplay.fs"
 cp "$repo/models/svg-foundation/retained-interaction.traces.tsv" "$work/retained-interaction.traces.tsv"
+cp "$repo/models/svg-foundation/document-interaction.traces.tsv" "$work/document-interaction.traces.tsv"
 
 cat > "$work/NuGet.Config" <<EOF
 <configuration>
@@ -36,19 +39,23 @@ dotnet restore "$work/DotNet/DotNet.fsproj" --configfile "$work/NuGet.Config"
 dotnet build "$work/DotNet/DotNet.fsproj" --no-restore
 dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
   "$work/retained-interaction.traces.tsv" "$work/dotnet-projections.tsv" \
-  "$work/dotnet-document.txt" "$work/dotnet-export.svg"
+  "$work/dotnet-document.txt" "$work/dotnet-export.svg" \
+  "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
 dotnet tool install fable --version 5.13.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
 node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv" \
-  "$work/fable-document.txt" "$work/fable-export.svg"
+  "$work/fable-document.txt" "$work/fable-export.svg" \
+  "$work/document-interaction.traces.tsv" "$work/fable-document-projections.tsv"
 cmp "$work/dotnet-projections.tsv" "$work/fable-projections.tsv"
+cmp "$work/dotnet-document-projections.tsv" "$work/fable-document-projections.tsv"
 cmp "$work/dotnet-document.txt" "$work/fable-document.txt"
 cmp "$work/dotnet-export.svg" "$work/fable-export.svg"
 projection_sha="$(sha256sum "$work/dotnet-projections.tsv" | cut -d' ' -f1)"
 document_sha="$(sha256sum "$work/dotnet-document.txt" | cut -d' ' -f1)"
-echo "portable-document-roundtrip: runtimes=dotnet,fable-node projection-sha256=$projection_sha document-sha256=$document_sha"
+document_projection_sha="$(sha256sum "$work/dotnet-document-projections.tsv" | cut -d' ' -f1)"
+echo "portable-document-roundtrip: runtimes=dotnet,fable-node projection-sha256=$projection_sha document-interaction-sha256=$document_projection_sha document-sha256=$document_sha"
 
 python3 - "$work" <<'PY'
 import json

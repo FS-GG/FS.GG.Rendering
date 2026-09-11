@@ -32,6 +32,7 @@ FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags.DuplicateMountNamespace :
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags.InvalidDocument : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Document : FS.GG.UI.Scene.SvgDocument [get]
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ExportedSvg : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.HitTest(FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpOption<System.String>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.MountNamespace : System.String [get]
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ObserveFonts() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Replace(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>

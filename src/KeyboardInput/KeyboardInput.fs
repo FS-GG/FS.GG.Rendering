@@ -315,6 +315,13 @@ type KeyModifiers =
       Shift: bool
       Meta: bool }
 
+[<RequireQualifiedAccess>]
+type SvgKeyboardIntent =
+    | FocusNext
+    | FocusPrevious
+    | ActivateFocused
+    | ClearSelection
+
 module ViewerKeyboard =
     let normalize (raw: string) =
         let value =
@@ -491,6 +498,20 @@ module ViewerKeyboard =
 
         let baseKey, mods = parseModifiers event.RawKey
         normalize baseKey, isDown, mods
+
+    let tryMapSvgIntent rawKey isKeyDown isComposing isNativeEditableTarget =
+        if not isKeyDown || isComposing || isNativeEditableTarget then
+            None
+        else
+            match normalize rawKey with
+            | ViewerKey.ArrowRight
+            | ViewerKey.ArrowDown -> Some SvgKeyboardIntent.FocusNext
+            | ViewerKey.ArrowLeft
+            | ViewerKey.ArrowUp -> Some SvgKeyboardIntent.FocusPrevious
+            | ViewerKey.Enter
+            | ViewerKey.Space -> Some SvgKeyboardIntent.ActivateFocused
+            | ViewerKey.Escape -> Some SvgKeyboardIntent.ClearSelection
+            | _ -> None
 
     // Issue 333 (epic 330): the R3 "wire the keymap into live dispatch" seam. A `Keymap` is pure data
     // (issue 331) and `Keymap.resolve` maps a `KeyId` to a `CommandId` (issue 332); this composes the

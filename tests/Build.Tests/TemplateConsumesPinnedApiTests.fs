@@ -2586,8 +2586,14 @@ let private omissionLedger =
 /// until SVG-SCENE-02.7 supplies candidate consumers and SVG-PREVIEW-A publishes and moves the pin.
 /// Teaching them before that publication would make the mirror disagree with the package a normal
 /// generated workspace can restore. The ledger stanza records the precise temporary boundary.
+///
+/// Raised 508 -> 515 by SVG-SCENE-02.4: the same unpublished Scene candidate now carries the retained
+/// document-interaction reducer (one module and five types), and KeyboardInput carries its narrow portable
+/// SVG intent type. They remain deliberately outside the generated-workspace mirror until the existing
+/// SVG-SCENE-02.7/SVG-PREVIEW-A consumer and publication boundary; the ledger extends that one temporary
+/// candidate curation rather than teaching APIs the published 0.28.0 package does not contain.
 [<Literal>]
-let private OmissionLedgerCeiling = 508
+let private OmissionLedgerCeiling = 515
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
