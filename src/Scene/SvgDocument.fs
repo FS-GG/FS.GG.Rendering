@@ -343,9 +343,12 @@ module SvgDocument =
                 | SvgAdapterResult.Invalid adapterIssues
                 | SvgAdapterResult.Unsupported adapterIssues ->
                     adapterIssues |> List.iter (fun adapterIssue -> add "unsupported-scene-leaf" path adapterIssue.Reason)
-            | SvgElementContent.SymbolInstance(_, Some viewport) when not (validRect viewport) ->
-                add "invalid-symbol-viewport" (path + "/viewport") "symbol viewport must be finite and non-negative"
-            | SvgElementContent.SymbolInstance(reference, _) -> requireDefinition "symbol" path reference
+            | SvgElementContent.SymbolInstance(reference, viewport) ->
+                viewport
+                |> Option.iter (fun value ->
+                    if not (validRect value) then
+                        add "invalid-symbol-viewport" (path + "/viewport") "symbol viewport must be finite and non-negative")
+                requireDefinition "symbol" path reference
 
         let rec validateDefinition path (definition: SvgDefinition) =
             if String.IsNullOrWhiteSpace definition.Id then add "blank-definition-id" (path + "/id") "definition id must not be blank"

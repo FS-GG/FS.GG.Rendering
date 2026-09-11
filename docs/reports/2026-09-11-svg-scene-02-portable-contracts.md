@@ -21,9 +21,10 @@ bypass the existing supported Scene subset.
 `SvgAffine.compose parent local` uses the SVG six-value convention and applies `local` before `parent`.
 Unit tests independently calculate translate/rotate, skew/non-uniform reflection and inverse examples;
 singular and non-finite inverses return typed errors. The .NET and Fable/Node consumers compile these
-contracts solely from a locally packed `FS.GG.UI.Scene 0.29.0-preview.1` candidate. They also construct
-asset and build-extension descriptors. Serialization remains `ContractOnly` until SVG-SCENE-02.3; no
-browser, editor, session, or extension runtime is claimed.
+contracts solely from a locally packed `FS.GG.UI.Scene 0.29.0-preview.1` candidate and execute the same
+translate/rotate, skew/reflection, singular and non-finite checks. They also construct asset and
+build-extension descriptors. Serialization remains `ContractOnly` until SVG-SCENE-02.3; no browser,
+editor, session, or extension runtime is claimed.
 
 The local candidate identity is `FS.GG.UI.Scene 0.29.0-preview.1`. Its archive is a rehearsal artifact,
 not a publication receipt; exact release bytes remain owned by SVG-PREVIEW-A's candidate-first gate.

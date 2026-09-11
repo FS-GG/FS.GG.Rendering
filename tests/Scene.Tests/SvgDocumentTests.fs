@@ -106,6 +106,16 @@ let tests =
             Expect.exists issues (fun value -> value.Code = "unsupported-scene-leaf") "direct construction cannot bypass Scene support checks"
         }
 
+        test "invalid symbol viewport does not bypass reference validation" {
+            let instance =
+                { leaf "invalid-instance" with
+                    Content = SvgElementContent.SymbolInstance("missing-symbol", Some(rect 0.0 0.0 Double.NaN 1.0)) }
+            let issues = SvgDocument.validate 100 SvgDocument.defaultLimits (document [] [ instance ])
+            let codes = issues |> List.map _.Code |> Set.ofList
+            Expect.contains codes "invalid-symbol-viewport" "invalid viewport is diagnosed"
+            Expect.contains codes "missing-reference" "the symbol reference is still validated"
+        }
+
         test "foundation adapter preserves semantic and render identity separately" {
             let retained =
                 { RootId = "root"
