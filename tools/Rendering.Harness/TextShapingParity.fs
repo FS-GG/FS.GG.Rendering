@@ -19,7 +19,7 @@ type TextShapingParityCapture =
       Diagnostics: string list }
 
 module TextShapingParity =
-    let capture mode fixture result =
+    let capture mode (fixture: TextShapingFixture) result =
         { FixtureId = fixture.Id
           Mode = mode
           Metrics = Scene.measureShapedText result

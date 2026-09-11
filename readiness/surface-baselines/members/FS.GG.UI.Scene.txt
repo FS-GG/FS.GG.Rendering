@@ -445,6 +445,30 @@ FS.GG.UI.Scene.RetainedInspectionSummary.RunId : System.String [get]
 FS.GG.UI.Scene.RetainedInspectionSummary.StatusCounts : Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>> [get]
 FS.GG.UI.Scene.RetainedInspectionSummary.UnsupportedFacts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact> [get]
 FS.GG.UI.Scene.RetainedInspectionSummary.new(System.String, FS.GG.UI.Scene.RetainedInspectionStatus, System.Int32, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Int32>>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.Double, Microsoft.FSharp.Collections.FSharpList<System.String>>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.DamageLocalityFinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.VisualInspectionUnsupportedFact>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Tuple<System.String, System.String>>, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.RetainedInteractionError+Tags.InvalidCamera : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.InvalidScene : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.NonIncreasingRevision : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.ObjectNotSelectable : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.PointerNotCaptured : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.StaleRevision : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.UnknownObject : System.Int32
+FS.GG.UI.Scene.RetainedInteractionError+Tags.UnsupportedScene : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.CapturePointer : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.ClearSelection : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.FocusNext : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.FocusPrevious : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.ReleasePointer : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.ReplaceScene : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.Select : System.Int32
+FS.GG.UI.Scene.RetainedInteractionMessage+Tags.SetCamera : System.Int32
+FS.GG.UI.Scene.RetainedInteractionResult.Error : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedInteractionError> [get]
+FS.GG.UI.Scene.RetainedInteractionResult.State : FS.GG.UI.Scene.RetainedInteractionState [get]
+FS.GG.UI.Scene.RetainedInteractionResult.new(FS.GG.UI.Scene.RetainedInteractionState, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.RetainedInteractionError>)
+FS.GG.UI.Scene.RetainedInteractionState.CapturedPointerId : Microsoft.FSharp.Core.FSharpOption<System.Int32> [get]
+FS.GG.UI.Scene.RetainedInteractionState.FocusedObjectId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedInteractionState.Scene : FS.GG.UI.Scene.RetainedScene [get]
+FS.GG.UI.Scene.RetainedInteractionState.SelectedObjectId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.RetainedInteractionState.new(FS.GG.UI.Scene.RetainedScene, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.Int32>)
 FS.GG.UI.Scene.RetainedNodeInspection.AffectedRegionIds : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.Scene.RetainedNodeInspection.CurrentBounds : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Rect> [get]
 FS.GG.UI.Scene.RetainedNodeInspection.Diagnostics : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
@@ -468,6 +492,15 @@ FS.GG.UI.Scene.RetainedNodeStatus+Tags.Shifted : System.Int32
 FS.GG.UI.Scene.RetainedNodeStatus+Tags.ShiftedAndRepainted : System.Int32
 FS.GG.UI.Scene.RetainedNodeStatus+Tags.Unaffected : System.Int32
 FS.GG.UI.Scene.RetainedNodeStatus+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.RetainedScene.Camera : FS.GG.UI.Scene.SvgCamera [get]
+FS.GG.UI.Scene.RetainedScene.Layers : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RetainedSceneLayer> [get]
+FS.GG.UI.Scene.RetainedScene.Revision : System.Int32 [get]
+FS.GG.UI.Scene.RetainedScene.RootId : System.String [get]
+FS.GG.UI.Scene.RetainedScene.new(System.String, System.Int32, FS.GG.UI.Scene.SvgCamera, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.RetainedSceneLayer>)
+FS.GG.UI.Scene.RetainedSceneLayer.Id : System.String [get]
+FS.GG.UI.Scene.RetainedSceneLayer.Objects : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SemanticSceneObject> [get]
+FS.GG.UI.Scene.RetainedSceneLayer.Visible : System.Boolean [get]
+FS.GG.UI.Scene.RetainedSceneLayer.new(System.String, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SemanticSceneObject>)
 FS.GG.UI.Scene.Scene.Nodes : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneNode> [get]
 FS.GG.UI.Scene.Scene.arc(FS.GG.UI.Scene.Rect, System.Double, System.Double, FS.GG.UI.Scene.Paint) : FS.GG.UI.Scene.Scene
 FS.GG.UI.Scene.Scene.buildFallbackShapedText(System.String, FS.GG.UI.Scene.FontSpec) : FS.GG.UI.Scene.ShapedTextResult
@@ -627,6 +660,11 @@ FS.GG.UI.Scene.SemanticComparison.Diagnostics : Microsoft.FSharp.Collections.FSh
 FS.GG.UI.Scene.SemanticComparison.Equivalent : System.Boolean [get]
 FS.GG.UI.Scene.SemanticComparison.ExpectedCapabilities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind> [get]
 FS.GG.UI.Scene.SemanticComparison.new(System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SceneElementKind>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PackageDiagnostic>)
+FS.GG.UI.Scene.SemanticSceneObject.AccessibleLabel : System.String [get]
+FS.GG.UI.Scene.SemanticSceneObject.Content : FS.GG.UI.Scene.Scene [get]
+FS.GG.UI.Scene.SemanticSceneObject.Id : System.String [get]
+FS.GG.UI.Scene.SemanticSceneObject.Selectable : System.Boolean [get]
+FS.GG.UI.Scene.SemanticSceneObject.new(System.String, System.Boolean, System.String, FS.GG.UI.Scene.Scene)
 FS.GG.UI.Scene.Shader+Tags.LinearGradient : System.Int32
 FS.GG.UI.Scene.Shader+Tags.RadialGradient : System.Int32
 FS.GG.UI.Scene.Shader+Tags.SolidColor : System.Int32
@@ -686,6 +724,22 @@ FS.GG.UI.Scene.StrokeCap+Tags.Square : System.Int32
 FS.GG.UI.Scene.StrokeJoin+Tags.Bevel : System.Int32
 FS.GG.UI.Scene.StrokeJoin+Tags.Miter : System.Int32
 FS.GG.UI.Scene.StrokeJoin+Tags.RoundJoin : System.Int32
+FS.GG.UI.Scene.SvgAdapterIssue.NodePath : Microsoft.FSharp.Collections.FSharpList<System.Int32> [get]
+FS.GG.UI.Scene.SvgAdapterIssue.ObjectId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgAdapterIssue.Reason : System.String [get]
+FS.GG.UI.Scene.SvgAdapterIssue.new(Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<System.Int32>, System.String)
+FS.GG.UI.Scene.SvgAdapterResult+Tags.Invalid : System.Int32
+FS.GG.UI.Scene.SvgAdapterResult+Tags.Rendered : System.Int32
+FS.GG.UI.Scene.SvgAdapterResult+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.SvgCamera.PanX : System.Double [get]
+FS.GG.UI.Scene.SvgCamera.PanY : System.Double [get]
+FS.GG.UI.Scene.SvgCamera.Zoom : System.Double [get]
+FS.GG.UI.Scene.SvgCamera.new(System.Double, System.Double, System.Double)
+FS.GG.UI.Scene.SvgRetained.project(FS.GG.UI.Scene.RetainedScene) : FS.GG.UI.Scene.SvgAdapterResult
+FS.GG.UI.Scene.SvgRetained.toScreenPoint(FS.GG.UI.Scene.SvgCamera, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.Point
+FS.GG.UI.Scene.SvgRetained.tryCreateInteraction(FS.GG.UI.Scene.RetainedScene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.RetainedInteractionState, FS.GG.UI.Scene.RetainedInteractionError>
+FS.GG.UI.Scene.SvgRetained.tryToScenePoint(FS.GG.UI.Scene.SvgCamera, FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Point>
+FS.GG.UI.Scene.SvgRetained.update(FS.GG.UI.Scene.RetainedInteractionMessage, FS.GG.UI.Scene.RetainedInteractionState) : FS.GG.UI.Scene.RetainedInteractionResult
 FS.GG.UI.Scene.TargetCapabilityProfile.ProfileId : System.String [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.SupportedCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)

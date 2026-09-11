@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>FS.GG.UI.Scene.Fable.Metadata</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Types.fsi" />
+    <Compile Include="Types.fs" />
+    <Compile Include="RetainedSvg.fsi" />
+    <Compile Include="RetainedSvg.fs" />
+  </ItemGroup>
+</Project>
