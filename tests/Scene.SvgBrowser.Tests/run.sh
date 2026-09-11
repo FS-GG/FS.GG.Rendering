@@ -35,7 +35,7 @@ dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$w
 npm ci --prefix "$work/Browser"
 npm run --prefix "$work/Browser" build
 source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" | sha256sum | cut -d' ' -f1)"
-package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | while IFS= read -r -d '' package; do sha256sum "$package" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1)"
 if [[ -n "${SVG_SCENE_ORCA_OBSERVATION:-}" ]]; then
   SVG_SCENE_AT_SOURCE_DIGEST="sha256:$source_digest" SVG_SCENE_AT_PACKAGE_DIGEST="sha256:$package_digest" \
     bash "$work/Browser/run-orca.sh" "$work/Browser" "$SVG_SCENE_ORCA_OBSERVATION"
