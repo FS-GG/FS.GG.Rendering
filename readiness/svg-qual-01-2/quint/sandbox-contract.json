@@ -1,0 +1,1 @@
+{"schema":"fsgg.quint.os-sandbox/v1","platform":"linux-amd64","primitive":"user-network-namespace","launcher":"/usr/bin/unshare","arguments":["--user","--map-root-user","--net","--"]}

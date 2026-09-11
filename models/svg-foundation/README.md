@@ -1,29 +1,35 @@
 # Retained interaction model
 
-`retainedInteraction.qnt` models the shared-state revision and selection rules in
-`src/Scene/RetainedSvg.fs`. One reducer call is one atomic transition. Browser events, rendering,
-pointer coordinates, and game-command policy are outside this bounded model.
+`retained-interaction.md` is the single editable profile-2 authority for the retained SVG reducer.
+Its explicit bindings are in `retained-interaction.bindings.json`; installed SDD 1.7.0 extracts the
+committed evidence under `readiness/svg-qual-01-2/`. The extracted `.qnt` is generated evidence and
+must not be edited directly.
 
-The bound uses revisions 0–3, two selectable identities (1 and 2), identity 0 for no selection,
-and an unavailable identity outside that set. It witnesses current-revision selection,
-stale-revision rejection, selection preservation when an identity survives a newer revision, and
-selection clearing when it does not. `SvgFoundationRetainedTests.fs` enumerates the corresponding
-F# state/command matrix and contains a mutation witness that fails when stale selection is applied.
+The model binds every public retained interaction message to a Quint action: Select, ReplaceScene,
+ClearSelection, FocusNext, FocusPrevious, SetCamera, CapturePointer, and ReleasePointer. A fixed-seed
+bounded Quint run emits ITF witnesses, and `extract-retained-traces.py` converts those model states
+into `retained-interaction.traces.tsv`. The isolated .NET and Fable/Node package consumers replay that
+same corpus through `SvgRetained.update`, compare every resulting projection, and report the first
+divergence. Mutated Select-to-ClearSelection dispatch and stale-error acceptance must both diverge.
 
-Run the model with Quint 0.32.0:
+Run the public installed qualification with exact Quint and lmt objects:
 
 ```console
-quint typecheck models/svg-foundation/retainedInteraction.qnt
-quint typecheck models/svg-foundation/retainedInteractionTest.qnt
-quint test models/svg-foundation/retainedInteractionTest.qnt --main retainedInteractionTest
-quint run models/svg-foundation/retainedInteraction.qnt --main retainedInteraction --invariant revisionNeverDecreases --witnesses currentSelectionWitness staleSelectionWitness --max-steps 20
+QUINT_BIN=/path/to/quint-linux-amd64 \
+LMT_BIN=/path/to/lmt \
+tests/svg-foundation/qualify-retained-profile.sh /tmp/svg-retained-qualification.json
+
+dotnet test tests/Scene.Tests/Scene.Tests.fsproj --filter "SVG foundation retained scene"
+bash tests/Scene.PortableConsumers/run.sh
 ```
 
-The model uses the default `init` and `step` actions. These direct runs are bounded design evidence;
-they do not qualify the unavailable `fsgg-quint-profile/2` cache recorded by SVG-FOUND-01.1.
+The qualification installs `FS.GG.SDD.Cli` 1.7.0 from nuget.org, then disables network access. It
+authors and inspects twice in scratch, compares both results with the committed extraction, runs the
+exact extracted module's tests and two identical bounded runs, compares the generated trace corpus,
+and proves stale source ranges and stale action declarations fail without writing authority.
 
-Correspondence:
-
-- `reduceSelect` ↔ `SvgRetained.update (RetainedInteractionMessage.Select ...)`
-- `reduceReplace` ↔ `SvgRetained.update (RetainedInteractionMessage.ReplaceScene ...)`
-- `retainedInteractionTest.qnt` ↔ `tests/Scene.Tests/SvgFoundationRetainedTests.fs`
+The evidence is bounded to 12 steps, 16 traces, two selectable identities, small revision and pointer
+domains, and integer camera samples. It proves correspondence for those witnesses and transition
+classes. It does not establish temporal liveness, exhaustive state-space coverage, or numerical
+equivalence for floating-point camera values; production tests separately cover finite-value
+validation, and the browser suite stays at the rendering/effect boundary.
