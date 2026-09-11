@@ -2579,8 +2579,15 @@ let private omissionLedger =
 /// input to the existing SkillMirror verification family. The template still deliberately teaches only
 /// `Schemas.PerformanceIntentDeclaration`; the new toolchain-only type continues the documented
 /// SkillMirror curation and is reconciled in the omission ledger and member manifest.
+///
+/// Raised 483 -> 508 by SVG-SCENE-02.2: the locally packed Scene 0.29.0-preview.1 candidate adds two
+/// modules and twenty-three types for the portable document, affine and packaging envelopes. Like the
+/// retained candidate stanza from SVG-FOUND-01.2, these remain outside the generated-workspace mirror
+/// until SVG-SCENE-02.7 supplies candidate consumers and SVG-PREVIEW-A publishes and moves the pin.
+/// Teaching them before that publication would make the mirror disagree with the package a normal
+/// generated workspace can restore. The ledger stanza records the precise temporary boundary.
 [<Literal>]
-let private OmissionLedgerCeiling = 483
+let private OmissionLedgerCeiling = 508
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

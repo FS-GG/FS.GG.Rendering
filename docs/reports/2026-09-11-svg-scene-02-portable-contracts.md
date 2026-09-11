@@ -54,3 +54,11 @@ preserved. The first whole-solution no-restore attempt in the fresh Rendering wo
 Rendering still lacks a base-loaded repository routine validator; canonical routine fixtures and the
 protected PR checks are recorded instead of expanding this product change into governance bootstrap.
 No S.I.R. access occurred.
+
+The first protected deterministic run (`34639780361`, job `103396527722`) exposed the expected
+candidate/publication seam: the exact-head package exported the new modules and types while the generated
+workspace mirror still correctly described public `0.28.0`. The repair adds a reasoned temporary
+mirror-omission stanza and raises its explicit ceiling from 483 to 508. A faithful local reproduction
+packed the whole coherent framework at `0.28.0`; all 20 applicable template/pin tests then passed (two
+immutable-oracle cases were skipped by their existing policy). The stanza must be removed when
+SVG-PREVIEW-A publishes and moves the pin, allowing the mirror generator to read those public bytes.
