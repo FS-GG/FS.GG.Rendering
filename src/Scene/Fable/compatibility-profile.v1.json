@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "profileId": "fs-gg-ui-scene-retained-svg-v1",
+  "status": "candidate-contract",
+  "packageId": "FS.GG.UI.Scene",
+  "target": "javascript",
+  "surfaces": [
+    {
+      "name": "Scene types and retained SVG contract/reducer",
+      "grade": "Portable",
+      "evidence": "isolated .NET and Fable consumers compile the locally packed candidate"
+    },
+    {
+      "name": "Scene constructors, text shaping, inspection, evidence, codec, wire format and animation",
+      "grade": "DotNetOnly",
+      "evidence": "implementation sources are absent from the curated Fable project"
+    }
+  ],
+  "defaultGrade": "Unclassified"
+}

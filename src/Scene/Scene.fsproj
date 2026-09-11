@@ -7,12 +7,47 @@
     <AssemblyName>FS.GG.UI.Scene</AssemblyName>
     <Title>FS.GG.UI.Scene</Title>
     <Description>Dependency-light scene vocabulary for FS.GG.UI V3 products.</Description>
-    <PackageTags>fsharp;skia;scene;ui</PackageTags>
+    <PackageTags>fsharp;scene;ui;svg;fable-javascript;fable-dotnet</PackageTags>
+    <FablePackageType>library</FablePackageType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fable.Package.SDK"
+                      PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
+
+  <!-- The normal assembly retains the complete Scene implementation. Fable consumers receive the
+       same canonical types plus the portable retained contract/reducer only; codec, hashing,
+       inspection, animation and text-shaping implementations remain outside the browser graph. -->
+  <Target Name="CurateFableCompatibilityView"
+          AfterTargets="CreateFablePackageFiles">
+    <ItemGroup>
+      <_PackageFiles Remove="@(_PackageFiles)" />
+      <_PackageFiles Include="Types.fsi;Types.fs;RetainedSvg.fsi;RetainedSvg.fs">
+        <Pack>true</Pack>
+        <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+      <_PackageFiles Include="Fable/FS.GG.UI.Scene.fsproj">
+        <Pack>true</Pack>
+        <PackagePath>fable/FS.GG.UI.Scene.fsproj</PackagePath>
+        <BuildAction>None</BuildAction>
+      </_PackageFiles>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup Label="fable-compatibility-metadata">
+    <None Include="Fable/compatibility-profile.v1.json"
+          Pack="true"
+          PackagePath="fable-compatibility/compatibility-profile.v1.json" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Types.fsi" />
     <Compile Include="Types.fs" />
+    <Compile Include="RetainedSvg.fsi" />
+    <Compile Include="RetainedSvg.fs" />
     <Compile Include="TextShaping.fsi" />
     <Compile Include="TextShaping.fs" />
     <Compile Include="Scene.fsi" />
