@@ -12,6 +12,8 @@ import re
 import subprocess
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 
@@ -25,6 +27,44 @@ def fail(message: str) -> None:
 def flat_container_filename(package_id: str, version: str) -> str:
     """Return the NuGet V3 flat-container archive name (always lowercase)."""
     return f"{package_id}.{version}.nupkg".lower()
+
+
+def verified_archive(path: Path, package_id: str, version: str) -> str:
+    if not path.is_file():
+        fail(f"supported NuGet client archive is absent: {path}")
+    try:
+        with zipfile.ZipFile(path) as archive:
+            nuspecs = [name for name in archive.namelist() if name.lower().endswith(".nuspec")]
+            if len(nuspecs) != 1:
+                fail(f"supported NuGet client archive has {len(nuspecs)} nuspecs, expected one")
+            root = ET.fromstring(archive.read(nuspecs[0]))
+    except (OSError, zipfile.BadZipFile, ET.ParseError) as exc:
+        fail(f"supported NuGet client archive is invalid: {exc}")
+    identity = next((node.text for node in root.iter() if node.tag.rsplit("}", 1)[-1] == "id"), None)
+    observed_version = next(
+        (node.text for node in root.iter() if node.tag.rsplit("}", 1)[-1] == "version"), None
+    )
+    if identity != package_id or observed_version != version:
+        fail(
+            f"supported NuGet client archive identity mismatch: expected {package_id} {version}, "
+            f"observed {identity} {observed_version}"
+        )
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def version_index(url: str, token: str, username: str, package_id: str) -> tuple[int, list[str]]:
+    observed, body = request(url, token, username)
+    if observed == 404:
+        return observed, []
+    if observed != 200:
+        fail(f"GitHub Packages collision state unavailable for {package_id}: HTTP {observed}")
+    try:
+        versions = json.loads(body).get("versions")
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError) as exc:
+        fail(f"GitHub Packages version index is invalid for {package_id}: {exc}")
+    if not isinstance(versions, list) or not all(isinstance(item, str) for item in versions):
+        fail(f"GitHub Packages version index has no valid versions array for {package_id}")
+    return observed, versions
 
 
 def git(root: Path, *args: str) -> str:
@@ -144,8 +184,7 @@ def main() -> int:
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--workflow-sha", required=True)
-    parser.add_argument("--github-app-id", required=True)
-    parser.add_argument("--github-installation-id", required=True)
+    parser.add_argument("--github-username", required=True)
     parser.add_argument("--github-repository", required=True)
     parser.add_argument("--github-workflow-ref", required=True)
     parser.add_argument("--github-run-id", required=True)
@@ -154,21 +193,22 @@ def main() -> int:
     parser.add_argument("--github-workflow-username")
     parser.add_argument("--diagnostic", type=Path)
     parser.add_argument(
-        "--github-url-template",
-        default="https://nuget.pkg.github.com/FS-GG/download/{id_lower}/{version}/{filename}",
+        "--github-index-template",
+        default="https://nuget.pkg.github.com/FS-GG/download/{id_lower}/index.json",
     )
     parser.add_argument(
         "--nuget-url-template",
         default="https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}",
     )
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--github-anchor-archive", type=Path, required=True)
     args = parser.parse_args()
 
     root = args.repo_root.resolve()
     if not SHA.fullmatch(args.source_sha) or not SHA.fullmatch(args.workflow_sha):
         fail("source and workflow identities must be exact lowercase 40-hex SHAs")
-    if not args.github_app_id.isdigit() or not args.github_installation_id.isdigit():
-        fail("GitHub App and installation identities must be decimal IDs")
+    if not args.github_username:
+        fail("GitHub workflow actor identity is required")
     if args.github_repository != "FS-GG/FS.GG.Rendering":
         fail(f"unexpected GitHub repository identity {args.github_repository!r}")
     if "/.github/workflows/release.yml@" not in args.github_workflow_ref:
@@ -239,40 +279,37 @@ def main() -> int:
                 json.dumps(diagnostic, indent=2, sort_keys=True) + "\n"
             )
         print("release-preflight: historical publisher diagnostic " + json.dumps(diagnostic, sort_keys=True))
-    anchor_lower = anchor_id.lower()
-    anchor_file = flat_container_filename(anchor_id, baseline)
-    anchor_url = args.github_url_template.format(
-        id=anchor_id, id_lower=anchor_lower, version=baseline, filename=anchor_file
-    )
-    anchor_status = status(anchor_url, token)
-    if anchor_status != 200:
-        fail(
-            f"authenticated GitHub Packages read unavailable: known {anchor_id} {baseline} "
-            f"returned HTTP {anchor_status}, expected 200"
-        )
+    anchor_sha256 = verified_archive(args.github_anchor_archive, anchor_id, baseline)
 
     observations = []
     for package_id in ids:
         lower = package_id.lower()
-        filename = flat_container_filename(package_id, args.version)
-        github_url = args.github_url_template.format(
-            id=package_id, id_lower=lower, version=args.version, filename=filename
-        )
+        github_url = args.github_index_template.format(id=package_id, id_lower=lower)
         nuget_url = args.nuget_url_template.format(
-            id=package_id, id_lower=lower, version=args.version, filename=filename
+            id=package_id,
+            id_lower=lower,
+            version=args.version,
+            filename=flat_container_filename(package_id, args.version),
         )
-        github_status = status(github_url, token)
+        github_status, github_versions = version_index(
+            github_url, token, args.github_username, package_id
+        )
         nuget_status = status(nuget_url)
-        for feed, observed in (("GitHub Packages", github_status), ("nuget.org", nuget_status)):
-            if observed == 200:
-                fail(f"collision: {package_id} {args.version} already exists on {feed}")
-            if observed != 404:
-                fail(
-                    f"{feed} collision state unavailable for {package_id} {args.version}: "
-                    f"HTTP {observed}, expected 404 absent or 200 collision"
-                )
+        if args.version in github_versions:
+            fail(f"collision: {package_id} {args.version} already exists on GitHub Packages")
+        if nuget_status == 200:
+            fail(f"collision: {package_id} {args.version} already exists on nuget.org")
+        if nuget_status != 404:
+            fail(
+                f"nuget.org collision state unavailable for {package_id} {args.version}: "
+                f"HTTP {nuget_status}, expected 404 absent or 200 collision"
+            )
         observations.append(
-            {"id": package_id, "githubPackages": github_status, "nugetOrg": nuget_status}
+            {
+                "id": package_id,
+                "githubPackages": {"indexStatus": github_status, "targetListed": False},
+                "nugetOrg": nuget_status,
+            }
         )
 
     receipt = {
@@ -296,16 +333,16 @@ def main() -> int:
         "githubReadAnchor": {
             "id": anchor_id,
             "version": baseline,
-            "status": anchor_status,
+            "status": "restored-by-supported-nuget-client",
+            "sha256": anchor_sha256,
         },
         "collisions": observations,
         "permissions": {
             "githubPackages": {
-                "credential": "fs-gg-cross-repo-dispatch installation token",
-                "appId": args.github_app_id,
-                "installationId": args.github_installation_id,
-                "scope": f"{args.github_repository}:packages:read",
-                "proof": "authenticated baseline read passed",
+                "credential": "repository GITHUB_TOKEN",
+                "principal": f"{args.github_repository} Actions as {args.github_username}",
+                "scope": f"{args.github_repository}:packages:write",
+                "proof": "the publishing principal restored the known baseline through the supported NuGet client and its authenticated version indexes proved all target versions absent",
             },
             "nugetOrg": "id-token:write job grant; NuGet/login completed before this script",
         },

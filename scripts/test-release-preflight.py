@@ -7,8 +7,10 @@ import importlib.util
 import base64
 import pathlib
 import sys
+import tempfile
 import unittest
 import urllib.error
+import zipfile
 from unittest.mock import patch
 
 
@@ -35,6 +37,50 @@ class Response:
 
 
 class StatusTests(unittest.TestCase):
+    def test_supported_client_archive_identity_is_bound(self):
+        with tempfile.TemporaryDirectory() as value:
+            archive = pathlib.Path(value) / "fs.gg.ui.scene.0.28.0.nupkg"
+            with zipfile.ZipFile(archive, "w") as output:
+                output.writestr(
+                    "FS.GG.UI.Scene.nuspec",
+                    "<package><metadata><id>FS.GG.UI.Scene</id><version>0.28.0</version></metadata></package>",
+                )
+            digest = MODULE.verified_archive(archive, "FS.GG.UI.Scene", "0.28.0")
+            self.assertEqual(64, len(digest))
+
+    def test_supported_client_archive_identity_mutation_is_rejected(self):
+        with tempfile.TemporaryDirectory() as value:
+            archive = pathlib.Path(value) / "fs.gg.ui.scene.0.28.0.nupkg"
+            with zipfile.ZipFile(archive, "w") as output:
+                output.writestr(
+                    "mutant.nuspec",
+                    "<package><metadata><id>FS.GG.UI.Canvas</id><version>0.28.0</version></metadata></package>",
+                )
+            with self.assertRaises(SystemExit):
+                MODULE.verified_archive(archive, "FS.GG.UI.Scene", "0.28.0")
+
+    def test_version_index_distinguishes_existing_package_and_absent_target(self):
+        body = b'{"versions":["0.28.0"]}'
+        with patch.object(MODULE, "request", return_value=(200, body)):
+            status, versions = MODULE.version_index(
+                "https://feed/index.json", "token", "release-actor", "FS.GG.UI.Scene"
+            )
+        self.assertEqual(200, status)
+        self.assertEqual(["0.28.0"], versions)
+        self.assertNotIn("0.29.0", versions)
+
+    def test_version_index_unavailable_or_malformed_fails_closed(self):
+        with patch.object(MODULE, "request", return_value=(403, b"")):
+            with self.assertRaises(SystemExit):
+                MODULE.version_index(
+                    "https://feed/index.json", "token", "release-actor", "FS.GG.UI.Scene"
+                )
+        with patch.object(MODULE, "request", return_value=(200, b"not-json")):
+            with self.assertRaises(SystemExit):
+                MODULE.version_index(
+                    "https://feed/index.json", "token", "release-actor", "FS.GG.UI.Scene"
+                )
+
     def test_flat_container_archive_filename_is_lowercase(self):
         expected = "fs.gg.ui.scene.0.28.0.nupkg"
         self.assertEqual(
@@ -122,20 +168,24 @@ class StatusTests(unittest.TestCase):
         self.assertIn("packages: write", block)
         self.assertIn("id-token: write", block)
         self.assertIn("uses: NuGet/login@v1", block)
-        self.assertIn("uses: actions/create-github-app-token@v2", block)
-        self.assertIn("permission-packages: read", block)
-        self.assertIn("FSGG_PACKAGE_READ_TOKEN", block)
         self.assertIn("FSGG_HISTORICAL_PUBLISH_TOKEN", block)
         self.assertIn("FSGG_HISTORICAL_PUBLISH_ACTOR", block)
         self.assertIn("--github-workflow-token-env FSGG_HISTORICAL_PUBLISH_TOKEN", block)
         self.assertIn('--github-workflow-username "$FSGG_HISTORICAL_PUBLISH_ACTOR"', block)
         self.assertIn("github-packages-auth-diagnostic.json", block)
-        self.assertIn('--github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID"', block)
+        self.assertIn("nuget-client-archive.py restore", block)
+        self.assertIn("--github-anchor-archive", block)
+        self.assertIn('--github-username "$FSGG_HISTORICAL_PUBLISH_ACTOR"', block)
         self.assertIn('--github-repository "$GITHUB_REPOSITORY"', block)
         self.assertIn('--github-workflow-ref "$GITHUB_WORKFLOW_REF"', block)
         self.assertIn('--github-run-id "$GITHUB_RUN_ID"', block)
         self.assertIn("release-preflight.py", block)
         self.assertNotIn("dotnet nuget push", block)
+        publish = release[release.index("  publish-packages:"):]
+        self.assertIn("nuget-client-archive.py probe", publish)
+        self.assertIn("nuget-client-archive.py restore", publish)
+        self.assertIn("release-custody.py compare", publish)
+        self.assertNotIn("nuget.pkg.github.com/FS-GG/download/{id_lower}/{version}/{filename}", publish)
         self.assertIn("needs: [plan, validate]", tags)
         self.assertIn("validate-only: true", tags)
         self.assertIn("source-sha: ${{ github.sha }}", tags)
