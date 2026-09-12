@@ -2609,8 +2609,12 @@ let private omissionLedger =
 /// Raised 492 -> 506 by SVG-AUTHOR-01.3-.4: the same unpublished Scene candidate adds three portable
 /// modules and eleven types for art tools, bounded geometry preparation, and verified resource-aware
 /// interchange. The existing .6/Preview-B boundary still owns generated teaching and publication.
+///
+/// Raised 506 -> 517 by SVG-AUTHOR-01.5: the unpublished candidate adds two modules and nine types for
+/// versioned editable scene interchange, generic entity/property descriptors, and grid/freeform placement.
+/// SVG-AUTHOR-01.6 owns generated consumption before SVG-PREVIEW-B publishes and teaches this surface.
 [<Literal>]
-let private OmissionLedgerCeiling = 506
+let private OmissionLedgerCeiling = 517
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
