@@ -34,31 +34,22 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
 
-  const root = page.locator("[data-scene-root-id='svg-foundation-root']");
-  await root.focus();
+  await page.keyboard.press("Tab");
   await waitForOrca();
-  // A fresh document places Orca back at its ordinary web-document boundary,
-  // so the equivalent native controls can be observed independently of the
-  // application's focus-mode transition.
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.svgFoundation !== undefined);
-  await waitForOrca();
-
-  const alpha = page.locator("[data-scene-control-id='alpha']");
-  await alpha.focus();
+  await page.keyboard.press("Tab");
   await waitForOrca();
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
-  const beta = page.locator("[data-scene-control-id='beta']");
-  await beta.focus();
+  await page.keyboard.press("Tab");
   await waitForOrca();
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await root.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
   await waitForOrca();
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
@@ -70,20 +61,17 @@ try {
 
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
-  const rectangle = page.getByRole("button", { name: "Rectangle", exact: true });
-  await rectangle.focus();
+  await page.keyboard.press("Tab");
   await waitForOrca();
-  await rectangle.click();
+  await page.keyboard.press("Space");
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
-  const translate = page.getByRole("textbox", { name: "Translate X", exact: true });
-  await translate.focus();
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press("Tab");
   await waitForOrca();
-  await translate.fill("not-a-number");
-  const apply = page.getByRole("button", { name: "Apply translation", exact: true });
-  await apply.focus();
+  await page.keyboard.type("not-a-number");
+  await page.keyboard.press("Tab");
   await waitForOrca();
-  await apply.click();
+  await page.keyboard.press("Enter");
   await waitForOrca();
   const validationFeedback = await page.locator("[role='status']").textContent();
   const selectionFeedback = await page.getByLabel("Current selection").textContent();
