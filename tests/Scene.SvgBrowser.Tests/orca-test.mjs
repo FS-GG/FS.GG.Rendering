@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { firefox } from "playwright-core";
 
 const fixture = dirname(fileURLToPath(import.meta.url));
@@ -30,29 +31,43 @@ const browser = await firefox.launch({ headless: false });
 const page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
 const address = server.address();
 const waitForOrca = () => page.waitForTimeout(1200);
+const focusWindow = (title) => {
+  const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
+  execFileSync("xdotool", ["windowfocus", "--sync", ids.at(-1)]);
+};
+const desktopKey = async (key) => {
+  execFileSync("xdotool", ["key", "--clearmodifiers", key]);
+  await page.waitForTimeout(250);
+};
+const tabTo = async (selector) => {
+  for (let index = 0; index < 20; index += 1) {
+    await desktopKey("Tab");
+    if (await page.locator(selector).evaluate((node) => node === document.activeElement)) return;
+  }
+  throw new Error(`Could not reach ${selector} through desktop Tab navigation`);
+};
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
-
-  await page.keyboard.press("Tab");
+  focusWindow("SVG foundation browser fixture");
+  await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
-  await page.keyboard.press("Tab");
+  await tabTo("[data-scene-control-id='alpha']");
   await waitForOrca();
-  await page.keyboard.press("Space");
+  await desktopKey("space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await page.keyboard.press("Tab");
+  await tabTo("[data-scene-control-id='beta']");
   await waitForOrca();
-  await page.keyboard.press("Space");
+  await desktopKey("space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
+  await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("Enter");
+  await desktopKey("Right");
+  await desktopKey("Return");
   await waitForOrca();
   const afterSvgKeyboard = await page.evaluate(() => window.svgFoundation.state());
 
@@ -61,17 +76,18 @@ try {
 
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
-  await page.keyboard.press("Tab");
+  focusWindow("SVG art studio fixture");
+  await tabTo("button[aria-label='Rectangle']");
   await waitForOrca();
-  await page.keyboard.press("Space");
+  await desktopKey("space");
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press("Tab");
+  await tabTo("input[aria-label='Translate X']");
   await waitForOrca();
-  await page.keyboard.type("not-a-number");
-  await page.keyboard.press("Tab");
+  execFileSync("xdotool", ["type", "--clearmodifiers", "not-a-number"]);
+  await tabTo("button[aria-label='Apply translation']");
   await waitForOrca();
-  await page.keyboard.press("Enter");
+  await desktopKey("Return");
   await waitForOrca();
   const validationFeedback = await page.locator("[role='status']").textContent();
   const selectionFeedback = await page.getByLabel("Current selection").textContent();

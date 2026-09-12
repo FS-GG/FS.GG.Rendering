@@ -67,7 +67,7 @@ jobs:
         working-directory: tests/Scene.SvgBrowser.Tests
         run: npx playwright-core install --with-deps chromium firefox webkit
       - name: Install Orca assistive-technology process
-        run: sudo apt-get update && sudo apt-get install --yes dbus-x11 orca speech-dispatcher-espeak-ng xvfb
+        run: sudo apt-get update && sudo apt-get install --yes dbus-x11 orca speech-dispatcher-espeak-ng xdotool xvfb
       - name: Exercise packed adapter in all browser families
         env:
           SVG_SCENE_ORCA_OBSERVATION: ${{ runner.temp }}/svg-browser-observations.orca.json
