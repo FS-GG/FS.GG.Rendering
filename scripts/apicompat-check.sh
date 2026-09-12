@@ -20,8 +20,8 @@
 #   readiness/surface-baselines/", which reads as though those baselines were a redundant second copy of
 #   what runs here. #694 read it exactly that way and filed #754 to retire them in favour of this gate.
 #   They answer different questions. This gate is SemVer-AWARE — it reports BREAKS, so ADDITIVE drift
-#   never errors here — and it exits 0 having compared nothing on `FeedUnavailable` (every fork PR: no
-#   token) and `NoBaselineYet`. It is not a floor. The baselines are also the API-symbol INPUT to
+#   never errors here — and older revisions exited 0 after comparing nothing on feed failure or an
+#   unreviewed missing baseline. This revision fails those states closed. The baselines are also the API-symbol INPUT to
 #   skill-parity evidence (Feature 168), so they are load-bearing regardless of what THIS gate does.
 #   The full argument lives ONCE, in the header of `scripts/refresh-surface-baselines.fsx` — read it
 #   before believing this gate replaces anything (one definition, two consumers, no drift; the #661 rule).
@@ -44,30 +44,28 @@
 #
 #     OK               packed, and ApiCompat found no break vs the baseline.
 #     BREAK            packed, and ApiCompat reported a CP#### error.            -> exit 1
-#     NoBaselineYet    the feed ANSWERED, and this package has no published version yet. Nothing to
-#                      compare against; a first publish is not a break.          -> exit 0
+#     FirstPublication the feed ANSWERED 404, and the reviewed release plan explicitly classifies
+#                      this package as a first publication. Nothing to compare. -> exit 0
 #     Indeterminate    the pack or the tool failed. The comparison did NOT happen, and the cause is
 #                      a fact about the tree under test, not about the network.  -> exit 3
-#     FeedUnavailable  the feed did not answer (transport error, 5xx, no token). The comparison did
-#                      not happen for a reason external to the change.           -> exit 0, ::error::
+#     Unavailable      the feed did not answer (transport error, 5xx, no token), or a package whose
+#                      plan requires a baseline returned 404. No comparison.     -> exit 5
 #
 #   Indeterminate used to exit 0. From Feature 211 until #186, all 17 packables failed to pack with
 #   NU1403 and the script reported `Indeterminate=17` and PASSED — seventeen out of seventeen never
 #   compared, and nothing said so above a per-project line in the job log. A pack failure is the tree
 #   failing to build under Release+PackageValidation; that is exactly what a gate should redden on.
 #
-#   FeedUnavailable is split OUT of Indeterminate so that the bound ADR-0101 relies on still holds:
-#   requiring this check takes a dependency on feed availability, and a feed outage must inform a
-#   merge, not block it. It is a loud `::error::` and a job-summary line, never a silent pass. The
-#   split is on WHO failed to answer, and it is drawn before packing (see `latest_version`) — pack
-#   logs are never pattern-matched for "looks like a network problem", because NU1403 looks exactly
-#   like one and was not.
+#   Unavailable is split OUT of Indeterminate and now fails closed. A release qualification cannot
+#   call an unavailable-only run green; a reviewed `first-publication` entry plus an answering 404 is
+#   the only legitimate no-comparison success. The split is drawn before packing (see
+#   `latest_version`) — pack logs are never pattern-matched for "looks like a network problem",
+#   because NU1403 looks exactly like one and was not.
 #
-# AUTH
-#   Needs read access to https://nuget.pkg.github.com/FS-GG. Provide a token via NUGET_FEED_TOKEN
-#   (CI: secrets.GITHUB_TOKEN with `packages: read`; locally: a PAT or `gh auth token`). CPM
-#   requires package source mapping, so we write a throwaway, source-mapped nuget.config that
-#   serves only FS.GG.* from the feed (everything else from nuget.org).
+# BASELINE SOURCE / AUTH
+#   The stable public release on nuget.org is the default baseline. A private-feed override may be
+#   supplied through APICOMPAT_TEST_FEED_URL/APICOMPAT_TEST_FEED_DL and then requires a token via
+#   NUGET_FEED_TOKEN (or GH_TOKEN/GITHUB_TOKEN). Every mode uses a throwaway source-mapped config.
 #
 # USAGE
 #   scripts/apicompat-check.sh [--baseline <version>]
@@ -78,13 +76,15 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-FEED_URL="${APICOMPAT_TEST_FEED_URL:-https://nuget.pkg.github.com/FS-GG/index.json}"
-FEED_DL="${APICOMPAT_TEST_FEED_DL:-https://nuget.pkg.github.com/FS-GG/download}"
+FEED_URL="${APICOMPAT_TEST_FEED_URL:-https://api.nuget.org/v3/index.json}"
+FEED_DL="${APICOMPAT_TEST_FEED_DL:-https://api.nuget.org/v3-flatcontainer}"
 FORCE_BASELINE=""
+RELEASE_PLAN="eng/release/svg-preview-a-0.29.0.json"
 SELF_TEST=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --baseline) FORCE_BASELINE="${2:-}"; shift 2 ;;
+    --release-plan) RELEASE_PLAN="${2:-}"; shift 2 ;;
     # Classify captured SDK output and exit. No feed, no pack, no network — so the required tier can run
     # it (ADR-0105) and the classifier below cannot rot unnoticed.
     --self-test) SELF_TEST=1; shift ;;
@@ -230,14 +230,14 @@ if [ -n "$SELF_TEST" ]; then
 fi
 
 token="${NUGET_FEED_TOKEN:-${GH_TOKEN:-${GITHUB_TOKEN:-}}}"
-if [ -z "$token" ]; then
-  # Fork PRs get no secret, by design (gate.yml FR-001/FR-013) — they must still merge, so this is
-  # exit 0. But it is FeedUnavailable, not a pass: nothing was compared.
+requires_auth=""
+[[ "$FEED_URL" == *nuget.pkg.github.com* ]] && requires_auth=1
+if [ -n "$requires_auth" ] && [ -z "$token" ]; then
   echo "::error title=ApiCompat did not run::no feed token (NUGET_FEED_TOKEN / GH_TOKEN / GITHUB_TOKEN) — no baseline could be read, so NO package was compared. This is not a pass." >&2
   summarize "### API compatibility gate — did not run" "" \
-            "No feed token, so every packable resolved \`FeedUnavailable\`. **Nothing was compared.**" \
-            "Exiting 0 so fork PRs still merge (ADR-0101)."
-  exit 0
+            "No feed token, so every packable resolved \`Unavailable\`. **Nothing was compared.**" \
+            "Failing closed: unavailable-only can never be reported as green."
+  exit 5
 fi
 feed_user="${NUGET_FEED_USER:-${GITHUB_ACTOR:-x-access-token}}"
 
@@ -253,7 +253,35 @@ export NUGET_PACKAGES="$workdir/packages"
 export NUGET_HTTP_CACHE_PATH="$workdir/http-cache"
 mkdir -p "$NUGET_PACKAGES" "$NUGET_HTTP_CACHE_PATH"
 
+if [ ! -f "$RELEASE_PLAN" ]; then
+  echo "::error title=ApiCompat release plan missing::$RELEASE_PLAN does not exist; first-publication status cannot be adjudicated." >&2
+  exit 5
+fi
+policy_file="$workdir/baseline-policy.tsv"
+python3 - "$RELEASE_PLAN" >"$policy_file" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as stream:
+    plan = json.load(stream)
+for package in plan.get("packages", []):
+    print(f"{package.get('id', '')}\t{package.get('apiBaseline', '')}")
+PY
+baseline_policy() { awk -F '\t' -v id="$1" '$1 == id { print $2 }' "$policy_file"; }
+
 cfg="$workdir/nuget.config"
+if [ -z "$requires_auth" ]; then
+cat > "$cfg" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="baseline" value="$FEED_URL" />
+  </packageSources>
+  <packageSourceMapping>
+    <packageSource key="baseline"><package pattern="*" /></packageSource>
+  </packageSourceMapping>
+</configuration>
+EOF
+else
 cat > "$cfg" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -274,6 +302,7 @@ cat > "$cfg" <<EOF
   </packageSourceCredentials>
 </configuration>
 EOF
+fi
 
 # Latest published version of a package id on the feed.
 #
@@ -309,8 +338,9 @@ latest_version() {
   body="$workdir/index.json"; err="$workdir/index.err"
   LV_STATUS=""; LV_VERSION=""; LV_ERR=""
 
-  http="$(curl -sSL -o "$body" -w '%{http_code}' \
-            -H "Authorization: Bearer $token" "$FEED_DL/$id_lower/index.json" 2>"$err")"
+  curl_args=(-sSL -o "$body" -w '%{http_code}')
+  [ -z "$requires_auth" ] || curl_args+=(-H "Authorization: Bearer $token")
+  http="$(curl "${curl_args[@]}" "$FEED_DL/$id_lower/index.json" 2>"$err")"
   rc=$?
   if [ "$rc" -ne 0 ]; then
     LV_STATUS=feedunavailable; LV_ERR="curl exit $rc: $(tr -d '\n' <"$err" | cut -c1-120)"; return
@@ -349,16 +379,21 @@ else
   mapfile -t projects < <(grep -rl '<IsPackable>true</IsPackable>' src --include='*.fsproj' | sort)
 fi
 
-echo "apicompat-check — ApiCompat/Package Validation vs the org feed baseline (REQUIRED check on main)"
+echo "apicompat-check — ApiCompat/Package Validation vs the stable public baseline (REQUIRED check on main)"
 echo "feed: $FEED_URL   packables: ${#projects[@]}"
 echo
 
-ok=0; broke=0; nobaseline=0; indeterminate=0; feedunavailable=0; stale=0
+ok=0; broke=0; firstpublication=0; notapplicable=0; indeterminate=0; unavailable=0; stale=0
 declare -a break_lines indeterminate_lines feed_lines stale_lines
 
 for proj in "${projects[@]}"; do
   pkgid="$(grep -oE '<PackageId>[^<]+</PackageId>' "$proj" | sed -E 's/<\/?PackageId>//g' | head -1)"
   [ -z "$pkgid" ] && pkgid="$(basename "$proj" .fsproj)"
+  policy="$(baseline_policy "$pkgid")"
+  if [ "$policy" = "not-applicable" ]; then
+    printf '  %-28s NotApplicable (dependency-only BOM/template has no public assembly surface)\n' "$pkgid"
+    notapplicable=$((notapplicable+1)); continue
+  fi
 
   if [ -n "$FORCE_BASELINE" ]; then
     baseline="$FORCE_BASELINE"
@@ -366,11 +401,15 @@ for proj in "${projects[@]}"; do
     latest_version "$pkgid"
     case "$LV_STATUS" in
       nobaseline)
-        printf '  %-28s NoBaselineYet (feed has no published version)\n' "$pkgid"
-        nobaseline=$((nobaseline+1)); continue ;;
+        if [ "$policy" = "first-publication" ]; then
+          printf '  %-28s FirstPublication (feed answered 404; explicitly admitted by release plan)\n' "$pkgid"
+          firstpublication=$((firstpublication+1)); continue
+        fi
+        printf '  %-28s Unavailable (feed answered 404, but release plan requires a baseline)\n' "$pkgid"
+        unavailable=$((unavailable+1)); feed_lines+=("    $pkgid: unexpected 404; policy=${policy:-missing}"); continue ;;
       feedunavailable)
-        printf '  %-28s FeedUnavailable (baseline lookup failed: %s)\n' "$pkgid" "$LV_ERR"
-        feedunavailable=$((feedunavailable+1)); feed_lines+=("    $pkgid: $LV_ERR"); continue ;;
+        printf '  %-28s Unavailable (baseline lookup failed: %s)\n' "$pkgid" "$LV_ERR"
+        unavailable=$((unavailable+1)); feed_lines+=("    $pkgid: $LV_ERR"); continue ;;
     esac
     baseline="$LV_VERSION"
   fi
@@ -456,7 +495,7 @@ done
 
 compared=$((ok + broke))
 echo
-echo "summary: OK=$ok  BREAK=$broke  StaleSuppression=$stale  NoBaselineYet=$nobaseline  Indeterminate=$indeterminate  FeedUnavailable=$feedunavailable  (total ${#projects[@]}, compared $compared)"
+echo "summary: Pass=$ok  BREAK=$broke  StaleSuppression=$stale  FirstPublication=$firstpublication  NotApplicable=$notapplicable  Indeterminate=$indeterminate  Unavailable=$unavailable  (total ${#projects[@]}, compared $compared)"
 
 if [ "$broke" -gt 0 ]; then
   echo
@@ -482,14 +521,14 @@ if [ "$indeterminate" -gt 0 ]; then
             "\`dotnet pack\` failed, so ApiCompat never ran for them. This is not a pass." "" \
             '```' "${indeterminate_lines[@]}" '```'
 fi
-if [ "$feedunavailable" -gt 0 ]; then
+if [ "$unavailable" -gt 0 ]; then
   echo
-  echo "FEED UNAVAILABLE — no baseline could be read for these packables (external to this change):"
+  echo "UNAVAILABLE — no required baseline could be read for these packables:"
   printf '%s\n' "${feed_lines[@]}"
-  echo "::error title=ApiCompat did not run::the package feed did not answer for $feedunavailable packable(s) — they were NOT compared. Exiting 0 (ADR-0101: a feed outage informs a merge, it does not block one)."
-  summarize "### API compatibility gate — feed unavailable" "" \
-            "$feedunavailable of ${#projects[@]} packables were **not compared**: the feed did not answer." \
-            "Exit 0 by decision (ADR-0101), not because the check passed." "" \
+  echo "::error title=ApiCompat unavailable::a required baseline was unavailable for $unavailable packable(s); they were NOT compared. Failing closed."
+  summarize "### API compatibility gate — unavailable (failed closed)" "" \
+            "$unavailable of ${#projects[@]} packables were **not compared**." \
+            "Unavailable-only never means green; rerun when the baseline is readable." "" \
             '```' "${feed_lines[@]}" '```'
 fi
 
@@ -501,4 +540,5 @@ fi
 # of #776.
 [ "$stale" -gt 0 ] && exit 4
 [ "$indeterminate" -gt 0 ] && exit 3
+[ "$unavailable" -gt 0 ] && exit 5
 exit 0

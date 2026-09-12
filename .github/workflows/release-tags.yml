@@ -53,13 +53,13 @@ name: release-tags
 #     version that does not exist (#679). Worse, the guard then read `pin == latest tag` as COHERENT,
 #     so RELEASE-PENDING was gone and NO FUTURE RUN WOULD EVER CUT OR PUBLISH IT. Un-retryable.
 #
-#   NOW    (plan → validate → cut → publish → rollback-on-failure)   a validator failure means NO TAG
+#   NOW    (plan → validate → cut → publish/replay)   a validator failure means NO TAG
 #     IS EVER PUSHED. The guard still says RELEASE-PENDING, so fixing the cause and pushing to `main`
-#     retries the entire release. And if the publish fails AFTER the cut — for a reason no pre-cut
-#     check can see, like a feed outage — `rollback-failed-cut` takes the tags back off, restoring the
-#     same retryable state.
+#     retries the entire release. If publication fails AFTER the cut, the immutable tags remain as the
+#     source identity and `release.yml` resumes from retained custody, replaying the original bytes only.
 #
-# Both orders fail into a freeze; only one of them can be un-frozen by fixing the code. That is #681.
+# Pre-cut validation failures remain retryable from a later main push. Post-cut publication failures
+# resume at the immutable tagged source from retained custody; neither path deletes or retargets tags.
 on:
   push:
     branches: [main]
@@ -317,6 +317,7 @@ jobs:
     # and it is skipped (`if: … && !inputs.validate-only`).
     permissions:
       contents: read
+      actions: read
       packages: write
       id-token: write
     # NO `secrets: inherit`, unlike the `release` call below. The only job in `release.yml` that reads a
@@ -385,89 +386,17 @@ jobs:
     # write` for the org feed, `id-token: write` to mint the nuget.org Trusted Publishing token (ADR-0013).
     permissions:
       contents: read
+      actions: read
       packages: write
       id-token: write
     # `NUGET_USER` is read by release.yml's NuGet/login step and is not a `workflow_call` input.
     secrets: inherit
 
-  # #681 — ROLL BACK A TAG TRIPLE WHOSE PUBLISH FAILED. The compensating half.
-  #
-  # `validate` removes the KNOWN cause of #679 (a validator that only ever ran after the cut). It cannot
-  # remove every cause: the publish can still fail AFTER the tags are pushed, for reasons no pre-cut
-  # check can see — nuget.org 5xx, an expired Trusted-Publishing trust, a feed outage. That lands the
-  # repo in exactly #679's state: tags cut, nothing published, and the guard then reporting `COHERENT`
-  # because pin == latest tag, which is indistinguishable from a release that WORKED. Un-retryable,
-  # and silent.
-  #
-  # So if the publish fails, the tags come back off. The guard returns to RELEASE-PENDING, and the next
-  # push to `main` retries the whole thing — cut included. A tag exists iff the publish behind it did.
-  #
-  # RETRYING IS SAFE EVEN IF THE PUBLISH PARTIALLY SUCCEEDED. `publish-packages` pushes with
-  # `--skip-duplicate`, and a nuget.org version cannot be deleted (only unlisted), so a re-run at the
-  # SAME version — which is what a retry produces, since `<Version>` is a property of the commit — is
-  # idempotent, not a conflict.
-  #
-  # This is a COMPENSATING action and it can itself fail (that is why `validate` above is the real fix,
-  # not this). It fails LOUD: the job reds, and the error names the tags a human must delete by hand.
-  # It is not a substitute for the guard learning that a tag with no package behind it is DRIFT rather
-  # than COHERENCE — that lives in `scripts/validate-version-coherence.fsx`, and is filed separately.
-  rollback-failed-cut:
-    name: Roll back the tag triple (the publish failed)
-    needs: [plan, cut, release]
-    # `always()` is required: without it a failed `release` skips this job, which is the one moment it
-    # exists for. Guarded to the exact state it repairs — the tags ARE pushed (`cut` succeeded) and the
-    # publish did NOT happen. A cancelled publish leaves the same phantom tags as a failed one.
-    if: >-
-      always()
-      && needs.cut.result == 'success'
-      && (needs.release.result == 'failure' || needs.release.result == 'cancelled')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # delete the tag triple it is taking back
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Delete the tags this run pushed
-        shell: bash
-        env:
-          TAGS: ${{ needs.plan.outputs.tags }}
-        run: |
-          set -uo pipefail
-          read -r -a tags <<< "$TAGS"
-
-          # Reverse order — drop `v<pkg>` FIRST. It is the tag whose presence means "the release is under
-          # way", and while it exists the guard reports every earlier tag as drift. Deleting it first
-          # means every intermediate state this loop passes through is one the guard can still read as
-          # RELEASE-PENDING, so even a rollback that dies halfway leaves a retryable repo.
-          failed=()
-          for (( i=${#tags[@]}-1; i>=0; i-- )); do
-            t="${tags[$i]}"
-            if git push origin --delete "$t"; then
-              echo "  $t — deleted"
-            else
-              failed+=("$t")
-              echo "::error::failed to delete $t"
-            fi
-          done
-
-          if (( ${#failed[@]} > 0 )); then
-            echo "::error::ROLLBACK INCOMPLETE. The publish failed and these tags could NOT be deleted: ${failed[*]}. Delete them BY HAND (git push origin --delete <tag>), or the coherence guard will report COHERENT over a version that was never published and this release can never be retried (#679/#681)."
-            exit 1
-          fi
-
-          echo "::error::The publish FAILED, so the tag triple was rolled back: ${tags[*]}. Nothing was released. The coherence guard is back to RELEASE-PENDING, so fixing the cause and pushing to main will retry the whole release — cut included. This job is red on purpose: a rolled-back release is not a successful one."
-          {
-            echo "### Release rolled back"
-            echo ""
-            echo "The publish failed, so these tags were deleted again:"
-            echo ""
-            for t in "${tags[@]}"; do echo "- \`$t\`"; done
-            echo ""
-            echo "Fix the cause and push to \`main\`; the release retries from the top."
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+  # SVG-PREVIEW-A.1: there is intentionally NO publish-failure tag deletion job. Once any package may
+  # have reached a feed, tags are immutable source identities. Retry the failed `release` job (or dispatch
+  # `release.yml` at the same tagged commit): it authenticates retained custody, reads back already-present
+  # packages, and replays only missing packages from the original archives. If custody is lost, choose a
+  # new coherent version; never recreate bytes or retarget/delete a published version's tags.
 
   # Sequenced AFTER the publish, not merely after the cut. `template-dispatch.yml` tells
   # FS.GG.Templates to open a pin-bump PR for this template version; that PR's restore can only
