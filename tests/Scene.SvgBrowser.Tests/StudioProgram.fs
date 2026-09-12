@@ -69,7 +69,7 @@ let addRectangle () =
 
 let cancelGesture () =
     let value = host.Value
-    let candidate = SvgArt.translate ["rectangle"] 4.0 0.0 value.State.Document |> Result.defaultWith (fun error -> failwithf "%A" error)
+    let candidate = SvgArt.translate value.ToolState.Selection 4.0 0.0 value.State.Document |> Result.defaultWith (fun error -> failwithf "%A" error)
     let tx = {Schema=SvgAuthoring.transactionSchema;Id="cancelled-drag";Operations=[SvgAuthoringOperation.ReplaceDocument candidate]}
     value.Preview tx |> ignore
     let before = value.State.Undo.Length
