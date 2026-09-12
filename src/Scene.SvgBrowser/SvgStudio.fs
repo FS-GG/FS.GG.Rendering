@@ -181,11 +181,13 @@ module SvgStudio =
             applyTranslation.setAttribute("type", "button")
             applyTranslation.setAttribute("aria-label", "Apply translation")
             let selection: HTMLElement = document.createElement("output")
+            selection.id <- "fsgg-svg-studio-selection"
             selection.setAttribute("aria-label", "Current selection")
             selection.textContent <- "No selected elements"
             let points: HTMLElement = document.createElement("ol")
             points.setAttribute("aria-label", "Path points and handles")
             let status: HTMLElement = document.createElement("div")
+            status.id <- "fsgg-svg-studio-status"
             status.setAttribute("role", "status")
             status.setAttribute("aria-live", "polite")
             status.setAttribute("aria-atomic", "true")
@@ -196,6 +198,11 @@ module SvgStudio =
             properties.appendChild status |> ignore
             root.appendChild toolbar |> ignore
             root.appendChild properties |> ignore
+            buttons
+            |> Seq.iter (fun (name, button) ->
+                if name = "Rectangle" then
+                    button.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status"))
+            applyTranslation.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status")
             container.insertBefore(root, documentHost.Root) |> ignore
             let worker = options.WorkerFactory |> Option.map (fun factory -> new SvgGeometryWorkerHost(factory))
             let host = new SvgStudioHost(root, documentHost, initialState, SvgArt.initialState, worker, onChange)

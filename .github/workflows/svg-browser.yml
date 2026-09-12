@@ -83,6 +83,7 @@ jobs:
           name: svg-browser-observation
           path: |
             ${{ runner.temp }}/svg-browser-observations*.json
+            ${{ runner.temp }}/svg-browser-observations*.orca.log
             ${{ runner.temp }}/svg-browser-observations*.exported.svg
             ${{ runner.temp }}/svg-preview-a-performance.json
           if-no-files-found: warn

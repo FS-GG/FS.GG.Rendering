@@ -77,6 +77,7 @@ evidence = {
     "claims": {"actualAssistiveTechnologyProcessObserved": True, "domOrAccessibilityTreeSubstitution": False},
 }
 pathlib.Path(output_path).write_text(json.dumps(evidence, indent=2) + "\n")
+output_path.with_suffix(".log").write_text(raw)
 if result != "pass":
     raise SystemExit(f"Orca observation incomplete: announcements={required} negative={negative} studio={studio_agreement}; debug={raw_path}")
 print(f"orca-observation: result=pass announcements={','.join(k for k,v in required.items() if v)} evidence={output_path}")
