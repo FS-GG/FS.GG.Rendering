@@ -22,19 +22,30 @@ def children(node):
             yield child
 
 
-def find_by_name(root, wanted):
+def find_objects(root, wanted):
     pending = [root]
     examined = 0
+    target = None
+    sink = None
+    frame = None
     while pending and examined < 20000:
         node = pending.pop()
         examined += 1
         try:
-            if Atspi.Accessible.get_name(node) == wanted:
-                return node
+            name = Atspi.Accessible.get_name(node)
+            role = Atspi.Accessible.get_role(node)
+            if name == wanted:
+                target = node
+            elif name == "Search or enter address":
+                sink = node
+            if role == Atspi.Role.FRAME and frame is None:
+                frame = node
         except Exception:
             pass
+        if target is not None and sink is not None and frame is not None:
+            return target, sink, frame
         pending.extend(children(node))
-    return None
+    return target, sink, frame
 
 
 Atspi.init()
@@ -42,9 +53,11 @@ wanted = sys.argv[1]
 deadline = time.monotonic() + 10
 while time.monotonic() < deadline:
     desktop = Atspi.get_desktop(0)
-    target = find_by_name(desktop, wanted)
-    sink = find_by_name(desktop, "Search or enter address")
+    target, sink, frame = find_objects(desktop, wanted)
     if target is not None:
+        if frame is not None:
+            Atspi.Component.grab_focus(frame)
+            time.sleep(0.15)
         if sink is not None and wanted != "Search or enter address":
             Atspi.Component.grab_focus(sink)
             time.sleep(0.15)
