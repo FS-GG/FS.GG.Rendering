@@ -490,8 +490,13 @@ let feature209VersionCoherenceTests =
 
             Expect.stringContains
                 releaseWindowSource
-                "\"rev-parse\"; \"--verify\"; baseRevision + \"^{commit}\""
-                "the release classifier must reject an unresolvable explicit base"
+                "let versionAheadOfTags"
+                "the release classifier must keep a pending release open across repair commits"
+
+            Expect.stringContains
+                releaseWindowSource
+                "comparison > 0"
+                "a missing historical tag must not be mistaken for a pending release"
 
             Expect.stringContains
                 apiMirrorSource
