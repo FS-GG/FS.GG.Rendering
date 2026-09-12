@@ -6,9 +6,9 @@
   "target": "javascript",
   "surfaces": [
     {
-      "name": "Scene types, retained SVG reducer, identified document, affine, typed serialization and SVG export contract",
+      "name": "Scene types, retained SVG reducer, identified document, safe XML import, versioned asset catalog and atomic authoring transactions",
       "grade": "Portable",
-      "evidence": "isolated .NET and Fable consumers compile the locally packed candidate and emit byte-identical typed documents and SVG exports"
+      "evidence": "isolated .NET and Fable consumers compile the locally packed candidate and emit byte-identical typed documents, SVG exports, catalog wires and authoring outcomes"
     },
     {
       "name": "Scene constructors, text shaping, inspection, evidence, codec, wire format and animation",

@@ -2600,8 +2600,13 @@ let private omissionLedger =
 /// Lowered 515 -> 472 by SVG-PREVIEW-A.2: the generated-workspace mirror now teaches the complete retained
 /// SVG, typed-document, affine, interaction, and keyboard-intent surface from the exact 0.29.0 release
 /// candidate, so all 43 temporary omission entries were paid and removed together.
+///
+/// Raised 472 -> 492 by SVG-AUTHOR-01.1-.2: the locally packed Scene source candidate adds three modules
+/// and seventeen types for safe SVG import, versioned assets/prefabs and atomic authoring transactions.
+/// SVG-AUTHOR-01.6 owns generated consumers and SVG-PREVIEW-B owns publication plus installed mirror
+/// readback, so the matching ledger stanza keeps this unpublished surface explicit until that handoff.
 [<Literal>]
-let private OmissionLedgerCeiling = 472
+let private OmissionLedgerCeiling = 492
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

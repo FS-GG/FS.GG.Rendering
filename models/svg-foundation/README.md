@@ -1,6 +1,7 @@
 # Retained interaction model
 
-`retained-interaction.md` is the single editable profile-2 authority for the retained SVG reducer.
+`retained-interaction.md` is the single editable profile-2 authority for the retained SVG reducer and
+the guarded revision/atomicity rules refined by the authoring transaction layer.
 Its explicit bindings are in `retained-interaction.bindings.json`; installed SDD 1.7.0 extracts the
 committed evidence under `readiness/svg-qual-01-2/`. The extracted `.qnt` is generated evidence and
 must not be edited directly.
@@ -11,7 +12,11 @@ amendment to Quint actions. The original fixed-seed run remains the byte-for-byt
 192-transition `document-interaction.traces.tsv`, substituting validated `ReplaceDocument` for the
 retained-only `ReplaceScene`. Isolated .NET and Fable/Node package consumers replay the first corpus
 through `SvgRetained.update` and the second through `SvgDocumentInteraction.update`, compare every
-resulting projection, and report the first divergence.
+resulting projection, and report the first divergence. SVG-AUTHOR-01.2 keeps that generated Quint and
+its corpora unchanged: `SvgAuthoring.commit` is a refinement that validates a complete candidate before
+one increasing revision, rejects stale or invalid candidates without state/history change, and stores one
+checkpoint for the group. The packed-consumer `AuthoringCorrespondence` fixture exercises this refinement
+in both runtimes alongside the model-derived corpus and kills stale-completion and partial-commit controls.
 
 Run the public installed qualification with exact Quint and lmt objects:
 
@@ -46,6 +51,7 @@ stays in this single authority and adds its own derived corpus without overwriti
 
 The document validator is the pure precondition for that action. It requires unique render and semantic
 identities, kind-correct local references, bounded definition/reference expansion, finite affine
-transforms, and Scene leaves accepted by the portable subset. Undo/redo and immutable play snapshots
-are exercised directly through the same minimal production reducer; they are contract foundations,
-not complete editor, input-tooling, or session-lifecycle support.
+transforms, and Scene leaves accepted by the portable subset. SVG-AUTHOR-01.2 completes portable
+transaction grouping over documents, catalogs and prefab instances. Undo/redo restore whole checkpoints,
+a new edit clears redo, previews never enter history until commit, and play snapshots own canonical bytes
+plus immutable catalog/instance values. Input tooling and session lifecycle remain outside this model boundary.
