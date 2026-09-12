@@ -118,7 +118,7 @@ class ReleaseCustodyTests(unittest.TestCase):
         self.assertIn('--api-key "$GITHUB_TOKEN"', publish)
         nuget_replay = release[release.index("Replay the same original custody bytes to nuget.org and read them back"):]
         self.assertIn("--skip-duplicate", nuget_replay)
-        self.assertIn("for attempt in {1..30}", nuget_replay)
+        self.assertIn("for attempt in {1..180}", nuget_replay)
         self.assertIn("Waiting for nuget.org propagation", nuget_replay)
         self.assertIn("release-custody.py probe", nuget_replay)
         self.assertNotIn("rollback-failed-cut:", tags)
