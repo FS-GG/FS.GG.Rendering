@@ -28,7 +28,7 @@ const server = createServer((request, response) => {
 
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const browser = await firefox.launch({ headless: false });
-const page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
+let page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
 const address = server.address();
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
@@ -74,6 +74,8 @@ try {
   const nonInteractive = page.locator("[data-scene-object-id='label']");
   const decorationFocusable = await nonInteractive.evaluate((node) => node.tabIndex >= 0);
 
+  await page.close();
+  page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   focusWindow("SVG art studio fixture");
