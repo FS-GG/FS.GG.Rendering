@@ -13,3 +13,9 @@ FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+DuplicateMountNamespace
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+InvalidDocument
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError+Tags
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost
+FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost
+FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost
+FS.GG.UI.Scene.SvgBrowser.SvgStudio
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation
+FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions

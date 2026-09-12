@@ -1,0 +1,8 @@
+{
+  "name": "@fs-gg/scene-svg-browser-assets",
+  "private": true,
+  "dependencies": {
+    "@fontsource/noto-sans": "5.3.0",
+    "polygon-clipping": "0.15.7"
+  }
+}

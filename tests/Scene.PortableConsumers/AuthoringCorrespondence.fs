@@ -38,7 +38,19 @@ let run runtime =
         match SvgAuthoring.commit 1 { transaction with Schema = "fsgg.svg-authoring-transaction/9" } committed with
         | Error(SvgAuthoringError.InvalidTransaction issues) -> issues.Head.Code
         | _ -> "mutant-survived"
-    let canonical = String.concat "|" [ serialized; catalogWire; digest; string committed.Revision; string committed.Undo.Length; string undone.Redo.Length; string redone.Revision; String.concat "," security; stale; invalid; unknownCatalog; unknownTransaction ]
+    let art =
+        SvgArt.create "portable-art" (SvgArtPrimitive.Polygon [{X=0.0;Y=0.0};{X=8.0;Y=0.0};{X=4.0;Y=6.0}]) SvgDocument.defaultPresentation document
+        |> Result.bind (SvgArt.translate ["portable-art"] 2.0 3.0)
+        |> Result.defaultWith (fun error -> failwith $"portable art failed: {error}")
+    let contour = {Commands=[PathCommand.MoveTo {X=0.0;Y=0.0};PathCommand.QuadTo({X=4.0;Y=8.0},{X=8.0;Y=0.0});PathCommand.LineTo {X=0.0;Y=0.0};PathCommand.Close];FillType=PathFillType.Winding}
+    let geometry = SvgGeometry.prepare "portable-union" committed.Revision PathOperation.Union [contour] [contour] 0.25 |> Result.defaultWith (fun error -> failwith $"portable geometry failed: {error}")
+    let immutable =
+        let changed = {asset with Rights={asset.Rights with License="MIT"}}
+        match SvgAuthoring.commit 0 {Schema=SvgAuthoring.transactionSchema;Id="immutable";Operations=[SvgAuthoringOperation.UpsertAsset changed]} state with
+        | Error(SvgAuthoringError.InvalidTransaction issues) -> issues.Head.Code
+        | _ -> "mutant-survived"
+    let artWire = SvgDocument.serialize art |> Result.defaultWith (fun issues -> failwith $"portable art serialization failed: {issues}")
+    let canonical = String.concat "|" [ serialized; catalogWire; digest; string committed.Revision; string committed.Undo.Length; string undone.Redo.Length; string redone.Revision; artWire; geometry.EncodedRequest; immutable; String.concat "," security; stale; invalid; unknownCatalog; unknownTransaction ]
     let negativeSummary = String.concat "," security
-    printfn $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} negatives={negativeSummary},{stale},{invalid},{unknownCatalog},{unknownTransaction}"
+    printfn $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} art={art.Children.Length} geometryVertices={geometry.InputVertexCount} negatives={negativeSummary},{stale},{invalid},{immutable},{unknownCatalog},{unknownTransaction}"
     canonical

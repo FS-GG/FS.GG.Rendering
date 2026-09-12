@@ -70,10 +70,36 @@ try {
 
   const nonInteractive = page.locator("[data-scene-object-id='label']");
   const decorationFocusable = await nonInteractive.evaluate((node) => node.tabIndex >= 0);
+
+  await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => window.svgStudioFixture !== undefined);
+  const rectangle = page.getByRole("button", { name: "Rectangle", exact: true });
+  await rectangle.focus();
+  await waitForOrca();
+  await rectangle.click();
+  await waitForOrca();
+  const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
+  const translate = page.getByRole("textbox", { name: "Translate X", exact: true });
+  await translate.focus();
+  await waitForOrca();
+  await translate.fill("not-a-number");
+  const apply = page.getByRole("button", { name: "Apply translation", exact: true });
+  await apply.focus();
+  await waitForOrca();
+  await apply.click();
+  await waitForOrca();
+  const validationFeedback = await page.getByRole("status").textContent();
+  const selectionFeedback = await page.getByLabel("Current selection").textContent();
   writeFileSync(output, JSON.stringify({
     alphaHtmlControl: { selected: afterAlphaControl.selected, focused: afterAlphaControl.focused },
     betaHtmlControl: { selected: afterHtmlControl.selected, focused: afterHtmlControl.focused },
     svgKeyboard: { selected: afterSvgKeyboard.selected, focused: afterSvgKeyboard.focused },
+    studio: {
+      revision: studioAfterCreate.Revision,
+      selectionCount: studioAfterCreate.SelectionCount,
+      selectionFeedback,
+      validationFeedback,
+    },
     negativeControl: { nonInteractiveDecorationFocusable: decorationFocusable },
   }, null, 2) + "\n");
 } finally {

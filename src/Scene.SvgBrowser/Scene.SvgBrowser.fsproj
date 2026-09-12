@@ -12,7 +12,7 @@
   <Target Name="CurateFableCompatibilityView" AfterTargets="CreateFablePackageFiles">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)" />
-      <_PackageFiles Include="SvgBrowser.fsi;SvgBrowser.fs">
+      <_PackageFiles Include="SvgBrowser.fsi;SvgBrowser.fs;SvgStudio.fsi;SvgStudio.fs">
         <Pack>true</Pack>
         <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
         <BuildAction>None</BuildAction>
@@ -30,6 +30,17 @@
   <ItemGroup>
     <Compile Include="SvgBrowser.fsi" />
     <Compile Include="SvgBrowser.fs" />
+    <Compile Include="SvgStudio.fsi" />
+    <Compile Include="SvgStudio.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="svg-geometry-worker.js" Pack="true" PackagePath="contentFiles/any/any/svg-geometry-worker.js" />
+    <None Include="package.json" Pack="true" PackagePath="contentFiles/any/any/package.json" />
+    <None Include="package-lock.json" Pack="true" PackagePath="contentFiles/any/any/package-lock.json" />
+    <None Include="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="THIRD-PARTY-NOTICES.md" />
+    <None Include="OFL-Noto-Sans.txt" Pack="true" PackagePath="OFL-Noto-Sans.txt" />
+    <None Include="font-resource-manifest.json" Pack="true" PackagePath="contentFiles/any/any/font-resource-manifest.json" />
+    <None Include="noto-sans-latin-400-normal.woff2.base64" Pack="true" PackagePath="contentFiles/any/any/noto-sans-latin-400-normal.woff2.base64" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Scene\Scene.fsproj" />

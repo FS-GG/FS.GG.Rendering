@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="DocumentRoundTrip.fs" />
     <Compile Include="Program.fs" />
+    <Compile Include="StudioProgram.fs" />
     <PackageReference Include="Fable.Core" Version="5.2.0" />
     <PackageReference Include="FS.GG.UI.Scene" Version="0.29.0-preview.1" />
     <PackageReference Include="FS.GG.UI.Scene.SvgBrowser" Version="0.29.0-preview.1" />

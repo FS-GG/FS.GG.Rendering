@@ -31,7 +31,7 @@ dbus-run-session -- bash -c '
 ' _ "$work" "$raw" "$fixture" "$journey"
 
 python3 - "$raw" "$journey" "$output" <<'PY'
-import json, os, pathlib, re, sys
+import json, os, pathlib, re, subprocess, sys
 raw_path, journey_path, output_path = map(pathlib.Path, sys.argv[1:])
 raw = raw_path.read_text(errors="replace")
 journey = json.loads(journey_path.read_text())
@@ -44,6 +44,9 @@ required = {
     "betaControl": "beta unit" in joined,
     "sceneRoot": "svg foundation scene" in joined,
     "alphaSelection": "alpha unit" in joined,
+    "studioRectangleControl": "rectangle" in joined,
+    "studioSelection": "rectangle created and selected" in joined,
+    "studioValidation": "validation error" in joined and "finite translation" in joined,
 }
 identity_agreement = (
     journey["alphaHtmlControl"] == {"selected": "alpha", "focused": "alpha"}
@@ -51,22 +54,30 @@ identity_agreement = (
     and journey["svgKeyboard"] == {"selected": "alpha", "focused": "alpha"}
 )
 negative = journey["negativeControl"]["nonInteractiveDecorationFocusable"] is False and identity_agreement
-result = "pass" if all(required.values()) and negative else "fail"
+studio_agreement = (
+    journey["studio"]["revision"] == 1
+    and journey["studio"]["selectionCount"] == 1
+    and journey["studio"]["selectionFeedback"] == "Selected element: rectangle-1"
+    and journey["studio"]["validationFeedback"] == "Validation error: enter a finite translation for the current selection"
+)
+result = "pass" if all(required.values()) and negative and studio_agreement else "fail"
+version = subprocess.run(["orca", "--version"], check=False, capture_output=True, text=True).stdout.strip()
 evidence = {
     "schema": "fsgg.svg-scene.orca-observation/v1",
     "result": result,
-    "assistiveTechnology": {"name": "Orca", "version": "50.2", "transport": "AT-SPI2"},
+    "assistiveTechnology": {"name": "Orca", "version": version, "transport": "AT-SPI2"},
     "environment": {"display": "Xvfb", "sessionBus": "isolated dbus-run-session", "browser": "Playwright Chromium headed with forced renderer accessibility"},
     "candidate": {"sourceDigest": os.environ["SVG_SCENE_AT_SOURCE_DIGEST"], "packageDigest": os.environ["SVG_SCENE_AT_PACKAGE_DIGEST"]},
     "journey": journey,
     "announcements": required,
     "negativeControl": {"nonInteractiveDecorationExcludedFromKeyboardFocus": journey["negativeControl"]["nonInteractiveDecorationFocusable"] is False},
     "semanticIdentityAgreement": identity_agreement,
+    "studioStateAgreement": studio_agreement,
     "speechOutput": speech,
     "claims": {"actualAssistiveTechnologyProcessObserved": True, "domOrAccessibilityTreeSubstitution": False},
 }
 pathlib.Path(output_path).write_text(json.dumps(evidence, indent=2) + "\n")
 if result != "pass":
-    raise SystemExit(f"Orca observation incomplete: announcements={required} negative={negative}; debug={raw_path}")
+    raise SystemExit(f"Orca observation incomplete: announcements={required} negative={negative} studio={studio_agreement}; debug={raw_path}")
 print(f"orca-observation: result=pass announcements={','.join(k for k,v in required.items() if v)} evidence={output_path}")
 PY

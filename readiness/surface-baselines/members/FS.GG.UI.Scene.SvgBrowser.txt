@@ -37,3 +37,33 @@ FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.MountNamespace : System.String 
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ObserveFonts() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Replace(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Root : Browser.Types.Element [get]
+FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Diagnostic : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Ready : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.Cancel() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.InFlight : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.Start(FS.GG.UI.Scene.SvgGeometryPrepared, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgGeometryResult, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, System.String>
+FS.GG.UI.Scene.SvgBrowser.SvgStudio.activateFont(FS.GG.UI.Scene.SvgFontResource) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgBrowser.SvgStudio.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions, FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgStudioHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ApplyNumericTransform(System.String, FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CancelGesture(System.String) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CommitGesture(System.String) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.GeometryWorker : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Preview(FS.GG.UI.Scene.SvgAuthoringTransaction) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Redo() : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Root : Browser.Types.HTMLElement [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetCamera(FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetSelection(Microsoft.FSharp.Collections.FSharpList<System.String>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.State : FS.GG.UI.Scene.SvgAuthoringState [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ToolState : FS.GG.UI.Scene.SvgArtState [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Undo() : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.ActiveGesture : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.Revision : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.SelectionCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.WorkerInFlight : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.new(System.Int32, System.Int32, System.Int32, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions.AccessibleLabel : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions.MountNamespace : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions.WorkerFactory : Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, System.Object>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, System.Object>>)
