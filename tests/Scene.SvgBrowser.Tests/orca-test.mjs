@@ -88,7 +88,7 @@ try {
   await waitForOrca();
   await apply.click();
   await waitForOrca();
-  const validationFeedback = await page.getByRole("status").textContent();
+  const validationFeedback = await page.locator("[role='status']").textContent();
   const selectionFeedback = await page.getByLabel("Current selection").textContent();
   writeFileSync(output, JSON.stringify({
     alphaHtmlControl: { selected: afterAlphaControl.selected, focused: afterAlphaControl.focused },
