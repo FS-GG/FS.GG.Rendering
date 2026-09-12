@@ -63,7 +63,12 @@ const tabTo = async (selector) => {
 const enterDocumentForOrca = async (selector, expectedSpeech) => {
   const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
   if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
-  await tabTo(selector);
+  // Chromium's app window starts Orca in browse mode, where the first desktop
+  // Tab is consumed by the virtual cursor. Focus the real browser widget once;
+  // Orca still receives the resulting native AT-SPI focus event and produces
+  // the speech asserted below. All subsequent traversal uses desktop Tab.
+  await page.locator(selector).focus();
+  await waitForOrca();
   if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
   throw new Error(`Orca did not enter the browser document and announce ${expectedSpeech}`);
 };
