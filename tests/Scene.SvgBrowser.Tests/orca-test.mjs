@@ -36,7 +36,14 @@ const address = server.address();
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
   const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
-  execFileSync("xdotool", ["windowactivate", "--sync", ids.at(-1)]);
+  const id = ids.at(-1);
+  execFileSync("xdotool", ["windowactivate", "--sync", id]);
+  return id;
+};
+const activateWebContent = async (title) => {
+  const id = focusWindow(title);
+  execFileSync("xdotool", ["mousemove", "--window", id, "20", "140", "click", "1"]);
+  await waitForOrca();
 };
 const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
@@ -61,7 +68,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
-  focusWindow("SVG foundation browser fixture");
+  await activateWebContent("SVG foundation browser fixture");
   // Playwright targets the browser widget; Orca independently observes the
   // resulting native AT-SPI focus event and generates the asserted speech.
   await enterDocumentForOrca("[data-scene-root-id='svg-foundation-root']", "SVG foundation scene");
@@ -89,7 +96,7 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   await page.waitForTimeout(4000);
-  focusWindow("SVG art studio fixture");
+  await activateWebContent("SVG art studio fixture");
   await enterDocumentForOrca("button[aria-label='Rectangle']", "Rectangle");
   await page.keyboard.press("Space");
   await waitForOrca();
