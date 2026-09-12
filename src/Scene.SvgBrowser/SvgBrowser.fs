@@ -27,8 +27,8 @@ module private Dom =
     [<Emit("document.elementFromPoint($0, $1)?.closest('[data-scene-object-id]')?.getAttribute('data-scene-object-id') ?? null")>]
     let objectIdAtClientPoint (_clientX: float) (_clientY: float) : string option = jsNative
 
-    [<Emit("document.elementFromPoint($0, $1)?.closest('[data-fsgg-semantic-id]')?.getAttribute('data-fsgg-semantic-id') ?? null")>]
-    let semanticIdAtClientPoint (_clientX: float) (_clientY: float) : string option = jsNative
+    [<Emit("((point) => document.elementFromPoint(point.x, point.y)?.closest('[data-fsgg-semantic-id]')?.getAttribute('data-fsgg-semantic-id') ?? null)(new DOMPoint($1, $2).matrixTransform($0.getScreenCTM()))")>]
+    let semanticIdAtSvgPoint (_root: Element) (_x: float) (_y: float) : string option = jsNative
 
     [<Emit("!!($0 && ($0.closest?.('input,textarea,select,[contenteditable=true],[contenteditable=plaintext-only]')))")>]
     let isNativeEditableTarget (_target: EventTarget) : bool = jsNative
@@ -313,11 +313,7 @@ type SvgDocumentBrowserHost internal
     member _.ExportedSvg = exportedSvg
     member _.HitTest(screenPoint: Point) =
         if disposed then invalidOp "The SVG document browser host is disposed."
-        let bounds = root.getBoundingClientRect()
-        let viewBox = documentValue.ViewBox
-        let clientX = bounds.left + (screenPoint.X - viewBox.X) * bounds.width / max 1.0 viewBox.Width
-        let clientY = bounds.top + (screenPoint.Y - viewBox.Y) * bounds.height / max 1.0 viewBox.Height
-        Dom.semanticIdAtClientPoint clientX clientY
+        Dom.semanticIdAtSvgPoint root screenPoint.X screenPoint.Y
     member _.ObserveFonts() = fontObservations ()
     member _.Replace(document: SvgDocument) =
         if disposed then invalidOp "The SVG document browser host is disposed."
