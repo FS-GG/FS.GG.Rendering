@@ -292,8 +292,13 @@ module Harness =
     /// contextual because it deliberately supplies reader-owned Workspace/Prepared types, request
     /// construction, and host state before showing how the published typed boundary is composed. Existing
     /// fs-gg-elmish fences only move with the inserted guidance; their contextual classification is unchanged.
+    /// Re-audited for SVG-PREVIEW-A.2: fs-gg-scene adds two SVG examples that deliberately consume the
+    /// reader's retained scene, points, serialized byte count, and typed document, so both are contextual.
+    /// Its four existing self-contained fence origins move by 55 lines without changing their bodies.
+    /// fs-gg-keyboard-input adds one contextual expression fragment over browser event facts supplied by
+    /// the reader; its existing fences and their contextual classification are unchanged.
     let private expectedProductSkillInventory =
-        "f6b4ed532c82bae25eda4019c9f0cff9420b110ccc73cbf3493e456d59df0fbf"
+        "ed1ce6485c81d22266ca3e35bb83215c29521f7c12fd48b7803dc825209dbfec"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -309,10 +314,10 @@ module Harness =
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44
               "template/product-skills/fs-gg-ui-widgets/SKILL.md", 97
-              "template/product-skills/fs-gg-scene/SKILL.md", 25
-              "template/product-skills/fs-gg-scene/SKILL.md", 78
-              "template/product-skills/fs-gg-scene/SKILL.md", 139
-              "template/product-skills/fs-gg-scene/SKILL.md", 213
+              "template/product-skills/fs-gg-scene/SKILL.md", 80
+              "template/product-skills/fs-gg-scene/SKILL.md", 133
+              "template/product-skills/fs-gg-scene/SKILL.md", 194
+              "template/product-skills/fs-gg-scene/SKILL.md", 268
               "template/product-skills/fs-gg-styling/SKILL.md", 83
               "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
 
