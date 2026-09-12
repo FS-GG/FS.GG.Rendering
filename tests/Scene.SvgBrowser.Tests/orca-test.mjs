@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { chromium } from "playwright-core";
 
@@ -27,12 +27,15 @@ const server = createServer((request, response) => {
 });
 
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
-const browser = await chromium.launch({
-  headless: false,
-  args: ["--force-renderer-accessibility=complete", "--disable-gpu"],
-});
-let page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
 const address = server.address();
+const profile = resolve(fixture, ".orca-chromium-profile");
+rmSync(profile, { recursive: true, force: true });
+const browser = await chromium.launchPersistentContext(profile, {
+  headless: false,
+  args: [`--app=http://127.0.0.1:${address.port}/`, "--force-renderer-accessibility=complete", "--disable-gpu"],
+  viewport: { width: 1024, height: 720 },
+});
+let page = browser.pages()[0] ?? await browser.newPage();
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
   const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
@@ -41,14 +44,8 @@ const focusWindow = (title) => {
   return id;
 };
 const activateWebContent = async (title) => {
-  focusWindow(title);
-  // Re-submit the current address through Chromium's native chrome. The
-  // completed desktop navigation transfers the active pane to web content.
-  await desktopKey("ctrl+l");
-  await desktopKey("Return");
-  await page.waitForTimeout(1000);
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(3000);
+  const id = focusWindow(title);
+  execFileSync("xdotool", ["mousemove", "--window", id, "20", "140", "click", "1"]);
   await waitForOrca();
 };
 const desktopKey = async (key) => {
@@ -97,8 +94,6 @@ try {
   const nonInteractive = page.locator("[data-scene-object-id='label']");
   const decorationFocusable = await nonInteractive.evaluate((node) => node.tabIndex >= 0);
 
-  await page.close();
-  page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   await page.waitForTimeout(4000);
