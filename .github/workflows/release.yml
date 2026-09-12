@@ -644,18 +644,30 @@ jobs:
         shell: bash
         run: scripts/apicompat-check.sh --release-plan eng/release/svg-preview-a-0.29.0.json
 
+      - name: Mint the established org App package-read credential for readback
+        id: package-reader
+        if: steps.ver.outputs.push == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
+          owner: FS-GG
+          repositories: FS.GG.Rendering
+          permission-packages: read
+
       - name: Replay original custody bytes to GitHub Packages and read them back
         if: steps.ver.outputs.push == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FSGG_PACKAGE_READ_TOKEN: ${{ steps.package-reader.outputs.token }}
         run: |
           set -euo pipefail
           while IFS=$'\t' read -r id file; do
             if python3 scripts/release-custody.py probe \
               --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
               --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
-              --package-id "$id" --token-env GITHUB_TOKEN \
+              --package-id "$id" --token-env FSGG_PACKAGE_READ_TOKEN \
               --url-template 'https://nuget.pkg.github.com/FS-GG/download/{id_lower}/{version}/{filename}'; then
               echo "$id already exists with the retained payload; replay not needed."
             else
@@ -673,7 +685,7 @@ jobs:
             python3 scripts/release-custody.py probe \
               --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
               --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
-              --package-id "$id" --token-env GITHUB_TOKEN \
+              --package-id "$id" --token-env FSGG_PACKAGE_READ_TOKEN \
               --url-template 'https://nuget.pkg.github.com/FS-GG/download/{id_lower}/{version}/{filename}'
           done < <(python3 scripts/release-custody.py list \
             --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \

@@ -10,6 +10,7 @@ readback difference and is compared entry-by-entry rather than waved away at arc
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -263,7 +264,8 @@ def render_url(template: str, record: dict) -> str:
 def download(url: str, destination: Path, token: str) -> int:
     request = urllib.request.Request(url)
     if token:
-        request.add_header("Authorization", f"Bearer {token}")
+        credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+        request.add_header("Authorization", f"Basic {credential}")
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             destination.write_bytes(response.read())
