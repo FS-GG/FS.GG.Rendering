@@ -17,17 +17,16 @@ try {
   const geometry={};
   for(const operation of ["union","intersection","difference","xor","curve"])
     geometry[operation]=await page.evaluate(operation=>window.svgStudioFixture.geometry(operation),operation);
-  const evidence=await page.evaluate(()=>{
-    const labels=[...document.querySelectorAll("button")].map(x=>x.getAttribute("aria-label"));
-    const created=window.svgStudioFixture.addRectangle();
-    const cancelled=window.svgStudioFixture.cancelGesture();
-    const disposed=window.svgStudioFixture.dispose();
-    const remounted=window.svgStudioFixture.mount();
-    const disposedAgain=window.svgStudioFixture.dispose();
-    const resource=window.svgStudioFixture.resourceRoundtrip();
-    const geometryCancelled=window.svgStudioFixture.cancelGeometry();
-    return {labels,created,cancelled,resource,geometryCancelled,disposed,remounted,disposedAgain,roots:document.querySelectorAll("[data-fsgg-document-id]").length};
-  });
+  const labels=await page.evaluate(()=>[...document.querySelectorAll("button")].map(x=>x.getAttribute("aria-label")));
+  const created=await page.evaluate(()=>window.svgStudioFixture.addRectangle());
+  const cancelled=await page.evaluate(()=>window.svgStudioFixture.cancelGesture());
+  const geometryCancelled=await page.evaluate(()=>window.svgStudioFixture.cancelGeometry());
+  const resource=await page.evaluate(()=>window.svgStudioFixture.resourceRoundtrip());
+  const disposed=await page.evaluate(()=>window.svgStudioFixture.dispose());
+  const remounted=await page.evaluate(()=>window.svgStudioFixture.mount());
+  const disposedAgain=await page.evaluate(()=>window.svgStudioFixture.dispose());
+  const roots=await page.evaluate(()=>document.querySelectorAll("[data-fsgg-document-id]").length);
+  const evidence={labels,created,cancelled,resource,geometryCancelled,disposed,remounted,disposedAgain,roots};
   await page.waitForFunction(()=>window.svgStudioFixture.fontStatus().ready||window.svgStudioFixture.fontStatus().diagnostic,{timeout:5000});
   const font=await page.evaluate(()=>window.svgStudioFixture.fontStatus());
   await page.evaluate(()=>window.svgStudioFixture.disposeFont());
