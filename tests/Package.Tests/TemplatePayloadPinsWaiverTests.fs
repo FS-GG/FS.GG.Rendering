@@ -8,8 +8,8 @@ module TemplatePayloadPinsWaiverTests
 // The waiver suppresses that — and its entire safety rests on a conjunction, plus one axis guard, that
 // nothing re-checked:
 //
-//     releasePending pending =
-//         not pending.IsEmpty && not releaseLane && bumpedInCommitUnderTest propsRel uiAxis
+//     releasePending i pending =
+//         not pending.IsEmpty && not releaseLane && uiPinAheadOfTags i
 //
 //     feedExistenceFailures:  if not (waiveUi && axis = uiAxis) then <check existence>
 //
@@ -70,8 +70,8 @@ type private World =
       PendingUi: string list
       /// FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 — set job-wide by release.yml, and it KILLS the waiver.
       ReleaseLane: bool
-      /// Did THIS commit bump $(FsGgUiVersion)? `false` for every ordinary commit that merely inherits it.
-      BumpedUiHere: bool
+      /// Is $(FsGgUiVersion) strictly ahead of every pushed fs-gg-ui/v* tag?
+      UiAheadOfTags: bool
       /// Axes whose pinned packages the feed does not carry at their pinned version.
       UnpublishedAxes: string list
       /// A prerelease pinned DIRECTLY in an axis literal, on a stable (non-preview) template.
@@ -80,13 +80,13 @@ type private World =
 let private clean =
     { PendingUi = []
       ReleaseLane = false
-      BumpedUiHere = false
+      UiAheadOfTags = false
       UnpublishedAxes = []
       DirectPrerelease = false }
 
 /// `releasePending` — mirrors the script exactly, conjunct for conjunct, in order.
 let private releasePending (w: World) =
-    not w.PendingUi.IsEmpty && not w.ReleaseLane && w.BumpedUiHere
+    not w.PendingUi.IsEmpty && not w.ReleaseLane && w.UiAheadOfTags
 
 /// `feedExistenceFailures`' rule, reduced to the question that matters: which axes still get checked?
 /// The waiver suppresses `pin-not-published` for the UI axis ALONE — `not (waiveUi && axis = uiAxis)`.
@@ -110,39 +110,38 @@ let tests =
           // ---- the table #544 asks to be frozen -------------------------------------------------
           //
           // Every row is a verdict the waiver must reach. The two that matter most are the two that
-          // must still be RED: an ordinary commit inheriting an unpublished pin, and a Game/Audio axis
-          // bumped to a version nobody published. Those are the fail-open cases.
+          // must still be RED: a UI pin that is not ahead of tags, and a Game/Audio axis bumped to a
+          // version nobody published. Those are the fail-open cases.
 
-          test "published pin, no bump: coherent, and the waiver never engages" {
+          test "published pin, not ahead: coherent, and the waiver never engages" {
             let w = clean
             Expect.isFalse (releasePending w) "nothing is pending, so there is no release window to be in"
             Expect.equal (exitCode w) 0 "the ordinary, everyday state of the repo"
           }
 
-          test "THIS commit bumps the pin and the feed lacks it: RELEASE-PENDING, exit 0" {
+          test "the pin is ahead of tags and the feed lacks it: RELEASE-PENDING, exit 0" {
             let w =
                 { clean with
                     PendingUi = [ "FS.GG.UI.Scene" ]
-                    BumpedUiHere = true
+                    UiAheadOfTags = true
                     UnpublishedAxes = [ uiAxis ] }
 
-            Expect.isTrue (releasePending w) "bump + absent from the feed + not the release lane = the window"
+            Expect.isTrue (releasePending w) "ahead + absent from the feed + not the release lane = the window"
             Expect.isEmpty (pinNotPublishedFor w) "pin-not-published is suppressed for the UI axis"
             Expect.equal (exitCode w) 0 "a release PR can pass its own gate — that is the whole point of #506"
           }
 
-          // THE FAIL-OPEN, #1. Without `bumpedInCommitUnderTest` the waiver would key on "the feed lacks
-          // it", which is true of a typo'd or stale pin on every ordinary commit thereafter.
-          test "an ordinary commit inheriting an unpublished pin is NOT waived — exit 1" {
+          // The repair case: the release version was merged earlier, but no successor tag exists yet.
+          test "a repair commit inheriting a still-ahead unpublished pin remains pending" {
             let w =
                 { clean with
                     PendingUi = [ "FS.GG.UI.Scene" ]
-                    BumpedUiHere = false // the bump was some EARLIER commit, or never happened
+                    UiAheadOfTags = true // the bump was an earlier commit; protected preflight stopped before tags
                     UnpublishedAxes = [ uiAxis ] }
 
-            Expect.isFalse (releasePending w) "no bump in THIS commit ⇒ not a release window ⇒ no waiver"
-            Expect.equal (pinNotPublishedFor w) [ uiAxis ] "the pin is stale or typo'd, and must be named"
-            Expect.equal (exitCode w) 1 "a pin the feed does not carry is drift on any commit but the bump"
+            Expect.isTrue (releasePending w) "the release window survives the repair commit"
+            Expect.isEmpty (pinNotPublishedFor w) "the repair can merge so publication can resume"
+            Expect.equal (exitCode w) 0 "the non-required publication gate owns abandoned-release reporting"
           }
 
           // THE FAIL-OPEN, #2, and the worst of them. Bumping $(FsGgGameVersion) here publishes NOTHING —
@@ -154,7 +153,7 @@ let tests =
                 let w =
                     { clean with
                         PendingUi = [ "FS.GG.UI.Scene" ] // a genuine UI release IS in flight...
-                        BumpedUiHere = true
+                        UiAheadOfTags = true
                         UnpublishedAxes = [ uiAxis; axis ] } // ...and this axis is also unpublished
 
                 Expect.isTrue (releasePending w) "the release window is genuinely open"
@@ -173,7 +172,7 @@ let tests =
             let w =
                 { clean with
                     PendingUi = [ "FS.GG.UI.Scene" ]
-                    BumpedUiHere = true
+                    UiAheadOfTags = true
                     ReleaseLane = true
                     UnpublishedAxes = [ uiAxis ] }
 
@@ -188,7 +187,7 @@ let tests =
             let w =
                 { clean with
                     PendingUi = [ "FS.GG.UI.Scene" ]
-                    BumpedUiHere = true
+                    UiAheadOfTags = true
                     UnpublishedAxes = [ uiAxis ]
                     DirectPrerelease = true }
 
@@ -203,22 +202,22 @@ let tests =
             let worlds =
                 [ for pending in [ true; false ] do
                       for lane in [ true; false ] do
-                          for bumped in [ true; false ] do
+                          for ahead in [ true; false ] do
                               yield
                                   { clean with
                                       PendingUi = (if pending then [ "FS.GG.UI.Scene" ] else [])
                                       ReleaseLane = lane
-                                      BumpedUiHere = bumped } ]
+                                      UiAheadOfTags = ahead } ]
 
             let opened = worlds |> List.filter releasePending
 
             Expect.equal opened.Length 1
-                "exactly one world is a release window: pin pending, NOT the release lane, bumped by THIS commit"
+                "exactly one world is a release window: pin absent, NOT the release lane, and ahead of its tags"
 
             let w = opened.Head
             Expect.isNonEmpty w.PendingUi "…pending"
             Expect.isFalse w.ReleaseLane "…not the release lane"
-            Expect.isTrue w.BumpedUiHere "…bumped here"
+            Expect.isTrue w.UiAheadOfTags "…ahead of tags"
           }
 
           // ---- source lockstep: the mirror above may not silently drift from the script ----------
@@ -235,8 +234,8 @@ let tests =
           test "source lockstep: releasePending is still the exact three-conjunct predicate modelled here" {
             Expect.isTrue
                 (squashedSource.Contains
-                    "let releasePending (pending: string list) = not pending.IsEmpty && not releaseLane && bumpedInCommitUnderTest propsRel uiAxis")
-                "the waiver's conjunction changed. Every term is load-bearing (#544): `not pending.IsEmpty` (there is a real absence), `not releaseLane` (we are not gating the publish), `bumpedInCommitUnderTest` (THIS commit caused it). Re-derive the bounds, then update the World model in this file."
+                    "let releasePending (i: Inputs) (pending: string list) = not pending.IsEmpty && not releaseLane && uiPinAheadOfTags i")
+                "the waiver's conjunction changed. Every term is load-bearing: real absence, outside the release lane, and a pin strictly ahead of its tags. Re-derive the bounds, then update the World model in this file."
           }
 
           test "source lockstep: the waiver is still confined to the UI axis in feedFailures" {
@@ -345,15 +344,8 @@ let tests =
                   "the PR gate must never run the staleness lane (#1102)"
           }
 
-          test "source lockstep: bumpedInCommitUnderTest still fails CLOSED when git cannot answer" {
-            // A shallow clone has no HEAD~1. Defaulting that to "not bumped" would be the safe direction
-            // for the waiver but the wrong one for the guard: it turns an unanswerable question into a
-            // red-for-the-wrong-reason. The script raises GuardError ⇒ exit 2, which is a THIRD verdict:
-            // "the guard could not decide", never confused with "the repo is incoherent".
-            let fn =
-                Regex.Match(guardSource, @"let bumpedInCommitUnderTest[\s\S]{0,600}?raise \(GuardError")
-
-            Expect.isTrue fn.Success
-                "bumpedInCommitUnderTest must still raise GuardError (⇒ exit 2) when `git diff HEAD~1 HEAD` fails — a shallow clone must not silently answer 'not bumped'"
+          test "source lockstep: pending classification fails closed when tags are unavailable" {
+            Expect.stringContains guardSource "no fs-gg-ui/v* tags visible — need fetch-depth: 0"
+                "an empty tag namespace must be a guard error, never a quiet not-pending result"
           }
         ]

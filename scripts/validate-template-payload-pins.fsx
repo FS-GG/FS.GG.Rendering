@@ -126,8 +126,8 @@
 //     IT, and is never waived. A naive "this commit bumped the axis ⇒ waive" would reopen #235 —
 //     a stale/nonexistent component pin, green.
 //
-//   * ONLY when THIS commit bumped it (`bumpedInCommitUnderTest`, the predicate #209 already proved
-//     out). A pin nobody bumped that the feed does not carry is stale or typo'd — drift, as before.
+//   * ONLY while the UI pin is strictly ahead of every pushed snapshot tag. This survives a repair
+//     commit after protected preflight stops before mutation, but never excuses a missing historical tag.
 //
 //   * ONLY when the pin is genuinely absent from the feed. If it is published, nothing is pending and
 //     the full restore proof runs as usual — which is the common case, and it keeps the git call off
@@ -656,13 +656,25 @@ let unpublishedUiMembers (i: Inputs) : string list =
 /// Is the FS.GG.UI.* set legitimately not on the feed yet — i.e. is this the release window?
 ///
 /// Read the conjuncts in order; each one is load-bearing, and the ORDER is too. `pending` is empty in
-/// the normal case, which short-circuits before the git call — so a shallow clone still runs the full
-/// live proof whenever the pin is published, and `bumpedInCommitUnderTest` is only ever consulted when
-/// the answer actually changes a verdict. See the header for why each conjunct is there.
-let releasePending (pending: string list) =
+/// the normal case, which short-circuits before the tag query. See the header for why each conjunct is there.
+let uiPinAheadOfTags (i: Inputs) =
+    let ec, output = run repoRoot "git" [ "tag"; "--list"; "fs-gg-ui/v*" ]
+    if ec <> 0 then raise (GuardError "git tag --list fs-gg-ui/v* failed")
+    let versions =
+        output.Replace("\r\n", "\n").Split('\n')
+        |> Array.map (fun tag -> tag.Trim())
+        |> Array.filter (fun tag -> tag.StartsWith("fs-gg-ui/v", StringComparison.Ordinal))
+        |> Array.map (fun tag -> tag.Substring("fs-gg-ui/v".Length))
+        |> Array.filter SemVer.wellFormed
+    if versions.Length = 0 then
+        raise (GuardError "no fs-gg-ui/v* tags visible — need fetch-depth: 0")
+    let pin = Map.find uiAxis i.AxisVersions
+    versions |> Array.forall (fun tagged -> SemVer.cmp (SemVer.parse pin) (SemVer.parse tagged) > 0)
+
+let releasePending (i: Inputs) (pending: string list) =
     not pending.IsEmpty
     && not releaseLane
-    && bumpedInCommitUnderTest propsRel uiAxis
+    && uiPinAheadOfTags i
 
 /// The half of `prerelease-in-scaffolded-graph` that needs no graph.
 ///
@@ -785,7 +797,7 @@ let summariseDrift (failures: Failure list) =
 /// RELEASE-PENDING line.) The exit code carries the verdict; these lines carry only the scope.
 let printReleasePending (i: Inputs) (pending: string list) =
     let version = Map.find uiAxis i.AxisVersions
-    printfn "RELEASE-PENDING: this commit bumps $(%s) to %s, and the %d FS.GG.UI.* package(s) it pins are not on nuget.org yet." uiAxis version pending.Length
+    printfn "RELEASE-PENDING: $(%s)=%s is ahead of its snapshot tags, and the %d FS.GG.UI.* package(s) it pins are not on nuget.org yet." uiAxis version pending.Length
     printfn "  That is the release window, not drift: merging this is what cuts fs-gg-ui/v%s and publishes them (release-tags.yml -> release.yml)." version
     printfn "  awaiting publish @ %s: %s" version (String.concat ", " pending)
     printfn "  NOT CHECKED (a graph cannot restore against packages that do not exist yet):"
@@ -798,17 +810,17 @@ let printReleasePending (i: Inputs) (pending: string list) =
     printfn "    It is f(tree, WORLD) and may not red a PR whose commits did not change it. It runs on a"
     printfn "    schedule (.github/workflows/template-pin-staleness-sweep.yml) and files a tracked item."
     printfn "  Those still decide the exit code: a failure in any of them reds this run, waiver or no waiver."
-    printfn "  If the publish never lands, the next commit to main does not bump the pin, the waiver is OFF, and this gate reds on `pin-not-published`."
+    printfn "  The non-required publication gates remain red until the ordered tags and packages exist."
     writeStepSummary
         "Template payload pins — RELEASE-PENDING"
-        [ sprintf "This commit bumps `$(%s)` to **%s**, whose FS.GG.UI.* packages are not published yet. That is the release window — merging is what publishes them — so `pin-not-published` / `pin-does-not-resolve` are **waived on that axis alone**." uiAxis version
+        [ sprintf "`$(%s)` is **%s**, ahead of its snapshot tags, and its FS.GG.UI.* packages are not published yet. That is the repairable release window, so `pin-not-published` / `pin-does-not-resolve` are **waived on that axis alone**." uiAxis version
           ""
           sprintf "- **awaiting publish @ %s:** %s" version (String.concat ", " pending)
           sprintf "- **not checked:** the resolved graph of all %d scaffold profiles — the transitive half of `prerelease-in-scaffolded-graph`, and `pin-resolved-elsewhere`. Skipped, not passed." profiles.Length
           "- **still checked:** the structural verdict-core; `$(FsGgGameVersion)` / `$(FsGgAudioVersion)` / `$(FsGgContractsVersion)` **existence** on the feed; and the direct half of `prerelease-in-scaffolded-graph`. A failure in any of these still reds the run."
           "- **not in this lane at all (#1102):** staleness (`pin-lags-feed`). It is `f(tree, WORLD)`, so it runs on a schedule (`template-pin-staleness-sweep.yml`) and files a tracked item instead of reddening a PR nobody's commit broke."
           ""
-          "If the publish never lands, the next commit to `main` reds this gate on `pin-not-published`." ]
+          "The non-required publication gates remain red until the ordered tags and packages exist." ]
 
 // ---- main -------------------------------------------------------------------------------------
 let main () =
@@ -900,7 +912,7 @@ let main () =
                 // FS.GG.UI.* pins — five identical reds that say nothing the RELEASE-PENDING block does
                 // not say better. Skip them, and SAY they were skipped.
                 let pending = unpublishedUiMembers i
-                let waiveUi = releasePending pending
+                let waiveUi = releasePending i pending
                 // EXISTENCE only. `pin-lags-feed` is not in this lane at all any more (#1102).
                 let feed = feedExistenceFailures waiveUi i
 
