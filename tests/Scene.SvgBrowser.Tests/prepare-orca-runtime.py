@@ -6,8 +6,6 @@ import sys
 
 
 speech_source = Path(sys.argv[1])
-meson_source = Path(sys.argv[2])
-orca_source = Path(sys.argv[3])
 text = speech_source.read_text()
 
 import_anchor = "from dataclasses import dataclass\n"
@@ -33,30 +31,3 @@ recorder = '''def _speak(text: str, acss: ACSS | dict[str, Any] | None) -> None:
 if speak_anchor not in text:
     raise SystemExit("Orca speech function anchor was not found")
 speech_source.write_text(text.replace(speak_anchor, recorder, 1))
-
-# Ubuntu 24.04's AT-SPI 2.52 supplies the interfaces used by this browser
-# journey. Orca 50 raises its package floor to 2.56 for newer optional paths;
-# its runtime guards keep those paths inactive on this qualification host.
-meson = meson_source.read_text()
-dependency_floor = "version: '>= 2.56.0'"
-if meson.count(dependency_floor) != 2:
-    raise SystemExit("Orca AT-SPI dependency anchors were not found")
-meson_source.write_text(meson.replace(dependency_floor, "version: '>= 2.52.0'"))
-
-# AT-SPI 2.56 renamed PUSH_BUTTON to BUTTON and added SWITCH. Keep the current
-# Orca browser fixes while spelling those roles with Ubuntu 24.04 equivalents.
-role_uses = 0
-for python_source in orca_source.rglob("*.py"):
-    python_text = python_source.read_text()
-    replacements = {
-        "Atspi.Role.BUTTON": "Atspi.Role.PUSH_BUTTON",
-        "Atspi.Role.SWITCH": "Atspi.Role.TOGGLE_BUTTON",
-    }
-    count = sum(python_text.count(old) for old in replacements)
-    if count:
-        for old, new in replacements.items():
-            python_text = python_text.replace(old, new)
-        python_source.write_text(python_text)
-        role_uses += count
-if role_uses == 0:
-    raise SystemExit("Orca button-role compatibility anchors were not found")
