@@ -1411,11 +1411,13 @@ proseat KeyboardInput.fsi type KeyboardEffect ::: | RequestHostKeyCapture of Key
 +      KeyboardInput.fsi val Keymap.rebind
 +      KeyboardInput.fsi val Keymap.replaceCommandBinding
 +      KeyboardInput.fsi type KeyModifiers
++      KeyboardInput.fsi type SvgKeyboardIntent
 +      KeyboardInput.fsi val ViewerKeyboard.normalize
 +      KeyboardInput.fsi val ViewerKeyboard.normalizeEvent
 +      KeyboardInput.fsi val ViewerKeyboard.toKeyId
 +      KeyboardInput.fsi val ViewerKeyboard.noModifiers
 +      KeyboardInput.fsi val ViewerKeyboard.normalizeEventWithModifiers
++      KeyboardInput.fsi val ViewerKeyboard.tryMapSvgIntent
 
 # ------------------------------------------------------------------------------------------
 file   Controls/KeyRebind.fsi
@@ -1568,6 +1570,81 @@ open   System
 +      Animation.fsi val AnimationState.retarget
 +      Animation.fsi val AnimationState.value
 +      Animation.fsi val AnimationState.isActive
+
+# ------------------------------------------------------------------------------------------
+file   Scene/RetainedSvg.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      RetainedSvg.fsi type SvgCamera
++      RetainedSvg.fsi type SemanticSceneObject
++      RetainedSvg.fsi type RetainedSceneLayer
++      RetainedSvg.fsi type RetainedScene
++      RetainedSvg.fsi type SvgAdapterIssue
++      RetainedSvg.fsi type SvgAdapterResult
++      RetainedSvg.fsi type RetainedInteractionMessage
++      RetainedSvg.fsi type RetainedInteractionError
++      RetainedSvg.fsi type RetainedInteractionState
++      RetainedSvg.fsi type RetainedInteractionResult
++      RetainedSvg.fsi val SvgRetained.project
++      RetainedSvg.fsi val SvgRetained.toScreenPoint
++      RetainedSvg.fsi val SvgRetained.tryToScenePoint
++      RetainedSvg.fsi val SvgRetained.tryCreateInteraction
++      RetainedSvg.fsi val SvgRetained.update
+
+# ------------------------------------------------------------------------------------------
+file   Scene/SvgDocument.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SvgDocument.fsi type SvgAffine
++      SvgDocument.fsi type SvgAffineError
++      SvgDocument.fsi val SvgAffine.identity
++      SvgDocument.fsi val SvgAffine.translate
++      SvgDocument.fsi val SvgAffine.scale
++      SvgDocument.fsi val SvgAffine.rotateDegrees
++      SvgDocument.fsi val SvgAffine.skewXDegrees
++      SvgDocument.fsi val SvgAffine.skewYDegrees
++      SvgDocument.fsi val SvgAffine.compose
++      SvgDocument.fsi val SvgAffine.transformPoint
++      SvgDocument.fsi val SvgAffine.tryInverse
++      SvgDocument.fsi val SvgAffine.isFinite
++      SvgDocument.fsi type SvgCoordinateUnits
++      SvgDocument.fsi type SvgSpreadMethod
++      SvgDocument.fsi type SvgGradientStop
++      SvgDocument.fsi type SvgGradientGeometry
++      SvgDocument.fsi type SvgGradientDefinition
++      SvgDocument.fsi type SvgPaintSource
++      SvgDocument.fsi type SvgStrokePresentation
++      SvgDocument.fsi type SvgPresentation
++      SvgDocument.fsi type SvgMaskKind
++      SvgDocument.fsi type SvgClipShape
++      SvgDocument.fsi type SvgFontReference
++      SvgDocument.fsi type SvgElement
++      SvgDocument.fsi and SvgElementContent
++      SvgDocument.fsi type SvgDefinition
++      SvgDocument.fsi and SvgDefinitionContent
++      SvgDocument.fsi type SvgDocument
++      SvgDocument.fsi type SvgDocumentLimits
++      SvgDocument.fsi type SvgDocumentIssue
++      SvgDocument.fsi type SvgRuntimeSupport
++      SvgDocument.fsi type SvgAssetDescriptor
++      SvgDocument.fsi type SvgBuildExtensionDescriptor
++      SvgDocument.fsi val SvgDocument.schema
++      SvgDocument.fsi val SvgDocument.defaultLimits
++      SvgDocument.fsi val SvgDocument.defaultPresentation
++      SvgDocument.fsi val SvgDocument.validate
++      SvgDocument.fsi val SvgDocument.ofRetainedScene
++      SvgDocument.fsi val SvgDocument.serialize
++      SvgDocument.fsi val SvgDocument.deserialize
++      SvgDocument.fsi val SvgDocument.exportSvg
++      SvgDocument.fsi type SvgDocumentPlaySnapshot
++      SvgDocument.fsi type SvgDocumentInteractionState
++      SvgDocument.fsi type SvgDocumentInteractionMessage
++      SvgDocument.fsi type SvgDocumentInteractionError
++      SvgDocument.fsi type SvgDocumentInteractionResult
++      SvgDocument.fsi val SvgDocumentInteraction.tryCreate
++      SvgDocument.fsi val SvgDocumentInteraction.update
 
 # ------------------------------------------------------------------------------------------
 file   Scene/Scene.fsi

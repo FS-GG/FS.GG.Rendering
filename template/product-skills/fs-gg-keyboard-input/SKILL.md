@@ -45,6 +45,22 @@ seed it as the consumer path. If you do adopt it, read
 [Package Boundary](#package-boundary) first: **no host runner interprets a
 `KeyboardEffect`**, so every effect it emits is yours to act on.
 
+### SVG keyboard intents
+
+The retained SVG host uses a deliberately small, command-agnostic keyboard vocabulary. Pass the
+browser event facts to `ViewerKeyboard.tryMapSvgIntent`; it returns an `SvgKeyboardIntent option`
+for focus traversal, activation, or clearing selection. It declines key-up events, IME composition,
+and native editable targets so the browser keeps its platform behavior.
+
+```fsharp
+let svgIntent =
+    ViewerKeyboard.tryMapSvgIntent rawKey isKeyDown isComposing isNativeEditableTarget
+```
+
+Route the returned intent into the product's retained/document interaction message. Keep gameplay
+command bindings on the `MapKey` path described above; the SVG intent mapper does not consult a
+`Keymap` and does not replace product controls.
+
 ## Common pitfalls
 
 - **Duplicate DU case names across co-opened modules.** `ViewerKey.Unknown of raw:

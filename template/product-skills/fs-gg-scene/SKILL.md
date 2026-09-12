@@ -19,6 +19,61 @@ field order locally — no DLL reflection needed. Prefer the self-describing
 constructors (`Scene.filledRectangle`, `Scene.textAt`, `Scene.circle`) over the
 positional tuple cases to avoid an arity slip.
 
+The retained SVG and typed document contracts are bundled beside it at
+`docs/api-surface/Scene/RetainedSvg.fsi` and `docs/api-surface/Scene/SvgDocument.fsi`.
+
+### Retained SVG foundation
+
+Use `SvgRetained.project` to validate a `RetainedScene` before handing it to an SVG host. Identity,
+layer order, visibility, and camera data remain explicit. Convert between coordinate spaces with
+`SvgRetained.toScreenPoint` and `SvgRetained.tryToScenePoint`; the inverse returns `None` for an
+invalid camera. Start portable selection, focus, and pointer-capture state with
+`SvgRetained.tryCreateInteraction`, then feed commands through `SvgRetained.update`. A rejected
+command returns the unchanged state plus a typed error.
+
+```fsharp
+let projected = SvgRetained.project retainedScene
+let screenPoint = SvgRetained.toScreenPoint retainedScene.Camera scenePoint
+let scenePointAgain = SvgRetained.tryToScenePoint retainedScene.Camera screenPoint
+let interaction = SvgRetained.tryCreateInteraction retainedScene
+```
+
+### Typed SVG documents
+
+`SvgDocument` is the bounded `fsgg.svg-document/1` authoring and interchange model. It is not an
+arbitrary SVG XML parser. Begin with `SvgDocument.defaultPresentation` and
+`SvgDocument.defaultLimits`; use `SvgDocument.schema` as the format identifier. Validate before a
+browser mutation with `SvgDocument.validate`. `SvgDocument.ofRetainedScene` is the checked bridge
+from the first retained contract. `SvgDocument.serialize` and `SvgDocument.deserialize` round-trip
+the canonical typed wire format, while `SvgDocument.exportSvg` emits standalone SVG XML under a
+caller-supplied mount namespace so local identifiers cannot collide with another mounted document.
+
+Affine transforms use the standard six-value SVG matrix. Build them with `SvgAffine.identity`,
+`SvgAffine.translate`, `SvgAffine.scale`, `SvgAffine.rotateDegrees`, `SvgAffine.skewXDegrees`, and
+`SvgAffine.skewYDegrees`; combine parent and local transforms with `SvgAffine.compose`, apply one with
+`SvgAffine.transformPoint`, and guard imported values with `SvgAffine.isFinite`. Use
+`SvgAffine.tryInverse` for screen-to-document mapping because singular matrices are an expected typed
+failure.
+
+```fsharp
+let local =
+    SvgAffine.compose
+        (SvgAffine.translate 32.0 16.0)
+        (SvgAffine.rotateDegrees 15.0)
+
+let transformed = SvgAffine.transformPoint local point
+let invertible = SvgAffine.tryInverse local
+let accepted = SvgDocument.validate serializedByteCount SvgDocument.defaultLimits document
+let canonical = SvgDocument.serialize document
+let decoded = canonical |> Result.bind SvgDocument.deserialize
+let standalone = SvgDocument.exportSvg "game-hud" document
+```
+
+For minimal editor state, call `SvgDocumentInteraction.tryCreate` with an initial revision, invertible
+camera, and valid document. Apply revision-checked edit, focus, selection, capture, undo/redo, and play
+snapshot commands with `SvgDocumentInteraction.update`. Keep the play snapshot's serialized bytes as
+the immutable handoff; later editor history must not mutate a running session.
+
 ## Usage
 
 ```fsharp

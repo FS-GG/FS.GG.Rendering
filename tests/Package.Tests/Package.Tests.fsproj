@@ -113,6 +113,10 @@
          restore. Must precede the test file that opens it. -->
     <Compile Include="..\..\scripts\ApiSurfaceCoverage.fs" Link="ApiSurfaceCoverage.fs" />
     <Compile Include="Issue925ApiSurfaceCoverageTests.fs" />
+    <!-- The generator's single .fsi parser is compiled here as well so declaration shapes that
+         affect coverage keys are exercised without a package restore or generator subprocess. -->
+    <Compile Include="..\..\scripts\lib\FsiSurface.fsx" Link="FsiSurface.fs" />
+    <Compile Include="FsiSurfaceParserTests.fs" />
     <Compile Include="Issue1012GeneratedInteractiveHostTests.fs" />
     <Compile Include="Issue1030ViewImageSizeTests.fs" />
     <Compile Include="Issue1039PerformanceEvidenceTests.fs" />
