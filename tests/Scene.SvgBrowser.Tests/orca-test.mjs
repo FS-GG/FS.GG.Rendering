@@ -68,7 +68,7 @@ const enterDocumentForOrca = async (selector, expectedSpeech) => {
   throw new Error(`Orca did not enter the browser document and announce ${expectedSpeech}`);
 };
 try {
-  await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
+  await page.waitForLoadState("networkidle");
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
   await activateWebContent("SVG foundation browser fixture");
