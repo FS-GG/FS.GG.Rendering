@@ -153,7 +153,7 @@ jobs:
           # never pushed, and the freeze window ADR-0100 opened comes back with nothing on fire. So the
           # block's own count is cross-checked against what was parsed. Any drift between the guard's
           # format and this parser fails the release loudly instead of skipping it quietly.
-          declared="$(printf '%s\n' "$out" | sed -n 's/^RELEASE-PENDING: this change bumps \([0-9]\{1,\}\) version tag(s).*/\1/p')"
+          declared="$(printf '%s\n' "$out" | sed -n 's/^RELEASE-PENDING: current versions require \([0-9]\{1,\}\) tag(s) that are not cut yet\.$/\1/p')"
 
           if [[ -z "$declared" ]]; then
             if [[ ${#tags[@]} -gt 0 ]]; then
