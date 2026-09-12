@@ -52,6 +52,12 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
+const toggleOrcaBrowseMode = async () => {
+  execFileSync("xdotool", ["keydown", "KP_Insert"]);
+  execFileSync("xdotool", ["key", "a"]);
+  execFileSync("xdotool", ["keyup", "KP_Insert"]);
+  await waitForOrca();
+};
 const tabTo = async (selector) => {
   for (let index = 0; index < 40; index += 1) {
     await desktopKey("Tab");
@@ -67,6 +73,7 @@ const enterDocumentForOrca = async (selector, expectedSpeech) => {
   // Tab is consumed by the virtual cursor. Focus the real browser widget once;
   // Orca still receives the resulting native AT-SPI focus event and produces
   // the speech asserted below. All subsequent traversal uses desktop Tab.
+  await toggleOrcaBrowseMode();
   await page.locator(selector).focus();
   await waitForOrca();
   if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
