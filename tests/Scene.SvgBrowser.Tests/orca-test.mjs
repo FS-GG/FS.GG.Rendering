@@ -52,25 +52,26 @@ const tabTo = async (selector) => {
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
+  await page.waitForTimeout(4000);
   focusWindow("SVG foundation browser fixture");
   await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
   await tabTo("[data-scene-control-id='alpha']");
   await waitForOrca();
-  await desktopKey("space");
+  await page.keyboard.press("Space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
   await tabTo("[data-scene-control-id='beta']");
   await waitForOrca();
-  await desktopKey("space");
+  await page.keyboard.press("Space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
   await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
-  await desktopKey("Right");
-  await desktopKey("Return");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
   await waitForOrca();
   const afterSvgKeyboard = await page.evaluate(() => window.svgFoundation.state());
 
@@ -81,11 +82,12 @@ try {
   page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
+  await page.waitForTimeout(4000);
   focusWindow("SVG art studio fixture");
   await page.getByRole("heading", { name: "SVG art studio", exact: true }).click();
   await tabTo("button[aria-label='Rectangle']");
   await waitForOrca();
-  await desktopKey("space");
+  await page.keyboard.press("Space");
   await waitForOrca();
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
@@ -94,7 +96,7 @@ try {
   execFileSync("xdotool", ["type", "--clearmodifiers", "not-a-number"]);
   await tabTo("button[aria-label='Apply translation']");
   await waitForOrca();
-  await desktopKey("Return");
+  await page.keyboard.press("Enter");
   await waitForOrca();
   await waitForOrca();
   const validationFeedback = await page.locator("[role='status']").textContent();
