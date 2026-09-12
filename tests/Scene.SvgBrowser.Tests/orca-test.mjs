@@ -52,19 +52,19 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
-const focusForOrca = async (selector) => {
-  await page.locator(selector).focus();
-  await waitForOrca();
+const tabTo = async (selector) => {
+  for (let index = 0; index < 40; index += 1) {
+    await desktopKey("Tab");
+    await waitForOrca();
+    if (await page.locator(selector).evaluate((node) => node === document.activeElement)) return;
+  }
+  throw new Error(`Could not reach ${selector} through desktop Tab navigation`);
 };
 const enterDocumentForOrca = async (selector, expectedSpeech) => {
   const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
   if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
-  for (let index = 0; index < 6; index += 1) {
-    await desktopKey("F6");
-    await waitForOrca();
-    await focusForOrca(selector);
-    if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
-  }
+  await tabTo(selector);
+  if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
   throw new Error(`Orca did not enter the browser document and announce ${expectedSpeech}`);
 };
 try {
@@ -75,17 +75,17 @@ try {
   // Playwright targets the browser widget; Orca independently observes the
   // resulting native AT-SPI focus event and generates the asserted speech.
   await enterDocumentForOrca("[data-scene-root-id='svg-foundation-root']", "SVG foundation scene");
-  await focusForOrca("[data-scene-control-id='alpha']");
+  await tabTo("[data-scene-control-id='alpha']");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await focusForOrca("[data-scene-control-id='beta']");
+  await tabTo("[data-scene-control-id='beta']");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await focusForOrca("[data-scene-root-id='svg-foundation-root']");
+  await tabTo("[data-scene-root-id='svg-foundation-root']");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
   await waitForOrca();
@@ -103,9 +103,9 @@ try {
   await waitForOrca();
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
-  await focusForOrca("input[aria-label='Translate X']");
+  await tabTo("input[aria-label='Translate X']");
   execFileSync("xdotool", ["type", "--clearmodifiers", "not-a-number"]);
-  await focusForOrca("button[aria-label='Apply translation']");
+  await tabTo("button[aria-label='Apply translation']");
   await page.keyboard.press("Enter");
   await waitForOrca();
   await waitForOrca();
