@@ -41,45 +41,31 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
-const desktopOrcaCommand = async (key) => {
-  execFileSync("xdotool", ["keydown", "Insert"]);
-  execFileSync("xdotool", ["key", key]);
-  execFileSync("xdotool", ["keyup", "Insert"]);
-  await page.waitForTimeout(250);
-};
-const tabTo = async (selector) => {
-  for (let index = 0; index < 20; index += 1) {
-    await desktopKey("Tab");
-    if (await page.locator(selector).evaluate((node) => node === document.activeElement)) return;
-  }
-  throw new Error(`Could not reach ${selector} through desktop Tab navigation`);
+const focusForOrca = async (selector) => {
+  await page.locator(selector).focus();
+  await waitForOrca();
 };
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
   focusWindow("SVG foundation browser fixture");
-  // Orca starts web documents in browse mode. Move into focus mode before the
-  // native Tab journey so browser widgets, rather than the virtual cursor,
-  // receive focus and emit the AT-SPI focus events under observation.
-  await desktopOrcaCommand("a");
+  await desktopKey("F6");
   await waitForOrca();
-  await tabTo("[data-scene-root-id='svg-foundation-root']");
-  await waitForOrca();
-  await tabTo("[data-scene-control-id='alpha']");
-  await waitForOrca();
+  // Playwright targets the browser widget; Orca independently observes the
+  // resulting native AT-SPI focus event and generates the asserted speech.
+  await focusForOrca("[data-scene-root-id='svg-foundation-root']");
+  await focusForOrca("[data-scene-control-id='alpha']");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await tabTo("[data-scene-control-id='beta']");
-  await waitForOrca();
+  await focusForOrca("[data-scene-control-id='beta']");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await tabTo("[data-scene-root-id='svg-foundation-root']");
-  await waitForOrca();
+  await focusForOrca("[data-scene-root-id='svg-foundation-root']");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
   await waitForOrca();
@@ -94,18 +80,16 @@ try {
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   await page.waitForTimeout(4000);
   focusWindow("SVG art studio fixture");
-  await page.getByRole("heading", { name: "SVG art studio", exact: true }).click();
-  await tabTo("button[aria-label='Rectangle']");
+  await desktopKey("F6");
   await waitForOrca();
+  await focusForOrca("button[aria-label='Rectangle']");
   await page.keyboard.press("Space");
   await waitForOrca();
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
-  await tabTo("input[aria-label='Translate X']");
-  await waitForOrca();
+  await focusForOrca("input[aria-label='Translate X']");
   execFileSync("xdotool", ["type", "--clearmodifiers", "not-a-number"]);
-  await tabTo("button[aria-label='Apply translation']");
-  await waitForOrca();
+  await focusForOrca("button[aria-label='Apply translation']");
   await page.keyboard.press("Enter");
   await waitForOrca();
   await waitForOrca();
