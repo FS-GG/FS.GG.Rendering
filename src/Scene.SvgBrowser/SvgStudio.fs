@@ -153,7 +153,7 @@ type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, init
             let x=screenPoint.X-camera.E
             let y=screenPoint.Y-camera.F
             let local={X=(camera.D*x-camera.C*y)/determinant;Y=(-camera.B*x+camera.A*y)/determinant}
-            Ok(documentHost.HitTest local)
+            Ok(documentHost.HitTestBounds local)
     member _.Preview transaction = SvgAuthoring.preview state.Revision transaction state |> Result.map sync
     member _.CommitGesture transactionId = SvgAuthoring.commitPreview state.Revision transactionId state |> Result.map sync
     member _.CancelGesture transactionId = SvgAuthoring.cancelPreview transactionId state |> Result.map sync
