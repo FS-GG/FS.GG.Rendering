@@ -31,7 +31,7 @@ dbus-run-session -- bash -c '
 ' _ "$work" "$raw" "$fixture" "$journey"
 
 python3 - "$raw" "$journey" "$output" <<'PY'
-import json, os, pathlib, re, subprocess, sys
+import json, os, pathlib, re, sys
 raw_path, journey_path, output_path = map(pathlib.Path, sys.argv[1:])
 raw = raw_path.read_text(errors="replace")
 journey = json.loads(journey_path.read_text())
@@ -61,7 +61,7 @@ studio_agreement = (
     and journey["studio"]["validationFeedback"] == "Validation error: enter a finite translation for the current selection"
 )
 result = "pass" if all(required.values()) and negative and studio_agreement else "fail"
-version = subprocess.run(["orca", "--version"], check=False, capture_output=True, text=True).stdout.strip()
+version = os.environ.get("SVG_SCENE_ORCA_VERSION", "system-orca")
 evidence = {
     "schema": "fsgg.svg-scene.orca-observation/v1",
     "result": result,
