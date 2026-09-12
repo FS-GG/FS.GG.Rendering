@@ -27,7 +27,7 @@ module private Dom =
     [<Emit("document.elementFromPoint($0, $1)?.closest('[data-scene-object-id]')?.getAttribute('data-scene-object-id') ?? null")>]
     let objectIdAtClientPoint (_clientX: float) (_clientY: float) : string option = jsNative
 
-    [<Emit("((point) => document.elementFromPoint(point.x, point.y)?.closest('[data-fsgg-semantic-id]')?.getAttribute('data-fsgg-semantic-id') ?? null)(new DOMPoint($1, $2).matrixTransform($0.getScreenCTM()))")>]
+    [<Emit("((screen) => document.elementFromPoint(screen.x, screen.y)?.closest('[data-fsgg-semantic-id]')?.getAttribute('data-fsgg-semantic-id') ?? Array.from($0.querySelectorAll('[data-fsgg-semantic-id]')).reverse().find(element => { const matrix = element.getScreenCTM?.(); if (!matrix) return false; const point = screen.matrixTransform(matrix.inverse()); const bounds = element.getBBox(); return point.x >= bounds.x && point.x <= bounds.x + bounds.width && point.y >= bounds.y && point.y <= bounds.y + bounds.height; })?.getAttribute('data-fsgg-semantic-id') ?? null)(new DOMPoint($1, $2).matrixTransform($0.getScreenCTM()))")>]
     let semanticIdAtSvgPoint (_root: Element) (_x: float) (_y: float) : string option = jsNative
 
     [<Emit("!!($0 && ($0.closest?.('input,textarea,select,[contenteditable=true],[contenteditable=plaintext-only]')))")>]
