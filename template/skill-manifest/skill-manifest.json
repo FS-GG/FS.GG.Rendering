@@ -61,12 +61,12 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "62ef6d874041de97e2dc256d45f4499e35551febec2ff09b2c5a70e78ad4f4f0",
+      "sha256": "fbd7f29e2f5dee30f3a1c6bb9f3aed16aa3249d3e7a98df1c197e2c5acfe0cd1",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/",
       "files": [
-        { "path": "SKILL.md", "sha256": "62ef6d874041de97e2dc256d45f4499e35551febec2ff09b2c5a70e78ad4f4f0" }
+        { "path": "SKILL.md", "sha256": "fbd7f29e2f5dee30f3a1c6bb9f3aed16aa3249d3e7a98df1c197e2c5acfe0cd1" }
       ]
     },
     {
@@ -116,12 +116,12 @@
     {
       "id": "fs-gg-scene",
       "scope": "product",
-      "sha256": "b7bcd0eab7cbeae020f87f96d8e8f4a7d79e59da238ef5f3a591ecb7fdd70149",
+      "sha256": "bad6df3b6199a983dfa5bd8a37ae6ea7aea37fb559cd8414f35405f06ec2373e",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
       "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
       "supplied-by": "template/product-skills/fs-gg-scene/",
       "files": [
-        { "path": "SKILL.md", "sha256": "b7bcd0eab7cbeae020f87f96d8e8f4a7d79e59da238ef5f3a591ecb7fdd70149" }
+        { "path": "SKILL.md", "sha256": "bad6df3b6199a983dfa5bd8a37ae6ea7aea37fb559cd8414f35405f06ec2373e" }
       ]
     },
     {
