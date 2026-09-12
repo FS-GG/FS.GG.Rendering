@@ -74,7 +74,7 @@ const enterDocumentForOrca = async (selector, expectedSpeech) => {
   // Orca still receives the resulting native AT-SPI focus event and produces
   // the speech asserted below. All subsequent traversal uses desktop Tab.
   await toggleOrcaBrowseMode();
-  await page.locator(selector).focus();
+  await page.locator(selector).click();
   await waitForOrca();
   if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
   throw new Error(`Orca did not enter the browser document and announce ${expectedSpeech}`);
@@ -111,8 +111,6 @@ try {
   await page.waitForTimeout(4000);
   await activateWebContent("SVG art studio fixture");
   await enterDocumentForOrca("button[aria-label='Rectangle']", "Rectangle");
-  await page.keyboard.press("Space");
-  await waitForOrca();
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
   await tabTo("input[aria-label='Translate X']");
