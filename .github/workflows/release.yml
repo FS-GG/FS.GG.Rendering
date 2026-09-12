@@ -618,9 +618,14 @@ jobs:
           # created outside this checkout under /tmp and cannot inherit the repo's
           # NuGet config. Without this source every real framework release fails
           # NU1102 here before it can publish the packages the probe is asking for.
+          user_config="$HOME/.nuget/NuGet/NuGet.Config"
+          if [[ ! -f "$user_config" ]]; then
+            mkdir -p "$(dirname "$user_config")"
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<configuration />' > "$user_config"
+          fi
           dotnet nuget add source "$(pwd)/artifacts/packages" \
             --name release-staging \
-            --configfile "$HOME/.nuget/NuGet/NuGet.Config"
+            --configfile "$user_config"
 
           name="FsiContractProbe"
           product="$work/$name"

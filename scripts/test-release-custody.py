@@ -116,6 +116,10 @@ class ReleaseCustodyTests(unittest.TestCase):
         self.assertIn("release-custody.py compare", publish)
         self.assertIn("--token-env GITHUB_TOKEN", publish)
         self.assertIn('--api-key "$GITHUB_TOKEN"', publish)
+        packed_template = release[release.index("Packed template clean-checkout FSI contract (#1010)"):]
+        self.assertIn('user_config="$HOME/.nuget/NuGet/NuGet.Config"', packed_template)
+        self.assertIn("<configuration />", packed_template)
+        self.assertIn('--configfile "$user_config"', packed_template)
         nuget_replay = release[release.index("Replay the same original custody bytes to nuget.org and read them back"):]
         self.assertIn("--skip-duplicate", nuget_replay)
         self.assertIn("for attempt in {1..180}", nuget_replay)
