@@ -41,8 +41,17 @@ Atspi.init()
 wanted = sys.argv[1]
 deadline = time.monotonic() + 10
 while time.monotonic() < deadline:
-    target = find_by_name(Atspi.get_desktop(0), wanted)
-    if target is not None and Atspi.Component.grab_focus(target):
+    desktop = Atspi.get_desktop(0)
+    target = find_by_name(desktop, wanted)
+    sink = find_by_name(desktop, "Search or enter address")
+    if target is not None:
+        if sink is not None and wanted != "Search or enter address":
+            Atspi.Component.grab_focus(sink)
+            time.sleep(0.15)
+        focused = Atspi.Component.grab_focus(target)
+    else:
+        focused = False
+    if focused:
         print(f"atspi-focus: {wanted}")
         raise SystemExit(0)
     time.sleep(0.2)
