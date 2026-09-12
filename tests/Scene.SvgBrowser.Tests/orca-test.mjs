@@ -59,21 +59,28 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
+const atspiFocus = async (accessibleName) => {
+  execFileSync("python3", [resolve(fixture, "orca-atspi-focus.py"), accessibleName], { stdio: "inherit" });
+  await waitForOrca();
+};
 const toggleOrcaBrowseMode = async () => {
   execFileSync("xdotool", ["keydown", "KP_Insert"]);
   execFileSync("xdotool", ["key", "a"]);
   execFileSync("xdotool", ["keyup", "KP_Insert"]);
   await waitForOrca();
 };
-const tabTo = async (selector) => {
+const tabTo = async (selector, accessibleName) => {
   for (let index = 0; index < 40; index += 1) {
     await desktopKey("Tab");
     await waitForOrca();
-    if (await page.locator(selector).evaluate((node) => node === document.activeElement)) return;
+    if (await page.locator(selector).evaluate((node) => node === document.activeElement)) {
+      await atspiFocus(accessibleName);
+      return;
+    }
   }
   throw new Error(`Could not reach ${selector} through desktop Tab navigation`);
 };
-const enterDocumentForOrca = async (selector) => {
+const enterDocumentForOrca = async (accessibleName) => {
   const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
   if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
   // Chromium's app window starts Orca in browse mode, where the first desktop
@@ -81,8 +88,7 @@ const enterDocumentForOrca = async (selector) => {
   // Orca still receives the resulting native AT-SPI focus event and produces
   // the speech asserted below. All subsequent traversal uses desktop Tab.
   await toggleOrcaBrowseMode();
-  await page.locator(selector).click();
-  await waitForOrca();
+  await atspiFocus(accessibleName);
 };
 try {
   await page.waitForLoadState("networkidle");
@@ -91,18 +97,18 @@ try {
   await activateWebContent("SVG foundation browser fixture");
   // Playwright targets the browser widget; Orca independently observes the
   // resulting native AT-SPI focus event and generates the asserted speech.
-  await enterDocumentForOrca("[data-scene-root-id='svg-foundation-root']");
-  await tabTo("[data-scene-control-id='alpha']");
+  await enterDocumentForOrca("SVG foundation scene");
+  await tabTo("[data-scene-control-id='alpha']", "Alpha unit");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterAlphaControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await tabTo("[data-scene-control-id='beta']");
+  await tabTo("[data-scene-control-id='beta']", "Beta unit");
   await page.keyboard.press("Space");
   await waitForOrca();
   const afterHtmlControl = await page.evaluate(() => window.svgFoundation.state());
 
-  await tabTo("[data-scene-root-id='svg-foundation-root']");
+  await tabTo("[data-scene-root-id='svg-foundation-root']", "SVG foundation scene");
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Enter");
   await waitForOrca();
@@ -115,12 +121,14 @@ try {
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   await page.waitForTimeout(4000);
   await activateWebContent("SVG art studio fixture");
-  await enterDocumentForOrca("button[aria-label='Rectangle']");
+  await enterDocumentForOrca("Rectangle");
+  await page.keyboard.press("Space");
+  await waitForOrca();
   await waitForOrca();
   const studioAfterCreate = await page.evaluate(() => window.svgStudioFixture.observation());
-  await tabTo("input[aria-label='Translate X']");
+  await tabTo("input[aria-label='Translate X']", "Translate X");
   execFileSync("xdotool", ["type", "--clearmodifiers", "not-a-number"]);
-  await tabTo("button[aria-label='Apply translation']");
+  await tabTo("button[aria-label='Apply translation']", "Apply translation");
   await page.keyboard.press("Enter");
   await waitForOrca();
   await waitForOrca();
