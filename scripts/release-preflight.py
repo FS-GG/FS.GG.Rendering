@@ -66,6 +66,11 @@ def main() -> int:
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--workflow-sha", required=True)
+    parser.add_argument("--github-app-id", required=True)
+    parser.add_argument("--github-installation-id", required=True)
+    parser.add_argument("--github-repository", required=True)
+    parser.add_argument("--github-workflow-ref", required=True)
+    parser.add_argument("--github-run-id", required=True)
     parser.add_argument("--github-token-env", default="GITHUB_TOKEN")
     parser.add_argument(
         "--github-url-template",
@@ -81,6 +86,14 @@ def main() -> int:
     root = args.repo_root.resolve()
     if not SHA.fullmatch(args.source_sha) or not SHA.fullmatch(args.workflow_sha):
         fail("source and workflow identities must be exact lowercase 40-hex SHAs")
+    if not args.github_app_id.isdigit() or not args.github_installation_id.isdigit():
+        fail("GitHub App and installation identities must be decimal IDs")
+    if args.github_repository != "FS-GG/FS.GG.Rendering":
+        fail(f"unexpected GitHub repository identity {args.github_repository!r}")
+    if "/.github/workflows/release.yml@" not in args.github_workflow_ref:
+        fail(f"unexpected workflow identity {args.github_workflow_ref!r}")
+    if not args.github_run_id.isdigit():
+        fail("GitHub workflow run identity must be a decimal ID")
     token = os.environ.get(args.github_token_env, "")
     if not token:
         fail(f"{args.github_token_env} is absent; authenticated GitHub collision state unavailable")
@@ -167,6 +180,11 @@ def main() -> int:
         "result": "pass",
         "sourceSha": args.source_sha,
         "workflowSha": args.workflow_sha,
+        "workflow": {
+            "repository": args.github_repository,
+            "ref": args.github_workflow_ref,
+            "runId": args.github_run_id,
+        },
         "version": args.version,
         "frameworkVersion": framework,
         "templateVersion": template,
@@ -182,7 +200,13 @@ def main() -> int:
         },
         "collisions": observations,
         "permissions": {
-            "githubPackages": "packages:write job grant; authenticated baseline read passed",
+            "githubPackages": {
+                "credential": "fs-gg-cross-repo-dispatch installation token",
+                "appId": args.github_app_id,
+                "installationId": args.github_installation_id,
+                "scope": f"{args.github_repository}:packages:read",
+                "proof": "authenticated baseline read passed",
+            },
             "nugetOrg": "id-token:write job grant; NuGet/login completed before this script",
         },
         "mutation": "none",

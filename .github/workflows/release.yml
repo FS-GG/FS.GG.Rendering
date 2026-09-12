@@ -325,6 +325,15 @@ jobs:
           git fetch --no-tags origin "$source_sha"
           git cat-file -e "$source_sha^{commit}"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Mint the established org App package-read credential
+        id: package-reader
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
+          owner: FS-GG
+          repositories: FS.GG.Rendering
+          permission-packages: read
       - name: NuGet login preflight (OIDC only; key is not used)
         uses: NuGet/login@v1
         with:
@@ -332,7 +341,9 @@ jobs:
       - name: Prove exact source, ordered tags, permissions, and absent identities
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FSGG_PACKAGE_READ_TOKEN: ${{ steps.package-reader.outputs.token }}
+          FSGG_PACKAGE_READ_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          FSGG_PACKAGE_READ_INSTALLATION_ID: ${{ steps.package-reader.outputs.installation-id }}
           VER: ${{ inputs.version }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
@@ -343,7 +354,12 @@ jobs:
             --source-sha "$SOURCE_SHA" \
             --version "$VER" \
             --workflow-sha "$GITHUB_SHA" \
-            --github-token-env GITHUB_TOKEN \
+            --github-token-env FSGG_PACKAGE_READ_TOKEN \
+            --github-app-id "$FSGG_PACKAGE_READ_APP_ID" \
+            --github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID" \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --github-workflow-ref "$GITHUB_WORKFLOW_REF" \
+            --github-run-id "$GITHUB_RUN_ID" \
             --receipt artifacts/preflight/release-preflight.json
       - name: Retain the non-publishing preflight receipt
         uses: actions/upload-artifact@v7

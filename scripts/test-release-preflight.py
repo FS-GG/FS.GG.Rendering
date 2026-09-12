@@ -75,11 +75,20 @@ class StatusTests(unittest.TestCase):
         self.assertIn("packages: write", block)
         self.assertIn("id-token: write", block)
         self.assertIn("uses: NuGet/login@v1", block)
+        self.assertIn("uses: actions/create-github-app-token@v2", block)
+        self.assertIn("permission-packages: read", block)
+        self.assertIn("FSGG_PACKAGE_READ_TOKEN", block)
+        self.assertIn('--github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID"', block)
+        self.assertIn('--github-repository "$GITHUB_REPOSITORY"', block)
+        self.assertIn('--github-workflow-ref "$GITHUB_WORKFLOW_REF"', block)
+        self.assertIn('--github-run-id "$GITHUB_RUN_ID"', block)
         self.assertIn("release-preflight.py", block)
         self.assertNotIn("dotnet nuget push", block)
         self.assertIn("needs: [plan, validate]", tags)
         self.assertIn("validate-only: true", tags)
         self.assertIn("source-sha: ${{ github.sha }}", tags)
+        validate = tags[tags.index("  validate:"):tags.index("  # #681 — THE PUSH")]
+        self.assertIn("secrets: inherit", validate)
 
 
 if __name__ == "__main__":
