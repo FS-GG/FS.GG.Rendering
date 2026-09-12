@@ -8,6 +8,7 @@ on:
       - 'src/Scene.SvgBrowser/**'
       - 'tests/Scene.SvgBrowser.Tests/**'
       - 'readiness/svg-scene-02-5/**'
+      - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
@@ -24,6 +25,7 @@ on:
       - 'src/Scene.SvgBrowser/**'
       - 'tests/Scene.SvgBrowser.Tests/**'
       - 'readiness/svg-scene-02-5/**'
+      - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
@@ -66,6 +68,10 @@ jobs:
         run: npx playwright-core install --with-deps chromium firefox webkit
       - name: Exercise packed adapter in all browser families
         run: bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/svg-browser-observations.json"
+      - name: Qualify Preview-A workload controls on the hosted diagnostic environment
+        env:
+          SVG_SCENE_PERFORMANCE_MODE: diagnostic
+        run: bash tests/Scene.SvgBrowser.Tests/run-performance.sh "$RUNNER_TEMP/svg-preview-a-performance.json"
       - name: Upload browser observation
         if: always()
         uses: actions/upload-artifact@v7
@@ -74,4 +80,5 @@ jobs:
           path: |
             ${{ runner.temp }}/svg-browser-observations*.json
             ${{ runner.temp }}/svg-browser-observations*.exported.svg
+            ${{ runner.temp }}/svg-preview-a-performance.json
           if-no-files-found: warn

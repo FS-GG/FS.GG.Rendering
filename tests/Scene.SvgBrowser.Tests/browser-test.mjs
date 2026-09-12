@@ -26,6 +26,8 @@ if (!browserType) throw new Error(`unsupported browser family: ${browserFamily}`
 function mime(path) {
   if (extname(path) === ".html") return "text/html; charset=utf-8";
   if (extname(path) === ".js") return "text/javascript; charset=utf-8";
+  if (extname(path) === ".css") return "text/css; charset=utf-8";
+  if (extname(path) === ".woff2") return "font/woff2";
   return "application/octet-stream";
 }
 function files(directory) {
