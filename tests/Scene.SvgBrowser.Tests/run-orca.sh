@@ -7,7 +7,16 @@ command -v Xvfb >/dev/null
 command -v orca >/dev/null
 mkdir -p "$(dirname "$output")"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-orca.XXXXXX")"
-trap 'for log in "$work"/orca.stdout "$work"/orca.stderr "$work"/orca-speech.jsonl; do if [[ -s "$log" ]]; then cat "$log"; fi; done; rm -rf "$work"' EXIT
+cleanup() {
+  for log in "$work"/orca.stdout "$work"/orca.stderr "$work"/orca-speech.jsonl; do
+    if [[ -s "$log" ]]; then cat "$log"; fi
+  done
+  if [[ -s "$work/orca.debug" ]]; then
+    grep -E "WEB:|FOCUS MANAGER|KEYBOARD EVENT|locus|focus" "$work/orca.debug" | tail -300 || true
+  fi
+  rm -rf "$work"
+}
+trap cleanup EXIT
 raw="$work/orca-speech.jsonl"
 journey="$work/journey.json"
 
@@ -27,7 +36,7 @@ dbus-run-session -- bash -c '
   sleep 1
   gsettings set org.gnome.desktop.interface toolkit-accessibility true
   gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
-  orca --replace >"$1/orca.stdout" 2>"$1/orca.stderr" &
+  orca --replace --debug-file="$1/orca.debug" >"$1/orca.stdout" 2>"$1/orca.stderr" &
   orca_pid=$!
   sleep 3
   node "$3/orca-test.mjs" --out "$4"
