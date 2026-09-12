@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import time
+import json
+import os
 
 import gi
 
@@ -42,7 +44,7 @@ def find_objects(root, wanted):
                 frame = node
         except Exception:
             pass
-        if target is not None and sink is not None and frame is not None:
+        if target is not None and frame is not None:
             return target, sink, frame
         pending.extend(children(node))
     return target, sink, frame
@@ -65,6 +67,10 @@ while time.monotonic() < deadline:
     else:
         focused = False
     if focused:
+        capture_path = os.environ.get("SVG_SCENE_ATSPI_LOG")
+        if capture_path:
+            with open(capture_path, "a", encoding="utf-8") as capture:
+                capture.write(json.dumps({"name": wanted, "focusable": True}) + "\n")
         print(f"atspi-focus: {wanted}")
         raise SystemExit(0)
     time.sleep(0.2)

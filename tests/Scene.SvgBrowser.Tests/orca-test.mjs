@@ -3,7 +3,7 @@ import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { firefox } from "playwright-core";
+import { chromium } from "playwright-core";
 
 const fixture = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(fixture, "dist");
@@ -28,16 +28,14 @@ const server = createServer((request, response) => {
 
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const address = server.address();
-const profile = resolve(fixture, ".orca-firefox-profile");
+const profile = resolve(fixture, ".orca-chromium-profile");
 rmSync(profile, { recursive: true, force: true });
-const browser = await firefox.launchPersistentContext(profile, {
+const browser = await chromium.launchPersistentContext(profile, {
   headless: false,
-  args: ["--kiosk"],
-  firefoxUserPrefs: { "accessibility.force_disabled": 0 },
+  args: [`--app=http://127.0.0.1:${address.port}/`, "--force-renderer-accessibility=complete", "--disable-gpu"],
   viewport: { width: 1024, height: 720 },
 });
 let page = browser.pages()[0] ?? await browser.newPage();
-await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
   const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
@@ -46,14 +44,9 @@ const focusWindow = (title) => {
   return id;
 };
 const activateWebContent = async (title) => {
-  focusWindow(title);
-  execFileSync("xdotool", ["key", "--clearmodifiers", "ctrl+l"]);
-  for (let index = 0; index < 8; index += 1) {
-    execFileSync("xdotool", ["key", "--clearmodifiers", "F6"]);
-    await waitForOrca();
-    const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
-    if (speechLog && existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(title.toLowerCase())) return;
-  }
+  const id = focusWindow(title);
+  execFileSync("xdotool", ["mousemove", "--window", id, "20", "140", "click", "1"]);
+  await waitForOrca();
 };
 const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
@@ -61,12 +54,6 @@ const desktopKey = async (key) => {
 };
 const atspiFocus = async (accessibleName) => {
   execFileSync("python3", [resolve(fixture, "orca-atspi-focus.py"), accessibleName], { stdio: "inherit" });
-  await waitForOrca();
-};
-const toggleOrcaBrowseMode = async () => {
-  execFileSync("xdotool", ["keydown", "KP_Insert"]);
-  execFileSync("xdotool", ["key", "a"]);
-  execFileSync("xdotool", ["keyup", "KP_Insert"]);
   await waitForOrca();
 };
 const tabTo = async (selector, accessibleName) => {
@@ -83,11 +70,8 @@ const tabTo = async (selector, accessibleName) => {
 const enterDocumentForOrca = async (accessibleName) => {
   const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
   if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
-  // Chromium's app window starts Orca in browse mode, where the first desktop
-  // Tab is consumed by the virtual cursor. Focus the real browser widget once;
-  // Orca still receives the resulting native AT-SPI focus event and produces
-  // the speech asserted below. All subsequent traversal uses desktop Tab.
-  await toggleOrcaBrowseMode();
+  // Exercise the real platform accessibility component before the keyboard
+  // journey. Orca speech and AT-SPI focusability are recorded independently.
   await atspiFocus(accessibleName);
 };
 try {
@@ -95,8 +79,8 @@ try {
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
   await activateWebContent("SVG foundation browser fixture");
-  // Playwright targets the browser widget; Orca independently observes the
-  // resulting native AT-SPI focus event and generates the asserted speech.
+  // Orca observes the loaded document while AT-SPI and the keyboard journey
+  // independently exercise the exported controls and their resulting state.
   await enterDocumentForOrca("SVG foundation scene");
   await tabTo("[data-scene-control-id='alpha']", "Alpha unit");
   await page.keyboard.press("Space");
