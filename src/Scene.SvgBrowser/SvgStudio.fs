@@ -41,7 +41,7 @@ module private StudioInterop =
     [<Emit("$0.inputContentHash")>]
     let hash (_value: obj) : string = jsNative
     [<Emit("$0.contours.map(c => c.map(p => ({ X:p[0], Y:p[1] })))")>]
-    let contours (_value: obj) : Point list list = jsNative
+    let contours (_value: obj) : Point array array = jsNative
     [<Emit("$0.error ?? null")>]
     let error (_value: obj) : string option = jsNative
 
@@ -85,7 +85,8 @@ type SvgGeometryWorkerHost(factory: unit -> obj) =
                     match StudioInterop.error payload with
                     | Some message -> finish(); onError message
                     | None ->
-                        let result = { OperationId=StudioInterop.operationId payload; AcceptedRevision=StudioInterop.revision payload; InputContentHash=StudioInterop.hash payload; Contours=StudioInterop.contours payload }
+                        let contours = StudioInterop.contours payload |> Array.map Array.toList |> Array.toList
+                        let result = { OperationId=StudioInterop.operationId payload; AcceptedRevision=StudioInterop.revision payload; InputContentHash=StudioInterop.hash payload; Contours=contours }
                         finish(); onResult result)
             StudioInterop.onError value (fun _ -> finish(); onError "geometry worker failed")
             timeout <- Some(window.setTimeout((fun () -> finish(); onError "geometry worker exceeded the 2 second deadline"), 2000))
