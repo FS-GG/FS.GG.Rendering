@@ -46,8 +46,8 @@ const focusWindow = (title) => {
   return id;
 };
 const activateWebContent = async (title) => {
-  const id = focusWindow(title);
-  execFileSync("xdotool", ["mousemove", "--window", id, "20", "140", "click", "1"]);
+  focusWindow(title);
+  execFileSync("xdotool", ["key", "--clearmodifiers", "F6"]);
   await waitForOrca();
 };
 const desktopKey = async (key) => {
