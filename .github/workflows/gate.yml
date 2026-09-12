@@ -657,8 +657,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # API compatibility gate (H3 / FS-GG/.github#20, epic FS-GG/.github#16 Pillar 5). Packs each
-  # IsPackable FS.GG.UI.* project and compares it against its published baseline on the org GitHub
-  # Packages feed via the .NET SDK's Package Validation / ApiCompat — the F#-viable detector
+  # IsPackable FS.GG.UI.* project and compares it against its stable public nuget.org baseline via
+  # the .NET SDK's Package Validation / ApiCompat — the F#-viable detector
   # (Microsoft.CodeAnalysis.PublicApiAnalyzers is C#-only). A removed/changed public member is a
   # break that must force a SemVer major (registry coherence id `apicompat-publicapi-gate`).
   #
@@ -685,16 +685,14 @@ jobs:
   #
   #   1  a genuine CP#### break        red   — the gate ran and found a break
   #   3  a packable failed to pack     red   — the gate did NOT run; that is not a pass (#216)
-  #   0  OK / NoBaselineYet            green — the gate ran, or had nothing to compare against
-  #   0  FeedUnavailable  + ::error::  green — the gate did not run, for a reason external to the
-  #                                           change. Loud, never silent. Includes the fork-PR case
-  #                                           (no token), so forks still merge (FR-001/FR-013).
+  #   0  Pass / admitted FirstPublication  green — compared, or an answering 404 bound by the plan
+  #   5  Unavailable                       red   — no required comparison; never green-by-absence
   #
   # Exit 3 is the #216 fix. From Feature 211 to #186 every packable failed to pack with NU1403, the
   # script classified all 17 as Indeterminate, and exited 0 — the job was green while comparing
   # nothing. A pack failure is the tree failing to build; the feed's availability is a separate axis,
   # split out as FeedUnavailable so ADR-0101's bound still holds (requiring this job takes a
-  # dependency on the feed, and a feed outage must not wedge the repo).
+  # dependency on the feed. SVG-PREVIEW-A.1 deliberately fails that unavailable dimension closed.
   #
   # HOW IT BECAME REQUIRED, since the history is the argument. It was RED on `main` as of 2026-07-09:
   # three packables carried public-API breaks no published major had discharged — FS.GG.UI.Controls
@@ -711,7 +709,7 @@ jobs:
   #
   # THE LIVE ANSWER IS ONE LINE, and it is the only thing worth trusting here:
   #
-  #   summary: OK=17  BREAK=0  NoBaselineYet=0  Indeterminate=0  FeedUnavailable=0  (total 17, compared 17)
+  #   summary: Pass=16  BREAK=0  FirstPublication=1  NotApplicable=1  Indeterminate=0  Unavailable=0  (total 18, compared 16)
   #
   # `compared` is the number that matters. A green with `compared 0` is a gate that ran and asked nothing
   # — check it before you believe the check.
@@ -756,7 +754,11 @@ jobs:
         env:
           NUGET_FEED_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUGET_FEED_USER: ${{ github.actor }}
-        run: bash scripts/apicompat-check.sh
+        run: |
+          python3 scripts/test-release-custody.py
+          bash scripts/apicompat-check.sh --self-test
+          bash scripts/test-apicompat-release-status.sh
+          bash scripts/apicompat-check.sh
 
   # #241 — template payload restore gate (refs #235, #238, FS-GG/.github#266).
   #

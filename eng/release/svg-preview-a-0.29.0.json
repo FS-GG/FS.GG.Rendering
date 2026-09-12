@@ -1,0 +1,51 @@
+{
+  "schema": "fsgg.rendering.release-plan/v1",
+  "capability": "SVG Preview A",
+  "version": "0.29.0",
+  "baselineVersion": "0.28.0",
+  "tags": [
+    "fs-gg-ui/v0.29.0",
+    "fs-gg-ui-template/v0.29.0",
+    "v0.29.0"
+  ],
+  "packages": [
+    { "id": "FS.GG.UI.Build", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Canvas", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Controls", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Controls.Elmish", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.DesignSystem", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Diagnostics", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Elmish", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.KeyboardInput", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Layout", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Scene", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Scene.SvgBrowser", "kind": "library", "apiBaseline": "first-publication" },
+    { "id": "FS.GG.UI.SkiaViewer", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Symbology", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Symbology.Render", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Testing", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Themes.AntDesign", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI.Themes.Default", "kind": "library", "apiBaseline": "required" },
+    { "id": "FS.GG.UI", "kind": "bom", "apiBaseline": "not-applicable" },
+    { "id": "FS.GG.UI.Template", "kind": "template", "apiBaseline": "not-applicable" }
+  ],
+  "releaseChecks": {
+    "bomMembers": 17,
+    "svgPackage": "FS.GG.UI.Scene.SvgBrowser",
+    "fableEntries": [
+      "fable/FS.GG.UI.Scene.SvgBrowser.fsproj",
+      "fable/SvgBrowser.fs",
+      "fable/SvgBrowser.fsi",
+      "fable-compatibility/compatibility-profile.v1.json"
+    ],
+    "svgSurfaceMarkers": [
+      "SvgDocumentBrowserHost",
+      "RetainedScene",
+      "mountDocument"
+    ],
+    "generatedTemplateEntries": [
+      "content/.template.config/template.json",
+      "content/template/base/Directory.Packages.props"
+    ]
+  }
+}
