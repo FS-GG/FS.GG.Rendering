@@ -772,6 +772,20 @@ let feature209VersionCoherenceTests =
                 "a dirtied artifact must fail the release — warning and pushing anyway is how #515 happened"
         }
 
+        test "release-tags.yml parses the current RELEASE-PENDING header without weakening its count check" {
+            let yml = File.ReadAllText(repo ".github/workflows/release-tags.yml")
+            let guard = File.ReadAllText(repo "scripts/validate-version-coherence.fsx")
+            let header = "RELEASE-PENDING: current versions require %d tag(s) that are not cut yet."
+
+            Expect.stringContains guard header
+                "the coherence guard must keep the release planner's counted pending-tag header"
+            Expect.stringContains yml
+                "RELEASE-PENDING: current versions require \\([0-9]\\{1,\\}\\) tag(s) that are not cut yet\\."
+                "the release planner must parse the guard's current header and capture its count"
+            Expect.stringContains yml "if [[ \"$declared\" -ne ${#tags[@]} ]]"
+                "the planner must still fail closed when the declared and parsed tag counts differ"
+        }
+
         // US2 / FR-003/004 — BOM token + bracket + member parity (policy-independent, structural).
         test "BOM: single [$version$] token, exact bracket, B.ids == P.members" {
             let deps = bomDeps ()
