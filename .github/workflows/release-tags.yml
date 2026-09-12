@@ -321,9 +321,11 @@ jobs:
       actions: read
       packages: write
       id-token: write
-    # NO `secrets: inherit`, unlike the `release` call below. The preflight uses the called workflow's
-    # ephemeral GitHub token plus OIDC; `NUGET_USER` has a public-account fallback. No stored publishing
-    # key is exposed, and the minted short-lived NuGet key is deliberately never used.
+    # The preflight mints the established org App installation token with packages:read because the
+    # called workflow's ephemeral GITHUB_TOKEN cannot read the existing org packages unless every
+    # package independently inherits repository access. NuGet still uses OIDC; no stored publishing
+    # key is exposed, and neither credential is used to publish in this validate-only call.
+    secrets: inherit
 
   # #681 — THE PUSH, and nothing else. Reachable only after `validate` went green.
   cut:
