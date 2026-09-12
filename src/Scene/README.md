@@ -95,9 +95,12 @@ let committed =
 - `VisualInspection` module and records — dependency-light structured inspection vocabulary for scopes, nodes, regions, text runs, paint coverage, clipping, unsupported facts, findings, artifacts, summaries, stable status tokens, finding ids, and deterministic artifact diagnostics.
 - `SvgImport` — bounded parsing for the inert rectangle/path (`M/L/Q/C/Z`)/gradient/clip/mask/symbol SVG subset. It namespaces ids and rejects DTD/entity, script/event, `foreignObject`, CSS/filter, external URL, malformed, compressed, and over-budget input before returning a validated `SvgDocument`.
 - `SvgAsset` and `SvgAssetCatalog` — versioned documents with canonical SHA-256, rights metadata, dependency validation, cycle refusal, accepted prefab revisions, typed overrides, and conflicts.
-- `SvgAuthoring` — revision-guarded atomic transactions, grouped previews/cancellation, whole-group undo/redo, explicit shared-instance revision updates, and immutable play snapshots.
+- `SvgAuthoring` — revision-guarded atomic transactions, grouped previews/cancellation, whole-group undo/redo, explicit shared-instance revision updates, immutable asset revisions, and immutable play snapshots.
+- `SvgArt` — pure primitive/path creation and editing, transforms, grouping, alignment, ordering, presentation, gradients, document-space snapping, and guides. `SvgAuthoring` remains the sole history owner.
+- `SvgGeometry` — bounded adaptive curve flattening and identity-bound worker/result transactions for optional presentation-authoring Boolean geometry. It is not collision authority.
+- `SvgResourceInterchange` — the narrow generated embedded-WOFF2 profile. It verifies approved Noto Sans Latin 400 bytes and returns resources detached from the normal typed document; ordinary `SvgImport` still rejects CSS and data URLs.
 
-The curated Fable package includes `SvgDocument` and `SvgAuthoring`; it has no Game, Skia, native, browser-DOM, or Controls dependency. `fsgg.svg-document/1` remains the canonical typed document format.
+The curated Fable package includes `SvgDocument`, `SvgAuthoring`, `SvgArt`, `SvgGeometry`, and resource-aware interchange; it has no Game, Skia, native, browser-DOM, or Controls dependency. `fsgg.svg-document/1` remains the canonical typed document format.
 
 ## Versioning
 

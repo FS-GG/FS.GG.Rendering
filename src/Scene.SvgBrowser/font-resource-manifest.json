@@ -1,0 +1,13 @@
+{
+  "schema": "fsgg.svg-font-resource/1",
+  "package": "@fontsource/noto-sans",
+  "packageVersion": "5.3.0",
+  "definitionId": "noto-sans-latin-400",
+  "family": "Noto Sans",
+  "weight": 400,
+  "file": "noto-sans-latin-400-normal.woff2",
+  "encoding": "base64",
+  "sha256": "09aee8065d25508f23a4c3d92cd777ac869c52d93fd868a88f025d888a7937d6",
+  "license": "OFL-1.1",
+  "redistribution": "unmodified exact bytes; embedding permitted by OFL-1.1"
+}

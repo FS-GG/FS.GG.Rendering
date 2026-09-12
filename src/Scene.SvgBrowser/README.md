@@ -22,3 +22,15 @@ while clipping removes targets. The retained entry point projects semantic selec
 portable keyboard intent, and sibling HTML controls. Native editable/composition targets are left alone,
 and pointer loss, cancellation, blur, and disposal clear adapter-owned capture and scheduled work. These
 are accessible interaction contract foundations, not a complete editor or input toolkit.
+
+`SvgStudio.mount` is the explicit optional authoring entry. It owns one retained document host,
+native toolbar/property/point-list controls, and disposable Escape, pointer-loss, and blur handlers.
+Camera, selection, tool state, accepted content, and `SvgAuthoring` history remain separate. Consumers
+that enable Boolean tools provide a bundler-resolved module-worker factory; the packaged worker imports
+exactly `polygon-clipping` 0.15.7 and permits one request with no queue and a two-second refusal deadline.
+Player entries do not import or initialize studio code.
+
+`SvgStudio.activateFont` accepts only a resource verified by `SvgResourceInterchange.notoSansLatin400`.
+It adds the loaded face after byte validation and removes the face and blob URL on disposal. The package
+carries the exact base64-encoded WOFF2, SHA-256/provenance manifest, full OFL 1.1 text, and the clipping
+library's MIT notice.

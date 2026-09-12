@@ -2,6 +2,7 @@ module SvgAuthoringTests
 
 open System.Security.Cryptography
 open System.Text
+open System.IO
 open Expecto
 open FS.GG.UI.Scene
 
@@ -171,5 +172,84 @@ let tests =
             let changed = SvgAuthoring.commit 0 { Schema = SvgAuthoring.transactionSchema; Id = "later"; Operations = [ SvgAuthoringOperation.ReplaceDocument replacement ] } snapshotted |> Result.defaultWith (failtestf "%A")
             Expect.equal changed.PlaySnapshot snapshotted.PlaySnapshot "later edit cannot mutate snapshot"
             Expect.equal (SvgDocument.deserialize changed.PlaySnapshot.Value.SerializedDocument) (Ok document) "snapshot owns canonical bytes"
+        }
+
+        test "studio primitives, radial gradients and inert renderer shapes import portably" {
+            let xml = """<svg viewBox="0 0 40 40"><defs><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient></defs><circle id="c" cx="5" cy="5" r="4" fill="url(#glow)"/><ellipse id="e" cx="15" cy="5" rx="4" ry="2"/><line id="l" x1="0" y1="12" x2="20" y2="12" stroke="#000000"/><polygon id="p" points="0,20 8,20 4,28"/><polyline id="q" points="10,20 18,24 10,28" fill="none"/></svg>"""
+            let imported = SvgImport.importXml (request "studio" SvgDocument.defaultLimits) xml |> Result.defaultWith (failtestf "%A")
+            Expect.equal imported.Definitions.Length 1 "radial gradient imported"
+            Expect.equal imported.Children.Length 5 "circle, ellipse, line, polygon and polyline imported"
+            let exported = SvgDocument.exportSvg "studio-roundtrip" imported |> Result.defaultWith (failtestf "%A")
+            let reopened = SvgImport.importXml (request "studio-reopen" SvgDocument.defaultLimits) exported |> Result.defaultWith (failtestf "%A")
+            Expect.equal reopened.Children.Length imported.Children.Length "tool output reopens"
+            match SvgImport.importXml (request "unsafe" SvgDocument.defaultLimits) (xml.Replace("</defs>", "<style>@font-face{src:url(data:x)}</style></defs>")) with
+            | Error issues -> Expect.equal issues.Head.Code "active-content" "default import still refuses CSS/data resources"
+            | Ok _ -> failtest "default import accepted CSS"
+        }
+
+        test "portable art edits preserve tool state and grouped history" {
+            let empty = { Schema=SvgDocument.schema; Id="art"; ViewBox={X=0.0;Y=0.0;Width=100.0;Height=100.0}; Definitions=[]; Children=[] }
+            let presentation = SvgDocument.defaultPresentation
+            let rectangle = SvgArt.create "rect" (SvgArtPrimitive.Rectangle {X=1.0;Y=2.0;Width=10.0;Height=8.0}) presentation empty |> Result.defaultWith (failtestf "%A")
+            let path = { Commands=[PathCommand.MoveTo {X=0.0;Y=0.0};PathCommand.QuadTo({X=5.0;Y=8.0},{X=10.0;Y=0.0});PathCommand.CubicTo({X=12.0;Y=2.0},{X=14.0;Y=2.0},{X=16.0;Y=0.0});PathCommand.Close]; FillType=PathFillType.Winding }
+            let created = SvgArt.create "curve" (SvgArtPrimitive.Path path) presentation rectangle |> Result.defaultWith (failtestf "%A")
+            let edited = SvgArt.insertPathPoint "curve" 1 {X=2.0;Y=1.0} created |> Result.bind (SvgArt.removePathPoint "curve" 1) |> Result.defaultWith (failtestf "%A")
+            let grouped = SvgArt.group "pair" ["rect";"curve"] edited |> Result.bind (SvgArt.ungroup "pair") |> Result.defaultWith (failtestf "%A")
+            let state = SvgAuthoring.tryCreate 0 empty (catalog []) [] |> Result.defaultWith (failtestf "%A")
+            let gesture = { Schema=SvgAuthoring.transactionSchema; Id="pointer-1"; Operations=[SvgAuthoringOperation.ReplaceDocument grouped] }
+            let previewed = SvgAuthoring.preview 0 gesture state |> Result.bind (SvgAuthoring.preview 0 gesture) |> Result.defaultWith (failtestf "%A")
+            let committed = SvgAuthoring.commitPreview 0 gesture.Id previewed |> Result.defaultWith (failtestf "%A")
+            Expect.equal committed.Undo.Length 1 "repeated gesture preview commits once"
+            Expect.equal SvgArt.initialState.Camera SvgAffine.identity "camera is separate from accepted document history"
+            Expect.equal (SvgArt.snapPoint SvgArt.initialState {X=12.0;Y=(-4.0)}) (Ok {X=16.0;Y=(-8.0)}) "grid snapping is deterministic"
+            match SvgArt.translate ["missing"] 1.0 1.0 grouped with Error _ -> () | Ok _ -> failtest "invalid numeric selection changed content"
+        }
+
+        test "geometry preparation is bounded, adaptive and stale-safe" {
+            let closed = { Commands=[PathCommand.MoveTo {X=0.0;Y=0.0};PathCommand.QuadTo({X=5.0;Y=10.0},{X=10.0;Y=0.0});PathCommand.LineTo {X=0.0;Y=0.0};PathCommand.Close]; FillType=PathFillType.Winding }
+            let prepared = SvgGeometry.prepare "union-1" 7 PathOperation.Union [closed] [closed] SvgGeometry.defaultMaximumDeviation |> Result.defaultWith (failtestf "%A")
+            Expect.isGreaterThan prepared.InputVertexCount 6 "curve is adaptively flattened"
+            Expect.isLessThanOrEqual prepared.EncodedRequest.Length 1048576 "wire request is bounded"
+            let result = {OperationId="union-1";AcceptedRevision=7;InputContentHash=prepared.Request.InputContentHash;Contours=[[{X=0.0;Y=0.0};{X=10.0;Y=0.0};{X=10.0;Y=10.0};{X=0.0;Y=0.0}]]}
+            let empty = { Schema=SvgDocument.schema; Id="boolean"; ViewBox={X=0.0;Y=0.0;Width=20.0;Height=20.0}; Definitions=[]; Children=[] }
+            Expect.isOk (SvgGeometry.transaction result prepared empty) "matching result produces one atomic transaction"
+            match SvgGeometry.transaction {result with AcceptedRevision=8} prepared empty with Error(SvgArtError.InvalidInput issues) -> Expect.equal issues.Head.Code "stale-geometry-result" "stale worker result discarded" | value -> failtestf "stale result accepted: %A" value
+            Expect.isError (SvgGeometry.prepare "bad" 0 PathOperation.Union [closed] [] 0.001) "deviation below 0.01 refuses"
+            Expect.isError (SvgGeometry.prepare "open" 0 PathOperation.Union [{closed with Commands=closed.Commands |> List.filter ((<>) PathCommand.Close)}] [] 0.25) "open contours refuse"
+            let degenerate = {Commands=[PathCommand.MoveTo {X=0.0;Y=0.0};PathCommand.LineTo {X=0.0;Y=0.0};PathCommand.Close];FillType=PathFillType.Winding}
+            Expect.isError (SvgGeometry.prepare "degenerate" 0 PathOperation.Union [degenerate] [] 0.25) "degenerate contours refuse before worker dispatch"
+        }
+
+        test "asset revisions are immutable while identical reinsertion is harmless" {
+            let document = imported "immutable"
+            let original = asset "shape" 1 document []
+            let state = SvgAuthoring.tryCreate 0 document (catalog [original]) [] |> Result.defaultWith (failtestf "%A")
+            let transaction value id = {Schema=SvgAuthoring.transactionSchema;Id=id;Operations=[SvgAuthoringOperation.UpsertAsset value]}
+            Expect.isOk (SvgAuthoring.commit 0 (transaction original "same") state) "identical revision reinsertion is accepted"
+            let changed = { original with Rights = {original.Rights with License="MIT"} }
+            match SvgAuthoring.commit 0 (transaction changed "changed") state with
+            | Error(SvgAuthoringError.InvalidTransaction issues) -> Expect.equal issues.Head.Code "immutable-asset-revision" "changed rights require a new revision"
+            | value -> failtestf "immutable revision was replaced: %A" value
+        }
+
+        test "verified Noto resource round trips detached and rejects altered bytes and manifests" {
+            let base64 = File.ReadAllText(Path.Combine(__SOURCE_DIRECTORY__, "../../src/Scene.SvgBrowser/noto-sans-latin-400-normal.woff2.base64")).Replace("\n", "").Replace("\r", "")
+            let resource = SvgResourceInterchange.notoSansLatin400 base64 |> Result.defaultWith (failtestf "%A")
+            Expect.equal resource.Sha256 "09aee8065d25508f23a4c3d92cd777ac869c52d93fd868a88f025d888a7937d6" "approved exact bytes verified"
+            let text =
+                { Id="text";SemanticId=Some "text";Visible=true;Transform=SvgAffine.identity;ClipId=None;MaskId=None;Presentation=None
+                  Content=SvgElementContent.SceneLeaf {Nodes=[SceneNode.TextRun {Text="Offline Noto";Position={X=2.0;Y=18.0};Font={Family=Some "Noto Sans";Size=16.0;Weight=Some 400};Paint={Fill=Some {Red=0uy;Green=0uy;Blue=0uy;Alpha=255uy};Stroke=None;Opacity=1.0;Antialias=true;BlendMode=BlendMode.SrcOver;Shader=None;ColorFilter=ColorFilter.NoColorFilter;MaskFilter=MaskFilter.NoMaskFilter;ImageFilter=ImageFilter.NoImageFilter;PathEffect=PathEffect.NoPathEffect}}]} }
+            let font = {Id=resource.DefinitionId;Content=SvgDefinitionContent.Font {Family=resource.Family;Source=resource.FileName;Sha256=resource.Sha256;License=resource.License}}
+            let document = {Schema=SvgDocument.schema;Id="font";ViewBox={X=0.0;Y=0.0;Width=100.0;Height=40.0};Definitions=[font];Children=[text]}
+            let xml = SvgResourceInterchange.exportSvg "offline" {Document=document;Fonts=[resource]} |> Result.defaultWith (failtestf "%A")
+            Expect.stringContains xml "data:font/woff2;base64," "resource export is self-contained"
+            let restored = SvgResourceInterchange.importXml (request "offline" SvgDocument.defaultLimits) xml |> Result.defaultWith (failtestf "%A")
+            Expect.equal restored.Fonts [resource] "resource returns detached with exact bytes"
+            Expect.equal restored.Document.Children.Length 1 "typed text survives resource reopen"
+            let altered = base64.Substring(0,base64.Length-4) + "AAAA"
+            match SvgResourceInterchange.notoSansLatin400 altered with Error issues -> Expect.equal issues.Head.Code "font-hash-mismatch" "altered bytes refuse" | Ok _ -> failtest "altered font accepted"
+            match SvgResourceInterchange.exportSvg "bad" {Document=document;Fonts=[{resource with License="MIT"}]} with Error issues -> Expect.equal issues.Head.Code "unapproved-font-manifest" "wrong rights refuse" | Ok _ -> failtest "wrong font rights accepted"
+            let excessive = String.replicate 1398104 "A"
+            match SvgResourceInterchange.notoSansLatin400 excessive with Error issues -> Expect.equal issues.Head.Code "font-byte-limit" "encoded size rejects before allocation" | Ok _ -> failtest "excessive font accepted"
         }
     ]

@@ -126,6 +126,8 @@ expected_fable_files = {
     "fable/SvgDocument.fs",
     "fable/SvgAuthoring.fsi",
     "fable/SvgAuthoring.fs",
+    "fable/SvgArt.fsi",
+    "fable/SvgArt.fs",
 }
 if fable_files != expected_fable_files:
     raise SystemExit(f"unexpected curated Fable source view: {sorted(fable_files)}")

@@ -750,6 +750,48 @@ FS.GG.UI.Scene.SvgAffine.translate(System.Double, System.Double) : FS.GG.UI.Scen
 FS.GG.UI.Scene.SvgAffine.tryInverse(FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgAffineError>
 FS.GG.UI.Scene.SvgAffineError+Tags.NonFinite : System.Int32
 FS.GG.UI.Scene.SvgAffineError+Tags.Singular : System.Int32
+FS.GG.UI.Scene.SvgArt.align(FS.GG.UI.Scene.SvgArtAlignment, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.create(System.String, FS.GG.UI.Scene.SvgArtPrimitive, FS.GG.UI.Scene.SvgPresentation, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.group(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.guides(FS.GG.UI.Scene.SvgArtState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgArtGuide>, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.initialState : FS.GG.UI.Scene.SvgArtState [get]
+FS.GG.UI.Scene.SvgArt.insertPathPoint(System.String, System.Int32, FS.GG.UI.Scene.Point, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.putGradient(System.String, FS.GG.UI.Scene.SvgGradientDefinition, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.removePathPoint(System.String, System.Int32, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.reorder(System.String, FS.GG.UI.Scene.SvgArtSiblingOrder, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.replacePath(System.String, FS.GG.UI.Scene.PathSpec, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.rotate(Microsoft.FSharp.Collections.FSharpList<System.String>, System.Double, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.scale(Microsoft.FSharp.Collections.FSharpList<System.String>, System.Double, System.Double, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.setPresentation(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgPresentation, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.snapPoint(FS.GG.UI.Scene.SvgArtState, FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.Point, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.transform(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgAffine, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.translate(Microsoft.FSharp.Collections.FSharpList<System.String>, System.Double, System.Double, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArt.ungroup(System.String, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgArtAlignment+Tags.Bottom : System.Int32
+FS.GG.UI.Scene.SvgArtAlignment+Tags.HorizontalCenter : System.Int32
+FS.GG.UI.Scene.SvgArtAlignment+Tags.Left : System.Int32
+FS.GG.UI.Scene.SvgArtAlignment+Tags.Right : System.Int32
+FS.GG.UI.Scene.SvgArtAlignment+Tags.Top : System.Int32
+FS.GG.UI.Scene.SvgArtAlignment+Tags.VerticalCenter : System.Int32
+FS.GG.UI.Scene.SvgArtError+Tags.InvalidInput : System.Int32
+FS.GG.UI.Scene.SvgArtError+Tags.InvalidSelection : System.Int32
+FS.GG.UI.Scene.SvgArtError+Tags.MissingElement : System.Int32
+FS.GG.UI.Scene.SvgArtGuide.Axis : System.String [get]
+FS.GG.UI.Scene.SvgArtGuide.Position : System.Double [get]
+FS.GG.UI.Scene.SvgArtGuide.new(System.String, System.Double)
+FS.GG.UI.Scene.SvgArtPrimitive+Tags.Ellipse : System.Int32
+FS.GG.UI.Scene.SvgArtPrimitive+Tags.Path : System.Int32
+FS.GG.UI.Scene.SvgArtPrimitive+Tags.Polygon : System.Int32
+FS.GG.UI.Scene.SvgArtPrimitive+Tags.Rectangle : System.Int32
+FS.GG.UI.Scene.SvgArtSiblingOrder+Tags.Back : System.Int32
+FS.GG.UI.Scene.SvgArtSiblingOrder+Tags.Backward : System.Int32
+FS.GG.UI.Scene.SvgArtSiblingOrder+Tags.Forward : System.Int32
+FS.GG.UI.Scene.SvgArtSiblingOrder+Tags.Front : System.Int32
+FS.GG.UI.Scene.SvgArtState.Camera : FS.GG.UI.Scene.SvgAffine [get]
+FS.GG.UI.Scene.SvgArtState.GridSize : System.Double [get]
+FS.GG.UI.Scene.SvgArtState.Selection : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.SvgArtState.SnapToGrid : System.Boolean [get]
+FS.GG.UI.Scene.SvgArtState.new(FS.GG.UI.Scene.SvgAffine, Microsoft.FSharp.Collections.FSharpList<System.String>, System.Double, System.Boolean)
 FS.GG.UI.Scene.SvgAsset.catalogSchema : System.String [get]
 FS.GG.UI.Scene.SvgAsset.contentHash(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgAsset.deserializeCatalog(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
@@ -933,6 +975,34 @@ FS.GG.UI.Scene.SvgFontReference.License : System.String [get]
 FS.GG.UI.Scene.SvgFontReference.Sha256 : System.String [get]
 FS.GG.UI.Scene.SvgFontReference.Source : System.String [get]
 FS.GG.UI.Scene.SvgFontReference.new(System.String, System.String, System.String, System.String)
+FS.GG.UI.Scene.SvgFontResource.Base64 : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.DefinitionId : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.Family : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.FileName : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.License : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.Sha256 : System.String [get]
+FS.GG.UI.Scene.SvgFontResource.new(System.String, System.String, System.String, System.String, System.String, System.String)
+FS.GG.UI.Scene.SvgGeometry.defaultMaximumDeviation : System.Double [get]
+FS.GG.UI.Scene.SvgGeometry.maximumSubdivisionDepth : System.Int32 [get]
+FS.GG.UI.Scene.SvgGeometry.prepare(System.String, System.Int32, FS.GG.UI.Scene.PathOperation, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PathSpec>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.PathSpec>, System.Double) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgGeometryPrepared, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgGeometry.transaction(FS.GG.UI.Scene.SvgGeometryResult, FS.GG.UI.Scene.SvgGeometryPrepared, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAuthoringTransaction, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgGeometryPrepared.EncodedRequest : System.String [get]
+FS.GG.UI.Scene.SvgGeometryPrepared.InputVertexCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgGeometryPrepared.Request : FS.GG.UI.Scene.SvgGeometryRequest [get]
+FS.GG.UI.Scene.SvgGeometryPrepared.new(FS.GG.UI.Scene.SvgGeometryRequest, System.String, System.Int32)
+FS.GG.UI.Scene.SvgGeometryRequest.AcceptedRevision : System.Int32 [get]
+FS.GG.UI.Scene.SvgGeometryRequest.Clips : Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>> [get]
+FS.GG.UI.Scene.SvgGeometryRequest.InputContentHash : System.String [get]
+FS.GG.UI.Scene.SvgGeometryRequest.MaximumDeviation : System.Double [get]
+FS.GG.UI.Scene.SvgGeometryRequest.Operation : FS.GG.UI.Scene.PathOperation [get]
+FS.GG.UI.Scene.SvgGeometryRequest.OperationId : System.String [get]
+FS.GG.UI.Scene.SvgGeometryRequest.Subjects : Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>> [get]
+FS.GG.UI.Scene.SvgGeometryRequest.new(System.String, System.Int32, System.String, FS.GG.UI.Scene.PathOperation, System.Double, Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>>, Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>>)
+FS.GG.UI.Scene.SvgGeometryResult.AcceptedRevision : System.Int32 [get]
+FS.GG.UI.Scene.SvgGeometryResult.Contours : Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>> [get]
+FS.GG.UI.Scene.SvgGeometryResult.InputContentHash : System.String [get]
+FS.GG.UI.Scene.SvgGeometryResult.OperationId : System.String [get]
+FS.GG.UI.Scene.SvgGeometryResult.new(System.String, System.Int32, System.String, Microsoft.FSharp.Collections.FSharpList<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Point>>)
 FS.GG.UI.Scene.SvgGradientDefinition.Geometry : FS.GG.UI.Scene.SvgGradientGeometry [get]
 FS.GG.UI.Scene.SvgGradientDefinition.InheritFrom : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
 FS.GG.UI.Scene.SvgGradientDefinition.Spread : FS.GG.UI.Scene.SvgSpreadMethod [get]
@@ -980,6 +1050,12 @@ FS.GG.UI.Scene.SvgPresentation.FillSource : Microsoft.FSharp.Core.FSharpOption<F
 FS.GG.UI.Scene.SvgPresentation.OverallOpacity : System.Double [get]
 FS.GG.UI.Scene.SvgPresentation.StrokeStyle : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgStrokePresentation> [get]
 FS.GG.UI.Scene.SvgPresentation.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgPaintSource>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgStrokePresentation>, System.Double, FS.GG.UI.Scene.PathFillType)
+FS.GG.UI.Scene.SvgResourceDocument.Document : FS.GG.UI.Scene.SvgDocument [get]
+FS.GG.UI.Scene.SvgResourceDocument.Fonts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgFontResource> [get]
+FS.GG.UI.Scene.SvgResourceDocument.new(FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgFontResource>)
+FS.GG.UI.Scene.SvgResourceInterchange.exportSvg(System.String, FS.GG.UI.Scene.SvgResourceDocument) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgResourceInterchange.importXml(FS.GG.UI.Scene.SvgImportRequest, System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgResourceDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgResourceInterchange.notoSansLatin400(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgFontResource, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgRetained.project(FS.GG.UI.Scene.RetainedScene) : FS.GG.UI.Scene.SvgAdapterResult
 FS.GG.UI.Scene.SvgRetained.toScreenPoint(FS.GG.UI.Scene.SvgCamera, FS.GG.UI.Scene.Point) : FS.GG.UI.Scene.Point
 FS.GG.UI.Scene.SvgRetained.tryCreateInteraction(FS.GG.UI.Scene.RetainedScene) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.RetainedInteractionState, FS.GG.UI.Scene.RetainedInteractionError>
