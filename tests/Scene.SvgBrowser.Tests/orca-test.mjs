@@ -3,7 +3,7 @@ import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { webkit } from "playwright-core";
+import { chromium } from "playwright-core";
 
 const fixture = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(fixture, "dist");
@@ -27,7 +27,10 @@ const server = createServer((request, response) => {
 });
 
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
-const browser = await webkit.launch({ headless: false });
+const browser = await chromium.launch({
+  headless: false,
+  args: ["--force-renderer-accessibility=complete", "--disable-gpu"],
+});
 let page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
 const address = server.address();
 const waitForOrca = () => page.waitForTimeout(1200);
