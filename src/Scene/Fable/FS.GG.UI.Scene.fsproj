@@ -15,5 +15,7 @@
     <Compile Include="SvgDocument.fs" />
     <Compile Include="SvgAuthoring.fsi" />
     <Compile Include="SvgAuthoring.fs" />
+    <Compile Include="SvgArt.fsi" />
+    <Compile Include="SvgArt.fs" />
   </ItemGroup>
 </Project>

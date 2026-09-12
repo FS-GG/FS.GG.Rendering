@@ -10,6 +10,16 @@ type SvgImportRequest =
       DocumentId: string
       Limits: SvgDocumentLimits }
 
+type SvgFontResource =
+    { DefinitionId: string
+      Family: string
+      FileName: string
+      Sha256: string
+      License: string
+      Base64: string }
+
+type SvgResourceDocument = { Document: SvgDocument; Fonts: SvgFontResource list }
+
 type SvgAssetRights =
     { License: string
       Attribution: string option
@@ -142,7 +152,7 @@ module private AuthoringCommon =
             index <- index + 1
         bytes.ToArray()
 
-    let sha256 (text: string) =
+    let sha256Bytes (source: byte array) =
         let constants =
             [| 0x428a2f98u; 0x71374491u; 0xb5c0fbcfu; 0xe9b5dba5u; 0x3956c25bu; 0x59f111f1u; 0x923f82a4u; 0xab1c5ed5u
                0xd807aa98u; 0x12835b01u; 0x243185beu; 0x550c7dc3u; 0x72be5d74u; 0x80deb1feu; 0x9bdc06a7u; 0xc19bf174u
@@ -154,7 +164,6 @@ module private AuthoringCommon =
                0x748f82eeu; 0x78a5636fu; 0x84c87814u; 0x8cc70208u; 0x90befffau; 0xa4506cebu; 0xbef9a3f7u; 0xc67178f2u |]
         let rotate value count = (value >>> count) ||| (value <<< (32 - count))
         let normalizeWord value = value ||| 0u
-        let source = utf8Bytes text
         let bitLength = uint64 source.Length * 8UL
         let paddedLength = ((source.Length + 9 + 63) / 64) * 64
         let data = Array.zeroCreate<byte> paddedLength
@@ -205,6 +214,8 @@ module private AuthoringCommon =
             output.ToString()
         [ h0; h1; h2; h3; h4; h5; h6; h7 ] |> List.map hexWord |> String.concat ""
 
+    let sha256 (text: string) = sha256Bytes (utf8Bytes text)
+
 module SvgImport =
     open AuthoringCommon
 
@@ -212,6 +223,7 @@ module SvgImport =
         { Name: string
           Attributes: Map<string, string>
           Children: XmlNode list
+          Text: string
           Location: string }
 
     let private byteCount text = AuthoringCommon.utf8Bytes text |> Array.length
@@ -234,6 +246,7 @@ module SvgImport =
     let private parseXml (limits: SvgDocumentLimits) (xml: string) =
         if xml.IndexOf("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) >= 0 then fail "active-content" (located xml (xml.IndexOf('<'))) "DOCTYPE is forbidden"
         if xml.IndexOf("<!ENTITY", StringComparison.OrdinalIgnoreCase) >= 0 then fail "active-content" (located xml (xml.IndexOf('<'))) "entities are forbidden"
+        if xml.IndexOf("<style", StringComparison.OrdinalIgnoreCase) >= 0 then fail "active-content" (located xml (xml.IndexOf("<style", StringComparison.OrdinalIgnoreCase))) "arbitrary CSS is forbidden"
         if xml.Length >= 2 && int xml[0] = 0x1f && int xml[1] = 0x8b then fail "compressed-input" "/" "compressed SVG input is unsupported"
         let mutable index = 0
         let mutable nodeCount = 0
@@ -280,6 +293,7 @@ module SvgImport =
                     if attrs |> Seq.exists (fun (key, _) -> key = attrName) then fail "duplicate-attribute" (located xml valueStart) $"duplicate attribute {attrName}"
                     attrs.Add(attrName, value)
             let children = ResizeArray<XmlNode>()
+            let text = StringBuilder()
             if not selfClosing then
                 let mutable closed = false
                 while not closed do
@@ -295,8 +309,9 @@ module SvgImport =
                     else
                         let textStart = index
                         while index < xml.Length && xml[index] <> '<' do index <- index + 1
-                        if not (String.IsNullOrWhiteSpace(xml.Substring(textStart, index - textStart))) then fail "unsupported-text" (located xml textStart) "text content is outside the supported SVG profile"
-            { Name = localName name; Attributes = attrs |> Seq.toList |> Map.ofList; Children = children |> Seq.toList; Location = located xml start }
+                        let value = xml.Substring(textStart, index - textStart)
+                        if not (String.IsNullOrWhiteSpace value) then text.Append(decode (located xml textStart) value) |> ignore
+            { Name = localName name; Attributes = attrs |> Seq.toList |> Map.ofList; Children = children |> Seq.toList; Text = text.ToString(); Location = located xml start }
         let root = readNode 0
         skipSpace()
         if index <> xml.Length then fail "malformed-xml" (located xml index) "trailing content after root"
@@ -402,11 +417,12 @@ module SvgImport =
           FillType = if attr "fill-rule" node = Some "evenodd" then PathFillType.EvenOdd else PathFillType.Winding }
 
     let private validateVocabulary (root: XmlNode) =
-        let allowedElements = set [ "svg"; "defs"; "g"; "rect"; "path"; "linearGradient"; "stop"; "clipPath"; "mask"; "symbol"; "use" ]
-        let globallyAllowed = set [ "id"; "data-semantic-id"; "data-fsgg-node"; "data-fsgg-element-id"; "data-fsgg-semantic-id"; "data-fsgg-document-id"; "data-fsgg-mount-namespace"; "transform"; "fill"; "fill-opacity"; "stroke"; "stroke-opacity"; "stroke-width"; "stroke-linecap"; "stroke-linejoin"; "stroke-miterlimit"; "stroke-dasharray"; "stroke-dashoffset"; "opacity"; "fill-rule"; "clip-path"; "mask"; "visibility"; "display"; "pointer-events"; "xmlns"; "version"; "viewBox"; "x"; "y"; "width"; "height"; "d"; "href"; "x1"; "y1"; "x2"; "y2"; "gradientUnits"; "gradientTransform"; "spreadMethod"; "offset"; "stop-color"; "stop-opacity"; "maskUnits"; "clipPathUnits"; "color-interpolation"; "style" ]
+        let allowedElements = set [ "svg"; "defs"; "g"; "rect"; "circle"; "ellipse"; "line"; "polygon"; "polyline"; "path"; "text"; "linearGradient"; "radialGradient"; "stop"; "clipPath"; "mask"; "symbol"; "use" ]
+        let globallyAllowed = set [ "id"; "data-semantic-id"; "data-fsgg-node"; "data-fsgg-element-id"; "data-fsgg-semantic-id"; "data-fsgg-document-id"; "data-fsgg-mount-namespace"; "transform"; "fill"; "fill-opacity"; "stroke"; "stroke-opacity"; "stroke-width"; "stroke-linecap"; "stroke-linejoin"; "stroke-miterlimit"; "stroke-dasharray"; "stroke-dashoffset"; "opacity"; "fill-rule"; "clip-path"; "mask"; "visibility"; "display"; "pointer-events"; "xmlns"; "version"; "viewBox"; "x"; "y"; "width"; "height"; "d"; "points"; "cx"; "cy"; "r"; "rx"; "ry"; "fx"; "fy"; "font-family"; "font-size"; "font-weight"; "direction"; "text-anchor"; "dominant-baseline"; "href"; "x1"; "y1"; "x2"; "y2"; "gradientUnits"; "gradientTransform"; "spreadMethod"; "offset"; "stop-color"; "stop-opacity"; "maskUnits"; "clipPathUnits"; "color-interpolation"; "style" ]
         let rec walk node =
             if node.Name = "script" || node.Name = "foreignObject" || node.Name = "style" then fail "active-content" node.Location $"active element is forbidden: {node.Name}"
             if not (allowedElements.Contains node.Name) then fail "unsupported-element" node.Location $"unsupported element: {node.Name}"
+            if node.Text.Length > 0 && node.Name <> "text" then fail "unsupported-text" node.Location "text content is supported only by text elements"
             for KeyValue(name, value) in node.Attributes do
                 if name.StartsWith("on", StringComparison.OrdinalIgnoreCase) then fail "active-content" node.Location $"event attribute is forbidden: {name}"
                 if name = "filter" || (name = "style" && not (node.Name = "mask" && (value = "mask-type:alpha" || value = "mask-type:luminance"))) then fail "active-content" node.Location $"CSS/filter attribute is forbidden: {name}"
@@ -467,12 +483,46 @@ module SvgImport =
                     { Fill = Some { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 255uy }; Stroke = None; Opacity = 1.0; Antialias = true; BlendMode = BlendMode.SrcOver
                       Shader = None; ColorFilter = ColorFilter.NoColorFilter; MaskFilter = MaskFilter.NoMaskFilter
                       ImageFilter = ImageFilter.NoImageFilter; PathEffect = PathEffect.NoPathEffect }
+                let pointList node close =
+                    let values = required "points" node |> numbers node.Location
+                    if values.Length < 4 || values.Length % 2 <> 0 then fail "invalid-points" node.Location "points require at least two coordinate pairs"
+                    let commands =
+                        values
+                        |> List.chunkBySize 2
+                        |> List.mapi (fun index pair ->
+                            let point = { X = pair[0]; Y = pair[1] }
+                            if index = 0 then PathCommand.MoveTo point else PathCommand.LineTo point)
+                    { Commands = if close then commands @ [ PathCommand.Close ] else commands
+                      FillType = if attr "fill-rule" node = Some "evenodd" then PathFillType.EvenOdd else PathFillType.Winding }
                 let rec toElement node =
                     let content =
                         match node.Name with
                         | "rect" ->
                             let value = rect node
                             SvgElementContent.SceneLeaf { Nodes = [ SceneNode.PaintedRectangle(value, basePaint) ] }
+                        | "circle" ->
+                            let center = { X = required "cx" node |> number node.Location; Y = required "cy" node |> number node.Location }
+                            SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Circle(center, required "r" node |> number node.Location, basePaint.Fill.Value) ] }
+                        | "ellipse" ->
+                            let cx = required "cx" node |> number node.Location
+                            let cy = required "cy" node |> number node.Location
+                            let rx = required "rx" node |> number node.Location
+                            let ry = required "ry" node |> number node.Location
+                            SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Ellipse({ X = cx-rx; Y = cy-ry; Width = rx*2.0; Height = ry*2.0 }, basePaint) ] }
+                        | "line" ->
+                            let first = { X = required "x1" node |> number node.Location; Y = required "y1" node |> number node.Location }
+                            let second = { X = required "x2" node |> number node.Location; Y = required "y2" node |> number node.Location }
+                            SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Line(first, second, basePaint) ] }
+                        | "polygon" -> SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Path(pointList node true, basePaint) ] }
+                        | "polyline" -> SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Path(pointList node false, basePaint) ] }
+                        | "text" ->
+                            if node.Children.Length > 0 then fail "unsupported-element-position" node.Location "text cannot contain nested markup"
+                            let position = { X = required "x" node |> number node.Location; Y = required "y" node |> number node.Location }
+                            let font =
+                                { Family = attr "font-family" node
+                                  Size = attr "font-size" node |> Option.map (number node.Location) |> Option.defaultValue 16.0
+                                  Weight = attr "font-weight" node |> Option.map (fun value -> int (number node.Location value)) }
+                            SvgElementContent.SceneLeaf { Nodes = [ SceneNode.TextRun { Text = node.Text; Position = position; Font = font; Paint = basePaint } ] }
                         | "path" -> SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Path(path request.Limits node, basePaint) ] }
                         | "g" -> SvgElementContent.Group(node.Children |> List.map toElement)
                         | "use" ->
@@ -509,6 +559,19 @@ module SvgImport =
                                   Spread = match attr "spreadMethod" node with Some "repeat" -> SvgSpreadMethod.Repeat | Some "reflect" -> SvgSpreadMethod.Reflect | _ -> SvgSpreadMethod.Pad
                                   Stops = node.Children |> List.map toStop
                                   InheritFrom = reference "href" node }
+                        | "radialGradient" ->
+                            let center = { X = attr "cx" node |> Option.map (number node.Location) |> Option.defaultValue 0.5; Y = attr "cy" node |> Option.map (number node.Location) |> Option.defaultValue 0.5 }
+                            let focal =
+                                match attr "fx" node, attr "fy" node with
+                                | None, None -> None
+                                | fx, fy -> Some { X = fx |> Option.map (number node.Location) |> Option.defaultValue center.X; Y = fy |> Option.map (number node.Location) |> Option.defaultValue center.Y }
+                            SvgDefinitionContent.Gradient
+                                { Geometry = SvgGradientGeometry.Radial(center, attr "r" node |> Option.map (number node.Location) |> Option.defaultValue 0.5, focal)
+                                  Units = if attr "gradientUnits" node = Some "userSpaceOnUse" then SvgCoordinateUnits.UserSpaceOnUse else SvgCoordinateUnits.ObjectBoundingBox
+                                  Transform = match attr "gradientTransform" node with None -> SvgAffine.identity | Some _ -> transform { node with Attributes = node.Attributes |> Map.add "transform" (required "gradientTransform" node) }
+                                  Spread = match attr "spreadMethod" node with Some "repeat" -> SvgSpreadMethod.Repeat | Some "reflect" -> SvgSpreadMethod.Reflect | _ -> SvgSpreadMethod.Pad
+                                  Stops = node.Children |> List.map toStop
+                                  InheritFrom = reference "href" node }
                         | "clipPath" ->
                             let shapes = node.Children |> List.map (fun child -> match child.Name with "rect" -> SvgClipShape.Rectangle(rect child) | "path" -> SvgClipShape.Path(path request.Limits child) | _ -> fail "unsupported-element-position" child.Location "clipPath supports rect and path")
                             SvgDefinitionContent.Clip((if attr "clipPathUnits" node = Some "objectBoundingBox" then SvgCoordinateUnits.ObjectBoundingBox else SvgCoordinateUnits.UserSpaceOnUse), shapes)
@@ -534,6 +597,81 @@ module SvgImport =
                 | code :: location :: rest -> Error [ issue code location (String.concat "|" rest) ]
                 | _ -> Error [ issue "malformed-xml" "/" error.Message ]
             | error -> Error [ issue "malformed-xml" "/" error.Message ]
+
+module SvgResourceInterchange =
+    open AuthoringCommon
+
+    let private expectedHash = "09aee8065d25508f23a4c3d92cd777ac869c52d93fd868a88f025d888a7937d6"
+    let private family = "Noto Sans"
+    let private fileName = "noto-sans-latin-400-normal.woff2"
+    let private license = "OFL-1.1"
+    let private maxFontBytes = 1024 * 1024
+    let private maxTotalFontBytes = 2 * 1024 * 1024
+    let private markerStart = "<style data-fsgg-resource-font=\"noto-sans-latin-400\">@font-face{font-family:\"Noto Sans\";font-weight:400;src:url(\"data:font/woff2;base64,"
+    let private markerEnd = "\") format(\"woff2\")}</style>"
+
+    let private decode location (base64: string) =
+        // Reject from encoded length before allocating the decoded payload.
+        let upperBound = (base64.Length / 4 + 1) * 3
+        if upperBound > maxFontBytes then Error [ issue "font-byte-limit" location "decoded font exceeds 1 MiB" ]
+        else
+            try
+                let bytes = Convert.FromBase64String base64
+                if bytes.Length > maxFontBytes then Error [ issue "font-byte-limit" location "decoded font exceeds 1 MiB" ]
+                else Ok bytes
+            with _ -> Error [ issue "malformed-font-base64" location "font payload is not valid base64" ]
+
+    let notoSansLatin400 base64 =
+        match decode "/fonts/0/base64" base64 with
+        | Error issues -> Error issues
+        | Ok bytes when sha256Bytes bytes <> expectedHash -> Error [ issue "font-hash-mismatch" "/fonts/0/sha256" $"expected {expectedHash}" ]
+        | Ok _ ->
+            Ok { DefinitionId="noto-sans-latin-400"; Family=family; FileName=fileName; Sha256=expectedHash; License=license; Base64=base64 }
+
+    let private validateResource index resource =
+        if resource.DefinitionId <> "noto-sans-latin-400" || resource.Family <> family || resource.FileName <> fileName || resource.Sha256 <> expectedHash || resource.License <> license then
+            Error [ issue "unapproved-font-manifest" $"/fonts/{index}" "font resource does not match the approved exact-byte Noto Sans manifest" ]
+        else notoSansLatin400 resource.Base64
+
+    let exportSvg mountNamespace value =
+        if value.Fonts.Length > 2 then Error [ issue "font-total-limit" "/fonts" "font resources exceed the 2 MiB aggregate budget" ]
+        else
+            value.Fonts
+            |> List.mapi validateResource
+            |> List.fold (fun state result ->
+                match state, result with
+                | Ok resources, Ok resource -> Ok(resource :: resources)
+                | Error issues, Error more -> Error(issues @ more)
+                | Error issues, _ -> Error issues
+                | _, Error issues -> Error issues) (Ok [])
+            |> Result.bind (fun resources ->
+                let total = resources |> List.sumBy (fun resource -> Convert.FromBase64String(resource.Base64).Length)
+                if total > maxTotalFontBytes then Error [ issue "font-total-limit" "/fonts" "decoded fonts exceed 2 MiB" ]
+                else
+                    let withoutFonts = { value.Document with Definitions = value.Document.Definitions |> List.filter (fun definition -> match definition.Content with SvgDefinitionContent.Font _ -> false | _ -> true) }
+                    SvgDocument.exportSvg mountNamespace withoutFonts
+                    |> Result.map (fun xml ->
+                        let generated = resources |> List.map (fun resource -> markerStart + resource.Base64 + markerEnd) |> String.concat ""
+                        xml.Replace("<defs>", "<defs>" + generated)))
+
+    let importXml request xml =
+        if AuthoringCommon.utf8Bytes xml |> Array.length > request.Limits.MaxSerializedBytes then Error [ issue "document-byte-limit" "/" $"SVG input exceeds {request.Limits.MaxSerializedBytes} bytes" ]
+        else
+            let start = xml.IndexOf(markerStart, StringComparison.Ordinal)
+            if start < 0 then SvgImport.importXml request xml |> Result.map (fun document -> {Document=document;Fonts=[]})
+            else
+                let payloadStart = start + markerStart.Length
+                let finish = xml.IndexOf(markerEnd, payloadStart, StringComparison.Ordinal)
+                if finish < 0 || xml.IndexOf("<style", finish + markerEnd.Length, StringComparison.OrdinalIgnoreCase) >= 0 then Error [ issue "unsupported-resource-style" "/fonts" "only one generated Noto Sans font-face is supported" ]
+                else
+                    let base64 = xml.Substring(payloadStart, finish-payloadStart)
+                    notoSansLatin400 base64
+                    |> Result.bind (fun resource ->
+                        let stripped = xml.Remove(start, finish + markerEnd.Length - start)
+                        SvgImport.importXml request stripped
+                        |> Result.map (fun document ->
+                            let font = {Id=resource.DefinitionId;Content=SvgDefinitionContent.Font {Family=resource.Family;Source=resource.FileName;Sha256=resource.Sha256;License=resource.License}}
+                            { Document={document with Definitions=font::document.Definitions}; Fonts=[resource] }))
 
 module SvgAsset =
     open AuthoringCommon
@@ -733,6 +871,18 @@ module SvgAuthoring =
     let private evaluate (transaction: SvgAuthoringTransaction) (state: SvgAuthoringState) =
         if transaction.Schema <> transactionSchema then Error [ issue "unknown-authoring-schema" "/transaction/schema" $"expected {transactionSchema}" ]
         elif String.IsNullOrWhiteSpace transaction.Id || transaction.Operations.IsEmpty then Error [ issue "invalid-transaction" "/transaction" "transaction id and at least one operation are required" ]
+        elif
+            transaction.Operations
+            |> List.exists (function
+                | SvgAuthoringOperation.UpsertAsset candidate ->
+                    state.Catalog.Assets
+                    |> List.exists (fun existing ->
+                        existing.AssetId = candidate.AssetId
+                        && existing.Revision = candidate.Revision
+                        && existing <> candidate)
+                | _ -> false)
+        then
+            Error [ issue "immutable-asset-revision" "/transaction/operations" "changed content, rights, or dependencies require a new asset revision" ]
         else
             transaction.Operations
             |> List.fold applyOperation (checkpoint state)

@@ -2605,8 +2605,12 @@ let private omissionLedger =
 /// and seventeen types for safe SVG import, versioned assets/prefabs and atomic authoring transactions.
 /// SVG-AUTHOR-01.6 owns generated consumers and SVG-PREVIEW-B owns publication plus installed mirror
 /// readback, so the matching ledger stanza keeps this unpublished surface explicit until that handoff.
+///
+/// Raised 492 -> 506 by SVG-AUTHOR-01.3-.4: the same unpublished Scene candidate adds three portable
+/// modules and eleven types for art tools, bounded geometry preparation, and verified resource-aware
+/// interchange. The existing .6/Preview-B boundary still owns generated teaching and publication.
 [<Literal>]
-let private OmissionLedgerCeiling = 492
+let private OmissionLedgerCeiling = 506
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

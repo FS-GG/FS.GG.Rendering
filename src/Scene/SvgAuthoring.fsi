@@ -13,6 +13,28 @@ module SvgImport =
     /// The importer rejects active content, external references, CSS, filters, entities and DTDs.
     val importXml: request: SvgImportRequest -> xml: string -> Result<SvgDocument, SvgDocumentIssue list>
 
+/// Detached exact-byte font resource accepted by the narrow resource-aware interchange API.
+type SvgFontResource =
+    { DefinitionId: string
+      Family: string
+      FileName: string
+      Sha256: string
+      License: string
+      Base64: string }
+
+type SvgResourceDocument =
+    { Document: SvgDocument
+      Fonts: SvgFontResource list }
+
+[<RequireQualifiedAccess>]
+module SvgResourceInterchange =
+    /// Exact verified Noto Sans Latin 400 manifest supplied by @fontsource/noto-sans 5.3.0.
+    val notoSansLatin400: base64: string -> Result<SvgFontResource, SvgDocumentIssue list>
+    /// Export the generated embedded-WOFF2 profile. Arbitrary CSS and resource URLs are never accepted.
+    val exportSvg: mountNamespace: string -> value: SvgResourceDocument -> Result<string, SvgDocumentIssue list>
+    /// Import the generated profile and return resources detached from the ordinary typed document.
+    val importXml: request: SvgImportRequest -> xml: string -> Result<SvgResourceDocument, SvgDocumentIssue list>
+
 /// Rights metadata retained with every reusable asset revision.
 type SvgAssetRights =
     { License: string
