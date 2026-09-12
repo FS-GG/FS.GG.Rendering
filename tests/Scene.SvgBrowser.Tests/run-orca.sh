@@ -8,7 +8,7 @@ command -v orca >/dev/null
 mkdir -p "$(dirname "$output")"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-orca.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
-raw="$work/orca-debug.log"
+raw="$work/orca-speech.jsonl"
 journey="$work/journey.json"
 
 dbus-run-session -- bash -c '
@@ -16,13 +16,14 @@ dbus-run-session -- bash -c '
   export DISPLAY=:97
   export NO_AT_BRIDGE=0
   export GTK_MODULES=gail:atk-bridge
+  export SVG_SCENE_ORCA_SPEECH_LOG="$2"
   Xvfb "$DISPLAY" -screen 0 1280x800x24 >"$1/xvfb.log" 2>&1 &
   xvfb_pid=$!
   trap '\''kill "$orca_pid" "$xvfb_pid" 2>/dev/null || true'\'' EXIT
   sleep 1
   gsettings set org.gnome.desktop.interface toolkit-accessibility true
   gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
-  orca --replace --debug-file "$2" >"$1/orca.stdout" 2>"$1/orca.stderr" &
+  orca --replace >"$1/orca.stdout" 2>"$1/orca.stderr" &
   orca_pid=$!
   sleep 3
   node "$3/orca-test.mjs" --out "$4"
@@ -33,12 +34,8 @@ dbus-run-session -- bash -c '
 python3 - "$raw" "$journey" "$output" <<'PY'
 import json, os, pathlib, re, sys
 raw_path, journey_path, output_path = map(pathlib.Path, sys.argv[1:])
-raw = raw_path.read_text(errors="replace")
 journey = json.loads(journey_path.read_text())
-speech = []
-for line in raw.splitlines():
-    if "SPEECH OUTPUT:" in line:
-        speech.append(line.split("SPEECH OUTPUT:", 1)[1].strip())
+speech = [json.loads(line)["text"] for line in raw_path.read_text(errors="replace").splitlines() if line.strip()]
 joined = "\n".join(speech).lower()
 required = {
     "betaControl": "beta unit" in joined,
@@ -74,10 +71,10 @@ evidence = {
     "semanticIdentityAgreement": identity_agreement,
     "studioStateAgreement": studio_agreement,
     "speechOutput": speech,
-    "claims": {"actualAssistiveTechnologyProcessObserved": True, "domOrAccessibilityTreeSubstitution": False},
+    "claims": {"actualAssistiveTechnologyProcessObserved": True, "utterancesCapturedAtOrcaSpeechBoundary": True, "domOrAccessibilityTreeSubstitution": False},
 }
 pathlib.Path(output_path).write_text(json.dumps(evidence, indent=2) + "\n")
-output_path.with_suffix(".log").write_text(raw)
+output_path.with_suffix(".log").write_text("\n".join(speech) + "\n")
 if result != "pass":
     raise SystemExit(f"Orca observation incomplete: announcements={required} negative={negative} studio={studio_agreement}; debug={raw_path}")
 print(f"orca-observation: result=pass announcements={','.join(k for k,v in required.items() if v)} evidence={output_path}")
