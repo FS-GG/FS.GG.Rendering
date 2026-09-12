@@ -343,6 +343,7 @@ jobs:
         env:
           FSGG_PACKAGE_READ_TOKEN: ${{ steps.package-reader.outputs.token }}
           FSGG_HISTORICAL_PUBLISH_TOKEN: ${{ github.token }}
+          FSGG_HISTORICAL_PUBLISH_ACTOR: ${{ github.actor }}
           FSGG_PACKAGE_READ_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
           FSGG_PACKAGE_READ_INSTALLATION_ID: ${{ steps.package-reader.outputs.installation-id }}
           VER: ${{ inputs.version }}
@@ -357,6 +358,7 @@ jobs:
             --workflow-sha "$GITHUB_SHA" \
             --github-token-env FSGG_PACKAGE_READ_TOKEN \
             --github-workflow-token-env FSGG_HISTORICAL_PUBLISH_TOKEN \
+            --github-workflow-username "$FSGG_HISTORICAL_PUBLISH_ACTOR" \
             --github-app-id "$FSGG_PACKAGE_READ_APP_ID" \
             --github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID" \
             --github-repository "$GITHUB_REPOSITORY" \
