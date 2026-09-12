@@ -43,14 +43,20 @@ if meson.count(dependency_floor) != 2:
     raise SystemExit("Orca AT-SPI dependency anchors were not found")
 meson_source.write_text(meson.replace(dependency_floor, "version: '>= 2.52.0'"))
 
-# AT-SPI 2.56 renamed PUSH_BUTTON to BUTTON. Keep the current Orca browser
-# fixes while spelling that role with the name exposed by Ubuntu 24.04.
+# AT-SPI 2.56 renamed PUSH_BUTTON to BUTTON and added SWITCH. Keep the current
+# Orca browser fixes while spelling those roles with Ubuntu 24.04 equivalents.
 role_uses = 0
 for python_source in orca_source.rglob("*.py"):
     python_text = python_source.read_text()
-    count = python_text.count("Atspi.Role.BUTTON")
+    replacements = {
+        "Atspi.Role.BUTTON": "Atspi.Role.PUSH_BUTTON",
+        "Atspi.Role.SWITCH": "Atspi.Role.TOGGLE_BUTTON",
+    }
+    count = sum(python_text.count(old) for old in replacements)
     if count:
-        python_source.write_text(python_text.replace("Atspi.Role.BUTTON", "Atspi.Role.PUSH_BUTTON"))
+        for old, new in replacements.items():
+            python_text = python_text.replace(old, new)
+        python_source.write_text(python_text)
         role_uses += count
 if role_uses == 0:
     raise SystemExit("Orca button-role compatibility anchors were not found")
