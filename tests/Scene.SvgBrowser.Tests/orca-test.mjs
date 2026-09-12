@@ -54,6 +54,11 @@ try {
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
   focusWindow("SVG foundation browser fixture");
+  // Orca starts web documents in browse mode. Move into focus mode before the
+  // native Tab journey so browser widgets, rather than the virtual cursor,
+  // receive focus and emit the AT-SPI focus events under observation.
+  await desktopKey("Insert+a");
+  await waitForOrca();
   await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
   await tabTo("[data-scene-control-id='alpha']");
