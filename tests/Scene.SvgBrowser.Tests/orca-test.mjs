@@ -77,6 +77,9 @@ try {
   await page.goto(`http://127.0.0.1:${address.port}/studio.html`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   focusWindow("SVG art studio fixture");
+  // A same-window navigation can leave Firefox's native focus in browser
+  // chrome. Click inert page content before sending the desktop Tab sequence.
+  await page.getByRole("heading", { name: "SVG art studio", exact: true }).click();
   await tabTo("button[aria-label='Rectangle']");
   await waitForOrca();
   await desktopKey("space");
