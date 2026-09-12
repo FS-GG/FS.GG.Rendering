@@ -7,7 +7,7 @@ command -v Xvfb >/dev/null
 command -v orca >/dev/null
 mkdir -p "$(dirname "$output")"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-orca.XXXXXX")"
-trap 'rm -rf "$work"' EXIT
+trap 'for log in "$work"/orca.stdout "$work"/orca.stderr; do if [[ -s "$log" ]]; then cat "$log"; fi; done; rm -rf "$work"' EXIT
 raw="$work/orca-speech.jsonl"
 journey="$work/journey.json"
 
