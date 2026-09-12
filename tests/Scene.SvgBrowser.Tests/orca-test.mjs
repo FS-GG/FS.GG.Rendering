@@ -48,8 +48,12 @@ const focusWindow = (title) => {
 const activateWebContent = async (title) => {
   focusWindow(title);
   execFileSync("xdotool", ["key", "--clearmodifiers", "ctrl+l"]);
-  execFileSync("xdotool", ["key", "--clearmodifiers", "F6"]);
-  await waitForOrca();
+  for (let index = 0; index < 8; index += 1) {
+    execFileSync("xdotool", ["key", "--clearmodifiers", "F6"]);
+    await waitForOrca();
+    const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
+    if (speechLog && existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(title.toLowerCase())) return;
+  }
 };
 const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
