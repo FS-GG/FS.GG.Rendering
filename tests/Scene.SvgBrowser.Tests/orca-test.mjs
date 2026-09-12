@@ -36,7 +36,7 @@ const address = server.address();
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
   const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
-  execFileSync("xdotool", ["windowfocus", "--sync", ids.at(-1)]);
+  execFileSync("xdotool", ["windowactivate", "--sync", ids.at(-1)]);
 };
 const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);

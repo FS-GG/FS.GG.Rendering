@@ -20,7 +20,10 @@ dbus-run-session -- bash -c '
   export SVG_SCENE_ORCA_SPEECH_LOG="$2"
   Xvfb "$DISPLAY" -screen 0 1280x800x24 >"$1/xvfb.log" 2>&1 &
   xvfb_pid=$!
-  trap '\''kill "$orca_pid" "$xvfb_pid" 2>/dev/null || true'\'' EXIT
+  sleep 1
+  openbox >"$1/openbox.log" 2>&1 &
+  openbox_pid=$!
+  trap '\''kill "$orca_pid" "$openbox_pid" "$xvfb_pid" 2>/dev/null || true'\'' EXIT
   sleep 1
   gsettings set org.gnome.desktop.interface toolkit-accessibility true
   gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
