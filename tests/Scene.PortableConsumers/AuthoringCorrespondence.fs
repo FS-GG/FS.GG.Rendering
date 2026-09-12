@@ -50,7 +50,13 @@ let run runtime =
         | Error(SvgAuthoringError.InvalidTransaction issues) -> issues.Head.Code
         | _ -> "mutant-survived"
     let artWire = SvgDocument.serialize art |> Result.defaultWith (fun issues -> failwith $"portable art serialization failed: {issues}")
-    let canonical = String.concat "|" [ serialized; catalogWire; digest; string committed.Revision; string committed.Undo.Length; string undone.Redo.Length; string redone.Revision; artWire; geometry.EncodedRequest; immutable; String.concat "," security; stale; invalid; unknownCatalog; unknownTransaction ]
+    let sceneMetadata={SceneId="portable-scene";Layers=[];Grid=Some{Origin={X=3.0;Y=5.0};Step={X=8.0;Y=8.0}};ResourceReferences=[];Entities=[{EntityId="box-entity";KindId="sample.object";VisualElementId=Some ids.Head;PrefabInstanceId=None;Properties=[{Key="label";Value=SvgScenePropertyValue.Text "Box"}]}]}
+    let scene={Schema=SvgScene.schema;Metadata=sceneMetadata;Document=document;Catalog=restoredCatalog;Instances=[];Fonts=[]}
+    let sceneWire=SvgScene.serialize scene|>Result.defaultWith(fun issues->failwith $"portable scene serialization failed: {issues}")
+    let sceneRoundtrip=SvgScene.deserialize sceneWire|>Result.defaultWith(fun issues->failwith $"portable scene deserialization failed: {issues}")
+    let snapped=SvgScenePlacement.grid sceneMetadata.Grid.Value {X=14.0;Y=14.0}|>Result.defaultWith(fun issues->failwith $"portable grid failed: {issues}")
+    if snapped <> {X=11.0;Y=13.0} then failwith "portable grid result diverged"
+    let canonical = String.concat "|" [ serialized; catalogWire; digest; string committed.Revision; string committed.Undo.Length; string undone.Redo.Length; string redone.Revision; artWire; geometry.EncodedRequest; sceneWire; sceneRoundtrip.Metadata.SceneId; "grid-ok"; immutable; String.concat "," security; stale; invalid; unknownCatalog; unknownTransaction ]
     let negativeSummary = String.concat "," security
-    printfn $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} art={art.Children.Length} geometryVertices={geometry.InputVertexCount} negatives={negativeSummary},{stale},{invalid},{immutable},{unknownCatalog},{unknownTransaction}"
+    printfn $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} art={art.Children.Length} geometryVertices={geometry.InputVertexCount} sceneEntities={sceneRoundtrip.Metadata.Entities.Length} negatives={negativeSummary},{stale},{invalid},{immutable},{unknownCatalog},{unknownTransaction}"
     canonical

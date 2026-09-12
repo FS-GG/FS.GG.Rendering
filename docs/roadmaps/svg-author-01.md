@@ -1,6 +1,6 @@
 # SVG-AUTHOR-01 — Vector content and scene authoring
 
-Status: active; .1–.4 source delivered; next executable window .5–.6. Route: routine.
+Status: active; .1–.5 source delivered; next executable window .6. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated consumers and external
 compatibility. This is order 5 of the
@@ -244,12 +244,11 @@ Planning inspected Rendering PR #1303 before its accepted merge as
 Reuse `SvgArt`, `SvgAuthoring`, `SvgResourceInterchange`, `SvgStudio`,
 `SvgGeometryWorkerHost` and their packaged assets. Their source and bounded
 fixture evidence do not establish a complete generated authoring experience.
-Current studio controls expose fixed primitive creation and Translate X; remaining
-tools, catalog/geometry/font controls, visible previews and applied camera behavior
-need integration. The existing browser fixture also uses its own worker entry
-implementation; qualify the actual packaged worker below.
+The .5 producer surface now supplies scene interchange and reusable studio seams;
+the remaining window composes them into the generated Templates experience and
+qualifies the resulting candidate packet without changing producer semantics.
 
-- [ ] **SVG-AUTHOR-01.5 — Assemble editable grid and freeform scenes — route: routine**
+- [x] **SVG-AUTHOR-01.5 — Assemble editable grid and freeform scenes — route: routine**
 
   Owner: Rendering.
 
@@ -341,11 +340,30 @@ implementation; qualify the actual packaged worker below.
      dependencies. Disposal clears owned listeners, capture, workers, timers and
      activated font resources.
 
-  Evidence: concise capability-to-test mapping and exact source/package/worker
-  identities, with per-browser results and explicit unavailable dimensions.
-  Inspect the existing canonical model authority for changed modeled semantics;
-  retain unchanged corpora and amend only affected authority/correspondence.
-  Browser rendering, geometry and font behavior keep their runtime evidence.
+  Evidence: `SvgScene` adds the bounded `fsgg.svg-scene/1` envelope over canonical
+  document/catalog bytes, pinned instances, generic entity/property metadata and
+  verified resource references; `SvgAuthoring` checkpoints metadata, document,
+  catalog and instances together. Scene.Tests covers descriptor/refusal, nonzero
+  grid and fractional freeform placement, migration, immutable snapshots/history,
+  asset revision/conflict and the complete C03 import/export subset. The isolated
+  `FS.GG.UI.Scene` candidate passes matching .NET/Fable scene correspondence and
+  retains the browser/Game/Skia/native-free closure. `SvgStudioHost` exposes reusable
+  document, grid and current-result Boolean commit seams, displays cancellable
+  candidates, retains camera transforms across reconciliation, inverse-picks, and
+  reconciles selection. Native controls cover scene roles, paths, grouping,
+  alignment/order, style, grid/freeform, undo/redo and numeric edits; the browser
+  fixture drives controls and commits successful worker output exactly once.
+  Browser packaging restores `contentFiles/any/any/svg-geometry-worker.js` from the
+  exact candidate (source SHA-256
+  `bce396c9ab6296cdfa75858dd605174f3cc06191dbe858558d5bb1e98c343ac5`)
+  with `polygon-clipping` 0.15.7 lock SHA-256
+  `a3442c491268b0365e59752b84bb452b8f595c014d0ded3ff51535927bba25bf`;
+  its competing fixture implementation is gone. Local package restore, Fable 5.17,
+  Vite build and player/studio dependency inspection pass. This container lacks
+  `libnspr4.so`, so local Chromium/Firefox/WebKit and Orca are explicitly unavailable;
+  the authoritative workflow installs all three engines plus Orca 49.8 at
+  `a4e6375bdaebbade7974b9717b353bc864602b53` and exercises selection, property and
+  refusal feedback through a real headed Chromium/AT-SPI2 process.
 
   Delivery: merge Rendering source through its routine route and pack an exact
   immutable local candidate set from the accepted merged revision. Record

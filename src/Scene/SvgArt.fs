@@ -94,7 +94,7 @@ module SvgArt =
     let snapPoint (state: SvgArtState) (point: Point) =
         if not (pointFinite point) || not (finite state.GridSize) || state.GridSize < 0.01 then Error(SvgArtError.InvalidInput [issue "invalid-grid" "/tool/gridSize" "grid size and point must be finite; grid size must be at least 0.01"])
         elif not state.SnapToGrid then Ok point
-        else let snap v = Math.Round(v / state.GridSize, MidpointRounding.AwayFromZero) * state.GridSize in Ok {X=snap point.X;Y=snap point.Y}
+        else let snap v = (if v>=0.0 then Math.Floor(v/state.GridSize+0.5) else Math.Ceiling(v/state.GridSize-0.5))*state.GridSize in Ok {X=snap point.X;Y=snap point.Y}
     let guides state (points: Point list) =
         points |> List.map (snapPoint state) |> List.fold (fun acc value -> match acc,value with Ok values,Ok p -> Ok({Axis="x";Position=p.X}::{Axis="y";Position=p.Y}::values) | Error e,_ | _,Error e -> Error e) (Ok []) |> Result.map (List.distinct >> List.sortBy (fun g -> g.Axis,g.Position))
     let create elementId primitive presentation (document: SvgDocument) =

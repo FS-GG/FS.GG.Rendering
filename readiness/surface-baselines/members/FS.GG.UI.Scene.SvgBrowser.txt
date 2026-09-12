@@ -46,13 +46,17 @@ FS.GG.UI.Scene.SvgBrowser.SvgStudio.activateFont(FS.GG.UI.Scene.SvgFontResource)
 FS.GG.UI.Scene.SvgBrowser.SvgStudio.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions, FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgStudioHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ApplyNumericTransform(System.String, FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CancelGesture(System.String) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CommitDocument(System.String, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CommitGeometry(FS.GG.UI.Scene.SvgGeometryPrepared, FS.GG.UI.Scene.SvgGeometryResult) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgArtError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.CommitGesture(System.String) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.GeometryWorker : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Pick(FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.SvgArtError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Preview(FS.GG.UI.Scene.SvgAuthoringTransaction) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Redo() : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Root : Browser.Types.HTMLElement [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetCamera(FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgArtError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetGrid(System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgSceneGrid>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetSelection(Microsoft.FSharp.Collections.FSharpList<System.String>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgArtError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.State : FS.GG.UI.Scene.SvgAuthoringState [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ToolState : FS.GG.UI.Scene.SvgArtState [get]

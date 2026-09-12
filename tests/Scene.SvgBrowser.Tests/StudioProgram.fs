@@ -76,6 +76,37 @@ let cancelGesture () =
     value.CancelGesture tx.Id |> ignore
     before, value.State.Undo.Length
 
+let previewGesture () =
+    let value = host.Value
+    let before = value.State.Document
+    let candidate = SvgArt.translate ["rectangle-1"] 4.0 0.0 before |> Result.defaultWith (fun error -> failwithf "%A" error)
+    let tx = {Schema=SvgAuthoring.transactionSchema;Id="visible-drag";Operations=[SvgAuthoringOperation.ReplaceDocument candidate]}
+    value.Preview tx |> Result.defaultWith (fun error -> failwithf "%A" error)
+    let during = container.querySelector("[data-fsgg-element-id='rectangle-1']").getAttribute("transform")
+    let acceptedUnchanged = value.State.Document = before && value.State.Undo.Length = 1
+    value.CancelGesture tx.Id |> Result.defaultWith (fun error -> failwithf "%A" error)
+    let after = container.querySelector("[data-fsgg-element-id='rectangle-1']").getAttribute("transform")
+    createObj["during" ==> during; "after" ==> after; "acceptedUnchanged" ==> acceptedUnchanged]
+
+let sceneRoundtrip () =
+    let value=host.Value
+    let metadata={SceneId="browser-scene";Layers=[];Grid=Some{Origin={X=3.0;Y=5.0};Step={X=8.0;Y=8.0}};ResourceReferences=[];Entities=[{EntityId="object-1";KindId="sample.object";VisualElementId=Some "rectangle-1";PrefabInstanceId=None;Properties=[{Key="name";Value=SvgScenePropertyValue.Text "Crate"}]}]}
+    let envelope={Schema=SvgScene.schema;Metadata=metadata;Document=value.State.Document;Catalog=value.State.Catalog;Instances=value.State.Instances;Fonts=[]}
+    let wire=SvgScene.serialize envelope|>Result.defaultWith(fun issues->failwithf "%A" issues)
+    let restored=SvgScene.deserialize wire|>Result.defaultWith(fun issues->failwithf "%A" issues)
+    let snapped=SvgScenePlacement.grid metadata.Grid.Value {X=14.0;Y=14.0}|>Result.defaultWith(fun issues->failwithf "%A" issues)
+    createObj["entities"==>restored.Metadata.Entities.Length;"x"==>snapped.X;"y"==>snapped.Y;"schema"==>restored.Schema]
+
+let camera () =
+    let value=host.Value
+    value.SetCamera {A=2.0;B=0.0;C=0.0;D=2.0;E=5.0;F=7.0}|>Result.defaultWith(fun error->failwithf "%A" error)
+    let picked=value.Pick {X=25.0;Y=25.0}|>Result.defaultWith(fun error->failwithf "%A" error)
+    createObj["style"==>(container.querySelector("svg").getAttribute("style"));"picked"==>(picked|>Option.toObj)]
+
+let placement () =
+    let value=host.Value
+    createObj["revision"==>value.State.Revision;"children"==>value.State.Document.Children.Length;"freeform"==>value.State.Metadata.Grid.IsNone]
+
 let geometry operation =
     let path points =
         { Commands =
@@ -114,8 +145,10 @@ let geometry operation =
             match worker.Start(
                 prepared,
                 (fun result ->
-                    match SvgGeometry.transaction result prepared value.State.Document with
-                    | Ok transaction -> resolve (createObj [ "contours" ==> result.Contours.Length; "operations" ==> transaction.Operations.Length ])
+                    match value.CommitGeometry(prepared,result) with
+                    | Ok () ->
+                        let duplicateRefused = value.CommitGeometry(prepared,result) |> Result.isError
+                        resolve (createObj [ "contours" ==> result.Contours.Length; "operations" ==> 1; "revision" ==> value.State.Revision; "duplicateRefused" ==> duplicateRefused ])
                     | Error error -> reject (Exception(sprintf "%A" error))),
                 (fun error -> reject (Exception error))) with
             | Ok () -> ()
@@ -140,6 +173,10 @@ let api =
         "dispose" ==> fun () -> dispose(); container.children.length
         "addRectangle" ==> fun () -> addRectangle()
         "cancelGesture" ==> fun () -> cancelGesture()
+        "previewGesture" ==> fun () -> previewGesture()
+        "sceneRoundtrip" ==> fun () -> sceneRoundtrip()
+        "camera" ==> fun () -> camera()
+        "placement" ==> fun () -> placement()
         "geometry" ==> fun operation -> geometry operation
         "cancelGeometry" ==> fun () -> cancelGeometry()
         "resourceRoundtrip" ==> fun () -> resourceRoundtrip()

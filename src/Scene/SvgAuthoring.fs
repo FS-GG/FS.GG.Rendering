@@ -72,12 +72,20 @@ type SvgPrefabConflict =
       Message: string }
 
 [<RequireQualifiedAccess>]
+type SvgScenePropertyValue = Text of string | Number of float | Flag of bool | Coordinate of Point
+type SvgSceneProperty = { Key: string; Value: SvgScenePropertyValue }
+type SvgSceneEntity = { EntityId: string; KindId: string; VisualElementId: string option; PrefabInstanceId: string option; Properties: SvgSceneProperty list }
+type SvgSceneGrid = { Origin: Point; Step: Point }
+type SvgSceneMetadata = { SceneId: string; Layers: string list; Entities: SvgSceneEntity list; Grid: SvgSceneGrid option; ResourceReferences: string list }
+
+[<RequireQualifiedAccess>]
 type SvgAuthoringOperation =
     | ReplaceDocument of SvgDocument
     | TransformElements of elementIds: string list * transform: SvgAffine
     | UpsertAsset of SvgAssetEnvelope
     | PutInstance of SvgPrefabInstance
     | UpdateInstances of assetId: string * fromRevision: int * toRevision: int
+    | ReplaceSceneMetadata of SvgSceneMetadata
 
 type SvgAuthoringTransaction =
     { Schema: string
@@ -88,10 +96,12 @@ type SvgAuthoringSnapshot =
     { SourceRevision: int
       SerializedDocument: string
       Catalog: SvgAssetCatalog
-      Instances: SvgPrefabInstance list }
+      Instances: SvgPrefabInstance list
+      Metadata: SvgSceneMetadata }
 
 type SvgAuthoringCheckpoint =
-    { Document: SvgDocument
+    { Metadata: SvgSceneMetadata
+      Document: SvgDocument
       Catalog: SvgAssetCatalog
       Instances: SvgPrefabInstance list
       Conflicts: SvgPrefabConflict list }
@@ -104,6 +114,7 @@ type SvgAuthoringPreview =
 type SvgAuthoringState =
     { Revision: int
       Document: SvgDocument
+      Metadata: SvgSceneMetadata
       Catalog: SvgAssetCatalog
       Instances: SvgPrefabInstance list
       Conflicts: SvgPrefabConflict list
@@ -825,14 +836,34 @@ module SvgAuthoring =
 
     let transactionSchema = "fsgg.svg-authoring-transaction/1"
 
-    let private checkpoint (state: SvgAuthoringState) : SvgAuthoringCheckpoint = { Document = state.Document; Catalog = state.Catalog; Instances = state.Instances; Conflicts = state.Conflicts }
+    let private checkpoint (state: SvgAuthoringState) : SvgAuthoringCheckpoint = { Metadata=state.Metadata; Document = state.Document; Catalog = state.Catalog; Instances = state.Instances; Conflicts = state.Conflicts }
     let private restore revision undo redo preview snapshot (value: SvgAuthoringCheckpoint) : SvgAuthoringState =
-        { Revision = revision; Document = value.Document; Catalog = value.Catalog; Instances = value.Instances; Conflicts = value.Conflicts
+        { Revision = revision; Metadata=value.Metadata; Document = value.Document; Catalog = value.Catalog; Instances = value.Instances; Conflicts = value.Conflicts
           Undo = undo; Redo = redo; Preview = preview; PlaySnapshot = snapshot }
     let private validate (value: SvgAuthoringCheckpoint) : Result<SvgAuthoringCheckpoint, SvgDocumentIssue list> =
         let issues = ResizeArray<SvgDocumentIssue>()
         SvgDocument.validate 0 SvgDocument.defaultLimits value.Document |> List.iter issues.Add
         SvgAsset.validateCatalog value.Catalog |> List.iter issues.Add
+        let finite v = not(Double.IsNaN v || Double.IsInfinity v)
+        let elementIds =
+            let rec collect (element: SvgElement) = element.Id :: (match element.Content with SvgElementContent.Group children -> children |> List.collect collect | _ -> [])
+            value.Document.Children |> List.collect collect |> Set.ofList
+        let instanceIds = value.Instances |> List.map _.InstanceId |> Set.ofList
+        let layerIds=value.Document.Children|>List.choose(fun element->match element.Content with SvgElementContent.Group _->Some element.Id|_->None)|>Set.ofList
+        if String.IsNullOrWhiteSpace value.Metadata.SceneId then issues.Add(issue "invalid-scene-id" "/metadata/sceneId" "scene id must not be blank")
+        if value.Metadata.Entities.Length > SvgDocument.defaultLimits.MaxNodes then issues.Add(issue "scene-entity-limit" "/metadata/entities" "scene exceeds 10,000 entities")
+        if (value.Metadata.Entities |> List.sumBy(fun entity->entity.Properties.Length)) > SvgDocument.defaultLimits.MaxPathSegments then issues.Add(issue "scene-property-limit" "/metadata/entities" "scene exceeds 100,000 properties")
+        if value.Metadata.ResourceReferences.Length > SvgDocument.defaultLimits.MaxDefinitions then issues.Add(issue "scene-resource-limit" "/metadata/resourceReferences" "scene exceeds 512 resource references")
+        value.Metadata.Layers|>List.countBy id|>List.iter(fun (id,count)->if count>1||not(layerIds.Contains id) then issues.Add(issue "invalid-scene-layer" "/metadata/layers" $"layer must name one distinct top-level group: {id}"))
+        value.Metadata.Grid |> Option.iter(fun grid -> if not(finite grid.Origin.X && finite grid.Origin.Y && finite grid.Step.X && finite grid.Step.Y) || grid.Step.X<=0.0 || grid.Step.Y<=0.0 then issues.Add(issue "invalid-scene-grid" "/metadata/grid" "grid origin and positive steps must be finite"))
+        value.Metadata.Entities |> List.countBy _.EntityId |> List.iter(fun (id,count)->if String.IsNullOrWhiteSpace id || count>1 then issues.Add(issue "invalid-scene-entity-id" "/metadata/entities" "entity ids must be nonblank and unique"))
+        value.Metadata.Entities |> List.iteri(fun index entity ->
+            if String.IsNullOrWhiteSpace entity.KindId then issues.Add(issue "invalid-scene-kind" $"/metadata/entities/{index}/kindId" "kind id must not be blank")
+            if entity.VisualElementId.IsNone = entity.PrefabInstanceId.IsNone then issues.Add(issue "invalid-scene-reference" $"/metadata/entities/{index}" "exactly one visual element or prefab instance reference is required")
+            entity.VisualElementId |> Option.iter(fun id->if not(elementIds.Contains id) then issues.Add(issue "unresolved-element-reference" $"/metadata/entities/{index}/visualElementId" id))
+            entity.PrefabInstanceId |> Option.iter(fun id->if not(instanceIds.Contains id) then issues.Add(issue "unresolved-instance-reference" $"/metadata/entities/{index}/prefabInstanceId" id))
+            entity.Properties |> List.countBy _.Key |> List.iter(fun (key,count)->if String.IsNullOrWhiteSpace key || count>1 then issues.Add(issue "invalid-scene-property" $"/metadata/entities/{index}/properties" "property keys must be nonblank and unique"))
+            entity.Properties |> List.iter(fun property -> match property.Value with SvgScenePropertyValue.Number v when not(finite v) -> issues.Add(issue "invalid-scene-property" $"/metadata/entities/{index}/properties/{property.Key}" "numeric property must be finite") | SvgScenePropertyValue.Coordinate p when not(finite p.X && finite p.Y) -> issues.Add(issue "invalid-scene-property" $"/metadata/entities/{index}/properties/{property.Key}" "coordinate must be finite") | _ -> ()))
         value.Instances
         |> List.countBy _.InstanceId
         |> List.iter (fun (identity, count) -> if String.IsNullOrWhiteSpace identity || count > 1 then issues.Add(issue "invalid-instance-id" "/instances" $"blank or duplicate instance id: {identity}"))
@@ -867,6 +898,7 @@ module SvgAuthoring =
             { value with Instances = instance :: (value.Instances |> List.filter (fun existing -> existing.InstanceId <> instance.InstanceId)) }
         | SvgAuthoringOperation.UpdateInstances(assetId, fromRevision, toRevision) ->
             { value with Instances = value.Instances |> List.map (fun instance -> if instance.AssetId = assetId && instance.AcceptedRevision = fromRevision then { instance with AcceptedRevision = toRevision } else instance) }
+        | SvgAuthoringOperation.ReplaceSceneMetadata metadata -> { value with Metadata=metadata }
 
     let private evaluate (transaction: SvgAuthoringTransaction) (state: SvgAuthoringState) =
         if transaction.Schema <> transactionSchema then Error [ issue "unknown-authoring-schema" "/transaction/schema" $"expected {transactionSchema}" ]
@@ -888,13 +920,16 @@ module SvgAuthoring =
             |> List.fold applyOperation (checkpoint state)
             |> validate
 
-    let tryCreate revision document catalog instances =
+    let tryCreateScene revision metadata document catalog instances =
         if revision < 0 then Error(SvgAuthoringError.InvalidTransaction [ issue "invalid-revision" "/revision" "revision must be non-negative" ])
         else
-            let seed: SvgAuthoringCheckpoint = { Document = document; Catalog = catalog; Instances = instances; Conflicts = [] }
+            let seed: SvgAuthoringCheckpoint = { Metadata=metadata; Document = document; Catalog = catalog; Instances = instances; Conflicts = [] }
             match validate seed with
             | Error issues -> Error(SvgAuthoringError.InvalidTransaction issues)
             | Ok accepted -> Ok(restore revision [] [] None None accepted)
+
+    let tryCreate revision (document:SvgDocument) catalog instances =
+        tryCreateScene revision {SceneId=document.Id;Layers=[];Entities=[];Grid=None;ResourceReferences=[]} document catalog instances
 
     let commit expectedRevision transaction state =
         if expectedRevision <> state.Revision then Error(SvgAuthoringError.StaleRevision(expectedRevision, state.Revision))
@@ -942,4 +977,4 @@ module SvgAuthoring =
         else
             match SvgDocument.serialize state.Document with
             | Error issues -> Error(SvgAuthoringError.InvalidTransaction issues)
-            | Ok serialized -> Ok { state with PlaySnapshot = Some { SourceRevision = state.Revision; SerializedDocument = serialized; Catalog = state.Catalog; Instances = state.Instances } }
+            | Ok serialized -> Ok { state with PlaySnapshot = Some { SourceRevision = state.Revision; SerializedDocument = serialized; Catalog = state.Catalog; Instances = state.Instances; Metadata=state.Metadata } }

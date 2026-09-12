@@ -30,6 +30,11 @@ that enable Boolean tools provide a bundler-resolved module-worker factory; the 
 exactly `polygon-clipping` 0.15.7 and permits one request with no queue and a two-second refusal deadline.
 Player entries do not import or initialize studio code.
 
+The retained host displays the current gesture candidate without accepting it, restores accepted content
+on cancellation, applies camera matrices to the visible SVG, and inverse-transforms `Pick` coordinates.
+The browser package's worker is the sole geometry implementation: test and consumer bundlers load
+`contentFiles/any/any/svg-geometry-worker.js` from the exact restored package.
+
 `SvgStudio.activateFont` accepts only a resource verified by `SvgResourceInterchange.notoSansLatin400`.
 It adds the loaded face after byte validation and removes the face and blob URL on disposal. The package
 carries the exact base64-encoded WOFF2, SHA-256/provenance manifest, full OFL 1.1 text, and the clipping

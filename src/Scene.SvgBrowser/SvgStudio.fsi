@@ -39,19 +39,27 @@ type SvgStudioHost =
     member ToolState: SvgArtState
     member SetSelection: elementIds: string list -> Result<unit, SvgArtError>
     member SetCamera: camera: SvgAffine -> Result<unit, SvgArtError>
+    /// Pick through the inverse current camera while retaining semantic element identity.
+    member Pick: screenPoint: Point -> Result<string option, SvgArtError>
     /// Repeated calls with one id replace the gesture preview without adding history.
     member Preview: transaction: SvgAuthoringTransaction -> Result<unit, SvgAuthoringError>
     member CommitGesture: transactionId: string -> Result<unit, SvgAuthoringError>
     member CancelGesture: transactionId: string -> Result<unit, SvgAuthoringError>
     member Undo: unit -> Result<unit, SvgAuthoringError>
     member Redo: unit -> Result<unit, SvgAuthoringError>
+    /// Commit a document produced by any portable `SvgArt` operation as one history entry.
+    member CommitDocument: transactionId: string * candidate: SvgDocument -> Result<unit, SvgAuthoringError>
+    /// Change grid/freeform placement in the same history as document, catalog and entity edits.
+    member SetGrid: transactionId: string * grid: SvgSceneGrid option -> Result<unit, SvgAuthoringError>
     member ApplyNumericTransform: transactionId: string * transform: SvgAffine -> Result<unit, SvgAuthoringError>
+    /// Validate and atomically commit a current packaged-worker Boolean result once.
+    member CommitGeometry: prepared: SvgGeometryPrepared * result: SvgGeometryResult -> Result<unit, SvgArtError>
     member GeometryWorker: SvgGeometryWorkerHost option
     member Observe: unit -> SvgStudioObservation
 
 [<RequireQualifiedAccess>]
 module SvgStudio =
-    /// Mount an explicit authoring entry with native controls and one retained document host.
+    /// Mount an explicit authoring entry with native controls and one retained document host. Portable `SvgArt` operations can be committed through the returned host.
     val mount: container: HTMLElement -> options: SvgStudioOptions -> initialState: SvgAuthoringState -> onChange: (SvgAuthoringState -> unit) -> Result<SvgStudioHost, SvgDocumentBrowserError>
     /// Verify exact bytes and rights before starting browser font activation; disposal removes the face and blob URL.
     val activateFont: resource: SvgFontResource -> Result<SvgFontResourceHost, SvgDocumentIssue list>

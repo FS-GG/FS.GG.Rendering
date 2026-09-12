@@ -831,12 +831,14 @@ FS.GG.UI.Scene.SvgAuthoring.redo(System.Int32, FS.GG.UI.Scene.SvgAuthoringState)
 FS.GG.UI.Scene.SvgAuthoring.takePlaySnapshot(System.Int32, FS.GG.UI.Scene.SvgAuthoringState) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAuthoringState, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgAuthoring.transactionSchema : System.String [get]
 FS.GG.UI.Scene.SvgAuthoring.tryCreate(System.Int32, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAuthoringState, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgAuthoring.tryCreateScene(System.Int32, FS.GG.UI.Scene.SvgSceneMetadata, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAuthoringState, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgAuthoring.undo(System.Int32, FS.GG.UI.Scene.SvgAuthoringState) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgAuthoringState, FS.GG.UI.Scene.SvgAuthoringError>
 FS.GG.UI.Scene.SvgAuthoringCheckpoint.Catalog : FS.GG.UI.Scene.SvgAssetCatalog [get]
 FS.GG.UI.Scene.SvgAuthoringCheckpoint.Conflicts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict> [get]
 FS.GG.UI.Scene.SvgAuthoringCheckpoint.Document : FS.GG.UI.Scene.SvgDocument [get]
 FS.GG.UI.Scene.SvgAuthoringCheckpoint.Instances : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance> [get]
-FS.GG.UI.Scene.SvgAuthoringCheckpoint.new(FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict>)
+FS.GG.UI.Scene.SvgAuthoringCheckpoint.Metadata : FS.GG.UI.Scene.SvgSceneMetadata [get]
+FS.GG.UI.Scene.SvgAuthoringCheckpoint.new(FS.GG.UI.Scene.SvgSceneMetadata, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict>)
 FS.GG.UI.Scene.SvgAuthoringError+Tags.InvalidTransaction : System.Int32
 FS.GG.UI.Scene.SvgAuthoringError+Tags.NoActivePreview : System.Int32
 FS.GG.UI.Scene.SvgAuthoringError+Tags.NothingToRedo : System.Int32
@@ -846,6 +848,7 @@ FS.GG.UI.Scene.SvgAuthoringError+Tags.PreviewMismatch : System.Int32
 FS.GG.UI.Scene.SvgAuthoringError+Tags.StaleRevision : System.Int32
 FS.GG.UI.Scene.SvgAuthoringOperation+Tags.PutInstance : System.Int32
 FS.GG.UI.Scene.SvgAuthoringOperation+Tags.ReplaceDocument : System.Int32
+FS.GG.UI.Scene.SvgAuthoringOperation+Tags.ReplaceSceneMetadata : System.Int32
 FS.GG.UI.Scene.SvgAuthoringOperation+Tags.TransformElements : System.Int32
 FS.GG.UI.Scene.SvgAuthoringOperation+Tags.UpdateInstances : System.Int32
 FS.GG.UI.Scene.SvgAuthoringOperation+Tags.UpsertAsset : System.Int32
@@ -855,19 +858,21 @@ FS.GG.UI.Scene.SvgAuthoringPreview.TransactionId : System.String [get]
 FS.GG.UI.Scene.SvgAuthoringPreview.new(System.String, System.Int32, FS.GG.UI.Scene.SvgAuthoringCheckpoint)
 FS.GG.UI.Scene.SvgAuthoringSnapshot.Catalog : FS.GG.UI.Scene.SvgAssetCatalog [get]
 FS.GG.UI.Scene.SvgAuthoringSnapshot.Instances : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance> [get]
+FS.GG.UI.Scene.SvgAuthoringSnapshot.Metadata : FS.GG.UI.Scene.SvgSceneMetadata [get]
 FS.GG.UI.Scene.SvgAuthoringSnapshot.SerializedDocument : System.String [get]
 FS.GG.UI.Scene.SvgAuthoringSnapshot.SourceRevision : System.Int32 [get]
-FS.GG.UI.Scene.SvgAuthoringSnapshot.new(System.Int32, System.String, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>)
+FS.GG.UI.Scene.SvgAuthoringSnapshot.new(System.Int32, System.String, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, FS.GG.UI.Scene.SvgSceneMetadata)
 FS.GG.UI.Scene.SvgAuthoringState.Catalog : FS.GG.UI.Scene.SvgAssetCatalog [get]
 FS.GG.UI.Scene.SvgAuthoringState.Conflicts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict> [get]
 FS.GG.UI.Scene.SvgAuthoringState.Document : FS.GG.UI.Scene.SvgDocument [get]
 FS.GG.UI.Scene.SvgAuthoringState.Instances : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance> [get]
+FS.GG.UI.Scene.SvgAuthoringState.Metadata : FS.GG.UI.Scene.SvgSceneMetadata [get]
 FS.GG.UI.Scene.SvgAuthoringState.PlaySnapshot : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringSnapshot> [get]
 FS.GG.UI.Scene.SvgAuthoringState.Preview : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringPreview> [get]
 FS.GG.UI.Scene.SvgAuthoringState.Redo : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint> [get]
 FS.GG.UI.Scene.SvgAuthoringState.Revision : System.Int32 [get]
 FS.GG.UI.Scene.SvgAuthoringState.Undo : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint> [get]
-FS.GG.UI.Scene.SvgAuthoringState.new(System.Int32, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringPreview>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringSnapshot>)
+FS.GG.UI.Scene.SvgAuthoringState.new(System.Int32, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgSceneMetadata, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabConflict>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringCheckpoint>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringPreview>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgAuthoringSnapshot>)
 FS.GG.UI.Scene.SvgAuthoringTransaction.Id : System.String [get]
 FS.GG.UI.Scene.SvgAuthoringTransaction.Operations : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgAuthoringOperation> [get]
 FS.GG.UI.Scene.SvgAuthoringTransaction.Schema : System.String [get]
@@ -1064,6 +1069,54 @@ FS.GG.UI.Scene.SvgRetained.update(FS.GG.UI.Scene.RetainedInteractionMessage, FS.
 FS.GG.UI.Scene.SvgRuntimeSupport+Tags.ContractOnly : System.Int32
 FS.GG.UI.Scene.SvgRuntimeSupport+Tags.Supported : System.Int32
 FS.GG.UI.Scene.SvgRuntimeSupport+Tags.Unsupported : System.Int32
+FS.GG.UI.Scene.SvgScene.deserialize(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgSceneEnvelope, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgScene.migrateLegacy(FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgFontResource>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgSceneEnvelope, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgScene.schema : System.String [get]
+FS.GG.UI.Scene.SvgScene.serialize(FS.GG.UI.Scene.SvgSceneEnvelope) : Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgScene.validateDescriptors(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgSceneKindDescriptor>, FS.GG.UI.Scene.SvgSceneMetadata) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>
+FS.GG.UI.Scene.SvgSceneEntity.EntityId : System.String [get]
+FS.GG.UI.Scene.SvgSceneEntity.KindId : System.String [get]
+FS.GG.UI.Scene.SvgSceneEntity.PrefabInstanceId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgSceneEntity.Properties : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgSceneProperty> [get]
+FS.GG.UI.Scene.SvgSceneEntity.VisualElementId : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgSceneEntity.new(System.String, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgSceneProperty>)
+FS.GG.UI.Scene.SvgSceneEnvelope.Catalog : FS.GG.UI.Scene.SvgAssetCatalog [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.Document : FS.GG.UI.Scene.SvgDocument [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.Fonts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgFontResource> [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.Instances : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance> [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.Metadata : FS.GG.UI.Scene.SvgSceneMetadata [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.Schema : System.String [get]
+FS.GG.UI.Scene.SvgSceneEnvelope.new(System.String, FS.GG.UI.Scene.SvgSceneMetadata, FS.GG.UI.Scene.SvgDocument, FS.GG.UI.Scene.SvgAssetCatalog, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgPrefabInstance>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgFontResource>)
+FS.GG.UI.Scene.SvgSceneGrid.Origin : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.SvgSceneGrid.Step : FS.GG.UI.Scene.Point [get]
+FS.GG.UI.Scene.SvgSceneGrid.new(FS.GG.UI.Scene.Point, FS.GG.UI.Scene.Point)
+FS.GG.UI.Scene.SvgSceneKindDescriptor.DisplayName : System.String [get]
+FS.GG.UI.Scene.SvgSceneKindDescriptor.KindId : System.String [get]
+FS.GG.UI.Scene.SvgSceneKindDescriptor.Properties : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgScenePropertyDescriptor> [get]
+FS.GG.UI.Scene.SvgSceneKindDescriptor.new(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgScenePropertyDescriptor>)
+FS.GG.UI.Scene.SvgSceneMetadata.Entities : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgSceneEntity> [get]
+FS.GG.UI.Scene.SvgSceneMetadata.Grid : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgSceneGrid> [get]
+FS.GG.UI.Scene.SvgSceneMetadata.Layers : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.SvgSceneMetadata.ResourceReferences : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Scene.SvgSceneMetadata.SceneId : System.String [get]
+FS.GG.UI.Scene.SvgSceneMetadata.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgSceneEntity>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgSceneGrid>, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Scene.SvgScenePlacement.freeform(FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.Point, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgScenePlacement.grid(FS.GG.UI.Scene.SvgSceneGrid, FS.GG.UI.Scene.Point) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.Point, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
+FS.GG.UI.Scene.SvgSceneProperty.Key : System.String [get]
+FS.GG.UI.Scene.SvgSceneProperty.Value : FS.GG.UI.Scene.SvgScenePropertyValue [get]
+FS.GG.UI.Scene.SvgSceneProperty.new(System.String, FS.GG.UI.Scene.SvgScenePropertyValue)
+FS.GG.UI.Scene.SvgScenePropertyDescriptor.Key : System.String [get]
+FS.GG.UI.Scene.SvgScenePropertyDescriptor.Kind : FS.GG.UI.Scene.SvgScenePropertyKind [get]
+FS.GG.UI.Scene.SvgScenePropertyDescriptor.Required : System.Boolean [get]
+FS.GG.UI.Scene.SvgScenePropertyDescriptor.new(System.String, FS.GG.UI.Scene.SvgScenePropertyKind, System.Boolean)
+FS.GG.UI.Scene.SvgScenePropertyKind+Tags.Coordinate : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyKind+Tags.Flag : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyKind+Tags.Number : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyKind+Tags.Text : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyValue+Tags.Coordinate : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyValue+Tags.Flag : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyValue+Tags.Number : System.Int32
+FS.GG.UI.Scene.SvgScenePropertyValue+Tags.Text : System.Int32
 FS.GG.UI.Scene.SvgSpreadMethod+Tags.Pad : System.Int32
 FS.GG.UI.Scene.SvgSpreadMethod+Tags.Reflect : System.Int32
 FS.GG.UI.Scene.SvgSpreadMethod+Tags.Repeat : System.Int32

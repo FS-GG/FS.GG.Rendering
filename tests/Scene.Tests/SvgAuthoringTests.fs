@@ -174,14 +174,15 @@ let tests =
             Expect.equal (SvgDocument.deserialize changed.PlaySnapshot.Value.SerializedDocument) (Ok document) "snapshot owns canonical bytes"
         }
 
-        test "studio primitives, radial gradients and inert renderer shapes import portably" {
-            let xml = """<svg viewBox="0 0 40 40"><defs><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient></defs><circle id="c" cx="5" cy="5" r="4" fill="url(#glow)"/><ellipse id="e" cx="15" cy="5" rx="4" ry="2"/><line id="l" x1="0" y1="12" x2="20" y2="12" stroke="#000000"/><polygon id="p" points="0,20 8,20 4,28"/><polyline id="q" points="10,20 18,24 10,28" fill="none"/></svg>"""
+        test "C03 paths paint definitions symbols and text import and export together" {
+            let xml = """<svg viewBox="0 0 80 40"><defs><linearGradient id="wash"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient><clipPath id="crop"><rect x="0" y="0" width="70" height="35"/></clipPath><mask id="fade"><rect id="mask-body" x="0" y="0" width="70" height="35" fill="white"/></mask><symbol id="badge" viewBox="0 0 4 4"><path id="badge-path" d="M 0 0 L 4 0 L 2 4 Z"/></symbol></defs><circle id="c" cx="5" cy="5" r="4" fill="url(#glow)"/><ellipse id="e" cx="15" cy="5" rx="4" ry="2" fill="url(#wash)"/><line id="l" x1="0" y1="12" x2="20" y2="12" stroke="#000000" stroke-width="2"/><polygon id="p" points="0,20 8,20 4,28"/><polyline id="q" points="10,20 18,24 10,28" fill="none"/><path id="curve" d="M 22 20 Q 28 10 34 20 C 38 28 42 12 48 20 Z" fill-rule="evenodd" clip-path="url(#crop)" mask="url(#fade)"/><use id="use" href="#badge"/><text id="label" x="52" y="20" font-family="Noto Sans" font-size="8">C03</text></svg>"""
             let imported = SvgImport.importXml (request "studio" SvgDocument.defaultLimits) xml |> Result.defaultWith (failtestf "%A")
-            Expect.equal imported.Definitions.Length 1 "radial gradient imported"
-            Expect.equal imported.Children.Length 5 "circle, ellipse, line, polygon and polyline imported"
+            Expect.equal imported.Definitions.Length 5 "linear/radial gradients, clip, mask and symbol imported"
+            Expect.equal imported.Children.Length 8 "primitives, Bézier path, symbol instance and text imported"
             let exported = SvgDocument.exportSvg "studio-roundtrip" imported |> Result.defaultWith (failtestf "%A")
             let reopened = SvgImport.importXml (request "studio-reopen" SvgDocument.defaultLimits) exported |> Result.defaultWith (failtestf "%A")
             Expect.equal reopened.Children.Length imported.Children.Length "tool output reopens"
+            Expect.equal reopened.Definitions.Length imported.Definitions.Length "C03 definitions reopen"
             match SvgImport.importXml (request "unsafe" SvgDocument.defaultLimits) (xml.Replace("</defs>", "<style>@font-face{src:url(data:x)}</style></defs>")) with
             | Error issues -> Expect.equal issues.Head.Code "active-content" "default import still refuses CSS/data resources"
             | Ok _ -> failtest "default import accepted CSS"
@@ -251,5 +252,53 @@ let tests =
             match SvgResourceInterchange.exportSvg "bad" {Document=document;Fonts=[{resource with License="MIT"}]} with Error issues -> Expect.equal issues.Head.Code "unapproved-font-manifest" "wrong rights refuse" | Ok _ -> failtest "wrong font rights accepted"
             let excessive = String.replicate 1398104 "A"
             match SvgResourceInterchange.notoSansLatin400 excessive with Error issues -> Expect.equal issues.Head.Code "font-byte-limit" "encoded size rejects before allocation" | Ok _ -> failtest "excessive font accepted"
+        }
+
+        test "scene envelope, grid placement and metadata history remain one atomic value" {
+            let document = imported "scene"
+            let visual = document.Children.Head.Id
+            let layer={Id="layer-main";SemanticId=Some "layer-main";Visible=true;Transform=SvgAffine.identity;ClipId=None;MaskId=None;Presentation=None;Content=SvgElementContent.Group document.Children}
+            let sceneDocument={document with Children=[layer]}
+            let reusable = asset "sample-prefab" 1 document []
+            let instances =
+                [ {InstanceId="prefab-a";AssetId="sample-prefab";AcceptedRevision=1;Overrides=[]}
+                  {InstanceId="prefab-b";AssetId="sample-prefab";AcceptedRevision=1;Overrides=[]} ]
+            let metadata =
+                { SceneId="level-one";Layers=[layer.Id];Grid=Some{Origin={X=3.0;Y=(-2.0)};Step={X=8.0;Y=6.0}};ResourceReferences=[]
+                  Entities=[{EntityId="region-a";KindId="sample.terrain";VisualElementId=Some visual;PrefabInstanceId=None;Properties=[{Key="terrain";Value=SvgScenePropertyValue.Text "sand"};{Key="cost";Value=SvgScenePropertyValue.Number 2.5}]};{EntityId="object-a";KindId="sample.object";VisualElementId=None;PrefabInstanceId=Some "prefab-a";Properties=[{Key="solid";Value=SvgScenePropertyValue.Flag true}]}] }
+            let descriptors = [{KindId="sample.terrain";DisplayName="Terrain";Properties=[{Key="terrain";Kind=SvgScenePropertyKind.Text;Required=true};{Key="cost";Kind=SvgScenePropertyKind.Number;Required=true}]};{KindId="sample.object";DisplayName="Object";Properties=[{Key="solid";Kind=SvgScenePropertyKind.Flag;Required=true}]}]
+            Expect.isEmpty (SvgScene.validateDescriptors descriptors metadata) "product descriptor accepts generic typed properties"
+            Expect.equal (SvgScenePlacement.grid metadata.Grid.Value {X=14.2;Y=5.1}) (Ok {X=11.0;Y=4.0}) "nonzero-origin integer grid snaps in document space"
+            Expect.equal (SvgScenePlacement.freeform {X=1.25;Y=(-3.75)}) (Ok {X=1.25;Y=(-3.75)}) "freeform coordinates retain fractions"
+            let envelope={Schema=SvgScene.schema;Metadata=metadata;Document=sceneDocument;Catalog=catalog[reusable];Instances=instances;Fonts=[]}
+            let wire=SvgScene.serialize envelope|>Result.defaultWith(failtestf "%A")
+            Expect.equal (SvgScene.deserialize wire) (Ok envelope) "scene v1 preserves document, catalog, entities and references"
+            let initial=SvgAuthoring.tryCreateScene 0 metadata sceneDocument envelope.Catalog instances|>Result.defaultWith(failtestf "%A")
+            let changed={metadata with Entities=[{metadata.Entities.Head with Properties=[{Key="terrain";Value=SvgScenePropertyValue.Text "water"};{Key="cost";Value=SvgScenePropertyValue.Number 4.0}]}]}
+            let tx={Schema=SvgAuthoring.transactionSchema;Id="metadata-brush";Operations=[SvgAuthoringOperation.ReplaceSceneMetadata changed]}
+            let committed=SvgAuthoring.commit 0 tx initial|>Result.defaultWith(failtestf "%A")
+            let undone=SvgAuthoring.undo 1 committed|>Result.defaultWith(failtestf "%A")
+            Expect.equal committed.Undo.Length 1 "multi-property edit creates one undo entry"
+            Expect.equal undone.Metadata metadata "undo restores complete scene metadata"
+            let snapshot=SvgAuthoring.takePlaySnapshot 1 committed|>Result.defaultWith(failtestf "%A")
+            Expect.equal snapshot.PlaySnapshot.Value.Metadata changed "immutable handoff captures metadata"
+        }
+
+        test "scene import and metadata validation refuse without partial acceptance" {
+            let document=imported "refusal"
+            let migrated=SvgScene.migrateLegacy document (catalog[]) [] []|>Result.defaultWith(failtestf "%A")
+            Expect.equal migrated.Metadata.Entities [] "legacy migration invents no product meaning"
+            let unknown={migrated with Schema="fsgg.svg-scene/9"}
+            Expect.isError(SvgScene.serialize unknown) "unknown scene versions refuse"
+            let wire=SvgScene.serialize migrated|>Result.defaultWith(failtestf "%A")
+            Expect.isError(SvgScene.deserialize(wire.Replace(SvgScene.schema,"fsgg.svg-scene/9"))) "unknown serialized scene versions refuse"
+            match SvgScene.deserialize(String.replicate 4194305 "x") with
+            | Error issues -> Expect.equal issues.Head.Code "scene-byte-limit" "aggregate envelope limit is checked before parsing"
+            | Ok _ -> failtest "over-budget scene envelope imported"
+            let bad={migrated.Metadata with Entities=[{EntityId="bad";KindId="sample.object";VisualElementId=Some "missing";PrefabInstanceId=None;Properties=[{Key="x";Value=SvgScenePropertyValue.Number nan}]}]}
+            let accepted=SvgAuthoring.tryCreate 0 document (catalog[]) []|>Result.defaultWith(failtestf "%A")
+            let tx={Schema=SvgAuthoring.transactionSchema;Id="bad-metadata";Operations=[SvgAuthoringOperation.ReplaceSceneMetadata bad]}
+            Expect.isError(SvgAuthoring.commit 0 tx accepted) "invalid properties and references refuse atomically"
+            Expect.equal accepted.Metadata.Entities [] "accepted metadata is unchanged"
         }
     ]
