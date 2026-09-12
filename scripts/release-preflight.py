@@ -22,6 +22,11 @@ def fail(message: str) -> None:
     raise SystemExit(f"release-preflight: {message}")
 
 
+def flat_container_filename(package_id: str, version: str) -> str:
+    """Return the NuGet V3 flat-container archive name (always lowercase)."""
+    return f"{package_id}.{version}.nupkg".lower()
+
+
 def git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
@@ -71,7 +76,7 @@ def github_nuget_diagnostic(
             result["serviceIndex"]["parse"] = "invalid-json"
 
     lower = package_id.lower()
-    filename = f"{package_id}.{baseline}.nupkg"
+    filename = flat_container_filename(package_id, baseline)
     fallback_base = "https://nuget.pkg.github.com/FS-GG/download/"
     package_base = next(
         (
@@ -235,7 +240,7 @@ def main() -> int:
             )
         print("release-preflight: historical publisher diagnostic " + json.dumps(diagnostic, sort_keys=True))
     anchor_lower = anchor_id.lower()
-    anchor_file = f"{anchor_id}.{baseline}.nupkg"
+    anchor_file = flat_container_filename(anchor_id, baseline)
     anchor_url = args.github_url_template.format(
         id=anchor_id, id_lower=anchor_lower, version=baseline, filename=anchor_file
     )
@@ -249,7 +254,7 @@ def main() -> int:
     observations = []
     for package_id in ids:
         lower = package_id.lower()
-        filename = f"{package_id}.{args.version}.nupkg"
+        filename = flat_container_filename(package_id, args.version)
         github_url = args.github_url_template.format(
             id=package_id, id_lower=lower, version=args.version, filename=filename
         )

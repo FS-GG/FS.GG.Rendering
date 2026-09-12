@@ -258,7 +258,12 @@ def command_compare(args: argparse.Namespace) -> None:
 
 
 def render_url(template: str, record: dict) -> str:
-    return template.format(id=record["id"], id_lower=record["id"].lower(), version=record["version"], filename=record["file"])
+    return template.format(
+        id=record["id"],
+        id_lower=record["id"].lower(),
+        version=record["version"],
+        filename=record["file"].lower(),
+    )
 
 
 def download(url: str, destination: Path, token: str) -> int:
