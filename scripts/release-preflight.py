@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import hashlib
 import json
 import os
@@ -34,8 +33,10 @@ def git(root: Path, *args: str) -> str:
 def status(url: str, token: str | None = None) -> int:
     headers = {"User-Agent": "FS-GG.Rendering-release-preflight/1"}
     if token:
-        credential = base64.b64encode(f"x:{token}".encode()).decode()
-        headers["Authorization"] = f"Basic {credential}"
+        # GitHub's package download endpoint accepts the workflow token as a
+        # bearer token. Keep this identical to release-custody.py's authenticated
+        # readback path so preflight proves the credential used by publication.
+        headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:

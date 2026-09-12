@@ -34,6 +34,19 @@ class Response:
 
 
 class StatusTests(unittest.TestCase):
+    def test_github_token_is_sent_as_bearer(self):
+        observed = {}
+
+        def open_request(request, timeout):
+            observed["authorization"] = request.get_header("Authorization")
+            observed["timeout"] = timeout
+            return Response(200)
+
+        with patch.object(MODULE.urllib.request, "urlopen", side_effect=open_request):
+            self.assertEqual(200, MODULE.status("https://feed/package", "workflow-token"))
+        self.assertEqual("Bearer workflow-token", observed["authorization"])
+        self.assertEqual(30, observed["timeout"])
+
     def test_200_is_existing(self):
         with patch.object(MODULE.urllib.request, "urlopen", return_value=Response(200)):
             self.assertEqual(200, MODULE.status("https://feed/package", "token"))
