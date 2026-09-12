@@ -41,8 +41,14 @@ const focusWindow = (title) => {
   return id;
 };
 const activateWebContent = async (title) => {
-  const id = focusWindow(title);
-  execFileSync("xdotool", ["mousemove", "--window", id, "20", "140", "click", "1"]);
+  focusWindow(title);
+  // Re-submit the current address through Chromium's native chrome. The
+  // completed desktop navigation transfers the active pane to web content.
+  await desktopKey("ctrl+l");
+  await desktopKey("Return");
+  await page.waitForTimeout(1000);
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(3000);
   await waitForOrca();
 };
 const desktopKey = async (key) => {
