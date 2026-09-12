@@ -1,0 +1,11 @@
+@font-face {
+  font-family: "Noto Sans Preview A";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("./node_modules/@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff2") format("woff2");
+}
+
+#performance-fixture {
+  font-family: "Noto Sans Preview A", sans-serif;
+}
