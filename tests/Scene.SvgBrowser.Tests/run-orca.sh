@@ -22,7 +22,7 @@ dbus-run-session -- bash -c '
   sleep 1
   gsettings set org.gnome.desktop.interface toolkit-accessibility true
   gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
-  orca --replace --enable=speech --debug-file "$2" >"$1/orca.stdout" 2>"$1/orca.stderr" &
+  orca --replace --debug-file "$2" >"$1/orca.stdout" 2>"$1/orca.stderr" &
   orca_pid=$!
   sleep 3
   node "$3/orca-test.mjs" --out "$4"
@@ -66,7 +66,7 @@ evidence = {
     "schema": "fsgg.svg-scene.orca-observation/v1",
     "result": result,
     "assistiveTechnology": {"name": "Orca", "version": version, "transport": "AT-SPI2"},
-    "environment": {"display": "Xvfb", "sessionBus": "isolated dbus-run-session", "browser": "Playwright Firefox headed through AT-SPI2"},
+    "environment": {"display": "Xvfb", "sessionBus": "isolated dbus-run-session", "browser": "Playwright Chromium headed with forced renderer accessibility through AT-SPI2"},
     "candidate": {"sourceDigest": os.environ["SVG_SCENE_AT_SOURCE_DIGEST"], "packageDigest": os.environ["SVG_SCENE_AT_PACKAGE_DIGEST"]},
     "journey": journey,
     "announcements": required,
