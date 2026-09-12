@@ -14,6 +14,7 @@ journey="$work/journey.json"
 dbus-run-session -- bash -c '
   set -euo pipefail
   export DISPLAY=:97
+  export GNOME_ACCESSIBILITY=1
   export NO_AT_BRIDGE=0
   export GTK_MODULES=gail:atk-bridge
   export SVG_SCENE_ORCA_SPEECH_LOG="$2"
@@ -63,7 +64,7 @@ evidence = {
     "schema": "fsgg.svg-scene.orca-observation/v1",
     "result": result,
     "assistiveTechnology": {"name": "Orca", "version": version, "transport": "AT-SPI2"},
-    "environment": {"display": "Xvfb", "sessionBus": "isolated dbus-run-session", "browser": "Playwright Firefox headed through AT-SPI2"},
+    "environment": {"display": "Xvfb", "sessionBus": "isolated dbus-run-session", "browser": "Playwright Chromium headed with forced renderer accessibility through AT-SPI2"},
     "candidate": {"sourceDigest": os.environ["SVG_SCENE_AT_SOURCE_DIGEST"], "packageDigest": os.environ["SVG_SCENE_AT_PACKAGE_DIGEST"]},
     "journey": journey,
     "announcements": required,
