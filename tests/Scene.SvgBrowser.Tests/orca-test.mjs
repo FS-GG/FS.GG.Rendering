@@ -42,6 +42,12 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
+const desktopOrcaCommand = async (key) => {
+  execFileSync("xdotool", ["keydown", "Insert"]);
+  execFileSync("xdotool", ["key", key]);
+  execFileSync("xdotool", ["keyup", "Insert"]);
+  await page.waitForTimeout(250);
+};
 const tabTo = async (selector) => {
   for (let index = 0; index < 20; index += 1) {
     await desktopKey("Tab");
@@ -57,7 +63,7 @@ try {
   // Orca starts web documents in browse mode. Move into focus mode before the
   // native Tab journey so browser widgets, rather than the virtual cursor,
   // receive focus and emit the AT-SPI focus events under observation.
-  await desktopKey("Insert+a");
+  await desktopOrcaCommand("a");
   await waitForOrca();
   await tabTo("[data-scene-root-id='svg-foundation-root']");
   await waitForOrca();
