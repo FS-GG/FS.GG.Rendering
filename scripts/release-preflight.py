@@ -32,6 +32,10 @@ def git(root: Path, *args: str) -> str:
 
 
 def status(url: str, token: str | None = None) -> int:
+    return request(url, token)[0]
+
+
+def request(url: str, token: str | None = None) -> tuple[int, bytes]:
     headers = {"User-Agent": "FS-GG.Rendering-release-preflight/1"}
     if token:
         credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()
@@ -39,12 +43,78 @@ def status(url: str, token: str | None = None) -> int:
     request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            response.read(1)
-            return response.status
+            return response.status, response.read()
     except urllib.error.HTTPError as error:
-        return error.code
+        return error.code, error.read()
     except (OSError, urllib.error.URLError) as error:
         fail(f"feed unavailable for {url}: {error}")
+
+
+def github_nuget_diagnostic(token: str, package_id: str, baseline: str, target: str) -> dict:
+    """Observe the established workflow token through NuGet V3 without mutating a feed."""
+    service_url = "https://nuget.pkg.github.com/FS-GG/index.json"
+    service_status, service_body = request(service_url, token)
+    result: dict = {
+        "credential": "repository GITHUB_TOKEN (historical 0.28 publisher)",
+        "serviceIndex": {"url": service_url, "status": service_status},
+    }
+    resources: list[dict] = []
+    if service_status == 200:
+        try:
+            document = json.loads(service_body)
+            resources = document.get("resources", [])
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            result["serviceIndex"]["parse"] = "invalid-json"
+
+    lower = package_id.lower()
+    filename = f"{package_id}.{baseline}.nupkg"
+    fallback_base = "https://nuget.pkg.github.com/FS-GG/download/"
+    package_base = next(
+        (
+            item.get("@id")
+            for item in resources
+            if str(item.get("@type", "")).startswith("PackageBaseAddress/")
+        ),
+        fallback_base,
+    )
+    registration_base = next(
+        (
+            item.get("@id")
+            for item in resources
+            if str(item.get("@type", "")).startswith("RegistrationsBaseUrl/")
+        ),
+        None,
+    )
+    version_url = f"{package_base.rstrip('/')}/{lower}/index.json"
+    version_status, version_body = request(version_url, token)
+    version_observation: dict = {"url": version_url, "status": version_status}
+    if version_status == 200:
+        try:
+            versions = json.loads(version_body).get("versions", [])
+            version_observation.update(
+                {
+                    "baselineListed": baseline in versions,
+                    "targetListed": target in versions,
+                }
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            version_observation["parse"] = "invalid-json"
+    result["versionIndex"] = version_observation
+
+    if registration_base:
+        registration_url = f"{registration_base.rstrip('/')}/{lower}/index.json"
+        registration_status, _ = request(registration_url, token)
+        result["registrationIndex"] = {
+            "url": registration_url,
+            "status": registration_status,
+        }
+    else:
+        result["registrationIndex"] = {"status": "not-advertised"}
+
+    archive_url = f"{package_base.rstrip('/')}/{lower}/{baseline}/{filename}"
+    archive_status, _ = request(archive_url, token)
+    result["baselineArchive"] = {"url": archive_url, "status": archive_status}
+    return result
 
 
 def source_text(root: Path, source_sha: str, path: str) -> str:
@@ -71,6 +141,8 @@ def main() -> int:
     parser.add_argument("--github-workflow-ref", required=True)
     parser.add_argument("--github-run-id", required=True)
     parser.add_argument("--github-token-env", default="GITHUB_TOKEN")
+    parser.add_argument("--github-workflow-token-env")
+    parser.add_argument("--diagnostic", type=Path)
     parser.add_argument(
         "--github-url-template",
         default="https://nuget.pkg.github.com/FS-GG/download/{id_lower}/{version}/{filename}",
@@ -138,6 +210,19 @@ def main() -> int:
 
     anchor_id = "FS.GG.UI.Scene"
     baseline = plan.get("baselineVersion")
+    if args.github_workflow_token_env:
+        workflow_token = os.environ.get(args.github_workflow_token_env, "")
+        if not workflow_token:
+            fail(f"{args.github_workflow_token_env} is absent; historical publisher diagnostic unavailable")
+        diagnostic = github_nuget_diagnostic(
+            workflow_token, anchor_id, baseline, args.version
+        )
+        if args.diagnostic:
+            args.diagnostic.parent.mkdir(parents=True, exist_ok=True)
+            args.diagnostic.write_text(
+                json.dumps(diagnostic, indent=2, sort_keys=True) + "\n"
+            )
+        print("release-preflight: historical publisher diagnostic " + json.dumps(diagnostic, sort_keys=True))
     anchor_lower = anchor_id.lower()
     anchor_file = f"{anchor_id}.{baseline}.nupkg"
     anchor_url = args.github_url_template.format(
