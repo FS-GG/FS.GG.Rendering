@@ -80,6 +80,11 @@ let private declRx =
 ///
 /// Rendered IL-style (``Foo`1``) because that is what the rest of the tree already writes.
 let private nameOf (rest: string) =
+    // A mutually-recursive continuation may carry its attribute on the declaration line
+    // (`and [<RequireQualifiedAccess>] Choice = ...`) rather than in the lead block. Strip any
+    // such attributes before reading accessibility and the declared name. The full declaration
+    // remains verbatim in `Node.Decl`; this normalization is only for the lookup key.
+    let rest = Regex.Replace(rest, @"^\s*(?:\[<[^\]]*>\]\s*)+", "")
     let rest = Regex.Replace(rest, @"^\s*(internal|private|public)\s+", "")
     let m = Regex.Match(rest, @"^\(?\s*(?<n>[A-Za-z_][A-Za-z0-9_']*|\([^)]*\))(?<g><[^>]*>)?")
 

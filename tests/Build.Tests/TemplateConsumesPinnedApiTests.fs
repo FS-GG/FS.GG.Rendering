@@ -933,9 +933,13 @@ let private duCaseRegex = Regex(@"^\s*\|\s*(?<case>[A-Z]\w*)\b", RegexOptions.Co
 /// members that exist nowhere — `Control.TextValue`, `SceneNode.Nodes`. That is a FALSE POSITIVE, and a
 /// false positive is the one failure this rule cannot survive: the first person it wrongly accuses will
 /// ledger it, and a ledgered lie is a rule that has been switched off.
+///
+/// A continuation can carry an attribute before its name (`and [<RequireQualifiedAccess>] Choice =`).
+/// The attribute is declaration metadata, not the type name; accepting it here keeps the following cases
+/// attached to `Choice` instead of the preceding group leader.
 let private typeDeclRegex =
     Regex(
-        @"^(?<indent>\s*)(?:type|and)\s+(?<name>[A-Z]\w*)\s*(?<gen><[^>]*>)?(?<rest>.*)$",
+        @"^(?<indent>\s*)(?:type|and)\s+(?:\[<[^\]]*>\]\s*)*(?<name>[A-Z]\w*)\s*(?<gen><[^>]*>)?(?<rest>.*)$",
         RegexOptions.Compiled
     )
 
@@ -2592,8 +2596,12 @@ let private omissionLedger =
 /// SVG intent type. They remain deliberately outside the generated-workspace mirror until the existing
 /// SVG-SCENE-02.7/SVG-PREVIEW-A consumer and publication boundary; the ledger extends that one temporary
 /// candidate curation rather than teaching APIs the published 0.28.0 package does not contain.
+///
+/// Lowered 515 -> 472 by SVG-PREVIEW-A.2: the generated-workspace mirror now teaches the complete retained
+/// SVG, typed-document, affine, interaction, and keyboard-intent surface from the exact 0.29.0 release
+/// candidate, so all 43 temporary omission entries were paid and removed together.
 [<Literal>]
-let private OmissionLedgerCeiling = 515
+let private OmissionLedgerCeiling = 472
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

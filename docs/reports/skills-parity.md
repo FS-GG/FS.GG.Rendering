@@ -26,10 +26,10 @@ Wrappers: `60`
 | fs-gg-diagnostics | 2 | 2 | 0 | 0 |
 | fs-gg-elmish | 26 | 26 | 0 | 0 |
 | fs-gg-generated-controls-guidance | 25 | 25 | 0 | 0 |
-| fs-gg-keyboard-input | 7 | 7 | 0 | 0 |
+| fs-gg-keyboard-input | 8 | 8 | 0 | 0 |
 | fs-gg-layout | 3 | 3 | 0 | 0 |
 | fs-gg-samples | 2 | 2 | 0 | 0 |
-| fs-gg-scene | 30 | 30 | 0 | 0 |
+| fs-gg-scene | 44 | 44 | 0 | 0 |
 | fs-gg-skiaviewer | 6 | 6 | 0 | 0 |
 | fs-gg-styling | 17 | 17 | 0 | 0 |
 | fs-gg-symbol-design | 6 | 6 | 0 | 0 |

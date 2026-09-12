@@ -139,6 +139,14 @@ type KeyModifiers =
       Shift: bool
       Meta: bool }
 
+/// Command-agnostic keyboard intents shared by the SVG browser host and portable consumers.
+[<RequireQualifiedAccess>]
+type SvgKeyboardIntent =
+    | FocusNext
+    | FocusPrevious
+    | ActivateFocused
+    | ClearSelection
+
 /// Public contract module exposed by this FS.GG.UI package.
 module ViewerKeyboard =
     /// Public contract function exposed by this FS.GG.UI package.
@@ -161,3 +169,12 @@ module ViewerKeyboard =
     /// `normalizeEvent` (byte-identical routing); a chord recovers every held modifier — zero silent
     /// loss (SC-009). Pure, total; never throws.
     val normalizeEventWithModifiers: event: ViewerKeyEvent -> ViewerKey * bool * KeyModifiers
+
+    /// Map the small retained-SVG key surface. Native editing controls and IME composition are
+    /// deliberately declined so the browser keeps their platform behavior.
+    val tryMapSvgIntent:
+        rawKey: string ->
+        isKeyDown: bool ->
+        isComposing: bool ->
+        isNativeEditableTarget: bool ->
+        SvgKeyboardIntent option

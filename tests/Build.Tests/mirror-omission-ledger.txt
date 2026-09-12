@@ -370,61 +370,6 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFinding
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionFitStatus
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionMeasurementMode
 
-# SVG-FOUND-01.2 deliberately leaves the new retained SVG contract out of the generated-workspace
-# mirror until the roadmap's template adoption and candidate-release packet in .4/.5. The source
-# package and isolated candidate consumers prove the contract here; template/base must continue to
-# teach the currently published $(FsGgUiVersion) surface until that explicit adoption moves its pin.
-module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgRetained
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionError
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionMessage
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionResult
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInteractionState
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedScene
-type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedSceneLayer
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SemanticSceneObject
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAdapterIssue
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAdapterResult
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgCamera
-
-# SVG-SCENE-02.2/.4 follow the same candidate boundary as SVG-FOUND-01.2 above. These portable document,
-# affine, interaction/keyboard and packaging envelopes are public in the locally packed 0.29.0-preview.1 candidate, while the
-# generated workspace must continue teaching the published 0.28.0 package until SVG-SCENE-02.7 completes
-# candidate consumers and SVG-PREVIEW-A passes the separate publication gate. The mirror generator reads
-# published pins outside a release window, so mirroring these names now would falsely teach APIs that the
-# default generated workspace cannot restore. This stanza is removed when that pin moves and the generated
-# mirror can be refreshed from the exact published package.
-module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAffine
-module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocument
-module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentInteraction
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAffine
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAffineError
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAssetDescriptor
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgBuildExtensionDescriptor
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgClipShape
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgCoordinateUnits
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDefinition
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDefinitionContent
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocument
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentIssue
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentLimits
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentInteractionError
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentInteractionMessage
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentInteractionResult
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentInteractionState
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgDocumentPlaySnapshot
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgElement
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgElementContent
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgFontReference
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGradientDefinition
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGradientGeometry
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGradientStop
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgMaskKind
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPaintSource
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPresentation
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgRuntimeSupport
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSpreadMethod
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgStrokePresentation
-type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.SvgKeyboardIntent
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNode
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionNodeKind
 type FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspectionPaintRole
