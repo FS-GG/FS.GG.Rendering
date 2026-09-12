@@ -111,9 +111,10 @@ class ReleaseCustodyTests(unittest.TestCase):
         self.assertLess(retained, first_push)
         self.assertIn("release-custody.py probe", release)
         publish = release[release.index("  publish-packages:"):]
-        self.assertIn("Mint the established org App package-read credential for readback", publish)
-        self.assertIn("FSGG_PACKAGE_READ_TOKEN", publish)
-        self.assertIn("--token-env FSGG_PACKAGE_READ_TOKEN", publish)
+        self.assertIn("nuget-client-archive.py probe", publish)
+        self.assertIn("nuget-client-archive.py restore", publish)
+        self.assertIn("release-custody.py compare", publish)
+        self.assertIn("--token-env GITHUB_TOKEN", publish)
         self.assertIn('--api-key "$GITHUB_TOKEN"', publish)
         self.assertNotIn("--skip-duplicate", release)
         self.assertNotIn("rollback-failed-cut:", tags)

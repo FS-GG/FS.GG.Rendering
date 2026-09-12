@@ -756,6 +756,8 @@ jobs:
           NUGET_FEED_USER: ${{ github.actor }}
         run: |
           python3 scripts/test-release-custody.py
+          python3 scripts/test-release-preflight.py
+          python3 scripts/test-nuget-client-archive.py
           bash scripts/apicompat-check.sh --self-test
           bash scripts/test-apicompat-release-status.sh
           bash scripts/apicompat-check.sh
