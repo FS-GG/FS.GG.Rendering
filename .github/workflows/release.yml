@@ -36,10 +36,29 @@ on:
         type: boolean
         required: false
         default: false
+      preflight-only:
+        description: "Authenticate and prove source/version/tag/feed collision state without packing, tagging, or publishing."
+        type: boolean
+        required: false
+        default: false
+      source-sha:
+        description: "Exact candidate source SHA to bind during a non-publishing preflight. Defaults to the called SHA."
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       version:
         description: "Version to pack+publish (e.g. 0.1.51-preview.1). Required to actually push on a manual run; omit for a pack-only dry run."
+        type: string
+        required: false
+      preflight-only:
+        description: "Authenticate and prove collision state only; never pack, tag, or publish."
+        type: boolean
+        required: false
+        default: false
+      source-sha:
+        description: "Exact candidate source SHA whose release axes are inspected without executing candidate bytes."
         type: string
         required: false
 
@@ -55,7 +74,7 @@ jobs:
     name: Package consumption (release-only)
     runs-on: ubuntu-latest
     # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
-    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
     env:
       # Feature 209 — THE RELEASE LANE. This job gates `publish-packages` (needs:), so it is the last
       # thing standing between a version bump and the public feeds. The coherence mirror's
@@ -169,7 +188,7 @@ jobs:
   template-product-tests:
     name: Generated product (template instantiation, release-only)
     runs-on: ubuntu-latest
-    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
     steps:
       - uses: actions/checkout@v7
         with:
@@ -275,6 +294,65 @@ jobs:
   # GitHub Packages feed (nuget.pkg.github.com/FS-GG) is EMPTY — nothing ever publishes FS.GG.UI.*
   # to it, so every downstream lookup is "no-result". This job publishes the coherent set on a
   # release. GITHUB_TOKEN (packages: write) is sufficient to push to the same org's feed; no PAT.
+  publication-preflight:
+    name: Protected publication preflight (no mutation)
+    runs-on: ubuntu-latest
+    if: >-
+      github.repository == 'FS-GG/FS.GG.Rendering' &&
+      (inputs.validate-only || inputs.preflight-only)
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Fetch and bind the exact candidate source without executing it
+        id: source
+        shell: bash
+        env:
+          REQUESTED_SOURCE: ${{ inputs.source-sha }}
+        run: |
+          set -euo pipefail
+          source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::source-sha must be exact lowercase 40-hex"; exit 1;
+          }
+          git fetch --no-tags origin "$source_sha"
+          git cat-file -e "$source_sha^{commit}"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: NuGet login preflight (OIDC only; key is not used)
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+      - name: Prove exact source, ordered tags, permissions, and absent identities
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VER: ${{ inputs.version }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ -n "$VER" ]] || { echo "::error::version is required for publication preflight"; exit 1; }
+          python3 scripts/release-preflight.py \
+            --plan eng/release/svg-preview-a-0.29.0.json \
+            --source-sha "$SOURCE_SHA" \
+            --version "$VER" \
+            --workflow-sha "$GITHUB_SHA" \
+            --github-token-env GITHUB_TOKEN \
+            --receipt artifacts/preflight/release-preflight.json
+      - name: Retain the non-publishing preflight receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-release-preflight-${{ steps.source.outputs.sha }}-${{ inputs.version }}
+          path: artifacts/preflight/release-preflight.json
+          if-no-files-found: error
+          retention-days: 90
+
   publish-packages:
     name: Publish FS.GG.UI.* to org GitHub Packages (release-only)
     runs-on: ubuntu-latest
@@ -282,7 +360,10 @@ jobs:
     # validators and ships nothing; the publish happens on the second call, after the tags are cut.
     # The negative phrasing is load-bearing: see the `validate-only` input's comment. An absent `inputs`
     # context (push/release/dispatch) is falsy, so every escape-hatch trigger still publishes.
-    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.validate-only
+    if: >-
+      github.repository == 'FS-GG/FS.GG.Rendering' &&
+      !inputs.validate-only &&
+      !inputs.preflight-only
     # Only publish a set that passed the release-only consumption checks above.
     needs: [package-tests, template-product-tests]
     permissions:

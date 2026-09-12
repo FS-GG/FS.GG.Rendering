@@ -308,6 +308,7 @@ jobs:
     with:
       version: ${{ needs.plan.outputs.pkg-version }}
       validate-only: true
+      source-sha: ${{ github.sha }}
     # THE SAME GRANT AS THE `release` CALL BELOW, DELIBERATELY, EVEN THOUGH THIS RUN PUBLISHES NOTHING.
     # A called workflow's jobs may not declare permissions exceeding the caller's grant, and that is
     # checked against the workflow's DECLARED graph — `publish-packages` still declares `packages: write`
@@ -320,10 +321,9 @@ jobs:
       actions: read
       packages: write
       id-token: write
-    # NO `secrets: inherit`, unlike the `release` call below. The only job in `release.yml` that reads a
-    # secret is `publish-packages` (`NUGET_USER`, and the OIDC mint), and `validate-only` skips it;
-    # `package-tests` and `template-product-tests` read none. A run that publishes nothing has no reason
-    # to hold the org's publishing secrets.
+    # NO `secrets: inherit`, unlike the `release` call below. The preflight uses the called workflow's
+    # ephemeral GitHub token plus OIDC; `NUGET_USER` has a public-account fallback. No stored publishing
+    # key is exposed, and the minted short-lived NuGet key is deliberately never used.
 
   # #681 — THE PUSH, and nothing else. Reachable only after `validate` went green.
   cut:
