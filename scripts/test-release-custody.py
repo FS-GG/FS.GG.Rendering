@@ -3,12 +3,14 @@
 import importlib.util
 import json
 import argparse
+import base64
 import shutil
 import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).with_name("release-custody.py")
 sys.dont_write_bytecode = True
@@ -19,6 +21,33 @@ SPEC.loader.exec_module(custody)
 
 
 class ReleaseCustodyTests(unittest.TestCase):
+    def test_authenticated_readback_uses_app_token_basic_auth(self):
+        observed = {}
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self):
+                return b"archive"
+
+        def open_request(request, timeout):
+            observed["authorization"] = request.get_header("Authorization")
+            observed["timeout"] = timeout
+            return Response()
+
+        with tempfile.TemporaryDirectory() as value:
+            destination = Path(value) / "package.nupkg"
+            with patch.object(custody.urllib.request, "urlopen", side_effect=open_request):
+                self.assertEqual(200, custody.download("https://feed/package", destination, "app-token"))
+            self.assertEqual(b"archive", destination.read_bytes())
+        expected = base64.b64encode(b"x-access-token:app-token").decode()
+        self.assertEqual(f"Basic {expected}", observed["authorization"])
+        self.assertEqual(60, observed["timeout"])
+
     def archive(self, path: Path, package: str, version: str, entries=None, signature=None, dependencies=None):
         entries = entries or {}
         deps = "".join(f'<dependency id="{key}" version="{value}" />' for key, value in (dependencies or []))
@@ -70,6 +99,11 @@ class ReleaseCustodyTests(unittest.TestCase):
         first_push = release.index("dotnet nuget push", retained)
         self.assertLess(retained, first_push)
         self.assertIn("release-custody.py probe", release)
+        publish = release[release.index("  publish-packages:"):]
+        self.assertIn("Mint the established org App package-read credential for readback", publish)
+        self.assertIn("FSGG_PACKAGE_READ_TOKEN", publish)
+        self.assertIn("--token-env FSGG_PACKAGE_READ_TOKEN", publish)
+        self.assertIn('--api-key "$GITHUB_TOKEN"', publish)
         self.assertNotIn("--skip-duplicate", release)
         self.assertNotIn("rollback-failed-cut:", tags)
         self.assertNotIn("git push origin --delete", tags)

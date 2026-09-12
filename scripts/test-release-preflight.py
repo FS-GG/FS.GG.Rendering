@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import base64
 import pathlib
 import sys
 import unittest
@@ -44,7 +45,8 @@ class StatusTests(unittest.TestCase):
 
         with patch.object(MODULE.urllib.request, "urlopen", side_effect=open_request):
             self.assertEqual(200, MODULE.status("https://feed/package", "workflow-token"))
-        self.assertEqual("Bearer workflow-token", observed["authorization"])
+        expected = base64.b64encode(b"x-access-token:workflow-token").decode()
+        self.assertEqual(f"Basic {expected}", observed["authorization"])
         self.assertEqual(30, observed["timeout"])
 
     def test_200_is_existing(self):
