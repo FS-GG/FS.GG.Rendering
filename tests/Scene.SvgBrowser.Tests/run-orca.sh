@@ -22,7 +22,7 @@ dbus-run-session -- bash -c '
   sleep 1
   gsettings set org.gnome.desktop.interface toolkit-accessibility true
   gsettings set org.gnome.desktop.a11y.applications screen-reader-enabled true
-  orca --replace --debug-file "$2" >"$1/orca.stdout" 2>"$1/orca.stderr" &
+  orca --replace --enable=speech --debug-file "$2" >"$1/orca.stdout" 2>"$1/orca.stderr" &
   orca_pid=$!
   sleep 3
   node "$3/orca-test.mjs" --out "$4"
