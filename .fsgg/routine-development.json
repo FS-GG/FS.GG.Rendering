@@ -1,0 +1,69 @@
+{
+  "schema": "fsgg.routine-development-policy/v1",
+  "status": "active",
+  "defaultRoute": "routine",
+  "heavyProcessSelection": {
+    "trigger": "recorded-explicit-human-instruction",
+    "namedScopeRequired": true,
+    "absenceOrAmbiguity": "routine"
+  },
+  "heavyProcessNonTriggers": [
+    "strict-label",
+    "gs2-registration",
+    "protected-path",
+    "policy-change",
+    "modeled-work",
+    "protected-operation",
+    "existing-strict-state"
+  ],
+  "trustModel": {
+    "repositoryWriters": "trusted",
+    "purpose": "prevent accidental mistakes and drift",
+    "excludedClaim": "adversarial protection from repository writers able to alter Actions workflows"
+  },
+  "branchPrefix": "routine/",
+  "allowedOperations": [
+    "source-change",
+    "internal-docs"
+  ],
+  "protectedOperations": [
+    "publish",
+    "deploy",
+    "credential-change",
+    "destructive-effect",
+    "migration-cutover",
+    "external-contract-acceptance"
+  ],
+  "sensitivePaths": [
+    ".fsgg/",
+    ".github/",
+    ".agents/skills/work-roadmap/",
+    ".claude/skills/work-roadmap/",
+    "eng/",
+    "registry/",
+    "scripts/",
+    "src/FS.GG.Coord",
+    "Directory.Build",
+    "global.json",
+    "nuget.config"
+  ],
+  "requiredChecks": [
+    "repository-required-status-checks",
+    "routine-eligibility",
+    "routine-head-binding"
+  ],
+  "notRequired": [
+    "issue",
+    "claim",
+    "sdd-artifacts",
+    "phase-lifecycle-ledger",
+    "independent-critic",
+    "feedback-report",
+    "receipt-cycle",
+    "metadata-done",
+    "projection-pr"
+  ],
+  "safeguardRule": "technical-checks-and-operation-authority-remain-independent-and-fail-closed",
+  "protectedOperationDisposition": "affected-effect-remains-pending-until-authorized",
+  "legacyAuthority": "evidence-retained-not-a-route-selector"
+}
