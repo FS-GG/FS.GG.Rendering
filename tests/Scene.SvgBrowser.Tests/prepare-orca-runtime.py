@@ -8,19 +8,19 @@ import sys
 speech_source = Path(sys.argv[1])
 text = speech_source.read_text()
 
-import_anchor = "from dataclasses import dataclass\n"
+import_anchor = "import importlib\n"
 if import_anchor not in text:
     raise SystemExit("Orca speech module import anchor was not found")
 text = text.replace(
     import_anchor,
-    "from dataclasses import dataclass\nimport json\nimport os\n",
+    "import importlib\nimport json\nimport os\n",
     1,
 )
 
-speak_anchor = '''def _speak(text: str, acss: ACSS | dict[str, Any] | None) -> None:
+speak_anchor = '''def _speak(text: str, acss: ACSS | dict[str, Any] | None, interrupt: bool) -> None:
     """Speaks the individual string using the given ACSS."""
 '''
-recorder = '''def _speak(text: str, acss: ACSS | dict[str, Any] | None) -> None:
+recorder = '''def _speak(text: str, acss: ACSS | dict[str, Any] | None, interrupt: bool) -> None:
     """Speaks the individual string using the given ACSS."""
 
     capture_path = os.environ.get("SVG_SCENE_ORCA_SPEECH_LOG")

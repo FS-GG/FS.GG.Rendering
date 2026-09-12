@@ -69,36 +69,20 @@ jobs:
       - name: Install Orca assistive-technology process
         run: |
           sudo apt-get update
-          sudo apt-get install --yes dbus-x11 gettext gobject-introspection itstool libdbus-1-dev libgirepository1.0-dev libglib2.0-dev libgtk-3-dev libxml2-dev libx11-dev libxtst-dev meson ninja-build openbox orca python-gi-dev python3-dasbus python3-dev python3-gi python3-speechd speech-dispatcher-espeak-ng xdotool xvfb
-          git init "$RUNNER_TEMP/at-spi2-core-source"
-          git -C "$RUNNER_TEMP/at-spi2-core-source" remote add origin https://gitlab.gnome.org/GNOME/at-spi2-core.git
-          git -C "$RUNNER_TEMP/at-spi2-core-source" fetch --depth 1 origin 03d341dc568a594ff29b42f91060a191106151c7
-          git -C "$RUNNER_TEMP/at-spi2-core-source" checkout --detach FETCH_HEAD
-          meson setup -Dprefix="$RUNNER_TEMP/at-spi2-core-2.56.8" -Dgtk2_atk_adaptor=false -Ddocs=false -Dintrospection=enabled -Duse_systemd=false "$RUNNER_TEMP/at-spi2-core-source/_build" "$RUNNER_TEMP/at-spi2-core-source"
-          meson compile -C "$RUNNER_TEMP/at-spi2-core-source/_build"
-          meson install -C "$RUNNER_TEMP/at-spi2-core-source/_build"
-          export PKG_CONFIG_PATH="$RUNNER_TEMP/at-spi2-core-2.56.8/lib/x86_64-linux-gnu/pkgconfig:$RUNNER_TEMP/at-spi2-core-2.56.8/lib/pkgconfig"
-          export LD_LIBRARY_PATH="$RUNNER_TEMP/at-spi2-core-2.56.8/lib/x86_64-linux-gnu:$RUNNER_TEMP/at-spi2-core-2.56.8/lib"
-          export GI_TYPELIB_PATH="$RUNNER_TEMP/at-spi2-core-2.56.8/lib/x86_64-linux-gnu/girepository-1.0:$RUNNER_TEMP/at-spi2-core-2.56.8/lib/girepository-1.0"
-          export PYTHONPATH="$RUNNER_TEMP/at-spi2-core-2.56.8/lib/python3/dist-packages"
-          export XDG_DATA_DIRS="$RUNNER_TEMP/at-spi2-core-2.56.8/share:/usr/local/share:/usr/share"
+          sudo apt-get install --yes dbus-x11 gettext itstool libatspi2.0-dev libgtk-3-dev meson ninja-build openbox orca python-gi-dev python3-dasbus python3-dev python3-gi python3-speechd speech-dispatcher-espeak-ng xdotool xvfb
           git init "$RUNNER_TEMP/orca-source"
           git -C "$RUNNER_TEMP/orca-source" remote add origin https://gitlab.gnome.org/GNOME/orca.git
-          git -C "$RUNNER_TEMP/orca-source" fetch --depth 1 origin 0c3b7f5899927aac74f15de95f81c35e177690ce
+          git -C "$RUNNER_TEMP/orca-source" fetch --depth 1 origin a4e6375bdaebbade7974b9717b353bc864602b53
           git -C "$RUNNER_TEMP/orca-source" checkout --detach FETCH_HEAD
           python3 tests/Scene.SvgBrowser.Tests/prepare-orca-runtime.py "$RUNNER_TEMP/orca-source/src/orca/speech.py"
-          meson setup -Dprefix="$RUNNER_TEMP/orca-50.3" "$RUNNER_TEMP/orca-source/_build" "$RUNNER_TEMP/orca-source"
+          meson setup -Dprefix="$RUNNER_TEMP/orca-49.8" "$RUNNER_TEMP/orca-source/_build" "$RUNNER_TEMP/orca-source"
           meson compile -C "$RUNNER_TEMP/orca-source/_build"
           meson install -C "$RUNNER_TEMP/orca-source/_build"
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-          echo "GI_TYPELIB_PATH=$GI_TYPELIB_PATH" >> "$GITHUB_ENV"
-          echo "PYTHONPATH=$PYTHONPATH" >> "$GITHUB_ENV"
-          echo "XDG_DATA_DIRS=$XDG_DATA_DIRS" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/orca-50.3/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/orca-49.8/bin" >> "$GITHUB_PATH"
       - name: Exercise packed adapter in all browser families
         env:
           SVG_SCENE_ORCA_OBSERVATION: ${{ runner.temp }}/svg-browser-observations.orca.json
-          SVG_SCENE_ORCA_VERSION: 50.3+0c3b7f5899927aac74f15de95f81c35e177690ce
+          SVG_SCENE_ORCA_VERSION: 49.8+a4e6375bdaebbade7974b9717b353bc864602b53
         run: bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/svg-browser-observations.json"
       - name: Qualify Preview-A workload controls on the hosted diagnostic environment
         env:
