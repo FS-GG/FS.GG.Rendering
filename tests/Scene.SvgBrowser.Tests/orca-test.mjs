@@ -3,7 +3,7 @@ import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { chromium } from "playwright-core";
+import { firefox } from "playwright-core";
 
 const fixture = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(fixture, "dist");
@@ -28,14 +28,16 @@ const server = createServer((request, response) => {
 
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const address = server.address();
-const profile = resolve(fixture, ".orca-chromium-profile");
+const profile = resolve(fixture, ".orca-firefox-profile");
 rmSync(profile, { recursive: true, force: true });
-const browser = await chromium.launchPersistentContext(profile, {
+const browser = await firefox.launchPersistentContext(profile, {
   headless: false,
-  args: [`--app=http://127.0.0.1:${address.port}/`, "--force-renderer-accessibility=complete", "--disable-gpu"],
+  args: ["--kiosk"],
+  firefoxUserPrefs: { "accessibility.force_disabled": 0 },
   viewport: { width: 1024, height: 720 },
 });
 let page = browser.pages()[0] ?? await browser.newPage();
+await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
 const waitForOrca = () => page.waitForTimeout(1200);
 const focusWindow = (title) => {
   const ids = execFileSync("xdotool", ["search", "--onlyvisible", "--name", title], { encoding: "utf8" }).trim().split(/\s+/);
