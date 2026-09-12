@@ -342,6 +342,7 @@ jobs:
         shell: bash
         env:
           FSGG_PACKAGE_READ_TOKEN: ${{ steps.package-reader.outputs.token }}
+          FSGG_HISTORICAL_PUBLISH_TOKEN: ${{ github.token }}
           FSGG_PACKAGE_READ_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
           FSGG_PACKAGE_READ_INSTALLATION_ID: ${{ steps.package-reader.outputs.installation-id }}
           VER: ${{ inputs.version }}
@@ -355,12 +356,22 @@ jobs:
             --version "$VER" \
             --workflow-sha "$GITHUB_SHA" \
             --github-token-env FSGG_PACKAGE_READ_TOKEN \
+            --github-workflow-token-env FSGG_HISTORICAL_PUBLISH_TOKEN \
             --github-app-id "$FSGG_PACKAGE_READ_APP_ID" \
             --github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID" \
             --github-repository "$GITHUB_REPOSITORY" \
             --github-workflow-ref "$GITHUB_WORKFLOW_REF" \
             --github-run-id "$GITHUB_RUN_ID" \
+            --diagnostic artifacts/preflight/github-packages-auth-diagnostic.json \
             --receipt artifacts/preflight/release-preflight.json
+      - name: Retain the historical publisher credential diagnostic
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-github-packages-auth-diagnostic-${{ steps.source.outputs.sha }}-${{ inputs.version }}
+          path: artifacts/preflight/github-packages-auth-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Retain the non-publishing preflight receipt
         uses: actions/upload-artifact@v7
         with:

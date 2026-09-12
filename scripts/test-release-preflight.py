@@ -30,12 +30,12 @@ class Response:
     def __exit__(self, *_):
         return False
 
-    def read(self, _size: int):
+    def read(self, _size: int = -1):
         return b"x"
 
 
 class StatusTests(unittest.TestCase):
-    def test_github_token_is_sent_as_bearer(self):
+    def test_github_token_is_sent_as_basic_x_access_token(self):
         observed = {}
 
         def open_request(request, timeout):
@@ -69,6 +69,40 @@ class StatusTests(unittest.TestCase):
                 MODULE.status("https://feed/package", "token")
         self.assertIn("feed unavailable", str(raised.exception))
 
+    def test_historical_publisher_diagnostic_observes_v3_indexes_and_archive(self):
+        service = {
+            "resources": [
+                {"@id": "https://feed/download/", "@type": "PackageBaseAddress/3.0.0"},
+                {"@id": "https://feed/registration/", "@type": "RegistrationsBaseUrl/3.6.0"},
+            ]
+        }
+        versions = {"versions": ["0.28.0"]}
+        responses = [
+            (200, __import__("json").dumps(service).encode()),
+            (200, __import__("json").dumps(versions).encode()),
+            (200, b"{}"),
+            (403, b"forbidden"),
+        ]
+        with patch.object(MODULE, "request", side_effect=responses):
+            observed = MODULE.github_nuget_diagnostic(
+                "historical-token", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
+            )
+        self.assertEqual(200, observed["serviceIndex"]["status"])
+        self.assertTrue(observed["versionIndex"]["baselineListed"])
+        self.assertFalse(observed["versionIndex"]["targetListed"])
+        self.assertEqual(200, observed["registrationIndex"]["status"])
+        self.assertEqual(403, observed["baselineArchive"]["status"])
+
+    def test_historical_publisher_diagnostic_survives_service_index_denial(self):
+        with patch.object(MODULE, "request", side_effect=[(403, b""), (403, b""), (403, b"")]):
+            observed = MODULE.github_nuget_diagnostic(
+                "historical-token", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
+            )
+        self.assertEqual(403, observed["serviceIndex"]["status"])
+        self.assertEqual(403, observed["versionIndex"]["status"])
+        self.assertEqual("not-advertised", observed["registrationIndex"]["status"])
+        self.assertEqual(403, observed["baselineArchive"]["status"])
+
     def test_workflow_runs_authenticated_preflight_before_cut(self):
         root = SCRIPT.parent.parent
         release = (root / ".github/workflows/release.yml").read_text()
@@ -80,6 +114,9 @@ class StatusTests(unittest.TestCase):
         self.assertIn("uses: actions/create-github-app-token@v2", block)
         self.assertIn("permission-packages: read", block)
         self.assertIn("FSGG_PACKAGE_READ_TOKEN", block)
+        self.assertIn("FSGG_HISTORICAL_PUBLISH_TOKEN", block)
+        self.assertIn("--github-workflow-token-env FSGG_HISTORICAL_PUBLISH_TOKEN", block)
+        self.assertIn("github-packages-auth-diagnostic.json", block)
         self.assertIn('--github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID"', block)
         self.assertIn('--github-repository "$GITHUB_REPOSITORY"', block)
         self.assertIn('--github-workflow-ref "$GITHUB_WORKFLOW_REF"', block)
