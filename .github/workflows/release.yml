@@ -734,18 +734,35 @@ jobs:
               [[ "$rc" == 4 ]] || exit "$rc"
               dotnet nuget push "artifacts/packages/$file" \
                 --source https://api.nuget.org/v3/index.json \
-                --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
+                --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+                --skip-duplicate
             fi
           done < <(python3 scripts/release-custody.py list \
             --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
             --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
 
           while IFS=$'\t' read -r id _; do
-            python3 scripts/release-custody.py probe \
-              --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
-              --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
-              --package-id "$id" \
-              --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'
+            visible=false
+            for attempt in {1..180}; do
+              if python3 scripts/release-custody.py probe \
+                --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
+                --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
+                --package-id "$id" \
+                --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'; then
+                visible=true
+                break
+              else
+                rc=$?
+                [[ "$rc" == 4 ]] || exit "$rc"
+              fi
+              if [[ "$attempt" == 180 ]]; then
+                echo "::error::$id was accepted by nuget.org but its flat-container archive was not visible after 180 attempts."
+                exit 4
+              fi
+              echo "Waiting for nuget.org propagation: $id ($attempt/180)"
+              sleep 10
+            done
+            [[ "$visible" == true ]]
           done < <(python3 scripts/release-custody.py list \
             --plan eng/release/svg-preview-a-0.29.0.json --archives artifacts/packages \
             --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
