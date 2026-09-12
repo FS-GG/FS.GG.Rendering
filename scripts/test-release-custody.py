@@ -21,6 +21,17 @@ SPEC.loader.exec_module(custody)
 
 
 class ReleaseCustodyTests(unittest.TestCase):
+    def test_readback_flat_container_filename_is_lowercase(self):
+        record = {
+            "id": "FS.GG.UI.Scene",
+            "version": "0.28.0",
+            "file": "FS.GG.UI.Scene.0.28.0.nupkg",
+        }
+        template = "https://feed/{id_lower}/{version}/{filename}"
+        expected = "https://feed/fs.gg.ui.scene/0.28.0/fs.gg.ui.scene.0.28.0.nupkg"
+        self.assertEqual(expected, custody.render_url(template, record))
+        self.assertNotIn("FS.GG.UI.Scene.0.28.0.nupkg", custody.render_url(template, record))
+
     def test_authenticated_readback_uses_app_token_basic_auth(self):
         observed = {}
 

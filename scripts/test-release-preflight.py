@@ -35,6 +35,14 @@ class Response:
 
 
 class StatusTests(unittest.TestCase):
+    def test_flat_container_archive_filename_is_lowercase(self):
+        expected = "fs.gg.ui.scene.0.28.0.nupkg"
+        self.assertEqual(
+            expected,
+            MODULE.flat_container_filename("FS.GG.UI.Scene", "0.28.0"),
+        )
+        self.assertNotEqual(expected, "FS.GG.UI.Scene.0.28.0.nupkg")
+
     def test_github_token_is_sent_as_basic_x_access_token(self):
         observed = {}
 
@@ -83,7 +91,7 @@ class StatusTests(unittest.TestCase):
             (200, b"{}"),
             (403, b"forbidden"),
         ]
-        with patch.object(MODULE, "request", side_effect=responses):
+        with patch.object(MODULE, "request", side_effect=responses) as request:
             observed = MODULE.github_nuget_diagnostic(
                 "historical-token", "release-actor", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
             )
@@ -92,6 +100,9 @@ class StatusTests(unittest.TestCase):
         self.assertFalse(observed["versionIndex"]["targetListed"])
         self.assertEqual(200, observed["registrationIndex"]["status"])
         self.assertEqual(403, observed["baselineArchive"]["status"])
+        baseline_url = "https://feed/download/fs.gg.ui.scene/0.28.0/fs.gg.ui.scene.0.28.0.nupkg"
+        self.assertEqual(baseline_url, observed["baselineArchive"]["url"])
+        self.assertEqual(baseline_url, request.call_args_list[3].args[0])
 
     def test_historical_publisher_diagnostic_survives_service_index_denial(self):
         with patch.object(MODULE, "request", side_effect=[(403, b""), (403, b""), (403, b"")]):
