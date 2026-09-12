@@ -31,14 +31,16 @@ def git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def status(url: str, token: str | None = None) -> int:
-    return request(url, token)[0]
+def status(url: str, token: str | None = None, username: str = "x-access-token") -> int:
+    return request(url, token, username)[0]
 
 
-def request(url: str, token: str | None = None) -> tuple[int, bytes]:
+def request(
+    url: str, token: str | None = None, username: str = "x-access-token"
+) -> tuple[int, bytes]:
     headers = {"User-Agent": "FS-GG.Rendering-release-preflight/1"}
     if token:
-        credential = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+        credential = base64.b64encode(f"{username}:{token}".encode()).decode()
         headers["Authorization"] = f"Basic {credential}"
     request = urllib.request.Request(url, headers=headers)
     try:
@@ -50,10 +52,12 @@ def request(url: str, token: str | None = None) -> tuple[int, bytes]:
         fail(f"feed unavailable for {url}: {error}")
 
 
-def github_nuget_diagnostic(token: str, package_id: str, baseline: str, target: str) -> dict:
+def github_nuget_diagnostic(
+    token: str, username: str, package_id: str, baseline: str, target: str
+) -> dict:
     """Observe the established workflow token through NuGet V3 without mutating a feed."""
     service_url = "https://nuget.pkg.github.com/FS-GG/index.json"
-    service_status, service_body = request(service_url, token)
+    service_status, service_body = request(service_url, token, username)
     result: dict = {
         "credential": "repository GITHUB_TOKEN (historical 0.28 publisher)",
         "serviceIndex": {"url": service_url, "status": service_status},
@@ -86,7 +90,7 @@ def github_nuget_diagnostic(token: str, package_id: str, baseline: str, target: 
         None,
     )
     version_url = f"{package_base.rstrip('/')}/{lower}/index.json"
-    version_status, version_body = request(version_url, token)
+    version_status, version_body = request(version_url, token, username)
     version_observation: dict = {"url": version_url, "status": version_status}
     if version_status == 200:
         try:
@@ -103,7 +107,7 @@ def github_nuget_diagnostic(token: str, package_id: str, baseline: str, target: 
 
     if registration_base:
         registration_url = f"{registration_base.rstrip('/')}/{lower}/index.json"
-        registration_status, _ = request(registration_url, token)
+        registration_status, _ = request(registration_url, token, username)
         result["registrationIndex"] = {
             "url": registration_url,
             "status": registration_status,
@@ -112,7 +116,7 @@ def github_nuget_diagnostic(token: str, package_id: str, baseline: str, target: 
         result["registrationIndex"] = {"status": "not-advertised"}
 
     archive_url = f"{package_base.rstrip('/')}/{lower}/{baseline}/{filename}"
-    archive_status, _ = request(archive_url, token)
+    archive_status, _ = request(archive_url, token, username)
     result["baselineArchive"] = {"url": archive_url, "status": archive_status}
     return result
 
@@ -142,6 +146,7 @@ def main() -> int:
     parser.add_argument("--github-run-id", required=True)
     parser.add_argument("--github-token-env", default="GITHUB_TOKEN")
     parser.add_argument("--github-workflow-token-env")
+    parser.add_argument("--github-workflow-username")
     parser.add_argument("--diagnostic", type=Path)
     parser.add_argument(
         "--github-url-template",
@@ -214,8 +219,14 @@ def main() -> int:
         workflow_token = os.environ.get(args.github_workflow_token_env, "")
         if not workflow_token:
             fail(f"{args.github_workflow_token_env} is absent; historical publisher diagnostic unavailable")
+        if not args.github_workflow_username:
+            fail("historical publisher diagnostic requires the repository workflow actor")
         diagnostic = github_nuget_diagnostic(
-            workflow_token, anchor_id, baseline, args.version
+            workflow_token,
+            args.github_workflow_username,
+            anchor_id,
+            baseline,
+            args.version,
         )
         if args.diagnostic:
             args.diagnostic.parent.mkdir(parents=True, exist_ok=True)

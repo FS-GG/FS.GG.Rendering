@@ -85,7 +85,7 @@ class StatusTests(unittest.TestCase):
         ]
         with patch.object(MODULE, "request", side_effect=responses):
             observed = MODULE.github_nuget_diagnostic(
-                "historical-token", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
+                "historical-token", "release-actor", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
             )
         self.assertEqual(200, observed["serviceIndex"]["status"])
         self.assertTrue(observed["versionIndex"]["baselineListed"])
@@ -96,7 +96,7 @@ class StatusTests(unittest.TestCase):
     def test_historical_publisher_diagnostic_survives_service_index_denial(self):
         with patch.object(MODULE, "request", side_effect=[(403, b""), (403, b""), (403, b"")]):
             observed = MODULE.github_nuget_diagnostic(
-                "historical-token", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
+                "historical-token", "release-actor", "FS.GG.UI.Scene", "0.28.0", "0.29.0"
             )
         self.assertEqual(403, observed["serviceIndex"]["status"])
         self.assertEqual(403, observed["versionIndex"]["status"])
@@ -115,7 +115,9 @@ class StatusTests(unittest.TestCase):
         self.assertIn("permission-packages: read", block)
         self.assertIn("FSGG_PACKAGE_READ_TOKEN", block)
         self.assertIn("FSGG_HISTORICAL_PUBLISH_TOKEN", block)
+        self.assertIn("FSGG_HISTORICAL_PUBLISH_ACTOR", block)
         self.assertIn("--github-workflow-token-env FSGG_HISTORICAL_PUBLISH_TOKEN", block)
+        self.assertIn('--github-workflow-username "$FSGG_HISTORICAL_PUBLISH_ACTOR"', block)
         self.assertIn("github-packages-auth-diagnostic.json", block)
         self.assertIn('--github-installation-id "$FSGG_PACKAGE_READ_INSTALLATION_ID"', block)
         self.assertIn('--github-repository "$GITHUB_REPOSITORY"', block)
