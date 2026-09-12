@@ -70,6 +70,6 @@ let generatedInteractiveHostContract =
             let scaffold = block.IndexOf("dotnet new fs-gg-ui --name \"$name\"", System.StringComparison.Ordinal)
             Expect.isGreaterThanOrEqual source 0 "the unpublished coherent set is exposed as a restore source"
             Expect.isGreaterThan scaffold source "the staging source is configured before the generated product restores"
-            Expect.stringContains block "--configfile \"$HOME/.nuget/NuGet/NuGet.Config\"" "the /tmp product can see the staging source"
+            Expect.stringContains block "--configfile \"$user_config\"" "the /tmp product can see the staging source"
         }
     ]
