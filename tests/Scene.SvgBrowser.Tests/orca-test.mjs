@@ -47,6 +47,7 @@ const focusWindow = (title) => {
 };
 const activateWebContent = async (title) => {
   focusWindow(title);
+  execFileSync("xdotool", ["key", "--clearmodifiers", "ctrl+l"]);
   execFileSync("xdotool", ["key", "--clearmodifiers", "F6"]);
   await waitForOrca();
 };
