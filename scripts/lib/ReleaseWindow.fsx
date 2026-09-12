@@ -1,10 +1,9 @@
-// THE RELEASE WINDOW — the one commit where a pin names a package the feed does not have yet.
+// THE RELEASE WINDOW — a pin ahead of its release tags names a package the public feed does not have yet.
 //
 // A version bump and the tags/packages that publish it CANNOT land atomically: `release-tags.yml` cuts
 // `fs-gg-ui/v*` -> `fs-gg-ui-template/v*` -> `v*` and calls `release.yml` only AFTER the bump commit is
-// on `main`, because a tag can only point at a commit that exists. So on the bump commit itself, and
-// only there, `<FsGgUiVersion>` names a version no feed can serve. Any rule that resolves the pin
-// against the feed is therefore UNSATISFIABLE on exactly the change that performs the bump.
+// on `main`, because a tag can only point at a commit that exists. If protected preflight stops before
+// mutation, the same state persists across the repair commit needed to resume publication.
 //
 // `scripts/validate-version-coherence.fsx` has always known this — it is what its RELEASE-PENDING
 // waivers (`PinPending`/`TemplateTagPending`/`ReleaseTagPending`) are for, and its own
@@ -22,10 +21,9 @@
 // is a refactor of a REQUIRED gate and belongs in its own change, not in the one unblocking a release.
 // They must agree; converge them here when the guard is next opened.
 //
-// WHAT IT IS NOT. This is not "the pin is missing from the feed, so assume a release". A feed outage,
-// or a typo'd pin, must stay RED. The subject is the COMMIT: did THIS change bump the value? Only then
-// is the absent package a legal transient rather than a defect — and the coherence guard independently
-// fails `pin-no-tag` for an unpublished pin that this commit did NOT bump, so the two compose.
+// WHAT IT IS NOT. This is not "the pin is missing from the feed, so assume a release". The pin must be
+// strictly ahead of every tag in its lane. A missing historical tag below a later release remains drift,
+// and the release lane disables the waiver before publication.
 
 module ReleaseWindow
 
@@ -99,6 +97,78 @@ let bumpedInCommitUnderTest (repoRoot: string) (rel: string) (element: string) :
                 let removed = valuesOn '-'
                 let added = valuesOn '+'
                 Ok(not added.IsEmpty && added <> removed)
+
+/// Is `version` strictly newer than every pushed tag in this release lane?
+///
+/// Unlike the exact-commit bump predicate, this remains true across a repair commit after a protected
+/// publication stops before tag mutation. Exact membership is insufficient: a missing historical tag
+/// below a newer release is drift, not a pending release. The protected release lane independently
+/// disables consumers' waivers, and ordered successor tags bound earlier pending tags.
+let versionAheadOfTags
+    (repoRoot: string)
+    (tagGlob: string)
+    (tagPrefix: string)
+    (version: string)
+    : Result<bool, string> =
+    let parse (value: string) =
+        let value = value.Trim()
+        let core, pre =
+            match value.IndexOf '-' with
+            | -1 -> value, [||]
+            | i -> value.Substring(0, i), value.Substring(i + 1).Split('.')
+        let parts = core.Split('.')
+        if parts.Length < 2 || parts.Length > 3 then
+            Error $"malformed version core: {value}"
+        else
+            let parsed = parts |> Array.map Int32.TryParse
+            if parsed |> Array.exists (fst >> not) then Error $"malformed version core: {value}"
+            else
+                let nums = parsed |> Array.map snd
+                Ok(nums.[0], nums.[1], (if nums.Length = 3 then nums.[2] else 0), pre)
+
+    let compareIdentifiers (left: string) (right: string) =
+        match Int32.TryParse left, Int32.TryParse right with
+        | (true, l), (true, r) -> compare l r
+        | (true, _), (false, _) -> -1
+        | (false, _), (true, _) -> 1
+        | _ -> StringComparer.Ordinal.Compare(left, right)
+
+    let compareVersions left right =
+        match parse left, parse right with
+        | Error e, _ | _, Error e -> Error e
+        | Ok(lmaj, lmin, lpatch, lpre), Ok(rmaj, rmin, rpatch, rpre) ->
+            let core = compare (lmaj, lmin, lpatch) (rmaj, rmin, rpatch)
+            if core <> 0 then Ok core
+            elif lpre.Length = 0 && rpre.Length = 0 then Ok 0
+            elif lpre.Length = 0 then Ok 1
+            elif rpre.Length = 0 then Ok -1
+            else
+                let mutable verdict = 0
+                let mutable index = 0
+                while verdict = 0 && index < min lpre.Length rpre.Length do
+                    verdict <- compareIdentifiers lpre.[index] rpre.[index]
+                    index <- index + 1
+                Ok(if verdict <> 0 then verdict else compare lpre.Length rpre.Length)
+
+    let ec, output = run repoRoot "git" [ "tag"; "--list"; tagGlob ]
+    if ec <> 0 then Error $"git tag --list {tagGlob} failed"
+    else
+        let tags =
+            output.Replace("\r\n", "\n").Split('\n')
+            |> Array.map (fun tag -> tag.Trim())
+            |> Array.filter (fun tag -> tag.StartsWith(tagPrefix, StringComparison.Ordinal))
+            |> Array.map (fun tag -> tag.Substring(tagPrefix.Length))
+            |> Array.filter (fun tag -> Regex.IsMatch(tag, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$"))
+
+        if tags.Length = 0 then Error $"no {tagGlob} tags visible — need fetch-depth: 0"
+        else
+            tags
+            |> Array.fold
+                (fun state tag ->
+                    match state, compareVersions version tag with
+                    | Error e, _ | _, Error e -> Error e
+                    | Ok ahead, Ok comparison -> Ok(ahead && comparison > 0))
+                (Ok true)
 
 /// `PackageId -> project directory`, for every project under `src/` that actually ships a package.
 ///

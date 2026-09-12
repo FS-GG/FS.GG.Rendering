@@ -18,10 +18,22 @@ from pathlib import Path
 
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
+RELEASE_TAG_REF = re.compile(
+    r"^FS-GG/FS\.GG\.Rendering/\.github/workflows/release\.yml@refs/tags/v[^/]+$"
+)
 
 
 def fail(message: str) -> None:
     raise SystemExit(f"release-preflight: {message}")
+
+
+def is_authorized_workflow_ref(workflow_ref: str) -> bool:
+    """Accept only the release entry points that can legitimately call this preflight."""
+    root = "FS-GG/FS.GG.Rendering/.github/workflows/"
+    return workflow_ref in {
+        f"{root}release.yml@refs/heads/main",
+        f"{root}release-tags.yml@refs/heads/main",
+    } or RELEASE_TAG_REF.fullmatch(workflow_ref) is not None
 
 
 def flat_container_filename(package_id: str, version: str) -> str:
@@ -211,7 +223,7 @@ def main() -> int:
         fail("GitHub workflow actor identity is required")
     if args.github_repository != "FS-GG/FS.GG.Rendering":
         fail(f"unexpected GitHub repository identity {args.github_repository!r}")
-    if "/.github/workflows/release.yml@" not in args.github_workflow_ref:
+    if not is_authorized_workflow_ref(args.github_workflow_ref):
         fail(f"unexpected workflow identity {args.github_workflow_ref!r}")
     if not args.github_run_id.isdigit():
         fail("GitHub workflow run identity must be a decimal ID")

@@ -173,8 +173,8 @@ let pins =
 // The release window — where the pin's nupkgs come from the exact-head feed because nuget.org cannot have them yet.
 // ---------------------------------------------------------------------------------------------
 
-/// The FS.GG.UI pins this commit BUMPS, mapped to the `src/` project that the gate packs for them.
-/// Empty on every commit that is not the release bump — which is the overwhelmingly common case, and
+/// The FS.GG.UI pins ahead of their pushed snapshot tags, mapped to the `src/` project that the gate packs for them.
+/// Empty outside a pending release — which is the overwhelmingly common case, and
 /// the one where `src/` is AHEAD of the pin and must NOT be read (that is the window #752 closed).
 ///
 /// WHY THE EXACT-HEAD LOCAL FEED IS THE RIGHT SOURCE HERE, AND ONLY HERE. The required gate packs this
@@ -189,14 +189,13 @@ let pins =
 /// them, and a bump of those pins is a CONSUMER bump onto something already published. The feed is the
 /// only honest source for them, and it can answer.
 let releaseWindowProjects: Map<string, string> =
-    let pinsRel = "template/base/Directory.Packages.props"
-
-    let bumped =
-        match ReleaseWindow.bumpedInCommitUnderTest repoRoot pinsRel "FsGgUiVersion" with
-        | Ok b -> b
+    let pin = pins |> Map.find "FS.GG.UI.Scene"
+    let pending =
+        match ReleaseWindow.versionAheadOfTags repoRoot "fs-gg-ui/v*" "fs-gg-ui/v" pin with
+        | Ok value -> value
         | Error e -> fail e
 
-    if not bumped then
+    if not pending then
         Map.empty
     else
         let projects = ReleaseWindow.packableProjects repoRoot
@@ -859,7 +858,7 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
 // read the feed, and the whole argument for the swap is that it happens on exactly one commit.
 if not releaseWindowProjects.IsEmpty then
     printfn
-        "RELEASE WINDOW: this commit bumps <FsGgUiVersion> to %s, which nuget.org cannot serve yet — reading %d package(s) from the exact-head local feed that release.yml packs at that pin. %d external pin(s) still restore from nuget.org."
+        "RELEASE WINDOW: <FsGgUiVersion> %s is ahead of its snapshot tags, so nuget.org cannot serve it yet — reading %d package(s) from the exact-head local feed that release.yml packs at that pin. %d external pin(s) still restore from nuget.org."
         (pins |> Map.find (releaseWindowProjects |> Map.toList |> List.head |> fst))
         releaseWindowProjects.Count
         (pins.Count - releaseWindowProjects.Count)

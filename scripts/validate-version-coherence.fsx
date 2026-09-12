@@ -140,49 +140,6 @@ let readFile (path: string) =
     if not (File.Exists path) then raise (GuardError(sprintf "required input missing: %s" path))
     File.ReadAllText path
 
-/// Did the commit under test change the VALUE of `<element>` in `rel`? — the RELEASE-PENDING signal.
-///
-/// A version bump and the tag that publishes it CANNOT land atomically: the tag can only point at
-/// the commit that carries the bump, so it is cut *after* that commit exists. Any "this version must
-/// already have a tag" rule is therefore unsatisfiable on the very change that performs the bump —
-/// it fired on every release PR (#155, #159, #163) and on `main` it merely raced the tag push. This
-/// predicate distinguishes the legal transient (the bump is HERE, the tag comes next) from the real
-/// defect (an untagged version left behind by a release that was never cut).
-///
-/// Compares the element's VALUE across the diff, not merely whether its line was touched: this
-/// predicate WAIVES a fail-closed rule, so a reindent or line-ending change to the `<Version>` line
-/// must not be able to silence it. Added values must exist and differ from removed ones.
-///
-/// The exact-head PR checkout supplies its immutable base through
-/// `FS_GG_VERSION_COHERENCE_BASE_SHA`; push/main falls back to `HEAD~1`. The explicit value must be a
-/// full lowercase SHA and resolvable as a commit. Fails closed if either classifier cannot answer
-/// (e.g. a shallow checkout): CI must use `fetch-depth: 0`, which it already does.
-let bumpedInCommitUnderTest (rel: string) (element: string) =
-    let baseRevision =
-        match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA" with
-        | null | "" -> "HEAD~1"
-        | value when Regex.IsMatch(value, "^[0-9a-f]{40}$") -> value
-        | value ->
-            raise (GuardError(sprintf "FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got %s" value))
-    let verifyEc, _ = run repoRoot "git" [ "rev-parse"; "--verify"; baseRevision + "^{commit}" ]
-    if verifyEc <> 0 then
-        raise (GuardError(sprintf "version-coherence base %s is not a resolvable commit — need full history (fetch-depth: 0); fail closed rather than waive tags" baseRevision))
-    let ec, out = run repoRoot "git" [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ]
-    if ec <> 0 then
-        raise (GuardError(sprintf "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed rather than green-by-absence" baseRevision rel))
-    let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
-    let valuesOn (sign: char) =
-        let header = String(sign, 3) // "+++" / "---" file headers are not content lines
-        out.Replace("\r\n", "\n").Split('\n')
-        |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
-        |> Array.choose (fun l ->
-            let m = rx.Match l
-            if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
-        |> Set.ofArray
-    let removed = valuesOn '-'
-    let added = valuesOn '+'
-    not added.IsEmpty && added <> removed
-
 // ---- preview-aware SemVer comparator (D7, T008) -----------------------------------------------
 // Numeric major.minor.patch compared numerically; then dotted prerelease identifiers per SemVer §11
 // (numeric identifiers numerically, alphanumeric lexically, numeric < alphanumeric, fewer < more,
@@ -334,8 +291,8 @@ type Inputs =
       TemplateTagVersions: string list
       LatestReleaseTag: string
       LatestTemplateTag: string
-      PinBumpedHere: bool
-      PkgBumpedHere: bool
+      PinAheadOfTags: bool
+      PkgAheadOfTags: bool
       TemplateTagCut: bool
       ReleaseTagCut: bool
       PinPending: bool
@@ -431,9 +388,14 @@ let readInputs () : Inputs =
     let latestReleaseTag = releaseTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
     let latestTemplateTag = templateTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
 
-    // The framework pin / template package were bumped by THIS change ⇒ their tags are cut next, not now.
-    let pinBumpedHere = bumpedInCommitUnderTest propsRel "FsGgUiVersion"
-    let pkgBumpedHere = bumpedInCommitUnderTest templateFsprojRel "Version"
+    // A version strictly ahead of every tag in its lane is pending until the ordered tag cut completes.
+    // Derive this from repository state, rather than only HEAD~1..HEAD: a failed release can require a
+    // repair commit before its tags exist, and that repair must be mergeable through the required offline
+    // gate. The release lane still disables every waiver, and successor tags still make earlier tags due.
+    let pinAheadOfTags = SemVer.cmp (SemVer.parse pinVersion) (SemVer.parse latestTag) > 0
+    let pkgAheadOfTags =
+        SemVer.cmp (SemVer.parse pkgVersion) (SemVer.parse latestTemplateTag) > 0
+        && SemVer.cmp (SemVer.parse pkgVersion) (SemVer.parse latestReleaseTag) > 0
 
     // The three tags of a release have a MANDATED PUSH ORDER — only the last one triggers release.yml:
     //
@@ -444,7 +406,7 @@ let readInputs () : Inputs =
     //
     // Without that bound the waiver leaks into `release.yml`. That workflow triggers on `push: tags:
     // ['v*']` and runs the Package.Tests coherence mirror at the TAG COMMIT — which IS the commit that
-    // bumped <Version>, so `pkgBumpedHere` is true there and `pkg-no-template-tag` was waived. Pushing
+    // carries a version ahead of the prior tag lanes, so `pkg-no-template-tag` is waived there. Pushing
     // `v*` before `fs-gg-ui-template/v*` then went green, `publish-packages` (needs: package-tests)
     // shipped the coherent set, and template-dispatch.yml — which triggers ONLY on
     // `fs-gg-ui-template/v*` — never fired, so FS.GG.Templates never got its pin-bump PR. Published,
@@ -461,7 +423,7 @@ let readInputs () : Inputs =
     let templateTagCutFor v = List.contains v templateTagVersions
     let releaseTagCutFor v = List.contains v releaseTagVersions
 
-    // A bump waives its own missing tag only while NO SUCCESSOR tag in the push order has been cut.
+    // A version ahead of its lane waives its own missing tag only while NO SUCCESSOR tag in the push order has been cut.
     // Each tag's successors are exactly the tags to its right in the order above:
     //
     //     fs-gg-ui/v<pin>          successors: fs-gg-ui-template/v<pkg>, v<pkg>
@@ -483,10 +445,9 @@ let readInputs () : Inputs =
     // `releaseLane` kills all three waivers outright: successor-tag bounds can only see mis-orderings that
     // LEAVE A TAG BEHIND, and a publish need not leave one.
     //
-    // Known limitation, unchanged by this bound: `bumpedInCommitUnderTest` reads `HEAD~1..HEAD`, so a
-    // release split across two commits on `main` (rebase-merge) is seen as two unrelated changes, and the
-    // package lane reds at the second. Squash-merge and merge-commit both keep the whole release in one
-    // diff. This is why the merge method is load-bearing; see gate.yml's header.
+    // Because pending is derived from the version's position relative to its lane's latest tags, it survives
+    // repair commits after a failed preflight. The non-required feed gate reports an abandoned publication;
+    // the required gate remains a function of repository state and can admit the repair.
     let templateTagCut = templateTagCutFor pkgVersion
     let releaseTagCut = releaseTagCutFor pkgVersion
 
@@ -509,16 +470,16 @@ let readInputs () : Inputs =
       TemplateTagVersions = templateTagVersions
       LatestReleaseTag = latestReleaseTag
       LatestTemplateTag = latestTemplateTag
-      PinBumpedHere = pinBumpedHere
-      PkgBumpedHere = pkgBumpedHere
+      PinAheadOfTags = pinAheadOfTags
+      PkgAheadOfTags = pkgAheadOfTags
       TemplateTagCut = templateTagCut
       ReleaseTagCut = releaseTagCut
-      PinPending = not releaseLane && pinBumpedHere && not (templateTagCutFor pinVersion) && not (releaseTagCutFor pinVersion)
+      PinPending = not releaseLane && pinAheadOfTags && not (templateTagCutFor pinVersion) && not (releaseTagCutFor pinVersion)
       // `v<pkg>` is the only successor of `fs-gg-ui-template/v<pkg>`, so once it exists the template-scoped
       // tag is overdue, not pending. `v<pkg>` itself lands last and has no successor to bound it — hence
-      // `ReleaseTagPending` needs only the bump (and its rule is reached only when `v<pkg>` is absent).
-      TemplateTagPending = not releaseLane && pkgBumpedHere && not releaseTagCut
-      ReleaseTagPending = not releaseLane && pkgBumpedHere }
+      // `ReleaseTagPending` needs only the ahead-of-tags state (and its rule is reached only when `v<pkg>` is absent).
+      TemplateTagPending = not releaseLane && pkgAheadOfTags && not releaseTagCut
+      ReleaseTagPending = not releaseLane && pkgAheadOfTags }
 
 // ---- rules ------------------------------------------------------------------------------------
 
@@ -538,7 +499,7 @@ let us1Failures (i: Inputs) : Failure list =
             Expected = sprintf "a tag fs-gg-ui/v%s" i.PinVersion
             Actual =
                 if releaseLane then "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
-                elif not i.PinBumpedHere then "none — and this change did not bump the pin, so no tag is pending"
+                elif not i.PinAheadOfTags then "none — and the pin is not ahead of the latest snapshot tag, so no tag is pending"
                 elif List.contains i.PinVersion i.ReleaseTagVersions then sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order)" i.PinVersion
                 else sprintf "none — and fs-gg-ui-template/v%s is already cut, so this tag was due BEFORE it (push order)" i.PinVersion
             Fix = sprintf "cut & push the fs-gg-ui/v%s snapshot tag (and feed) — it precedes fs-gg-ui-template/v* and v* — or correct <FsGgUiVersion> to a published version" i.PinVersion } ]
@@ -712,20 +673,20 @@ let invariantFailures (i: Inputs) : Failure list =
 //   RELEASED pkg has its tag                        → the steady state.
 //   PENDING  pkg >  latest tag, no tag yet          → the bump landed; the tag is cut next.
 //
-// PENDING is LEGAL on the change that performs the bump and a DEFECT anywhere else. Demanding the tag
-// on the bump itself is unsatisfiable — a tag can only point at a commit that already exists — which
+// PENDING is LEGAL while the version is ahead of its lane's latest tag. Demanding the tag on the bump
+// itself is unsatisfiable — a tag can only point at a commit that already exists — which
 // is why this rule went red on every release PR (#155, #159, #163) and was merged past each time
 // (see specs/252-retire-canvas-audio/spec.md, which records the reds as "expected"). On `main` it was
 // worse than useless: it raced the tag push and passed or failed on runner scheduling. A gate that is
 // red whenever it matters teaches people to ignore it, which is how an unrelated half-executed
 // publish-before-flip (FS-GG/.github#250) sat unnoticed for a day.
 //
-// So: keep the rule, and let it fire only when PENDING is NOT explained by a bump in this very change,
-// bounded by the SUCCESSOR tags in the push order (see `readInputs` — without which the waiver
+// So: keep the rule, and let it fire only when PENDING is NOT established by the version being ahead of
+// its lane, bounded by the SUCCESSOR tags in the push order (see `readInputs` — without which the waiver
 // green-lights a mis-ordered release), and disabled outright in the `releaseLane` (where every tag is
 // due and nothing can be pending).
-// A release bump goes green on the PR and on the merge commit; if the tag is never cut, the very
-// next commit to `main` turns it red and names the tags to cut. No race, no accepted red.
+// A release bump and any repair commit go green before tags are cut. The non-required feed/publication
+// gates surface an abandoned release without wedging the required gate needed to merge its repair.
 //
 // Emitted in PUSH ORDER: `printDrift` and the $GITHUB_STEP_SUMMARY block iterate this list top-to-bottom,
 // and on a stale release these ARE the operator's tag-cutting instructions. Listing `pkg-no-release-tag`
@@ -747,7 +708,7 @@ let releaseLaneFailures (i: Inputs) : Failure list =
                 if releaseLane then "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
                 elif i.ReleaseTagCut then
                     sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order); template-dispatch.yml never fired" i.PkgVersion
-                else "none — and this change did not bump <Version>, so no tag is pending"
+                else "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
             Fix = sprintf "cut & push fs-gg-ui-template/v%s (the template coherent-set snapshot) BEFORE v%s" i.PkgVersion i.PkgVersion }
       if SemVer.lt i.PkgVersion i.LatestReleaseTag then
           { Rule = "pkg-lags-release-tag"
@@ -761,7 +722,7 @@ let releaseLaneFailures (i: Inputs) : Failure list =
             Expected = sprintf "a release trigger tag v%s" i.PkgVersion
             Actual =
                 if releaseLane then "none — and this is the release lane; a publish must be triggered by its own v* tag"
-                else "none — and this change did not bump <Version>, so no tag is pending"
+                else "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
             Fix = sprintf "cut & push the v%s release tag LAST (it triggers release.yml), or correct <Version> to a released version" i.PkgVersion }
       if SemVer.lt i.PkgVersion i.PinVersion then
           { Rule = "pin-leads-package"
@@ -1431,7 +1392,7 @@ let printDrift (failures: Failure list) =
             s.AppendLine(sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s` — fix: %s" f.Rule f.Location f.Expected f.Actual f.Fix) |> ignore
         File.AppendAllText(summaryPath, s.ToString())
 
-/// The tags this change has made due but that do not exist yet (see `bumpedInCommitUnderTest`).
+/// The tags the current versions have made due but that do not exist yet.
 /// `v*` is LAST: only it triggers release.yml, so the snapshot tags must already be pushed when it
 /// lands. Mirrors the waiver conditions exactly — a tag is PENDING iff its rule is being waived, so
 /// once `v<pkg>` is cut the earlier tags are reported as drift, never as "due next".
@@ -1443,7 +1404,7 @@ let pendingTags (i: Inputs) : string list =
       if i.ReleaseTagPending && not i.ReleaseTagCut then
           sprintf "v%s" i.PkgVersion ]
 
-/// A version bump with no tag yet is a transient, not drift — but it is not silence either. Name the
+/// A version ahead of its tag lanes is a transient, not drift — but it is not silence either. Name the
 /// tags, in push order, with a greppable sentinel. This is the state release PRs sit in.
 ///
 /// Printed on EVERY verdict, not only a green one. Suppressing it on red loses the push order exactly
@@ -1453,17 +1414,17 @@ let pendingTags (i: Inputs) : string list =
 /// built from the waiver predicates, so a tag whose rule is FIRING never appears here as "due next".
 let printReleasePending (tags: string list) =
     if not tags.IsEmpty then
-        printfn "RELEASE-PENDING: this change bumps %d version tag(s) that are not cut yet." tags.Length
+        printfn "RELEASE-PENDING: current versions require %d tag(s) that are not cut yet." tags.Length
         printfn "  push these tags at the merge commit, in this order (only v* triggers release.yml):"
         for t in tags do printfn "    git tag %s && git push origin %s" t t
-        printfn "  if they are never cut, the next commit to main fails `pkg-no-release-tag`/`pin-no-tag`."
+        printfn "  the non-required publication gates remain red until these tags and packages exist."
         match Environment.GetEnvironmentVariable "GITHUB_STEP_SUMMARY" with
         | null | "" -> ()
         | summaryPath ->
             let s = System.Text.StringBuilder()
             s.AppendLine "### Version coherence guard — RELEASE-PENDING" |> ignore
             s.AppendLine "" |> ignore
-            s.AppendLine "This change bumps a version whose tag is not cut yet. Push at the merge commit, in order:" |> ignore
+            s.AppendLine "Current versions are ahead of their tag lanes. Push at the release commit, in order:" |> ignore
             s.AppendLine "" |> ignore
             s.AppendLine "```sh" |> ignore
             for t in tags do s.AppendLine(sprintf "git tag %s && git push origin %s" t t) |> ignore

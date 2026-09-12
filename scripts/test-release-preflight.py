@@ -37,6 +37,38 @@ class Response:
 
 
 class StatusTests(unittest.TestCase):
+    def test_release_preflight_accepts_only_the_release_entry_points(self):
+        self.assertTrue(
+            MODULE.is_authorized_workflow_ref(
+                "FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main"
+            )
+        )
+        self.assertTrue(
+            MODULE.is_authorized_workflow_ref(
+                "FS-GG/FS.GG.Rendering/.github/workflows/release-tags.yml@refs/heads/main"
+            )
+        )
+        self.assertTrue(
+            MODULE.is_authorized_workflow_ref(
+                "FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/tags/v0.29.0"
+            )
+        )
+        self.assertFalse(
+            MODULE.is_authorized_workflow_ref(
+                "FS-GG/FS.GG.Rendering/.github/workflows/gate.yml@refs/heads/main"
+            )
+        )
+        self.assertFalse(
+            MODULE.is_authorized_workflow_ref(
+                "attacker/fork/.github/workflows/release-tags.yml@refs/heads/main"
+            )
+        )
+        self.assertFalse(
+            MODULE.is_authorized_workflow_ref(
+                "FS-GG/FS.GG.Rendering/.github/workflows/release-tags.yml@refs/heads/feature"
+            )
+        )
+
     def test_supported_client_archive_identity_is_bound(self):
         with tempfile.TemporaryDirectory() as value:
             archive = pathlib.Path(value) / "fs.gg.ui.scene.0.28.0.nupkg"

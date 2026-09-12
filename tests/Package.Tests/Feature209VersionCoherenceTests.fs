@@ -404,54 +404,6 @@ let private gitTagVersions (glob: string) (prefix: string) =
     |> Array.toList
     |> tagsOrFailClosed glob ec
 
-/// Did the commit under test change the VALUE of `<element>` in `rel`? — mirrors the script's
-/// RELEASE-PENDING signal (scripts/validate-version-coherence.fsx `bumpedInCommitUnderTest`), and must
-/// stay in lockstep with it: these assertions are the second, independent classifier of the same
-/// invariant.
-///
-/// A bump and the tag that publishes it cannot land atomically — the tag points at the commit carrying
-/// the bump — so "this version already has a tag" is unsatisfiable on the bump itself. Exact-head PR
-/// checkouts supply the immutable PR base; push/main falls back to `HEAD~1`.
-///
-/// Compares VALUES, not touched lines: this predicate waives a fail-closed assertion, so a reindent of
-/// the `<Version>` line must not silence it.
-let private bumpedInCommitUnderTest (rel: string) (element: string) =
-    let baseRevision =
-        match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA" with
-        | null | "" -> "HEAD~1"
-        | value when Regex.IsMatch(value, "^[0-9a-f]{40}$") -> value
-        | value -> failwithf "FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got %s" value
-    let psi = ProcessStartInfo("git")
-    psi.WorkingDirectory <- root
-    psi.UseShellExecute <- false
-    psi.RedirectStandardOutput <- true
-    [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ] |> List.iter psi.ArgumentList.Add
-    let ec, out =
-        match Process.Start psi with
-        | null -> failwith "git diff could not be started"
-        | p ->
-            use p = p
-            let o = p.StandardOutput.ReadToEnd()
-            p.WaitForExit()
-            p.ExitCode, o
-    if ec <> 0 then
-        failwithf "git diff %s HEAD -- %s failed — need full history (fetch-depth: 0); fail closed" baseRevision rel
-    let rx = Regex(sprintf "<%s>([^<]*)</%s>" (Regex.Escape element) (Regex.Escape element))
-    let valuesOn (sign: char) =
-        let header = String(sign, 3)
-        out.Replace("\r\n", "\n").Split('\n')
-        |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
-        |> Array.choose (fun l ->
-            let m = rx.Match l
-            if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
-        |> Set.ofArray
-    let removed = valuesOn '-'
-    let added = valuesOn '+'
-    not added.IsEmpty && added <> removed
-
-let private pinBumpedHere () = bumpedInCommitUnderTest "template/base/Directory.Packages.props" "FsGgUiVersion"
-let private pkgBumpedHere () = bumpedInCommitUnderTest ".template.package/FS.GG.UI.Template.fsproj" "Version"
-
 /// Set by `release.yml`'s `package-tests` job — the job that gates `publish-packages`. See
 /// `scripts/validate-version-coherence.fsx` `releaseLane`.
 let private releaseLane = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_RELEASE_LANE" = "1"
@@ -462,7 +414,7 @@ let private releaseLane = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHE
 //
 //     fs-gg-ui/v<pin>  →  fs-gg-ui-template/v<pkg>  →  v<pkg>
 //
-// A bump waives its own missing tag only while NO SUCCESSOR tag has been cut, and never in the release
+// A version ahead of its tag lane waives its missing tag only while NO SUCCESSOR tag has been cut, and never in the release
 // lane. These are `let`-bound over BOOLEANS, not over the live repo, for one reason: the live repo is
 // always in the coherent steady state, so every waiver branch below is dead in every real run. That is
 // exactly how commit 0c7e091 shipped a regression through a green suite. `waiverTruthTable` (below)
@@ -472,18 +424,18 @@ let private releaseLane = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHE
 // `releaseTagPending`) — the two are independent classifiers of one invariant.
 
 /// `fs-gg-ui/v<pin>` — successors: `fs-gg-ui-template/v<pkg>`, `v<pkg>`.
-let internal pinWaived (releaseLane: bool) (pinBumped: bool) (templateTagCut: bool) (releaseTagCut: bool) =
-    not releaseLane && pinBumped && not templateTagCut && not releaseTagCut
+let internal pinWaived (releaseLane: bool) (pinAhead: bool) (templateTagCut: bool) (releaseTagCut: bool) =
+    not releaseLane && pinAhead && not templateTagCut && not releaseTagCut
 
 /// `fs-gg-ui-template/v<pkg>` — successor: `v<pkg>`. Unbounded, this is the hole that let a
 /// `v*`-pushed-first release pass `package-tests`, ship via `publish-packages`, and never fire
 /// template-dispatch.yml (which triggers ONLY on `fs-gg-ui-template/v*`): published, unannounced
-/// (FS-GG/.github#250). release.yml runs THIS mirror at the tag commit, where `pkgBumped` is true.
-let internal templateTagWaived (releaseLane: bool) (pkgBumped: bool) (releaseTagCut: bool) =
-    not releaseLane && pkgBumped && not releaseTagCut
+/// (FS-GG/.github#250). release.yml runs THIS mirror at the tag commit, where `pkgAhead` is true.
+let internal templateTagWaived (releaseLane: bool) (pkgAhead: bool) (releaseTagCut: bool) =
+    not releaseLane && pkgAhead && not releaseTagCut
 
 /// `v<pkg>` — lands last, no successor to bound it. Its rule is reached only when `v<pkg>` is absent.
-let internal releaseTagWaived (releaseLane: bool) (pkgBumped: bool) = not releaseLane && pkgBumped
+let internal releaseTagWaived (releaseLane: bool) (pkgAhead: bool) = not releaseLane && pkgAhead
 
 /// A tag is a successor only WITHIN ITS OWN RELEASE, so each rule asks about the version IT is keyed
 /// on. Both successor tags carry the template package's version; a framework release bumps pin and
@@ -538,8 +490,13 @@ let feature209VersionCoherenceTests =
 
             Expect.stringContains
                 releaseWindowSource
-                "\"rev-parse\"; \"--verify\"; baseRevision + \"^{commit}\""
-                "the release classifier must reject an unresolvable explicit base"
+                "let versionAheadOfTags"
+                "the release classifier must keep a pending release open across repair commits"
+
+            Expect.stringContains
+                releaseWindowSource
+                "comparison > 0"
+                "a missing historical tag must not be mistaken for a pending release"
 
             Expect.stringContains
                 apiMirrorSource
@@ -560,7 +517,7 @@ let feature209VersionCoherenceTests =
         }
 
         // Scenario A / US1 #3 — the coherent baseline: single literal, pin == an existing tag and not
-        // lagging the latest. `pin-no-tag` is waived when THIS change bumps the pin: the fs-gg-ui/v* tag
+        // lagging the latest. `pin-no-tag` is waived while the pin is ahead of the latest fs-gg-ui/v* tag:
         // can only be cut on the resulting commit, so requiring it here is unsatisfiable (that is why
         // this assertion went red on every framework-major PR and was merged past as an "expected red").
         // The waiver is bounded by `releaseTagCut ()`: once `v<pkg>` exists the snapshot tag was due
@@ -575,9 +532,9 @@ let feature209VersionCoherenceTests =
             // still waive when `fs-gg-ui-template/v<pkg>` was pushed first — and that tag fires
             // template-dispatch.yml, so FS.GG.Templates would be told to pin a framework snapshot that
             // was never cut and never published: announce-before-publish.
-            let pinPending = pinWaived releaseLane (pinBumpedHere ()) (templateTagCutFor pinVersion) (releaseTagCutFor pinVersion)
+            let pinPending = pinWaived releaseLane (cmp pinVersion latest > 0) (templateTagCutFor pinVersion) (releaseTagCutFor pinVersion)
             if not pinPending then
-                Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s is untagged and its fs-gg-ui/v%s snapshot tag is not pending (release lane, or a successor tag in the push order is already cut, or this change did not bump the pin) ⇒ the tag was never cut (pin-no-tag)" pinVersion pinVersion)
+                Expect.isTrue (List.contains pinVersion tags) (sprintf "pin %s is untagged and its fs-gg-ui/v%s snapshot tag is not pending (release lane, successor already cut, or pin not ahead of tags) ⇒ the tag was never cut (pin-no-tag)" pinVersion pinVersion)
         }
 
         // Scenario B / T013 — the forced 204-lag fixture goes red (preview-aware).
@@ -598,9 +555,9 @@ let feature209VersionCoherenceTests =
         // left UNTAGGED by a release that was never cut, and the framework pin does not LEAD it
         // (pin <= package — a template-only release advances the package over an unchanged pin).
         //
-        // The no-tag conjuncts are waived when THIS change bumps <Version>: the tags point at the commit
-        // carrying the bump, so they cannot exist yet. That transient is RELEASE-PENDING, not drift. If
-        // the tags are never cut, the next commit to main no longer bumps <Version> and these fire.
+        // The no-tag conjuncts are waived while <Version> is ahead of both tag lanes: the tags point at a commit
+        // carrying the release version, so they cannot exist yet. That transient remains RELEASE-PENDING
+        // across a repair commit; the non-required publication gates report it until the release completes.
         //
         // `pkg-no-template-tag`'s waiver is additionally bounded by `releaseTagCut ()` — see its doc
         // comment. `v*` lands LAST in the push order, so `pkg-no-release-tag` needs no such bound (it
@@ -613,18 +570,18 @@ let feature209VersionCoherenceTests =
             Expect.isNonEmpty templateTags "fs-gg-ui-template/v* tags must be visible; empty ⇒ fail closed"
             let latestRelease = releaseTags |> List.sortWith cmp |> List.last
             let latestTemplate = templateTags |> List.sortWith cmp |> List.last
-            let bumped = pkgBumpedHere ()
+            let ahead = cmp pkgVersion latestTemplate > 0 && cmp pkgVersion latestRelease > 0
             let cut = List.contains pkgVersion releaseTags
             // Asserted in PUSH ORDER, matching the script's `releaseLaneFailures`: on a stale release these
             // messages are the operator's instructions, and Expecto aborts the block at the first failure.
             // Telling them to push `v*` before `fs-gg-ui-template/v*` strands the release behind the very
             // bound this test enforces.
             Expect.isFalse (cmp pkgVersion latestTemplate < 0) (sprintf "package %s must not lag latest fs-gg-ui-template/v* tag %s (pkg-lags-template-tag)" pkgVersion latestTemplate)
-            if not (templateTagWaived releaseLane bumped cut) then
-                Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s has no fs-gg-ui-template/v%s tag, and it is not pending (release lane, or v%s is already cut so the template tag was due before it in the push order, or this change did not bump <Version>) ⇒ template-dispatch.yml never fired (pkg-no-template-tag)" pkgVersion pkgVersion pkgVersion)
+            if not (templateTagWaived releaseLane ahead cut) then
+                Expect.isTrue (List.contains pkgVersion templateTags) (sprintf "package %s has no fs-gg-ui-template/v%s tag, and it is not pending (release lane, successor already cut, or version not ahead of tags) ⇒ template-dispatch.yml never fired (pkg-no-template-tag)" pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion latestRelease < 0) (sprintf "package %s must not lag latest v* tag %s (pkg-lags-release-tag)" pkgVersion latestRelease)
-            if not (releaseTagWaived releaseLane bumped) then
-                Expect.isTrue cut (sprintf "package %s is untagged and not pending (release lane, or this change did not bump <Version>) ⇒ the v%s release tag was never cut (pkg-no-release-tag)" pkgVersion pkgVersion)
+            if not (releaseTagWaived releaseLane ahead) then
+                Expect.isTrue cut (sprintf "package %s is untagged and not pending (release lane or version not ahead of tags) ⇒ the v%s release tag was never cut (pkg-no-release-tag)" pkgVersion pkgVersion)
             Expect.isFalse (cmp pkgVersion pinVersion < 0) (sprintf "framework pin %s must not lead the released package %s (pin-leads-package)" pinVersion pkgVersion)
         }
 
@@ -632,26 +589,26 @@ let feature209VersionCoherenceTests =
         // which is always coherent — so every waiver branch there is dead, and a deleted bound is
         // invisible. That is precisely how 0c7e091 shipped a regression through a green suite. These are
         // the tests that fail if a bound is removed. Constitution Principle V.
-        test "waiver truth table: a bump waives its tag only while no successor tag is cut, never in the release lane" {
+        test "waiver truth table: an ahead version stays pending across repair commits, only before successors and outside the release lane" {
             // fs-gg-ui/v<pin> — successors: fs-gg-ui-template/v<pkg>, v<pkg>
-            //                       lane   pinBumped  tmplCut  relCut
-            Expect.isTrue  (pinWaived false true      false    false) "release PR/merge, no tags cut ⇒ pin waived"
-            Expect.isFalse (pinWaived false false     false    false) "no pin bump ⇒ never pending"
+            //                       lane   pinAhead   tmplCut  relCut
+            Expect.isTrue  (pinWaived false true      false    false) "version ahead, no tags cut ⇒ pin pending"
+            Expect.isFalse (pinWaived false false     false    false) "version not ahead ⇒ never pending"
             Expect.isFalse (pinWaived false true      true     false) "fs-gg-ui-template/v* cut first ⇒ snapshot tag was DUE BEFORE it (announce-before-publish)"
             Expect.isFalse (pinWaived false true      false    true ) "v* cut first ⇒ snapshot tag was DUE BEFORE it"
             Expect.isFalse (pinWaived false true      true     true ) "both successors cut ⇒ overdue"
             Expect.isFalse (pinWaived true  true      false    false) "release lane ⇒ no waiver, every tag is due"
 
             // fs-gg-ui-template/v<pkg> — successor: v<pkg>
-            //                                 lane   pkgBumped  relCut
-            Expect.isTrue  (templateTagWaived false true       false) "release PR/merge, v* not cut ⇒ template tag waived"
-            Expect.isFalse (templateTagWaived false false      false) "no <Version> bump ⇒ never pending (a release that was never cut)"
+            //                                 lane   pkgAhead   relCut
+            Expect.isTrue  (templateTagWaived false true       false) "version ahead, v* not cut ⇒ template tag pending"
+            Expect.isFalse (templateTagWaived false false      false) "version not ahead ⇒ never pending"
             Expect.isFalse (templateTagWaived false true       true ) "v* cut first ⇒ template tag was DUE BEFORE it (publish-before-announce, #250)"
             Expect.isFalse (templateTagWaived true  true       false) "release lane ⇒ no waiver"
 
             // v<pkg> — lands last, no successor
-            Expect.isTrue  (releaseTagWaived false true)  "bump ⇒ v* is due next"
-            Expect.isFalse (releaseTagWaived false false) "no bump ⇒ the release was never cut"
+            Expect.isTrue  (releaseTagWaived false true)  "version ahead ⇒ v* is due next"
+            Expect.isFalse (releaseTagWaived false false) "version not ahead ⇒ no pending release"
             Expect.isFalse (releaseTagWaived true  true)  "release lane ⇒ a publish must be triggered by its own v* tag"
         }
 
