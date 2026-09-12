@@ -46,16 +46,25 @@ const focusForOrca = async (selector) => {
   await page.locator(selector).focus();
   await waitForOrca();
 };
+const enterDocumentForOrca = async (selector, expectedSpeech) => {
+  const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
+  if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
+  for (let index = 0; index < 6; index += 1) {
+    await desktopKey("F6");
+    await waitForOrca();
+    await focusForOrca(selector);
+    if (existsSync(speechLog) && readFileSync(speechLog, "utf8").toLowerCase().includes(expectedSpeech.toLowerCase())) return;
+  }
+  throw new Error(`Orca did not enter the browser document and announce ${expectedSpeech}`);
+};
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined);
   await page.waitForTimeout(4000);
   focusWindow("SVG foundation browser fixture");
-  await desktopKey("F6");
-  await waitForOrca();
   // Playwright targets the browser widget; Orca independently observes the
   // resulting native AT-SPI focus event and generates the asserted speech.
-  await focusForOrca("[data-scene-root-id='svg-foundation-root']");
+  await enterDocumentForOrca("[data-scene-root-id='svg-foundation-root']", "SVG foundation scene");
   await focusForOrca("[data-scene-control-id='alpha']");
   await page.keyboard.press("Space");
   await waitForOrca();
@@ -81,9 +90,7 @@ try {
   await page.waitForFunction(() => window.svgStudioFixture !== undefined);
   await page.waitForTimeout(4000);
   focusWindow("SVG art studio fixture");
-  await desktopKey("F6");
-  await waitForOrca();
-  await focusForOrca("button[aria-label='Rectangle']");
+  await enterDocumentForOrca("button[aria-label='Rectangle']", "Rectangle");
   await page.keyboard.press("Space");
   await waitForOrca();
   await waitForOrca();
