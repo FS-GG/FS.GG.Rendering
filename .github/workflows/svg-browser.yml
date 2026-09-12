@@ -74,7 +74,7 @@ jobs:
           git -C "$RUNNER_TEMP/orca-source" remote add origin https://gitlab.gnome.org/GNOME/orca.git
           git -C "$RUNNER_TEMP/orca-source" fetch --depth 1 origin 0c3b7f5899927aac74f15de95f81c35e177690ce
           git -C "$RUNNER_TEMP/orca-source" checkout --detach FETCH_HEAD
-          python3 tests/Scene.SvgBrowser.Tests/prepare-orca-runtime.py "$RUNNER_TEMP/orca-source/src/orca/speech.py" "$RUNNER_TEMP/orca-source/meson.build"
+          python3 tests/Scene.SvgBrowser.Tests/prepare-orca-runtime.py "$RUNNER_TEMP/orca-source/src/orca/speech.py" "$RUNNER_TEMP/orca-source/meson.build" "$RUNNER_TEMP/orca-source/src/orca"
           meson setup -Dprefix="$RUNNER_TEMP/orca-50.3" "$RUNNER_TEMP/orca-source/_build" "$RUNNER_TEMP/orca-source"
           meson compile -C "$RUNNER_TEMP/orca-source/_build"
           meson install -C "$RUNNER_TEMP/orca-source/_build"
