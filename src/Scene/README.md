@@ -57,6 +57,28 @@ let finding =
         "title text exceeds its owner"
         "text inside owner bounds"
         "overflow"
+
+// Import only the inert supported SVG subset. Source ids become asset-local.
+let imported =
+    SvgImport.importXml
+        { AssetNamespace = "icons/menu"; DocumentId = "menu-icon"; Limits = SvgDocument.defaultLimits }
+        "<svg viewBox=\"0 0 16 16\"><path id=\"outline\" d=\"M 1 2 L 15 2 Z\"/></svg>"
+
+// Group edits into one validated revision and one undo entry.
+let committed =
+    match imported with
+    | Error issues -> Error(SvgAuthoringError.InvalidTransaction issues)
+    | Ok document ->
+      SvgAuthoring.tryCreate 0 document { Schema = SvgAsset.catalogSchema; Assets = [] } []
+      |> Result.bind (fun state ->
+        SvgAuthoring.commit
+            0
+            { Schema = SvgAuthoring.transactionSchema
+              Id = "move"
+              Operations =
+                [ SvgAuthoringOperation.TransformElements(
+                    [ "icons-menu--outline" ], SvgAffine.translate 2.0 0.0) ] }
+            state)
 ```
 
 ## API at a glance
@@ -71,6 +93,11 @@ let finding =
 - `SceneEvidence` module — renders a `SceneEvidenceRequest` to deterministic evidence, returning `Result` (`render`, `renderHash`, `renderPng`).
 - `LayoutEvidence` module — derives and `classify`s `LayoutEvidenceReport` HUD/gameplay layout proofs from render-readback evidence.
 - `VisualInspection` module and records — dependency-light structured inspection vocabulary for scopes, nodes, regions, text runs, paint coverage, clipping, unsupported facts, findings, artifacts, summaries, stable status tokens, finding ids, and deterministic artifact diagnostics.
+- `SvgImport` — bounded parsing for the inert rectangle/path (`M/L/Q/C/Z`)/gradient/clip/mask/symbol SVG subset. It namespaces ids and rejects DTD/entity, script/event, `foreignObject`, CSS/filter, external URL, malformed, compressed, and over-budget input before returning a validated `SvgDocument`.
+- `SvgAsset` and `SvgAssetCatalog` — versioned documents with canonical SHA-256, rights metadata, dependency validation, cycle refusal, accepted prefab revisions, typed overrides, and conflicts.
+- `SvgAuthoring` — revision-guarded atomic transactions, grouped previews/cancellation, whole-group undo/redo, explicit shared-instance revision updates, and immutable play snapshots.
+
+The curated Fable package includes `SvgDocument` and `SvgAuthoring`; it has no Game, Skia, native, browser-DOM, or Controls dependency. `fsgg.svg-document/1` remains the canonical typed document format.
 
 ## Versioning
 

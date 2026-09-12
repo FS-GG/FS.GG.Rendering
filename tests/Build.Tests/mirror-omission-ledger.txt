@@ -324,12 +324,35 @@ type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
 type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
 type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
 
-# FS.GG.UI.Scene (90 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
-#                 Easing / Transform / Tween modules and types); SVG-FOUND-01.2 adds 11 candidate
-#                 retained-SVG names and SVG-SCENE-02.2 adds 25 document-contract names below.)
+# FS.GG.UI.Scene (110 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
+#                  Easing / Transform / Tween modules and types). SVG-AUTHOR-01.1-.2 deliberately
+#                  keeps the 20 source-candidate authoring names below out of generated-workspace docs:
+#                  SVG-AUTHOR-01.6 owns generated consumers and SVG-PREVIEW-B owns publication and the
+#                  installed mirror readback. Teaching these before that boundary would make a normal
+#                  generated workspace claim APIs its published 0.29.0 package cannot restore.)
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAsset
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoring
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgImport
 module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
 module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAssetCatalog
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAssetEnvelope
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAssetReference
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAssetRights
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringCheckpoint
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringError
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringOperation
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringPreview
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringSnapshot
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringState
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgAuthoringTransaction
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgImportRequest
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPrefabConflict
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPrefabInstance
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPrefabOverride
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPrefabOverrideValue
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgPrefabProperty
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityRequirement
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityVerdict
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageInspectionStatus

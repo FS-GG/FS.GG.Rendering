@@ -13,5 +13,7 @@
     <Compile Include="RetainedSvg.fs" />
     <Compile Include="SvgDocument.fsi" />
     <Compile Include="SvgDocument.fs" />
+    <Compile Include="SvgAuthoring.fsi" />
+    <Compile Include="SvgAuthoring.fs" />
   </ItemGroup>
 </Project>

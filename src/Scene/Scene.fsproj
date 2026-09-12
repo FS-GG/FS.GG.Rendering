@@ -24,7 +24,7 @@
           AfterTargets="CreateFablePackageFiles">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)" />
-      <_PackageFiles Include="Types.fsi;Types.fs;RetainedSvg.fsi;RetainedSvg.fs;SvgDocument.fsi;SvgDocument.fs">
+      <_PackageFiles Include="Types.fsi;Types.fs;RetainedSvg.fsi;RetainedSvg.fs;SvgDocument.fsi;SvgDocument.fs;SvgAuthoring.fsi;SvgAuthoring.fs">
         <Pack>true</Pack>
         <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
         <BuildAction>None</BuildAction>
@@ -50,6 +50,8 @@
     <Compile Include="RetainedSvg.fs" />
     <Compile Include="SvgDocument.fsi" />
     <Compile Include="SvgDocument.fs" />
+    <Compile Include="SvgAuthoring.fsi" />
+    <Compile Include="SvgAuthoring.fs" />
     <Compile Include="TextShaping.fsi" />
     <Compile Include="TextShaping.fs" />
     <Compile Include="Scene.fsi" />
