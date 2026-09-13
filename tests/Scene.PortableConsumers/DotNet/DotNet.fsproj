@@ -10,6 +10,7 @@
     <Compile Include="DocumentReplay.fs" />
     <Compile Include="AuthoringCorrespondence.fs" />
     <Compile Include="WorkspaceCorrespondence.fs" />
+    <Compile Include="AnimationCorrespondence.fs" />
     <Compile Include="Program.fs" />
     <PackageReference Include="FS.GG.UI.Scene" Version="0.29.0-preview.1" />
   </ItemGroup>

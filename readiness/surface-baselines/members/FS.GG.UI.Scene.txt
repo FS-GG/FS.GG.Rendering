@@ -9,6 +9,26 @@ FS.GG.UI.Scene.Animation.lerpFloat(System.Double, System.Double, System.Double) 
 FS.GG.UI.Scene.Animation.new(Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<System.Double>>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Transform>>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Tween<FS.GG.UI.Scene.Color>>)
 FS.GG.UI.Scene.Animation.sampleColor(System.TimeSpan, FS.GG.UI.Scene.Animation) : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.Color>
 FS.GG.UI.Scene.Animation.sampleFrames(Microsoft.FSharp.Collections.FSharpList<System.TimeSpan>, FS.GG.UI.Scene.Animation, FS.GG.UI.Scene.Scene) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.Scene>
+FS.GG.UI.Scene.AnimationClip.Cues : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.AnimationCue> [get]
+FS.GG.UI.Scene.AnimationClip.Duration : System.TimeSpan [get]
+FS.GG.UI.Scene.AnimationClip.Id : System.String [get]
+FS.GG.UI.Scene.AnimationClip.Loop : FS.GG.UI.Scene.ClipLoop [get]
+FS.GG.UI.Scene.AnimationClip.Tracks : Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Scene.ClipProperty, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ClipKeyframe>>> [get]
+FS.GG.UI.Scene.AnimationClip.new(System.String, System.TimeSpan, Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.Scene.ClipProperty, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ClipKeyframe>>>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.AnimationCue>, FS.GG.UI.Scene.ClipLoop)
+FS.GG.UI.Scene.AnimationClip.sample(System.TimeSpan, FS.GG.UI.Scene.ClipCueMode, FS.GG.UI.Scene.ValidatedAnimationClip) : FS.GG.UI.Scene.AnimationClipSample
+FS.GG.UI.Scene.AnimationClip.validate(FS.GG.UI.Scene.AnimationClip) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.ValidatedAnimationClip, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.ClipIssue>>
+FS.GG.UI.Scene.AnimationClip.value(FS.GG.UI.Scene.ValidatedAnimationClip) : FS.GG.UI.Scene.AnimationClip
+FS.GG.UI.Scene.AnimationClipSample.Cues : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CueOccurrence> [get]
+FS.GG.UI.Scene.AnimationClipSample.Direction : FS.GG.UI.Scene.ClipDirection [get]
+FS.GG.UI.Scene.AnimationClipSample.IsComplete : System.Boolean [get]
+FS.GG.UI.Scene.AnimationClipSample.Iteration : System.Int32 [get]
+FS.GG.UI.Scene.AnimationClipSample.LocalTime : System.TimeSpan [get]
+FS.GG.UI.Scene.AnimationClipSample.Values : Microsoft.FSharp.Collections.FSharpMap<FS.GG.UI.Scene.ClipProperty, FS.GG.UI.Scene.ClipValue> [get]
+FS.GG.UI.Scene.AnimationClipSample.new(System.TimeSpan, System.Int32, FS.GG.UI.Scene.ClipDirection, Microsoft.FSharp.Collections.FSharpMap<FS.GG.UI.Scene.ClipProperty, FS.GG.UI.Scene.ClipValue>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CueOccurrence>, System.Boolean)
+FS.GG.UI.Scene.AnimationCue.Id : System.String [get]
+FS.GG.UI.Scene.AnimationCue.Payload : System.String [get]
+FS.GG.UI.Scene.AnimationCue.Time : System.TimeSpan [get]
+FS.GG.UI.Scene.AnimationCue.new(System.String, System.TimeSpan, System.String)
 FS.GG.UI.Scene.AnimationState.advance<a>(System.TimeSpan, AnimationState<a>) : AnimationState<a>
 FS.GG.UI.Scene.AnimationState.create<a>(FSharpFunc<a, FSharpFunc<a, FSharpFunc<System.Double, a>>>, a, System.TimeSpan, FS.GG.UI.Scene.Easing) : AnimationState<a>
 FS.GG.UI.Scene.AnimationState.isActive<a>(AnimationState<a>) : System.Boolean
@@ -54,6 +74,46 @@ FS.GG.UI.Scene.CircleShapeEvidence.Radius : System.Double [get]
 FS.GG.UI.Scene.CircleShapeEvidence.new(FS.GG.UI.Scene.Point, System.Double, FS.GG.UI.Scene.Rect, FS.GG.UI.Scene.Color, FS.GG.UI.Scene.ShapePlacement)
 FS.GG.UI.Scene.Clip+Tags.PathClip : System.Int32
 FS.GG.UI.Scene.Clip+Tags.RectClip : System.Int32
+FS.GG.UI.Scene.ClipCueMode+Tags.LiveAdvance : System.Int32
+FS.GG.UI.Scene.ClipCueMode+Tags.Paused : System.Int32
+FS.GG.UI.Scene.ClipCueMode+Tags.Seek : System.Int32
+FS.GG.UI.Scene.ClipDirection+Tags.Forward : System.Int32
+FS.GG.UI.Scene.ClipDirection+Tags.Reverse : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.DuplicateCueId : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.DuplicateTrack : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.EmptyClipId : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.EmptyCueId : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.EmptyCustomProperty : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.EmptyPathIdentity : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.EmptyTracks : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.IncompatiblePathTopology : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.InvalidCueTime : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.InvalidDuration : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.InvalidKeyframeTime : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.InvalidKeyframeValue : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.InvalidLoopIterations : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.MismatchedKeyframeValue : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.MissingKeyframes : System.Int32
+FS.GG.UI.Scene.ClipIssue+Tags.UnorderedCues : System.Int32
+FS.GG.UI.Scene.ClipKeyframe.EasingToNext : FS.GG.UI.Scene.Easing [get]
+FS.GG.UI.Scene.ClipKeyframe.Time : System.TimeSpan [get]
+FS.GG.UI.Scene.ClipKeyframe.Value : FS.GG.UI.Scene.ClipValue [get]
+FS.GG.UI.Scene.ClipKeyframe.new(System.TimeSpan, FS.GG.UI.Scene.ClipValue, FS.GG.UI.Scene.Easing)
+FS.GG.UI.Scene.ClipLoop+Tags.Once : System.Int32
+FS.GG.UI.Scene.ClipLoop+Tags.PingPong : System.Int32
+FS.GG.UI.Scene.ClipLoop+Tags.Repeat : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.Color : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.CustomScalar : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.Opacity : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.PathMorph : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.PositionX : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.PositionY : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.RotationDegrees : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.ScaleX : System.Int32
+FS.GG.UI.Scene.ClipProperty+Tags.ScaleY : System.Int32
+FS.GG.UI.Scene.ClipValue+Tags.ColorValue : System.Int32
+FS.GG.UI.Scene.ClipValue+Tags.PathValue : System.Int32
+FS.GG.UI.Scene.ClipValue+Tags.ScalarValue : System.Int32
 FS.GG.UI.Scene.Color.Alpha : System.Byte [get]
 FS.GG.UI.Scene.Color.Blue : System.Byte [get]
 FS.GG.UI.Scene.Color.Green : System.Byte [get]
@@ -69,6 +129,10 @@ FS.GG.UI.Scene.Colors.rgb(System.Byte, System.Byte, System.Byte) : FS.GG.UI.Scen
 FS.GG.UI.Scene.Colors.rgba(System.Byte, System.Byte, System.Byte, System.Byte) : FS.GG.UI.Scene.Color
 FS.GG.UI.Scene.Colors.transparent : FS.GG.UI.Scene.Color [get]
 FS.GG.UI.Scene.Colors.white : FS.GG.UI.Scene.Color [get]
+FS.GG.UI.Scene.CueOccurrence.Cue : FS.GG.UI.Scene.AnimationCue [get]
+FS.GG.UI.Scene.CueOccurrence.Direction : FS.GG.UI.Scene.ClipDirection [get]
+FS.GG.UI.Scene.CueOccurrence.Iteration : System.Int32 [get]
+FS.GG.UI.Scene.CueOccurrence.new(FS.GG.UI.Scene.AnimationCue, System.Int32, FS.GG.UI.Scene.ClipDirection)
 FS.GG.UI.Scene.DamageInspectionStatus+Tags.Broad : System.Int32
 FS.GG.UI.Scene.DamageInspectionStatus+Tags.Empty : System.Int32
 FS.GG.UI.Scene.DamageInspectionStatus+Tags.FullSurface : System.Int32

@@ -6,12 +6,12 @@
   "target": "javascript",
   "surfaces": [
     {
-      "name": "Scene types, retained SVG reducer, identified document, safe XML import, versioned asset catalog and atomic authoring transactions",
+      "name": "Scene types, retained SVG reducer, identified document, safe XML import, versioned asset catalog, atomic authoring transactions and animation clips",
       "grade": "Portable",
-      "evidence": "isolated .NET and Fable consumers compile the locally packed candidate and emit byte-identical typed documents, SVG exports, catalog wires and authoring outcomes"
+      "evidence": "isolated .NET and Fable consumers compile the locally packed candidate and emit byte-identical typed documents, SVG exports, catalog wires, authoring outcomes and clip samples"
     },
     {
-      "name": "Scene constructors, text shaping, inspection, evidence, codec, wire format and animation",
+      "name": "Scene constructors, text shaping, inspection, evidence, codec and wire format",
       "grade": "DotNetOnly",
       "evidence": "implementation sources are absent from the curated Fable project"
     }
