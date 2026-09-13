@@ -2628,7 +2628,7 @@ let private omissionLedger =
 /// Generated workspaces remain pinned to public 0.29.0 until Preview B, so these temporary omissions keep
 /// the teaching mirror honest and expire with the same publication/readback boundary as .1-.2.
 [<Literal>]
-let private OmissionLedgerCeiling = 556
+let private OmissionLedgerCeiling = 569
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
