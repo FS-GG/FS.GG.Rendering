@@ -112,3 +112,27 @@
 #
 # An empty ledger is the goal state, not a dead file. The rules above still bind every FUTURE entry.
 # ---------------------------------------------------------------------------------------------------
+
+# SVG-SCALE-01.2: the candidate package and required public mirror add the bounded spatial working-set
+# API together. Release C publishes it and the FS.GG.UI pin bump must retire every line in this block.
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialEntry`1.Id
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialEntry`1.Bounds
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialEntry`1.Value
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialQuery.Viewport
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialQuery.Overscan
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialQuery.PinnedIds
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialQuery.MaxVisitedChunks
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetResult`1.Entries
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetResult`1.VisitedChunkCount
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetResult`1.CandidateCount
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetResult`1.TotalEntryCount
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.InvalidChunkSize
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.MissingId
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.DuplicateId
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.InvalidBounds
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.InvalidViewport
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.InvalidOverscan
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.EntryChunkLimitExceeded
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSetIssue.QueryChunkLimitExceeded
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSet.create
+template/base/docs/api-surface/Scene/SpatialWorkingSet.fsi::SpatialWorkingSet.query
