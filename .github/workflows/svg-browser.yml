@@ -7,6 +7,7 @@ on:
       - 'src/Scene/**'
       - 'src/Scene.SvgBrowser/**'
       - 'tests/Scene.SvgBrowser.Tests/**'
+      - 'tests/SvgSessionCorrespondence/**'
       - 'readiness/svg-scene-02-5/**'
       - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
@@ -24,6 +25,7 @@ on:
       - 'src/Scene/**'
       - 'src/Scene.SvgBrowser/**'
       - 'tests/Scene.SvgBrowser.Tests/**'
+      - 'tests/SvgSessionCorrespondence/**'
       - 'readiness/svg-scene-02-5/**'
       - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
@@ -60,6 +62,12 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: tests/Scene.SvgBrowser.Tests/package-lock.json
+      - name: Checkout exact Game runtime candidate
+        uses: actions/checkout@v7
+        with:
+          repository: FS-GG/FS.GG.Game
+          ref: e72be2d50dcecfe50b73b55942e0d351e46e9ebf
+          path: _game-runtime-candidate
       - name: Restore browser harness packages
         working-directory: tests/Scene.SvgBrowser.Tests
         run: npm ci
@@ -84,6 +92,8 @@ jobs:
           SVG_SCENE_ORCA_OBSERVATION: ${{ runner.temp }}/svg-browser-observations.orca.json
           SVG_SCENE_ORCA_VERSION: 49.8+a4e6375bdaebbade7974b9717b353bc864602b53
         run: bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/svg-browser-observations.json"
+      - name: Compare exact Game and Rendering policy in .NET and Fable
+        run: bash tests/SvgSessionCorrespondence/run.sh "$GITHUB_WORKSPACE/_game-runtime-candidate"
       - name: Qualify Preview-A workload controls on the hosted diagnostic environment
         env:
           SVG_SCENE_PERFORMANCE_MODE: diagnostic

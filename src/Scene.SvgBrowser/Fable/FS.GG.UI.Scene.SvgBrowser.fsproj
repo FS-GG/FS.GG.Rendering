@@ -11,6 +11,8 @@
     <Compile Include="SvgBrowser.fs" />
     <Compile Include="SvgInputHost.fsi" />
     <Compile Include="SvgInputHost.fs" />
+    <Compile Include="SvgSessionHost.fsi" />
+    <Compile Include="SvgSessionHost.fs" />
     <Compile Include="SvgStudio.fsi" />
     <Compile Include="SvgStudio.fs" />
   </ItemGroup>

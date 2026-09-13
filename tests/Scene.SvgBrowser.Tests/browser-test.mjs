@@ -78,11 +78,54 @@ const inputPaintSamples = [];
 let observations;
 let documentEvidence;
 let browserMatrixEvidence;
+let sessionEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
     throw new Error(`fixture API unavailable: ${consoleErrors.join("\n") || error.message}`);
   });
+  const mountedSession = await page.evaluate(() => window.svgFoundation.sessionMount());
+  if (mountedSession.listeners !== 2 || mountedSession.frames !== 1 || mountedSession.requests !== 0 || mountedSession.status !== "Running") {
+    throw new Error(`session mount ownership failed: ${JSON.stringify(mountedSession)}`);
+  }
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+  const cadence = await page.evaluate(() => window.svgFoundation.sessionObserve());
+  if (!cadence.events.some((value) => value.startsWith("advance:")) || cadence.requests !== 1) {
+    throw new Error(`session variable cadence did not advance/coalesce: ${JSON.stringify(cadence)}`);
+  }
+  const pausedSession = await page.evaluate(() => window.svgFoundation.sessionPause());
+  if (pausedSession.status !== "Paused" || pausedSession.frames !== 0 || pausedSession.requests !== 0 || !pausedSession.events.includes("pause")) {
+    throw new Error(`session pause did not release clock/request ownership: ${JSON.stringify(pausedSession)}`);
+  }
+  const steppedSession = await page.evaluate(() => { window.svgFoundation.sessionStep(); window.svgFoundation.sessionDemand(); return window.svgFoundation.sessionObserve(); });
+  if (steppedSession.requests !== 1 || !steppedSession.events.includes("step")) {
+    throw new Error(`paused step/projection coalescing failed: ${JSON.stringify(steppedSession)}`);
+  }
+  const generation = steppedSession.generation;
+  const projectedSession = await page.evaluate(() => window.svgFoundation.sessionCompleteCurrent(7, "scene-7"));
+  if (projectedSession.revision !== 7 || projectedSession.sceneRevision !== 7 || projectedSession.requests !== 1 || !projectedSession.events.includes("apply:7:scene-7")) {
+    throw new Error(`monotonic retained projection failed: ${JSON.stringify(projectedSession)}`);
+  }
+  const replacedSession = await page.evaluate(() => window.svgFoundation.sessionReplace());
+  const staleSession = await page.evaluate(() => window.svgFoundation.sessionCompletePrevious(99, "stale"));
+  if (staleSession.generation === generation || staleSession.events.includes("apply:99:stale") || !replacedSession.events.some((value) => value.startsWith("replace:"))) {
+    throw new Error(`replacement accepted a stale generation: ${JSON.stringify(staleSession)}`);
+  }
+  const resetSession = await page.evaluate(() => window.svgFoundation.sessionReset());
+  if (!resetSession.events.includes("reset") || resetSession.requests !== 1) {
+    throw new Error(`session reset did not request fresh retained state: ${JSON.stringify(resetSession)}`);
+  }
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  const suspendedSession = await page.evaluate(() => window.svgFoundation.sessionObserve());
+  if (suspendedSession.status !== "Recovering" || suspendedSession.frames !== 0 || suspendedSession.requests !== 0 || !suspendedSession.events.some((value) => value.startsWith("recover:"))) {
+    throw new Error(`blur/suspension recovery failed: ${JSON.stringify(suspendedSession)}`);
+  }
+  const disposedSession = await page.evaluate(() => window.svgFoundation.sessionDispose());
+  if (!disposedSession.disposed || disposedSession.listeners !== 0 || disposedSession.frames !== 0 || disposedSession.requests !== 0 || !disposedSession.events.includes("dispose")) {
+    throw new Error(`session disposal leaked resources: ${JSON.stringify(disposedSession)}`);
+  }
+  sessionEvidence = { mounted: mountedSession, cadence, paused: pausedSession, stepped: steppedSession, projected: projectedSession, replaced: replacedSession, stale: staleSession, reset: resetSession, suspended: suspendedSession, disposed: disposedSession };
+  await page.evaluate(() => window.svgFoundation.mount());
   const documentContract = await page.evaluate(() => {
     const root = document.querySelector("[data-fsgg-document-id='portable-document']");
     root.setAttribute("width", "240");
@@ -533,6 +576,7 @@ const evidence = {
     pointerKeyboardSameObject: true, accessibleDomRoute: true, anchoredZoomAndInversePicking: true,
     retainedRootAndLayersAcrossRevision: true, staleRevisionRefused: true, mountDisposeCycles: 12,
     finalOwnedListenerCount: observations.listeners, scheduledFrameCount: observations.frames,
+    sessionHost: sessionEvidence,
   },
   browserMatrix: browserMatrixEvidence,
   document: { ...documentEvidence, exportedSvg: undefined },

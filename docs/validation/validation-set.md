@@ -24,16 +24,17 @@ P4 / #47):
 8. `Layout.Tests`
 9. `Lib.Tests` (runtime-protecting subset)
 10. `Rendering.Harness.Tests`
-11. `Scene.Tests`
-12. `Symbology.Tests`
-13. `Symbology.Render.Tests`
-14. `SymbologyBoard.Tests`
-15. `Testing.Tests`
-16. `SkiaViewer.Tests`
-17. `Smoke.Tests`
+11. `Scene.SvgBrowser.Policy.Tests`
+12. `Scene.Tests`
+13. `Symbology.Tests`
+14. `Symbology.Render.Tests`
+15. `SymbologyBoard.Tests`
+16. `Testing.Tests`
+17. `SkiaViewer.Tests`
+18. `Smoke.Tests`
 
-Items 1–15 are fast and deterministic (capability `none`); only `SkiaViewer.Tests` and `Smoke.Tests`
-(16–17) need a GL context — the dev baseline provides one, and the gate runs them in its GL step under
+Items 1–16 are fast and deterministic (capability `none`); only `SkiaViewer.Tests` and `Smoke.Tests`
+(17–18) need a GL context — the dev baseline provides one, and the gate runs them in its GL step under
 degrade-and-disclose (skipped, disclosed) on a headless runner. This is the tier a contributor runs as
 routine work.
 

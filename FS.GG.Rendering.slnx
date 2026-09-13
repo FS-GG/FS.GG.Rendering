@@ -47,6 +47,7 @@
     <Project Path="tests/Package.Tests/Package.Tests.fsproj" />
     <Project Path="tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj" />
     <Project Path="tests/Scene.Tests/Scene.Tests.fsproj" />
+    <Project Path="tests/Scene.SvgBrowser.Policy.Tests/Scene.SvgBrowser.Policy.Tests.fsproj" />
     <Project Path="tests/SkiaViewer.Tests/SkiaViewer.Tests.fsproj" />
     <Project Path="tests/Smoke.Tests/Smoke.Tests.fsproj" />
     <Project Path="tests/Symbology.Tests/Symbology.Tests.fsproj" />
