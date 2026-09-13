@@ -61,6 +61,19 @@ Route the returned intent into the product's retained/document interaction messa
 command bindings on the `MapKey` path described above; the SVG intent mapper does not consult a
 `Keymap` and does not replace product controls.
 
+### Command profiles and modal resolution
+
+Build a stable gesture identity with `CommandInput.gestureId`, declare the modifier-free case with
+`CommandInput.noModifiers`, and publish `CommandInput.profileSchema` with persisted profiles. Compile
+descriptors and bindings through `CommandInput.compile`; do not create a second resolver table in the
+host. Persist profiles with `InputProfileCodec.encode` and `InputProfileCodec.decode`, and bind the
+payload to `InputProfileCodec.formatId` plus `InputProfileCodec.formatVersion`.
+
+Create the pure modal/sequence reducer with `CommandResolver.init` and send every normalized input,
+context change, injected deadline, focus-loss, and release event through `CommandResolver.update`.
+Interpret its effects once at the host boundary so help text and dispatch continue to derive from the
+same compiled catalog.
+
 ## Common pitfalls
 
 - **Duplicate DU case names across co-opened modules.** `ViewerKey.Unknown of raw:

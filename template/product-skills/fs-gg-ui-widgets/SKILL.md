@@ -32,6 +32,14 @@ data, and DataGrid data. Only use `Control.customControl`,
 vendor extension points; custom usage must be visibly named as custom rather
 than masquerading as a misspelled standard control.
 
+For the SVG workspace, derive every discovery surface from the compiled input catalog with
+`SvgWorkspaceCommands.project`. Use `SvgWorkspaceCommands.helpRows`,
+`SvgWorkspaceCommands.paletteRows`, and `SvgWorkspaceCommands.pointerRows` as the corresponding UI
+models. Render bindings with `SvgWorkspaceCommands.gestureText` and expose
+`SvgWorkspaceCommands.ariaKeyShortcuts` on actionable controls. Before accepting a changed binding,
+show `SvgWorkspaceCommands.previewRebind`; its conflict and displacement result is the reviewed
+transaction the product commits.
+
 ## `CustomControl` does NOT rasterize its content
 
 `Control.renderTree` (the production paint path the live host and every screenshot/preview
