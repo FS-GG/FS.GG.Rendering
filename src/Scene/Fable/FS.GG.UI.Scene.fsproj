@@ -11,6 +11,8 @@
     <Compile Include="Types.fs" />
     <Compile Include="RetainedSvg.fsi" />
     <Compile Include="RetainedSvg.fs" />
+    <Compile Include="SpatialWorkingSet.fsi" />
+    <Compile Include="SpatialWorkingSet.fs" />
     <Compile Include="SvgDocument.fsi" />
     <Compile Include="SvgDocument.fs" />
     <Compile Include="SvgAuthoring.fsi" />

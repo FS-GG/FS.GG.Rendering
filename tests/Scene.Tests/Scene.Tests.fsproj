@@ -29,6 +29,7 @@
     <Compile Include="Feature165VisualInspectionPaintTests.fs" />
     <Compile Include="Feature187SceneBoundsInspectionTests.fs" />
     <Compile Include="SvgFoundationRetainedTests.fs" />
+    <Compile Include="SpatialWorkingSetTests.fs" />
     <Compile Include="..\Scene.PortableConsumers\DocumentRoundTrip.fs">
       <Link>DocumentRoundTrip.fs</Link>
     </Compile>

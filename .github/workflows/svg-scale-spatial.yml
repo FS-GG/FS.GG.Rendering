@@ -1,0 +1,25 @@
+name: svg-scale-spatial
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['src/Scene/**', 'tests/Scene.Tests/**', 'readiness/surface-baselines/**', '.github/workflows/svg-scale-spatial.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  spatial:
+    name: Bounded SVG spatial working set
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.400'
+      - run: dotnet test tests/Scene.Tests/Scene.Tests.fsproj -v minimal
+      - name: Verify the established idle scheduling receipt
+        run: |
+          test "$(jq -r '.workloads.idleAndRetainedInteraction.idle.scheduledFrames' readiness/svg-scene-02-6/preview-a-performance.json)" = 0
+          test "$(jq -r '.workloads.idleAndRetainedInteraction.idle.mutationRecords' readiness/svg-scene-02-6/preview-a-performance.json)" = 0
+          test "$(jq -r '.workloads.idleAndRetainedInteraction.idle.objectRebuilds' readiness/svg-scene-02-6/preview-a-performance.json)" = 0
