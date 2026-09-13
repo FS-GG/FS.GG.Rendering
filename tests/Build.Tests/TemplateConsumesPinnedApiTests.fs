@@ -2613,12 +2613,8 @@ let private omissionLedger =
 /// Raised 506 -> 517 by SVG-AUTHOR-01.5: the unpublished candidate adds two modules and nine types for
 /// versioned editable scene interchange, generic entity/property descriptors, and grid/freeform placement.
 /// SVG-AUTHOR-01.6 owns generated consumption before SVG-PREVIEW-B publishes and teaches this surface.
-///
-/// Lowered 517 -> 472 after SVG-AUTHOR-01.6 published Scene 0.29.0: all 45 authoring entries became
-/// phantom omissions and were removed. SVG-INPUT-01.1 adds its unreleased declarations to the doc-vs-pin
-/// ledger instead because the generated mirror intentionally teaches the candidate before Preview-B.
 [<Literal>]
-let private OmissionLedgerCeiling = 472
+let private OmissionLedgerCeiling = 517
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

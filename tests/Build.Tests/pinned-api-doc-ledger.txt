@@ -60,71 +60,8 @@
 # no release retires a wrong qualifier. `Persistence.interpretRecordOnly` was still taught by
 # SkiaViewer.fsi — the #550 symbol, in the third doc #550 could not see — and now teaches `interpret`.
 
-# SVG-INPUT-01.1 — the generated-workspace mirror deliberately carries the exact portable command
-# catalogue/profile candidate before SVG-PREVIEW-B publishes it and moves $(FsGgUiVersion). PR #1306
-# owns the source half; the stale rule retires every line when the release lands.
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputModifiers.Ctrl
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputModifiers.Meta
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputModifiers.Alt
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputModifiers.Shift
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputModifiers.AltGraph
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputKeyIdentity.LogicalKey
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputKeyIdentity.PhysicalCode
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputGesture.KeyChord
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputGesture.KeySequence
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputGesture.Pointer
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputGesture.Touch
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputGesture.Gamepad
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandTriggerPolicy.OncePerPress
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandTriggerPolicy.RepeatWhileHeld
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandTriggerPolicy.Continuous
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandArgumentPolicy.NoArgument
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandArgumentPolicy.RequiresArgument
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandAlternative.Palette
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandAlternative.Menu
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandAlternative.Pointer
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputContextDescriptor.Id
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputContextDescriptor.Priority
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputContextDescriptor.Exclusive
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputContextDescriptor.Overlaps
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Id
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Label
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Contexts
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.AvailabilityKey
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Trigger
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Argument
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandDescriptor.Alternatives
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBinding.Gesture
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBinding.Command
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBinding.Context
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBindingOverride.ReplaceCommand
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBindingOverride.AddAlias
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputBindingOverride.UnbindCommand
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfile.Schema
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfile.Id
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfile.Defaults
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfile.Overrides
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::EffectiveInputProfile.Id
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::EffectiveInputProfile.Bindings
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputCatalog.Contexts
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputCatalog.Commands
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputCatalog.ReservedGestures
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputCatalog.AllowTerminalPrefixes
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileDiagnostic.Code
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileDiagnostic.Location
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileDiagnostic.Message
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandInput.profileSchema
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandInput.noModifiers
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandInput.gestureId
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandInput.compile
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::CommandInput.ofKeymap
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileCodec.formatId
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileCodec.formatVersion
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileCodec.encode
-template/base/docs/api-surface/KeyboardInput/CommandInput.fsi::InputProfileCodec.decode
-
 # ---------------------------------------------------------------------------------------------------
-# THE PRE-SVG-INPUT LEDGER WAS EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
+# EMPTY, AND THAT IS THE RATCHET WORKING — DO NOT DELETE THIS FILE.
 #
 # Every entry that stood here is RETIRED BY A RELEASE, which is the only thing that could retire any of
 # them: each named a symbol that `src/` declared and published 0.9.0 did not carry, so there was no
