@@ -15,6 +15,8 @@
     <Compile Include="SvgSessionHost.fs" />
     <Compile Include="SvgStudio.fsi" />
     <Compile Include="SvgStudio.fs" />
+    <Compile Include="SvgAnimationHost.fsi" />
+    <Compile Include="SvgAnimationHost.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />

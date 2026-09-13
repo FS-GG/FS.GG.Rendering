@@ -1,7 +1,7 @@
 # SVG-PRESENT-01 — Animation, browser audio and persistence
 
-Status: active; SVG-PRESENT-01.1 implementation complete in its routine change, with .2 next after
-merge readback. Route: routine.
+Status: active; SVG-PRESENT-01.1 is in repository qualification and SVG-PRESENT-01.2 implementation is
+complete in its stacked routine change. Route: routine.
 
 Owners: FS.GG.Rendering owns portable animation/effect sampling and browser presentation/storage hosts.
 FS.GG.Audio owns portable browser-audio realization. FS.GG.Game owns save compatibility and migration
@@ -79,7 +79,7 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   `7efe479b02a077cd71dcffe343ff8fdb92c7d489d7bb17797171e167b3ea9bff`; the curated package closure contains
   no browser, Skia or native dependency.
 
-- [ ] **SVG-PRESENT-01.2 — Retained animation and bounded effects host — route: routine**
+- [x] **SVG-PRESENT-01.2 — Retained animation and bounded effects host — route: routine**
 
   Owner: Rendering. Add a disposable SvgBrowser presentation host over the portable clip sampler and existing
   retained scene. Keep presentation revision separate from authority revision; schedule frames only while
@@ -90,6 +90,14 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   recovery, replacement, stale revision refusal and disposal. Reduced motion settles or substitutes declared
   decoration while preserving accessible state. Excess effects degrade decoration deterministically. No frame,
   listener, timer, DOM node or cue remains owned after disposal.
+
+  Evidence: `SvgAnimationPolicy` binds every clip to the current authority revision while assigning
+  independent monotonic presentation revisions, advances active clips in stable identifier order and keeps
+  seek/pause cue-silent. Reduced motion settles or substitutes declared decoration; a configurable ceiling
+  refuses excess decoration without disturbing semantic targets. Seven policy tests cover sampling, cue
+  intervals, seek, reduction, pressure, stale revisions, replacement and terminal disposal. The isolated
+  packed adapter compiles through Fable and its real browser fixture passes Chromium and Firefox locally;
+  the repository matrix supplies WebKit and verifies zero frame/listener ownership after disposal.
 
 - [ ] **SVG-PRESENT-01.3 — Gesture-unlocked Web Audio host — route: routine**
 

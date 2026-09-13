@@ -53,3 +53,10 @@ controls before passing normalized observations to `CommandResolver`. Pointer an
 semantic gestures, and Gamepad API buttons retain their source until release or disconnection. The host
 prevents default only when the resolver accepts the exact event; blur, visibility loss, modal takeover,
 and disposal neutralize held actions and cancel every listener, deadline, and animation-frame poll.
+
+`SvgAnimationHost` samples validated portable clips through one owned animation-frame loop. Each sample
+carries its accepted authority revision and an independent monotonic presentation revision. Live advancement
+delivers crossed cue batches; pause and seek are silent. A browser reduced-motion preference settles or
+substitutes declared decorative effects while essential state stays observable, and the configured decorative
+limit refuses excess work deterministically. Pause, hidden-document recovery, authority replacement and
+disposal release frame ownership; disposal also removes every lifecycle listener.

@@ -79,6 +79,7 @@ let observations;
 let documentEvidence;
 let browserMatrixEvidence;
 let sessionEvidence;
+let animationEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
@@ -89,7 +90,12 @@ try {
     throw new Error(`session mount ownership failed: ${JSON.stringify(mountedSession)}`);
   }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
-  const cadence = await page.evaluate(() => window.svgFoundation.sessionObserve());
+  let cadence = await page.evaluate(() => window.svgFoundation.sessionObserve());
+  if (cadence.status === "Recovering") {
+    await page.evaluate(() => window.svgFoundation.sessionResume());
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+    cadence = await page.evaluate(() => window.svgFoundation.sessionObserve());
+  }
   if (!cadence.events.some((value) => value.startsWith("advance:")) || cadence.requests !== 1) {
     throw new Error(`session variable cadence did not advance/coalesce: ${JSON.stringify(cadence)}`);
   }
@@ -125,6 +131,52 @@ try {
     throw new Error(`session disposal leaked resources: ${JSON.stringify(disposedSession)}`);
   }
   sessionEvidence = { mounted: mountedSession, cadence, paused: pausedSession, stepped: steppedSession, projected: projectedSession, replaced: replacedSession, stale: staleSession, reset: resetSession, suspended: suspendedSession, disposed: disposedSession };
+  const mountedAnimation = await page.evaluate(() => { const value = window.svgFoundation.animationMount(); return window.svgFoundation.animationMotion(false); });
+  if (mountedAnimation.listeners !== 2 || mountedAnimation.frames !== 0 || mountedAnimation.active !== 0 || mountedAnimation.status !== "Running") {
+    throw new Error(`animation mount ownership failed: ${JSON.stringify(mountedAnimation)}`);
+  }
+  const startedAnimation = await page.evaluate(() => window.svgFoundation.animationStartEssential("move", 7));
+  if (startedAnimation.active !== 1 || startedAnimation.frames !== 1 || startedAnimation.semanticId !== "alpha") {
+    throw new Error(`animation start did not preserve the retained semantic target: ${JSON.stringify(startedAnimation)}`);
+  }
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const pausedAnimation = await page.evaluate(() => window.svgFoundation.animationPause());
+  if (pausedAnimation.status !== "Paused" || pausedAnimation.frames !== 0 || pausedAnimation.active !== 1) {
+    throw new Error(`animation pause retained the browser clock: ${JSON.stringify(pausedAnimation)}`);
+  }
+  const cueCountBeforeSeek = pausedAnimation.events.filter((value) => value.startsWith("cue:")).length;
+  const soughtAnimation = await page.evaluate(() => window.svgFoundation.animationSeek("move", 80));
+  if (soughtAnimation.frames !== 0 || soughtAnimation.events.filter((value) => value.startsWith("cue:")).length !== cueCountBeforeSeek) {
+    throw new Error(`animation seek replayed a historical cue: ${JSON.stringify(soughtAnimation)}`);
+  }
+  await page.evaluate(() => { window.svgFoundation.animationResume(); return new Promise((resolve) => setTimeout(resolve, 260)); });
+  const completedAnimation = await page.evaluate(() => window.svgFoundation.animationObserve());
+  const midpointCues = completedAnimation.events.filter((value) => value.includes(":midpoint:"));
+  if (completedAnimation.active !== 0 || completedAnimation.frames !== 0 || midpointCues.length !== 1 || completedAnimation.presentationRevision <= soughtAnimation.presentationRevision) {
+    throw new Error(`animation completion/cue delivery failed: ${JSON.stringify(completedAnimation)}`);
+  }
+  const reducedAnimation = await page.evaluate(() => { window.svgFoundation.animationMotion(true); return window.svgFoundation.animationStartDecorative("reduced"); });
+  if (reducedAnimation.active !== 0 || reducedAnimation.frames !== 0 || reducedAnimation.transform !== "translate(40 0)" || reducedAnimation.opacity !== "1" || reducedAnimation.semanticId !== "alpha") {
+    throw new Error(`reduced motion did not settle decoration while preserving semantics: ${JSON.stringify(reducedAnimation)}`);
+  }
+  const boundedAnimation = await page.evaluate(() => {
+    window.svgFoundation.animationMotion(false);
+    window.svgFoundation.animationStartDecorative("one");
+    return window.svgFoundation.animationStartDecorative("two");
+  });
+  if (boundedAnimation.active !== 1 || !boundedAnimation.events.some((value) => value.includes("DecorativeLimitReached"))) {
+    throw new Error(`decorative effect pressure was not bounded: ${JSON.stringify(boundedAnimation)}`);
+  }
+  const replacedAnimation = await page.evaluate(() => window.svgFoundation.animationReplace(8));
+  const staleAnimation = await page.evaluate(() => window.svgFoundation.animationStartEssential("stale", 7));
+  if (replacedAnimation.active !== 0 || replacedAnimation.frames !== 0 || staleAnimation.active !== 0 || !staleAnimation.events.some((value) => value.includes("StaleAuthorityRevision"))) {
+    throw new Error(`authority replacement accepted stale animation: ${JSON.stringify(staleAnimation)}`);
+  }
+  const disposedAnimation = await page.evaluate(() => window.svgFoundation.animationDispose());
+  if (!disposedAnimation.disposed || disposedAnimation.listeners !== 0 || disposedAnimation.frames !== 0 || disposedAnimation.active !== 0 || !disposedAnimation.events.includes("dispose")) {
+    throw new Error(`animation disposal leaked resources: ${JSON.stringify(disposedAnimation)}`);
+  }
+  animationEvidence = { mounted: mountedAnimation, started: startedAnimation, paused: pausedAnimation, sought: soughtAnimation, completed: completedAnimation, reduced: reducedAnimation, bounded: boundedAnimation, replaced: replacedAnimation, stale: staleAnimation, disposed: disposedAnimation };
   await page.evaluate(() => window.svgFoundation.mount());
   const documentContract = await page.evaluate(() => {
     const root = document.querySelector("[data-fsgg-document-id='portable-document']");
@@ -577,6 +629,7 @@ const evidence = {
     retainedRootAndLayersAcrossRevision: true, staleRevisionRefused: true, mountDisposeCycles: 12,
     finalOwnedListenerCount: observations.listeners, scheduledFrameCount: observations.frames,
     sessionHost: sessionEvidence,
+    animationHost: animationEvidence,
   },
   browserMatrix: browserMatrixEvidence,
   document: { ...documentEvidence, exportedSvg: undefined },
