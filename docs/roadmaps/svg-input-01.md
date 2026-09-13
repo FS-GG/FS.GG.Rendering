@@ -1,6 +1,6 @@
 # SVG-INPUT-01 — Command and workspace interaction
 
-Status: active; next executable window .1. Route: routine.
+Status: active; next executable window .2. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated product composition and
 external compatibility fixtures. FS.GG.Game retains command policy and gameplay
@@ -59,7 +59,7 @@ diagnosed before construction; insertion order never selects a winner.
 
 ## Executable milestones
 
-- [ ] **SVG-INPUT-01.1 — One portable catalog defines commands and gestures — route: routine**
+- [x] **SVG-INPUT-01.1 — One portable catalog defines commands and gestures — route: routine**
 
   Depends on: SVG-AUTHOR-01 authoritative readback and unified selection.
 
