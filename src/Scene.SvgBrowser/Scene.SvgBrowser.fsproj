@@ -12,7 +12,7 @@
   <Target Name="CurateFableCompatibilityView" AfterTargets="CreateFablePackageFiles">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)" />
-      <_PackageFiles Include="SvgBrowser.fsi;SvgBrowser.fs;SvgInputHost.fsi;SvgInputHost.fs;SvgStudio.fsi;SvgStudio.fs">
+      <_PackageFiles Include="SvgBrowser.fsi;SvgBrowser.fs;SvgInputHost.fsi;SvgInputHost.fs;SvgSessionHost.fsi;SvgSessionHost.fs;SvgStudio.fsi;SvgStudio.fs">
         <Pack>true</Pack>
         <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
         <BuildAction>None</BuildAction>
@@ -32,6 +32,8 @@
     <Compile Include="SvgBrowser.fs" />
     <Compile Include="SvgInputHost.fsi" />
     <Compile Include="SvgInputHost.fs" />
+    <Compile Include="SvgSessionHost.fsi" />
+    <Compile Include="SvgSessionHost.fs" />
     <Compile Include="SvgStudio.fsi" />
     <Compile Include="SvgStudio.fs" />
   </ItemGroup>
