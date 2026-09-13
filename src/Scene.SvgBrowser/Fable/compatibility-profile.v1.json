@@ -19,6 +19,8 @@
     "standalone exported-SVG reload",
     "KeyboardInput-owned intent mapping with native editing and composition preservation",
     "disposable command resolution for logical and physical keys, pointer, touch and Gamepad API observations",
-    "sequence deadlines, source-owned releases, focus-loss neutralization and accessible workspace overlays"
+    "sequence deadlines, source-owned releases, focus-loss neutralization and accessible workspace overlays",
+    "portable browser session policy with RAF clock conversion, suspension recovery and projection backpressure",
+    "generation-safe monotonic retained projection and disposable session resource ownership"
   ]
 }

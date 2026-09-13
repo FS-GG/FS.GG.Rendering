@@ -76,6 +76,7 @@ R5 source label `infra (R5)` and are not validation-set members.
 | `Layout.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Lib.Tests` (runtime subset) | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Rendering.Harness.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
+| `Scene.SvgBrowser.Policy.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Scene.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Symbology.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
 | `Symbology.Render.Tests` | local | gate | none | runs | gate.yml local tier (slnx-derived) |
@@ -123,7 +124,7 @@ after the gate loop became slnx-derived and the coverage machine-enforced. **PAS
 
 1. **Exactly one cadence per member** — ✅ every row above appears once; no member is in two cadences.
    `CadenceCoverageTests` now asserts `deterministic ∪ GL == slnx test set` with no overlap.
-2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 17 slnx test projects (the 15
+2. **No release-only member in `gate`** — ✅ `gate.yml` runs all 18 slnx test projects (the 16
    deterministic members above + `SkiaViewer, Smoke` GL) plus `surface-baselines`, `fsdocs`, and
    harness `offscreen` (T0/T1) only.
    **Re-audited 2026-07-13 (#680):** template `Product.Tests` used to appear **only** in `release.yml`,

@@ -62,6 +62,75 @@ FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.Gamepads : Microsoft.FSharp.Core.F
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.PollGamepads : System.Boolean [get]
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.SequenceTimeoutMilliseconds : System.Int32 [get]
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.new(System.Int32, System.Boolean, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot>>)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.AdvanceElapsed : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.ApplyProjection : FSharpFunc<System.UInt64, FSharpFunc<projection, Microsoft.FSharp.Core.Unit>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.CancelGeneration : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.Dispose : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.Pause : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.Replace : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.RequestProjection : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.RequestRecovery : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.Reset : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.Resume : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.StepOnce : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.new(Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>, FSharpFunc<System.UInt64, FSharpFunc<projection, Microsoft.FSharp.Core.Unit>>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost.defaultConfig : FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.Generation : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.IsDisposed : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.LastProjectionRevision : Microsoft.FSharp.Core.FSharpOption<System.UInt64> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.OwnedRequestCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.ScheduledFrameCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.Status : FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation.new(System.UInt64, FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus, Microsoft.FSharp.Core.FSharpOption<System.UInt64>, System.Int32, System.Int32, System.Int32, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.CompleteProjection(System.UInt64, System.UInt64, projection) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.DemandProjection() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgSessionHostObservation
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.Pause() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.Replace() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.Reset() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.Resume() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.StepOnce() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgSessionHost`1.new(SvgSessionCallbacks<projection>, FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicy.initialize(FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig) : FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicy.update(FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig, FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation, FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState) : System.Tuple<FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect>>
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig.SuspensionMilliseconds : System.Double [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyConfig.new(System.Double)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.AdvanceElapsed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ApplyProjection : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.CancelGeneration : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.GenerationReplaced : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.PauseAuthority : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ProjectionDemandCoalesced : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ProjectionRejected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ProjectionRevisionRejected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.RequestProjection : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.RequestRecovery : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ResetAuthority : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.ResumeAuthority : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyEffect+Tags.StepAuthority : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.CompleteProjection : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.DemandProjection : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Dispose : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Frame : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Pause : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Replace : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Reset : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Resume : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.StepOnce : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyObservation+Tags.Suspend : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.Generation : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.LastProjectionRevision : Microsoft.FSharp.Core.FSharpOption<System.UInt64> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.LastTimestampMilliseconds : Microsoft.FSharp.Core.FSharpOption<System.Double> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.ProjectionPending : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.ProjectionQueued : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.Status : FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus [get]
+FS.GG.UI.Scene.SvgBrowser.SvgSessionPolicyState.new(System.UInt64, FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus, Microsoft.FSharp.Core.FSharpOption<System.Double>, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<System.UInt64>)
+FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus+Tags.Paused : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus+Tags.Recovering : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgSessionStatus+Tags.Running : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgStudio.activateFont(FS.GG.UI.Scene.SvgFontResource) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgBrowser.SvgStudio.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions, FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgStudioHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ApplyNumericTransform(System.String, FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>

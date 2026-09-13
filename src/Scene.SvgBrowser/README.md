@@ -1,5 +1,11 @@
 # FS.GG.UI.Scene.SvgBrowser
 
+The package also includes `SvgSessionPolicy` and `SvgSessionHost` for continuous game players. The policy is
+portable and deterministic; the browser host owns RAF timestamps, lifecycle listeners, projection
+backpressure, generation invalidation and disposal while callers interpret its callbacks through the Game
+session runtime. A background-tab gap requests explicit recovery, and retained projections must increase
+monotonically within the current generation.
+
 `FS.GG.UI.Scene.SvgBrowser` is the Fable/browser adapter for the supported
 `FS.GG.UI.Scene` subset. It maintains a retained SVG root, routes pointer and
 keyboard selection through the Scene reducer, and provides camera-aware picking.

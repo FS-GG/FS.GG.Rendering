@@ -56,6 +56,37 @@ let mutable performanceKind = "ordinary"
 let mutable performanceSelection = 0
 let mutable performanceCameraStep = 0
 let mutable performanceChangedObject = -1
+let sessionEvents = ResizeArray<string>()
+let mutable sessionHost: SvgSessionHost<string> option = None
+
+let sessionCallbacks =
+    { AdvanceElapsed = fun value -> sessionEvents.Add($"advance:{value}")
+      Pause = fun () -> sessionEvents.Add("pause")
+      Resume = fun () -> sessionEvents.Add("resume")
+      StepOnce = fun () -> sessionEvents.Add("step")
+      Reset = fun () -> sessionEvents.Add("reset")
+      RequestRecovery = fun generation -> sessionEvents.Add($"recover:{generation}")
+      RequestProjection = fun generation -> sessionEvents.Add($"projection:{generation}")
+      ApplyProjection = fun revision projection ->
+          host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene(retained (int revision) (20.0 + float revision))) |> ignore
+          sessionEvents.Add($"apply:{revision}:{projection}")
+      CancelGeneration = fun generation -> sessionEvents.Add($"cancel:{generation}")
+      Replace = fun generation -> sessionEvents.Add($"replace:{generation}")
+      Dispose = fun () -> sessionEvents.Add("dispose") }
+
+let sessionObservation () =
+    let value = sessionHost.Value.Observe()
+    createObj [
+        "generation" ==> float value.Generation
+        "status" ==> string value.Status
+        "revision" ==> (value.LastProjectionRevision |> Option.map (float >> box) |> Option.toObj)
+        "listeners" ==> value.OwnedListenerCount
+        "frames" ==> value.ScheduledFrameCount
+        "requests" ==> value.OwnedRequestCount
+        "disposed" ==> value.IsDisposed
+        "sceneRevision" ==> host.Value.State.Scene.Revision
+        "events" ==> sessionEvents.ToArray()
+    ]
 
 let errorName = function
     | None -> null
@@ -360,6 +391,27 @@ let api =
             performanceHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
             performanceHost <- None
             performanceContainer.querySelectorAll("svg").length
+        "sessionMount" ==> fun () ->
+            sessionHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+            sessionEvents.Clear()
+            sessionHost <- Some(new SvgSessionHost<string>(sessionCallbacks, { SuspensionMilliseconds = 1000.0 }))
+            sessionObservation()
+        "sessionObserve" ==> fun () -> sessionObservation()
+        "sessionPause" ==> fun () -> sessionHost.Value.Pause(); sessionObservation()
+        "sessionResume" ==> fun () -> sessionHost.Value.Resume(); sessionObservation()
+        "sessionStep" ==> fun () -> sessionHost.Value.StepOnce(); sessionObservation()
+        "sessionReset" ==> fun () -> sessionHost.Value.Reset(); sessionObservation()
+        "sessionReplace" ==> fun () -> sessionHost.Value.Replace(); sessionObservation()
+        "sessionDemand" ==> fun () -> sessionHost.Value.DemandProjection(); sessionObservation()
+        "sessionCompleteCurrent" ==> fun revision projection ->
+            let generation = sessionHost.Value.Observe().Generation
+            sessionHost.Value.CompleteProjection(generation, uint64 revision, projection)
+            sessionObservation()
+        "sessionCompletePrevious" ==> fun revision projection ->
+            let generation = sessionHost.Value.Observe().Generation - 1UL
+            sessionHost.Value.CompleteProjection(generation, uint64 revision, projection)
+            sessionObservation()
+        "sessionDispose" ==> fun () -> (sessionHost.Value :> IDisposable).Dispose(); sessionObservation()
     ]
 
 [<Emit("window.svgFoundation = $0")>]
