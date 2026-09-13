@@ -1,0 +1,25 @@
+name: svg-scale-contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['readiness/svg-scale-01-1/**', 'tests/Scene.SvgBrowser.Tests/scale-contract-test.mjs', 'tests/Scene.SvgBrowser.Tests/run-scale-contract.sh', '.github/workflows/svg-scale-contract.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: SVG scale measurement contract and controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: tests/Scene.SvgBrowser.Tests/run-scale-contract.sh "$RUNNER_TEMP/svg-scale-contract.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: svg-scale-contract-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/svg-scale-contract.json
+          retention-days: 30

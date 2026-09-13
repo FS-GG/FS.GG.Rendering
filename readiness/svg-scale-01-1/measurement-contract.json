@@ -1,0 +1,45 @@
+{
+  "schema": "fsgg.svg-scale.measurement-contract/v1",
+  "referenceHost": {
+    "distribution": "Arch Linux 20260906.0.587075",
+    "kernel": "7.2.4-arch1-2",
+    "cpu": "AMD Ryzen 9 7900 12-Core Processor",
+    "logicalCpuCount": 24,
+    "memoryBytes": 66509987840,
+    "swapBytes": 0,
+    "governor": "powersave",
+    "maximumOneMinuteLoad": 1.0
+  },
+  "browserContract": {
+    "playwrightVersion": "1.62.1",
+    "chromium": "detailed trace, callback, reconciliation, next-frame and updated-surface capture",
+    "firefox": "functional, callback, next-frame and updated-surface capture; no Chromium trace stages",
+    "webkit": "functional, callback, next-frame and updated-surface capture; no Chromium trace stages"
+  },
+  "method": {
+    "independentRuns": 3,
+    "warmupsDiscardedPerRun": 5,
+    "samplesPerRun": 200,
+    "statistic": "nearest-rank p95",
+    "idleSeconds": 10,
+    "continuousJourneySeconds": 30
+  },
+  "thresholds": {
+    "ordinaryInputToPresentedCaptureP95Milliseconds": 100,
+    "denseInputToPresentedCaptureP95Milliseconds": 150,
+    "worldExtentCostRatioMaximum": 1.2,
+    "worldExtentLiveNodeGrowthMaximum": 0,
+    "idleRebuildsMaximum": 0,
+    "missedFrameRatioMaximum": 0.05,
+    "retainedOwnedResourcesAfterDisposeMaximum": 0
+  },
+  "workloads": {
+    "ordinary": "100 visible detailed entities across four layers",
+    "dense": "200 visible entities with effects and overlays",
+    "worldExtent": "10x world extent with the ordinary visible set unchanged",
+    "complexity": "200 256-segment paths, 64 gradients, 32 masks, 100 text runs and 100 symbol uses",
+    "continuous": "60 Hz continuous-coordinate motion with a 30-second measured window",
+    "responsive": "desktop, 390x844 touch, 320 CSS-pixel reflow and 400% layout-equivalent zoom"
+  },
+  "unavailablePolicy": "A stage without an engine-supported observation is emitted as unavailable with a reason and is never replaced by an estimate."
+}
