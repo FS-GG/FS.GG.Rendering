@@ -1,5 +1,16 @@
 # FS.GG.UI.KeyboardInput
 
+`CommandInput.compile` validates one product catalog and ordered input profile
+before any dispatch state is constructed. Profiles preserve logical key values,
+physical codes, complete modifiers including AltGraph, key sequences, pointer,
+touch and gamepad controls. Overrides distinguish replacement, aliases and an
+explicitly unbound command.
+
+`InputProfileCodec` round-trips the ordered `fsgg.input-profile/1` envelope in
+.NET and Fable. `CommandInput.ofKeymap` migrates the existing `fsgg.keymap` v1
+surface as logical-key defaults; the old reader and last-wins behavior remain
+unchanged. Products still own command meanings and availability projections.
+
 Package-owned keyboard input runtime, reducer, effect, diagnostics, and state display contracts for FS.GG.UI products.
 
 `FS.GG.UI.KeyboardInput` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D

@@ -9,6 +9,8 @@
   <ItemGroup>
     <Compile Include="KeyboardInput.fsi" />
     <Compile Include="KeyboardInput.fs" />
+    <Compile Include="CommandInput.fsi" />
+    <Compile Include="CommandInput.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />

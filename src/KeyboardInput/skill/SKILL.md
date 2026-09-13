@@ -11,7 +11,9 @@ Owns `src/KeyboardInput/`, keyboard input tests, `template/fragments/keyboard-in
 
 ## Public Contract
 
-The supported API lives in `src/KeyboardInput/KeyboardInput.fsi`. Surface changes require `readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt`.
+The supported API lives in `src/KeyboardInput/KeyboardInput.fsi`,
+`src/KeyboardInput/KeymapCodec.fsi`, and `src/KeyboardInput/CommandInput.fsi`.
+Surface changes require `readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt`.
 
 ## Build Commands
 
@@ -35,6 +37,13 @@ readiness package-surface reports. Stable public surface baselines live under
 ## Package Boundary
 
 Keyboard input may depend on Scene only. Keep viewer hosting, controls, charting, graphing, and layout concerns out of this package; use `fs-gg-ui-widgets` for widget authoring.
+
+Use `CommandInput.compile` before constructing dispatch state. Preserve logical
+keys and physical codes as different identities, retain AltGraph, and keep raw
+profile order until validation has reported duplicate, ambiguity, reserved and
+terminal-prefix conflicts. `ReplaceCommand`, `AddAlias`, and `UnbindCommand`
+carry distinct user intent. Game packages supply semantic command policy; this
+package stores opaque command IDs.
 
 ## Generated Product
 

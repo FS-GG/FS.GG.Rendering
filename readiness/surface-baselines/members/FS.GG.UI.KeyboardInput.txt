@@ -1,3 +1,70 @@
+FS.GG.UI.KeyboardInput.CommandAlternative+Tags.Menu : System.Int32
+FS.GG.UI.KeyboardInput.CommandAlternative+Tags.Palette : System.Int32
+FS.GG.UI.KeyboardInput.CommandAlternative+Tags.Pointer : System.Int32
+FS.GG.UI.KeyboardInput.CommandArgumentPolicy+Tags.NoArgument : System.Int32
+FS.GG.UI.KeyboardInput.CommandArgumentPolicy+Tags.RequiresArgument : System.Int32
+FS.GG.UI.KeyboardInput.CommandDescriptor.Alternatives : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandAlternative> [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.Argument : FS.GG.UI.KeyboardInput.CommandArgumentPolicy [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.AvailabilityKey : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.Contexts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.Id : System.String [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.Label : System.String [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.Trigger : FS.GG.UI.KeyboardInput.CommandTriggerPolicy [get]
+FS.GG.UI.KeyboardInput.CommandDescriptor.new(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.KeyboardInput.CommandTriggerPolicy, FS.GG.UI.KeyboardInput.CommandArgumentPolicy, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandAlternative>)
+FS.GG.UI.KeyboardInput.CommandInput.compile(FS.GG.UI.KeyboardInput.InputCatalog, FS.GG.UI.KeyboardInput.InputProfile) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.KeyboardInput.EffectiveInputProfile, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputProfileDiagnostic>>
+FS.GG.UI.KeyboardInput.CommandInput.gestureId(FS.GG.UI.KeyboardInput.InputGesture) : System.String
+FS.GG.UI.KeyboardInput.CommandInput.noModifiers : FS.GG.UI.KeyboardInput.InputModifiers [get]
+FS.GG.UI.KeyboardInput.CommandInput.ofKeymap(System.String, System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.InputProfile
+FS.GG.UI.KeyboardInput.CommandInput.profileSchema : System.String [get]
+FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.Continuous : System.Int32
+FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.OncePerPress : System.Int32
+FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.RepeatWhileHeld : System.Int32
+FS.GG.UI.KeyboardInput.EffectiveInputProfile.Bindings : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBinding> [get]
+FS.GG.UI.KeyboardInput.EffectiveInputProfile.Id : System.String [get]
+FS.GG.UI.KeyboardInput.EffectiveInputProfile.new(System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBinding>)
+FS.GG.UI.KeyboardInput.InputBinding.Command : System.String [get]
+FS.GG.UI.KeyboardInput.InputBinding.Context : System.String [get]
+FS.GG.UI.KeyboardInput.InputBinding.Gesture : FS.GG.UI.KeyboardInput.InputGesture [get]
+FS.GG.UI.KeyboardInput.InputBinding.new(FS.GG.UI.KeyboardInput.InputGesture, System.String, System.String)
+FS.GG.UI.KeyboardInput.InputBindingOverride+Tags.AddAlias : System.Int32
+FS.GG.UI.KeyboardInput.InputBindingOverride+Tags.ReplaceCommand : System.Int32
+FS.GG.UI.KeyboardInput.InputBindingOverride+Tags.UnbindCommand : System.Int32
+FS.GG.UI.KeyboardInput.InputCatalog.AllowTerminalPrefixes : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputCatalog.Commands : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandDescriptor> [get]
+FS.GG.UI.KeyboardInput.InputCatalog.Contexts : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputContextDescriptor> [get]
+FS.GG.UI.KeyboardInput.InputCatalog.ReservedGestures : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputGesture> [get]
+FS.GG.UI.KeyboardInput.InputCatalog.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputContextDescriptor>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandDescriptor>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputGesture>, System.Boolean)
+FS.GG.UI.KeyboardInput.InputContextDescriptor.Exclusive : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputContextDescriptor.Id : System.String [get]
+FS.GG.UI.KeyboardInput.InputContextDescriptor.Overlaps : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.InputContextDescriptor.Priority : System.Int32 [get]
+FS.GG.UI.KeyboardInput.InputContextDescriptor.new(System.String, System.Int32, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.KeyboardInput.InputGesture+Tags.Gamepad : System.Int32
+FS.GG.UI.KeyboardInput.InputGesture+Tags.KeyChord : System.Int32
+FS.GG.UI.KeyboardInput.InputGesture+Tags.KeySequence : System.Int32
+FS.GG.UI.KeyboardInput.InputGesture+Tags.Pointer : System.Int32
+FS.GG.UI.KeyboardInput.InputGesture+Tags.Touch : System.Int32
+FS.GG.UI.KeyboardInput.InputKeyIdentity+Tags.LogicalKey : System.Int32
+FS.GG.UI.KeyboardInput.InputKeyIdentity+Tags.PhysicalCode : System.Int32
+FS.GG.UI.KeyboardInput.InputModifiers.Alt : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputModifiers.AltGraph : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputModifiers.Ctrl : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputModifiers.Meta : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputModifiers.Shift : System.Boolean [get]
+FS.GG.UI.KeyboardInput.InputModifiers.new(System.Boolean, System.Boolean, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.KeyboardInput.InputProfile.Defaults : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBinding> [get]
+FS.GG.UI.KeyboardInput.InputProfile.Id : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfile.Overrides : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBindingOverride> [get]
+FS.GG.UI.KeyboardInput.InputProfile.Schema : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfile.new(System.String, System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBinding>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputBindingOverride>)
+FS.GG.UI.KeyboardInput.InputProfileCodec.decode(System.Byte[]) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.KeyboardInput.InputProfile, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputProfileDiagnostic>>
+FS.GG.UI.KeyboardInput.InputProfileCodec.encode(FS.GG.UI.KeyboardInput.InputProfile) : System.Byte[]
+FS.GG.UI.KeyboardInput.InputProfileCodec.formatId : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfileCodec.formatVersion : System.Int32 [get]
+FS.GG.UI.KeyboardInput.InputProfileDiagnostic.Code : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfileDiagnostic.Location : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfileDiagnostic.Message : System.String [get]
+FS.GG.UI.KeyboardInput.InputProfileDiagnostic.new(System.String, System.String, System.String)
 FS.GG.UI.KeyboardInput.KeyModifiers.Alt : System.Boolean [get]
 FS.GG.UI.KeyboardInput.KeyModifiers.Ctrl : System.Boolean [get]
 FS.GG.UI.KeyboardInput.KeyModifiers.Meta : System.Boolean [get]
