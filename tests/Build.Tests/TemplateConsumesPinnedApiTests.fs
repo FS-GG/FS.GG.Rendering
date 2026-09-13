@@ -2618,8 +2618,12 @@ let private omissionLedger =
 /// fourteen types for the portable command catalog and profile envelope. Generated workspaces remain on
 /// public 0.29.0 until Preview B, so teaching these names now would advertise a surface their normal restore
 /// cannot supply. The matching temporary ledger stanza expires at that publication and mirror readback.
+///
+/// Raised 533 -> 543 by SVG-INPUT-01.2: the same candidate adds one module and nine runtime types for
+/// deterministic modal resolution, sequences, injected deadlines and source-owned releases. They share
+/// .1's Preview-B publication boundary and expire with the same installed mirror readback.
 [<Literal>]
-let private OmissionLedgerCeiling = 533
+let private OmissionLedgerCeiling = 543
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
