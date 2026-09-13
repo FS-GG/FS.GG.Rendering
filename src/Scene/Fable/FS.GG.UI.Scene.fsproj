@@ -19,5 +19,7 @@
     <Compile Include="SvgScene.fs" />
     <Compile Include="SvgArt.fsi" />
     <Compile Include="SvgArt.fs" />
+    <Compile Include="SvgWorkspace.fsi" />
+    <Compile Include="SvgWorkspace.fs" />
   </ItemGroup>
 </Project>

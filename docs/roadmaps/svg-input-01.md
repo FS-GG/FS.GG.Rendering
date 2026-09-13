@@ -1,6 +1,6 @@
 # SVG-INPUT-01 — Command and workspace interaction
 
-Status: active; next executable window .3. Route: routine.
+Status: active; next executable window .4. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated product composition and
 external compatibility fixtures. FS.GG.Game retains command policy and gameplay
@@ -109,7 +109,7 @@ diagnosed before construction; insertion order never selects a winner.
   The model includes positive lost-release and terminal-prefix witnesses, stated
   fairness limits, safety invariants and real reducer correspondence.
 
-- [ ] **SVG-INPUT-01.3 — Workspace panels, focus and help share reducer state — route: routine**
+- [x] **SVG-INPUT-01.3 — Workspace panels, focus and help share reducer state — route: routine**
 
   Depends on: .2 resolver effects.
 
@@ -130,6 +130,13 @@ diagnosed before construction; insertion order never selects a winner.
   Capture sees unbound raw input, reports displacement before replacement, applies
   immediately and round-trips profile/layout migration. Invalid imports and modal
   cancellation preserve previous state.
+
+  Completed by Rendering PR #1308: `SvgWorkspace` keeps bounded versioned
+  preferences separate from responsive effective placement and from authoring
+  owners; `SvgWorkspaceCommands` derives every discovery surface from one
+  catalog/profile/availability projection and returns displacement-first validated
+  rebind candidates. Packed .NET/Fable consumers agree, and `SvgStudioHost`
+  carries the same reducer state without copying scene, history, camera or selection.
 
 - [ ] **SVG-INPUT-01.4 — Browser devices preserve native input and accessible parity — route: routine**
 

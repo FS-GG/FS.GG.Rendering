@@ -96,9 +96,10 @@ type SvgGeometryWorkerHost(factory: unit -> obj) =
     interface IDisposable with member _.Dispose() = finish()
 
 [<Sealed>]
-type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, initial: SvgAuthoringState, initialTool: SvgArtState, workerHost: SvgGeometryWorkerHost option, onChange: SvgAuthoringState -> unit) =
+type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, initial: SvgAuthoringState, initialTool: SvgArtState, initialWorkspace: SvgWorkspaceState, workerHost: SvgGeometryWorkerHost option, onChange: SvgAuthoringState -> unit) =
     let mutable state = initial
     let mutable tool = initialTool
+    let mutable workspace = initialWorkspace
     let listeners = ResizeArray<EventTarget * string * (Event -> unit)>()
     let mutable disposed = false
     let rec documentIds elements =
@@ -120,18 +121,34 @@ type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, init
         match state.Preview with
         | Some preview -> SvgAuthoring.cancelPreview preview.TransactionId state |> Result.iter sync
         | None -> ()
+    let transitionWorkspace message =
+        let next, effects = SvgWorkspace.update message workspace
+        workspace <- next
+        effects
+        |> List.iter (function
+            | SvgWorkspaceEffect.RequestFocus target ->
+                match document.getElementById target with
+                | null -> ()
+                | element -> element.focus()
+            | _ -> ())
+        effects
     let listen (target: EventTarget) name (handler: Event -> unit) =
         target.addEventListener(name, handler)
         listeners.Add(target, name, handler)
     do
         listen (root :> EventTarget) "keydown" (fun event ->
             let key = event :?> KeyboardEvent
-            if key.key = "Escape" then cancelActive())
+            if key.key = "Escape" then
+                match workspace.Overlay with
+                | Some _ -> transitionWorkspace SvgWorkspaceMessage.CloseOverlay |> ignore
+                | None -> cancelActive())
         for name in [ "pointercancel"; "lostpointercapture" ] do listen (documentHost.Root :> EventTarget) name (fun _ -> cancelActive())
         listen (window :> EventTarget) "blur" (fun _ -> cancelActive())
     member _.Root = root
     member _.State = state
     member _.ToolState = tool
+    member _.WorkspaceState = workspace
+    member _.UpdateWorkspace message = transitionWorkspace message
     member _.GeometryWorker = workerHost
     member _.SetSelection elementIds =
         let known = documentIds state.Document.Children |> Set.ofList
@@ -244,8 +261,12 @@ module SvgStudio =
                     button.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status"))
             applyTranslation.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status")
             container.insertBefore(root, documentHost.Root) |> ignore
+            let sceneFocus = options.MountNamespace + "--scene"
+            documentHost.Root.id <- sceneFocus
+            documentHost.Root.setAttribute("tabindex", "0")
             let worker = options.WorkerFactory |> Option.map (fun factory -> new SvgGeometryWorkerHost(factory))
-            let host = new SvgStudioHost(root, documentHost, initialState, SvgArt.initialState, worker, onChange)
+            let workspace = { SvgWorkspace.init SvgWorkspaceMode.Create window.innerWidth with FocusTarget = sceneFocus }
+            let host = new SvgStudioHost(root, documentHost, initialState, SvgArt.initialState, workspace, worker, onChange)
             let announce (message: string) = status.textContent <- message
             let choose (id: string) (label: string) =
                 host.SetSelection [id] |> ignore

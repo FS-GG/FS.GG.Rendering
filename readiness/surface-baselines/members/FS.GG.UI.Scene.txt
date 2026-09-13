@@ -1030,6 +1030,9 @@ FS.GG.UI.Scene.SvgMaskKind+Tags.Alpha : System.Int32
 FS.GG.UI.Scene.SvgMaskKind+Tags.Luminance : System.Int32
 FS.GG.UI.Scene.SvgPaintSource+Tags.Definition : System.Int32
 FS.GG.UI.Scene.SvgPaintSource+Tags.Solid : System.Int32
+FS.GG.UI.Scene.SvgPanelPlacement+Tags.Collapsed : System.Int32
+FS.GG.UI.Scene.SvgPanelPlacement+Tags.Docked : System.Int32
+FS.GG.UI.Scene.SvgPanelPlacement+Tags.Floating : System.Int32
 FS.GG.UI.Scene.SvgPrefabConflict.ElementId : System.String [get]
 FS.GG.UI.Scene.SvgPrefabConflict.InstanceId : System.String [get]
 FS.GG.UI.Scene.SvgPrefabConflict.Message : System.String [get]
@@ -1128,6 +1131,51 @@ FS.GG.UI.Scene.SvgStrokePresentation.Miter : System.Double [get]
 FS.GG.UI.Scene.SvgStrokePresentation.Source : FS.GG.UI.Scene.SvgPaintSource [get]
 FS.GG.UI.Scene.SvgStrokePresentation.Width : System.Double [get]
 FS.GG.UI.Scene.SvgStrokePresentation.new(FS.GG.UI.Scene.SvgPaintSource, System.Double, FS.GG.UI.Scene.StrokeCap, FS.GG.UI.Scene.StrokeJoin, System.Double, Microsoft.FSharp.Collections.FSharpList<System.Double>, System.Double)
+FS.GG.UI.Scene.SvgWorkspace.activeContexts(FS.GG.UI.Scene.SvgWorkspaceState) : Microsoft.FSharp.Collections.FSharpList<System.String>
+FS.GG.UI.Scene.SvgWorkspace.decodeLayout(System.Byte[]) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgWorkspaceLayout, Microsoft.FSharp.Collections.FSharpList<System.String>>
+FS.GG.UI.Scene.SvgWorkspace.defaultLayout : FS.GG.UI.Scene.SvgWorkspaceLayout [get]
+FS.GG.UI.Scene.SvgWorkspace.encodeLayout(FS.GG.UI.Scene.SvgWorkspaceLayout) : System.Byte[]
+FS.GG.UI.Scene.SvgWorkspace.init(FS.GG.UI.Scene.SvgWorkspaceMode, System.Double) : FS.GG.UI.Scene.SvgWorkspaceState
+FS.GG.UI.Scene.SvgWorkspace.layoutSchema : System.String [get]
+FS.GG.UI.Scene.SvgWorkspace.narrowViewport : System.Double [get]
+FS.GG.UI.Scene.SvgWorkspace.update(FS.GG.UI.Scene.SvgWorkspaceMessage, FS.GG.UI.Scene.SvgWorkspaceState) : System.Tuple<FS.GG.UI.Scene.SvgWorkspaceState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgWorkspaceEffect>>
+FS.GG.UI.Scene.SvgWorkspaceDock+Tags.Bottom : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceDock+Tags.Left : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceDock+Tags.Right : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceEffect+Tags.ActiveContextsChanged : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceEffect+Tags.LayoutChanged : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceEffect+Tags.PersistLayout : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceEffect+Tags.RequestFocus : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceEffect+Tags.WorkspaceDiagnostic : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceLayout.Panels : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgWorkspacePanel> [get]
+FS.GG.UI.Scene.SvgWorkspaceLayout.Revision : System.Int32 [get]
+FS.GG.UI.Scene.SvgWorkspaceLayout.Schema : System.String [get]
+FS.GG.UI.Scene.SvgWorkspaceLayout.new(System.String, System.Int32, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgWorkspacePanel>)
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.BeginRebind : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.CloseOverlay : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.ImportLayout : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.OpenHelp : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.OpenPalette : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.SetMode : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.SetPanelPlacement : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMessage+Tags.SetViewportWidth : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMode+Tags.Arrange : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMode+Tags.Create : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMode+Tags.Play : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceMode+Tags.Review : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceOverlay+Tags.CommandPalette : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceOverlay+Tags.PossibleInputHelp : System.Int32
+FS.GG.UI.Scene.SvgWorkspaceOverlay+Tags.RebindCommand : System.Int32
+FS.GG.UI.Scene.SvgWorkspacePanel.Effective : FS.GG.UI.Scene.SvgPanelPlacement [get]
+FS.GG.UI.Scene.SvgWorkspacePanel.Id : System.String [get]
+FS.GG.UI.Scene.SvgWorkspacePanel.Preferred : FS.GG.UI.Scene.SvgPanelPlacement [get]
+FS.GG.UI.Scene.SvgWorkspacePanel.new(System.String, FS.GG.UI.Scene.SvgPanelPlacement, FS.GG.UI.Scene.SvgPanelPlacement)
+FS.GG.UI.Scene.SvgWorkspaceState.FocusTarget : System.String [get]
+FS.GG.UI.Scene.SvgWorkspaceState.Layout : FS.GG.UI.Scene.SvgWorkspaceLayout [get]
+FS.GG.UI.Scene.SvgWorkspaceState.Mode : FS.GG.UI.Scene.SvgWorkspaceMode [get]
+FS.GG.UI.Scene.SvgWorkspaceState.Overlay : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgWorkspaceOverlay> [get]
+FS.GG.UI.Scene.SvgWorkspaceState.ViewportWidth : System.Double [get]
+FS.GG.UI.Scene.SvgWorkspaceState.new(FS.GG.UI.Scene.SvgWorkspaceMode, FS.GG.UI.Scene.SvgWorkspaceLayout, System.Double, System.String, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgWorkspaceOverlay>)
 FS.GG.UI.Scene.TargetCapabilityProfile.ProfileId : System.String [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.SupportedCapabilities : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
 FS.GG.UI.Scene.TargetCapabilityProfile.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.String>)

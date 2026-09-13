@@ -2622,8 +2622,13 @@ let private omissionLedger =
 /// Raised 533 -> 543 by SVG-INPUT-01.2: the same candidate adds one module and nine runtime types for
 /// deterministic modal resolution, sequences, injected deadlines and source-owned releases. They share
 /// .1's Preview-B publication boundary and expire with the same installed mirror readback.
+///
+/// Raised 543 -> 556 by SVG-INPUT-01.3: the unpublished Rendering candidate adds the portable workspace
+/// reducer plus catalog-derived discovery and reviewed-rebind composition (two modules and eleven types).
+/// Generated workspaces remain pinned to public 0.29.0 until Preview B, so these temporary omissions keep
+/// the teaching mirror honest and expire with the same publication/readback boundary as .1-.2.
 [<Literal>]
-let private OmissionLedgerCeiling = 543
+let private OmissionLedgerCeiling = 556
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///

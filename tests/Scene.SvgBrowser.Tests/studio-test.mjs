@@ -26,6 +26,7 @@ try {
   await page.getByRole("button",{name:"Freeform",exact:true}).click();
   await page.getByRole("button",{name:"Boundary",exact:true}).click();
   const placement=await page.evaluate(()=>window.svgStudioFixture.placement());
+  const workspace=await page.evaluate(()=>window.svgStudioFixture.workspaceJourney());
   const geometry={};
   for(const operation of ["union","intersection","difference","xor","curve"])
     geometry[operation]=await page.evaluate(operation=>window.svgStudioFixture.geometry(operation),operation);
@@ -35,10 +36,10 @@ try {
   const remounted=await page.evaluate(()=>window.svgStudioFixture.mount());
   const disposedAgain=await page.evaluate(()=>window.svgStudioFixture.dispose());
   const roots=await page.evaluate(()=>document.querySelectorAll("[data-fsgg-document-id]").length);
-  const evidence={labels,created,preview,cancelled,scene,camera,placement,resource,geometryCancelled,disposed,remounted,disposedAgain,roots};
+  const evidence={labels,created,preview,cancelled,scene,camera,placement,workspace,resource,geometryCancelled,disposed,remounted,disposedAgain,roots};
   await page.waitForFunction(()=>window.svgStudioFixture.fontStatus().ready||window.svgStudioFixture.fontStatus().diagnostic,{timeout:5000});
   const font=await page.evaluate(()=>window.svgStudioFixture.fontStatus());
   await page.evaluate(()=>window.svgStudioFixture.disposeFont());
-  if(evidence.labels.join(",")!=="Region,Boundary,Object,Rectangle,Ellipse,Polygon,Path,Group,Ungroup,Align left,Bring forward,Apply style,Grid snapping,Freeform,Undo,Redo,Apply translation"||evidence.created.Revision!==1||evidence.created.SelectionCount!==1||!evidence.preview.acceptedUnchanged||evidence.preview.during===evidence.preview.after||evidence.cancelled[0]!==evidence.cancelled[1]||evidence.scene.schema!=="fsgg.svg-scene/1"||evidence.scene.entities!==1||evidence.scene.x!==11||evidence.scene.y!==13||!evidence.camera.style.includes("matrix(2")||evidence.camera.picked!=="rectangle-1"||evidence.placement.revision!==5||evidence.placement.children!==3||!evidence.placement.freeform||!evidence.resource.embedded||evidence.resource.fonts!==1||evidence.resource.children!==1||!evidence.geometryCancelled||Object.values(geometry).some(value=>value.operations!==1||value.contours<1||!value.duplicateRefused)||geometry.difference.contours<2||!font.ready||evidence.disposed!==0||evidence.disposedAgain!==0||evidence.roots!==0)throw new Error(JSON.stringify({evidence,font,geometry}));
+  if(evidence.labels.join(",")!=="Region,Boundary,Object,Rectangle,Ellipse,Polygon,Path,Group,Ungroup,Align left,Bring forward,Apply style,Grid snapping,Freeform,Undo,Redo,Apply translation"||evidence.created.Revision!==1||evidence.created.SelectionCount!==1||!evidence.preview.acceptedUnchanged||evidence.preview.during===evidence.preview.after||evidence.cancelled[0]!==evidence.cancelled[1]||evidence.scene.schema!=="fsgg.svg-scene/1"||evidence.scene.entities!==1||evidence.scene.x!==11||evidence.scene.y!==13||!evidence.camera.style.includes("matrix(2")||evidence.camera.picked!=="rectangle-1"||evidence.placement.revision!==5||evidence.placement.children!==3||!evidence.placement.freeform||evidence.workspace.mode!=="review"||!evidence.workspace.sideCollapsed||evidence.workspace.modalFocus!=="workspace.possible-input-help"||evidence.workspace.restoredFocus!=="studio-fixture--scene"||!evidence.workspace.layoutRoundtrip||!evidence.workspace.authoringPreserved||!evidence.workspace.cameraPreserved||!evidence.resource.embedded||evidence.resource.fonts!==1||evidence.resource.children!==1||!evidence.geometryCancelled||Object.values(geometry).some(value=>value.operations!==1||value.contours<1||!value.duplicateRefused)||geometry.difference.contours<2||!font.ready||evidence.disposed!==0||evidence.disposedAgain!==0||evidence.roots!==0)throw new Error(JSON.stringify({evidence,font,geometry}));
   console.log(`svg-studio-browser: ${family}=passed repeated-mount-dispose=passed native-controls=passed cancellation=passed offline-font=passed`);
 } finally { await browser.close(); await new Promise(done=>server.close(done)); }

@@ -107,6 +107,26 @@ let placement () =
     let value=host.Value
     createObj["revision"==>value.State.Revision;"children"==>value.State.Document.Children.Length;"freeform"==>value.State.Metadata.Grid.IsNone]
 
+let workspaceJourney () =
+    let value = host.Value
+    let authoringBefore = value.State
+    let cameraBefore = value.ToolState.Camera
+    value.UpdateWorkspace(SvgWorkspaceMessage.SetMode SvgWorkspaceMode.Review) |> ignore
+    value.UpdateWorkspace(SvgWorkspaceMessage.SetViewportWidth 400.0) |> ignore
+    value.UpdateWorkspace(SvgWorkspaceMessage.OpenHelp "studio-fixture--scene") |> ignore
+    let modalFocus = value.WorkspaceState.FocusTarget
+    value.UpdateWorkspace SvgWorkspaceMessage.CloseOverlay |> ignore
+    let closed = value.WorkspaceState
+    let restored, _ = SvgWorkspace.update (SvgWorkspaceMessage.ImportLayout(SvgWorkspace.encodeLayout closed.Layout)) closed
+    createObj [
+        "mode" ==> (match closed.Mode with SvgWorkspaceMode.Review -> "review" | _ -> "other")
+        "sideCollapsed" ==> (closed.Layout.Panels |> List.filter (fun panel -> panel.Id <> "timeline") |> List.forall (fun panel -> panel.Effective = SvgPanelPlacement.Collapsed))
+        "modalFocus" ==> modalFocus
+        "restoredFocus" ==> closed.FocusTarget
+        "layoutRoundtrip" ==> (restored.Layout = closed.Layout)
+        "authoringPreserved" ==> (value.State = authoringBefore)
+        "cameraPreserved" ==> (value.ToolState.Camera = cameraBefore) ]
+
 let geometry operation =
     let path points =
         { Commands =
@@ -177,6 +197,7 @@ let api =
         "sceneRoundtrip" ==> fun () -> sceneRoundtrip()
         "camera" ==> fun () -> camera()
         "placement" ==> fun () -> placement()
+        "workspaceJourney" ==> fun () -> workspaceJourney()
         "geometry" ==> fun operation -> geometry operation
         "cancelGeometry" ==> fun () -> cancelGeometry()
         "resourceRoundtrip" ==> fun () -> resourceRoundtrip()

@@ -19,6 +19,7 @@ let scene : RetainedScene =
 [<EntryPoint>]
 let main args =
     File.WriteAllText(args[6], AuthoringCorrespondence.run "dotnet")
+    File.WriteAllText(args[7], WorkspaceCorrespondence.run ())
     let serialized, exported = verifyRoundTrip "dotnet"
     File.WriteAllText(args[2], serialized)
     File.WriteAllText(args[3], exported)

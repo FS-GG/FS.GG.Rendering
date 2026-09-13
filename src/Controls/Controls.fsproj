@@ -164,6 +164,8 @@
     <Compile Include="DataEntry2.fs" />
     <Compile Include="KeyRebind.fsi" />
     <Compile Include="KeyRebind.fs" />
+    <Compile Include="SvgWorkspaceCommands.fsi" />
+    <Compile Include="SvgWorkspaceCommands.fs" />
     <!-- Feature 191 (US1/US2): the embedded `canvas` control kind's public constructor surface.
          After Pointer (PointerSample) / Control (Control.create) / ControlPrimitives (attr keys). -->
     <Compile Include="Canvas.fsi" />
