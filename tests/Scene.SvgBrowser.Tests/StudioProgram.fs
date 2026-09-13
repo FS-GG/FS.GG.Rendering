@@ -180,6 +180,10 @@ let disposeInput () =
 let inputPads values =
     pads <- values |> Array.toList |> List.mapi (fun index pressed -> { Source = $"gamepad:{index}"; Buttons = [ pressed ] })
     inputHost.Value.PollGamepadsOnce()
+let nativeGamepads () =
+    SvgInputHost.browserGamepads ()
+    |> List.map (fun value -> createObj [ "source" ==> value.Source; "buttons" ==> List.toArray value.Buttons ])
+    |> List.toArray
 
 let geometry operation =
     let path points =
@@ -258,6 +262,7 @@ let api =
         "inputBeginCapture" ==> fun () -> inputBeginCapture()
         "disposeInput" ==> fun () -> disposeInput()
         "inputPads" ==> fun values -> inputPads values
+        "nativeGamepads" ==> fun () -> nativeGamepads()
         "geometry" ==> fun operation -> geometry operation
         "cancelGeometry" ==> fun () -> cancelGeometry()
         "resourceRoundtrip" ==> fun () -> resourceRoundtrip()

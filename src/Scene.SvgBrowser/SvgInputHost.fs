@@ -64,8 +64,8 @@ module private InputDom =
     [<Emit("cancelAnimationFrame($0)")>]
     let cancelFrame (_token: float) : unit = jsNative
 
-    [<Emit("Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).map(p => ({ Source: 'gamepad:' + p.index, Buttons: Array.from(p.buttons, b => !!b.pressed) }))")>]
-    let gamepads () : SvgGamepadSnapshot array = jsNative
+    [<Emit("Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).map(p => ['gamepad:' + p.index, Array.from(p.buttons, b => !!b.pressed)])")>]
+    let gamepads () : (string * bool array) array = jsNative
 
 [<Sealed>]
 type SvgInputHost(root: HTMLElement, catalog: InputCatalog, initialState: CommandResolverState, availableCommands: unit -> CommandId list, onEffect: CommandResolverEffect -> unit, options: SvgInputHostOptions) =
@@ -293,7 +293,10 @@ type SvgInputHost(root: HTMLElement, catalog: InputCatalog, initialState: Comman
 
 [<RequireQualifiedAccess>]
 module SvgInputHost =
-    let browserGamepads () = InputDom.gamepads () |> Array.toList
+    let browserGamepads () =
+        InputDom.gamepads ()
+        |> Array.map (fun (source, buttons) -> { Source = source; Buttons = Array.toList buttons })
+        |> Array.toList
     let defaultOptions =
         { SequenceTimeoutMilliseconds = 750
           PollGamepads = true
