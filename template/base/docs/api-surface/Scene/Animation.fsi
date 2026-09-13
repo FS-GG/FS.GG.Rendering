@@ -145,3 +145,106 @@ module AnimationState =
     /// True while the transition is still in flight
     /// (`Elapsed < Duration && Current <> Target`).
     val isActive: state: AnimationState<'a> -> bool when 'a: equality
+
+/// An untrusted animation clip accepted only through `AnimationClip.validate`.
+type AnimationClip =
+    { Id: string
+      Duration: TimeSpan
+      Tracks: (ClipProperty * ClipKeyframe list) list
+      Cues: AnimationCue list
+      Loop: ClipLoop }
+
+/// A pure clip sample at an explicit elapsed time.
+type AnimationClipSample =
+    { LocalTime: TimeSpan
+      Iteration: int
+      Direction: ClipDirection
+      Values: Map<ClipProperty, ClipValue>
+      Cues: CueOccurrence list
+      IsComplete: bool }
+
+/// A presentation cue identified independently from its payload so live playback can deduplicate it.
+type AnimationCue =
+    { Id: string
+      Time: TimeSpan
+      Payload: string }
+
+/// Controls event-cue delivery independently from visual sampling. Seek and pause never emit historical cues.
+type ClipCueMode =
+    | LiveAdvance of previousElapsed: TimeSpan
+    | Seek
+    | Paused
+
+/// The direction of the current clip iteration.
+type ClipDirection =
+    | Forward
+    | Reverse
+
+/// A located reason an animation clip could not be accepted.
+type ClipIssue =
+    | EmptyClipId
+    | InvalidDuration
+    | EmptyTracks
+    | DuplicateTrack of ClipProperty
+    | EmptyCustomProperty
+    | EmptyPathIdentity
+    | MissingKeyframes of ClipProperty
+    | InvalidKeyframeTime of ClipProperty * int
+    | InvalidKeyframeValue of ClipProperty * int
+    | MismatchedKeyframeValue of ClipProperty * int
+    | IncompatiblePathTopology of ClipProperty
+    | InvalidLoopIterations of int
+    | EmptyCueId of int
+    | DuplicateCueId of string
+    | InvalidCueTime of string
+    | UnorderedCues
+
+/// One keyframe at an absolute clip-local time. `EasingToNext` shapes the following segment.
+type ClipKeyframe =
+    { Time: TimeSpan
+      Value: ClipValue
+      EasingToNext: Easing }
+
+/// Bounded playback behavior. Iterations count complete forward or reverse passes and must be 1–10,000.
+type ClipLoop =
+    | Once
+    | Repeat of iterations: int
+    | PingPong of iterations: int
+
+/// A property addressed by a portable animation clip. Named scalar and path targets let a product
+/// bind its own presentation properties without extending the engine vocabulary.
+type ClipProperty =
+    | PositionX
+    | PositionY
+    | RotationDegrees
+    | ScaleX
+    | ScaleY
+    | Opacity
+    | Color
+    | CustomScalar of string
+    | PathMorph of string
+
+/// A typed keyframe value. A track accepts one value shape determined by its `ClipProperty`.
+type ClipValue =
+    | ScalarValue of float
+    | ColorValue of Color
+    | PathValue of (float * float) list
+
+/// One cue occurrence, including the loop iteration needed for stable deduplication.
+type CueOccurrence =
+    { Cue: AnimationCue
+      Iteration: int
+      Direction: ClipDirection }
+
+/// A clip that passed structural, numeric, topology and playback-bound validation.
+type ValidatedAnimationClip = private ValidatedAnimationClip of AnimationClip
+
+/// Validation and deterministic sampling for portable clips. The module owns no clock, renderer or callback.
+[<RequireQualifiedAccess>]
+module AnimationClip =
+    /// Sample visual values and, for `LiveAdvance`, cue occurrences in `(previousElapsed, elapsed]`.
+    val sample: elapsed: TimeSpan -> cueMode: ClipCueMode -> clip: ValidatedAnimationClip -> AnimationClipSample
+    /// Validate identities, duration, loop bounds, track types, keyframe ordering and path topology atomically.
+    val validate: clip: AnimationClip -> Result<ValidatedAnimationClip, ClipIssue list>
+    /// Recover the immutable source value of a validated clip.
+    val value: clip: ValidatedAnimationClip -> AnimationClip

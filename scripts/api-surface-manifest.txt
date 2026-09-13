@@ -1570,6 +1570,259 @@ open   System
 +      Animation.fsi val AnimationState.retarget
 +      Animation.fsi val AnimationState.value
 +      Animation.fsi val AnimationState.isActive
++      Animation.fsi type AnimationClip
++      Animation.fsi type AnimationClipSample
++      Animation.fsi type AnimationCue
++      Animation.fsi type ClipCueMode
++      Animation.fsi type ClipDirection
++      Animation.fsi type ClipIssue
++      Animation.fsi type ClipKeyframe
++      Animation.fsi type ClipLoop
++      Animation.fsi type ClipProperty
++      Animation.fsi type ClipValue
++      Animation.fsi type CueOccurrence
++      Animation.fsi type ValidatedAnimationClip
++      Animation.fsi val AnimationClip.sample
++      Animation.fsi val AnimationClip.validate
++      Animation.fsi val AnimationClip.value
+
+# ------------------------------------------------------------------------------------------
+file   Controls/SvgWorkspaceCommands.fsi
+skill  fs-gg-ui-widgets
+ns     FS.GG.UI.Controls
+pkg    FS.GG.UI.Controls
+open   FS.GG.UI.KeyboardInput
++      SvgWorkspaceCommands.fsi type SvgWorkspaceCommandRow
++      SvgWorkspaceCommands.fsi type SvgWorkspaceRebindPreview
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.ariaKeyShortcuts
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.gestureText
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.helpRows
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.paletteRows
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.pointerRows
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.previewRebind
++      SvgWorkspaceCommands.fsi val SvgWorkspaceCommands.project
+
+# ------------------------------------------------------------------------------------------
+file   KeyboardInput/CommandInput.fsi
+skill  fs-gg-keyboard-input
+ns     FS.GG.UI.KeyboardInput
+pkg    FS.GG.UI.KeyboardInput
++      CommandInput.fsi type CommandAlternative
++      CommandInput.fsi type CommandArgumentPolicy
++      CommandInput.fsi type CommandDescriptor
++      CommandInput.fsi type CommandTriggerPolicy
++      CommandInput.fsi type EffectiveInputProfile
++      CommandInput.fsi type InputBinding
++      CommandInput.fsi type InputBindingOverride
++      CommandInput.fsi type InputCatalog
++      CommandInput.fsi type InputContextDescriptor
++      CommandInput.fsi type InputGesture
++      CommandInput.fsi type InputKeyIdentity
++      CommandInput.fsi type InputModifiers
++      CommandInput.fsi type InputProfile
++      CommandInput.fsi type InputProfileDiagnostic
++      CommandInput.fsi val CommandInput.compile
++      CommandInput.fsi val CommandInput.gestureId
++      CommandInput.fsi val CommandInput.noModifiers
++      CommandInput.fsi val CommandInput.ofKeymap
++      CommandInput.fsi val CommandInput.profileSchema
++      CommandInput.fsi val InputProfileCodec.decode
++      CommandInput.fsi val InputProfileCodec.encode
++      CommandInput.fsi val InputProfileCodec.formatId
++      CommandInput.fsi val InputProfileCodec.formatVersion
+
+# ------------------------------------------------------------------------------------------
+file   KeyboardInput/CommandResolver.fsi
+skill  fs-gg-keyboard-input
+ns     FS.GG.UI.KeyboardInput
+pkg    FS.GG.UI.KeyboardInput
++      CommandResolver.fsi type CommandInputEvent
++      CommandResolver.fsi type CommandInvocation
++      CommandResolver.fsi type CommandResolverEffect
++      CommandResolver.fsi type CommandResolverObservation
++      CommandResolver.fsi type CommandResolverState
++      CommandResolver.fsi type InputEventId
++      CommandResolver.fsi type InputGesturePhase
++      CommandResolver.fsi type InputModalFrame
++      CommandResolver.fsi type InputSourceId
++      CommandResolver.fsi type OwnedCommandPress
++      CommandResolver.fsi type PendingInputSequence
++      CommandResolver.fsi val CommandResolver.init
++      CommandResolver.fsi val CommandResolver.update
+
+# ------------------------------------------------------------------------------------------
+file   Scene/Fable/Animation.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
+open   System
++      Fable/Animation.fsi type Animation
++      Fable/Animation.fsi type AnimationClip
++      Fable/Animation.fsi type AnimationClipSample
++      Fable/Animation.fsi type AnimationCue
++      Fable/Animation.fsi type AnimationState`1
++      Fable/Animation.fsi type ClipCueMode
++      Fable/Animation.fsi type ClipDirection
++      Fable/Animation.fsi type ClipIssue
++      Fable/Animation.fsi type ClipKeyframe
++      Fable/Animation.fsi type ClipLoop
++      Fable/Animation.fsi type ClipProperty
++      Fable/Animation.fsi type ClipValue
++      Fable/Animation.fsi type CueOccurrence
++      Fable/Animation.fsi type Easing
++      Fable/Animation.fsi type Transform
++      Fable/Animation.fsi type Tween`1
++      Fable/Animation.fsi type ValidatedAnimationClip
++      Fable/Animation.fsi val Animation.applyAt
++      Fable/Animation.fsi val Animation.empty
++      Fable/Animation.fsi val Animation.isSettled
++      Fable/Animation.fsi val Animation.lerpColor
++      Fable/Animation.fsi val Animation.lerpFloat
++      Fable/Animation.fsi val Animation.sampleColor
++      Fable/Animation.fsi val Animation.sampleFrames
++      Fable/Animation.fsi val AnimationClip.sample
++      Fable/Animation.fsi val AnimationClip.validate
++      Fable/Animation.fsi val AnimationClip.value
++      Fable/Animation.fsi val AnimationState.advance
++      Fable/Animation.fsi val AnimationState.create
++      Fable/Animation.fsi val AnimationState.isActive
++      Fable/Animation.fsi val AnimationState.retarget
++      Fable/Animation.fsi val AnimationState.value
++      Fable/Animation.fsi val Easing.Default
++      Fable/Animation.fsi val Easing.apply
++      Fable/Animation.fsi val Transform.identity
++      Fable/Animation.fsi val Transform.isIdentity
++      Fable/Animation.fsi val Transform.lerp
++      Fable/Animation.fsi val Transform.toPerspectiveTransform
++      Fable/Animation.fsi val Tween.progress
++      Fable/Animation.fsi val Tween.sample
+
+# ------------------------------------------------------------------------------------------
+file   Scene/SvgArt.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SvgArt.fsi type SvgArtAlignment
++      SvgArt.fsi type SvgArtError
++      SvgArt.fsi type SvgArtGuide
++      SvgArt.fsi type SvgArtPrimitive
++      SvgArt.fsi type SvgArtSiblingOrder
++      SvgArt.fsi type SvgArtState
++      SvgArt.fsi type SvgGeometryPrepared
++      SvgArt.fsi type SvgGeometryRequest
++      SvgArt.fsi type SvgGeometryResult
++      SvgArt.fsi val SvgArt.align
++      SvgArt.fsi val SvgArt.create
++      SvgArt.fsi val SvgArt.group
++      SvgArt.fsi val SvgArt.guides
++      SvgArt.fsi val SvgArt.initialState
++      SvgArt.fsi val SvgArt.insertPathPoint
++      SvgArt.fsi val SvgArt.putGradient
++      SvgArt.fsi val SvgArt.removePathPoint
++      SvgArt.fsi val SvgArt.reorder
++      SvgArt.fsi val SvgArt.replacePath
++      SvgArt.fsi val SvgArt.rotate
++      SvgArt.fsi val SvgArt.scale
++      SvgArt.fsi val SvgArt.setPresentation
++      SvgArt.fsi val SvgArt.snapPoint
++      SvgArt.fsi val SvgArt.transform
++      SvgArt.fsi val SvgArt.translate
++      SvgArt.fsi val SvgArt.ungroup
++      SvgArt.fsi val SvgGeometry.defaultMaximumDeviation
++      SvgArt.fsi val SvgGeometry.maximumSubdivisionDepth
++      SvgArt.fsi val SvgGeometry.prepare
++      SvgArt.fsi val SvgGeometry.transaction
+
+# ------------------------------------------------------------------------------------------
+file   Scene/SvgAuthoring.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SvgAuthoring.fsi type SvgAssetCatalog
++      SvgAuthoring.fsi type SvgAssetEnvelope
++      SvgAuthoring.fsi type SvgAssetReference
++      SvgAuthoring.fsi type SvgAssetRights
++      SvgAuthoring.fsi type SvgAuthoringCheckpoint
++      SvgAuthoring.fsi type SvgAuthoringError
++      SvgAuthoring.fsi type SvgAuthoringOperation
++      SvgAuthoring.fsi type SvgAuthoringPreview
++      SvgAuthoring.fsi type SvgAuthoringSnapshot
++      SvgAuthoring.fsi type SvgAuthoringState
++      SvgAuthoring.fsi type SvgAuthoringTransaction
++      SvgAuthoring.fsi type SvgFontResource
++      SvgAuthoring.fsi type SvgImportRequest
++      SvgAuthoring.fsi type SvgPrefabConflict
++      SvgAuthoring.fsi type SvgPrefabInstance
++      SvgAuthoring.fsi type SvgPrefabOverride
++      SvgAuthoring.fsi type SvgPrefabOverrideValue
++      SvgAuthoring.fsi type SvgPrefabProperty
++      SvgAuthoring.fsi type SvgResourceDocument
++      SvgAuthoring.fsi type SvgSceneEntity
++      SvgAuthoring.fsi type SvgSceneGrid
++      SvgAuthoring.fsi type SvgSceneMetadata
++      SvgAuthoring.fsi type SvgSceneProperty
++      SvgAuthoring.fsi type SvgScenePropertyValue
++      SvgAuthoring.fsi val SvgAsset.catalogSchema
++      SvgAuthoring.fsi val SvgAsset.contentHash
++      SvgAuthoring.fsi val SvgAsset.deserializeCatalog
++      SvgAuthoring.fsi val SvgAsset.resolveInstance
++      SvgAuthoring.fsi val SvgAsset.schema
++      SvgAuthoring.fsi val SvgAsset.serializeCatalog
++      SvgAuthoring.fsi val SvgAsset.validateCatalog
++      SvgAuthoring.fsi val SvgAuthoring.cancelPreview
++      SvgAuthoring.fsi val SvgAuthoring.commit
++      SvgAuthoring.fsi val SvgAuthoring.commitPreview
++      SvgAuthoring.fsi val SvgAuthoring.preview
++      SvgAuthoring.fsi val SvgAuthoring.redo
++      SvgAuthoring.fsi val SvgAuthoring.takePlaySnapshot
++      SvgAuthoring.fsi val SvgAuthoring.transactionSchema
++      SvgAuthoring.fsi val SvgAuthoring.tryCreate
++      SvgAuthoring.fsi val SvgAuthoring.tryCreateScene
++      SvgAuthoring.fsi val SvgAuthoring.undo
++      SvgAuthoring.fsi val SvgImport.importXml
++      SvgAuthoring.fsi val SvgResourceInterchange.exportSvg
++      SvgAuthoring.fsi val SvgResourceInterchange.importXml
++      SvgAuthoring.fsi val SvgResourceInterchange.notoSansLatin400
+
+# ------------------------------------------------------------------------------------------
+file   Scene/SvgScene.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SvgScene.fsi type SvgSceneEnvelope
++      SvgScene.fsi type SvgSceneKindDescriptor
++      SvgScene.fsi type SvgScenePropertyDescriptor
++      SvgScene.fsi type SvgScenePropertyKind
++      SvgScene.fsi val SvgScene.deserialize
++      SvgScene.fsi val SvgScene.migrateLegacy
++      SvgScene.fsi val SvgScene.schema
++      SvgScene.fsi val SvgScene.serialize
++      SvgScene.fsi val SvgScene.validateDescriptors
++      SvgScene.fsi val SvgScenePlacement.freeform
++      SvgScene.fsi val SvgScenePlacement.grid
+
+# ------------------------------------------------------------------------------------------
+file   Scene/SvgWorkspace.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SvgWorkspace.fsi type SvgPanelPlacement
++      SvgWorkspace.fsi type SvgWorkspaceDock
++      SvgWorkspace.fsi type SvgWorkspaceEffect
++      SvgWorkspace.fsi type SvgWorkspaceLayout
++      SvgWorkspace.fsi type SvgWorkspaceMessage
++      SvgWorkspace.fsi type SvgWorkspaceMode
++      SvgWorkspace.fsi type SvgWorkspaceOverlay
++      SvgWorkspace.fsi type SvgWorkspacePanel
++      SvgWorkspace.fsi type SvgWorkspaceState
++      SvgWorkspace.fsi val SvgWorkspace.activeContexts
++      SvgWorkspace.fsi val SvgWorkspace.decodeLayout
++      SvgWorkspace.fsi val SvgWorkspace.defaultLayout
++      SvgWorkspace.fsi val SvgWorkspace.encodeLayout
++      SvgWorkspace.fsi val SvgWorkspace.init
++      SvgWorkspace.fsi val SvgWorkspace.layoutSchema
++      SvgWorkspace.fsi val SvgWorkspace.narrowViewport
++      SvgWorkspace.fsi val SvgWorkspace.update
 
 # ------------------------------------------------------------------------------------------
 file   Scene/RetainedSvg.fsi
