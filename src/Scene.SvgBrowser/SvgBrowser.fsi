@@ -42,6 +42,7 @@ type SvgDocumentBrowserHost =
     member ExportedSvg: string
     /// Resolve the topmost semantic element using the browser's SVG paint, transform, clip and mask semantics.
     member HitTest: screenPoint: Point -> string option
+    member internal HitTestBounds: screenPoint: Point -> string option
     /// Observe declared fonts without treating browser fallback as font-fidelity success.
     member ObserveFonts: unit -> SvgBrowserFontObservation list
     /// Validate and export the replacement fully before replacing the mounted root.

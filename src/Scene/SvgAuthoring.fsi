@@ -102,6 +102,32 @@ type SvgPrefabConflict =
       Message: string }
 
 [<RequireQualifiedAccess>]
+/// Product-neutral values attached to a scene entity. Products define the meaning through descriptors.
+type SvgScenePropertyValue = Text of string | Number of float | Flag of bool | Coordinate of Point
+
+/// One bounded, typed property on a scene entity.
+type SvgSceneProperty = { Key: string; Value: SvgScenePropertyValue }
+
+/// Stable scene identity connected to exactly one document element or pinned prefab instance.
+type SvgSceneEntity =
+    { EntityId: string
+      KindId: string
+      VisualElementId: string option
+      PrefabInstanceId: string option
+      Properties: SvgSceneProperty list }
+
+/// Optional document-space grid. Both steps must be positive and finite.
+type SvgSceneGrid = { Origin: Point; Step: Point }
+
+/// Product-neutral scene metadata stored in the same authoring checkpoint as visual and asset state.
+type SvgSceneMetadata =
+    { SceneId: string
+      Layers: string list
+      Entities: SvgSceneEntity list
+      Grid: SvgSceneGrid option
+      ResourceReferences: string list }
+
+[<RequireQualifiedAccess>]
 /// One operation inside an all-or-nothing authoring transaction.
 type SvgAuthoringOperation =
     /// Replace the current typed document.
@@ -114,6 +140,8 @@ type SvgAuthoringOperation =
     | PutInstance of SvgPrefabInstance
     /// Explicitly advance all matching instances to another available revision.
     | UpdateInstances of assetId: string * fromRevision: int * toRevision: int
+    /// Replace product-neutral scene entity and placement metadata.
+    | ReplaceSceneMetadata of SvgSceneMetadata
 
 /// Named group of operations that commits as one revision and undo entry.
 type SvgAuthoringTransaction =
@@ -126,11 +154,13 @@ type SvgAuthoringSnapshot =
     { SourceRevision: int
       SerializedDocument: string
       Catalog: SvgAssetCatalog
-      Instances: SvgPrefabInstance list }
+      Instances: SvgPrefabInstance list
+      Metadata: SvgSceneMetadata }
 
 /// Complete accepted value restored by undo and redo.
 type SvgAuthoringCheckpoint =
-    { Document: SvgDocument
+    { Metadata: SvgSceneMetadata
+      Document: SvgDocument
       Catalog: SvgAssetCatalog
       Instances: SvgPrefabInstance list
       Conflicts: SvgPrefabConflict list }
@@ -141,10 +171,11 @@ type SvgAuthoringPreview =
       BaseRevision: int
       Candidate: SvgAuthoringCheckpoint }
 
-/// Portable editor state for atomic document, catalog and prefab transactions.
+/// Portable editor state for atomic scene metadata, document, catalog and prefab transactions.
 type SvgAuthoringState =
     { Revision: int
       Document: SvgDocument
+      Metadata: SvgSceneMetadata
       Catalog: SvgAssetCatalog
       Instances: SvgPrefabInstance list
       Conflicts: SvgPrefabConflict list
@@ -204,6 +235,9 @@ module SvgAuthoring =
         catalog: SvgAssetCatalog ->
         instances: SvgPrefabInstance list ->
         Result<SvgAuthoringState, SvgAuthoringError>
+    /// Validate an initial scene metadata value together with all persistent authoring values.
+    /// Validate and create one atomic scene-authoring authority.
+    val tryCreateScene: revision: int -> metadata: SvgSceneMetadata -> document: SvgDocument -> catalog: SvgAssetCatalog -> instances: SvgPrefabInstance list -> Result<SvgAuthoringState, SvgAuthoringError>
 
     /// Commit all operations or none. A successful group creates exactly one undo entry and clears redo.
     val commit:

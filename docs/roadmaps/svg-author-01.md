@@ -1,6 +1,6 @@
 # SVG-AUTHOR-01 — Vector content and scene authoring
 
-Status: active; .1–.4 source delivered; next executable window .5–.6. Route: routine.
+Status: active; .1–.5 source delivered; next executable window .6. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated consumers and external
 compatibility. This is order 5 of the
@@ -235,22 +235,248 @@ content under an existing immutable asset/revision.
   carries the exact npm locks, worker, resource manifest, WOFF2, MIT notice and full
   OFL; its portable/Fable closure remains free of browser, Game, Skia and native edges.
 
-Stop after .3–.4's native merge/readback and make .5–.6 executable from the
-delivered studio, interchange, worker, and package contracts.
+## Final executable window
 
-## Remaining outcomes
+Planning inspected Rendering PR #1303 before its accepted merge as
+`229b2dce92287b4b0eb53dd35bfa858a42c2babc` and Templates main at
+`ccfb9e08261f4fbf309ad7099adbac72c7b7ce0a`.
 
-- **SVG-AUTHOR-01.5 — Assemble grid and freeform scenes.** Add terrain/region,
-  boundary, object, path, prefab placement, snapping, properties, validation, and
-  complete history without putting product semantics into Rendering.
-- **SVG-AUTHOR-01.6 — Generated journeys and Preview-B handoff.** Compose immutable
-  local producer candidates in Templates and prove blank-to-art-to-scene,
-  shared-asset conflict, grouped history, round trip, invalid import, and clean/
-  retained adoption. Verify browser/accessibility behavior and that studio and
-  geometry-worker modules remain outside the unselected player closure.
+Reuse `SvgArt`, `SvgAuthoring`, `SvgResourceInterchange`, `SvgStudio`,
+`SvgGeometryWorkerHost` and their packaged assets. Their source and bounded
+fixture evidence do not establish a complete generated authoring experience.
+The .5 producer surface now supplies scene interchange and reusable studio seams;
+the remaining window composes them into the generated Templates experience and
+qualifies the resulting candidate packet without changing producer semantics.
 
-Feature completion requires all six outcomes and generated-candidate evidence.
-SVG-PREVIEW-B owns compatible publication and public installed repetition.
+- [x] **SVG-AUTHOR-01.5 — Assemble editable grid and freeform scenes — route: routine**
+
+  Owner: Rendering.
+
+  Depends on: .1–.4 native acceptance and merged-state readback. Recheck the final
+  #1303 source delta; ordinary repairs do not require another planning pass.
+
+  Touch set: Scene's authoring/art contracts and implementation; a portable scene
+  envelope and validation/codec surface; SvgStudio controls and retained browser
+  integration; both curated Fable/package manifests; Scene.Tests, portable
+  consumers and Scene.SvgBrowser.Tests; focused API and authoring documentation.
+
+  Contract: represent scene entities with stable identities, references to visual
+  elements or prefab instances, product-defined kind identifiers and bounded typed
+  properties. Rendering owns generic property descriptors, identity/reference
+  validation and presentation; product adapters own terrain names, traversal,
+  collision, gameplay and tactical meaning. Layers remain ordered identified
+  document groups. Grid placement is an optional adapter over continuous
+  coordinates, with explicit step/origin and snapping disabled for freeform work.
+
+  Add a versioned `fsgg.svg-scene/1` interchange envelope containing the document,
+  asset catalog, pinned instances, entity/property data and resource references.
+  Reuse existing canonical document/catalog codecs and verified font resources.
+  Preserve `fsgg.svg-document/1` and asset-catalog v1 readers. Import a legacy
+  document/catalog through an explicit additive migration with no invented product
+  semantics. Reject unknown versions, unresolved references, invalid properties,
+  hash mismatches and excessive aggregate input before changing accepted state.
+  Keep the total serialized scene envelope within 4 MiB and retain constituent
+  document/font limits. Save/load here means explicit file import/export, not
+  IndexedDB or gameplay persistence.
+
+  One accepted checkpoint and transaction must include scene metadata, document,
+  catalog and instances. Extend the existing authoring authority instead of keeping
+  a separate metadata history. A cancelled brush/drag, invalid property or failed
+  import changes none of those values. A committed multi-entity gesture creates
+  one undo entry. Preserve immutable play snapshots; the handoff is not a runtime.
+
+  Implement actual reusable scene controls for region/terrain presentation,
+  boundaries, objects, paths and prefab placement, including properties,
+  selection, layer order and grid/freeform snapping. Connect the existing art
+  operations through usable native controls: path points/Bézier handles,
+  transforms, grouping/alignment/order, presentation/gradients, catalog revisions,
+  instance overrides/conflicts, Boolean operations and verified text/resources.
+  Consumers supply product descriptors and sample content, not copied tool logic.
+
+  Complete the observed browser integration:
+  - Render `Preview.Candidate` while preserving accepted state/history; cancel
+    restores accepted presentation. Reconcile through the same retained host.
+  - Apply camera transforms to the displayed scene and inverse-transform pointer
+    coordinates consistently. Reject singular cameras; keep valid selection and
+    accessible focus synchronized after deletion, undo and import.
+  - Connect pointer gestures and equivalent numeric/keyboard controls to the same
+    transactions. Display validation, asset conflicts, font readiness and worker
+    cancellation/refusal through accessible feedback.
+  - Resolve and run `contentFiles/any/any/svg-geometry-worker.js` from the exact
+    restored package. Remove the fixture's competing algorithm implementation;
+    a thin bundler import/factory is sufficient.
+  - Commit actual successful Boolean results once. Bind completion to the current
+    revision and input content, reject stale results, and preserve the original
+    paths until commit.
+
+  Acceptance:
+  1. In a blank scene, create a region, boundary, object, edited path and two
+     instances of a newly authored asset. Exercise both an integer grid with a
+     nonzero origin and fractional free coordinates through the same public APIs.
+     A product descriptor supplies sample terrain/property meaning.
+  2. Perform the journey through real controls, including a visible drag preview,
+     Bézier edit, grouping/order/style, numeric property change and snapping.
+     Camera pan/zoom affects rendering and picking; root and unaffected node
+     identities survive edits. Keyboard controls produce equivalent accepted
+     content and preserve meaningful focus.
+  3. Update an asset by explicit new revision, preserve one instance override,
+     show and resolve a removed-target conflict, and undo/redo the complete change.
+     Invalid properties, cancelled gestures and stale worker completions leave
+     content, metadata and history unchanged.
+  4. Save/reload the scene envelope and export/reimport supported SVG with assets,
+     definitions and verified text. Preserve identities, references, entity data,
+     overrides, hashes and notices. Exercise legacy additive migration and
+     unsupported-version refusal without partial change.
+  5. Reconcile the documented C03 rendering/import/export subset against fixtures
+     for paths/Béziers, fill rules, strokes, both gradients, clips, masks, symbols
+     and text. Repair any required mismatch; do not narrow the accepted subset to
+     whatever the importer happens to support.
+  6. Run focused Scene tests, isolated packed .NET/Fable correspondence and the
+     changed Chromium/Firefox/WebKit journeys. Exercise actual assistive technology
+     for scene selection, properties and refusal feedback. Tests must drive
+     controls and observe accepted state/rendered results, not only invoke fixture
+     helpers. Retain independent geometry and hostile-input controls.
+  7. Player-only builds exclude studio modules, worker code and geometry
+     dependencies. Disposal clears owned listeners, capture, workers, timers and
+     activated font resources.
+
+  Evidence: `SvgScene` adds the bounded `fsgg.svg-scene/1` envelope over canonical
+  document/catalog bytes, pinned instances, generic entity/property metadata and
+  verified resource references; `SvgAuthoring` checkpoints metadata, document,
+  catalog and instances together. Scene.Tests covers descriptor/refusal, nonzero
+  grid and fractional freeform placement, migration, immutable snapshots/history,
+  asset revision/conflict and the complete C03 import/export subset. The isolated
+  `FS.GG.UI.Scene` candidate passes matching .NET/Fable scene correspondence and
+  retains the browser/Game/Skia/native-free closure. `SvgStudioHost` exposes reusable
+  document, grid and current-result Boolean commit seams, displays cancellable
+  candidates, retains camera transforms across reconciliation, inverse-picks, and
+  reconciles selection. Native controls cover scene roles, paths, grouping,
+  alignment/order, style, grid/freeform, undo/redo and numeric edits; the browser
+  fixture drives controls and commits successful worker output exactly once.
+  Browser packaging restores `contentFiles/any/any/svg-geometry-worker.js` from the
+  exact candidate (source SHA-256
+  `bce396c9ab6296cdfa75858dd605174f3cc06191dbe858558d5bb1e98c343ac5`)
+  with `polygon-clipping` 0.15.7 lock SHA-256
+  `a3442c491268b0365e59752b84bb452b8f595c014d0ded3ff51535927bba25bf`;
+  its competing fixture implementation is gone. Local package restore, Fable 5.17,
+  Vite build and player/studio dependency inspection pass. This container lacks
+  `libnspr4.so`, so local Chromium/Firefox/WebKit and Orca are explicitly unavailable;
+  the authoritative workflow installs all three engines plus Orca 49.8 at
+  `a4e6375bdaebbade7974b9717b353bc864602b53` and exercises selection, property and
+  refusal feedback through a real headed Chromium/AT-SPI2 process.
+
+  Delivery: merge Rendering source through its routine route and pack an exact
+  immutable local candidate set from the accepted merged revision. Record
+  versions, hashes, curated Fable interfaces, packaged worker/resource hashes and
+  npm lock identity. Do not reuse one candidate identity for different bytes.
+  This is the prerequisite packet for .6, not producer publication.
+
+- [ ] **SVG-AUTHOR-01.6 — Generated authoring journeys and Preview-B handoff — route: routine**
+
+  Owner: Templates; Rendering retains producer defects and this feature's single
+  completion ledger. .github owns the asynchronous unified progress projection.
+
+  Depends on: .5 accepted merged producer source and retained immutable candidate
+  packet. Templates may prepare composition while .5 runs, but qualification
+  requires the final packet. Producer repairs return to Rendering, followed by a
+  new exact candidate and affected receiver rerun.
+
+  Touch set: Templates-owned authoring composition for
+  `templates/fs-gg-fable-game/SvgFoundation`; a separate studio project/entry,
+  product schema and neutral sample content; candidate packaging/restore helpers;
+  `tests/composition/fable-game` authoring and retained-receiver journeys;
+  `scripts/apply-svg-foundation-preview.sh` and baseline manifests; build/use/
+  migration documentation. Change public provider pins only at their later
+  publication boundary.
+
+  Composition decision: retain `--svgFoundation true` as the explicit selection.
+  Add a separately built/opened studio entry to the selected candidate payload;
+  keep the generated player entry free of studio imports and initialization.
+  No new lifecycle, wizard default or provider activation is needed.
+
+  Use an explicit internal candidate-pack path that stages the authoring payload
+  and exact producer pins into a local template candidate. Keep ordinary released
+  template/provider pins at their published identities until Preview B. The
+  candidate staging must be reproducible from committed Templates sources and
+  the supplied packet; do not hand-edit a generated receiver to make it pass.
+
+  Build the candidate from archive inputs, not sibling ProjectReferences, source
+  links or ambient caches. Restore the worker, font manifest/bytes and notices
+  from the exact Rendering package; any generated build adapter may locate or
+  byte-copy those package assets into ignored build output, but must not maintain
+  another implementation. Use the producer's exact npm dependency/lock identity.
+  Preserve the existing public Preview-A qualification lane; add a clearly
+  identified authoring-candidate lane rather than relabel public evidence.
+
+  Generated product code owns two small content/property adapters:
+  a grid scene with regions/boundaries and a continuous scene with fractional
+  objects/paths. Both consume the same Rendering scene/studio APIs. Reuse the
+  existing tactical compatibility fixture only for recorded disclosed behavior.
+  No S.I.R. access, source dependency, inferred donor behavior or production
+  adoption claim is allowed.
+
+  Acceptance:
+  1. In an empty directory with no sibling checkouts and isolated tool/package
+     caches, install the retained local template candidate and create a selected
+     workspace. Its documented commands restore locked inputs, build/test,
+     Fable-compile, build the player and studio separately, and serve both.
+     Default unselected creation retains its supported behavior.
+  2. Run the complete blank-to-art-to-scene journey through generated UI:
+     create/edit art, save it as an asset, place two instances, author a grid and
+     freeform scene, edit properties, resolve a revision conflict, use Boolean
+     geometry and verified text, undo/redo, save/reload and export/reimport.
+     Reopen the exported font-bearing content offline with no external fetch.
+     Check actual content and rendering, not only the presence of controls.
+  3. Repeat the affected generated journey in Chromium, Firefox and WebKit.
+     Exercise one real keyboard/assistive-technology route. Reuse unchanged
+     producer evidence only with exact source/payload binding; generated
+     composition changes need their own observations.
+  4. Qualify direct creation and the supported installed SDD 1.7.0 provider route,
+     including explicit none, omitted/default sdd and typed/profile-2 receiver
+     handling. Preserve lifecycle/owner-skill materialization and existing model
+     correspondence where applicable. Retain the wizard 0.11.1 two-step path:
+     create the supported fable-game baseline, then explicitly apply the bounded
+     authoring candidate adopter. Do not claim the public wizard emits authoring.
+  5. Start retained qualification from actual public Templates 0.11.0 SVG bytes.
+     Extend the bounded adopter with that exact baseline and the new managed
+     studio/config files; preserve the established 0.10.0 route through its
+     supported staged transition. Preserve authored game/source/content files,
+     lifecycle provenance and owner guidance. Refuse modified managed-file
+     collisions before writes, inject interruption and recover, and restore the
+     original managed bytes on explicit rollback.
+  6. Distinguish workspace adoption from content migration. Read old document/
+     catalog formats through .5's explicit migration; retain originals/exports.
+     Package rollback must never reinterpret newer authored content or delete it.
+     Report unsupported scene-format downgrade explicitly.
+  7. Inspect emitted player artifacts and dependencies: no studio, geometry worker,
+     editor initialization or authoring-only npm closure. Confirm the studio uses
+     the package worker/resource hashes from the packet. Existing generated root
+     build/test and public Preview-A lanes remain valid.
+
+  Evidence: retain one candidate packet linking Rendering merged revision and
+  archives, Templates merged source and candidate archive, exact restore/tool/
+  npm locks, baseline public archives, generated-file hashes and journey results.
+  Map C03–C06 and the scoped M3/M4 authoring obligations to concrete assertions;
+  source-only, fixture-only and unavailable observations remain distinct.
+  Document commands, sample schemas, rights/notices, adoption and rollback limits.
+
+  Publication boundary: .6 qualifies local installed candidate artifacts only.
+  It does not publish Rendering or Templates, update public registry/provider
+  pins, activate a lifecycle/default, or close Release B. SVG-PREVIEW-B owns
+  coherent producer publication and required feed readback, Templates adoption/
+  publication, and public clean/upgrade repetition after its other prerequisites.
+
+  Stop condition: close .6 only after Templates native acceptance/readback and
+  all required candidate journeys pass. Repair producer gaps in Rendering and
+  receiver gaps in Templates without duplicating completion checkboxes.
+  If a required capability or observation remains missing, keep the feature open
+  and state the concrete gap; all existing checked boxes alone are insufficient.
+
+After .5 and .6 meet their stated authorities, record SVG-AUTHOR-01 complete at
+the source/generated-candidate boundary, with public installation pending
+SVG-PREVIEW-B. Update unified section 0 asynchronously after authoritative
+readback and before selecting SVG-INPUT-01 under programme-wide authorization.
+Do not expand that next feature in this plan.
 
 ## Generated workspace and release impact
 

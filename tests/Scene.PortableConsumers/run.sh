@@ -126,6 +126,8 @@ expected_fable_files = {
     "fable/SvgDocument.fs",
     "fable/SvgAuthoring.fsi",
     "fable/SvgAuthoring.fs",
+    "fable/SvgScene.fsi",
+    "fable/SvgScene.fs",
     "fable/SvgArt.fsi",
     "fable/SvgArt.fs",
 }

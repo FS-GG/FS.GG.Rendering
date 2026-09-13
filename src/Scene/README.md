@@ -99,8 +99,9 @@ let committed =
 - `SvgArt` — pure primitive/path creation and editing, transforms, grouping, alignment, ordering, presentation, gradients, document-space snapping, and guides. `SvgAuthoring` remains the sole history owner.
 - `SvgGeometry` — bounded adaptive curve flattening and identity-bound worker/result transactions for optional presentation-authoring Boolean geometry. It is not collision authority.
 - `SvgResourceInterchange` — the narrow generated embedded-WOFF2 profile. It verifies approved Noto Sans Latin 400 bytes and returns resources detached from the normal typed document; ordinary `SvgImport` still rejects CSS and data URLs.
+- `SvgScene` — the bounded `fsgg.svg-scene/1` interchange envelope for one typed document, immutable asset catalog, pinned instances, generic entity properties, optional grid and verified resource references. `SvgScenePlacement` supplies explicit-origin grid snapping and fraction-preserving freeform placement.
 
-The curated Fable package includes `SvgDocument`, `SvgAuthoring`, `SvgArt`, `SvgGeometry`, and resource-aware interchange; it has no Game, Skia, native, browser-DOM, or Controls dependency. `fsgg.svg-document/1` remains the canonical typed document format.
+The curated Fable package includes `SvgDocument`, `SvgAuthoring`, `SvgScene`, `SvgArt`, `SvgGeometry`, and resource-aware interchange; it has no Game, Skia, native, browser-DOM, or Controls dependency. `fsgg.svg-document/1` remains the canonical typed document format inside the additive scene envelope.
 
 ## Versioning
 

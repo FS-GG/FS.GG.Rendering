@@ -324,7 +324,7 @@ type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
 type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
 type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
 
-# FS.GG.UI.Scene (124 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
+# FS.GG.UI.Scene (135 — was 64; #984 paid off the Scene.Animation surface (Animation / AnimationState /
 #                  Easing / Transform / Tween modules and types). SVG-AUTHOR-01.1-.2 deliberately
 #                  keeps the 34 source-candidate authoring names below out of generated-workspace docs;
 #                  .3-.4 adds SvgArt, bounded geometry and verified resource interchange to that seam:
@@ -337,6 +337,8 @@ module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgImport
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgArt
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGeometry
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgResourceInterchange
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgScene
+module FS.GG.UI.Scene::FS.GG.UI.Scene.SvgScenePlacement
 module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
 module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
@@ -368,6 +370,15 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGeometryPrepared
 type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGeometryRequest
 type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgGeometryResult
 type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgResourceDocument
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneEntity
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneEnvelope
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneGrid
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneKindDescriptor
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneMetadata
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgSceneProperty
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgScenePropertyDescriptor
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgScenePropertyKind
+type FS.GG.UI.Scene::FS.GG.UI.Scene.SvgScenePropertyValue
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityRequirement
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityVerdict
 type FS.GG.UI.Scene::FS.GG.UI.Scene.DamageInspectionStatus

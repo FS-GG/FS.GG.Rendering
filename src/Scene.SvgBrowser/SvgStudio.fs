@@ -101,9 +101,20 @@ type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, init
     let mutable tool = initialTool
     let listeners = ResizeArray<EventTarget * string * (Event -> unit)>()
     let mutable disposed = false
+    let rec documentIds elements =
+        elements
+        |> List.collect (fun (element: SvgElement) ->
+            element.Id :: (match element.Content with SvgElementContent.Group children -> documentIds children | _ -> []))
+    let applyCamera () =
+        let camera = tool.Camera
+        documentHost.Root.setAttribute("style", $"transform-origin:0 0;transform:matrix({camera.A},{camera.B},{camera.C},{camera.D},{camera.E},{camera.F})")
     let sync next =
         state <- next
-        documentHost.Replace state.Document |> ignore
+        let displayed=next.Preview|>Option.map(fun preview->preview.Candidate.Document)|>Option.defaultValue next.Document
+        documentHost.Replace displayed |> ignore
+        let known = documentIds next.Document.Children |> Set.ofList
+        tool <- { tool with Selection = tool.Selection |> List.filter known.Contains }
+        applyCamera ()
         onChange state
     let cancelActive () =
         match state.Preview with
@@ -123,22 +134,50 @@ type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, init
     member _.ToolState = tool
     member _.GeometryWorker = workerHost
     member _.SetSelection elementIds =
-        let rec ids elements = elements |> List.collect (fun (element: SvgElement) -> element.Id :: (match element.Content with SvgElementContent.Group children -> ids children | _ -> []))
-        let known = ids state.Document.Children |> Set.ofList
+        let known = documentIds state.Document.Children |> Set.ofList
         match elementIds |> List.tryFind (known.Contains >> not) with
         | Some missing -> Error(SvgArtError.MissingElement missing)
         | None -> tool <- { tool with Selection = List.distinct elementIds }; Ok ()
     member _.SetCamera camera =
-        if not (SvgAffine.isFinite camera) then Error(SvgArtError.InvalidSelection "camera must be finite")
-        else tool <- { tool with Camera = camera }; Ok ()
+        let determinant=camera.A*camera.D-camera.B*camera.C
+        if not (SvgAffine.isFinite camera) || abs determinant<0.000000001 then Error(SvgArtError.InvalidSelection "camera must be finite and invertible")
+        else
+            tool <- { tool with Camera = camera }
+            applyCamera ()
+            Ok ()
+    member _.Pick (screenPoint:Point) =
+        let camera=tool.Camera
+        let determinant=camera.A*camera.D-camera.B*camera.C
+        if not(SvgAffine.isFinite camera)||abs determinant<0.000000001 then Error(SvgArtError.InvalidSelection "camera must be finite and invertible")
+        else
+            let x=screenPoint.X-camera.E
+            let y=screenPoint.Y-camera.F
+            let local={X=(camera.D*x-camera.C*y)/determinant;Y=(-camera.B*x+camera.A*y)/determinant}
+            Ok(documentHost.HitTestBounds local)
     member _.Preview transaction = SvgAuthoring.preview state.Revision transaction state |> Result.map sync
     member _.CommitGesture transactionId = SvgAuthoring.commitPreview state.Revision transactionId state |> Result.map sync
     member _.CancelGesture transactionId = SvgAuthoring.cancelPreview transactionId state |> Result.map sync
     member _.Undo() = SvgAuthoring.undo state.Revision state |> Result.map sync
     member _.Redo() = SvgAuthoring.redo state.Revision state |> Result.map sync
+    member _.CommitDocument(transactionId, candidate) =
+        let transaction = { Schema=SvgAuthoring.transactionSchema; Id=transactionId; Operations=[SvgAuthoringOperation.ReplaceDocument candidate] }
+        SvgAuthoring.commit state.Revision transaction state |> Result.map sync
+    member _.SetGrid(transactionId, grid) =
+        let metadata = { state.Metadata with Grid=grid }
+        let transaction = { Schema=SvgAuthoring.transactionSchema; Id=transactionId; Operations=[SvgAuthoringOperation.ReplaceSceneMetadata metadata] }
+        SvgAuthoring.commit state.Revision transaction state |> Result.map sync
     member _.ApplyNumericTransform(transactionId, transform) =
         let transaction = { Schema=SvgAuthoring.transactionSchema; Id=transactionId; Operations=[SvgAuthoringOperation.TransformElements(tool.Selection, transform)] }
         SvgAuthoring.commit state.Revision transaction state |> Result.map sync
+    member _.CommitGeometry(prepared, result) =
+        if prepared.Request.AcceptedRevision <> state.Revision then
+            Error(SvgArtError.InvalidInput [{Code="stale-geometry-result";Location="/acceptedRevision";Message="geometry result no longer names the accepted authoring revision"}])
+        else
+            SvgGeometry.transaction result prepared state.Document
+            |> Result.bind (fun transaction ->
+                match SvgAuthoring.commit state.Revision transaction state with
+                | Ok accepted -> sync accepted; Ok ()
+                | Error error -> Error(SvgArtError.InvalidSelection(sprintf "%A" error)))
     member _.Observe() = { Revision=state.Revision; SelectionCount=tool.Selection.Length; OwnedListenerCount=listeners.Count; ActiveGesture=state.Preview |> Option.map _.TransactionId; WorkerInFlight=workerHost |> Option.exists _.InFlight }
     interface IDisposable with
         member _.Dispose() =
@@ -162,7 +201,7 @@ module SvgStudio =
             toolbar.setAttribute("role", "toolbar")
             toolbar.setAttribute("aria-label", "SVG art tools")
             let buttons = ResizeArray<string * HTMLElement>()
-            for name in [ "Rectangle"; "Ellipse"; "Polygon"; "Path"; "Undo"; "Redo" ] do
+            for name in [ "Region"; "Boundary"; "Object"; "Rectangle"; "Ellipse"; "Polygon"; "Path"; "Group"; "Ungroup"; "Align left"; "Bring forward"; "Apply style"; "Grid snapping"; "Freeform"; "Undo"; "Redo" ] do
                 let button: HTMLElement = document.createElement("button")
                 button.setAttribute("type", "button")
                 button.textContent <- name
@@ -213,13 +252,18 @@ module SvgStudio =
                 selection.textContent <- "Selected element: " + id
                 announce (label + " created and selected")
             let create (name: string) =
-                let id = name.ToLowerInvariant() + "-" + string (host.State.Revision + 1)
+                let id = name.ToLowerInvariant().Replace(" ", "-") + "-" + string (host.State.Revision + 1)
+                let place point =
+                    match host.State.Metadata.Grid with
+                    | Some grid -> SvgScenePlacement.grid grid point |> Result.defaultValue point
+                    | None -> SvgScenePlacement.freeform point |> Result.defaultValue point
+                let start=place {X=8.25;Y=8.25}
                 let primitive =
                     match name with
-                    | "Rectangle" -> SvgArtPrimitive.Rectangle {X=8.0;Y=8.0;Width=24.0;Height=16.0}
-                    | "Ellipse" -> SvgArtPrimitive.Ellipse {X=8.0;Y=8.0;Width=24.0;Height=16.0}
-                    | "Polygon" -> SvgArtPrimitive.Polygon [{X=8.0;Y=24.0};{X=20.0;Y=8.0};{X=32.0;Y=24.0}]
-                    | _ -> SvgArtPrimitive.Path {Commands=[PathCommand.MoveTo {X=8.0;Y=24.0};PathCommand.QuadTo({X=20.0;Y=0.0},{X=32.0;Y=24.0});PathCommand.Close];FillType=PathFillType.Winding}
+                    | "Region" | "Rectangle" -> SvgArtPrimitive.Rectangle {X=start.X;Y=start.Y;Width=24.0;Height=16.0}
+                    | "Object" | "Ellipse" -> SvgArtPrimitive.Ellipse {X=start.X;Y=start.Y;Width=24.0;Height=16.0}
+                    | "Boundary" | "Polygon" -> SvgArtPrimitive.Polygon [place {X=8.25;Y=24.25};place {X=20.25;Y=8.25};place {X=32.25;Y=24.25}]
+                    | _ -> SvgArtPrimitive.Path {Commands=[PathCommand.MoveTo(place {X=8.25;Y=24.25});PathCommand.QuadTo(place {X=20.25;Y=0.25},place {X=32.25;Y=24.25});PathCommand.Close];FillType=PathFillType.Winding}
                 match SvgArt.create id primitive SvgDocument.defaultPresentation host.State.Document with
                 | Error error -> announce (sprintf "Validation error: %A" error)
                 | Ok candidate ->
@@ -227,11 +271,42 @@ module SvgStudio =
                     match host.Preview transaction |> Result.bind (fun () -> host.CommitGesture transaction.Id) with
                     | Ok () -> choose id name
                     | Error error -> announce (sprintf "Validation error: %A" error)
+            let commitArt (label:string) (result:Result<SvgDocument,SvgArtError>) =
+                match result with
+                | Error error -> announce (sprintf "Validation error: %A" error)
+                | Ok candidate ->
+                    match host.CommitDocument(label.ToLowerInvariant().Replace(" ", "-") + "-" + string (host.State.Revision + 1), candidate) with
+                    | Ok () -> announce (label + " completed")
+                    | Error error -> announce (sprintf "Validation error: %A" error)
             buttons |> Seq.iter (fun (name, button) ->
                 button.addEventListener("click", fun _ ->
                     match name with
                     | "Undo" -> host.Undo() |> Result.iter (fun () -> selection.textContent <- "No selected elements"; announce "Undo completed")
                     | "Redo" -> host.Redo() |> Result.iter (fun () -> announce "Redo completed")
+                    | "Group" ->
+                        let id = "group-" + string (host.State.Revision + 1)
+                        match SvgArt.group id host.ToolState.Selection host.State.Document with
+                        | Ok candidate ->
+                            match host.CommitDocument("group-gesture-" + string (host.State.Revision + 1),candidate) with
+                            | Ok () -> host.SetSelection [id] |> ignore; selection.textContent <- "Selected element: " + id; announce "Group completed"
+                            | Error error -> announce (sprintf "Validation error: %A" error)
+                        | Error error -> announce (sprintf "Validation error: %A" error)
+                    | "Ungroup" ->
+                        match host.ToolState.Selection with
+                        | [id] -> commitArt "Ungroup" (SvgArt.ungroup id host.State.Document)
+                        | _ -> announce "Validation error: select one group"
+                    | "Align left" -> commitArt "Align left" (SvgArt.align SvgArtAlignment.Left host.ToolState.Selection host.State.Document)
+                    | "Bring forward" ->
+                        match host.ToolState.Selection with
+                        | id::_ -> commitArt "Bring forward" (SvgArt.reorder id SvgArtSiblingOrder.Forward host.State.Document)
+                        | [] -> announce "Validation error: select an element"
+                    | "Apply style" ->
+                        let presentation = { SvgDocument.defaultPresentation with FillSource=Some(SvgPaintSource.Solid {Red=40uy;Green=110uy;Blue=220uy;Alpha=255uy}) }
+                        commitArt "Apply style" (SvgArt.setPresentation host.ToolState.Selection presentation host.State.Document)
+                    | "Grid snapping" ->
+                        host.SetGrid("grid-" + string (host.State.Revision + 1),Some{Origin={X=3.0;Y=5.0};Step={X=8.0;Y=8.0}})
+                        |> Result.iter(fun()->announce "Grid snapping enabled")
+                    | "Freeform" -> host.SetGrid("freeform-" + string (host.State.Revision + 1),None) |> Result.iter(fun()->announce "Freeform placement enabled")
                     | _ -> create name))
             applyTranslation.addEventListener("click", fun _ ->
                 match Double.TryParse(translateInput.value, NumberStyles.Float, CultureInfo.InvariantCulture) with

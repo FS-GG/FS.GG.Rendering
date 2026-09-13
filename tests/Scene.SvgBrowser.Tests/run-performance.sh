@@ -31,6 +31,13 @@ cat > "$work/NuGet.Config" <<CONFIG
 CONFIG
 export NUGET_PACKAGES="$packages"
 dotnet restore "$work/Browser/BrowserFixture.fsproj" --configfile "$work/NuGet.Config"
+python3 - "$feed" "$work/Browser/packaged-svg-geometry-worker.js" <<'PY'
+import pathlib, sys, zipfile
+feed, output = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+package = next(feed.glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'))
+with zipfile.ZipFile(package) as archive:
+    output.write_bytes(archive.read('contentFiles/any/any/svg-geometry-worker.js'))
+PY
 dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Browser/BrowserFixture.fsproj" --outDir "$work/Browser/generated" --lang JavaScript --noCache
 npm ci --prefix "$work/Browser"
