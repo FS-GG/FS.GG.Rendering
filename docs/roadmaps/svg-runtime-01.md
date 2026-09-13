@@ -1,8 +1,8 @@
 # SVG-RUNTIME-01 — Rendering owner ledger
 
-Status: SVG-RUNTIME-01.4 complete, qualified by its routine repository and browser-matrix gates. The Game owner revision is
-`e72be2d50dcecfe50b73b55942e0d351e46e9ebf` (FS.GG.Game#624). Templates owns SVG-RUNTIME-01.5 after this
-merge. Route: routine.
+Status: complete at the source/generated-candidate boundary. SVG-RUNTIME-01.4 is qualified by its routine
+repository and browser-matrix gates, and SVG-RUNTIME-01.5 is merged with exact installed-player evidence.
+Publication remains owned by SVG-PREVIEW-B. Route: routine.
 
 ## SVG-RUNTIME-01.4 — Browser clock and retained projection host
 
@@ -30,3 +30,14 @@ Acceptance evidence:
 
 The host adds no Game package dependency to the portable Scene layer and no clock, DOM or renderer dependency
 to Game.Core. Candidate package versions remain private pending Preview B.
+
+## SVG-RUNTIME-01.5 — Generated continuous player and Preview-B handoff
+
+Game producer repair PR #625 merged as `c6de5b83eaa3d3f14909b42c3f8c3c94558157c9`. Templates PR #471
+merged as `4a392a18ada74a87a12dd0b31aebaa7039a84b86`, consuming Rendering revision
+`50bb064c8acb0251a469ca406d193551f8e209d1` after the native gamepad bridge repair.
+
+The exact candidate gates passed generated authoring, input and runtime players in Chromium, Firefox and
+WebKit, Orca/AT-SPI, package consumers, installed typed receivers and repository composition. The continuous
+player exercises real semantic keyboard, pointer, touch and gamepad movement, authoritative pause/step/reset
+and lose/win/restart behavior while excluding Studio modules. Public pins remained unchanged.
