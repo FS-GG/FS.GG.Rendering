@@ -11,6 +11,14 @@ explicitly unbound command.
 surface as logical-key defaults; the old reader and last-wins behavior remain
 unchanged. Products still own command meanings and availability projections.
 
+`CommandResolver.update` consumes ordered input observations as a pure reducer.
+It resolves exclusive modal contexts, opt-in key-sequence prefixes and injected
+deadlines, suppresses destructive repeats, and tracks held actions by source.
+Focus loss, composition, modal takeover, context/profile replacement, source
+disconnect and disposal cancel transient work and neutralize owned holds. Hosts
+interpret the returned invocation, deadline, focus, capture and prevent-default
+effects; the package reads no clock or browser state.
+
 Package-owned keyboard input runtime, reducer, effect, diagnostics, and state display contracts for FS.GG.UI products.
 
 `FS.GG.UI.KeyboardInput` is one of the **FS.GG.UI** distribution packages — an F# / Elmish UI and 2D

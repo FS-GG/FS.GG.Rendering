@@ -14,6 +14,7 @@
     <Compile Include="Issue332ResolveConflictTests.fs" />
     <Compile Include="Issue334KeymapCodecTests.fs" />
     <Compile Include="SvgInputCatalogTests.fs" />
+    <Compile Include="CommandResolverTests.fs" />
     <Compile Include="Feature143OverlayKeyboardTests.fs" />
     <Compile Include="Feature144OverlayKeyboardEvidenceTests.fs" />
     <Compile Include="Program.fs" />

@@ -5,23 +5,29 @@ on:
     branches: [main]
     paths:
       - 'models/svg-foundation/**'
+      - 'models/input-command/**'
       - 'readiness/svg-qual-01-2/**'
+      - 'readiness/svg-input-01-2/**'
       - 'src/Scene/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
       - 'tests/KeyboardInput.PortableConsumers/**'
       - 'tests/svg-foundation/**'
+      - 'tests/input-command/**'
       - '.github/workflows/svg-retained-qualification.yml'
   pull_request:
     branches: [main]
     paths:
       - 'models/svg-foundation/**'
+      - 'models/input-command/**'
       - 'readiness/svg-qual-01-2/**'
+      - 'readiness/svg-input-01-2/**'
       - 'src/Scene/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
       - 'tests/KeyboardInput.PortableConsumers/**'
       - 'tests/svg-foundation/**'
+      - 'tests/input-command/**'
       - '.github/workflows/svg-retained-qualification.yml'
 
 concurrency:
@@ -88,6 +94,10 @@ jobs:
         run: bash tests/Scene.PortableConsumers/run.sh "$RUNNER_TEMP/svg-reducer-replay.json"
       - name: Qualify portable input profiles through packed consumers
         run: bash tests/KeyboardInput.PortableConsumers/run.sh
+      - name: Qualify bounded input command model and mutants
+        env:
+          QUINT_BIN: ${{ runner.temp }}/svg-retained-tools/quint
+        run: bash tests/input-command/qualify.sh
       - name: Upload qualification receipt
         if: always()
         uses: actions/upload-artifact@v7

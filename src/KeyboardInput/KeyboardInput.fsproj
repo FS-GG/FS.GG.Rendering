@@ -14,7 +14,7 @@
   <Target Name="CurateFableCompatibilityView" AfterTargets="CreateFablePackageFiles">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)" />
-      <_PackageFiles Include="KeyboardInput.fsi;KeyboardInput.fs;CommandInput.fsi;CommandInput.fs">
+      <_PackageFiles Include="KeyboardInput.fsi;KeyboardInput.fs;CommandInput.fsi;CommandInput.fs;CommandResolver.fsi;CommandResolver.fs">
         <Pack>true</Pack>
         <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
         <BuildAction>None</BuildAction>
@@ -38,6 +38,8 @@
     <Compile Include="KeymapCodec.fs" />
     <Compile Include="CommandInput.fsi" />
     <Compile Include="CommandInput.fs" />
+    <Compile Include="CommandResolver.fsi" />
+    <Compile Include="CommandResolver.fs" />
   </ItemGroup>
 
   <ItemGroup>

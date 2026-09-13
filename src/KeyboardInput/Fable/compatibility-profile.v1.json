@@ -9,6 +9,7 @@
   "scope": [
     "portable keyboard state, command catalog, typed gesture, profile and keymap reducers",
     "deterministic portable input-profile codec with logical and physical key identity",
+    "deterministic modal command resolution with injected sequence deadlines and source-owned held actions",
     "retained SVG intent mapping with native-edit and composition preservation"
   ]
 }
