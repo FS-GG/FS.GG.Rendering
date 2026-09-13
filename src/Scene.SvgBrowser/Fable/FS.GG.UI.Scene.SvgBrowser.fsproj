@@ -9,6 +9,8 @@
   <ItemGroup>
     <Compile Include="SvgBrowser.fsi" />
     <Compile Include="SvgBrowser.fs" />
+    <Compile Include="SvgInputHost.fsi" />
+    <Compile Include="SvgInputHost.fs" />
     <Compile Include="SvgStudio.fsi" />
     <Compile Include="SvgStudio.fs" />
   </ItemGroup>

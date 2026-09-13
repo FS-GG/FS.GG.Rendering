@@ -1,0 +1,31 @@
+{
+  "schema": "fsgg.svg-input.browser-evidence-scope/v1",
+  "milestone": "SVG-INPUT-01.4",
+  "automated": {
+    "authority": "tests/Scene.SvgBrowser.Tests/run.sh",
+    "browserFamilies": ["chromium", "firefox", "webkit"],
+    "covers": [
+      "logical-and-physical-key-identity",
+      "complete-modifiers-and-sequences",
+      "raw-unbound-capture",
+      "native-control-and-composition-preservation",
+      "pointer-and-emulated-touch-semantics",
+      "multi-source-gamepad-held-release",
+      "focus-loss-neutralization",
+      "deadline-listener-frame-disposal",
+      "workspace-mode-overlay-and-focus-restoration"
+    ]
+  },
+  "assistiveTechnology": {
+    "authority": "tests/Scene.SvgBrowser.Tests/run-orca.sh",
+    "technology": "Orca via AT-SPI2",
+    "substitutionAllowed": false,
+    "covers": ["mode-feedback", "command-palette", "possible-input-help", "rebind-conflict-feedback"]
+  },
+  "unavailableRatherThanInferred": {
+    "physicalTouchHardware": "Playwright touch observations are emulated and make no hardware claim.",
+    "physicalGamepadHardware": "Automated button snapshots use the injectable Gamepad API boundary and make no controller-hardware claim.",
+    "operatingSystemIme": "Synthetic composition events prove preservation logic but do not claim a physical IME or dead-key layout was observed.",
+    "keyboardLayoutMap": "No cross-browser, permission-stable Keyboard Layout Map observation is available in the hosted matrix; key and code are asserted from delivered native events only."
+  }
+}

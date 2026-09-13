@@ -5,6 +5,7 @@ open Browser.Dom
 open Browser.Types
 open Fable.Core
 open Fable.Core.JsInterop
+open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.Scene.SvgBrowser
 
@@ -19,20 +20,60 @@ let emptyDocument =
 
 let mutable host: SvgStudioHost option = None
 let mutable fontHost: SvgFontResourceHost option = None
+let mutable inputHost: SvgInputHost option = None
+let mutable inputEffects: string list = []
+let mutable pads: SvgGamepadSnapshot list = []
 let container: HTMLElement = document.getElementById("studio")
+do container.setAttribute("tabindex", "-1")
 
 let createState () =
     SvgAuthoring.tryCreate 0 emptyDocument {Schema=SvgAsset.catalogSchema;Assets=[]} []
     |> Result.defaultWith (fun error -> failwithf "%A" error)
 
 let mount () =
+    inputHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    inputHost <- None
     host |> Option.iter (fun value -> (value :> IDisposable).Dispose())
     host <-
         SvgStudio.mount container {MountNamespace="studio-fixture";AccessibleLabel="SVG art studio";WorkerFactory=Some workerFactory} (createState()) ignore
         |> Result.map Some
         |> Result.defaultWith (fun error -> failwithf "%A" error)
+    let noMods = CommandInput.noModifiers
+    let ctrl = { noMods with Ctrl = true }
+    let meta = { noMods with Meta = true }
+    let ctrlAlt = { noMods with Ctrl = true; Alt = true }
+    let command id label trigger =
+        { Id=id; Label=label; Contexts=["workspace"]; AvailabilityKey=None; Trigger=trigger; Argument=CommandArgumentPolicy.NoArgument; Alternatives=[CommandAlternative.Palette;CommandAlternative.Pointer label] }
+    let catalog =
+        { Contexts=[{Id="workspace";Priority=1;Exclusive=false;Overlaps=[]}]
+          Commands=[command "workspace.palette" "Palette" CommandTriggerPolicy.OncePerPress;command "workspace.physical" "Physical" CommandTriggerPolicy.OncePerPress;command "workspace.ctrl-alt" "Ctrl Alt" CommandTriggerPolicy.OncePerPress;command "workspace.sequence" "Save sequence" CommandTriggerPolicy.OncePerPress;command "workspace.pointer" "Pointer" CommandTriggerPolicy.OncePerPress;command "workspace.touch" "Touch" CommandTriggerPolicy.OncePerPress;command "workspace.gamepad" "Gamepad" CommandTriggerPolicy.Continuous]
+          ReservedGestures=[]
+          AllowTerminalPrefixes=false }
+    let profile =
+        { Schema=CommandInput.profileSchema;Id="browser";Overrides=[]
+          Defaults=[
+            {Gesture=InputGesture.KeyChord(InputKeyIdentity.LogicalKey "k",ctrl);Command="workspace.palette";Context="workspace"}
+            {Gesture=InputGesture.KeyChord(InputKeyIdentity.LogicalKey "k",meta);Command="workspace.palette";Context="workspace"}
+            {Gesture=InputGesture.KeyChord(InputKeyIdentity.PhysicalCode "KeyQ",noMods);Command="workspace.physical";Context="workspace"}
+            {Gesture=InputGesture.KeyChord(InputKeyIdentity.LogicalKey "z",ctrlAlt);Command="workspace.ctrl-alt";Context="workspace"}
+            {Gesture=InputGesture.KeySequence [InputKeyIdentity.LogicalKey "x",ctrl;InputKeyIdentity.LogicalKey "s",ctrl];Command="workspace.sequence";Context="workspace"}
+            {Gesture=InputGesture.Pointer "primary";Command="workspace.pointer";Context="workspace"}
+            {Gesture=InputGesture.Touch "primary";Command="workspace.touch";Context="workspace"}
+            {Gesture=InputGesture.Gamepad "button-0";Command="workspace.gamepad";Context="workspace"}] }
+    let effective = CommandInput.compile catalog profile |> Result.defaultWith (fun issues -> failwithf "%A" issues)
+    let effectText = function
+        | CommandResolverEffect.InvokeCommand value -> "invoke:" + value.Command
+        | CommandResolverEffect.HeldActionChanged(command, held) -> $"held:{command}:{held}"
+        | CommandResolverEffect.PreventDefault _ -> "prevent"
+        | CommandResolverEffect.CapturedGesture gesture -> "captured:" + CommandInput.gestureId gesture
+        | CommandResolverEffect.ResolverDiagnostic code -> "diagnostic:" + code
+        | _ -> "host"
+    inputEffects <- []
+    inputHost <- Some(new SvgInputHost(container,catalog,CommandResolver.init ["workspace"] effective,(fun () -> catalog.Commands |> List.map _.Id),(effectText >> fun value -> inputEffects <- inputEffects @ [value]),{SvgInputHost.defaultOptions with PollGamepads=false;Gamepads=(fun () -> pads)}))
 
 let dispose () =
+    inputHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    inputHost <- None
     host |> Option.iter (fun value -> (value :> IDisposable).Dispose())
     host <- None
 
@@ -127,6 +168,19 @@ let workspaceJourney () =
         "authoringPreserved" ==> (value.State = authoringBefore)
         "cameraPreserved" ==> (value.ToolState.Camera = cameraBefore) ]
 
+let inputReset () = inputEffects <- []
+let inputObserved () = inputEffects |> List.toArray
+let inputLifecycle () = inputHost.Value.Observe()
+let inputBeginCapture () = inputHost.Value.Update(CommandResolverObservation.BeginCapture "studio") |> ignore
+let disposeInput () =
+    let value = inputHost.Value
+    (value :> IDisposable).Dispose()
+    inputHost <- None
+    value.Observe()
+let inputPads values =
+    pads <- values |> Array.toList |> List.mapi (fun index pressed -> { Source = $"gamepad:{index}"; Buttons = [ pressed ] })
+    inputHost.Value.PollGamepadsOnce()
+
 let geometry operation =
     let path points =
         { Commands =
@@ -198,6 +252,12 @@ let api =
         "camera" ==> fun () -> camera()
         "placement" ==> fun () -> placement()
         "workspaceJourney" ==> fun () -> workspaceJourney()
+        "inputReset" ==> fun () -> inputReset()
+        "inputObserved" ==> fun () -> inputObserved()
+        "inputLifecycle" ==> fun () -> inputLifecycle()
+        "inputBeginCapture" ==> fun () -> inputBeginCapture()
+        "disposeInput" ==> fun () -> disposeInput()
+        "inputPads" ==> fun values -> inputPads values
         "geometry" ==> fun operation -> geometry operation
         "cancelGeometry" ==> fun () -> cancelGeometry()
         "resourceRoundtrip" ==> fun () -> resourceRoundtrip()

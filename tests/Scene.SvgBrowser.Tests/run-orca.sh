@@ -60,8 +60,12 @@ required = {
     "studioRectangleControl": "rectangle" in joined,
     "studioSelection": "rectangle created and selected" in joined,
     "studioValidation": "validation error" in joined and "finite translation" in joined,
+    "workspaceMode": "review mode" in joined and "mode: review" in joined,
+    "workspacePalette": "command palette" in joined,
+    "workspaceHelp": "possible input help" in joined,
+    "workspaceRebind": "rebind command" in joined and "conflict feedback" in joined,
 }
-expected_atspi = {"SVG foundation scene", "Alpha unit", "Beta unit", "Rectangle", "Translate X", "Apply translation"}
+expected_atspi = {"SVG foundation scene", "Alpha unit", "Beta unit", "Rectangle", "Translate X", "Apply translation", "Review mode", "Open command palette", "Command palette", "Open possible input help", "Possible input help", "Rebind selected command", "Rebind command"}
 atspi_names = {entry["name"] for entry in atspi if entry.get("focusable") is True}
 atspi_agreement = expected_atspi.issubset(atspi_names)
 document_speech = "svg foundation browser fixture" in joined
@@ -76,6 +80,10 @@ studio_agreement = (
     and journey["studio"]["selectionCount"] == 1
     and journey["studio"]["selectionFeedback"] == "Selected element: rectangle-1"
     and journey["studio"]["validationFeedback"] == "Validation error: enter a finite translation for the current selection"
+    and journey["studio"]["modeFeedback"] == "Mode: Review"
+    and "Available workspace commands" in journey["studio"]["overlays"]["palette"]
+    and "Shortcuts update" in journey["studio"]["overlays"]["help"]
+    and "Conflict feedback" in journey["studio"]["overlays"]["rebind"]
 )
 result = "pass" if document_speech and atspi_agreement and negative and studio_agreement else "fail"
 version = os.environ.get("SVG_SCENE_ORCA_VERSION", "system-orca")

@@ -121,21 +121,47 @@ type SvgStudioHost(root: HTMLElement, documentHost: SvgDocumentBrowserHost, init
         match state.Preview with
         | Some preview -> SvgAuthoring.cancelPreview preview.TransactionId state |> Result.iter sync
         | None -> ()
+    let show selector visible =
+        match root.querySelector selector with
+        | null -> ()
+        | element -> if visible then element.removeAttribute("hidden") else element.setAttribute("hidden", "")
+    let syncWorkspaceDom () =
+        match root.querySelector("[data-fsgg-workspace-mode-status]") with
+        | null -> ()
+        | element -> element.textContent <- $"Mode: {workspace.Mode}"
+        for mode in [ "Create"; "Arrange"; "Play"; "Review" ] do
+            match root.querySelector($"[data-fsgg-workspace-mode='{mode}']") with
+            | null -> ()
+            | element -> element.setAttribute("aria-pressed", (string (string workspace.Mode = mode)).ToLowerInvariant())
+        show "[data-fsgg-workspace-overlay='palette']" (match workspace.Overlay with Some(SvgWorkspaceOverlay.CommandPalette _) -> true | _ -> false)
+        show "[data-fsgg-workspace-overlay='help']" (match workspace.Overlay with Some(SvgWorkspaceOverlay.PossibleInputHelp _) -> true | _ -> false)
+        show "[data-fsgg-workspace-overlay='rebind']" (match workspace.Overlay with Some(SvgWorkspaceOverlay.RebindCommand _) -> true | _ -> false)
     let transitionWorkspace message =
         let next, effects = SvgWorkspace.update message workspace
         workspace <- next
+        syncWorkspaceDom ()
         effects
         |> List.iter (function
             | SvgWorkspaceEffect.RequestFocus target ->
-                match document.getElementById target with
-                | null -> ()
-                | element -> element.focus()
+                let local =
+                    match target with
+                    | "workspace.command-palette" -> root.querySelector("[data-fsgg-focus-target='workspace.command-palette']")
+                    | "workspace.possible-input-help" -> root.querySelector("[data-fsgg-focus-target='workspace.possible-input-help']")
+                    | "workspace.rebind" -> root.querySelector("[data-fsgg-focus-target='workspace.rebind']")
+                    | _ -> null
+                if isNull local then
+                    match document.getElementById target with
+                    | null -> ()
+                    | element -> element.focus()
+                else
+                    (local :?> HTMLElement).focus()
             | _ -> ())
         effects
     let listen (target: EventTarget) name (handler: Event -> unit) =
         target.addEventListener(name, handler)
         listeners.Add(target, name, handler)
     do
+        syncWorkspaceDom ()
         listen (root :> EventTarget) "keydown" (fun event ->
             let key = event :?> KeyboardEvent
             if key.key = "Escape" then
@@ -211,6 +237,7 @@ module SvgStudio =
         match SvgBrowser.mountDocument container options.MountNamespace initialState.Document with
         | Error error -> Error error
         | Ok documentHost ->
+            let sceneFocus = options.MountNamespace + "--scene"
             let root: HTMLElement = document.createElement("section")
             root.className <- "fsgg-svg-studio"
             root.setAttribute("aria-label", options.AccessibleLabel)
@@ -255,18 +282,74 @@ module SvgStudio =
             properties.appendChild status |> ignore
             root.appendChild toolbar |> ignore
             root.appendChild properties |> ignore
+            let workspaceToolbar: HTMLElement = document.createElement("div")
+            workspaceToolbar.setAttribute("role", "toolbar")
+            workspaceToolbar.setAttribute("aria-label", "Workspace controls")
+            let workspaceButtons = ResizeArray<string * HTMLElement>()
+            for name in [ "Create"; "Arrange"; "Play"; "Review" ] do
+                let button: HTMLElement = document.createElement("button")
+                button.setAttribute("type", "button")
+                button.setAttribute("aria-label", name + " mode")
+                button.setAttribute("data-fsgg-workspace-mode", name)
+                button.textContent <- name
+                workspaceToolbar.appendChild button |> ignore
+                workspaceButtons.Add(name, button)
+            let overlayButtons = ResizeArray<string * HTMLElement>()
+            for key, label in [ "palette", "Open command palette"; "help", "Open possible input help"; "rebind", "Rebind selected command" ] do
+                let button: HTMLElement = document.createElement("button")
+                button.setAttribute("type", "button")
+                button.setAttribute("aria-label", label)
+                button.textContent <- label
+                workspaceToolbar.appendChild button |> ignore
+                overlayButtons.Add(key, button)
+            let modeStatus: HTMLElement = document.createElement("output")
+            modeStatus.setAttribute("role", "status")
+            modeStatus.setAttribute("aria-live", "polite")
+            modeStatus.setAttribute("data-fsgg-workspace-mode-status", "")
+            workspaceToolbar.appendChild modeStatus |> ignore
+            root.appendChild workspaceToolbar |> ignore
+            let overlay key label target content =
+                let panel: HTMLElement = document.createElement("section")
+                panel.setAttribute("role", "dialog")
+                panel.setAttribute("aria-modal", "true")
+                panel.setAttribute("aria-label", label)
+                panel.setAttribute("data-fsgg-workspace-overlay", key)
+                panel.setAttribute("data-fsgg-focus-target", target)
+                panel.setAttribute("tabindex", "-1")
+                panel.setAttribute("hidden", "")
+                panel.textContent <- content
+                root.appendChild panel |> ignore
+                panel
+            let palette = overlay "palette" "Command palette" "workspace.command-palette" "Command palette. Available workspace commands."
+            let help = overlay "help" "Possible input help" "workspace.possible-input-help" "Possible input help. Shortcuts update with the current mode."
+            let rebind = overlay "rebind" "Rebind command" "workspace.rebind" "Rebind command. Press a new input. Conflict feedback: no displacement."
             buttons
             |> Seq.iter (fun (name, button) ->
                 if name = "Rectangle" then
                     button.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status"))
             applyTranslation.setAttribute("aria-describedby", "fsgg-svg-studio-selection fsgg-svg-studio-status")
             container.insertBefore(root, documentHost.Root) |> ignore
-            let sceneFocus = options.MountNamespace + "--scene"
             documentHost.Root.id <- sceneFocus
             documentHost.Root.setAttribute("tabindex", "0")
             let worker = options.WorkerFactory |> Option.map (fun factory -> new SvgGeometryWorkerHost(factory))
             let workspace = { SvgWorkspace.init SvgWorkspaceMode.Create window.innerWidth with FocusTarget = sceneFocus }
             let host = new SvgStudioHost(root, documentHost, initialState, SvgArt.initialState, workspace, worker, onChange)
+            workspaceButtons
+            |> Seq.iter (fun (name, button) ->
+                button.addEventListener("click", fun _ ->
+                    let mode = match name with "Arrange" -> SvgWorkspaceMode.Arrange | "Play" -> SvgWorkspaceMode.Play | "Review" -> SvgWorkspaceMode.Review | _ -> SvgWorkspaceMode.Create
+                    host.UpdateWorkspace(SvgWorkspaceMessage.SetMode mode) |> ignore))
+            overlayButtons
+            |> Seq.iter (fun (key, button) ->
+                button.addEventListener("click", fun _ ->
+                    let message =
+                        match key with
+                        | "help" -> SvgWorkspaceMessage.OpenHelp button.id
+                        | "rebind" -> SvgWorkspaceMessage.BeginRebind("workspace.selected", button.id)
+                        | _ -> SvgWorkspaceMessage.OpenPalette button.id
+                    host.UpdateWorkspace message |> ignore))
+            for index, (_, button) in workspaceButtons |> Seq.indexed do button.id <- $"{options.MountNamespace}--workspace-mode-{index}"
+            for key, button in overlayButtons do button.id <- $"{options.MountNamespace}--workspace-{key}"
             let announce (message: string) = status.textContent <- message
             let choose (id: string) (label: string) =
                 host.SetSelection [id] |> ignore

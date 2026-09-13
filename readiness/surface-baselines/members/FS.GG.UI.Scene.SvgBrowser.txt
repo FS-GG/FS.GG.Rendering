@@ -39,9 +39,29 @@ FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Replace(FS.GG.UI.Scene.SvgDocum
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Root : Browser.Types.Element [get]
 FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Diagnostic : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Ready : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot.Buttons : Microsoft.FSharp.Collections.FSharpList<System.Boolean> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot.Source : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot.new(System.String, Microsoft.FSharp.Collections.FSharpList<System.Boolean>)
 FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.Cancel() : System.Void
 FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.InFlight : System.Boolean [get]
 FS.GG.UI.Scene.SvgBrowser.SvgGeometryWorkerHost.Start(FS.GG.UI.Scene.SvgGeometryPrepared, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgGeometryResult, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, System.String>
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.PollGamepadsOnce() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.State : FS.GG.UI.KeyboardInput.CommandResolverState [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.Update(FS.GG.UI.KeyboardInput.CommandResolverObservation) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandResolverEffect>
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.browserGamepads() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot>
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.defaultOptions : FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHost.new(Browser.Types.HTMLElement, FS.GG.UI.KeyboardInput.InputCatalog, FS.GG.UI.KeyboardInput.CommandResolverState, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Collections.FSharpList<System.String>>, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.KeyboardInput.CommandResolverEffect, Microsoft.FSharp.Core.Unit>, FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions)
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.GamepadPollScheduled : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.IsDisposed : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.OwnedDeadlineCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.OwnedSourceCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostObservation.new(System.Int32, System.Int32, System.Boolean, System.Int32, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.Gamepads : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.PollGamepads : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.SequenceTimeoutMilliseconds : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.new(System.Int32, System.Boolean, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot>>)
 FS.GG.UI.Scene.SvgBrowser.SvgStudio.activateFont(FS.GG.UI.Scene.SvgFontResource) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>
 FS.GG.UI.Scene.SvgBrowser.SvgStudio.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgStudioOptions, FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgAuthoringState, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgStudioHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ApplyNumericTransform(System.String, FS.GG.UI.Scene.SvgAffine) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
