@@ -2627,8 +2627,12 @@ let private omissionLedger =
 /// reducer plus catalog-derived discovery and reviewed-rebind composition (two modules and eleven types).
 /// Generated workspaces remain pinned to public 0.29.0 until Preview B, so these temporary omissions keep
 /// the teaching mirror honest and expire with the same publication/readback boundary as .1-.2.
+///
+/// Lowered 569 -> 472 by SVG-PREVIEW-B.1: the 0.30 release mirror now teaches all 97 temporary module/type
+/// omissions introduced by SVG authoring, input, workspace and clip-animation work. The remaining ledger
+/// entries retain their earlier, unrelated curation decisions.
 [<Literal>]
-let private OmissionLedgerCeiling = 569
+let private OmissionLedgerCeiling = 472
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
