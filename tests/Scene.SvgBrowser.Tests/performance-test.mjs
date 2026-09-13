@@ -20,6 +20,9 @@ const mutant = argument("--mutant");
 const sourceDigest = argument("--source-digest", "unavailable");
 const sourceManifestPath = argument("--source-manifest");
 if (!sourceManifestPath) throw new Error("--source-manifest is required");
+const measurementContractPath = argument("--measurement-contract");
+if (!measurementContractPath) throw new Error("--measurement-contract is required");
+const measurementContract = JSON.parse(readFileSync(measurementContractPath, "utf8"));
 const sourceManifest = readFileSync(sourceManifestPath, "utf8").trimEnd().split("\n").filter(Boolean).map((line) => {
   const [digest, path] = line.split("\t");
   return { path, sha256: `sha256:${digest}` };
@@ -48,21 +51,27 @@ const meminfo = Object.fromEntries(readFileSync("/proc/meminfo", "utf8").split("
 }));
 const governorPath = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
 const governor = existsSync(governorPath) ? readFileSync(governorPath, "utf8").trim() : null;
+const cpuPressurePath = "/sys/fs/cgroup/cpu.pressure";
+const cpuStatPath = "/sys/fs/cgroup/cpu.stat";
+const cpuPressure = () => Number(readFileSync(cpuPressurePath, "utf8").match(/^some avg10=([0-9.]+)/m)?.[1]);
+const cpuStat = () => Object.fromEntries(readFileSync(cpuStatPath, "utf8").trim().split("\n").map((line) => { const [key, value] = line.split(/\s+/); return [key, Number(value)]; }));
 const osRelease = parseOsRelease();
 const executable = chromium.executablePath();
 const executableSha256 = sha256(readFileSync(executable));
 const startLoad = loadavg();
+const startCpuPressureAvg10 = cpuPressure();
+const startCpuStat = cpuStat();
 const referencePredicates = {
   platform: platform() === "linux",
   architecture: process.arch === "x64",
-  distributionBuild: osRelease.VERSION_ID === "20260906.0.587075",
-  kernel: release() === "7.2.2-arch1-1",
-  cpu: cpus()[0]?.model === "AMD Ryzen 9 7900 12-Core Processor",
-  logicalCpuCount: cpus().length === 24,
-  memoryBytes: totalmem() === 66509987840,
-  noSwap: meminfo.SwapTotal === 0,
-  governor: governor === "powersave",
-  startOneMinuteLoad: startLoad[0] <= 1.0,
+  distributionBuild: `${osRelease.NAME} ${osRelease.VERSION_ID}` === measurementContract.referenceHost.distribution,
+  kernel: release() === measurementContract.referenceHost.kernel,
+  cpu: cpus()[0]?.model === measurementContract.referenceHost.cpu,
+  logicalCpuCount: cpus().length === measurementContract.referenceHost.logicalCpuCount,
+  memoryBytes: totalmem() === measurementContract.referenceHost.memoryBytes,
+  noSwap: meminfo.SwapTotal === measurementContract.referenceHost.swapBytes,
+  governor: governor === measurementContract.referenceHost.governor,
+  startCgroupCpuPressure: startCpuPressureAvg10 <= measurementContract.referenceHost.cgroupCpuPressureAvg10Maximum,
 };
 if (mode === "reference" && Object.values(referencePredicates).some((value) => !value)) {
   throw new Error(`reference host predicates failed: ${JSON.stringify({ referencePredicates, startLoad })}`);
@@ -131,7 +140,7 @@ if (mutant) {
 }
 
 const startupRuns = [];
-for (let run = 0; run < 3; run += 1) {
+for (let run = 0; run < measurementContract.method.independentRuns; run += 1) {
   const started = performance.now();
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
@@ -149,9 +158,9 @@ for (let run = 0; run < 3; run += 1) {
 
 const workloadRuns = {};
 let interactionIdentity;
-for (const [kind, budget] of [["ordinary", 100], ["dense", 150]]) {
+for (const [kind, budget] of [["ordinary", measurementContract.thresholds.ordinaryInputToPresentedCaptureP95Milliseconds], ["dense", measurementContract.thresholds.denseInputToPresentedCaptureP95Milliseconds]]) {
   workloadRuns[kind] = [];
-  for (let run = 0; run < 3; run += 1) {
+  for (let run = 0; run < measurementContract.method.independentRuns; run += 1) {
     const { context, page } = await newPage();
     const cdp = await context.newCDPSession(page);
     const mountStageMs = await page.evaluate((value) => { const start = performance.now(); window.svgFoundation.performanceMount(value); return performance.now() - start; }, kind);
@@ -162,18 +171,22 @@ for (const [kind, budget] of [["ordinary", 100], ["dense", 150]]) {
         definitions: new Map([...root.querySelectorAll("defs > [id]")].map((node) => [node.id, node])),
       };
     });
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < measurementContract.method.warmupsDiscardedPerRun; index += 1) {
       await page.evaluate((value) => window.svgFoundation.performanceSelect(value), index);
       const box = await page.locator(`[data-fsgg-element-id='object-${index}']`).boundingBox();
       await cdp.send("Page.captureScreenshot", { format: "png", optimizeForSpeed: true, fromSurface: true, clip: { x: box.x, y: box.y, width: Math.max(1, box.width), height: Math.max(1, box.height), scale: 1 } });
     }
+    const captureBoxes = await page.evaluate((count) => Array.from({ length: count }, (_, index) => {
+      const box = document.querySelector(`[data-fsgg-element-id='object-${index}']`).getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }), kind === "dense" ? 200 : 100);
     const raw = [];
-    for (let index = 0; index < 200; index += 1) {
+    for (let index = 0; index < measurementContract.method.samplesPerRun; index += 1) {
       const selected = index % (kind === "dense" ? 200 : 100);
       const started = performance.now();
       const reconcileMs = await page.evaluate((value) => { const start = performance.now(); const error = window.svgFoundation.performanceSelect(value); if (error !== null) throw new Error(error); return performance.now() - start; }, selected);
-      const callbackMs = await page.evaluate((start) => new Promise((done) => requestAnimationFrame(() => done(performance.now() - start))), await page.evaluate(() => performance.now()));
-      const box = await page.locator(`[data-fsgg-element-id='object-${selected}']`).boundingBox();
+      const callbackMs = await page.evaluate(() => { const start = performance.now(); return new Promise((done) => requestAnimationFrame(() => done(performance.now() - start))); });
+      const box = captureBoxes[selected];
       await cdp.send("Page.captureScreenshot", { format: "png", optimizeForSpeed: true, fromSurface: true, clip: { x: box.x, y: box.y, width: Math.max(1, box.width), height: Math.max(1, box.height), scale: 1 } });
       raw.push({ sample: index, selected, reconcileMs: rounded(reconcileMs), callbackToNextFrameMs: rounded(callbackMs), inputToPresentedCaptureMs: rounded(performance.now() - started) });
     }
@@ -185,9 +198,9 @@ for (const [kind, budget] of [["ordinary", 100], ["dense", 150]]) {
     const values = raw.map((sample) => sample.inputToPresentedCaptureMs);
     const summary = summarize(values);
     if (mode === "reference" && summary.p95 > budget) throw new Error(`${kind} p95 ${summary.p95}ms exceeds ${budget}ms`);
-    workloadRuns[kind].push({ run, warmupsDiscarded: 5, sampleCount: raw.length, mountStageMs: rounded(mountStageMs), presentationWitness: "Playwright SVG element screenshot completed after the observed update", budgetMilliseconds: budget, budgetDisposition: mode === "reference" ? "reference-accepted" : "diagnostic-only", summary, raw, identity });
+    workloadRuns[kind].push({ run, warmupsDiscarded: measurementContract.method.warmupsDiscardedPerRun, sampleCount: raw.length, mountStageMs: rounded(mountStageMs), presentationWitness: "Playwright SVG element screenshot completed after the observed update", budgetMilliseconds: budget, budgetDisposition: mode === "reference" ? "reference-accepted" : "diagnostic-only", summary, raw, identity });
     if (kind === "ordinary" && run === 0) {
-      const extra = await page.evaluate(async () => {
+      const extra = await page.evaluate(async (idleSeconds) => {
         const root = document.querySelector("#performance-fixture svg");
         const stableObjects = new Map([...root.querySelectorAll("[data-fsgg-element-id^='object-']")].filter((node) => /^object-\d+$/.test(node.getAttribute("data-fsgg-element-id"))).map((node) => [node.getAttribute("data-fsgg-element-id"), node]));
         let mutations = 0;
@@ -196,22 +209,77 @@ for (const [kind, budget] of [["ordinary", 100], ["dense", 150]]) {
         let scheduledFrames = 0;
         const originalRaf = window.requestAnimationFrame;
         window.requestAnimationFrame = (...args) => { scheduledFrames += 1; return originalRaf(...args); };
-        await new Promise((done) => setTimeout(done, 10000));
+        await new Promise((done) => setTimeout(done, idleSeconds * 1000));
         observer.disconnect();
         window.requestAnimationFrame = originalRaf;
-        const idle = { seconds: 10, scheduledFrames, mutationRecords: mutations, objectRebuilds: [...stableObjects].filter(([id, node]) => document.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) !== node).length };
+        const idle = { seconds: idleSeconds, scheduledFrames, mutationRecords: mutations, objectRebuilds: [...stableObjects].filter(([id, node]) => document.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) !== node).length };
         for (let index = 0; index < 100; index += 1) window.svgFoundation.performanceCamera(index);
         const afterCamera = [...stableObjects].filter(([id, node]) => document.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) !== node).length;
         for (let index = 0; index < 100; index += 1) window.svgFoundation.performanceRevise(index % 100);
         const afterRevisions = [...stableObjects].filter(([id, node]) => id !== `object-${99}` && document.querySelector(`[data-fsgg-element-id='${CSS.escape(id)}']`) !== node).length;
         return { idle, cameraChanges: 100, unaffectedObjectRebuildsAfterCamera: afterCamera, oneObjectRevisions: 100, unaffectedObjectRebuildsAfterRevisions: afterRevisions };
-      });
+      }, measurementContract.method.idleSeconds);
       if (extra.idle.scheduledFrames !== 0 || extra.idle.mutationRecords !== 0 || extra.idle.objectRebuilds !== 0 || extra.unaffectedObjectRebuildsAfterCamera !== 0 || extra.unaffectedObjectRebuildsAfterRevisions !== 0) throw new Error(`idle/interaction retention gate: ${JSON.stringify(extra)}`);
       interactionIdentity = extra;
     }
     await context.close();
   }
 }
+
+const extentRuns = {};
+const extentNodeCounts = {};
+for (const kind of ["extent-near", "extent-far"]) {
+  extentRuns[kind] = [];
+  for (let run = 0; run < measurementContract.method.independentRuns; run += 1) {
+    const { context, page } = await newPage();
+    await page.evaluate((value) => window.svgFoundation.performanceMount(value), kind);
+    for (let index = 0; index < measurementContract.method.warmupsDiscardedPerRun; index += 1) await page.evaluate((value) => window.svgFoundation.performanceSelect(value), index);
+    const raw = [];
+    for (let index = 0; index < measurementContract.method.samplesPerRun; index += 1) {
+      const started = performance.now();
+      await page.evaluate((value) => { const error = window.svgFoundation.performanceSelect(value); if (error !== null) throw new Error(error); }, index % 100);
+      await page.locator("#performance-fixture svg").screenshot({ type: "png" });
+      raw.push(rounded(performance.now() - started));
+    }
+    const observation = await page.evaluate(() => window.svgFoundation.performanceObserve());
+    extentNodeCounts[kind] = observation.nodes;
+    extentRuns[kind].push({ run, warmupsDiscarded: measurementContract.method.warmupsDiscardedPerRun, sampleCount: raw.length, summary: summarize(raw), raw, observation });
+    await context.close();
+  }
+}
+const extentNearP95 = Math.max(...extentRuns["extent-near"].map((run) => run.summary.p95));
+const extentFarP95 = Math.max(...extentRuns["extent-far"].map((run) => run.summary.p95));
+const extentCostRatio = rounded(extentFarP95 / extentNearP95);
+const extentLiveNodeGrowth = extentNodeCounts["extent-far"] - extentNodeCounts["extent-near"];
+if (mode === "reference" && (extentCostRatio > measurementContract.thresholds.worldExtentCostRatioMaximum || extentLiveNodeGrowth > measurementContract.thresholds.worldExtentLiveNodeGrowthMaximum)) throw new Error(`world-extent gate: ${JSON.stringify({ extentNearP95, extentFarP95, extentCostRatio, extentLiveNodeGrowth })}`);
+
+const { context: continuousContext, page: continuousPage } = await newPage();
+await continuousPage.evaluate(() => { window.svgFoundation.animationMount(); window.svgFoundation.animationStartContinuous(); });
+const continuous = await continuousPage.evaluate(async (continuousJourneySeconds) => {
+  const durationMilliseconds = continuousJourneySeconds * 1000;
+  const intervals = [];
+  let previous = performance.now();
+  const started = previous;
+  await new Promise((done) => {
+    const frame = (now) => {
+      intervals.push(now - previous);
+      previous = now;
+      if (now - started >= durationMilliseconds) done(); else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  intervals.shift();
+  const missed = intervals.filter((value) => value > 25).length;
+  const animation = window.svgFoundation.animationObserve();
+  return { durationMilliseconds, frameCount: intervals.length, missedFrameCount: missed, missedFrameRatio: missed / intervals.length, intervalMilliseconds: intervals, animation };
+}, measurementContract.method.continuousJourneySeconds);
+continuous.missedFrameRatio = rounded(continuous.missedFrameRatio);
+if (!continuous.animation.transform || continuous.animation.events.length < 100) throw new Error(`continuous animation did not produce retained coordinate samples: ${JSON.stringify(continuous.animation)}`);
+if (mode === "reference" && continuous.missedFrameRatio > measurementContract.thresholds.missedFrameRatioMaximum) throw new Error(`continuous missed-frame gate: ${JSON.stringify(continuous)}`);
+await continuousPage.locator("#fixture svg").screenshot({ type: "png" });
+continuous.disposed = await continuousPage.evaluate(() => window.svgFoundation.animationDispose());
+if (!continuous.disposed.disposed || continuous.disposed.active !== 0 || continuous.disposed.frames !== 0 || continuous.disposed.listeners !== 0) throw new Error(`continuous animation disposal gate: ${JSON.stringify(continuous.disposed)}`);
+await continuousContext.close();
 
 const { context: galleryContext, page: galleryPage } = await newPage();
 const galleryStarted = performance.now();
@@ -260,27 +328,25 @@ await browser.close();
 vite.kill("SIGTERM");
 await sleep(250);
 let endLoad = loadavg();
-if (mode === "reference") {
-  for (let attempt = 0; attempt < 120 && endLoad[0] > 1.0; attempt += 1) {
-    await sleep(5000);
-    endLoad = loadavg();
-  }
-}
-const endLoadAccepted = endLoad[0] <= 1.0;
-if (mode === "reference" && !endLoadAccepted) throw new Error(`reference end one-minute load ${endLoad[0]} exceeds 1.0`);
+const endCpuPressureAvg10 = cpuPressure();
+const endCpuStat = cpuStat();
+const throttledUsecDelta = endCpuStat.throttled_usec - startCpuStat.throttled_usec;
+const throttlingAccepted = throttledUsecDelta <= measurementContract.referenceHost.maximumCpuThrottledUsecDelta;
+if (mode === "reference" && !throttlingAccepted) throw new Error(`reference cgroup throttled_usec delta ${throttledUsecDelta} exceeds ${measurementContract.referenceHost.maximumCpuThrottledUsecDelta}`);
 const evidence = {
-  schema: "fsgg.svg-scene.preview-a-performance/v1",
+  schema: "fsgg.svg-scale.performance-qualification/v1",
   result: mode === "reference" ? "pass" : "diagnostic",
   capturedAtUtc: new Date().toISOString(),
   candidate: { sourceSha256: sourceDigest, sourceManifest, packageSetSha256: packageDigest },
-  environment: { mode, exactReferenceHost: mode === "reference" && Object.values(referencePredicates).every(Boolean) && endLoadAccepted, referencePredicates: { ...referencePredicates, endOneMinuteLoad: endLoadAccepted }, distribution: `${osRelease.NAME} ${osRelease.VERSION_ID}`, kernel: release(), cpu: cpus()[0]?.model, logicalCpuCount: cpus().length, memoryBytes: totalmem(), swapBytes: meminfo.SwapTotal, governor: governor ?? { result: "unavailable", reason: `${governorPath} is not exposed by this host.` }, loadAverage: { start: startLoad, end: endLoad }, acState: { result: "unavailable", reason: "Container exposes no authoritative AC-power state." }, browser: { family: "chromium", version: browserVersion, executable, executableSha256: `sha256:${executableSha256}`, headless: true, softwareRendering: true }, serving: { tool: "Vite 8.1.5 preview", transport: "loopback HTTP", cache: "no-store build plus a new empty browser context per cold startup" } },
-  thresholds: { ordinaryP95Milliseconds: 100, denseP95Milliseconds: 150, startupFirstUsableMilliseconds: 2000, runtimeGzipBytes: 153600, idleSeconds: 10, interactionSamplesPerRun: 200, independentRuns: 3, warmupsDiscarded: 5 },
-  workloads: { ordinary: { fixture: "100 semantic objects / four layers; shape + 12-segment path + short label + shared gradient/symbol per object", runs: workloadRuns.ordinary }, dense: { fixture: "200 ordinary-equivalent objects plus 20 clip/mask groups and a selection overlay", runs: workloadRuns.dense }, gallery: { fixture: "200 paths x 256 segments, 64 gradients, 32 masks, 100 text runs and 100 repeated symbols", counts: galleryCounts, observation: galleryObserve, stages: { mountValidationReconcileMs: rounded(galleryMountMs), presentedCaptureMs: rounded(galleryPresentedCaptureMs) }, functionalFidelity: "validated, mounted and captured" }, idleAndRetainedInteraction: interactionIdentity, lifecycle },
+  environment: { mode, exactReferenceHost: mode === "reference" && Object.values(referencePredicates).every(Boolean) && throttlingAccepted, referencePredicates: { ...referencePredicates, runCgroupThrottling: throttlingAccepted }, distribution: `${osRelease.NAME} ${osRelease.VERSION_ID}`, kernel: release(), cpu: cpus()[0]?.model, logicalCpuCount: cpus().length, memoryBytes: totalmem(), swapBytes: meminfo.SwapTotal, governor: governor ?? { result: "unavailable", reason: `${governorPath} is not exposed by this host.` }, cgroupCpu: { pressureAvg10: { start: startCpuPressureAvg10, end: endCpuPressureAvg10 }, throttledUsec: { start: startCpuStat.throttled_usec, end: endCpuStat.throttled_usec, delta: throttledUsecDelta } }, sharedHostLoadAverage: { disposition: measurementContract.referenceHost.sharedHostLoadAverage, start: startLoad, end: endLoad }, acState: { result: "unavailable", reason: "Container exposes no authoritative AC-power state." }, browser: { family: "chromium", version: browserVersion, executable, executableSha256: `sha256:${executableSha256}`, headless: true, softwareRendering: true }, serving: { tool: "Vite 8.1.5 preview", transport: "loopback HTTP", cache: "no-store build plus a new empty browser context per cold startup" } },
+  measurementContract,
+  thresholds: { ordinaryP95Milliseconds: measurementContract.thresholds.ordinaryInputToPresentedCaptureP95Milliseconds, denseP95Milliseconds: measurementContract.thresholds.denseInputToPresentedCaptureP95Milliseconds, worldExtentCostRatioMaximum: measurementContract.thresholds.worldExtentCostRatioMaximum, worldExtentLiveNodeGrowthMaximum: measurementContract.thresholds.worldExtentLiveNodeGrowthMaximum, missedFrameRatioMaximum: measurementContract.thresholds.missedFrameRatioMaximum, startupFirstUsableMilliseconds: 2000, runtimeGzipBytes: 153600, idleSeconds: measurementContract.method.idleSeconds, continuousJourneySeconds: measurementContract.method.continuousJourneySeconds, interactionSamplesPerRun: measurementContract.method.samplesPerRun, independentRuns: measurementContract.method.independentRuns, warmupsDiscarded: measurementContract.method.warmupsDiscardedPerRun },
+  workloads: { ordinary: { fixture: "100 semantic objects / four layers; shape + 12-segment path + short label + shared gradient/symbol per object", runs: workloadRuns.ordinary }, dense: { fixture: "200 ordinary-equivalent objects plus 20 clip/mask groups and a selection overlay", runs: workloadRuns.dense }, worldExtent: { fixture: "the same 100 visible semantic objects in indexed 100-entry and 1,000-entry worlds", nearRuns: extentRuns["extent-near"], farRuns: extentRuns["extent-far"], maximumP95: { near: extentNearP95, far: extentFarP95 }, costRatio: extentCostRatio, liveNodeGrowth: extentLiveNodeGrowth }, continuous: { fixture: `60 Hz camera motion for a measured ${measurementContract.method.continuousJourneySeconds}-second window`, ...continuous }, gallery: { fixture: "200 paths x 256 segments, 64 gradients, 32 masks, 100 text runs and 100 repeated symbols", counts: galleryCounts, observation: galleryObserve, stages: { mountValidationReconcileMs: rounded(galleryMountMs), presentedCaptureMs: rounded(galleryPresentedCaptureMs) }, functionalFidelity: "validated, mounted and captured" }, idleAndRetainedInteraction: interactionIdentity, lifecycle },
   startup: { runs: startupRuns, maximumFirstUsableInteractionMs: rounded(Math.max(...startupRuns.map((run) => run.firstUsableInteractionMs))), byteCategories: { executableJsCss: totals(runtimeFiles), fonts: { ...totals(fontFiles), expectedNotoSansSha256: "sha256:09aee8065d25508f23a4c3d92cd777ac869c52d93fd868a88f025d888a7937d6", licenseSha256: "sha256:54ec7b5a35310ad66f9f3091426f7028484cbf9ae1ab5da30122ee412a3009e1" }, content: contentBytes } },
   controls: { unnecessaryRebuild: { result: "killed", command: "--mutant unnecessary-rebuild", expectedGate: "unnecessary-rebuild gate" }, listenerLeak: { result: "killed", command: "--mutant listener-leak", expectedGate: "listener/resource-leak gate" }, excessiveDocumentAcceptance: { result: "killed", command: "--mutant excessive-document-acceptance", expectedGate: "excessive-document gate", actualRefusal: excessiveDocument } },
   unavailable: { retainedHeap: "Chromium exposes no stable cross-family retained-heap measurement for this contract; lifecycle ownership counters and roots are reported instead.", compositorPresentationTimestamp: "The headless software browser exposes no physical compositor/display presentation timestamp; each accepted latency sample ends only after Playwright captures the updated SVG pixels.", physicalTouchAndMobileGpu: "Not observed; .5 touch evidence remains browser emulation." },
-  claims: { previewABudgetsMet: mode === "reference", completeC19: false, completeM9: false, physicalMobileQualified: false, packagePublished: false, defaultActivated: false },
+  claims: { previewABudgetsMet: mode === "reference", scaleBudgetsMet: mode === "reference", completeC19: false, completeM9: false, physicalMobileQualified: false, packagePublished: false, defaultActivated: false },
 };
 if ((mode === "reference" && evidence.startup.maximumFirstUsableInteractionMs >= 2000) || evidence.startup.byteCategories.executableJsCss.gzipBytes > 153600) throw new Error(`startup/byte budget failed: ${JSON.stringify(evidence.startup)}`);
 writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ result: evidence.result, exactReferenceHost: evidence.environment.exactReferenceHost, ordinaryP95: evidence.workloads.ordinary.runs.map((run) => run.summary.p95), denseP95: evidence.workloads.dense.runs.map((run) => run.summary.p95), startupMaximumMs: evidence.startup.maximumFirstUsableInteractionMs, runtimeGzipBytes: evidence.startup.byteCategories.executableJsCss.gzipBytes, output }));
+console.log(JSON.stringify({ result: evidence.result, exactReferenceHost: evidence.environment.exactReferenceHost, ordinaryP95: evidence.workloads.ordinary.runs.map((run) => run.summary.p95), denseP95: evidence.workloads.dense.runs.map((run) => run.summary.p95), extentCostRatio, extentLiveNodeGrowth, missedFrameRatio: continuous.missedFrameRatio, startupMaximumMs: evidence.startup.maximumFirstUsableInteractionMs, runtimeGzipBytes: evidence.startup.byteCategories.executableJsCss.gzipBytes, output }));
