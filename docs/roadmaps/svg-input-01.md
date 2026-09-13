@@ -138,7 +138,7 @@ diagnosed before construction; insertion order never selects a winner.
   rebind candidates. Packed .NET/Fable consumers agree, and `SvgStudioHost`
   carries the same reducer state without copying scene, history, camera or selection.
 
-- [ ] **SVG-INPUT-01.4 — Browser devices preserve native input and accessible parity — route: routine**
+- [x] **SVG-INPUT-01.4 — Browser devices preserve native input and accessible parity — route: routine**
 
   Depends on: .2–.3 portable contracts.
 
@@ -160,6 +160,16 @@ diagnosed before construction; insertion order never selects a winner.
   help and rebind controls and observes mode/conflict feedback. Composed/dead-key
   text and native controls emit no command. Unsupported OS/layout observations are
   recorded as unavailable rather than inferred from synthetic events.
+
+  Completed by Rendering PR #1309: `SvgInputHost` owns the DOM listener,
+  deadline and Gamepad polling lifecycle around the portable resolver, preserves
+  logical/physical key and source-owned release identity, and accepts pointer,
+  touch and Gamepad observations without synthesizing keys. The packed browser
+  journey covers sequences, capture, native controls, composition, multi-pad
+  held recovery and disposal in the three-browser gate; the Orca/AT-SPI path
+  operates the workspace mode, palette, help and rebind feedback controls.
+  Hardware touch/gamepad, operating-system IME and layout-map gaps remain
+  explicit in `readiness/svg-input-01-4/evidence-scope.json`.
 
 - [ ] **SVG-INPUT-01.5 — Generated workspace input journey and Preview-B handoff — route: routine**
 

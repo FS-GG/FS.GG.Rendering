@@ -17,6 +17,8 @@
     "identified SVG document mount and atomic replacement",
     "gradient, symbol, clip, mask and local-font observation",
     "standalone exported-SVG reload",
-    "KeyboardInput-owned intent mapping with native editing and composition preservation"
+    "KeyboardInput-owned intent mapping with native editing and composition preservation",
+    "disposable command resolution for logical and physical keys, pointer, touch and Gamepad API observations",
+    "sequence deadlines, source-owned releases, focus-loss neutralization and accessible workspace overlays"
   ]
 }

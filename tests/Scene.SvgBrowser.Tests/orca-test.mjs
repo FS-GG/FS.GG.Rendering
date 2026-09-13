@@ -116,8 +116,21 @@ try {
   await page.keyboard.press("Enter");
   await waitForOrca();
   await waitForOrca();
-  const validationFeedback = await page.locator("[role='status']").textContent();
+  const validationFeedback = await page.locator("#fsgg-svg-studio-status").textContent();
   const selectionFeedback = await page.getByLabel("Current selection").textContent();
+  await tabTo("button[aria-label='Review mode']", "Review mode");
+  await page.keyboard.press("Enter");
+  await waitForOrca();
+  const modeFeedback = await page.locator("[data-fsgg-workspace-mode-status]").textContent();
+  const overlays = {};
+  for (const [buttonLabel, dialogLabel, key] of [["Open command palette","Command palette","palette"],["Open possible input help","Possible input help","help"],["Rebind selected command","Rebind command","rebind"]]) {
+    await tabTo(`button[aria-label='${buttonLabel}']`, buttonLabel);
+    await page.keyboard.press("Enter");
+    await enterDocumentForOrca(dialogLabel);
+    overlays[key] = await page.getByRole("dialog", { name: dialogLabel, exact: true }).textContent();
+    await page.keyboard.press("Escape");
+    await waitForOrca();
+  }
   writeFileSync(output, JSON.stringify({
     alphaHtmlControl: { selected: afterAlphaControl.selected, focused: afterAlphaControl.focused },
     betaHtmlControl: { selected: afterHtmlControl.selected, focused: afterHtmlControl.focused },
@@ -127,6 +140,8 @@ try {
       selectionCount: studioAfterCreate.SelectionCount,
       selectionFeedback,
       validationFeedback,
+      modeFeedback,
+      overlays,
     },
     negativeControl: { nonInteractiveDecorationFocusable: decorationFocusable },
   }, null, 2) + "\n");

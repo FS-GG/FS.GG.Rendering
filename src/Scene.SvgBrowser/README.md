@@ -24,7 +24,8 @@ and pointer loss, cancellation, blur, and disposal clear adapter-owned capture a
 are accessible interaction contract foundations, not a complete editor or input toolkit.
 
 `SvgStudio.mount` is the explicit optional authoring entry. It owns one retained document host,
-native toolbar/property/point-list controls, and disposable Escape, pointer-loss, and blur handlers.
+native toolbar/property/point-list controls, accessible mode/palette/help/rebind controls, and disposable
+Escape, pointer-loss, and blur handlers.
 Camera, selection, tool state, accepted content, and `SvgAuthoring` history remain separate. Consumers
 that enable Boolean tools provide a bundler-resolved module-worker factory; the packaged worker imports
 exactly `polygon-clipping` 0.15.7 and permits one request with no queue and a two-second refusal deadline.
@@ -39,3 +40,10 @@ The browser package's worker is the sole geometry implementation: test and consu
 It adds the loaded face after byte validation and removes the face and blob URL on disposal. The package
 carries the exact base64-encoded WOFF2, SHA-256/provenance manifest, full OFL 1.1 text, and the clipping
 library's MIT notice.
+
+`SvgInputHost` is the disposable command adapter for an owned browser focus scope. It preserves logical
+`key` and physical `code` identity, all modifiers including AltGraph, repeat, composition, and native
+controls before passing normalized observations to `CommandResolver`. Pointer and touch remain distinct
+semantic gestures, and Gamepad API buttons retain their source until release or disconnection. The host
+prevents default only when the resolver accepts the exact event; blur, visibility loss, modal takeover,
+and disposal neutralize held actions and cancel every listener, deadline, and animation-frame poll.
