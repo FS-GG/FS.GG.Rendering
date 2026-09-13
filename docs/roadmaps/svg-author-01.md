@@ -1,6 +1,7 @@
 # SVG-AUTHOR-01 — Vector content and scene authoring
 
-Status: active; .1–.5 source delivered; next executable window .6. Route: routine.
+Status: complete at the source/generated-candidate boundary; public installation remains pending
+SVG-PREVIEW-B. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated consumers and external
 compatibility. This is order 5 of the
@@ -371,7 +372,7 @@ qualifies the resulting candidate packet without changing producer semantics.
   npm lock identity. Do not reuse one candidate identity for different bytes.
   This is the prerequisite packet for .6, not producer publication.
 
-- [ ] **SVG-AUTHOR-01.6 — Generated authoring journeys and Preview-B handoff — route: routine**
+- [x] **SVG-AUTHOR-01.6 — Generated authoring journeys and Preview-B handoff — route: routine**
 
   Owner: Templates; Rendering retains producer defects and this feature's single
   completion ledger. .github owns the asynchronous unified progress projection.
@@ -471,6 +472,26 @@ qualifies the resulting candidate packet without changing producer semantics.
   receiver gaps in Templates without duplicating completion checkboxes.
   If a required capability or observation remains missing, keep the feature open
   and state the concrete gap; all existing checked boxes alone are insufficient.
+
+  Evidence: Templates [PR #469](https://github.com/FS-GG/FS.GG.Templates/pull/469)
+  merged as `219fbc963fe50563ae584f8b788ce93da9ec072d` after its source,
+  package-consumer, direct/SDD/wizard/retained adopter, typed receiver,
+  repository composition, Chromium, Firefox, WebKit and real Orca/AT-SPI2
+  journeys passed. The generated candidate builds separate player and Studio
+  entries, exercises both product-owned grid and freeform schemas through the
+  complete authoring journey, and verifies player closure isolation. Collision,
+  interruption, rollback and unsupported content-downgrade controls preserve
+  managed and authored content at their stated boundaries.
+
+  The sealed candidate directory is
+  `templates-219fbc963fe50563ae584f8b788ce93da9ec072d`. Its packet SHA-256 is
+  `e2047aa9adab51192de5fcf554b2a3d1b1837b0197cfb56ecdf0217c443215e9`;
+  the Templates `0.11.0-svg-author.1` archive SHA-256 is
+  `5ff2f01a72f8c9849d7cdde4e22053203318edb74574359cab30611429f4c04a`.
+  It binds Rendering merge `ab0de59a5797393f1eaff6dd3146b53ae8bf1a67`, version
+  `0.30.0-svg-author.1.ab0de59a`, and the retained package hashes recorded by .5.
+  The candidate is local and immutable; public pins remain Templates `0.11.0`
+  and Rendering `0.29.0` until SVG-PREVIEW-B.
 
 After .5 and .6 meet their stated authorities, record SVG-AUTHOR-01 complete at
 the source/generated-candidate boundary, with public installation pending
