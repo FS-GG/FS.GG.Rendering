@@ -1,3 +1,4 @@
+// See skill: fs-gg-keyboard-input
 namespace FS.GG.UI.KeyboardInput
 
 /// <summary>Modifier identity retained for matching and display without collapsing AltGraph into Ctrl+Alt.</summary>
@@ -181,4 +182,3 @@ module InputProfileCodec =
     /// <summary>Decodes a profile while retaining raw order and duplicates for later validation.</summary>
     /// <param name="bytes">The candidate envelope bytes.</param>
     val decode: bytes: byte[] -> Result<InputProfile, InputProfileDiagnostic list>
-

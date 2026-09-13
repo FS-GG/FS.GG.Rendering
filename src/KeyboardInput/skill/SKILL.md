@@ -45,6 +45,22 @@ terminal-prefix conflicts. `ReplaceCommand`, `AddAlias`, and `UnbindCommand`
 carry distinct user intent. Game packages supply semantic command policy; this
 package stores opaque command IDs.
 
+The catalogue and profile wire identifiers are stable public constants. Compile
+the decoded profile before using it, and use `gestureId` for deterministic
+diagnostics or display keys:
+
+```fsharp
+let expectedSchema = CommandInput.profileSchema
+let gestureKey = CommandInput.gestureId binding.Gesture
+let encoded = InputProfileCodec.encode profile
+let envelope = InputProfileCodec.formatId, InputProfileCodec.formatVersion
+
+match InputProfileCodec.decode encoded with
+| Error diagnostics -> Error diagnostics
+| Ok decoded when decoded.Schema <> expectedSchema -> failwith "schema mismatch"
+| Ok decoded -> CommandInput.compile catalog decoded
+```
+
 ## Generated Product
 
 Products that select keyboard input receive the keyboard skill only when selected directly or as a prerequisite.

@@ -16,8 +16,9 @@ is no separate keyboard reducer to seed.
 
 The signatures you consume are bundled with this product at
 `docs/api-surface/KeyboardInput/KeyboardInput.fsi` (the `ViewerKey` cases the host
-delivers) and `docs/api-surface/SkiaViewer/SkiaViewer.fsi` (the `MapKey: ViewerKey
--> bool -> 'msg option` field on the generated host). The host normalizes raw key
+delivers), `docs/api-surface/KeyboardInput/CommandInput.fsi` (portable catalogues
+and profiles), and `docs/api-surface/SkiaViewer/SkiaViewer.fsi` (the `MapKey:
+ViewerKey -> bool -> 'msg option` field on the generated host). The host normalizes raw key
 strings to `ViewerKey` for you and calls `MapKey`; your only job is the pure
 `ViewerKey -> bool -> Msg option` mapping.
 
@@ -60,6 +61,28 @@ let svgIntent =
 Route the returned intent into the product's retained/document interaction message. Keep gameplay
 command bindings on the `MapKey` path described above; the SVG intent mapper does not consult a
 `Keymap` and does not replace product controls.
+
+### Portable command profiles
+
+Compile a decoded profile before constructing dispatch state. The schema and wire
+constants make persisted profile checks explicit, while the gesture identifier is
+stable enough for diagnostics and help-row keys:
+
+```fsharp
+let expectedSchema = CommandInput.profileSchema
+let gestureKey = CommandInput.gestureId binding.Gesture
+let encoded = InputProfileCodec.encode profile
+let envelope = InputProfileCodec.formatId, InputProfileCodec.formatVersion
+
+match InputProfileCodec.decode encoded with
+| Error diagnostics -> Error diagnostics
+| Ok decoded when decoded.Schema <> expectedSchema -> failwith "schema mismatch"
+| Ok decoded -> CommandInput.compile catalog decoded
+```
+
+Keep `LogicalKey` and `PhysicalCode` distinct, preserve `AltGraph`, and retain the
+raw order until compilation reports all conflicts. `ReplaceCommand`, `AddAlias`,
+and `UnbindCommand` express different user choices.
 
 ## Common pitfalls
 
