@@ -37,6 +37,10 @@ type SvgStudioHost =
     member Root: HTMLElement
     member State: SvgAuthoringState
     member ToolState: SvgArtState
+    /// Portable mode, panel, focus and overlay state owned alongside authoring state.
+    member WorkspaceState: SvgWorkspaceState
+    /// Apply one pure workspace transition and return host effects for persistence/focus/input composition.
+    member UpdateWorkspace: message: SvgWorkspaceMessage -> SvgWorkspaceEffect list
     member SetSelection: elementIds: string list -> Result<unit, SvgArtError>
     member SetCamera: camera: SvgAffine -> Result<unit, SvgArtError>
     /// Pick through the inverse current camera while retaining semantic element identity.

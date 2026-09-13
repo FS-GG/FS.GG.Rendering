@@ -66,6 +66,7 @@ let inspection =
 - `Theme` — built-in `light` / `dark` palettes plus `withDensity`, `withAccent`, and `resolve` for the `Theme` record consumed by `Control.render`.
 - `Attr` — low-level attribute builders (`text`, `value`, `children`, `theme`, `validation`, `on` / `onWith`) for composing `Attr<'msg>` values directly. Layout builders include `padding`, `margin`, `gap`, `alignItems`, `alignSelf`, `justifyContent`, `flexGrow`, `flexShrink`, `flexBasis`, `minWidth`, `minHeight`, `maxWidth`, and `maxHeight`; omitted padding/gap keep the Controls compatibility defaults, explicit zero overrides them, and the legacy `spacing` name is treated as a gap alias.
 - `Catalog` — the governed control registry: `supportedControls`, `standardSchema`, and `validate` describe and check the standard control surface.
+- `SvgWorkspaceCommands` — projects one validated input catalog/profile into dispatch, palette, live-help and pointer rows with one availability result. It emits `aria-keyshortcuts` only for logical single chords, describes sequences in prose, and returns a validated rebind preview with displaced commands before a caller accepts it.
 
 ## Compositor diagnostics
 

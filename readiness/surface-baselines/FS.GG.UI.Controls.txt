@@ -336,6 +336,9 @@ FS.GG.UI.Controls.StandardEventKind
 FS.GG.UI.Controls.StandardEventKind+Custom
 FS.GG.UI.Controls.StandardEventKind+Tags
 FS.GG.UI.Controls.Sunburst
+FS.GG.UI.Controls.SvgWorkspaceCommandRow
+FS.GG.UI.Controls.SvgWorkspaceCommands
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview
 FS.GG.UI.Controls.Switch
 FS.GG.UI.Controls.TabOrder
 FS.GG.UI.Controls.Tabs

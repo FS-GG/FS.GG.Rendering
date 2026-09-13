@@ -958,6 +958,29 @@ FS.GG.UI.Controls.StandardEventKind+Tags.Selected : System.Int32
 FS.GG.UI.Controls.StandardEventKind+Tags.SortChanged : System.Int32
 FS.GG.UI.Controls.Sunburst.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
 FS.GG.UI.Controls.Sunburst.values<msg>(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.ChartPoint>) : Attr<msg>
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.AriaKeyShortcuts : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.Available : System.Boolean [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.Command : System.String [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.Gestures : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputGesture> [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.InMenu : System.Boolean [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.InPalette : System.Boolean [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.Label : System.String [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.PointerLabels : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.ShortcutText : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Controls.SvgWorkspaceCommandRow.new(System.String, System.String, System.Boolean, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputGesture>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.Controls.SvgWorkspaceCommands.ariaKeyShortcuts(FS.GG.UI.KeyboardInput.InputGesture) : Microsoft.FSharp.Core.FSharpOption<System.String>
+FS.GG.UI.Controls.SvgWorkspaceCommands.gestureText(FS.GG.UI.KeyboardInput.InputGesture) : System.String
+FS.GG.UI.Controls.SvgWorkspaceCommands.helpRows(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>
+FS.GG.UI.Controls.SvgWorkspaceCommands.paletteRows(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>
+FS.GG.UI.Controls.SvgWorkspaceCommands.pointerRows(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>
+FS.GG.UI.Controls.SvgWorkspaceCommands.previewRebind(FS.GG.UI.KeyboardInput.InputCatalog, FS.GG.UI.KeyboardInput.InputProfile, System.String, System.String, FS.GG.UI.KeyboardInput.InputGesture) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Controls.SvgWorkspaceRebindPreview, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputProfileDiagnostic>>
+FS.GG.UI.Controls.SvgWorkspaceCommands.project(FS.GG.UI.KeyboardInput.InputCatalog, FS.GG.UI.KeyboardInput.EffectiveInputProfile, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.KeyboardInput.CommandDescriptor, System.Boolean>) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Controls.SvgWorkspaceCommandRow>
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.CandidateProfile : FS.GG.UI.KeyboardInput.InputProfile [get]
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.Command : System.String [get]
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.DisplacedCommands : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.EffectiveProfile : FS.GG.UI.KeyboardInput.EffectiveInputProfile [get]
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.Gesture : FS.GG.UI.KeyboardInput.InputGesture [get]
+FS.GG.UI.Controls.SvgWorkspaceRebindPreview.new(System.String, FS.GG.UI.KeyboardInput.InputGesture, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.KeyboardInput.InputProfile, FS.GG.UI.KeyboardInput.EffectiveInputProfile)
 FS.GG.UI.Controls.Switch.checked'<msg>(System.Boolean) : Attr<msg>
 FS.GG.UI.Controls.Switch.create<msg>(FSharpList<Attr<msg>>) : Control<msg>
 FS.GG.UI.Controls.Switch.onChanged<msg>(FSharpFunc<System.Boolean, msg>) : Attr<msg>

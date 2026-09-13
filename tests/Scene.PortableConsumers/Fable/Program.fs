@@ -30,7 +30,11 @@ let documentResultPath: string = jsNative
 [<Emit("process.argv[8]")>]
 let authoringResultPath: string = jsNative
 
+[<Emit("process.argv[9]")>]
+let workspaceResultPath: string = jsNative
+
 writeFileSync authoringResultPath (AuthoringCorrespondence.run "fable-node")
+writeFileSync workspaceResultPath (WorkspaceCorrespondence.run ())
 
 let serialized, exported = verifyRoundTrip "fable-node"
 writeFileSync serializedPath serialized

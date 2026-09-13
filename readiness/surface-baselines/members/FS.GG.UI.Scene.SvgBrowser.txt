@@ -61,6 +61,8 @@ FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.SetSelection(Microsoft.FSharp.Collection
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.State : FS.GG.UI.Scene.SvgAuthoringState [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.ToolState : FS.GG.UI.Scene.SvgArtState [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.Undo() : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgAuthoringError>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.UpdateWorkspace(FS.GG.UI.Scene.SvgWorkspaceMessage) : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgWorkspaceEffect>
+FS.GG.UI.Scene.SvgBrowser.SvgStudioHost.WorkspaceState : FS.GG.UI.Scene.SvgWorkspaceState [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.ActiveGesture : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.OwnedListenerCount : System.Int32 [get]
 FS.GG.UI.Scene.SvgBrowser.SvgStudioObservation.Revision : System.Int32 [get]

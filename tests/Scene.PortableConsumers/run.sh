@@ -20,6 +20,8 @@ cp "$repo/tests/Scene.PortableConsumers/DocumentReplay.fs" "$work/DotNet/Documen
 cp "$repo/tests/Scene.PortableConsumers/DocumentReplay.fs" "$work/Fable/DocumentReplay.fs"
 cp "$repo/tests/Scene.PortableConsumers/AuthoringCorrespondence.fs" "$work/DotNet/AuthoringCorrespondence.fs"
 cp "$repo/tests/Scene.PortableConsumers/AuthoringCorrespondence.fs" "$work/Fable/AuthoringCorrespondence.fs"
+cp "$repo/tests/Scene.PortableConsumers/WorkspaceCorrespondence.fs" "$work/DotNet/WorkspaceCorrespondence.fs"
+cp "$repo/tests/Scene.PortableConsumers/WorkspaceCorrespondence.fs" "$work/Fable/WorkspaceCorrespondence.fs"
 cp "$repo/models/svg-foundation/retained-interaction.traces.tsv" "$work/retained-interaction.traces.tsv"
 cp "$repo/models/svg-foundation/document-interaction.traces.tsv" "$work/document-interaction.traces.tsv"
 
@@ -43,19 +45,20 @@ dotnet build "$work/DotNet/DotNet.fsproj" --no-restore
 dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
   "$work/retained-interaction.traces.tsv" "$work/dotnet-projections.tsv" \
   "$work/dotnet-document.txt" "$work/dotnet-export.svg" \
-  "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv" "$work/dotnet-authoring.txt" | tee "$work/dotnet-replay.log"
+  "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv" "$work/dotnet-authoring.txt" "$work/dotnet-workspace.txt" | tee "$work/dotnet-replay.log"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
 dotnet tool install fable --version 5.13.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
 node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv" \
   "$work/fable-document.txt" "$work/fable-export.svg" \
-  "$work/document-interaction.traces.tsv" "$work/fable-document-projections.tsv" "$work/fable-authoring.txt" | tee "$work/fable-replay.log"
+  "$work/document-interaction.traces.tsv" "$work/fable-document-projections.tsv" "$work/fable-authoring.txt" "$work/fable-workspace.txt" | tee "$work/fable-replay.log"
 cmp "$work/dotnet-projections.tsv" "$work/fable-projections.tsv"
 cmp "$work/dotnet-document-projections.tsv" "$work/fable-document-projections.tsv"
 cmp "$work/dotnet-document.txt" "$work/fable-document.txt"
 cmp "$work/dotnet-export.svg" "$work/fable-export.svg"
 cmp "$work/dotnet-authoring.txt" "$work/fable-authoring.txt"
+cmp "$work/dotnet-workspace.txt" "$work/fable-workspace.txt"
 projection_sha="$(sha256sum "$work/dotnet-projections.tsv" | cut -d' ' -f1)"
 document_sha="$(sha256sum "$work/dotnet-document.txt" | cut -d' ' -f1)"
 document_projection_sha="$(sha256sum "$work/dotnet-document-projections.tsv" | cut -d' ' -f1)"
@@ -130,6 +133,8 @@ expected_fable_files = {
     "fable/SvgScene.fs",
     "fable/SvgArt.fsi",
     "fable/SvgArt.fs",
+    "fable/SvgWorkspace.fsi",
+    "fable/SvgWorkspace.fs",
 }
 if fable_files != expected_fable_files:
     raise SystemExit(f"unexpected curated Fable source view: {sorted(fable_files)}")
