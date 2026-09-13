@@ -1,3 +1,59 @@
+FS.GG.UI.Scene.SvgBrowser.BrowserArchive.Members : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember> [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserArchive.new(Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember>)
+FS.GG.UI.Scene.SvgBrowser.BrowserArchive.validate(Microsoft.FSharp.Core.FSharpFunc<System.String, System.String>, Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.Scene.SvgBrowser.BrowserArchive) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.BrowserArchive, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue>>
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.DuplicatePath : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.EmptyArchive : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.HashMismatch : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.InvalidPath : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.MissingMember : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveIssue+Tags.UnexpectedMember : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember.Content : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember.Hash : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember.Path : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserArchiveMember.new(System.String, System.String, System.String)
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig.DatabaseName : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig.MaxArchiveCharacters : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig.MaxPayloadCharacters : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig.new(System.String, System.Int32, System.Int32)
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Exported : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Failed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Imported : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Loaded : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Persisted : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent+Tags.Ready : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceFailure+Tags.DatabaseError : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceFailure+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceFailure+Tags.InvalidRequest : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceFailure+Tags.QuotaExceeded : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceFailure+Tags.StaleGeneration : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.ExportArchive() : System.Void
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.ImportArchive(FS.GG.UI.Scene.SvgBrowser.BrowserStorageOperationId, System.String) : System.Void
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.Load(FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey) : System.Void
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.Observe() : FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.Persist(FS.GG.UI.Scene.SvgBrowser.BrowserStorageOperationId, FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue) : System.Void
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.defaultConfig(System.String) : FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceHost.new(FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceConfig, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceEvent, Microsoft.FSharp.Core.Unit>)
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation.Generation : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation.IsDisposed : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation.IsReady : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation.PendingRequestCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserPersistenceObservation.new(System.Boolean, System.UInt64, System.Int32, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily+Tags.AssetManifest : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily+Tags.GameSave : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily+Tags.ProjectDocument : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily+Tags.WorkspacePreferences : System.Int32
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey.Family : FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey.Slot : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey.new(FS.GG.UI.Scene.SvgBrowser.BrowserStorageFamily, System.String)
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageOperationId.Generation : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageOperationId.Operation : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStorageOperationId.new(System.UInt64, System.UInt64)
+FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue.Key : FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue.Payload : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue.PayloadHash : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue.SchemaVersion : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.BrowserStoredValue.new(FS.GG.UI.Scene.SvgBrowser.BrowserStorageKey, System.Int32, System.String, System.String)
 FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.ApplySample : Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.AnimationClipSample, Microsoft.FSharp.Core.Unit>>>> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.DispatchCues : Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CueOccurrence>, Microsoft.FSharp.Core.Unit>>> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.Dispose : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
