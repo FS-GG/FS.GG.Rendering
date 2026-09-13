@@ -181,3 +181,109 @@ let animationStateTests =
             Expect.isFalse (AnimationState.isActive s) "fully advanced ⇒ inactive"
         }
     ]
+
+let private scalar time value easing =
+    { Time = ms time; Value = ScalarValue value; EasingToNext = easing }
+
+let private clip loop =
+    { Id = "arena-intro"
+      Duration = ms 100.0
+      Tracks =
+        [ PositionX, [ scalar 0.0 0.0 Linear; scalar 100.0 20.0 Linear ]
+          PositionY, [ scalar 0.0 10.0 Linear; scalar 100.0 30.0 Linear ]
+          RotationDegrees, [ scalar 0.0 0.0 Linear; scalar 100.0 90.0 Linear ]
+          ScaleX, [ scalar 0.0 1.0 Linear; scalar 100.0 2.0 Linear ]
+          ScaleY, [ scalar 0.0 1.0 Linear; scalar 100.0 3.0 Linear ]
+          Opacity, [ scalar 0.0 0.0 Linear; scalar 100.0 1.0 Linear ]
+          CustomScalar "glow", [ scalar 0.0 2.0 Linear; scalar 100.0 4.0 Linear ]
+          Color,
+            [ { Time = TimeSpan.Zero; Value = ColorValue { Red = 0uy; Green = 0uy; Blue = 0uy; Alpha = 255uy }; EasingToNext = Linear }
+              { Time = ms 100.0; Value = ColorValue { Red = 200uy; Green = 100uy; Blue = 50uy; Alpha = 255uy }; EasingToNext = Linear } ]
+          PathMorph "body",
+            [ { Time = TimeSpan.Zero; Value = PathValue [ 0.0, 0.0; 10.0, 0.0 ]; EasingToNext = Linear }
+              { Time = ms 100.0; Value = PathValue [ 0.0, 10.0; 20.0, 10.0 ]; EasingToNext = Linear } ] ]
+      Cues =
+        [ { Id = "start"; Time = TimeSpan.Zero; Payload = "ui.start" }
+          { Id = "impact"; Time = ms 50.0; Payload = "sfx.impact" } ]
+      Loop = loop }
+
+[<Tests>]
+let animationClipTests =
+    testList "portable animation clips" [
+        test "validated scalar, color and compatible path tracks sample deterministically" {
+            let accepted = clip Once |> AnimationClip.validate |> Result.defaultWith (fun issues -> failtestf "%A" issues)
+            let a = AnimationClip.sample (ms 50.0) Seek accepted
+            let b = AnimationClip.sample (ms 50.0) Seek accepted
+            Expect.equal a b "the same explicit sample is structural-equal"
+            Expect.equal a.Values[PositionX] (ScalarValue 10.0) "position samples halfway"
+            Expect.equal a.Values[PositionY] (ScalarValue 20.0) "vertical position samples halfway"
+            Expect.equal a.Values[RotationDegrees] (ScalarValue 45.0) "rotation samples halfway"
+            Expect.equal a.Values[ScaleX] (ScalarValue 1.5) "horizontal scale samples halfway"
+            Expect.equal a.Values[ScaleY] (ScalarValue 2.0) "vertical scale samples halfway"
+            Expect.equal a.Values[Opacity] (ScalarValue 0.5) "opacity samples halfway"
+            Expect.equal a.Values[CustomScalar "glow"] (ScalarValue 3.0) "custom scalar samples halfway"
+            Expect.equal a.Values[Color] (ColorValue { Red = 100uy; Green = 50uy; Blue = 25uy; Alpha = 255uy }) "color samples halfway"
+            Expect.equal a.Values[PathMorph "body"] (PathValue [ 0.0, 5.0; 15.0, 5.0 ]) "matching path points interpolate"
+            Expect.isEmpty a.Cues "seek never emits historical cues"
+        }
+
+        test "live cues use the half-open interval and stable loop occurrence" {
+            let accepted = clip (Repeat 2) |> AnimationClip.validate |> Result.defaultWith (fun issues -> failtestf "%A" issues)
+            let initial = AnimationClip.sample TimeSpan.Zero (LiveAdvance(ms -1.0)) accepted
+            Expect.equal (initial.Cues |> List.map (fun occurrence -> occurrence.Cue.Id)) [ "start" ] "a caller can cross the initial boundary once"
+            let first = AnimationClip.sample (ms 50.0) (LiveAdvance TimeSpan.Zero) accepted
+            Expect.equal (first.Cues |> List.map (fun occurrence -> occurrence.Cue.Id, occurrence.Iteration)) [ "impact", 0 ] "zero-time cue is outside (0,50]"
+            let wrapped = AnimationClip.sample (ms 150.0) (LiveAdvance(ms 50.0)) accepted
+            Expect.equal (wrapped.Cues |> List.map (fun occurrence -> occurrence.Cue.Id, occurrence.Iteration)) [ "start", 1; "impact", 1 ] "wrap emits each crossed occurrence once"
+            Expect.equal wrapped.Iteration 1 "second repeat iteration"
+            Expect.equal wrapped.LocalTime (ms 50.0) "repeat local time wraps"
+        }
+
+        test "ping-pong reverses samples and cue time without changing track data" {
+            let accepted =
+                { clip (PingPong 2) with
+                    Cues =
+                        [ { Id = "start"; Time = TimeSpan.Zero; Payload = "ui.start" }
+                          { Id = "impact"; Time = ms 50.0; Payload = "sfx.impact" }
+                          { Id = "turn"; Time = ms 100.0; Payload = "ui.turn" } ] }
+                |> AnimationClip.validate
+                |> Result.defaultWith (fun issues -> failtestf "%A" issues)
+            let turn = AnimationClip.sample (ms 100.0) (LiveAdvance(ms 50.0)) accepted
+            Expect.equal (turn.Cues |> List.map (fun occurrence -> occurrence.Cue.Id)) [ "turn" ] "a turnaround endpoint emits once"
+            let reverse = AnimationClip.sample (ms 150.0) (LiveAdvance(ms 125.0)) accepted
+            Expect.equal reverse.Direction Reverse "second pass reverses"
+            Expect.equal reverse.LocalTime (ms 50.0) "reverse pass samples from the far endpoint"
+            Expect.equal reverse.Values[PositionX] (ScalarValue 10.0) "track samples at reversed local time"
+            Expect.equal (reverse.Cues |> List.map (fun occurrence -> occurrence.Cue.Id)) [ "impact" ] "reverse cue is emitted when crossed"
+            let complete = AnimationClip.sample (ms 250.0) Paused accepted
+            Expect.isTrue complete.IsComplete "elapsed is capped at the bounded iteration count"
+            Expect.equal complete.LocalTime TimeSpan.Zero "an even ping-pong settles at its start"
+            Expect.isEmpty complete.Cues "pause emits no cues"
+        }
+
+        test "validation rejects type, time, topology, identity and loop defects together" {
+            let invalid =
+                { clip (Repeat 0) with
+                    Id = " "
+                    Tracks =
+                        [ Opacity, [ scalar 10.0 0.0 Linear; scalar 90.0 Double.NaN Linear ]
+                          PathMorph "body",
+                            [ { Time = TimeSpan.Zero; Value = PathValue [ 0.0, 0.0; 1.0, 1.0 ]; EasingToNext = Linear }
+                              { Time = ms 100.0; Value = PathValue [ 0.0, 0.0; 1.0, 1.0; 2.0, 2.0 ]; EasingToNext = Linear } ]
+                          Color, [ scalar 0.0 0.0 Linear; scalar 100.0 1.0 Linear ] ]
+                    Cues =
+                        [ { Id = "same"; Time = ms 80.0; Payload = "a" }
+                          { Id = "same"; Time = ms 20.0; Payload = "b" } ] }
+            match AnimationClip.validate invalid with
+            | Ok _ -> failtest "invalid clip was accepted"
+            | Error issues ->
+                Expect.contains issues EmptyClipId "empty clip identity"
+                Expect.contains issues (InvalidLoopIterations 0) "unbounded/empty loop"
+                Expect.contains issues (InvalidKeyframeTime(Opacity, 0)) "track must start at zero"
+                Expect.contains issues (InvalidKeyframeValue(Opacity, 1)) "nonfinite scalar"
+                Expect.contains issues (MismatchedKeyframeValue(Color, 0)) "track type mismatch"
+                Expect.contains issues (IncompatiblePathTopology(PathMorph "body")) "path topology mismatch"
+                Expect.contains issues (DuplicateCueId "same") "cue identities are unique"
+                Expect.contains issues UnorderedCues "cues are ordered"
+        }
+    ]

@@ -756,3 +756,26 @@ type FS.GG.Contracts::Fsgg.BodyRefusalReason
 # verification remain SDD toolchain machinery. The matching member-level decisions are generated in
 # scripts/api-surface-manifest.txt, including `verifyObservedFiles` and `verifyObservedFileSet`.
 type FS.GG.Contracts::Fsgg.UnobservedSkillFiles
+
+# ------------------------------------------------------------------------------------------------
+# ADDED BY SVG-PRESENT-01.1 AT $(FsGgUiVersion)=0.29.0 — 13 temporary omissions (1 module,
+# 12 types): the portable animation clip and cue contract added after the 0.29.0 public package.
+#
+# WHY THESE ARE OMITTED. The generated mirror is derived from the immutable public pin and must not
+# advertise unreleased surface. The exact source and Fable package views are qualified in the producer
+# change; SVG-PREVIEW-B owns the coherent package release and subsequent generated-mirror refresh. These
+# entries keep the source-candidate completeness probe explicit until that release makes the pin able to
+# supply the signatures. Delete all 13 when Preview B advances the pin and regenerate the mirror.
+module FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationClip
+type FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationClip
+type FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationClipSample
+type FS.GG.UI.Scene::FS.GG.UI.Scene.AnimationCue
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipCueMode
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipDirection
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipIssue
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipKeyframe
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipLoop
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipProperty
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ClipValue
+type FS.GG.UI.Scene::FS.GG.UI.Scene.CueOccurrence
+type FS.GG.UI.Scene::FS.GG.UI.Scene.ValidatedAnimationClip

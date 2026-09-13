@@ -21,5 +21,7 @@
     <Compile Include="SvgArt.fs" />
     <Compile Include="SvgWorkspace.fsi" />
     <Compile Include="SvgWorkspace.fs" />
+    <Compile Include="Animation.fsi" />
+    <Compile Include="Animation.fs" />
   </ItemGroup>
 </Project>

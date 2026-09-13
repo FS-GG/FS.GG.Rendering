@@ -22,6 +22,8 @@ cp "$repo/tests/Scene.PortableConsumers/AuthoringCorrespondence.fs" "$work/DotNe
 cp "$repo/tests/Scene.PortableConsumers/AuthoringCorrespondence.fs" "$work/Fable/AuthoringCorrespondence.fs"
 cp "$repo/tests/Scene.PortableConsumers/WorkspaceCorrespondence.fs" "$work/DotNet/WorkspaceCorrespondence.fs"
 cp "$repo/tests/Scene.PortableConsumers/WorkspaceCorrespondence.fs" "$work/Fable/WorkspaceCorrespondence.fs"
+cp "$repo/tests/Scene.PortableConsumers/AnimationCorrespondence.fs" "$work/DotNet/AnimationCorrespondence.fs"
+cp "$repo/tests/Scene.PortableConsumers/AnimationCorrespondence.fs" "$work/Fable/AnimationCorrespondence.fs"
 cp "$repo/models/svg-foundation/retained-interaction.traces.tsv" "$work/retained-interaction.traces.tsv"
 cp "$repo/models/svg-foundation/document-interaction.traces.tsv" "$work/document-interaction.traces.tsv"
 
@@ -45,25 +47,27 @@ dotnet build "$work/DotNet/DotNet.fsproj" --no-restore
 dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
   "$work/retained-interaction.traces.tsv" "$work/dotnet-projections.tsv" \
   "$work/dotnet-document.txt" "$work/dotnet-export.svg" \
-  "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv" "$work/dotnet-authoring.txt" "$work/dotnet-workspace.txt" | tee "$work/dotnet-replay.log"
+  "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv" "$work/dotnet-authoring.txt" "$work/dotnet-workspace.txt" "$work/dotnet-animation.txt" | tee "$work/dotnet-replay.log"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
 dotnet tool install fable --version 5.13.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
 node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv" \
   "$work/fable-document.txt" "$work/fable-export.svg" \
-  "$work/document-interaction.traces.tsv" "$work/fable-document-projections.tsv" "$work/fable-authoring.txt" "$work/fable-workspace.txt" | tee "$work/fable-replay.log"
+  "$work/document-interaction.traces.tsv" "$work/fable-document-projections.tsv" "$work/fable-authoring.txt" "$work/fable-workspace.txt" "$work/fable-animation.txt" | tee "$work/fable-replay.log"
 cmp "$work/dotnet-projections.tsv" "$work/fable-projections.tsv"
 cmp "$work/dotnet-document-projections.tsv" "$work/fable-document-projections.tsv"
 cmp "$work/dotnet-document.txt" "$work/fable-document.txt"
 cmp "$work/dotnet-export.svg" "$work/fable-export.svg"
 cmp "$work/dotnet-authoring.txt" "$work/fable-authoring.txt"
 cmp "$work/dotnet-workspace.txt" "$work/fable-workspace.txt"
+cmp "$work/dotnet-animation.txt" "$work/fable-animation.txt"
 projection_sha="$(sha256sum "$work/dotnet-projections.tsv" | cut -d' ' -f1)"
 document_sha="$(sha256sum "$work/dotnet-document.txt" | cut -d' ' -f1)"
 document_projection_sha="$(sha256sum "$work/dotnet-document-projections.tsv" | cut -d' ' -f1)"
 authoring_sha="$(sha256sum "$work/dotnet-authoring.txt" | cut -d' ' -f1)"
-echo "portable-document-roundtrip: runtimes=dotnet,fable-node projection-sha256=$projection_sha document-interaction-sha256=$document_projection_sha authoring-sha256=$authoring_sha document-sha256=$document_sha"
+animation_sha="$(sha256sum "$work/dotnet-animation.txt" | cut -d' ' -f1)"
+echo "portable-document-roundtrip: runtimes=dotnet,fable-node projection-sha256=$projection_sha document-interaction-sha256=$document_projection_sha authoring-sha256=$authoring_sha animation-sha256=$animation_sha document-sha256=$document_sha"
 
 mutants=(wrong-order stale-revision-acceptance invalid-reference-acceptance lost-capture non-atomic-edit)
 for runtime in dotnet fable; do
@@ -74,10 +78,10 @@ done
 
 if [[ -n "$evidence" ]]; then
   mkdir -p "$(dirname "$evidence")"
-  python3 - "$work" "$evidence" "$projection_sha" "$document_projection_sha" "$document_sha" "$authoring_sha" <<'PY'
+  python3 - "$work" "$evidence" "$projection_sha" "$document_projection_sha" "$document_sha" "$authoring_sha" "$animation_sha" <<'PY'
 import json, pathlib, re, sys
 work, output = map(pathlib.Path, sys.argv[1:3])
-projection_sha, document_projection_sha, document_sha, authoring_sha = sys.argv[3:]
+projection_sha, document_projection_sha, document_sha, authoring_sha, animation_sha = sys.argv[3:]
 rows = []
 pattern = re.compile(r"document-mutant: runtime=(\S+) name=(\S+) killed-at=DOCUMENT-TRACE-DIVERGENCE trace=(\d+) step=(\d+) action=(\S+)")
 for runtime in ("dotnet", "fable"):
@@ -90,9 +94,9 @@ evidence = {
     "corpora": {"retainedTransitions": 192, "documentTransitions": 192, "relationship": "retained prefix/subject plus document interaction expansion"},
     "runtimes": ["dotnet", "fable-node"],
     "matchingProjection": True,
-    "digests": {"retainedProjectionSha256": projection_sha, "documentProjectionSha256": document_projection_sha, "documentSha256": document_sha, "authoringCorrespondenceSha256": authoring_sha},
+    "digests": {"retainedProjectionSha256": projection_sha, "documentProjectionSha256": document_projection_sha, "documentSha256": document_sha, "authoringCorrespondenceSha256": authoring_sha, "animationCorrespondenceSha256": animation_sha},
     "mutants": rows,
-    "claims": {"allFiveMutantsKilledAtFirstDivergenceInBothRuntimes": len(rows) == 10, "safeSupportedSvgImport": True, "atomicAuthoringTransactions": True, "arbitraryImport": False},
+    "claims": {"allFiveMutantsKilledAtFirstDivergenceInBothRuntimes": len(rows) == 10, "safeSupportedSvgImport": True, "atomicAuthoringTransactions": True, "portableAnimationClips": True, "arbitraryImport": False},
 }
 output.write_text(json.dumps(evidence, indent=2) + "\n")
 PY
@@ -135,6 +139,8 @@ expected_fable_files = {
     "fable/SvgArt.fs",
     "fable/SvgWorkspace.fsi",
     "fable/SvgWorkspace.fs",
+    "fable/Animation.fsi",
+    "fable/Animation.fs",
 }
 if fable_files != expected_fable_files:
     raise SystemExit(f"unexpected curated Fable source view: {sorted(fable_files)}")
