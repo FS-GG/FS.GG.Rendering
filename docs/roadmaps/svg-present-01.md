@@ -1,7 +1,7 @@
 # SVG-PRESENT-01 — Animation, browser audio and persistence
 
-Status: active; SVG-PRESENT-01.1 is in repository qualification and SVG-PRESENT-01.2 implementation is
-complete in its stacked routine change. Route: routine.
+Status: complete at the source/generated-candidate boundary; publication is selected through SVG-PREVIEW-B.
+Route: routine.
 
 Owners: FS.GG.Rendering owns portable animation/effect sampling and browser presentation/storage hosts.
 FS.GG.Audio owns portable browser-audio realization. FS.GG.Game owns save compatibility and migration
@@ -99,7 +99,7 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   packed adapter compiles through Fable and its real browser fixture passes Chromium and Firefox locally;
   the repository matrix supplies WebKit and verifies zero frame/listener ownership after disposal.
 
-- [ ] **SVG-PRESENT-01.3 — Gesture-unlocked Web Audio host — route: routine**
+- [x] **SVG-PRESENT-01.3 — Gesture-unlocked Web Audio host — route: routine**
 
   Owner: Audio. Curate the portable Core/Engine closure for Fable and add a browser package that realizes the
   existing effect vocabulary through Web Audio. Own unlock state, asset decode/readiness/errors, master/music/
@@ -111,7 +111,14 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   voice stealing and complete node/context disposal. A disclosed listening fixture distinguishes automated
   graph evidence from audibility. No native/OpenAL edge enters the Fable closure.
 
-- [ ] **SVG-PRESENT-01.4 — Versioned save and migration authority — route: routine**
+  Evidence: Audio [PR #292](https://github.com/FS-GG/FS.GG.Audio/pull/292), merge
+  [`3015051f`](https://github.com/FS-GG/FS.GG.Audio/commit/3015051f95354f302d2d8b75a072c9ad300e1c6f),
+  adds the curated Core view and `FS.GG.Audio.WebBrowser`. Packed .NET/Fable policy output agrees at SHA-256
+  `895a261873da657a3093700e77bf9507c66b328f3730f429252a1fd53c6cc698`; the real Chromium, Firefox and
+  WebKit graph fixture covers gesture gating, decode, dispatch, pressure, pause/resume, failures and disposal.
+  Audibility remains a disclosed manual listening dimension.
+
+- [x] **SVG-PRESENT-01.4 — Versioned save and migration authority — route: routine**
 
   Owner: Game. Add portable save-family identities, content/asset hashes, migration steps and a pure autosave
   reducer. Bind saves to engine/profile/schema compatibility, preserve last-valid bytes, reject skips/cycles/
@@ -122,6 +129,12 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   Wrong engine/profile/content identity, unknown newer schema, corrupt bytes, stale completion, quota failure,
   cancellation and post-disposal observations preserve the last accepted value. Recovery resumes from the last
   committed migration step and never applies one step twice.
+
+  Evidence: Game [PR #627](https://github.com/FS-GG/FS.GG.Game/pull/627), merge
+  [`91ef49ea`](https://github.com/FS-GG/FS.GG.Game/commit/91ef49ea638032686ea967083198fd82f2de028e),
+  supplies family-qualified envelopes, adjacent migration steps and the generation-safe autosave reducer.
+  Packed .NET/Fable consumers emit the same accepted/refused transition corpus at SHA-256
+  `80c5b00a6796f4af649f8de0ae7b80e97575fd04067956b9d9896753c7f21268`.
 
 - [x] **SVG-PRESENT-01.5 — Transactional IndexedDB and archive host — route: routine**
 
@@ -145,7 +158,7 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   atomic replacement, database failure recovery and terminal disposal; the merge gate runs the same fixture in
   Chromium, Firefox and WebKit.
 
-- [ ] **SVG-PRESENT-01.6 — Generated player journey and Preview-B handoff — route: routine**
+- [x] **SVG-PRESENT-01.6 — Generated player journey and Preview-B handoff — route: routine**
 
   Owner: Templates; producer repositories retain defect and completion ledgers. Compose clips/effects, cue
   dispatch, browser audio and persistence into the opt-in generated arena. Qualify direct, SDD, wizard-adopter
@@ -157,8 +170,18 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   Studio and native audio modules. Evidence binds exact producer and Templates revisions, package/archive
   identities, .NET/Fable correspondence, all three browsers, public baselines and migration/rollback results.
 
+  Evidence: Templates [PR #472](https://github.com/FS-GG/FS.GG.Templates/pull/472), merge
+  [`27261e5b`](https://github.com/FS-GG/FS.GG.Templates/commit/27261e5bb95f52d6fc782ff47de9232a3e580ce5),
+  composes exact Rendering `65a64478527cfe12dce5cb401d0a5d6e592abb76`, Game
+  `91ef49ea638032686ea967083198fd82f2de028e` and Audio
+  `3015051f95354f302d2d8b75a072c9ad300e1c6f` candidate packets. Exact-head run
+  [34753052167](https://github.com/FS-GG/FS.GG.Templates/actions/runs/34753052167) passed direct, SDD,
+  wizard-adopter and retained routes plus Chromium, Firefox and WebKit animation, gesture audio, cue-seek,
+  reduced-motion, autosave recovery, reload and archive journeys. The full composition and installed typed
+  receiver gates also passed; public pins remained at the Release-A baseline.
+
 ## Completion and release impact
 
-After all six milestones meet their authority boundaries, record SVG-PRESENT-01 complete with publication
-pending Preview B, update the unified projection and select SVG-PREVIEW-B. Candidate versions remain private
-and unique to their bytes. No provider, registry, lifecycle or default changes occur in this feature.
+All six milestones meet their authority boundaries. SVG-PRESENT-01 is complete with publication pending the
+selected SVG-PREVIEW-B release plan. Candidate versions remain private and unique to their bytes. No provider,
+registry, lifecycle or default changes occurred in this feature.
