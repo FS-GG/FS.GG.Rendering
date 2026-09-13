@@ -61,6 +61,32 @@ let mutable sessionHost: SvgSessionHost<string> option = None
 let animationEvents = ResizeArray<string>()
 let mutable animationHost: SvgAnimationHost option = None
 
+let spatialEntries extent =
+    [ for index in 0 .. extent - 1 ->
+          let visible = index < 100
+          let x = if visible then float (index % 10) * 10.0 else 10000.0 + float index * 10.0
+          let y = if visible then float (index / 10) * 10.0 else 10000.0
+          { Id = $"object-{index}"
+            Bounds = { X = x; Y = y; Width = 8.0; Height = 8.0 }
+            Value = index } ]
+
+let spatialIndex extent =
+    SpatialWorkingSet.create 64.0 (spatialEntries extent)
+    |> Result.defaultWith (fun issues -> failwithf "spatial fixture rejected: %A" issues)
+
+let nearSpatialIndex = lazy (spatialIndex 100)
+let farSpatialIndex = lazy (spatialIndex 1000)
+
+let visiblePerformanceIndices kind =
+    let index = if kind = "extent-far" then farSpatialIndex.Value else nearSpatialIndex.Value
+    SpatialWorkingSet.query
+        { Viewport = { X = 0.0; Y = 0.0; Width = 100.0; Height = 100.0 }
+          Overscan = 0.0
+          PinnedIds = Set.empty
+          MaxVisitedChunks = 16 }
+        index
+    |> Result.defaultWith (fun issues -> failwithf "spatial fixture query rejected: %A" issues)
+
 let animationClip () =
     { Id = "player-motion"
       Duration = TimeSpan.FromMilliseconds 200.0
@@ -75,6 +101,18 @@ let animationClip () =
       Loop = Once }
     |> AnimationClip.validate
     |> Result.defaultWith (fun issues -> failwithf "animation fixture rejected: %A" issues)
+
+let continuousAnimationClip () =
+    { Id = "continuous-coordinate-motion"
+      Duration = TimeSpan.FromSeconds 1.0
+      Tracks =
+        [ PositionX,
+          [ { Time = TimeSpan.Zero; Value = ScalarValue 0.0; EasingToNext = Linear }
+            { Time = TimeSpan.FromSeconds 1.0; Value = ScalarValue 120.0; EasingToNext = Linear } ] ]
+      Cues = []
+      Loop = Repeat 31 }
+    |> AnimationClip.validate
+    |> Result.defaultWith (fun issues -> failwithf "continuous animation fixture rejected: %A" issues)
 
 let animationCallbacks =
     { ApplySample = fun id authority revision sample ->
@@ -199,6 +237,11 @@ let changedDocument () =
 
 let performanceDocument kind selection cameraStep changedObject =
     let objectCount = if kind = "dense" then 200 elif kind = "gallery" then 0 else 100
+    let objectIndices =
+        if kind = "extent-near" || kind = "extent-far" then
+            (visiblePerformanceIndices kind).Entries |> List.map _.Value
+        else
+            [ 0 .. objectCount - 1 ]
     let point x y = { X = x; Y = y }
     let rect x y width height = { X = x; Y = y; Width = width; Height = height }
     let color red green blue = { Red = red; Green = green; Blue = blue; Alpha = 255uy }
@@ -287,7 +330,7 @@ let performanceDocument kind selection cameraStep changedObject =
           MaskId = if kind = "dense" && index >= 10 && index < 20 then Some($"dense-mask-{index - 10}") else None
           Presentation = Some presentation
           Content = SvgElementContent.Group [ shape; path; label; symbol ] }
-    let objects = [ for index in 0 .. objectCount - 1 -> objectElement index ]
+    let objects = objectIndices |> List.map objectElement
     let galleryChildren =
         if kind <> "gallery" then [] else
         let galleryPath index =
@@ -429,12 +472,18 @@ let api =
         "performanceRevise" ==> fun index -> performanceChangedObject <- index; replacePerformance()
         "performanceExport" ==> fun () -> performanceHost.Value.ExportedSvg
         "performanceObserve" ==> fun () ->
+            let spatial =
+                if performanceKind = "extent-near" || performanceKind = "extent-far" then
+                    let result = visiblePerformanceIndices performanceKind
+                    createObj [ "visitedChunks" ==> result.VisitedChunkCount; "candidates" ==> result.CandidateCount; "totalEntries" ==> result.TotalEntryCount ]
+                else null
             createObj [
                 "kind" ==> performanceKind
                 "objects" ==> (if performanceKind = "dense" then 200 elif performanceKind = "gallery" then 400 else 100)
                 "layers" ==> (if performanceKind = "gallery" then 1 else 4)
                 "definitions" ==> performanceHost.Value.Document.Definitions.Length
                 "nodes" ==> performanceHost.Value.Root.querySelectorAll("*").length + 1
+                "spatial" ==> spatial
             ]
         "performanceExcessiveDocument" ==> fun () -> excessivePerformanceDocument()
         "performanceDispose" ==> fun () ->
@@ -449,6 +498,9 @@ let api =
         "animationObserve" ==> fun () -> animationObservation()
         "animationStartEssential" ==> fun (id: string) (revision: int) ->
             animationHost.Value.Start({ Id = id; AuthorityRevision = uint64 revision; Clip = animationClip (); Importance = Essential })
+            animationObservation()
+        "animationStartContinuous" ==> fun () ->
+            animationHost.Value.Start({ Id = "continuous"; AuthorityRevision = 7UL; Clip = continuousAnimationClip (); Importance = Essential })
             animationObservation()
         "animationStartDecorative" ==> fun (id: string) ->
             animationHost.Value.Start({ Id = id; AuthorityRevision = 7UL; Clip = animationClip (); Importance = Decorative SvgReducedMotionBehavior.Settle })

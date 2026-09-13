@@ -1,5 +1,5 @@
 {
-  "schema": "fsgg.svg-scale.measurement-contract/v1",
+  "schema": "fsgg.svg-scale.measurement-contract/v2",
   "referenceHost": {
     "distribution": "Arch Linux 20260906.0.587075",
     "kernel": "7.2.4-arch1-2",
@@ -8,7 +8,9 @@
     "memoryBytes": 66509987840,
     "swapBytes": 0,
     "governor": "powersave",
-    "maximumOneMinuteLoad": 1.0
+    "cgroupCpuPressureAvg10Maximum": 0.01,
+    "maximumCpuThrottledUsecDelta": 0,
+    "sharedHostLoadAverage": "reported-diagnostic-only"
   },
   "browserContract": {
     "playwrightVersion": "1.62.1",

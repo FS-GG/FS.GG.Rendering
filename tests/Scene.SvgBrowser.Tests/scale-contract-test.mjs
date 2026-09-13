@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 const contract = JSON.parse(readFileSync(new URL('../../readiness/svg-scale-01-1/measurement-contract.json', import.meta.url)));
 const mutant = process.argv.includes('--mutant') ? process.argv[process.argv.indexOf('--mutant') + 1] : null;
 const thresholds = contract.thresholds;
+if (contract.schema !== 'fsgg.svg-scale.measurement-contract/v2') throw new Error('scale-contract:schema');
+if (contract.referenceHost.sharedHostLoadAverage !== 'reported-diagnostic-only' || contract.referenceHost.cgroupCpuPressureAvg10Maximum < 0 || contract.referenceHost.maximumCpuThrottledUsecDelta !== 0) throw new Error('scale-contract:reference-isolation');
 const observation = {
   idleRebuilds: 0,
   ordinaryP95Milliseconds: 83.517,
