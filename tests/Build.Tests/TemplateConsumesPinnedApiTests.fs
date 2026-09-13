@@ -2613,8 +2613,13 @@ let private omissionLedger =
 /// Raised 506 -> 517 by SVG-AUTHOR-01.5: the unpublished candidate adds two modules and nine types for
 /// versioned editable scene interchange, generic entity/property descriptors, and grid/freeform placement.
 /// SVG-AUTHOR-01.6 owns generated consumption before SVG-PREVIEW-B publishes and teaches this surface.
+///
+/// Raised 517 -> 533 by SVG-INPUT-01.1: the exact-head KeyboardInput candidate adds two modules and
+/// fourteen types for the portable command catalog and profile envelope. Generated workspaces remain on
+/// public 0.29.0 until Preview B, so teaching these names now would advertise a surface their normal restore
+/// cannot supply. The matching temporary ledger stanza expires at that publication and mirror readback.
 [<Literal>]
-let private OmissionLedgerCeiling = 517
+let private OmissionLedgerCeiling = 533
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
