@@ -1,3 +1,62 @@
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.ApplySample : Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.AnimationClipSample, Microsoft.FSharp.Core.Unit>>>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.DispatchCues : Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CueOccurrence>, Microsoft.FSharp.Core.Unit>>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.Dispose : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.Refused : Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks.new(Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.AnimationClipSample, Microsoft.FSharp.Core.Unit>>>>, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.CueOccurrence>, Microsoft.FSharp.Core.Unit>>>, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>)
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.ApplySample : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.CancelFrame : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.CueBatch : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.EffectCompleted : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.EffectRefused : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect+Tags.ScheduleFrame : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.Pause() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.ReplaceAuthority(System.UInt64) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.Resume() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.Seek(System.String, System.TimeSpan) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.SetMotionPreference(FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.Start(FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.defaultConfig : FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHost.new(FS.GG.UI.Scene.SvgBrowser.SvgAnimationCallbacks, FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig, System.UInt64)
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.ActiveEffectCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.AuthorityRevision : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.IsDisposed : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.MotionPreference : FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.PresentationRevision : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.ScheduledFrameCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.Status : FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationHostObservation.new(System.UInt64, System.UInt64, FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus, FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference, System.Int32, System.Int32, System.Int32, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationImportance+Tags.Decorative : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationImportance+Tags.Essential : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Dispose : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Frame : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Pause : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.ReplaceAuthority : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Resume : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Seek : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.SetMotionPreference : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation+Tags.Start : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicy.initialize(FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig, System.UInt64, FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference) : FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyState
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicy.observe(FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyState) : System.Tuple<System.UInt64, System.UInt64, FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus, FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference, System.Int32>
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicy.update(FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig, FS.GG.UI.Scene.SvgBrowser.SvgAnimationObservation, FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyState) : System.Tuple<FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgAnimationEffect>>
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig.MaxDecorativeEffects : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationPolicyConfig.new(System.Int32)
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.DecorativeLimitReached : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.DuplicateEffectId : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.EmptyEffectId : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.StaleAuthorityRevision : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRefusal+Tags.UnknownEffect : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest.AuthorityRevision : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest.Clip : FS.GG.UI.Scene.ValidatedAnimationClip [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest.Id : System.String [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest.Importance : FS.GG.UI.Scene.SvgBrowser.SvgAnimationImportance [get]
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationRequest.new(System.String, System.UInt64, FS.GG.UI.Scene.ValidatedAnimationClip, FS.GG.UI.Scene.SvgBrowser.SvgAnimationImportance)
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus+Tags.Paused : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgAnimationStatus+Tags.Running : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgBrowser.mount(Browser.Types.HTMLElement, FS.GG.UI.Scene.SvgBrowser.SvgBrowserOptions, FS.GG.UI.Scene.RetainedScene, Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.RetainedInteractionResult, Microsoft.FSharp.Core.Unit>) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgBrowserHost, FS.GG.UI.Scene.SvgBrowser.SvgBrowserMountError>
 FS.GG.UI.Scene.SvgBrowser.SvgBrowser.mountDocument(Browser.Types.HTMLElement, System.String, FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation.DefinitionId : System.String [get]
@@ -62,6 +121,10 @@ FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.Gamepads : Microsoft.FSharp.Core.F
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.PollGamepads : System.Boolean [get]
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.SequenceTimeoutMilliseconds : System.Int32 [get]
 FS.GG.UI.Scene.SvgBrowser.SvgInputHostOptions.new(System.Int32, System.Boolean, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot>>)
+FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference+Tags.Full : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgMotionPreference+Tags.Reduced : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgReducedMotionBehavior+Tags.Settle : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgReducedMotionBehavior+Tags.Substitute : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.AdvanceElapsed : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.ApplyProjection : FSharpFunc<System.UInt64, FSharpFunc<projection, Microsoft.FSharp.Core.Unit>> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgSessionCallbacks`1.CancelGeneration : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit> [get]

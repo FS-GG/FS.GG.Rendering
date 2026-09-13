@@ -58,6 +58,56 @@ let mutable performanceCameraStep = 0
 let mutable performanceChangedObject = -1
 let sessionEvents = ResizeArray<string>()
 let mutable sessionHost: SvgSessionHost<string> option = None
+let animationEvents = ResizeArray<string>()
+let mutable animationHost: SvgAnimationHost option = None
+
+let animationClip () =
+    { Id = "player-motion"
+      Duration = TimeSpan.FromMilliseconds 200.0
+      Tracks =
+        [ PositionX,
+          [ { Time = TimeSpan.Zero; Value = ScalarValue 0.0; EasingToNext = Linear }
+            { Time = TimeSpan.FromMilliseconds 200.0; Value = ScalarValue 40.0; EasingToNext = Linear } ]
+          Opacity,
+          [ { Time = TimeSpan.Zero; Value = ScalarValue 0.5; EasingToNext = Linear }
+            { Time = TimeSpan.FromMilliseconds 200.0; Value = ScalarValue 1.0; EasingToNext = Linear } ] ]
+      Cues = [ { Id = "midpoint"; Time = TimeSpan.FromMilliseconds 100.0; Payload = "sfx.midpoint" } ]
+      Loop = Once }
+    |> AnimationClip.validate
+    |> Result.defaultWith (fun issues -> failwithf "animation fixture rejected: %A" issues)
+
+let animationCallbacks =
+    { ApplySample = fun id authority revision sample ->
+          let element = host.Value.Root.querySelector("[data-scene-object-id='alpha']")
+          match sample.Values |> Map.tryFind PositionX with
+          | Some(ScalarValue x) -> element.setAttribute("transform", $"translate({x} 0)")
+          | _ -> ()
+          match sample.Values |> Map.tryFind Opacity with
+          | Some(ScalarValue opacity) -> element.setAttribute("opacity", string opacity)
+          | _ -> ()
+          animationEvents.Add($"sample:{id}:{authority}:{revision}:{sample.LocalTime.TotalMilliseconds}")
+      DispatchCues = fun id authority cues ->
+          for cue in cues do animationEvents.Add($"cue:{id}:{authority}:{cue.Cue.Id}:{cue.Iteration}")
+      Refused = fun reason -> animationEvents.Add($"refused:{reason}")
+      Dispose = fun () -> animationEvents.Add("dispose") }
+
+let animationObservation () =
+    let value = animationHost.Value.Observe()
+    let element = host.Value.Root.querySelector("[data-scene-object-id='alpha']")
+    createObj [
+        "authorityRevision" ==> float value.AuthorityRevision
+        "presentationRevision" ==> float value.PresentationRevision
+        "status" ==> string value.Status
+        "motion" ==> string value.MotionPreference
+        "active" ==> value.ActiveEffectCount
+        "listeners" ==> value.OwnedListenerCount
+        "frames" ==> value.ScheduledFrameCount
+        "disposed" ==> value.IsDisposed
+        "transform" ==> element.getAttribute("transform")
+        "opacity" ==> element.getAttribute("opacity")
+        "semanticId" ==> element.getAttribute("data-scene-object-id")
+        "events" ==> animationEvents.ToArray()
+    ]
 
 let sessionCallbacks =
     { AdvanceElapsed = fun value -> sessionEvents.Add($"advance:{value}")
@@ -391,6 +441,26 @@ let api =
             performanceHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
             performanceHost <- None
             performanceContainer.querySelectorAll("svg").length
+        "animationMount" ==> fun () ->
+            animationHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+            animationEvents.Clear()
+            animationHost <- Some(new SvgAnimationHost(animationCallbacks, { MaxDecorativeEffects = 1 }, 7UL))
+            animationObservation()
+        "animationObserve" ==> fun () -> animationObservation()
+        "animationStartEssential" ==> fun (id: string) (revision: int) ->
+            animationHost.Value.Start({ Id = id; AuthorityRevision = uint64 revision; Clip = animationClip (); Importance = Essential })
+            animationObservation()
+        "animationStartDecorative" ==> fun (id: string) ->
+            animationHost.Value.Start({ Id = id; AuthorityRevision = 7UL; Clip = animationClip (); Importance = Decorative SvgReducedMotionBehavior.Settle })
+            animationObservation()
+        "animationPause" ==> fun () -> animationHost.Value.Pause(); animationObservation()
+        "animationResume" ==> fun () -> animationHost.Value.Resume(); animationObservation()
+        "animationSeek" ==> fun (id: string) (milliseconds: float) -> animationHost.Value.Seek(id, TimeSpan.FromMilliseconds milliseconds); animationObservation()
+        "animationMotion" ==> fun (reduced: bool) ->
+            animationHost.Value.SetMotionPreference(if reduced then SvgMotionPreference.Reduced else SvgMotionPreference.Full)
+            animationObservation()
+        "animationReplace" ==> fun (revision: int) -> animationHost.Value.ReplaceAuthority(uint64 revision); animationObservation()
+        "animationDispose" ==> fun () -> (animationHost.Value :> IDisposable).Dispose(); animationObservation()
         "sessionMount" ==> fun () ->
             sessionHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
             sessionEvents.Clear()
