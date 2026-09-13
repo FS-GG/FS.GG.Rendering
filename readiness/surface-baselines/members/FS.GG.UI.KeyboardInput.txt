@@ -16,6 +16,54 @@ FS.GG.UI.KeyboardInput.CommandInput.gestureId(FS.GG.UI.KeyboardInput.InputGestur
 FS.GG.UI.KeyboardInput.CommandInput.noModifiers : FS.GG.UI.KeyboardInput.InputModifiers [get]
 FS.GG.UI.KeyboardInput.CommandInput.ofKeymap(System.String, System.String, FS.GG.UI.KeyboardInput.Keymap) : FS.GG.UI.KeyboardInput.InputProfile
 FS.GG.UI.KeyboardInput.CommandInput.profileSchema : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.AvailableCommands : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.Gesture : FS.GG.UI.KeyboardInput.InputGesture [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.HostReserved : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.Id : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.IsComposing : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.IsRepeat : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.NativeEditable : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.Phase : FS.GG.UI.KeyboardInput.InputGesturePhase [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.Source : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInputEvent.new(System.String, System.String, FS.GG.UI.KeyboardInput.InputGesture, FS.GG.UI.KeyboardInput.InputGesturePhase, System.Boolean, System.Boolean, System.Boolean, System.Boolean, Microsoft.FSharp.Collections.FSharpList<System.String>)
+FS.GG.UI.KeyboardInput.CommandInvocation.Command : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInvocation.EventId : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInvocation.Source : System.String [get]
+FS.GG.UI.KeyboardInput.CommandInvocation.new(System.String, System.String, System.String)
+FS.GG.UI.KeyboardInput.CommandResolver.init(Microsoft.FSharp.Collections.FSharpList<System.String>, FS.GG.UI.KeyboardInput.EffectiveInputProfile) : FS.GG.UI.KeyboardInput.CommandResolverState
+FS.GG.UI.KeyboardInput.CommandResolver.update(FS.GG.UI.KeyboardInput.InputCatalog, FS.GG.UI.KeyboardInput.CommandResolverObservation, FS.GG.UI.KeyboardInput.CommandResolverState) : System.Tuple<FS.GG.UI.KeyboardInput.CommandResolverState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.CommandResolverEffect>>
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.CancelDeadline : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.CapturedGesture : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.HeldActionChanged : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.InvokeCommand : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.PreventDefault : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.RequestDeadline : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.RequestFocus : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverEffect+Tags.ResolverDiagnostic : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.BeginCapture : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.CancelCapture : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.CompositionEnded : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.CompositionStarted : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.ContextsChanged : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.DeadlineElapsed : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.Dispose : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.Escape : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.FocusLost : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.InputEvent : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.ModalTakenOver : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.PopModal : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.ProfileChanged : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.PushModal : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverObservation+Tags.SourceDisconnected : System.Int32
+FS.GG.UI.KeyboardInput.CommandResolverState.ActiveContexts : Microsoft.FSharp.Collections.FSharpList<System.String> [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.CaptureRestoreFocus : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.IsComposing : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.IsDisposed : System.Boolean [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.ModalStack : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputModalFrame> [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.OwnedPresses : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.OwnedCommandPress> [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.PendingSequence : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.KeyboardInput.PendingInputSequence> [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.Profile : FS.GG.UI.KeyboardInput.EffectiveInputProfile [get]
+FS.GG.UI.KeyboardInput.CommandResolverState.new(FS.GG.UI.KeyboardInput.EffectiveInputProfile, Microsoft.FSharp.Collections.FSharpList<System.String>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.InputModalFrame>, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.KeyboardInput.PendingInputSequence>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.KeyboardInput.OwnedCommandPress>, System.Boolean, System.Boolean)
 FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.Continuous : System.Int32
 FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.OncePerPress : System.Int32
 FS.GG.UI.KeyboardInput.CommandTriggerPolicy+Tags.RepeatWhileHeld : System.Int32
@@ -44,8 +92,13 @@ FS.GG.UI.KeyboardInput.InputGesture+Tags.KeyChord : System.Int32
 FS.GG.UI.KeyboardInput.InputGesture+Tags.KeySequence : System.Int32
 FS.GG.UI.KeyboardInput.InputGesture+Tags.Pointer : System.Int32
 FS.GG.UI.KeyboardInput.InputGesture+Tags.Touch : System.Int32
+FS.GG.UI.KeyboardInput.InputGesturePhase+Tags.Pressed : System.Int32
+FS.GG.UI.KeyboardInput.InputGesturePhase+Tags.Released : System.Int32
 FS.GG.UI.KeyboardInput.InputKeyIdentity+Tags.LogicalKey : System.Int32
 FS.GG.UI.KeyboardInput.InputKeyIdentity+Tags.PhysicalCode : System.Int32
+FS.GG.UI.KeyboardInput.InputModalFrame.Context : System.String [get]
+FS.GG.UI.KeyboardInput.InputModalFrame.RestoreFocus : System.String [get]
+FS.GG.UI.KeyboardInput.InputModalFrame.new(System.String, System.String)
 FS.GG.UI.KeyboardInput.InputModifiers.Alt : System.Boolean [get]
 FS.GG.UI.KeyboardInput.InputModifiers.AltGraph : System.Boolean [get]
 FS.GG.UI.KeyboardInput.InputModifiers.Ctrl : System.Boolean [get]
@@ -139,6 +192,16 @@ FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MalformedJson : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.MissingField : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedFormat : System.Int32
 FS.GG.UI.KeyboardInput.KeymapCodecError+Tags.UnsupportedVersion : System.Int32
+FS.GG.UI.KeyboardInput.OwnedCommandPress.Command : System.String [get]
+FS.GG.UI.KeyboardInput.OwnedCommandPress.Gesture : FS.GG.UI.KeyboardInput.InputGesture [get]
+FS.GG.UI.KeyboardInput.OwnedCommandPress.Source : System.String [get]
+FS.GG.UI.KeyboardInput.OwnedCommandPress.Trigger : FS.GG.UI.KeyboardInput.CommandTriggerPolicy [get]
+FS.GG.UI.KeyboardInput.OwnedCommandPress.new(System.String, FS.GG.UI.KeyboardInput.InputGesture, System.String, FS.GG.UI.KeyboardInput.CommandTriggerPolicy)
+FS.GG.UI.KeyboardInput.PendingInputSequence.DeadlineToken : System.String [get]
+FS.GG.UI.KeyboardInput.PendingInputSequence.Steps : Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.KeyboardInput.InputKeyIdentity, FS.GG.UI.KeyboardInput.InputModifiers>> [get]
+FS.GG.UI.KeyboardInput.PendingInputSequence.TerminalCommand : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.PendingInputSequence.TerminalContext : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.KeyboardInput.PendingInputSequence.new(Microsoft.FSharp.Collections.FSharpList<System.Tuple<FS.GG.UI.KeyboardInput.InputKeyIdentity, FS.GG.UI.KeyboardInput.InputModifiers>>, System.String, Microsoft.FSharp.Core.FSharpOption<System.String>, Microsoft.FSharp.Core.FSharpOption<System.String>)
 FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.ActivateFocused : System.Int32
 FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.ClearSelection : System.Int32
 FS.GG.UI.KeyboardInput.SvgKeyboardIntent+Tags.FocusNext : System.Int32

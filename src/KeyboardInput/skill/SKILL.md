@@ -13,6 +13,7 @@ Owns `src/KeyboardInput/`, keyboard input tests, `template/fragments/keyboard-in
 
 The supported API lives in `src/KeyboardInput/KeyboardInput.fsi`,
 `src/KeyboardInput/KeymapCodec.fsi`, and `src/KeyboardInput/CommandInput.fsi`.
+The modal resolver contract lives in `src/KeyboardInput/CommandResolver.fsi`.
 Surface changes require `readiness/surface-baselines/FS.GG.UI.KeyboardInput.txt`.
 
 ## Build Commands
@@ -60,6 +61,14 @@ match InputProfileCodec.decode encoded with
 | Ok decoded when decoded.Schema <> expectedSchema -> failwith "schema mismatch"
 | Ok decoded -> CommandInput.compile catalog decoded
 ```
+
+Pass normalized observations through `CommandResolver.update` in delivery order.
+The reducer owns modal priority, pending prefixes, injected deadlines, repeat
+policy and source-owned held contributions. Interpret `RequestDeadline` with a
+host timer and return its exact token through `DeadlineElapsed`; never read a
+clock inside the reducer. Route releases even after mode or availability changes.
+On focus loss, composition, takeover or disposal, apply the returned held-state
+and deadline cancellation effects before accepting more input.
 
 ## Generated Product
 

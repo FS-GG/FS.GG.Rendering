@@ -11,6 +11,8 @@
     <Compile Include="KeyboardInput.fs" />
     <Compile Include="CommandInput.fsi" />
     <Compile Include="CommandInput.fs" />
+    <Compile Include="CommandResolver.fsi" />
+    <Compile Include="CommandResolver.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />

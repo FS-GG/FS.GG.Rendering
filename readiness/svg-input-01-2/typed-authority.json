@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "lifecycle": "typed-sdd",
+  "backend": "quint-specification-v1",
+  "profileIdentity": "fsgg-quint-profile/2",
+  "toolchainIdentity": "79b32dacc5bb150e23c4017eef16f3f688cde062441583d5ea1ffa5cc9e62486",
+  "packageIdentity": "FS.GG.SDD.Artifacts/1.7.0",
+  "artifacts": [
+    {
+      "id": "bindings",
+      "path": "readiness/svg-input-01-2/quint/bindings.fs",
+      "sha256": "e212681469124d1d4b3e59b6623658b24e1c570b111ccc44814158a1b4c27794"
+    },
+    {
+      "id": "compilation-receipt",
+      "path": "readiness/svg-input-01-2/quint/receipt.json",
+      "sha256": "38bbf0053a37a41b478410d91e7932f3edea2a5aa91d7e773478cd6e133e63e5"
+    },
+    {
+      "id": "compiled-contract",
+      "path": "readiness/svg-input-01-2/quint/contract.json",
+      "sha256": "fa1142f2d50027baacd9510ae7131dce8a9e521fb79ad814791b89489e18e036"
+    },
+    {
+      "id": "fence-manifest",
+      "path": "readiness/svg-input-01-2/quint/fences.json",
+      "sha256": "e8a13d9d5e14a3500ada023089713160503ed8a51bbcee5d6026d517a803f887"
+    },
+    {
+      "id": "generated-modules",
+      "path": "readiness/svg-input-01-2/quint/inputCommand.qnt",
+      "sha256": "322f20cab48e1d6ea9e7761d00aab26b51bcf2b232888e8b29dedf1b0fe99e12"
+    },
+    {
+      "id": "markdown",
+      "path": "models/input-command/input-command.md",
+      "sha256": "78f7b65f1b9fcf8dff940b6940fa8c9b6c720539af671489738d35bf1ecb9199"
+    },
+    {
+      "id": "profile-bindings",
+      "path": "readiness/svg-input-01-2/quint/profile-bindings.json",
+      "sha256": "6835996dedffb8c063190a856c96edcc9108b246817a3e26430b42778e9926c7"
+    },
+    {
+      "id": "sandbox-contract",
+      "path": "readiness/svg-input-01-2/quint/sandbox-contract.json",
+      "sha256": "2bf8ff26ddb488444c59daa77515b183008c352213e48ac6e36e15e0bc08c122"
+    },
+    {
+      "id": "source-map",
+      "path": "readiness/svg-input-01-2/quint/source-map.json",
+      "sha256": "7af53057235124103adb4c7851491173e28a8962be51b96934b6a8eed868202e"
+    },
+    {
+      "id": "typed-effect",
+      "path": "readiness/svg-input-01-2/quint/typed-effect.json",
+      "sha256": "9052788695cdfda3be0b6d2468997dda932fa66a56a4ae29c68139134326644c"
+    }
+  ],
+  "authoringAgent": "codex",
+  "authoringSession": "svg-input-01-2-witnesses",
+  "rollbackManifestPath": null,
+  "rollbackManifestSha256": null
+}

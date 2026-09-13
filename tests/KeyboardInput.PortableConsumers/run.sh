@@ -29,9 +29,10 @@ dotnet restore "$work/DotNet/DotNet.fsproj" --configfile "$work/NuGet.Config" >/
 dotnet run --project "$work/DotNet/DotNet.fsproj" --no-restore > "$work/dotnet.txt"
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config" >/dev/null
 dotnet tool install fable --version 5.17.1 --tool-path "$work/tools" --configfile "$work/NuGet.Config" >/dev/null
-"$work/tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/js" --noCache >/dev/null
+"$work/tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/js" --noCache
 node "$work/js/Program.js" > "$work/fable.txt"
-cmp "$work/dotnet.txt" "$work/fable.txt"
+diff -u "$work/dotnet.txt" "$work/fable.txt"
+grep -Fx 'model-correspondence terminalPending=true terminalCleared=true terminalInvoked=true heldStarted=true heldRecovered=true lateReleaseSilent=true' "$work/dotnet.txt" >/dev/null
 
 python3 - "$work" "$version" <<'PY'
 import json,pathlib,sys,zipfile
@@ -43,7 +44,7 @@ for forbidden in ('skiasharp/','fs.gg.game.','fable.browser.dom/','fs.gg.ui.cont
 package=root/'feed'/f'FS.GG.UI.KeyboardInput.{version}.nupkg'
 with zipfile.ZipFile(package) as archive:
     fable={name for name in archive.namelist() if name.startswith('fable/')}
-expected={'fable/FS.GG.UI.KeyboardInput.fsproj','fable/KeyboardInput.fsi','fable/KeyboardInput.fs','fable/CommandInput.fsi','fable/CommandInput.fs'}
+expected={'fable/FS.GG.UI.KeyboardInput.fsproj','fable/KeyboardInput.fsi','fable/KeyboardInput.fs','fable/CommandInput.fsi','fable/CommandInput.fs','fable/CommandResolver.fsi','fable/CommandResolver.fs'}
 if fable != expected: raise SystemExit(f'unexpected curated Fable view: {sorted(fable)}')
 print('keyboard-input-portable: dotnet=passed fable-node=passed closure=scene-only')
 PY
