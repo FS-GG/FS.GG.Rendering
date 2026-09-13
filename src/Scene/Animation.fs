@@ -424,7 +424,7 @@ module AnimationClip =
     let validate clip =
         let basic =
             [ if String.IsNullOrWhiteSpace clip.Id then EmptyClipId
-              if clip.Duration <= TimeSpan.Zero || not (finite clip.Duration.TotalMilliseconds) then InvalidDuration
+              if clip.Duration <= TimeSpan.Zero || clip.Duration.TotalMilliseconds > 86400000.0 || not (finite clip.Duration.TotalMilliseconds) then InvalidDuration
               if List.isEmpty clip.Tracks then EmptyTracks
               match clip.Loop with
               | Repeat iterations

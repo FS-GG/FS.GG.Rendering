@@ -65,6 +65,93 @@ type AnimationState<'a> =
       Easing: Easing
       Interp: 'a -> 'a -> float -> 'a }
 
+/// A property addressed by a portable animation clip.
+type ClipProperty =
+    | PositionX
+    | PositionY
+    | RotationDegrees
+    | ScaleX
+    | ScaleY
+    | Opacity
+    | Color
+    | CustomScalar of string
+    | PathMorph of string
+
+/// A typed keyframe value.
+type ClipValue =
+    | ScalarValue of float
+    | ColorValue of Color
+    | PathValue of (float * float) list
+
+/// One keyframe at an absolute clip-local time.
+type ClipKeyframe =
+    { Time: TimeSpan
+      Value: ClipValue
+      EasingToNext: Easing }
+
+/// A presentation cue with stable identity.
+type AnimationCue =
+    { Id: string
+      Time: TimeSpan
+      Payload: string }
+
+/// Bounded playback behavior.
+type ClipLoop =
+    | Once
+    | Repeat of iterations: int
+    | PingPong of iterations: int
+
+/// An untrusted animation clip accepted only through `AnimationClip.validate`.
+type AnimationClip =
+    { Id: string
+      Duration: TimeSpan
+      Tracks: (ClipProperty * ClipKeyframe list) list
+      Cues: AnimationCue list
+      Loop: ClipLoop }
+
+/// A located clip validation issue.
+type ClipIssue =
+    | EmptyClipId
+    | InvalidDuration
+    | EmptyTracks
+    | DuplicateTrack of ClipProperty
+    | EmptyCustomProperty
+    | EmptyPathIdentity
+    | MissingKeyframes of ClipProperty
+    | InvalidKeyframeTime of ClipProperty * int
+    | InvalidKeyframeValue of ClipProperty * int
+    | MismatchedKeyframeValue of ClipProperty * int
+    | IncompatiblePathTopology of ClipProperty
+    | InvalidLoopIterations of int
+    | EmptyCueId of int
+    | DuplicateCueId of string
+    | InvalidCueTime of string
+    | UnorderedCues
+
+/// A structurally and numerically valid clip.
+type ValidatedAnimationClip = private ValidatedAnimationClip of AnimationClip
+
+type ClipDirection = Forward | Reverse
+
+/// Seek and pause sample visuals without emitting historical cues.
+type ClipCueMode =
+    | LiveAdvance of previousElapsed: TimeSpan
+    | Seek
+    | Paused
+
+type CueOccurrence =
+    { Cue: AnimationCue
+      Iteration: int
+      Direction: ClipDirection }
+
+type AnimationClipSample =
+    { LocalTime: TimeSpan
+      Iteration: int
+      Direction: ClipDirection
+      Values: Map<ClipProperty, ClipValue>
+      Cues: CueOccurrence list
+      IsComplete: bool }
+
 /// Public contract module exposed by this FS.GG.UI package.
 module Easing =
     /// Maps normalized progress `t` to eased progress. Input `t` is clamped to
@@ -145,3 +232,10 @@ module AnimationState =
     /// True while the transition is still in flight
     /// (`Elapsed < Duration && Current <> Target`).
     val isActive: state: AnimationState<'a> -> bool when 'a: equality
+
+/// Validation and deterministic sampling for portable clips.
+[<RequireQualifiedAccess>]
+module AnimationClip =
+    val validate: clip: AnimationClip -> Result<ValidatedAnimationClip, ClipIssue list>
+    val value: clip: ValidatedAnimationClip -> AnimationClip
+    val sample: elapsed: TimeSpan -> cueMode: ClipCueMode -> clip: ValidatedAnimationClip -> AnimationClipSample
