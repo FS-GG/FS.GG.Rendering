@@ -25,8 +25,7 @@ type SpatialWorkingSetIssue =
     | EntryChunkLimitExceeded of id: string
     | QueryChunkLimitExceeded of limit: int
 
-type SpatialWorkingSetIndex<'value> =
-    private SpatialWorkingSetIndex of float * SpatialEntry<'value> list * Map<int64 * int64, int list> * Map<string, int>
+type SpatialWorkingSetIndex<'value> = private SpatialWorkingSetIndex of float * SpatialEntry<'value> list * Map<int64 * int64, int list> * Map<string, int>
 
 [<RequireQualifiedAccess>]
 module SpatialWorkingSet =
