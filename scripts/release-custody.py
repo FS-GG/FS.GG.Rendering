@@ -116,8 +116,14 @@ def validate_plan(plan: dict) -> None:
     kinds = [p.get("kind") for p in packages]
     if kinds.count("library") != 17 or kinds.count("bom") != 1 or kinds.count("template") != 1:
         raise CustodyError("release plan roster must be 17 libraries + one BOM + one template")
-    if plan.get("baselineVersion") != "0.28.0":
-        raise CustodyError("SVG Preview A must be compared with the actual 0.28.0 public baseline")
+    version = plan.get("version", "")
+    baseline = plan.get("baselineVersion", "")
+    stable_version = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    stable_baseline = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", baseline)
+    if not stable_version or not stable_baseline:
+        raise CustodyError("release and baseline versions must be stable semantic versions")
+    if tuple(map(int, stable_baseline.groups())) >= tuple(map(int, stable_version.groups())):
+        raise CustodyError("release baseline must precede the release version")
 
 
 def archive_record(path: Path) -> dict:
@@ -172,7 +178,11 @@ def verify_release_shape(plan: dict, records: list[dict], archives: Path, source
     for name in plan["releaseChecks"]["fableEntries"]:
         if name not in svg_entries:
             raise CustodyError(f"{svg_id}: required Fable entry missing: {name}")
-    surface = svg_entries.get("api-surface/SvgBrowser.fsi", b"").decode("utf-8", errors="replace")
+    surface = "\n".join(
+        data.decode("utf-8", errors="replace")
+        for name, data in sorted(svg_entries.items())
+        if name.startswith("api-surface/") and name.endswith(".fsi")
+    )
     for marker in plan["releaseChecks"]["svgSurfaceMarkers"]:
         if marker not in surface:
             raise CustodyError(f"{svg_id}: SVG public surface marker missing: {marker}")

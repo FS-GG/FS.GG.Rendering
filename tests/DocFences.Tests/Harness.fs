@@ -297,8 +297,12 @@ module Harness =
     /// Its four existing self-contained fence origins move by 55 lines without changing their bodies.
     /// fs-gg-keyboard-input adds one contextual expression fragment over browser event facts supplied by
     /// the reader; its existing fences and their contextual classification are unchanged.
+    /// Re-audited for SVG-PREVIEW-B.1: generated-product guidance adds prose-only public API maps for
+    /// command profiles, workspace discovery, authoring, art, resources, editable scenes, and layout
+    /// persistence. No fence body or classification changed; the new prose only moves later origins in
+    /// fs-gg-keyboard-input, fs-gg-ui-widgets, and fs-gg-scene.
     let private expectedProductSkillInventory =
-        "ed1ce6485c81d22266ca3e35bb83215c29521f7c12fd48b7803dc825209dbfec"
+        "dc3c586d6f409c77b7c5f82945d0f2a306934e3d0e84403df2ae163d3a452867"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -313,11 +317,11 @@ module Harness =
               "template/product-skills/fs-gg-grids/SKILL.md", 61
               "template/product-skills/fs-gg-collision/SKILL.md", 104
               "template/product-skills/fs-gg-layout/SKILL.md", 44
-              "template/product-skills/fs-gg-ui-widgets/SKILL.md", 97
-              "template/product-skills/fs-gg-scene/SKILL.md", 80
-              "template/product-skills/fs-gg-scene/SKILL.md", 133
-              "template/product-skills/fs-gg-scene/SKILL.md", 194
-              "template/product-skills/fs-gg-scene/SKILL.md", 268
+              "template/product-skills/fs-gg-ui-widgets/SKILL.md", 105
+              "template/product-skills/fs-gg-scene/SKILL.md", 121
+              "template/product-skills/fs-gg-scene/SKILL.md", 174
+              "template/product-skills/fs-gg-scene/SKILL.md", 235
+              "template/product-skills/fs-gg-scene/SKILL.md", 309
               "template/product-skills/fs-gg-styling/SKILL.md", 83
               "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
 

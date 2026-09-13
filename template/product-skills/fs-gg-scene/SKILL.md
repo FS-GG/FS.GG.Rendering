@@ -74,6 +74,47 @@ camera, and valid document. Apply revision-checked edit, focus, selection, captu
 snapshot commands with `SvgDocumentInteraction.update`. Keep the play snapshot's serialized bytes as
 the immutable handoff; later editor history must not mutate a running session.
 
+### SVG authoring, art, and resources
+
+Create a validated editable scene with `SvgAuthoring.tryCreateScene` and use
+`SvgAuthoring.transactionSchema` as the persisted transaction identity. Preview a grouped edit with
+`SvgAuthoring.preview`; accept it through `SvgAuthoring.commitPreview` or discard it through
+`SvgAuthoring.cancelPreview`. Direct atomic edits use `SvgAuthoring.commit`. Navigate history with
+`SvgAuthoring.undo` and `SvgAuthoring.redo`, and hand runtime an immutable revision through
+`SvgAuthoring.takePlaySnapshot`.
+
+The art reducer starts at `SvgArt.initialState`. Apply transforms with `SvgArt.translate`,
+`SvgArt.rotate`, `SvgArt.scale`, and `SvgArt.transform`; align and order selected nodes through
+`SvgArt.align`, `SvgArt.reorder`, `SvgArt.group`, and `SvgArt.ungroup`. Path editing uses
+`SvgArt.insertPathPoint`, `SvgArt.removePathPoint`, and `SvgArt.replacePath`; presentation editing
+uses `SvgArt.setPresentation` and `SvgArt.putGradient`. Derive visible guides with `SvgArt.guides` and
+snap through `SvgArt.snapPoint`.
+
+Prepare bounded geometry with `SvgGeometry.prepare`, using
+`SvgGeometry.defaultMaximumDeviation` and `SvgGeometry.maximumSubdivisionDepth`; apply an accepted
+worker result through `SvgGeometry.transaction`. Parse untrusted SVG only through
+`SvgImport.importXml`. The resource-aware route is `SvgResourceInterchange.importXml` and
+`SvgResourceInterchange.exportSvg`; the bundled fallback font is
+`SvgResourceInterchange.notoSansLatin400`.
+
+Bind asset records to `SvgAsset.schema` and catalogs to `SvgAsset.catalogSchema`. Validate with
+`SvgAsset.validateCatalog`, serialize through `SvgAsset.serializeCatalog`, restore through
+`SvgAsset.deserializeCatalog`, and use `SvgAsset.contentHash` plus `SvgAsset.resolveInstance` to keep
+prefab identity and conflicts explicit.
+
+### Editable scene and workspace persistence
+
+Use `SvgScene.schema`, `SvgScene.serialize`, and `SvgScene.deserialize` for the editable-scene
+envelope. Run `SvgScene.validateDescriptors` before accepting product-defined kinds, and use
+`SvgScene.migrateLegacy` only for its declared legacy schema. Placement defaults remain explicit as
+`SvgScenePlacement.freeform` or `SvgScenePlacement.grid`.
+
+Start the workspace with `SvgWorkspace.init` and reduce commands through `SvgWorkspace.update`.
+Persist only `SvgWorkspace.encodeLayout` under `SvgWorkspace.layoutSchema`, restore it through
+`SvgWorkspace.decodeLayout`, and fall back to `SvgWorkspace.defaultLayout`. Use
+`SvgWorkspace.activeContexts` as the input resolver context projection and
+`SvgWorkspace.narrowViewport` for the supported compact arrangement.
+
 ## Usage
 
 ```fsharp

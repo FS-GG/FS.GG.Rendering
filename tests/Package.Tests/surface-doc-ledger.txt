@@ -408,7 +408,6 @@ owner-documented  set
 owner-documented  stranded
 
 # ---- KeyboardInput/KeyboardInput.fsi
-vocabulary  noModifiers
 vocabulary  normalize
 vocabulary  normalizeEvent
 vocabulary  normalizeEventWithModifiers
