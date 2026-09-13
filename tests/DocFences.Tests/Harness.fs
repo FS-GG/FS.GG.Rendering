@@ -298,7 +298,7 @@ module Harness =
     /// fs-gg-keyboard-input adds one contextual expression fragment over browser event facts supplied by
     /// the reader; its existing fences and their contextual classification are unchanged.
     let private expectedProductSkillInventory =
-        "ed1ce6485c81d22266ca3e35bb83215c29521f7c12fd48b7803dc825209dbfec"
+        "cc46b8a749d0ffceccdcaaf153fddad00aa7fee020e2467d62773858674f7a6e"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product

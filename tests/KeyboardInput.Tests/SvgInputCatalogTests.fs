@@ -126,6 +126,8 @@ let tests =
         }
 
         test "codec round-trips physical logical AltGraph and ordered overrides byte-identically" {
+            Expect.equal InputProfileCodec.formatId "fsgg.input-profile" "wire format id is stable"
+            Expect.equal InputProfileCodec.formatVersion 1 "wire format version is stable"
             let altGraph = { mods with AltGraph = true; Ctrl = true; Alt = true }
             let input =
                 profile
