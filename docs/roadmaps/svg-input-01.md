@@ -1,6 +1,6 @@
 # SVG-INPUT-01 — Command and workspace interaction
 
-Status: active; next executable window .2. Route: routine.
+Status: active; next executable window .3. Route: routine.
 
 Owner: FS.GG.Rendering. FS.GG.Templates owns generated product composition and
 external compatibility fixtures. FS.GG.Game retains command policy and gameplay
@@ -84,7 +84,7 @@ diagnosed before construction; insertion order never selects a winner.
   report all located diagnostics before any last-wins construction. Existing APIs,
   tests and package closure remain compatible.
 
-- [ ] **SVG-INPUT-01.2 — Modal resolution and true sequences obey one reducer — route: routine**
+- [x] **SVG-INPUT-01.2 — Modal resolution and true sequences obey one reducer — route: routine**
 
   Depends on: .1 accepted catalog/profile surface.
 
