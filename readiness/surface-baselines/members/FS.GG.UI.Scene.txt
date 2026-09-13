@@ -777,6 +777,30 @@ FS.GG.UI.Scene.ShapingProviderEvidence.new(FS.GG.UI.Scene.ShapingProviderAvailab
 FS.GG.UI.Scene.Size.Height : System.Int32 [get]
 FS.GG.UI.Scene.Size.Width : System.Int32 [get]
 FS.GG.UI.Scene.Size.new(System.Int32, System.Int32)
+FS.GG.UI.Scene.SpatialEntry`1.Bounds : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.SpatialEntry`1.Id : System.String [get]
+FS.GG.UI.Scene.SpatialEntry`1.Value : value [get]
+FS.GG.UI.Scene.SpatialEntry`1.new(System.String, FS.GG.UI.Scene.Rect, value)
+FS.GG.UI.Scene.SpatialQuery.MaxVisitedChunks : System.Int32 [get]
+FS.GG.UI.Scene.SpatialQuery.Overscan : System.Double [get]
+FS.GG.UI.Scene.SpatialQuery.PinnedIds : Microsoft.FSharp.Collections.FSharpSet<System.String> [get]
+FS.GG.UI.Scene.SpatialQuery.Viewport : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.SpatialQuery.new(FS.GG.UI.Scene.Rect, System.Double, Microsoft.FSharp.Collections.FSharpSet<System.String>, System.Int32)
+FS.GG.UI.Scene.SpatialWorkingSet.create<value>(System.Double, FSharpList<SpatialEntry<value>>) : FSharpResult<SpatialWorkingSetIndex<value>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SpatialWorkingSetIssue>>
+FS.GG.UI.Scene.SpatialWorkingSet.query<value>(FS.GG.UI.Scene.SpatialQuery, SpatialWorkingSetIndex<value>) : FSharpResult<SpatialWorkingSetResult<value>, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SpatialWorkingSetIssue>>
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.DuplicateId : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.EntryChunkLimitExceeded : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.InvalidBounds : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.InvalidChunkSize : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.InvalidOverscan : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.InvalidViewport : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.MissingId : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetIssue+Tags.QueryChunkLimitExceeded : System.Int32
+FS.GG.UI.Scene.SpatialWorkingSetResult`1.CandidateCount : System.Int32 [get]
+FS.GG.UI.Scene.SpatialWorkingSetResult`1.Entries : FSharpList<SpatialEntry<value>> [get]
+FS.GG.UI.Scene.SpatialWorkingSetResult`1.TotalEntryCount : System.Int32 [get]
+FS.GG.UI.Scene.SpatialWorkingSetResult`1.VisitedChunkCount : System.Int32 [get]
+FS.GG.UI.Scene.SpatialWorkingSetResult`1.new(FSharpList<SpatialEntry<value>>, System.Int32, System.Int32, System.Int32)
 FS.GG.UI.Scene.Stroke.Cap : FS.GG.UI.Scene.StrokeCap [get]
 FS.GG.UI.Scene.Stroke.Join : FS.GG.UI.Scene.StrokeJoin [get]
 FS.GG.UI.Scene.Stroke.Miter : System.Double [get]
