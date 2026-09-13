@@ -102,6 +102,21 @@ class ReleaseCustodyTests(unittest.TestCase):
         with self.assertRaises(custody.CustodyError):
             custody.validate_plan(plan)
 
+    def test_plan_accepts_a_later_release_with_its_previous_public_baseline(self):
+        packages = [
+            {"id": f"FS.GG.UI.Library{i:02d}", "kind": "library"}
+            for i in range(17)
+        ] + [
+            {"id": "FS.GG.UI", "kind": "bom"},
+            {"id": "FS.GG.UI.Template", "kind": "template"},
+        ]
+        custody.validate_plan({
+            "schema": "fsgg.rendering.release-plan/v1",
+            "version": "0.30.0",
+            "baselineVersion": "0.29.0",
+            "packages": packages,
+        })
+
     def test_workflow_retains_before_push_and_never_deletes_release_tags(self):
         repo = SCRIPT.parent.parent
         release = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")
