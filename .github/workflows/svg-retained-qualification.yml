@@ -9,6 +9,7 @@ on:
       - 'src/Scene/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
+      - 'tests/KeyboardInput.PortableConsumers/**'
       - 'tests/svg-foundation/**'
       - '.github/workflows/svg-retained-qualification.yml'
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'src/Scene/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
+      - 'tests/KeyboardInput.PortableConsumers/**'
       - 'tests/svg-foundation/**'
       - '.github/workflows/svg-retained-qualification.yml'
 
@@ -84,6 +86,8 @@ jobs:
         run: dotnet test tests/Scene.Tests/Scene.Tests.fsproj --filter 'SVG foundation retained scene'
       - name: Replay model traces through packed consumers
         run: bash tests/Scene.PortableConsumers/run.sh "$RUNNER_TEMP/svg-reducer-replay.json"
+      - name: Qualify portable input profiles through packed consumers
+        run: bash tests/KeyboardInput.PortableConsumers/run.sh
       - name: Upload qualification receipt
         if: always()
         uses: actions/upload-artifact@v7

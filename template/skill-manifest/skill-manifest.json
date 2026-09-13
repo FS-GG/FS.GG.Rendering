@@ -61,12 +61,12 @@
     {
       "id": "fs-gg-keyboard-input",
       "scope": "product",
-      "sha256": "fbd7f29e2f5dee30f3a1c6bb9f3aed16aa3249d3e7a98df1c197e2c5acfe0cd1",
+      "sha256": "c631e1d10e6fad9324ad097d34ec5c02a79d295e41e6ebd41804dca7273c6589",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
       "materializes-when": "profile in [app, game]",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/",
       "files": [
-        { "path": "SKILL.md", "sha256": "fbd7f29e2f5dee30f3a1c6bb9f3aed16aa3249d3e7a98df1c197e2c5acfe0cd1" }
+        { "path": "SKILL.md", "sha256": "c631e1d10e6fad9324ad097d34ec5c02a79d295e41e6ebd41804dca7273c6589" }
       ]
     },
     {

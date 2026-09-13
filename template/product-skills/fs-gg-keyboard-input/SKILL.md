@@ -16,8 +16,8 @@ is no separate keyboard reducer to seed.
 
 The signatures you consume are bundled with this product at
 `docs/api-surface/KeyboardInput/KeyboardInput.fsi` (the `ViewerKey` cases the host
-delivers) and `docs/api-surface/SkiaViewer/SkiaViewer.fsi` (the `MapKey: ViewerKey
--> bool -> 'msg option` field on the generated host). The host normalizes raw key
+delivers) and `docs/api-surface/SkiaViewer/SkiaViewer.fsi` (the `MapKey:
+ViewerKey -> bool -> 'msg option` field on the generated host). The host normalizes raw key
 strings to `ViewerKey` for you and calls `MapKey`; your only job is the pure
 `ViewerKey -> bool -> Msg option` mapping.
 

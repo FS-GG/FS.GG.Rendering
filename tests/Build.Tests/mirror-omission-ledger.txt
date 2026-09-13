@@ -302,8 +302,27 @@ module FS.GG.UI.DesignSystem::FS.GG.UI.DesignSystem.StyleResolver
 module FS.GG.UI.Elmish::FS.GG.UI.Elmish.Animation
 type FS.GG.UI.Elmish::FS.GG.UI.Elmish.AnimationTick
 
-# FS.GG.UI.KeyboardInput (4)
+# FS.GG.UI.KeyboardInput (20 — SVG-INPUT-01.1 keeps the 16 source-candidate command-profile
+#                        names below out of generated-workspace docs until Preview B publishes
+#                        the package and its mirror. The generated product skill likewise retains
+#                        only the public 0.29.0 surface during this window.)
 module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodec
+module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.CommandInput
+module FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputProfileCodec
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.CommandAlternative
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.CommandArgumentPolicy
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.CommandDescriptor
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.CommandTriggerPolicy
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.EffectiveInputProfile
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputBinding
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputBindingOverride
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputCatalog
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputContextDescriptor
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputGesture
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputKeyIdentity
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputModifiers
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputProfile
+type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.InputProfileDiagnostic
 type FS.GG.UI.KeyboardInput::FS.GG.UI.KeyboardInput.KeymapCodecError
 
 # FS.GG.UI.Layout (16)
