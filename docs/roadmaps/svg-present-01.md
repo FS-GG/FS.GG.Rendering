@@ -123,7 +123,7 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   cancellation and post-disposal observations preserve the last accepted value. Recovery resumes from the last
   committed migration step and never applies one step twice.
 
-- [ ] **SVG-PRESENT-01.5 — Transactional IndexedDB and archive host — route: routine**
+- [x] **SVG-PRESENT-01.5 — Transactional IndexedDB and archive host — route: routine**
 
   Owner: Rendering. Add a disposable browser persistence host that interprets Game's reducer effects for the
   four independent storage families. Use one IndexedDB transaction per accepted replacement, bounded debounce,
@@ -134,6 +134,16 @@ before commit. A newer schema remains preserved and is never rewritten as an old
   completion, quota failure, database failure, corrupt/newer data, retry, export/import, traversal/missing/hash
   refusal and disposal. The previous committed value stays readable after every negative case. Browser and
   headless reducer observations agree on operation ordering.
+
+  Evidence: `BrowserPersistenceHost` isolates project documents, asset manifests, game saves and workspace
+  preferences in one IndexedDB store while retaining family-qualified keys and monotonic operation generations.
+  Export writes a stable-path `fsgg.browser-archive/v1` manifest with SHA-256 member identities; import validates
+  its declaration, canonical paths, unique membership, hashes and typed member content before opening one clear
+  and replacement transaction. Ten headless policy tests cover stable normalization and accumulated archive
+  defects. The isolated packed Fable fixture exercises real IndexedDB and Web Crypto in Chromium and Firefox
+  locally, including save/update/reload, interruption, stale and quota refusal, opaque newer bytes, retry,
+  atomic replacement, database failure recovery and terminal disposal; the merge gate runs the same fixture in
+  Chromium, Firefox and WebKit.
 
 - [ ] **SVG-PRESENT-01.6 — Generated player journey and Preview-B handoff — route: routine**
 

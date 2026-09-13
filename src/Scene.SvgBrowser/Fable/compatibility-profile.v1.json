@@ -23,6 +23,8 @@
     "portable browser session policy with RAF clock conversion, suspension recovery and projection backpressure",
     "generation-safe monotonic retained projection and disposable session resource ownership",
     "authority-revision-bound animation sampling with reduced-motion policy and bounded decorative effects",
-    "disposable retained animation frame, cue and lifecycle ownership"
+    "disposable retained animation frame, cue and lifecycle ownership",
+    "four-family IndexedDB persistence with generation-safe operation completion",
+    "stable SHA-256 archive export and validate-before-commit replacement"
   ]
 }

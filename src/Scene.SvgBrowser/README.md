@@ -60,3 +60,10 @@ delivers crossed cue batches; pause and seek are silent. A browser reduced-motio
 substitutes declared decorative effects while essential state stays observable, and the configured decorative
 limit refuses excess work deterministically. Pause, hidden-document recovery, authority replacement and
 disposal release frame ownership; disposal also removes every lifecycle listener.
+
+`BrowserPersistenceHost` keeps project documents, asset manifests, game saves, and workspace preferences
+in independent family-qualified IndexedDB records. Callers retain schema and payload authority; the host
+reports generation-safe transaction completion, quota and database failures, and preserves opaque newer
+payloads. Archive export uses stable normalized member paths and Web Crypto SHA-256 identities. Import checks
+the complete declared member set, canonical paths, hashes, and record identity before opening one atomic clear
+and replacement transaction. Disposal closes the database and suppresses every outstanding completion.

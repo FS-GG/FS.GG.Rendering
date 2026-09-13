@@ -5,6 +5,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="PersistencePolicyTests.fs" />
     <Compile Include="PolicyTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

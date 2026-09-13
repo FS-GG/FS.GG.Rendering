@@ -17,6 +17,8 @@
     <Compile Include="SvgStudio.fs" />
     <Compile Include="SvgAnimationHost.fsi" />
     <Compile Include="SvgAnimationHost.fs" />
+    <Compile Include="BrowserPersistence.fsi" />
+    <Compile Include="BrowserPersistence.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FS.GG.UI.Scene" />

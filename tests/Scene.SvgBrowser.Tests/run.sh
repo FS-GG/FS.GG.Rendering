@@ -41,7 +41,7 @@ dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$w
 "$tools/fable" "$work/Browser/BrowserFixture.fsproj" --outDir "$work/Browser/generated" --lang JavaScript --noCache
 npm ci --prefix "$work/Browser"
 npm run --prefix "$work/Browser" build
-source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/KeyboardInput/CommandInput.fsi" "$repo/src/KeyboardInput/CommandInput.fs" "$repo/src/KeyboardInput/CommandResolver.fsi" "$repo/src/KeyboardInput/CommandResolver.fs" "$repo/src/Scene/SvgWorkspace.fsi" "$repo/src/Scene/SvgWorkspace.fs" "$repo/src/Scene/Animation.fsi" "$repo/src/Scene/Animation.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" "$repo/src/Scene.SvgBrowser/SvgInputHost.fsi" "$repo/src/Scene.SvgBrowser/SvgInputHost.fs" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fsi" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fs" "$repo/src/Scene.SvgBrowser/SvgStudio.fsi" "$repo/src/Scene.SvgBrowser/SvgStudio.fs" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fsi" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fs" | sha256sum | cut -d' ' -f1)"
+source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/KeyboardInput/CommandInput.fsi" "$repo/src/KeyboardInput/CommandInput.fs" "$repo/src/KeyboardInput/CommandResolver.fsi" "$repo/src/KeyboardInput/CommandResolver.fs" "$repo/src/Scene/SvgWorkspace.fsi" "$repo/src/Scene/SvgWorkspace.fs" "$repo/src/Scene/Animation.fsi" "$repo/src/Scene/Animation.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" "$repo/src/Scene.SvgBrowser/SvgInputHost.fsi" "$repo/src/Scene.SvgBrowser/SvgInputHost.fs" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fsi" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fs" "$repo/src/Scene.SvgBrowser/SvgStudio.fsi" "$repo/src/Scene.SvgBrowser/SvgStudio.fs" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fsi" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fs" "$repo/src/Scene.SvgBrowser/BrowserPersistence.fsi" "$repo/src/Scene.SvgBrowser/BrowserPersistence.fs" | sha256sum | cut -d' ' -f1)"
 package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | while IFS= read -r -d '' package; do sha256sum "$package" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1)"
 if [[ -n "${SVG_SCENE_ORCA_OBSERVATION:-}" ]]; then
   SVG_SCENE_AT_SOURCE_DIGEST="sha256:$source_digest" SVG_SCENE_AT_PACKAGE_DIGEST="sha256:$package_digest" \
@@ -71,7 +71,7 @@ with zipfile.ZipFile(scene) as archive:
         raise SystemExit('portable Scene package acquired a browser dependency')
 with zipfile.ZipFile(adapter) as archive:
     fable={name for name in archive.namelist() if name.startswith('fable/')}
-    expected={'fable/FS.GG.UI.Scene.SvgBrowser.fsproj','fable/SvgBrowser.fsi','fable/SvgBrowser.fs','fable/SvgInputHost.fsi','fable/SvgInputHost.fs','fable/SvgSessionHost.fsi','fable/SvgSessionHost.fs','fable/SvgStudio.fsi','fable/SvgStudio.fs','fable/SvgAnimationHost.fsi','fable/SvgAnimationHost.fs'}
+    expected={'fable/FS.GG.UI.Scene.SvgBrowser.fsproj','fable/SvgBrowser.fsi','fable/SvgBrowser.fs','fable/SvgInputHost.fsi','fable/SvgInputHost.fs','fable/SvgSessionHost.fsi','fable/SvgSessionHost.fs','fable/SvgStudio.fsi','fable/SvgStudio.fs','fable/SvgAnimationHost.fsi','fable/SvgAnimationHost.fs','fable/BrowserPersistence.fsi','fable/BrowserPersistence.fs'}
     if fable != expected:
         raise SystemExit(f'unexpected adapter Fable view: {sorted(fable)}')
 with zipfile.ZipFile(keyboard) as archive:
@@ -86,6 +86,7 @@ for family in chromium firefox webkit; do
   node "$work/Browser/browser-test.mjs" --browser "$family" --out "$base.$family.json" \
     --source-digest "sha256:$source_digest" --package-digest "sha256:$package_digest"
   node "$work/Browser/studio-test.mjs" --browser "$family"
+  node "$work/Browser/persistence-test.mjs" --browser "$family" --out "$base.persistence.$family.json"
 done
 
 cmp "$base.chromium.exported.svg" "$base.firefox.exported.svg"
