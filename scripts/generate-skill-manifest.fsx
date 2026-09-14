@@ -44,7 +44,7 @@ let repoPath (rel: string) =
 // typed Fsgg.Registry validator evaluate: bare tokens, `in [..]` for same-param sets, `and`/`or`, no
 // parens/quotes. normalizeCondition (below) is the deterministic bridge; Feature238 proves manifest ≡
 // template.json semantically so the two grammars never drift.
-let catalog =
+let templateCatalog =
     // ADR-0063 (2026-07-21 amendment): the four game-owned product skills (fs-gg-game-core, fs-gg-audio,
     // fs-gg-persistence, fs-gg-model-swap) were retired from this provider (FS.GG.Rendering#965) — they are
     // now owner-sourced from FS.GG.Game.Skills, no longer frozen here — so they carry no catalog row.
@@ -74,6 +74,25 @@ let catalog =
       "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
       "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md", "(profile == \"app\" || profile == \"game\")"
       "fs-gg-visibility", "template/product-skills/fs-gg-visibility/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")" ]
+
+// The owner package also serves non-Rendering template providers. These predicates are evaluated by
+// the SDD receiver, so they use the canonical registry vocabulary and do not alter this repository's
+// own dotnet-template profile behavior.
+let deliveryOverrides =
+    Map.ofList
+        [ "fs-gg-scene", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
+          "fs-gg-keyboard-input", "profile in [app, game] or template == fable-game"
+          "fs-gg-game-shell", "profile in [app, game] or template == fable-game"
+          "fs-gg-testing", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
+          "fs-gg-ui-widgets", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
+          "fs-gg-styling", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
+          "fs-gg-layout", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]" ]
+
+let externalCatalog =
+    [ "fs-gg-svg-assets", "template/product-skills/fs-gg-svg-assets/SKILL.md",
+      "template == fable-game and bundle in [studio, tactical, arcade, complete]"
+      "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md",
+      "template == fable-game" ]
 
 /// Provider source directory (trailing slash) that holds the canonical SKILL.md — supplied-by.
 let suppliedByOf (source: string) : string =
@@ -149,6 +168,11 @@ let normalizeCondition (condition: string) : string =
         |> List.map normalizeConjunct
         |> String.concat " and "
 
+let catalog =
+    [ for id, source, condition in templateCatalog do
+          yield id, source, (deliveryOverrides |> Map.tryFind id |> Option.defaultValue (normalizeCondition condition))
+      yield! externalCatalog ]
+
 /// Minimal JSON string escape (conditions carry embedded double quotes around literals).
 let jsonEscape (s: string) : string =
     s.Replace("\\", "\\\\").Replace("\"", "\\\"")
@@ -175,7 +199,7 @@ let manifestJson =
     let entries =
         catalog
         |> List.sortBy (fun (id, _, _) -> id)
-        |> List.map (fun (id, source, condition) ->
+        |> List.map (fun (id, source, materializesWhen) ->
             let body = File.ReadAllText(repoPath source)
             let files =
                 filesOf source
@@ -184,7 +208,7 @@ let manifestJson =
                 |> String.concat ",\n"
             sprintf
                 "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\",\n      \"files\": [\n%s\n      ]\n    }"
-                id (sha256Text body) id (jsonEscape (normalizeCondition condition)) (jsonEscape (suppliedByOf source)) files)
+                id (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)) files)
         |> String.concat ",\n"
 
     sprintf "{\n  \"schemaVersion\": 2,\n  \"skills\": [\n%s\n  ]\n}\n" entries

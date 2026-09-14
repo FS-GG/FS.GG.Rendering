@@ -52,7 +52,7 @@ let private templateJsonPath = repositoryPath ".template.config/template.json"
 /// id -> canonical body source (mirrors scripts/generate-skill-manifest.fsx / Feature231).
 /// ADR-0063 (2026-07-21 amendment) retired the four game-owned rows (game-core, audio, persistence,
 /// model-swap) from this provider (FS.GG.Rendering#965) — owner-sourced from FS.GG.Game.Skills now.
-let private canonicalSources =
+let private templateSources =
     [ "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
@@ -71,6 +71,12 @@ let private canonicalSources =
       "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md"
       "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md"
       "fs-gg-visibility", "template/product-skills/fs-gg-visibility/SKILL.md" ]
+
+let private externalSources =
+    [ "fs-gg-svg-assets", "template/product-skills/fs-gg-svg-assets/SKILL.md"
+      "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md" ]
+
+let private canonicalSources = templateSources @ externalSources
 
 type private ManifestEntry =
     { Id: string
@@ -204,7 +210,14 @@ let private parameterGrid : Map<string, string> list =
     [ for profile in [ "app"; "headless-scene"; "governed"; "sample-pack"; "game"; "controls" ] do
         for lifecycle in [ "spec-kit"; "sdd"; "none" ] do
             for feedback in [ "true"; "false" ] do
-                yield Map.ofList [ "profile", profile; "lifecycle", lifecycle; "feedback", feedback ] ]
+                for template in [ "fs-gg-ui"; "fable-game" ] do
+                    for bundle in [ "player"; "studio"; "tactical"; "arcade"; "complete"; "invalid" ] do
+                        yield Map.ofList
+                            [ "profile", profile
+                              "lifecycle", lifecycle
+                              "feedback", feedback
+                              "template", template
+                              "bundle", bundle ] ]
 
 [<Tests>]
 let feature238SkillMaterializesWhenTests =
@@ -252,17 +265,18 @@ let feature238SkillMaterializesWhenTests =
           test "G-EQUIV materializes-when is semantically equal to the verbatim template.json condition" {
               let entries = readEntries () |> List.map (fun e -> e.Id, e) |> Map.ofList
               let conditions = templateConditions ()
-              for id, _ in canonicalSources do
+              for id, _ in templateSources do
                   let cStyle =
                       match Map.tryFind id conditions with
                       | Some c -> c
                       | None -> failwithf "%s: no template.json body-source condition found (mapping gap)" id
                   let canonical = (Map.find id entries).MaterializesWhen
                   for parameters in parameterGrid do
-                      Expect.equal
-                          (evalCanonical parameters canonical)
-                          (evalCStyle parameters cStyle)
-                          (sprintf "%s: canonical '%s' must mean the same as template.json '%s' at %A — regenerate the manifest if template.json changed" id canonical cStyle parameters)
+                      if Map.find "template" parameters = "fs-gg-ui" then
+                          Expect.equal
+                              (evalCanonical parameters canonical)
+                              (evalCStyle parameters cStyle)
+                              (sprintf "%s: canonical '%s' must preserve the local template.json behavior '%s' at %A" id canonical cStyle parameters)
           }
 
           test "G-SUPPLIEDBY supplied-by equals dirname(canonical source) + '/'" {
