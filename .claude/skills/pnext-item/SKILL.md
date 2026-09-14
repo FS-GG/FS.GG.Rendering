@@ -13,11 +13,11 @@ For directives encountered while working, apply the shared
 
 ## Choose the route before lifecycle work
 
-Use the routine route only when the accountable board host explicitly admits the item, the repository's
-`.fsgg/routine-development.json` is present and prospective, and the proposed operation and changed paths
-pass that policy's routine boundary. A live claim, an existing strict delivery state, a protected
-operation, a protected path, or a missing policy keeps the item on the strict route. Never edit an item
-or policy merely to make it routine.
+Use the routine route by default for unified-roadmap work. Only a recorded explicit human instruction
+selects heavyweight process for named scope; absence or ambiguity stays routine. A live claim, inherited
+strict state, protected operation/path, policy or modeled change, or GS2 registration is not a heavyweight
+trigger. Preserve its substantive evidence and safeguards independently. Invalid or unknown technical or
+operation authorization blocks the affected effect without changing the process route.
 
 For an admitted routine item, the board is an asynchronous view rather than merge authority:
 
