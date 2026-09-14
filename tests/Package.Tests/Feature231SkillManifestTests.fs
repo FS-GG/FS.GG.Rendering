@@ -40,7 +40,7 @@ let private templateJsonPath = repositoryPath ".template.config/template.json"
 /// ADR-0063 (2026-07-21 amendment) RETIRED the four game-owned rows (fs-gg-game-core, fs-gg-audio,
 /// fs-gg-persistence, fs-gg-model-swap) from this provider (FS.GG.Rendering#965): they are now
 /// owner-sourced from FS.GG.Game.Skills, no longer frozen here, so they carry no catalog row.
-let private canonicalSources =
+let private nativeSources =
     [ "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md"
       "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md"
       "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md"
@@ -59,6 +59,15 @@ let private canonicalSources =
       "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md"
       "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md"
       "fs-gg-visibility", "template/product-skills/fs-gg-visibility/SKILL.md" ]
+
+/// Package-only guidance is owner-authored here but emitted by an external product provider. These
+/// rows belong in the closed skills package and manifest, while Rendering's native template.json
+/// deliberately has no source row for them.
+let private deliveryOnlySources =
+    [ "fs-gg-svg-assets", "template/product-skills/fs-gg-svg-assets/SKILL.md"
+      "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md" ]
+
+let private canonicalSources = nativeSources @ deliveryOnlySources
 
 type private ManifestEntry =
     { Id: string
@@ -213,7 +222,7 @@ let feature231SkillManifestTests =
                       if target.StartsWith ".agents/skills/fs-gg-" then
                           yield target.Substring(".agents/skills/".Length).TrimEnd('/') ]
                   |> Set.ofList
-              Expect.equal emittedIds (canonicalSources |> List.map fst |> Set.ofList) "every catalogued skill has an emission row and every emitted fs-gg-* skill is catalogued"
+              Expect.equal emittedIds (nativeSources |> List.map fst |> Set.ofList) "every native skill has an emission row and package-only delivery skills remain external"
           }
 
           // ---- G-PARITY (vendored ≡ FS.GG.Contracts 1.4.0) ----------------------------------
