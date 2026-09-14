@@ -29,6 +29,10 @@ on:
         description: "Actually push to the feeds (false = pack-only dry run)"
         type: boolean
         default: false
+      readback_version:
+        description: "Read-only verification of an already-published version"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -61,8 +65,19 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref_name }}
           DISPATCH_PUBLISH: ${{ inputs.publish }}
+          READBACK_VERSION: ${{ inputs.readback_version }}
         run: |
           set -euo pipefail
+          if [ -n "$READBACK_VERSION" ]; then
+            [[ "$READBACK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::invalid readback version"; exit 1; }
+            git fetch --force origin "refs/tags/skills/v$READBACK_VERSION:refs/tags/skills/v$READBACK_VERSION"
+            source_head="$(git rev-parse "refs/tags/skills/v$READBACK_VERSION^{commit}")"
+            echo "version=$READBACK_VERSION" >> "$GITHUB_OUTPUT"
+            echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "readback=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           proj=src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
           version="$(dotnet msbuild "$proj" -getProperty:Version | tr -d '[:space:]')"
           if [ -z "$version" ]; then
@@ -70,6 +85,7 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "source_head=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
           # A `-preview` package is INVISIBLE to the shared Renovate preset (ignoreUnstable: true),
           # so no consumer would ever be bumped to it — which defeats the point of shipping the
@@ -96,26 +112,46 @@ jobs:
           fi
 
       - uses: ./.github/actions/locked-restore
+        if: steps.v.outputs.readback != 'true'
         with:
           target: src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj
 
       # The gate, before either feed is touched. Identical bytes to the pull-request lane.
       - name: Verify the package
+        if: steps.v.outputs.readback != 'true'
         env:
           VERIFY_PACKAGE_JUNIT: artifacts/test-results/verify-package.junit.xml
         run: bash src/FS.GG.Rendering.Skills/verify-package.sh
 
       - name: Pack
+        if: steps.v.outputs.readback != 'true'
+        id: archive
         run: |
           set -euo pipefail
           dotnet pack src/FS.GG.Rendering.Skills/FS.GG.Rendering.Skills.csproj \
-            -c Release -o artifacts/packages
+            -c Release -o artifacts/packages --no-restore
+          archive="$(find artifacts/packages -maxdepth 1 -type f -name 'FS.GG.Rendering.Skills.*.nupkg' -print -quit)"
+          test -s "$archive"
+          sha256sum "$archive" | tee artifacts/packages/ORIGINAL_SHA256
+          echo "path=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Retain original archive before either push
+        if: steps.v.outputs.push == 'true'
+        id: original-custody
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-skills-release-custody-${{ github.sha }}-${{ steps.v.outputs.version }}
+          path: |
+            ${{ steps.archive.outputs.path }}
+            artifacts/packages/ORIGINAL_SHA256
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Push to org GitHub Packages feed
         if: steps.v.outputs.push == 'true'
         run: |
           set -euo pipefail
-          dotnet nuget push "artifacts/packages/FS.GG.Rendering.Skills.*.nupkg" \
+          dotnet nuget push "${{ steps.archive.outputs.path }}" \
             --source https://nuget.pkg.github.com/FS-GG/index.json \
             --api-key ${{ secrets.GITHUB_TOKEN }} \
             --skip-duplicate
@@ -134,7 +170,7 @@ jobs:
         if: steps.v.outputs.push == 'true'
         run: |
           set -euo pipefail
-          dotnet nuget push "artifacts/packages/FS.GG.Rendering.Skills.*.nupkg" \
+          dotnet nuget push "${{ steps.archive.outputs.path }}" \
             --source https://api.nuget.org/v3/index.json \
             --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
             --skip-duplicate
@@ -145,9 +181,11 @@ jobs:
       # declared skill file from the downloaded artifact and check the closed set against the
       # committed schema-v2 manifest.
       - name: Verify the published bytes on both feeds
-        if: steps.v.outputs.push == 'true'
+        id: published
+        if: steps.v.outputs.push == 'true' || steps.v.outputs.readback == 'true'
         env:
           VERSION: ${{ steps.v.outputs.version }}
+          EXPECTED_SOURCE: ${{ steps.v.outputs.source_head }}
         run: |
           set -euo pipefail
           lower="fs.gg.rendering.skills"
@@ -155,16 +193,16 @@ jobs:
 
           fetch() {                        # fetch <name> <base-url> <auth-header-or-empty>
             local name="$1" url="$2" auth="$3" i
-            for i in $(seq 1 12); do
+            for i in $(seq 1 40); do
               if [ -n "$auth" ]; then
                 curl -fsSL -H "$auth" -o "$work/$name.nupkg" "$url" && return 0
               else
                 curl -fsSL -o "$work/$name.nupkg" "$url" && return 0
               fi
-              echo "  $name not indexed yet (attempt $i/12); waiting 15s"
+              echo "  $name not indexed yet (attempt $i/40); waiting 15s"
               sleep 15
             done
-            echo "::error::$name never served $VERSION after 12 attempts"; return 1
+            echo "::error::$name never served $VERSION after 40 attempts"; return 1
           }
 
           fetch nugetorg \
@@ -172,6 +210,11 @@ jobs:
           fetch ghpkg \
             "https://nuget.pkg.github.com/FS-GG/download/$lower/$VERSION/$lower.$VERSION.nupkg" \
             "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+
+          unzip -p "$work/nugetorg.nupkg" '*.nuspec' | grep -F "commit=\"$EXPECTED_SOURCE\"" >/dev/null \
+            || { echo "::error::public archive does not bind source $EXPECTED_SOURCE"; exit 1; }
+
+          echo "work=$work" >> "$GITHUB_OUTPUT"
 
           payload_digest() {               # digest of the payload, feed-rewritten parts excluded
             local pkg="$1" dir; dir="$(mktemp -d)"
@@ -237,3 +280,12 @@ jobs:
             echo "- payload sha256 (both feeds): \`$a\`"
             echo "- every declared skill file re-verified against the committed schema-v2 manifest from published bytes"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain exact post-publication feed readbacks
+        if: steps.v.outputs.push == 'true' || steps.v.outputs.readback == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-skills-feed-readback-${{ github.sha }}-${{ steps.v.outputs.version }}
+          path: ${{ steps.published.outputs.work }}
+          if-no-files-found: error
+          retention-days: 90
