@@ -32,6 +32,7 @@ let private validationReportPath =
     repositoryPath "specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md"
 
 let private templateJsonPath = repositoryPath ".template.config/template.json"
+let private skillManifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
 
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
@@ -278,9 +279,9 @@ let feature219EmitFrameworkSkillsTests =
               Expect.stringContains report "catalog-dangling: none" "no scaffold emits a dangling catalog"
           }
 
-          // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is wired by a source.
-          // Feature 223 wired fs-gg-symbology, so there is no longer any intentionally-unwired directory.
-          test "G-NODANGLE-SYMB no product-skill directory is silently unwired; symbology is vendored" {
+          // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is either wired
+          // by this native template or explicitly declared package-only for an external provider.
+          test "G-NODANGLE-SYMB no product-skill directory is silently unwired; package-only rows are explicit" {
               let productSkillsDir = repositoryPath "template/product-skills"
               let onDisk =
                   Directory.EnumerateDirectories productSkillsDir
@@ -288,8 +289,15 @@ let feature219EmitFrameworkSkillsTests =
                   |> Set.ofSeq
               let wired = frameworkSkillSources () |> List.map (fun s -> s.Id) |> Set.ofList
               let unwired = Set.difference onDisk wired
-              // every product-skill directory is now wired — the unwired set is empty.
-              Expect.equal unwired Set.empty "no product-skill directory is left unwired (symbology vendored in Feature 223)"
+              use manifest = JsonDocument.Parse(File.ReadAllText skillManifestPath)
+              let deliveryOnly =
+                  manifest.RootElement.GetProperty("skills").EnumerateArray()
+                  |> Seq.choose (fun entry ->
+                      match entry.TryGetProperty "delivery-only" with
+                      | true, value when value.GetBoolean() -> Some (elemStr (entry.GetProperty "id"))
+                      | _ -> None)
+                  |> Set.ofSeq
+              Expect.equal unwired deliveryOnly "every unwired product-skill directory is explicitly package-only, and every package-only row remains external"
               let report = readValidationReport ()
               Expect.stringContains report "symbology: vendored" "symbology status is explicitly resolved as vendored"
           }

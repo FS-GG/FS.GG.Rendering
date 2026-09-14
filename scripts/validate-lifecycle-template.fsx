@@ -363,7 +363,7 @@ let private verifyGatedSources () =
 // on the row's identity means such a row is allowed exactly when it copies the declared directory.
 
 /// One `skills[]` entry of skill-manifest.json, reduced to the supply-chain claim it makes.
-type private ManifestSkill = { Id: string; SuppliedBy: string }
+type private ManifestSkill = { Id: string; SuppliedBy: string; DeliveryOnly: bool }
 
 let private manifestSkills () =
     let path = repoPath "template/skill-manifest/skill-manifest.json"
@@ -374,7 +374,11 @@ let private manifestSkills () =
         | true, v when v.ValueKind = JsonValueKind.String -> v.GetString().Replace('\\', '/')
         | _ -> failwithf "VERDICT-CORE FAIL: skill-manifest entry is missing a string `%s` (regenerate via scripts/generate-skill-manifest.fsx)" name
     [ for s in doc.RootElement.GetProperty("skills").EnumerateArray() ->
-        { Id = field s "id"; SuppliedBy = field s "supplied-by" } ]
+        let deliveryOnly =
+            match s.TryGetProperty("delivery-only") with
+            | true, value when value.ValueKind = JsonValueKind.True -> true
+            | _ -> false
+        { Id = field s "id"; SuppliedBy = field s "supplied-by"; DeliveryOnly = deliveryOnly } ]
 
 /// The `<id>` a row fills, when its target names a single directory under `.agents/skills/`.
 let private targetedSkillId (target: string) =
@@ -468,12 +472,16 @@ let private verifySkillSupplyChain () =
     // S1 (converse): exactly one row per declared skill — a second row silently wins or loses.
     for skill in skills do
         let suppliers = skillRows |> List.filter (fun (id, _) -> id = skill.Id) |> List.map (fun (_, r) -> r.Source)
-        match suppliers with
-        | [ _ ] -> ()
-        | [] ->
+        match skill.DeliveryOnly, suppliers with
+        | true, [] -> ()
+        | true, _ :: _ ->
+            assertTrue false
+                (sprintf "delivery-only skill %s must not also be emitted by this template" skill.Id)
+        | false, [ _ ] -> ()
+        | false, [] ->
             assertTrue false
                 (sprintf "no template source targets .agents/skills/%s/, so the manifest declares a skill the template never emits (#303)" skill.Id)
-        | many ->
+        | false, many ->
             assertTrue false
                 (sprintf "skill %s is filled by %d template sources (%s) — exactly one may target .agents/skills/%s/ (#303)"
                     skill.Id many.Length (String.concat ", " many) skill.Id)

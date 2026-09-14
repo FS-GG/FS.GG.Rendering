@@ -301,8 +301,10 @@ module Harness =
     /// command profiles, workspace discovery, authoring, art, resources, editable scenes, and layout
     /// persistence. No fence body or classification changed; the new prose only moves later origins in
     /// fs-gg-keyboard-input, fs-gg-ui-widgets, and fs-gg-scene.
+    /// Re-audited for SVG-WORKSPACE-01.1: fs-gg-svg-assets adds one self-contained Scene.group example;
+    /// fs-gg-svg-performance has no code fence. The new example uses only the released Scene surface.
     let private expectedProductSkillInventory =
-        "dc3c586d6f409c77b7c5f82945d0f2a306934e3d0e84403df2ae163d3a452867"
+        "4c8df5f7511e581c08ae0529541e1276bf5e4f7ba75d89d469ba33e9e4dcbb17"
 
     /// Positive corpus members proven individually self-contained against the published pins. Everything
     /// else remains taught/guarded by the retained symbol oracle, but is not padded with invented product
@@ -323,6 +325,7 @@ module Harness =
               "template/product-skills/fs-gg-scene/SKILL.md", 235
               "template/product-skills/fs-gg-scene/SKILL.md", 309
               "template/product-skills/fs-gg-styling/SKILL.md", 83
+              "template/product-skills/fs-gg-svg-assets/SKILL.md", 22
               "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
 
     /// Why the remaining fences in each document are contextual. Reasons describe the document's actual

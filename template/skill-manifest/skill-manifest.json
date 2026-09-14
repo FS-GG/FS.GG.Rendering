@@ -41,7 +41,7 @@
       "scope": "product",
       "sha256": "f96f9d61176f94265a19d815194bcad38eda4447bf3714add88edbb07d88521b",
       "resolvablePath": ".agents/skills/fs-gg-game-shell/SKILL.md",
-      "materializes-when": "profile in [app, game]",
+      "materializes-when": "profile in [app, game] or template == fable-game",
       "supplied-by": "template/product-skills/fs-gg-game-shell/",
       "files": [
         { "path": "SKILL.md", "sha256": "f96f9d61176f94265a19d815194bcad38eda4447bf3714add88edbb07d88521b" }
@@ -63,7 +63,7 @@
       "scope": "product",
       "sha256": "950678226adbfc6456585adc77dfcf6f170b933e957d9582f3c450f2d06815ec",
       "resolvablePath": ".agents/skills/fs-gg-keyboard-input/SKILL.md",
-      "materializes-when": "profile in [app, game]",
+      "materializes-when": "profile in [app, game] or template == fable-game",
       "supplied-by": "template/product-skills/fs-gg-keyboard-input/",
       "files": [
         { "path": "SKILL.md", "sha256": "950678226adbfc6456585adc77dfcf6f170b933e957d9582f3c450f2d06815ec" }
@@ -74,7 +74,7 @@
       "scope": "product",
       "sha256": "85c55e26ee42bd8d54533abcf6cb955d53e02651901be3c0e91bfe92dac92d62",
       "resolvablePath": ".agents/skills/fs-gg-layout/SKILL.md",
-      "materializes-when": "profile in [app, game]",
+      "materializes-when": "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]",
       "supplied-by": "template/product-skills/fs-gg-layout/",
       "files": [
         { "path": "SKILL.md", "sha256": "85c55e26ee42bd8d54533abcf6cb955d53e02651901be3c0e91bfe92dac92d62" }
@@ -118,7 +118,7 @@
       "scope": "product",
       "sha256": "a058c26b4503eca677ca338d2d9a010442138445712eb6f801206059f7ec61f3",
       "resolvablePath": ".agents/skills/fs-gg-scene/SKILL.md",
-      "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
+      "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game",
       "supplied-by": "template/product-skills/fs-gg-scene/",
       "files": [
         { "path": "SKILL.md", "sha256": "a058c26b4503eca677ca338d2d9a010442138445712eb6f801206059f7ec61f3" }
@@ -140,10 +140,34 @@
       "scope": "product",
       "sha256": "24754ec5cb931deb6fcaf7d4b9e5926c42f4325dc4f67cb4852295de8b405ac9",
       "resolvablePath": ".agents/skills/fs-gg-styling/SKILL.md",
-      "materializes-when": "profile in [app, game]",
+      "materializes-when": "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]",
       "supplied-by": "template/product-skills/fs-gg-styling/",
       "files": [
         { "path": "SKILL.md", "sha256": "24754ec5cb931deb6fcaf7d4b9e5926c42f4325dc4f67cb4852295de8b405ac9" }
+      ]
+    },
+    {
+      "id": "fs-gg-svg-assets",
+      "scope": "product",
+      "delivery-only": true,
+      "sha256": "adccc361f6633585bf19218d94406bd15b1f001bf0d63d6ef40d821a7c6f4f82",
+      "resolvablePath": ".agents/skills/fs-gg-svg-assets/SKILL.md",
+      "materializes-when": "template == fable-game and bundle in [studio, tactical, arcade, complete]",
+      "supplied-by": "template/product-skills/fs-gg-svg-assets/",
+      "files": [
+        { "path": "SKILL.md", "sha256": "adccc361f6633585bf19218d94406bd15b1f001bf0d63d6ef40d821a7c6f4f82" }
+      ]
+    },
+    {
+      "id": "fs-gg-svg-performance",
+      "scope": "product",
+      "delivery-only": true,
+      "sha256": "9cd65f7b1b24053717a5ef4e0b3c36b866e559cb3f32e79a383173ba34f06536",
+      "resolvablePath": ".agents/skills/fs-gg-svg-performance/SKILL.md",
+      "materializes-when": "template == fable-game",
+      "supplied-by": "template/product-skills/fs-gg-svg-performance/",
+      "files": [
+        { "path": "SKILL.md", "sha256": "9cd65f7b1b24053717a5ef4e0b3c36b866e559cb3f32e79a383173ba34f06536" }
       ]
     },
     {
@@ -177,7 +201,7 @@
       "scope": "product",
       "sha256": "37bc28dcbb7454a489aeea925c17b006715630752797a2734fcef6685dd4f037",
       "resolvablePath": ".agents/skills/fs-gg-testing/SKILL.md",
-      "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game]",
+      "materializes-when": "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game",
       "supplied-by": "template/product-skills/fs-gg-testing/",
       "files": [
         { "path": "SKILL.md", "sha256": "37bc28dcbb7454a489aeea925c17b006715630752797a2734fcef6685dd4f037" }
@@ -188,7 +212,7 @@
       "scope": "product",
       "sha256": "a975b5ec33c2fcf847a9075cf10c970090a2ed3728d19820baeffad352c9c44e",
       "resolvablePath": ".agents/skills/fs-gg-ui-widgets/SKILL.md",
-      "materializes-when": "profile in [app, game]",
+      "materializes-when": "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]",
       "supplied-by": "template/product-skills/fs-gg-ui-widgets/",
       "files": [
         { "path": "SKILL.md", "sha256": "a975b5ec33c2fcf847a9075cf10c970090a2ed3728d19820baeffad352c9c44e" }
