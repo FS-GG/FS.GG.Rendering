@@ -1846,6 +1846,19 @@ pkg    FS.GG.UI.Scene
 +      RetainedSvg.fsi val SvgRetained.update
 
 # ------------------------------------------------------------------------------------------
+file   Scene/SpatialWorkingSet.fsi
+skill  fs-gg-scene
+ns     FS.GG.UI.Scene
+pkg    FS.GG.UI.Scene
++      SpatialWorkingSet.fsi type SpatialEntry`1
++      SpatialWorkingSet.fsi type SpatialQuery
++      SpatialWorkingSet.fsi type SpatialWorkingSetIndex`1
++      SpatialWorkingSet.fsi type SpatialWorkingSetIssue
++      SpatialWorkingSet.fsi type SpatialWorkingSetResult`1
++      SpatialWorkingSet.fsi val SpatialWorkingSet.create
++      SpatialWorkingSet.fsi val SpatialWorkingSet.query
+
+# ------------------------------------------------------------------------------------------
 file   Scene/SvgDocument.fsi
 skill  fs-gg-scene
 ns     FS.GG.UI.Scene

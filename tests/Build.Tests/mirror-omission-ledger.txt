@@ -326,12 +326,10 @@ type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasuredSize
 type FS.GG.UI.Layout::FS.GG.UI.Layout.LayoutMeasurementRequest
 type FS.GG.UI.Layout::FS.GG.UI.Layout.MeasuredLayoutResult
 
-# FS.GG.UI.Scene (60 — Preview B paid off the complete SVG authoring, art, editable-scene,
-#                  workspace and clip-animation surface. SVG-SCALE-01.2 adds six candidate-only spatial
-#                  working-set declarations; Release C's pin bump and mirror regeneration retire them.)
+# FS.GG.UI.Scene (54 — Release C mirrors the spatial working-set surface. The remaining entries are
+#                  unrelated curated inspection, package, and visual-readiness APIs.)
 module FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspection
 module FS.GG.UI.Scene::FS.GG.UI.Scene.SceneCodec
-module FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialWorkingSet
 module FS.GG.UI.Scene::FS.GG.UI.Scene.VisualInspection
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityRequirement
 type FS.GG.UI.Scene::FS.GG.UI.Scene.CapabilityVerdict
@@ -362,11 +360,6 @@ type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedInspectionSummary
 type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedNodeInspection
 type FS.GG.UI.Scene::FS.GG.UI.Scene.RetainedNodeStatus
 type FS.GG.UI.Scene::FS.GG.UI.Scene.SemanticComparison
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialEntry`1
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialQuery
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialWorkingSetIndex`1
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialWorkingSetIssue
-type FS.GG.UI.Scene::FS.GG.UI.Scene.SpatialWorkingSetResult`1
 type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextMetrics
 type FS.GG.UI.Scene::FS.GG.UI.Scene.ShapedTextResult
 type FS.GG.UI.Scene::FS.GG.UI.Scene.TargetCapabilityProfile
