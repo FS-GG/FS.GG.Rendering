@@ -149,6 +149,7 @@
     {
       "id": "fs-gg-svg-assets",
       "scope": "product",
+      "delivery-only": true,
       "sha256": "adccc361f6633585bf19218d94406bd15b1f001bf0d63d6ef40d821a7c6f4f82",
       "resolvablePath": ".agents/skills/fs-gg-svg-assets/SKILL.md",
       "materializes-when": "template == fable-game and bundle in [studio, tactical, arcade, complete]",
@@ -160,6 +161,7 @@
     {
       "id": "fs-gg-svg-performance",
       "scope": "product",
+      "delivery-only": true,
       "sha256": "9cd65f7b1b24053717a5ef4e0b3c36b866e559cb3f32e79a383173ba34f06536",
       "resolvablePath": ".agents/skills/fs-gg-svg-performance/SKILL.md",
       "materializes-when": "template == fable-game",

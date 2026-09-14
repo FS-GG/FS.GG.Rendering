@@ -94,6 +94,8 @@ let externalCatalog =
       "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md",
       "template == fable-game" ]
 
+let deliveryOnlyIds = externalCatalog |> List.map (fun (id, _, _) -> id) |> Set.ofList
+
 /// Provider source directory (trailing slash) that holds the canonical SKILL.md — supplied-by.
 let suppliedByOf (source: string) : string =
     source.Substring(0, source.LastIndexOf '/') + "/"
@@ -207,8 +209,10 @@ let manifestJson =
                     sprintf "        { \"path\": \"%s\", \"sha256\": \"%s\" }" (jsonEscape path) digest)
                 |> String.concat ",\n"
             sprintf
-                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\",\n      \"files\": [\n%s\n      ]\n    }"
-                id (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)) files)
+                "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",%s\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\",\n      \"files\": [\n%s\n      ]\n    }"
+                id
+                (if Set.contains id deliveryOnlyIds then "\n      \"delivery-only\": true," else "")
+                (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)) files)
         |> String.concat ",\n"
 
     sprintf "{\n  \"schemaVersion\": 2,\n  \"skills\": [\n%s\n  ]\n}\n" entries
