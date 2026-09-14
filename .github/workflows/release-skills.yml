@@ -70,7 +70,10 @@ jobs:
           set -euo pipefail
           if [ -n "$READBACK_VERSION" ]; then
             [[ "$READBACK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::invalid readback version"; exit 1; }
+            git fetch --force origin "refs/tags/skills/v$READBACK_VERSION:refs/tags/skills/v$READBACK_VERSION"
+            source_head="$(git rev-parse "refs/tags/skills/v$READBACK_VERSION^{commit}")"
             echo "version=$READBACK_VERSION" >> "$GITHUB_OUTPUT"
+            echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
             echo "push=false" >> "$GITHUB_OUTPUT"
             echo "readback=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -82,6 +85,7 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "source_head=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
           # A `-preview` package is INVISIBLE to the shared Renovate preset (ignoreUnstable: true),
           # so no consumer would ever be bumped to it — which defeats the point of shipping the
@@ -181,6 +185,7 @@ jobs:
         if: steps.v.outputs.push == 'true' || steps.v.outputs.readback == 'true'
         env:
           VERSION: ${{ steps.v.outputs.version }}
+          EXPECTED_SOURCE: ${{ steps.v.outputs.source_head }}
         run: |
           set -euo pipefail
           lower="fs.gg.rendering.skills"
@@ -205,6 +210,9 @@ jobs:
           fetch ghpkg \
             "https://nuget.pkg.github.com/FS-GG/download/$lower/$VERSION/$lower.$VERSION.nupkg" \
             "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+
+          unzip -p "$work/nugetorg.nupkg" '*.nuspec' | grep -F "commit=\"$EXPECTED_SOURCE\"" >/dev/null \
+            || { echo "::error::public archive does not bind source $EXPECTED_SOURCE"; exit 1; }
 
           echo "work=$work" >> "$GITHUB_OUTPUT"
 
