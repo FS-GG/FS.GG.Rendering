@@ -75,7 +75,7 @@ jobs:
       # reason the gate writes one rather than leaving the verdict in scrollback.
       - name: Upload the verify receipt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-package-junit
           path: artifacts/test-results/verify-package.junit.xml
