@@ -6,16 +6,20 @@ open FS.GG.UI.Scene
 
 /// Browser studio configuration. The worker factory must resolve `svg-geometry-worker.js` through the consumer bundler.
 type SvgStudioOptions =
-    { MountNamespace: string
-      AccessibleLabel: string
-      WorkerFactory: (unit -> obj) option }
+    {
+        MountNamespace: string
+        AccessibleLabel: string
+        WorkerFactory: (unit -> obj) option
+    }
 
 type SvgStudioObservation =
-    { Revision: int
-      SelectionCount: int
-      OwnedListenerCount: int
-      ActiveGesture: string option
-      WorkerInFlight: bool }
+    {
+        Revision: int
+        SelectionCount: int
+        OwnedListenerCount: int
+        ActiveGesture: string option
+        WorkerInFlight: bool
+    }
 
 [<Sealed>]
 type SvgFontResourceHost =
@@ -27,8 +31,12 @@ type SvgFontResourceHost =
 type SvgGeometryWorkerHost =
     interface IDisposable
     member InFlight: bool
+
     /// Start the sole allowed request. The worker is terminated on every terminal path.
-    member Start: prepared: SvgGeometryPrepared * onResult: (SvgGeometryResult -> unit) * onError: (string -> unit) -> Result<unit, string>
+    member Start:
+        prepared: SvgGeometryPrepared * onResult: (SvgGeometryResult -> unit) * onError: (string -> unit) ->
+            Result<unit, string>
+
     member Cancel: unit -> unit
 
 [<Sealed>]
@@ -64,6 +72,12 @@ type SvgStudioHost =
 [<RequireQualifiedAccess>]
 module SvgStudio =
     /// Mount an explicit authoring entry with native controls and one retained document host. Portable `SvgArt` operations can be committed through the returned host.
-    val mount: container: HTMLElement -> options: SvgStudioOptions -> initialState: SvgAuthoringState -> onChange: (SvgAuthoringState -> unit) -> Result<SvgStudioHost, SvgDocumentBrowserError>
+    val mount:
+        container: HTMLElement ->
+        options: SvgStudioOptions ->
+        initialState: SvgAuthoringState ->
+        onChange: (SvgAuthoringState -> unit) ->
+            Result<SvgStudioHost, SvgDocumentBrowserError>
+
     /// Verify exact bytes and rights before starting browser font activation; disposal removes the face and blob URL.
     val activateFont: resource: SvgFontResource -> Result<SvgFontResourceHost, SvgDocumentIssue list>

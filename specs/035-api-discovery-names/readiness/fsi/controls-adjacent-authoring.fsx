@@ -4,8 +4,7 @@
 open FS.GG.UI.Controls
 open FS.GG.UI.Controls.Elmish
 
-type Msg =
-    | Changed of string
+type Msg = Changed of string
 
 let text = FS.GG.UI.Controls.TextBlock.create []
 let input = FS.GG.UI.Controls.TextBox.onChanged Changed

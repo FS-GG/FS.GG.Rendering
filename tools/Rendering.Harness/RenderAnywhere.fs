@@ -8,14 +8,18 @@ open FS.GG.UI.SkiaViewer
 module RenderAnywhere =
 
     type CorpusItem =
-        { ScenarioId: string
-          Scene: Scene
-          Package: PortableScenePackage }
+        {
+            ScenarioId: string
+            Scene: Scene
+            Package: PortableScenePackage
+        }
 
     type ReferenceSummaryEntry =
-        { PackageIdentity: string
-          Verdict: ReferenceRenderVerdict
-          ImageIdentity: string option }
+        {
+            PackageIdentity: string
+            Verdict: ReferenceRenderVerdict
+            ImageIdentity: string option
+        }
 
     type CandidateCapabilityStatus =
         | CandidateNotExecuted
@@ -24,27 +28,33 @@ module RenderAnywhere =
     type BrowserFinalDecision = DocumentedFallbackPath of string
 
     type ScenarioCapability =
-        { ScenarioId: string
-          PackageIdentity: string
-          ReferenceIdentity: string option
-          Status: CandidateCapabilityStatus
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            PackageIdentity: string
+            ReferenceIdentity: string option
+            Status: CandidateCapabilityStatus
+            Diagnostics: string list
+        }
 
     type BrowserCapabilityReport =
-        { CandidateBackend: string
-          Corpus: string list
-          Scenarios: ScenarioCapability list
-          UnsupportedCapabilities: string list
-          Decision: BrowserFinalDecision
-          Diagnostics: string list }
+        {
+            CandidateBackend: string
+            Corpus: string list
+            Scenarios: ScenarioCapability list
+            UnsupportedCapabilities: string list
+            Decision: BrowserFinalDecision
+            Diagnostics: string list
+        }
 
     type BrowserFeasibilityModel =
-        { OutputDirectory: string
-          CandidateBackend: string
-          Corpus: CorpusItem list
-          ReferenceEvidence: ReferenceSummaryEntry list
-          Report: BrowserCapabilityReport option
-          Diagnostics: string list }
+        {
+            OutputDirectory: string
+            CandidateBackend: string
+            Corpus: CorpusItem list
+            ReferenceEvidence: ReferenceSummaryEntry list
+            Report: BrowserCapabilityReport option
+            Diagnostics: string list
+        }
 
     type BrowserFeasibilityMsg =
         | BrowserStart
@@ -64,37 +74,66 @@ module RenderAnywhere =
     let browserDirectory = Path.Combine(readinessDirectory, "browser")
 
     let private package scenarioId scene =
-        { ScenarioId = scenarioId
-          Scene = scene
-          Package = SceneCodec.export scene }
+        {
+            ScenarioId = scenarioId
+            Scene = scene
+            Package = SceneCodec.export scene
+        }
 
     let corpus () =
         let primitive =
             Scene.group
-                [ Scene.filledRectangle { X = 0.0; Y = 0.0; Width = 160.0; Height = 96.0 } (Colors.rgb 16uy 24uy 32uy)
-                  Scene.circle { X = 44.0; Y = 42.0 } 20.0 (Colors.rgb 230uy 120uy 52uy)
-                  Scene.line { X = 10.0; Y = 84.0 } { X = 150.0; Y = 16.0 } (Paint.stroke Colors.white 2.0) ]
+                [
+                    Scene.filledRectangle
+                        {
+                            X = 0.0
+                            Y = 0.0
+                            Width = 160.0
+                            Height = 96.0
+                        }
+                        (Colors.rgb 16uy 24uy 32uy)
+                    Scene.circle { X = 44.0; Y = 42.0 } 20.0 (Colors.rgb 230uy 120uy 52uy)
+                    Scene.line { X = 10.0; Y = 84.0 } { X = 150.0; Y = 16.0 } (Paint.stroke Colors.white 2.0)
+                ]
 
         let layered =
             let child =
                 Scene.group
-                    [ Scene.rectangle (8.0, 8.0, 72.0, 48.0) (Colors.rgb 34uy 110uy 160uy)
-                      Scene.sizedText (14.0, 38.0) "P6" 20.0 Colors.white ]
+                    [
+                        Scene.rectangle (8.0, 8.0, 72.0, 48.0) (Colors.rgb 34uy 110uy 160uy)
+                        Scene.sizedText (14.0, 38.0) "P6" 20.0 Colors.white
+                    ]
 
             Scene.group
-                [ Scene.clipped (RectClip { X = 0.0; Y = 0.0; Width = 96.0; Height = 64.0 }) child
-                  Scene.translate 80.0 24.0 child ]
+                [
+                    Scene.clipped
+                        (RectClip
+                            {
+                                X = 0.0
+                                Y = 0.0
+                                Width = 96.0
+                                Height = 64.0
+                            })
+                        child
+                    Scene.translate 80.0 24.0 child
+                ]
 
         let shaped =
             Scene.glyphRunProof
                 { X = 8.0; Y = 48.0 }
                 "Render anywhere"
-                { Family = Some "Noto Sans"; Size = 20.0; Weight = Some 400 }
+                {
+                    Family = Some "Noto Sans"
+                    Size = 20.0
+                    Weight = Some 400
+                }
                 (Paint.fill (Colors.rgb 244uy 244uy 248uy))
 
-        [ package "basic-primitives" primitive
-          package "layered-portal" layered
-          package "shaped-text" shaped ]
+        [
+            package "basic-primitives" primitive
+            package "layered-portal" layered
+            package "shaped-text" shaped
+        ]
 
     let private verdictToken verdict =
         match verdict with
@@ -110,22 +149,26 @@ module RenderAnywhere =
         | _ -> None
 
     let formatReferenceEvidence (evidence: ReferenceRenderingEvidence list) =
-        [ "# Feature 146 Reference Corpus Evidence"
-          ""
-          for item in evidence do
-              let imagePath = item.ImagePath |> Option.defaultValue "none"
-              let imageIdentity = item.ImageIdentity |> Option.defaultValue "none"
-              $"- package: {item.PackageIdentity}"
-              $"  verdict: {verdictToken item.Verdict}"
-              $"  image: {imagePath}"
-              $"  identity: {imageIdentity}" ]
+        [
+            "# Feature 146 Reference Corpus Evidence"
+            ""
+            for item in evidence do
+                let imagePath = item.ImagePath |> Option.defaultValue "none"
+                let imageIdentity = item.ImageIdentity |> Option.defaultValue "none"
+                $"- package: {item.PackageIdentity}"
+                $"  verdict: {verdictToken item.Verdict}"
+                $"  image: {imagePath}"
+                $"  identity: {imageIdentity}"
+        ]
 
     let summaryEntries (evidence: ReferenceRenderingEvidence list) =
         evidence
         |> List.map (fun item ->
-            { PackageIdentity = item.PackageIdentity
-              Verdict = item.Verdict
-              ImageIdentity = item.ImageIdentity })
+            {
+                PackageIdentity = item.PackageIdentity
+                Verdict = item.Verdict
+                ImageIdentity = item.ImageIdentity
+            })
 
     /// Parse the `summary.md` written by `runReferenceCommand` back into the subset of reference
     /// evidence a capability report can honestly cite: package identity, verdict, image identity.
@@ -153,9 +196,13 @@ module RenderAnywhere =
             let flush (identity, verdict, imageIdentity) =
                 match identity, verdict |> Option.bind verdictOfToken with
                 | Some identity, Some verdict ->
-                    [ { PackageIdentity = identity
-                        Verdict = verdict
-                        ImageIdentity = imageIdentity |> Option.bind optional } ]
+                    [
+                        {
+                            PackageIdentity = identity
+                            Verdict = verdict
+                            ImageIdentity = imageIdentity |> Option.bind optional
+                        }
+                    ]
                 | _ -> []
 
             let entries, pending =
@@ -180,76 +227,108 @@ module RenderAnywhere =
             corpus ()
             |> List.map (fun item ->
                 let out = Path.Combine(outputDirectory, item.ScenarioId)
+
                 ReferenceRendering.run
-                    { PackageBytes = item.Package.CanonicalBytes
-                      OutputDirectory = out
-                      OutputSize = { Width = 192; Height = 128 }
-                      Resources = [] })
+                    {
+                        PackageBytes = item.Package.CanonicalBytes
+                        OutputDirectory = out
+                        OutputSize = { Width = 192; Height = 128 }
+                        Resources = []
+                    })
 
         File.WriteAllLines(Path.Combine(outputDirectory, "summary.md"), formatReferenceEvidence evidence)
         evidence
 
     let initBrowserFeasibility outputDirectory =
         let items = corpus ()
-        { OutputDirectory = outputDirectory
-          CandidateBackend = "canvaskit-command-stream/proof"
-          Corpus = items
-          ReferenceEvidence = []
-          Report = None
-          Diagnostics = [] },
+
+        {
+            OutputDirectory = outputDirectory
+            CandidateBackend = "canvaskit-command-stream/proof"
+            Corpus = items
+            ReferenceEvidence = []
+            Report = None
+            Diagnostics = []
+        },
         [ LoadReferenceEvidence outputDirectory ]
 
     let private capabilityFor (references: ReferenceSummaryEntry list) (item: CorpusItem) : ScenarioCapability =
         let reference =
             references
             |> List.tryFind (fun entry ->
-                entry.PackageIdentity = item.Package.PackageIdentity && entry.Verdict = ReferencePassed)
+                entry.PackageIdentity = item.Package.PackageIdentity
+                && entry.Verdict = ReferencePassed)
 
         match reference with
         | Some entry ->
-            { ScenarioId = item.ScenarioId
-              PackageIdentity = item.Package.PackageIdentity
-              ReferenceIdentity = entry.ImageIdentity
-              Status = CandidateNotExecuted
-              Diagnostics = [ "CanvasKit candidate execution is not configured in this host; no candidate image exists to compare." ] }
+            {
+                ScenarioId = item.ScenarioId
+                PackageIdentity = item.Package.PackageIdentity
+                ReferenceIdentity = entry.ImageIdentity
+                Status = CandidateNotExecuted
+                Diagnostics =
+                    [
+                        "CanvasKit candidate execution is not configured in this host; no candidate image exists to compare."
+                    ]
+            }
         | None ->
-            { ScenarioId = item.ScenarioId
-              PackageIdentity = item.Package.PackageIdentity
-              ReferenceIdentity = None
-              Status = CandidateMissingReference
-              Diagnostics = [ "No passed reference evidence available; run render-anywhere-reference first." ] }
+            {
+                ScenarioId = item.ScenarioId
+                PackageIdentity = item.Package.PackageIdentity
+                ReferenceIdentity = None
+                Status = CandidateMissingReference
+                Diagnostics =
+                    [
+                        "No passed reference evidence available; run render-anywhere-reference first."
+                    ]
+            }
 
     let buildBrowserCapabilityReport
         (corpus: CorpusItem list)
         (references: ReferenceSummaryEntry list)
         (candidateBackend: string)
         : BrowserCapabilityReport =
-        { CandidateBackend = candidateBackend
-          Corpus = corpus |> List.map _.ScenarioId
-          Scenarios = corpus |> List.map (capabilityFor references)
-          UnsupportedCapabilities = [ "direct browser execution unavailable in current harness" ]
-          Decision =
-            DocumentedFallbackPath
-                "Continue with a generated CanvasKit command-stream proof; do not claim a production browser backend yet."
-          Diagnostics =
-            [ "This is a capability report, not a perceptual diff: no candidate image is produced, so no image is compared."
-              "Cross-backend visual fidelity is UNPROVEN and this report is not evidence of it." ] }
+        {
+            CandidateBackend = candidateBackend
+            Corpus = corpus |> List.map _.ScenarioId
+            Scenarios = corpus |> List.map (capabilityFor references)
+            UnsupportedCapabilities = [ "direct browser execution unavailable in current harness" ]
+            Decision =
+                DocumentedFallbackPath
+                    "Continue with a generated CanvasKit command-stream proof; do not claim a production browser backend yet."
+            Diagnostics =
+                [
+                    "This is a capability report, not a perceptual diff: no candidate image is produced, so no image is compared."
+                    "Cross-backend visual fidelity is UNPROVEN and this report is not evidence of it."
+                ]
+        }
 
     let updateBrowserFeasibility (msg: BrowserFeasibilityMsg) (model: BrowserFeasibilityModel) =
         match msg with
         | BrowserStart -> model, [ LoadReferenceEvidence model.OutputDirectory ]
         | ReferencesLoaded references ->
-            let model = { model with ReferenceEvidence = references }
+            let model =
+                { model with
+                    ReferenceEvidence = references
+                }
+
             model, [ AssessCandidateCapability(model.Corpus, references, model.CandidateBackend) ]
         | CapabilityAssessed report ->
-            { model with Report = Some report; Diagnostics = report.Diagnostics },
+            { model with
+                Report = Some report
+                Diagnostics = report.Diagnostics
+            },
             [ WriteBrowserReport(report, model.OutputDirectory) ]
         | BrowserFallbackSelected reason ->
             let report =
                 { buildBrowserCapabilityReport model.Corpus model.ReferenceEvidence model.CandidateBackend with
-                    Decision = DocumentedFallbackPath reason }
+                    Decision = DocumentedFallbackPath reason
+                }
 
-            { model with Report = Some report; Diagnostics = report.Diagnostics },
+            { model with
+                Report = Some report
+                Diagnostics = report.Diagnostics
+            },
             [ WriteBrowserReport(report, model.OutputDirectory) ]
 
     let private statusToken status =
@@ -262,36 +341,38 @@ module RenderAnywhere =
         | DocumentedFallbackPath value -> "fallback: " + value
 
     let formatBrowserReport (report: BrowserCapabilityReport) =
-        [ "# Feature 146 Browser Capability"
-          ""
-          "No candidate image is rendered and no perceptual diff is computed. This report records which"
-          "corpus scenes have passing reference evidence, and why the browser candidate did not run. It"
-          "is NOT cross-backend fidelity evidence."
-          ""
-          $"- candidate-backend: {report.CandidateBackend}"
-          "- comparison: not performed"
-          $"- decision: {decisionText report.Decision}"
-          ""
-          "## Scenarios"
-          for scenario in report.Scenarios do
-              let referenceIdentity = scenario.ReferenceIdentity |> Option.defaultValue "none"
-              $"- {scenario.ScenarioId}: {statusToken scenario.Status}"
-              $"  package: {scenario.PackageIdentity}"
-              $"  reference: {referenceIdentity}"
-          ""
-          "## Unsupported Capabilities"
-          yield!
-              if report.UnsupportedCapabilities.IsEmpty then
-                  [ "- none" ]
-              else
-                  report.UnsupportedCapabilities |> List.map (fun item -> "- " + item)
-          ""
-          "## Diagnostics"
-          yield!
-              if report.Diagnostics.IsEmpty then
-                  [ "- none" ]
-              else
-                  report.Diagnostics |> List.map (fun item -> "- " + item) ]
+        [
+            "# Feature 146 Browser Capability"
+            ""
+            "No candidate image is rendered and no perceptual diff is computed. This report records which"
+            "corpus scenes have passing reference evidence, and why the browser candidate did not run. It"
+            "is NOT cross-backend fidelity evidence."
+            ""
+            $"- candidate-backend: {report.CandidateBackend}"
+            "- comparison: not performed"
+            $"- decision: {decisionText report.Decision}"
+            ""
+            "## Scenarios"
+            for scenario in report.Scenarios do
+                let referenceIdentity = scenario.ReferenceIdentity |> Option.defaultValue "none"
+                $"- {scenario.ScenarioId}: {statusToken scenario.Status}"
+                $"  package: {scenario.PackageIdentity}"
+                $"  reference: {referenceIdentity}"
+            ""
+            "## Unsupported Capabilities"
+            yield!
+                if report.UnsupportedCapabilities.IsEmpty then
+                    [ "- none" ]
+                else
+                    report.UnsupportedCapabilities |> List.map (fun item -> "- " + item)
+            ""
+            "## Diagnostics"
+            yield!
+                if report.Diagnostics.IsEmpty then
+                    [ "- none" ]
+                else
+                    report.Diagnostics |> List.map (fun item -> "- " + item)
+        ]
 
     let writeBrowserReport (outputDirectory: string) (report: BrowserCapabilityReport) =
         Directory.CreateDirectory(outputDirectory) |> ignore
@@ -302,6 +383,9 @@ module RenderAnywhere =
     let runBrowserCapabilityCommand (referenceDirectory: string) (outputDirectory: string) =
         Directory.CreateDirectory(outputDirectory) |> ignore
         let references = readReferenceSummary referenceDirectory
-        let report = buildBrowserCapabilityReport (corpus ()) references "canvaskit-command-stream/proof"
+
+        let report =
+            buildBrowserCapabilityReport (corpus ()) references "canvaskit-command-stream/proof"
+
         writeBrowserReport outputDirectory report |> ignore
         report

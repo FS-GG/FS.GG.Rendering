@@ -1,29 +1,36 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 module Accessibility =
     let keyboard focusable activationKeys navigationKeys =
-        { Focusable = focusable
-          ActivationKeys = activationKeys
-          NavigationKeys = navigationKeys }
+        {
+            Focusable = focusable
+            ActivationKeys = activationKeys
+            NavigationKeys = navigationKeys
+        }
 
     let contrast foreground background ratio requiredRatio =
-        { Foreground = foreground
-          Background = background
-          Ratio = ratio
-          RequiredRatio = requiredRatio }
+        {
+            Foreground = foreground
+            Background = background
+            Ratio = ratio
+            RequiredRatio = requiredRatio
+        }
 
     let metadata role nameSource state focusOrder keyboard contrast navRange =
-        { Role = role
-          NameSource = nameSource
-          State = state
-          FocusOrder = focusOrder
-          Keyboard = keyboard
-          Contrast = contrast
-          Navigation = navRange
-          // Feature 114 (FR-012): the default metadata carries no collection total/position; a
-          // virtualized control (DataGrid) sets it explicitly from its logical model at the build site.
-          Collection = None }
+        {
+            Role = role
+            NameSource = nameSource
+            State = state
+            FocusOrder = focusOrder
+            Keyboard = keyboard
+            Contrast = contrast
+            Navigation = navRange
+            // Feature 114 (FR-012): the default metadata carries no collection total/position; a
+            // virtualized control (DataGrid) sets it explicitly from its logical model at the build site.
+            Collection = None
+        }
 
     // Feature 183 (US1): the per-Kind a11y-role dispatch now lives in the single ControlKindRegistry
     // SSOT (byte-identical mapping, incl. the non-catalog `table`/`dialog` arms and the `Custom`
@@ -69,10 +76,24 @@ module Accessibility =
     // focus stop, or `Focus.order` would treat the wrapper as a single tab stop and never reach the
     // focusable controls inside it (feature 094). They are explicitly non-focusable.
     let private structuralKinds =
-        [ "stack"; "grid"; "dock"; "wrap"; "panel"; "separator"; "column"; "row"; "container"; "group"; "scroll"; "spacer" ]
+        [
+            "stack"
+            "grid"
+            "dock"
+            "wrap"
+            "panel"
+            "separator"
+            "column"
+            "row"
+            "container"
+            "group"
+            "scroll"
+            "spacer"
+        ]
 
     let defaultFor kind label =
         let role = roleFor kind
+
         let focusable =
             if List.contains kind structuralKinds then
                 false
@@ -110,13 +131,27 @@ module Accessibility =
             // rule. Traversal (Tab) is engine-level, so an activation-only control (a Button) carries
             // NO NavigationKeys and is still valid. A focusable control is only flagged when it has
             // NEITHER an activation NOR a navigation affordance (genuinely no operable key set).
-            [ if
-                  metadata.Keyboard.Focusable
-                  && metadata.Keyboard.ActivationKeys.IsEmpty
-                  && metadata.Keyboard.NavigationKeys.IsEmpty
-              then
-                  yield FS.GG.UI.Controls.Diagnostics.create control.Key control.Kind MissingAccessibilityMetadata ControlDiagnosticSeverity.Error "Focusable control is missing keyboard navigation metadata."
-              match metadata.Contrast with
-              | Some evidence when evidence.Ratio < evidence.RequiredRatio ->
-                  yield FS.GG.UI.Controls.Diagnostics.create control.Key control.Kind ContrastFailure ControlDiagnosticSeverity.Error "Contrast evidence is below the required ratio."
-              | _ -> () ]
+            [
+                if
+                    metadata.Keyboard.Focusable
+                    && metadata.Keyboard.ActivationKeys.IsEmpty
+                    && metadata.Keyboard.NavigationKeys.IsEmpty
+                then
+                    yield
+                        FS.GG.UI.Controls.Diagnostics.create
+                            control.Key
+                            control.Kind
+                            MissingAccessibilityMetadata
+                            ControlDiagnosticSeverity.Error
+                            "Focusable control is missing keyboard navigation metadata."
+                match metadata.Contrast with
+                | Some evidence when evidence.Ratio < evidence.RequiredRatio ->
+                    yield
+                        FS.GG.UI.Controls.Diagnostics.create
+                            control.Key
+                            control.Kind
+                            ContrastFailure
+                            ControlDiagnosticSeverity.Error
+                            "Contrast evidence is below the required ratio."
+                | _ -> ()
+            ]

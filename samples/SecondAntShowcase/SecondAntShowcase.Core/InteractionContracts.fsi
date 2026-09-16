@@ -3,23 +3,27 @@ module SecondAntShowcase.Core.InteractionContracts
 open SecondAntShowcase.Core.Model
 
 type InteractionContract =
-    { ContractId: string
-      ControlIds: string list
-      PageId: string
-      StartingState: string
-      ActionType: string
-      InputKind: string
-      Action: string
-      ExpectedStateChange: string
-      VisibleEvidence: string
-      ScriptStep: SecondAntShowcaseMsg option
-      ThemeInvariant: bool
-      DisplayOnlyReason: string option }
+    {
+        ContractId: string
+        ControlIds: string list
+        PageId: string
+        StartingState: string
+        ActionType: string
+        InputKind: string
+        Action: string
+        ExpectedStateChange: string
+        VisibleEvidence: string
+        ScriptStep: SecondAntShowcaseMsg option
+        ThemeInvariant: bool
+        DisplayOnlyReason: string option
+    }
 
 type InteractionCoverage =
-    { MissingContractOrReason: string list
-      ContractedControls: string list
-      DisplayOnlyControls: string list }
+    {
+        MissingContractOrReason: string list
+        ContractedControls: string list
+        DisplayOnlyControls: string list
+    }
 
 val all: InteractionContract list
 val displayOnlyReasons: Map<string, string>

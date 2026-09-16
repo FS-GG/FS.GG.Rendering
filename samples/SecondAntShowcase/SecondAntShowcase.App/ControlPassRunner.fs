@@ -28,14 +28,16 @@ open SecondAntShowcase.Core.ControlPass
 // --- CLI config -------------------------------------------------------------
 
 type Config =
-    { Seed: int
-      Appearances: (ThemeMode * string) list
-      Sizes: (string * Size) list
-      Backend: string
-      RequireLive: bool
-      Page: string option
-      OutDir: string
-      Json: bool }
+    {
+        Seed: int
+        Appearances: (ThemeMode * string) list
+        Sizes: (string * Size) list
+        Backend: string
+        RequireLive: bool
+        Page: string option
+        OutDir: string
+        Json: bool
+    }
 
 let private defaultOut = "specs/176-test-antshowcase-controls/readiness"
 
@@ -91,33 +93,39 @@ let parse (args: string list) : Result<Config, string> =
             | "x11xtest"
             | "uinput" ->
                 Ok
-                    { Seed = seed
-                      Appearances = appearances
-                      Sizes = sizes
-                      Backend = backend
-                      RequireLive = hasFlag "--require-live" args
-                      Page = page
-                      OutDir = outDir
-                      Json = hasFlag "--json" args }
+                    {
+                        Seed = seed
+                        Appearances = appearances
+                        Sizes = sizes
+                        Backend = backend
+                        RequireLive = hasFlag "--require-live" args
+                        Page = page
+                        OutDir = outDir
+                        Json = hasFlag "--json" args
+                    }
             | other -> Result.Error(sprintf "unknown backend '%s' (expected pure|x11xtest|uinput)" other)
 
 // --- environment detection (G-6) --------------------------------------------
 
 type LiveEnvironment =
-    { Renderable: bool
-      Reasons: string list }
+    {
+        Renderable: bool
+        Reasons: string list
+    }
 
 let probeEnvironment () : LiveEnvironment =
     let capability = Viewer.runtimeCapability ()
 
-    { Renderable = capability.PersistentWindow
-      Reasons =
-        if capability.PersistentWindow then
-            []
-        else
-            match capability.UnsupportedHostReasons with
-            | [] -> [ sprintf "renderer '%s' reports no persistent window" capability.RendererMode ]
-            | rs -> rs }
+    {
+        Renderable = capability.PersistentWindow
+        Reasons =
+            if capability.PersistentWindow then
+                []
+            else
+                match capability.UnsupportedHostReasons with
+                | [] -> [ sprintf "renderer '%s' reports no persistent window" capability.RendererMode ]
+                | rs -> rs
+    }
 
 // --- functional dimension (US1) ---------------------------------------------
 
@@ -168,40 +176,52 @@ let private inspectTransition
         | None -> restModel
 
     let scope: VisualInspectionScope =
-        { ScopeId = controlId
-          Title = controlId
-          Required = true }
+        {
+            ScopeId = controlId
+            Title = controlId
+            Required = true
+        }
 
     let transitionId = sprintf "%s/%s" controlId contract.ContractId
 
     let artifact =
         ControlInspection.inspectRetained
-            { Scope = scope
-              Theme = theme
-              OutputSize = size
-              Presentation = "control-pass"
-              RunId = Some runId
-              Transition =
-                { TransitionId = transitionId
-                  PriorControl = Some(Shell.view size restModel)
-                  CurrentControl = Shell.view size stateModel
-                  InteractionId = Some contract.ContractId
-                  ExpectedAffectedRegionIds = []
-                  MaximumDirtyPercentage = None
-                  IntentionalExceptions = [] }
-              RelatedVisualEvidence = [] }
+            {
+                Scope = scope
+                Theme = theme
+                OutputSize = size
+                Presentation = "control-pass"
+                RunId = Some runId
+                Transition =
+                    {
+                        TransitionId = transitionId
+                        PriorControl = Some(Shell.view size restModel)
+                        CurrentControl = Shell.view size stateModel
+                        InteractionId = Some contract.ContractId
+                        ExpectedAffectedRegionIds = []
+                        MaximumDirtyPercentage = None
+                        IntentionalExceptions = []
+                    }
+                RelatedVisualEvidence = []
+            }
 
     let damage = artifact.Damage
 
-    let dirtyPct = damage |> Option.map (fun d -> d.DirtyPercentage) |> Option.defaultValue 0.0
-    let regionIds = damage |> Option.map (fun d -> d.AffectedRegionIds) |> Option.defaultValue []
+    let dirtyPct =
+        damage |> Option.map (fun d -> d.DirtyPercentage) |> Option.defaultValue 0.0
+
+    let regionIds =
+        damage |> Option.map (fun d -> d.AffectedRegionIds) |> Option.defaultValue []
 
     let repainted =
         damage
         |> Option.map (fun d -> d.RepaintedNodeCount + d.ShiftedNodeCount)
         |> Option.defaultValue 0
 
-    let status = damage |> Option.map (fun d -> damageStatusOf d.DamageStatus) |> Option.defaultValue Unsupported
+    let status =
+        damage
+        |> Option.map (fun d -> damageStatusOf d.DamageStatus)
+        |> Option.defaultValue Unsupported
 
     // A driven state with no node delta vs rest is a dead-affordance defect (Feature 175 class).
     let differs = repainted > 0 || dirtyPct > 0.0
@@ -209,10 +229,12 @@ let private inspectTransition
     let stateVerdict = if differs then Pass else Fail
 
     let stateOutcome =
-        { State = stateKindFor contract
-          DiffersFromRest = differs
-          EvidenceRef = transitionId
-          Verdict = stateVerdict }
+        {
+            State = stateKindFor contract
+            DiffersFromRest = differs
+            EvidenceRef = transitionId
+            Verdict = stateVerdict
+        }
 
     // Broad/full-surface damage without an intentional exception is a finding (M-4, FR-005).
     let damageVerdict =
@@ -224,18 +246,23 @@ let private inspectTransition
         | Unsupported -> EnvironmentLimited
 
     let damageOutcome =
-        { TransitionId = transitionId
-          DamageStatus = status
-          DirtyPercentage = dirtyPct
-          AffectedRegionIds = regionIds
-          Verdict = damageVerdict }
+        {
+            TransitionId = transitionId
+            DamageStatus = status
+            DirtyPercentage = dirtyPct
+            AffectedRegionIds = regionIds
+            Verdict = damageVerdict
+        }
 
     stateOutcome, damageOutcome
 
 // --- live-pixel visual matrix (US2 live, degrade-aware) ---------------------
 
 let private appearanceOf (themeId: string) : Appearance =
-    if themeId.ToLowerInvariant().Contains "dark" then AntDark else AntLight
+    if themeId.ToLowerInvariant().Contains "dark" then
+        AntDark
+    else
+        AntLight
 
 let private sizeRoleOf (roleName: string) : SizeRole =
     if roleName = "minimum" then Minimum else Preferred
@@ -254,27 +281,43 @@ let private capturePageCell
     Directory.CreateDirectory folder |> ignore
     let outPath = Path.Combine(folder, pageId + ".png")
     let relativePath = sprintf "visual-evidence/%s/%s/%s.png" themeId roleName pageId
-    let model = { Host.initModel with CurrentPage = pageId; Mode = mode }
+
+    let model =
+        { Host.initModel with
+            CurrentPage = pageId
+            Mode = mode
+        }
+
     let theme = AntTheme.resolve mode
     let rendered = Control.renderTree theme size (Shell.view size model)
     let scene = SceneNode.Group [ rendered.Scene ]
 
     let request: ScreenshotEvidenceRequest =
-        { Command = "control-pass"
-          AppOrSample = "second-ant-showcase"
-          OutputPath = outPath
-          Width = size.Width
-          Height = size.Height
-          RendererMode = "viewer-render-target"
-          CaptureMode = ViewerRenderTargetPng
-          HostFacts = [ sprintf "theme=%s" themeId; sprintf "size=%s" roleName; sprintf "page=%s" pageId ]
-          Timeout = TimeSpan.FromSeconds 10.0 }
+        {
+            Command = "control-pass"
+            AppOrSample = "second-ant-showcase"
+            OutputPath = outPath
+            Width = size.Width
+            Height = size.Height
+            RendererMode = "viewer-render-target"
+            CaptureMode = ViewerRenderTargetPng
+            HostFacts =
+                [
+                    sprintf "theme=%s" themeId
+                    sprintf "size=%s" roleName
+                    sprintf "page=%s" pageId
+                ]
+            Timeout = TimeSpan.FromSeconds 10.0
+        }
 
     let options: ViewerOptions =
-        { Title = "second-ant-showcase-control-pass"
-          InitialSize = size
-          PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None; LogicalSize = None }
+        {
+            Title = "second-ant-showcase-control-pass"
+            InitialSize = size
+            PresentMode = ViewerPresentMode.OffscreenReadback
+            FrameRateCap = None
+            LogicalSize = None
+        }
 
     try
         let result = Viewer.captureScreenshotEvidence request options scene
@@ -282,10 +325,14 @@ let private capturePageCell
         if result.ProvesScreenshot && File.Exists outPath then
             Complete, relativePath
         else
-            if File.Exists outPath then File.Delete outPath
+            if File.Exists outPath then
+                File.Delete outPath
+
             Degraded, relativePath
     with _ ->
-        if File.Exists outPath then File.Delete outPath
+        if File.Exists outPath then
+            File.Delete outPath
+
         Degraded, relativePath
 
 // --- per-control assembly ---------------------------------------------------
@@ -305,29 +352,34 @@ let private buildVisualCells
     (controlId: string)
     (pageId: string)
     : VisualEvidenceItem list =
-    [ for mode, themeId in config.Appearances do
-          for roleName, _ in config.Sizes do
-              let status, path =
-                  Map.tryFind (themeId, roleName, pageId) pageCaptures
-                  |> Option.defaultValue (BlockedCapture, "")
+    [
+        for mode, themeId in config.Appearances do
+            for roleName, _ in config.Sizes do
+                let status, path =
+                    Map.tryFind (themeId, roleName, pageId) pageCaptures
+                    |> Option.defaultValue (BlockedCapture, "")
 
-              let fidelity = fidelityOf status
+                let fidelity = fidelityOf status
 
-              let reasons =
-                  match fidelity with
-                  | Approved -> []
-                  | FidelityEnvironmentLimited -> [ "no renderable surface — live-pixel capture environment-limited (FR-008)" ]
-                  | FidelityNeedsReview -> [ "capture incomplete; reviewer attention required" ]
-                  | FidelityBlocked -> [ "capture blocked" ]
+                let reasons =
+                    match fidelity with
+                    | Approved -> []
+                    | FidelityEnvironmentLimited ->
+                        [ "no renderable surface — live-pixel capture environment-limited (FR-008)" ]
+                    | FidelityNeedsReview -> [ "capture incomplete; reviewer attention required" ]
+                    | FidelityBlocked -> [ "capture blocked" ]
 
-              { TargetId = sprintf "%s/%s/%s/rest" controlId themeId roleName
-                Appearance = appearanceOf themeId
-                Size = sizeRoleOf roleName
-                State = Rest
-                CapturePath = path
-                CaptureStatus = status
-                FidelityVerdict = fidelity
-                Reasons = reasons } ]
+                {
+                    TargetId = sprintf "%s/%s/%s/rest" controlId themeId roleName
+                    Appearance = appearanceOf themeId
+                    Size = sizeRoleOf roleName
+                    State = Rest
+                    CapturePath = path
+                    CaptureStatus = status
+                    FidelityVerdict = fidelity
+                    Reasons = reasons
+                }
+    ]
 
 let private buildRecord
     (config: Config)
@@ -350,18 +402,24 @@ let private buildRecord
         { skeleton with
             FunctionalVerdict = NotApplicable
             VisualEvidence = cells
-            VisualVerdict = aggregateVisual cells }
+            VisualVerdict = aggregateVisual cells
+        }
     | Interactive ->
         let contracts = behaviorsFor controlId
 
         let behaviors =
             contracts
             |> List.map (fun contract ->
-                let model = { seed with CurrentPage = contract.PageId }
+                let model =
+                    { seed with
+                        CurrentPage = contract.PageId
+                    }
+
                 fst (exerciseBehavior model contract))
 
         let stateAndDamage =
-            contracts |> List.map (fun contract -> inspectTransition theme inspectSize runId controlId contract seed)
+            contracts
+            |> List.map (fun contract -> inspectTransition theme inspectSize runId controlId contract seed)
 
         let states = stateAndDamage |> List.map fst
         let damage = stateAndDamage |> List.map snd
@@ -377,16 +435,20 @@ let private buildRecord
         let isContinuousInput = controlId = "slider" || controlId = "scroll-viewer"
 
         let diagnostics =
-            [ if not env.Renderable then
-                  yield
-                      "live hover/focus visual states are environment-limited (no renderable surface); functional + structural-damage evidence is authoritative"
-              if isContinuousInput then
-                  // Continuous-input feedback (offset tracks input, no catch-up lag) is proven by the
-                  // existing live-responsiveness evidence path (Feature 173/174): the
-                  // `responsiveness` and `render-lag-probe` CLIs. Disclosed here, not duplicated.
-                  yield "continuous-input feedback validated via the responsiveness/render-lag-probe live evidence (Feature 173/174)"
-                  if not env.Renderable then
-                      yield "continuous-input live drag requires a visible window — environment-limited on this host" ]
+            [
+                if not env.Renderable then
+                    yield
+                        "live hover/focus visual states are environment-limited (no renderable surface); functional + structural-damage evidence is authoritative"
+                if isContinuousInput then
+                    // Continuous-input feedback (offset tracks input, no catch-up lag) is proven by the
+                    // existing live-responsiveness evidence path (Feature 173/174): the
+                    // `responsiveness` and `render-lag-probe` CLIs. Disclosed here, not duplicated.
+                    yield
+                        "continuous-input feedback validated via the responsiveness/render-lag-probe live evidence (Feature 173/174)"
+
+                    if not env.Renderable then
+                        yield "continuous-input live drag requires a visible window — environment-limited on this host"
+            ]
 
         { skeleton with
             BehaviorsExercised = behaviors
@@ -395,7 +457,8 @@ let private buildRecord
             VisualEvidence = cells
             FunctionalVerdict = aggregateFunctional Interactive behaviors
             VisualVerdict = aggregateVisual cells
-            Diagnostics = diagnostics }
+            Diagnostics = diagnostics
+        }
 
 // --- finding extraction (auto-detected, Found state) ------------------------
 
@@ -403,37 +466,51 @@ let private findingsFrom (records: ControlVerdictRecord list) : Finding list =
     records
     |> List.collect (fun r ->
         [ // Functional failures: a documented behavior produced no state change (dead affordance).
-          for b in r.BehaviorsExercised do
-              if b.Verdict = Fail then
-                  yield
-                      { FindingId = sprintf "F176-%s-%s" r.ControlId b.BehaviorId
-                        Description =
-                          sprintf "control '%s' behavior '%s' produced no model change (%s)" r.ControlId b.BehaviorId b.Expected
-                        AffectedControls = [ r.ControlId ]
-                        Classification = SampleLocal
-                        Tier = Tier2
-                        Severity = High
-                        Lifecycle = Found
-                        BeforeEvidence = sprintf "verdict-records/%s.json" r.ControlId
-                        AfterEvidence = None
-                        DeferralRationale = None
-                        FollowUpRef = None }
-          // Damage that is broad/full-surface without an intentional exception.
-          for d in r.DamageEvidence do
-              if d.DamageStatus = Broad || d.DamageStatus = FullSurface then
-                  yield
-                      { FindingId = sprintf "F176-%s-damage" r.ControlId
-                        Description =
-                          sprintf "control '%s' transition '%s' repaints %s (%.1f%% dirty) without an intentional-damage exception" r.ControlId d.TransitionId (string d.DamageStatus) d.DirtyPercentage
-                        AffectedControls = [ r.ControlId ]
-                        Classification = FrameworkShared
-                        Tier = Tier1
-                        Severity = Medium
-                        Lifecycle = Found
-                        BeforeEvidence = sprintf "verdict-records/%s.json" r.ControlId
-                        AfterEvidence = None
-                        DeferralRationale = None
-                        FollowUpRef = None } ])
+            for b in r.BehaviorsExercised do
+                if b.Verdict = Fail then
+                    yield
+                        {
+                            FindingId = sprintf "F176-%s-%s" r.ControlId b.BehaviorId
+                            Description =
+                                sprintf
+                                    "control '%s' behavior '%s' produced no model change (%s)"
+                                    r.ControlId
+                                    b.BehaviorId
+                                    b.Expected
+                            AffectedControls = [ r.ControlId ]
+                            Classification = SampleLocal
+                            Tier = Tier2
+                            Severity = High
+                            Lifecycle = Found
+                            BeforeEvidence = sprintf "verdict-records/%s.json" r.ControlId
+                            AfterEvidence = None
+                            DeferralRationale = None
+                            FollowUpRef = None
+                        }
+            // Damage that is broad/full-surface without an intentional exception.
+            for d in r.DamageEvidence do
+                if d.DamageStatus = Broad || d.DamageStatus = FullSurface then
+                    yield
+                        {
+                            FindingId = sprintf "F176-%s-damage" r.ControlId
+                            Description =
+                                sprintf
+                                    "control '%s' transition '%s' repaints %s (%.1f%% dirty) without an intentional-damage exception"
+                                    r.ControlId
+                                    d.TransitionId
+                                    (string d.DamageStatus)
+                                    d.DirtyPercentage
+                            AffectedControls = [ r.ControlId ]
+                            Classification = FrameworkShared
+                            Tier = Tier1
+                            Severity = Medium
+                            Lifecycle = Found
+                            BeforeEvidence = sprintf "verdict-records/%s.json" r.ControlId
+                            AfterEvidence = None
+                            DeferralRationale = None
+                            FollowUpRef = None
+                        }
+        ])
 
 // --- serialization (deterministic, no wall-clock) ---------------------------
 
@@ -587,11 +664,22 @@ let recordToJson (r: ControlVerdictRecord) : string =
     sb.AppendLine(sprintf "  \"controlId\": %s," (jstr r.ControlId)) |> ignore
     sb.AppendLine(sprintf "  \"family\": %s," (jstr r.Family)) |> ignore
     sb.AppendLine(sprintf "  \"pageContext\": %s," (jArr r.PageContext)) |> ignore
-    sb.AppendLine(sprintf "  \"classification\": %s," (jstr (classificationText r.Classification))) |> ignore
-    sb.AppendLine(sprintf "  \"classificationReason\": %s," (jstr r.ClassificationReason)) |> ignore
-    sb.AppendLine(sprintf "  \"functionalVerdict\": %s," (jstr (functionalText r.FunctionalVerdict))) |> ignore
-    sb.AppendLine(sprintf "  \"visualVerdict\": %s," (jstr (visualText r.VisualVerdict))) |> ignore
-    sb.AppendLine(sprintf "  \"behaviorsExercised\": [\n%s\n  ]," behaviors) |> ignore
+
+    sb.AppendLine(sprintf "  \"classification\": %s," (jstr (classificationText r.Classification)))
+    |> ignore
+
+    sb.AppendLine(sprintf "  \"classificationReason\": %s," (jstr r.ClassificationReason))
+    |> ignore
+
+    sb.AppendLine(sprintf "  \"functionalVerdict\": %s," (jstr (functionalText r.FunctionalVerdict)))
+    |> ignore
+
+    sb.AppendLine(sprintf "  \"visualVerdict\": %s," (jstr (visualText r.VisualVerdict)))
+    |> ignore
+
+    sb.AppendLine(sprintf "  \"behaviorsExercised\": [\n%s\n  ]," behaviors)
+    |> ignore
+
     sb.AppendLine(sprintf "  \"interactionStates\": [\n%s\n  ]," states) |> ignore
     sb.AppendLine(sprintf "  \"damageEvidence\": [\n%s\n  ]," damage) |> ignore
     sb.AppendLine(sprintf "  \"visualEvidence\": [\n%s\n  ]," visual) |> ignore
@@ -610,20 +698,22 @@ let private writeRecords (outDir: string) (records: ControlVerdictRecord list) :
         File.WriteAllText(Path.Combine(dir, r.ControlId + ".json"), recordToJson r)
 
     let index =
-        [ "# Control Verdict Records — Feature 176"
-          ""
-          sprintf "%d records, one per cataloged control (catalog order)." (List.length records)
-          ""
-          "| Control | Family | Class | Functional | Visual |"
-          "|---------|--------|-------|------------|--------|"
-          for r in records do
-              sprintf
-                  "| `%s` | %s | %s | %s | %s |"
-                  r.ControlId
-                  r.Family
-                  (classificationText r.Classification)
-                  (functionalText r.FunctionalVerdict)
-                  (visualText r.VisualVerdict) ]
+        [
+            "# Control Verdict Records — Feature 176"
+            ""
+            sprintf "%d records, one per cataloged control (catalog order)." (List.length records)
+            ""
+            "| Control | Family | Class | Functional | Visual |"
+            "|---------|--------|-------|------------|--------|"
+            for r in records do
+                sprintf
+                    "| `%s` | %s | %s | %s | %s |"
+                    r.ControlId
+                    r.Family
+                    (classificationText r.Classification)
+                    (functionalText r.FunctionalVerdict)
+                    (visualText r.VisualVerdict)
+        ]
         |> String.concat Environment.NewLine
 
     File.WriteAllText(Path.Combine(dir, "_index.md"), index)
@@ -668,17 +758,19 @@ let private writeFindingLog (outDir: string) (findings: Finding list) : unit =
                 (Option.defaultValue "—" f.AfterEvidence))
 
     let body =
-        [ "# Auto-Generated Findings — Feature 176 Control Pass"
-          ""
-          "Machine-detected findings from the latest automated pass, in the `Found` state. The curated,"
-          "human-triaged finding log (with terminal lifecycle + before/after evidence) is `finding-log.md`;"
-          "this file is regenerated on every run and is the raw input to that triage (FR-009)."
-          ""
-          "| Finding | Description | Affected | Class | Tier | Severity | Lifecycle | Before | After |"
-          "|---------|-------------|----------|-------|------|----------|-----------|--------|-------|"
-          yield! rows
-          if List.isEmpty findings then
-              "_No findings surfaced by the automated pass._" ]
+        [
+            "# Auto-Generated Findings — Feature 176 Control Pass"
+            ""
+            "Machine-detected findings from the latest automated pass, in the `Found` state. The curated,"
+            "human-triaged finding log (with terminal lifecycle + before/after evidence) is `finding-log.md`;"
+            "this file is regenerated on every run and is the raw input to that triage (FR-009)."
+            ""
+            "| Finding | Description | Affected | Class | Tier | Severity | Lifecycle | Before | After |"
+            "|---------|-------------|----------|-------|------|----------|-----------|--------|-------|"
+            yield! rows
+            if List.isEmpty findings then
+                "_No findings surfaced by the automated pass._"
+        ]
         |> String.concat Environment.NewLine
 
     File.WriteAllText(Path.Combine(outDir, "finding-log.generated.md"), body)
@@ -692,53 +784,68 @@ let private writeSummary
     (missing: string list)
     (duplicate: string list)
     : unit =
-    let count predicate = records |> List.filter predicate |> List.length
+    let count predicate =
+        records |> List.filter predicate |> List.length
 
     let body =
-        [ "# Validation Summary — Feature 176 Control Pass"
-          ""
-          sprintf "- Seed: %d" config.Seed
-          sprintf "- Backend: %s" config.Backend
-          sprintf "- Appearances: %s" (config.Appearances |> List.map snd |> String.concat ", ")
-          sprintf "- Sizes: %s" (config.Sizes |> List.map fst |> String.concat ", ")
-          sprintf "- Renderable surface: %b" env.Renderable
-          if not env.Renderable then
-              sprintf "- Environment limitation: %s" (String.concat "; " env.Reasons)
-          ""
-          "## Completeness (G-2 / VR-1)"
-          ""
-          sprintf "- Records emitted: %d" (List.length records)
-          sprintf "- Catalog controls: %d" (List.length (ControlPass.catalogControlIds ()))
-          sprintf "- Missing: %d %s" (List.length missing) (if List.isEmpty missing then "" else "[" + String.concat "; " missing + "]")
-          sprintf "- Duplicate/foreign: %d %s" (List.length duplicate) (if List.isEmpty duplicate then "" else "[" + String.concat "; " duplicate + "]")
-          ""
-          "## Classification (VR-2 / VR-5)"
-          ""
-          sprintf "- Interactive: %d" (count (fun r -> r.Classification = Interactive))
-          sprintf "- Display-only: %d" (count (fun r -> r.Classification = DisplayOnly))
-          ""
-          "## Functional verdicts"
-          ""
-          sprintf "- Pass: %d" (count (fun r -> r.FunctionalVerdict = FunctionalPass))
-          sprintf "- Fail: %d" (count (fun r -> r.FunctionalVerdict = FunctionalFail))
-          sprintf "- NeedsReview: %d" (count (fun r -> r.FunctionalVerdict = FunctionalNeedsReview))
-          sprintf "- EnvironmentLimited: %d" (count (fun r -> r.FunctionalVerdict = FunctionalEnvironmentLimited))
-          sprintf "- NotApplicable (display-only): %d" (count (fun r -> r.FunctionalVerdict = NotApplicable))
-          ""
-          "## Visual verdicts"
-          ""
-          sprintf "- Approved: %d" (count (fun r -> r.VisualVerdict = VisualApproved))
-          sprintf "- NeedsReview: %d" (count (fun r -> r.VisualVerdict = VisualNeedsReview))
-          sprintf "- Blocked: %d" (count (fun r -> r.VisualVerdict = VisualBlocked))
-          sprintf "- EnvironmentLimited: %d" (count (fun r -> r.VisualVerdict = VisualEnvironmentLimited))
-          ""
-          "## Findings"
-          ""
-          sprintf "- Auto-detected (Found): %d" (List.length findings)
-          ""
-          "_GeneratedAtUtc and wall-clock fields are excluded from the byte-stable record surface (G-4)._"
-          ""
-          "_This is the machine-generated run summary; the curated quickstart validation record is `validation-summary.md`._" ]
+        [
+            "# Validation Summary — Feature 176 Control Pass"
+            ""
+            sprintf "- Seed: %d" config.Seed
+            sprintf "- Backend: %s" config.Backend
+            sprintf "- Appearances: %s" (config.Appearances |> List.map snd |> String.concat ", ")
+            sprintf "- Sizes: %s" (config.Sizes |> List.map fst |> String.concat ", ")
+            sprintf "- Renderable surface: %b" env.Renderable
+            if not env.Renderable then
+                sprintf "- Environment limitation: %s" (String.concat "; " env.Reasons)
+            ""
+            "## Completeness (G-2 / VR-1)"
+            ""
+            sprintf "- Records emitted: %d" (List.length records)
+            sprintf "- Catalog controls: %d" (List.length (ControlPass.catalogControlIds ()))
+            sprintf
+                "- Missing: %d %s"
+                (List.length missing)
+                (if List.isEmpty missing then
+                     ""
+                 else
+                     "[" + String.concat "; " missing + "]")
+            sprintf
+                "- Duplicate/foreign: %d %s"
+                (List.length duplicate)
+                (if List.isEmpty duplicate then
+                     ""
+                 else
+                     "[" + String.concat "; " duplicate + "]")
+            ""
+            "## Classification (VR-2 / VR-5)"
+            ""
+            sprintf "- Interactive: %d" (count (fun r -> r.Classification = Interactive))
+            sprintf "- Display-only: %d" (count (fun r -> r.Classification = DisplayOnly))
+            ""
+            "## Functional verdicts"
+            ""
+            sprintf "- Pass: %d" (count (fun r -> r.FunctionalVerdict = FunctionalPass))
+            sprintf "- Fail: %d" (count (fun r -> r.FunctionalVerdict = FunctionalFail))
+            sprintf "- NeedsReview: %d" (count (fun r -> r.FunctionalVerdict = FunctionalNeedsReview))
+            sprintf "- EnvironmentLimited: %d" (count (fun r -> r.FunctionalVerdict = FunctionalEnvironmentLimited))
+            sprintf "- NotApplicable (display-only): %d" (count (fun r -> r.FunctionalVerdict = NotApplicable))
+            ""
+            "## Visual verdicts"
+            ""
+            sprintf "- Approved: %d" (count (fun r -> r.VisualVerdict = VisualApproved))
+            sprintf "- NeedsReview: %d" (count (fun r -> r.VisualVerdict = VisualNeedsReview))
+            sprintf "- Blocked: %d" (count (fun r -> r.VisualVerdict = VisualBlocked))
+            sprintf "- EnvironmentLimited: %d" (count (fun r -> r.VisualVerdict = VisualEnvironmentLimited))
+            ""
+            "## Findings"
+            ""
+            sprintf "- Auto-detected (Found): %d" (List.length findings)
+            ""
+            "_GeneratedAtUtc and wall-clock fields are excluded from the byte-stable record surface (G-4)._"
+            ""
+            "_This is the machine-generated run summary; the curated quickstart validation record is `validation-summary.md`._"
+        ]
         |> String.concat Environment.NewLine
 
     File.WriteAllText(Path.Combine(outDir, "control-pass-summary.md"), body)
@@ -760,11 +867,13 @@ let private buildAll (config: Config) (env: LiveEnvironment) : ControlVerdictRec
         | None -> PageRegistry.catalogPages
 
     let pageCaptures =
-        [ for mode, themeId in config.Appearances do
-              for roleName, size in config.Sizes do
-                  for page in pages do
-                      let status, path = capturePageCell config.OutDir mode themeId size roleName page.Id
-                      (themeId, roleName, page.Id), (status, path) ]
+        [
+            for mode, themeId in config.Appearances do
+                for roleName, size in config.Sizes do
+                    for page in pages do
+                        let status, path = capturePageCell config.OutDir mode themeId size roleName page.Id
+                        (themeId, roleName, page.Id), (status, path)
+        ]
         |> Map.ofList
 
     let skeletons =
@@ -772,10 +881,7 @@ let private buildAll (config: Config) (env: LiveEnvironment) : ControlVerdictRec
 
         match config.Page with
         | Some pageId ->
-            let onPage =
-                pages
-                |> List.collect (fun p -> p.ControlIds)
-                |> Set.ofList
+            let onPage = pages |> List.collect (fun p -> p.ControlIds) |> Set.ofList
             all |> List.filter (fun r -> Set.contains r.ControlId onPage)
         | None -> all
 
@@ -811,14 +917,20 @@ let evaluate (config: Config) : LiveEnvironment * ControlVerdictRecord list * Fi
 
 /// A default headless config scoped to one page, for fast in-process tests.
 let testConfig (page: string option) : Config =
-    { Seed = 1
-      Appearances = VisualConfig.resolveThemeList "light,dark" |> function Ok xs -> xs | Result.Error _ -> []
-      Sizes = [ "preferred", VisualConfig.preferredSize; "minimum", VisualConfig.minimumSize ]
-      Backend = "pure"
-      RequireLive = false
-      Page = page
-      OutDir = Path.Combine(Path.GetTempPath(), "control-pass-test")
-      Json = false }
+    {
+        Seed = 1
+        Appearances =
+            VisualConfig.resolveThemeList "light,dark"
+            |> function
+                | Ok xs -> xs
+                | Result.Error _ -> []
+        Sizes = [ "preferred", VisualConfig.preferredSize; "minimum", VisualConfig.minimumSize ]
+        Backend = "pure"
+        RequireLive = false
+        Page = page
+        OutDir = Path.Combine(Path.GetTempPath(), "control-pass-test")
+        Json = false
+    }
 
 let run (args: string list) : int =
     match parse args with
@@ -863,7 +975,11 @@ let run (args: string list) : int =
             env.Renderable
 
         if not complete then
-            eprintfn "control-pass: completeness FAILED — missing=[%s] duplicate=[%s]" (String.concat "; " missing) (String.concat "; " duplicate)
+            eprintfn
+                "control-pass: completeness FAILED — missing=[%s] duplicate=[%s]"
+                (String.concat "; " missing)
+                (String.concat "; " duplicate)
+
             1
         elif unclassified then
             eprintfn "control-pass: classification FAILED — a display-only record lacks a reason"
@@ -874,7 +990,10 @@ let run (args: string list) : int =
         elif nonTerminalFinding then
             // The automated pass records findings in the Found state; triage to terminal is US3.
             // This is a non-zero signal that findings await triage, never a silent pass.
-            eprintfn "control-pass: %d finding(s) recorded in Found state — triage required (US3)" (List.length findings)
+            eprintfn
+                "control-pass: %d finding(s) recorded in Found state — triage required (US3)"
+                (List.length findings)
+
             1
         else
             0

@@ -7,33 +7,45 @@ open AntShowcase.App
 
 [<Tests>]
 let tests =
-    testList "Feature167 AntShowcase responsiveness CLI" [
-        test "responsiveness command writes environment-limited summary output" {
-            let outDir = AntShowcase.Tests.Feature167ResponsivenessFixtures.tempDir ()
+    testList
+        "Feature167 AntShowcase responsiveness CLI"
+        [
+            test "responsiveness command writes environment-limited summary output" {
+                let outDir = AntShowcase.Tests.Feature167ResponsivenessFixtures.tempDir ()
 
-            let code =
-                Responsiveness.run
-                    [ "--page"; "buttons"
-                      "--theme"; "light"
-                      "--script"; "representative"
-                      "--out"; outDir
-                      "--json" ]
+                let code =
+                    Responsiveness.run
+                        [
+                            "--page"
+                            "buttons"
+                            "--theme"
+                            "light"
+                            "--script"
+                            "representative"
+                            "--out"
+                            outDir
+                            "--json"
+                        ]
 
-            let summary =
-                Directory.GetFiles(outDir, "summary.json", SearchOption.AllDirectories)
-                |> Array.exactlyOne
+                let summary =
+                    Directory.GetFiles(outDir, "summary.json", SearchOption.AllDirectories)
+                    |> Array.exactlyOne
 
-            use doc = JsonDocument.Parse(File.ReadAllText summary)
+                use doc = JsonDocument.Parse(File.ReadAllText summary)
 
-            Expect.equal code 4 "headless deterministic substitute is environment-limited"
-            Expect.equal (doc.RootElement.GetProperty("overallReadiness").GetString()) "environment-limited" "summary does not claim accepted live readiness"
-        }
+                Expect.equal code 4 "headless deterministic substitute is environment-limited"
 
-        test "responsiveness parser rejects unknown script" {
-            let parsed = Responsiveness.parse [ "--script"; "unknown" ]
+                Expect.equal
+                    (doc.RootElement.GetProperty("overallReadiness").GetString())
+                    "environment-limited"
+                    "summary does not claim accepted live readiness"
+            }
 
-            match parsed with
-            | Error _ -> ()
-            | Ok _ -> failtest "unknown script is invalid request"
-        }
-    ]
+            test "responsiveness parser rejects unknown script" {
+                let parsed = Responsiveness.parse [ "--script"; "unknown" ]
+
+                match parsed with
+                | Error _ -> ()
+                | Ok _ -> failtest "unknown script is invalid request"
+            }
+        ]

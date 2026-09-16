@@ -23,20 +23,49 @@ let private diagnostic severity category =
 
 [<Tests>]
 let tests =
-    testList "Feature169 runtime diagnostics readiness helper" [
-        test "Synthetic accepted summary passes accepted requirement" {
-            let summary = RuntimeDiagnostics.summarize None [] [] [ diagnostic DiagnosticSeverity.Informational DiagnosticCategory.BackendCost ]
-            let result = RuntimeDiagnosticReadiness.validate { Summary = summary; RequiredStatus = None; RequireAccepted = true }
+    testList
+        "Feature169 runtime diagnostics readiness helper"
+        [
+            test "Synthetic accepted summary passes accepted requirement" {
+                let summary =
+                    RuntimeDiagnostics.summarize
+                        None
+                        []
+                        []
+                        [ diagnostic DiagnosticSeverity.Informational DiagnosticCategory.BackendCost ]
 
-            Expect.isTrue result.Accepted "accepted"
-            Expect.equal result.Status "accepted" "status token"
-        }
+                let result =
+                    RuntimeDiagnosticReadiness.validate
+                        {
+                            Summary = summary
+                            RequiredStatus = None
+                            RequireAccepted = true
+                        }
 
-        test "Synthetic blocked summary fails with visible diagnostics" {
-            let summary = RuntimeDiagnostics.summarize None [] [] [ diagnostic DiagnosticSeverity.Error DiagnosticCategory.ReadinessBlocker ]
-            let result = RuntimeDiagnosticReadiness.validate { Summary = summary; RequiredStatus = Some ReadinessDiagnosticStatus.Accepted; RequireAccepted = true }
+                Expect.isTrue result.Accepted "accepted"
+                Expect.equal result.Status "accepted" "status token"
+            }
 
-            Expect.isFalse result.Accepted "not accepted"
-            Expect.isTrue (result.Diagnostics |> List.exists (fun d -> d.Contains("blocker"))) "blocker diagnostic visible"
-        }
-    ]
+            test "Synthetic blocked summary fails with visible diagnostics" {
+                let summary =
+                    RuntimeDiagnostics.summarize
+                        None
+                        []
+                        []
+                        [ diagnostic DiagnosticSeverity.Error DiagnosticCategory.ReadinessBlocker ]
+
+                let result =
+                    RuntimeDiagnosticReadiness.validate
+                        {
+                            Summary = summary
+                            RequiredStatus = Some ReadinessDiagnosticStatus.Accepted
+                            RequireAccepted = true
+                        }
+
+                Expect.isFalse result.Accepted "not accepted"
+
+                Expect.isTrue
+                    (result.Diagnostics |> List.exists (fun d -> d.Contains("blocker")))
+                    "blocker diagnostic visible"
+            }
+        ]

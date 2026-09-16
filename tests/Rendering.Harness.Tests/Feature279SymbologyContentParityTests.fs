@@ -35,7 +35,9 @@ let private runParityScript () =
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
     psi.RedirectStandardError <- true
-    [ "fsi"; "scripts/check-symbology-skill-parity.fsx" ] |> List.iter psi.ArgumentList.Add
+
+    [ "fsi"; "scripts/check-symbology-skill-parity.fsx" ]
+    |> List.iter psi.ArgumentList.Add
 
     match Process.Start psi with
     | null -> failwith "could not start `dotnet fsi scripts/check-symbology-skill-parity.fsx`"
@@ -50,18 +52,21 @@ let private runParityScript () =
 
 [<Tests>]
 let feature279SymbologyContentParityTests =
-    testList "Feature279 symbology content parity" [
+    testList
+        "Feature279 symbology content parity"
+        [
 
-        // The gate: the library and product symbology skills must agree on their load-bearing content.
-        // Red case: change one variant's public API / label budget / invariant / escape-hatch doctrine
-        // without the other, and the script exits non-zero — failing this test with its drift report.
-        test "the two fs-gg-symbology variants are in load-bearing content parity" {
-            let exitCode, output = runParityScript ()
-            Expect.equal
-                exitCode
-                0
-                (sprintf
-                    "scripts/check-symbology-skill-parity.fsx reported symbology skill content drift:\n\n%s\n\nThe library (src/Symbology/skill/SKILL.md) and product (template/product-skills/fs-gg-symbology/SKILL.md) skills restate one body of knowledge (#279); a load-bearing change to one must land in the other. Run `dotnet fsi scripts/check-symbology-skill-parity.fsx` to reproduce."
-                    output)
-        }
-    ]
+            // The gate: the library and product symbology skills must agree on their load-bearing content.
+            // Red case: change one variant's public API / label budget / invariant / escape-hatch doctrine
+            // without the other, and the script exits non-zero — failing this test with its drift report.
+            test "the two fs-gg-symbology variants are in load-bearing content parity" {
+                let exitCode, output = runParityScript ()
+
+                Expect.equal
+                    exitCode
+                    0
+                    (sprintf
+                        "scripts/check-symbology-skill-parity.fsx reported symbology skill content drift:\n\n%s\n\nThe library (src/Symbology/skill/SKILL.md) and product (template/product-skills/fs-gg-symbology/SKILL.md) skills restate one body of knowledge (#279); a load-bearing change to one must land in the other. Run `dotnet fsi scripts/check-symbology-skill-parity.fsx` to reproduce."
+                        output)
+            }
+        ]

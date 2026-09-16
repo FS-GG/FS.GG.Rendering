@@ -25,11 +25,33 @@ let goal = { Col = 4; Row = 0 }
 let path = Pathfinding.astar EightWay 1000 walkable start goal
 printfn "astar path      = %A" path
 printfn "deterministic   = %b" (path = Pathfinding.astar EightWay 1000 walkable start goal)
-printfn "never in wall   = %b" (path |> Option.map (List.forall (fun c -> not (blocked.Contains(c.Col, c.Row)))) |> Option.defaultValue false)
+
+printfn
+    "never in wall   = %b"
+    (path
+     |> Option.map (List.forall (fun c -> not (blocked.Contains(c.Col, c.Row))))
+     |> Option.defaultValue false)
+
 printfn "bfs path len    = %A" (Pathfinding.bfs FourWay 1000 walkable start goal |> Option.map List.length)
 
 // Splash query: bucket some enemies, ask who is within radius 3 of a blast at (10,10).
-let enemies = [ { X = 10.0; Y = 11.0 }, "a"; { X = 20.0; Y = 20.0 }, "b"; { X = 12.0; Y = 9.0 }, "c" ]
+let enemies =
+    [
+        { X = 10.0; Y = 11.0 }, "a"
+        { X = 20.0; Y = 20.0 }, "b"
+        { X = 12.0; Y = 9.0 }, "c"
+    ]
+
 let grid = SpatialGrid.build 4.0 enemies
 printfn "splash r=3      = %A" (SpatialGrid.queryRadius { X = 10.0; Y = 10.0 } 3.0 grid) // ["a"; "c"]
-printfn "rect 15x15      = %A" (SpatialGrid.query { X = 0.0; Y = 0.0; Width = 15.0; Height = 15.0 } grid) // ["a"; "c"]
+
+printfn
+    "rect 15x15      = %A"
+    (SpatialGrid.query
+        {
+            X = 0.0
+            Y = 0.0
+            Width = 15.0
+            Height = 15.0
+        }
+        grid) // ["a"; "c"]

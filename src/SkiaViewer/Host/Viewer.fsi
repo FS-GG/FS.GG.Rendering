@@ -27,9 +27,7 @@ module Viewer =
 
     /// Public contract function exposed by this FS.GG.UI package.
     val withEventMapping:
-        mapper: (ViewerEvent -> 'msg option) ->
-        program: ViewerProgram<'model, 'msg> ->
-            ViewerProgram<'model, 'msg>
+        mapper: (ViewerEvent -> 'msg option) -> program: ViewerProgram<'model, 'msg> -> ViewerProgram<'model, 'msg>
 
     /// Public contract function exposed by this FS.GG.UI package.
     val withEffectMapping:

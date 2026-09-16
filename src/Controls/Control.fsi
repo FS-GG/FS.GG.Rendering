@@ -1,30 +1,35 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 /// Product-owned transient surface metadata emitted by widget authoring paths
 /// before a host has resolved current-frame anchor bounds.
 type TransientWidgetMetadata =
-    { SurfaceKind: TransientSurfaceKind
-      SurfaceId: ControlId
-      ParentSurfaceId: ControlId option
-      TriggerId: ControlId
-      AnchorId: ControlId
-      LayerPriority: int
-      DismissalPolicy: DismissalPolicy
-      FocusScope: FocusScope
-      Modal: bool
-      SelectionDispatchKey: string option
-      VisibilityState: bool
-      TriggerEnabled: bool }
+    {
+        SurfaceKind: TransientSurfaceKind
+        SurfaceId: ControlId
+        ParentSurfaceId: ControlId option
+        TriggerId: ControlId
+        AnchorId: ControlId
+        LayerPriority: int
+        DismissalPolicy: DismissalPolicy
+        FocusScope: FocusScope
+        Modal: bool
+        SelectionDispatchKey: string option
+        VisibilityState: bool
+        TriggerEnabled: bool
+    }
 
 /// Product-visible request emitted when an input asks a transient trigger to
 /// open or close. Disabled triggers return a diagnostic and suppress opening.
 type WidgetActivationRequest =
-    { TriggerId: ControlId
-      SurfaceId: ControlId
-      ActivationSource: OverlayActivationSource
-      RequestedOpenState: bool
-      Diagnostic: ControlDiagnostic option }
+    {
+        TriggerId: ControlId
+        SurfaceId: ControlId
+        ActivationSource: OverlayActivationSource
+        RequestedOpenState: bool
+        Diagnostic: ControlDiagnostic option
+    }
 
 /// Helpers for carrying transient widget metadata on a `Control<'msg>` tree and
 /// translating it to the pure `OverlaySurface` coordinator contract.
@@ -37,6 +42,7 @@ module TransientWidget =
     val validate: anchor: AnchorEvidence option -> metadata: TransientWidgetMetadata -> ControlDiagnostic list
     /// Translate widget metadata plus resolved anchor evidence into an `OverlaySurface`.
     val toSurface: anchor: AnchorEvidence -> metadata: TransientWidgetMetadata -> OverlaySurface
+
     /// Build the product-visible activation request for a metadata record.
     val activationRequest:
         source: OverlayActivationSource ->
@@ -87,18 +93,12 @@ module internal ControlInternals =
     /// accumulated `scrollOffset` (read from the stamped tree). Applied to `boundsById` for paint, and
     /// re-applied by the live host to the RAW `retained.Layout` for offset-aware pointer hit-testing
     /// (the raw layout is the incremental cache, so it is not pre-shifted). Identity at rest.
-    val applyScrollOffsets:
-        root: Control<'msg> ->
-        result: FS.GG.UI.Layout.LayoutResult ->
-            FS.GG.UI.Layout.LayoutResult
+    val applyScrollOffsets: root: Control<'msg> -> result: FS.GG.UI.Layout.LayoutResult -> FS.GG.UI.Layout.LayoutResult
 
     /// Compose a render result scene over an opaque viewport background from the active theme.
     /// Internal so full and retained render paths keep identical root-surface semantics.
     val sceneWithViewportBackground:
-        theme: Theme ->
-        size: FS.GG.UI.Scene.Size ->
-        scenes: FS.GG.UI.Scene.Scene list ->
-            FS.GG.UI.Scene.Scene
+        theme: Theme -> size: FS.GG.UI.Scene.Size -> scenes: FS.GG.UI.Scene.Scene list -> FS.GG.UI.Scene.Scene
 
     /// Feature 097 (R2): incremental layout seam — re-measures only the `dirty` set (conservatively
     /// propagated inside `Layout.evaluateIncremental`) against the previous frame's `LayoutResult`,
@@ -150,9 +150,11 @@ module internal ControlInternals =
     /// Feature 141 (R1b): metadata describing an already-assembled child contribution consumed by the
     /// current-node assembly owner.
     type CurrentNodeChildContribution =
-        { Index: int
-          InFlowFingerprint: uint64
-          OverlayFingerprint: uint64 }
+        {
+            Index: int
+            InFlowFingerprint: uint64
+            OverlayFingerprint: uint64
+        }
 
     /// Feature 139 (R1a): the current-semantics assembly result for one control node. `InFlowScene`
     /// remains in the parent clipping hierarchy; `OverlayScene` is deferred to the z-top overlay group.
@@ -160,20 +162,24 @@ module internal ControlInternals =
     /// child contribution metadata retained rendering stores and reuses instead of constructing
     /// independent retained composition fields.
     type CurrentNodeAssemblyResult =
-        { InFlowScene: FS.GG.UI.Scene.Scene list
-          OverlayScene: FS.GG.UI.Scene.Scene list
-          InFlowFingerprint: uint64
-          OverlayFingerprint: uint64
-          Fingerprint: uint64
-          Diagnostics: ControlDiagnostic list
-          ChildContributions: CurrentNodeChildContribution list }
+        {
+            InFlowScene: FS.GG.UI.Scene.Scene list
+            OverlayScene: FS.GG.UI.Scene.Scene list
+            InFlowFingerprint: uint64
+            OverlayFingerprint: uint64
+            Fingerprint: uint64
+            Diagnostics: ControlDiagnostic list
+            ChildContributions: CurrentNodeChildContribution list
+        }
 
     /// Feature 174: owner-produced current-node bounds contribution. Retained rendering stores this
     /// metadata shape and asks ControlInternals to apply the same in-flow/overlay ordering rules that
     /// direct rendering uses, without owning those rules locally.
     type CurrentNodeBoundsResult =
-        { InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
-          OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list }
+        {
+            InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+            OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+        }
 
     /// Feature 139 (R1a): the single current-node assembly owner. Combines one node's own paint and
     /// already-assembled children through today's container clipping and overlay-promotion rules. This is
@@ -276,16 +282,18 @@ type ScrollExtentSource =
 /// `MaxHorizontalOffset`/`MaxVerticalOffset` are accepted scroll ranges. The legacy vertical
 /// `Offset` field mirrors `OffsetY`.
 type ScrollViewport =
-    { Viewport: FS.GG.UI.Scene.Rect
-      ContentWidth: float
-      ContentHeight: float
-      OffsetX: float
-      OffsetY: float
-      Offset: float
-      MaxHorizontalOffset: float
-      MaxVerticalOffset: float
-      ExtentSource: ScrollExtentSource
-      Diagnostics: ControlDiagnostic list }
+    {
+        Viewport: FS.GG.UI.Scene.Rect
+        ContentWidth: float
+        ContentHeight: float
+        OffsetX: float
+        OffsetY: float
+        Offset: float
+        MaxHorizontalOffset: float
+        MaxVerticalOffset: float
+        ExtentSource: ScrollExtentSource
+        Diagnostics: ControlDiagnostic list
+    }
 
 /// Core authoring and rendering verbs for `Control<'msg>` — construction, standard/custom
 /// lowering, keying, single-control preview `render` and nested `renderTree`.
@@ -333,8 +341,7 @@ module Control =
     /// per-node measure/paint here is factored into `ControlInternals.evaluateLayout` /
     /// `paintNode`, which the retained path reuses, so a full `renderTree` and the retained
     /// partial render are byte-for-byte identical (FR-005).
-    val renderTree:
-        theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
+    val renderTree: theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
     /// Resolve which rendered control (if any) contains the point (x, y), from the public
     /// `renderTree` result alone. `None` when the point lies in a gap. Layered over
     /// `Layout.hitTestComputed` against the evaluated `Bounds` (FR-012).

@@ -51,7 +51,9 @@ module internal ViewerResponsiveness =
         | ViewerResponsivenessReadiness.Failed -> "failed"
 
     let createResponsivenessRunId () =
-        let stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
+        let stamp =
+            DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
+
         let suffix = Guid.NewGuid().ToString("N").Substring(0, 6)
         $"resp-{stamp}-{suffix}"
 
@@ -70,11 +72,9 @@ module internal ViewerResponsiveness =
         | Some n -> Nullable n
         | None -> Nullable<int64>()
 
-    let jsonOptions =
-        JsonSerializerOptions(WriteIndented = false)
+    let jsonOptions = JsonSerializerOptions(WriteIndented = false)
 
-    let jsonOptionsIndented =
-        JsonSerializerOptions(WriteIndented = true)
+    let jsonOptionsIndented = JsonSerializerOptions(WriteIndented = true)
 
     let jsonNull =
         use document = JsonDocument.Parse("null")
@@ -92,47 +92,53 @@ module internal ViewerResponsiveness =
             match latency.DirtyRegion with
             | Some region ->
                 JsonSerializer.SerializeToElement(
-                    {| dirtyRectCount = nullableInt region.DirtyRectCount
-                       dirtyArea = nullableInt region.DirtyArea
-                       repaintedNodeCount = nullableInt region.RepaintedNodeCount
-                       status = responsivenessEnvironmentStatusToken region.Status |},
+                    {|
+                        dirtyRectCount = nullableInt region.DirtyRectCount
+                        dirtyArea = nullableInt region.DirtyArea
+                        repaintedNodeCount = nullableInt region.RepaintedNodeCount
+                        status = responsivenessEnvironmentStatusToken region.Status
+                    |},
                     jsonOptions
                 )
             | None -> jsonNull
 
         JsonSerializer.Serialize(
-            {| recordId = latency.RecordId
-               runId = latency.RunId
-               inputSequenceId = latency.InputSequenceId
-               inputKind = responsivenessInputKindToken latency.InputKind
-               inputName = optionJsonString latency.InputName
-               page = optionJsonString latency.Page
-               controlGroup = optionJsonString latency.ControlGroup
-               receiptTimestamp = latency.ReceiptTimestamp
-               queueDepthAtReceipt = latency.QueueDepthAtReceipt
-               queueDepthAtDrain = latency.QueueDepthAtDrain
-               coalescedMovementCount = latency.CoalescedMovementCount
-               productMessageCount = latency.ProductMessageCount
-               productStateChanged = latency.ProductStateChanged
-               runtimeStateChanged = latency.RuntimeStateChanged
-               visibleResponse = responsivenessVisibleResponseToken latency.VisibleResponse
-               presentedFrameId = nullableInt64 latency.PresentedFrameId
-               environmentStatus = responsivenessEnvironmentStatusToken latency.EnvironmentStatus
-               phaseTiming =
-                {| receiptDurationMs = nullableFloat timing.ReceiptDuration
-                   queueDelayMs = nullableFloat timing.QueueDelay
-                   routingDurationMs = nullableFloat timing.RoutingDuration
-                   updateDurationMs = nullableFloat timing.UpdateDuration
-                   viewDurationMs = nullableFloat timing.ViewDuration
-                   retainedStepDurationMs = nullableFloat timing.RetainedStepDuration
-                   layoutDurationMs = nullableFloat timing.LayoutDuration
-                   textDurationMs = nullableFloat timing.TextDuration
-                   paintDurationMs = nullableFloat timing.PaintDuration
-                   presentDurationMs = nullableFloat timing.PresentDuration
-                   totalInputToVisibleMs = nullableFloat timing.TotalInputToVisibleDuration |}
-               dirtyRegion = dirty
-               longFrame = latency.LongFrame
-               diagnostics = latency.Diagnostics |},
+            {|
+                recordId = latency.RecordId
+                runId = latency.RunId
+                inputSequenceId = latency.InputSequenceId
+                inputKind = responsivenessInputKindToken latency.InputKind
+                inputName = optionJsonString latency.InputName
+                page = optionJsonString latency.Page
+                controlGroup = optionJsonString latency.ControlGroup
+                receiptTimestamp = latency.ReceiptTimestamp
+                queueDepthAtReceipt = latency.QueueDepthAtReceipt
+                queueDepthAtDrain = latency.QueueDepthAtDrain
+                coalescedMovementCount = latency.CoalescedMovementCount
+                productMessageCount = latency.ProductMessageCount
+                productStateChanged = latency.ProductStateChanged
+                runtimeStateChanged = latency.RuntimeStateChanged
+                visibleResponse = responsivenessVisibleResponseToken latency.VisibleResponse
+                presentedFrameId = nullableInt64 latency.PresentedFrameId
+                environmentStatus = responsivenessEnvironmentStatusToken latency.EnvironmentStatus
+                phaseTiming =
+                    {|
+                        receiptDurationMs = nullableFloat timing.ReceiptDuration
+                        queueDelayMs = nullableFloat timing.QueueDelay
+                        routingDurationMs = nullableFloat timing.RoutingDuration
+                        updateDurationMs = nullableFloat timing.UpdateDuration
+                        viewDurationMs = nullableFloat timing.ViewDuration
+                        retainedStepDurationMs = nullableFloat timing.RetainedStepDuration
+                        layoutDurationMs = nullableFloat timing.LayoutDuration
+                        textDurationMs = nullableFloat timing.TextDuration
+                        paintDurationMs = nullableFloat timing.PaintDuration
+                        presentDurationMs = nullableFloat timing.PresentDuration
+                        totalInputToVisibleMs = nullableFloat timing.TotalInputToVisibleDuration
+                    |}
+                dirtyRegion = dirty
+                longFrame = latency.LongFrame
+                diagnostics = latency.Diagnostics
+            |},
             jsonOptions
         )
 
@@ -152,11 +158,13 @@ module internal ViewerResponsiveness =
         values |> List.sortBy (fun value -> value.Ticks) |> List.tryLast
 
     let failedBudget kind scope inputKind measured budget : ViewerResponsivenessFailedBudget =
-        { Kind = kind
-          Scope = scope
-          InputKind = inputKind
-          Measured = measured
-          Budget = budget }
+        {
+            Kind = kind
+            Scope = scope
+            InputKind = inputKind
+            Measured = measured
+            Budget = budget
+        }
 
     let firstFailedBudget (scope: string) (budget: ViewerResponsivenessBudget) (records: ViewerLatencyRecord list) =
         let environmentBoundaryFailure =
@@ -200,33 +208,49 @@ module internal ViewerResponsiveness =
                     | _ ->
                         match maxTime visibleDurations with
                         | Some maxVisible when maxVisible > budget.InputToVisibleMax ->
-                            Some(failedBudget "input-to-visible-max" (Some scope) None maxVisible budget.InputToVisibleMax)
+                            Some(
+                                failedBudget
+                                    "input-to-visible-max"
+                                    (Some scope)
+                                    None
+                                    maxVisible
+                                    budget.InputToVisibleMax
+                            )
                         | _ ->
                             records
                             |> List.tryFind (fun record -> record.LongFrame)
                             |> Option.map (fun record ->
                                 let measured =
-                                    [ record.PhaseTiming.RetainedStepDuration
-                                      record.PhaseTiming.PaintDuration
-                                      record.PhaseTiming.PresentDuration
-                                      record.PhaseTiming.TotalInputToVisibleDuration ]
+                                    [
+                                        record.PhaseTiming.RetainedStepDuration
+                                        record.PhaseTiming.PaintDuration
+                                        record.PhaseTiming.PresentDuration
+                                        record.PhaseTiming.TotalInputToVisibleDuration
+                                    ]
                                     |> List.choose id
                                     |> maxTime
                                     |> Option.defaultValue (budget.LongFrameThreshold + TimeSpan.FromMilliseconds 1.0)
 
-                                failedBudget "long-frame" (record.Page |> Option.orElse (Some scope)) (Some record.InputKind) measured budget.LongFrameThreshold)
+                                failedBudget
+                                    "long-frame"
+                                    (record.Page |> Option.orElse (Some scope))
+                                    (Some record.InputKind)
+                                    measured
+                                    budget.LongFrameThreshold)
 
     let dominantPhase (timing: ViewerResponsivenessPhaseTiming) =
-        [ "receipt", timing.ReceiptDuration
-          "queue", timing.QueueDelay
-          "routing", timing.RoutingDuration
-          "update", timing.UpdateDuration
-          "view", timing.ViewDuration
-          "retained-step", timing.RetainedStepDuration
-          "layout", timing.LayoutDuration
-          "text", timing.TextDuration
-          "paint", timing.PaintDuration
-          "present", timing.PresentDuration ]
+        [
+            "receipt", timing.ReceiptDuration
+            "queue", timing.QueueDelay
+            "routing", timing.RoutingDuration
+            "update", timing.UpdateDuration
+            "view", timing.ViewDuration
+            "retained-step", timing.RetainedStepDuration
+            "layout", timing.LayoutDuration
+            "text", timing.TextDuration
+            "paint", timing.PaintDuration
+            "present", timing.PresentDuration
+        ]
         |> List.choose (fun (name, value) -> value |> Option.map (fun duration -> name, duration))
         |> List.sortByDescending (fun (_, duration) -> duration.Ticks)
         |> List.tryHead
@@ -240,8 +264,7 @@ module internal ViewerResponsiveness =
         (completedUtc: DateTimeOffset)
         (budget: ViewerResponsivenessBudget)
         (records: ViewerLatencyRecord list)
-        : ViewerResponsivenessSummary
-        =
+        : ViewerResponsivenessSummary =
         let environmentLimitations =
             records
             |> List.choose (fun record ->
@@ -265,7 +288,9 @@ module internal ViewerResponsiveness =
                         | _ -> None)
 
                 let p95 = percentile 95.0 measured
-                let longFrames = groupRecords |> List.filter (fun record -> record.LongFrame) |> List.length
+
+                let longFrames =
+                    groupRecords |> List.filter (fun record -> record.LongFrame) |> List.length
 
                 let readiness =
                     if
@@ -278,7 +303,9 @@ module internal ViewerResponsiveness =
                         ViewerResponsivenessReadiness.Failed
                     elif
                         p95 |> Option.exists (fun value -> value > budget.InputToVisibleP95)
-                        || measured |> maxTime |> Option.exists (fun value -> value > budget.InputToVisibleMax)
+                        || measured
+                           |> maxTime
+                           |> Option.exists (fun value -> value > budget.InputToVisibleMax)
                         || longFrames > 0
                     then
                         ViewerResponsivenessReadiness.Rejected
@@ -296,15 +323,17 @@ module internal ViewerResponsiveness =
                     else
                         ViewerResponsivenessReadiness.Accepted
 
-                { Page = page
-                  InputKind = inputKind
-                  ControlGroup = controlGroup
-                  Count = groupRecords.Length
-                  P50 = percentile 50.0 measured
-                  P95 = p95
-                  Max = maxTime measured
-                  LongFrameCount = longFrames
-                  Readiness = readiness })
+                {
+                    Page = page
+                    InputKind = inputKind
+                    ControlGroup = controlGroup
+                    Count = groupRecords.Length
+                    P50 = percentile 50.0 measured
+                    P95 = p95
+                    Max = maxTime measured
+                    LongFrameCount = longFrames
+                    Readiness = readiness
+                })
 
         let slowest =
             records
@@ -314,10 +343,12 @@ module internal ViewerResponsiveness =
             |> List.sortByDescending (fun (duration, _) -> duration.Ticks)
             |> List.truncate 5
             |> List.map (fun (_, record) ->
-                { RecordId = record.RecordId
-                  InputSequenceId = record.InputSequenceId
-                  TotalInputToVisible = record.PhaseTiming.TotalInputToVisibleDuration
-                  DominantPhase = dominantPhase record.PhaseTiming })
+                {
+                    RecordId = record.RecordId
+                    InputSequenceId = record.InputSequenceId
+                    TotalInputToVisible = record.PhaseTiming.TotalInputToVisibleDuration
+                    DominantPhase = dominantPhase record.PhaseTiming
+                })
 
         let failedRecord =
             records
@@ -327,94 +358,127 @@ module internal ViewerResponsiveness =
                 || record.EnvironmentStatus = ViewerResponsivenessEnvironmentStatus.WriteFailed)
 
         let overall =
-            if List.isEmpty records then ViewerResponsivenessReadiness.Incomplete
-            elif failedRecord then ViewerResponsivenessReadiness.Failed
-            elif not (List.isEmpty environmentLimitations) then ViewerResponsivenessReadiness.EnvironmentLimited
-            elif Option.isSome firstFailed then ViewerResponsivenessReadiness.Rejected
-            elif groups |> List.exists (fun group -> group.Readiness = ViewerResponsivenessReadiness.Incomplete) then ViewerResponsivenessReadiness.Incomplete
-            else ViewerResponsivenessReadiness.Accepted
+            if List.isEmpty records then
+                ViewerResponsivenessReadiness.Incomplete
+            elif failedRecord then
+                ViewerResponsivenessReadiness.Failed
+            elif not (List.isEmpty environmentLimitations) then
+                ViewerResponsivenessReadiness.EnvironmentLimited
+            elif Option.isSome firstFailed then
+                ViewerResponsivenessReadiness.Rejected
+            elif
+                groups
+                |> List.exists (fun group -> group.Readiness = ViewerResponsivenessReadiness.Incomplete)
+            then
+                ViewerResponsivenessReadiness.Incomplete
+            else
+                ViewerResponsivenessReadiness.Accepted
 
-        { RunId = runId
-          Scope = scope
-          OverallReadiness = overall
-          StartedUtc = startedUtc
-          CompletedUtc = completedUtc
-          RecordsPath = recordsPath
-          Budgets = budget
-          FirstFailedBudget = firstFailed
-          Groups = groups
-          SlowestInteractions = slowest
-          EnvironmentLimitations = environmentLimitations
-          Diagnostics = records |> List.collect (fun record -> record.Diagnostics) |> List.distinct }
+        {
+            RunId = runId
+            Scope = scope
+            OverallReadiness = overall
+            StartedUtc = startedUtc
+            CompletedUtc = completedUtc
+            RecordsPath = recordsPath
+            Budgets = budget
+            FirstFailedBudget = firstFailed
+            Groups = groups
+            SlowestInteractions = slowest
+            EnvironmentLimitations = environmentLimitations
+            Diagnostics = records |> List.collect (fun record -> record.Diagnostics) |> List.distinct
+        }
 
     let timeMs (value: TimeSpan) = value.TotalMilliseconds
-    let nullableMs value = value |> Option.map timeMs |> function Some n -> Nullable n | None -> Nullable<float>()
+
+    let nullableMs value =
+        value
+        |> Option.map timeMs
+        |> function
+            | Some n -> Nullable n
+            | None -> Nullable<float>()
 
     let responsivenessSummaryToJson (summary: ViewerResponsivenessSummary) =
         let failed: JsonElement =
             match summary.FirstFailedBudget with
             | Some budget ->
                 JsonSerializer.SerializeToElement(
-                    {| kind = budget.Kind
-                       scope = optionJsonString budget.Scope
-                       inputKind = budget.InputKind |> Option.map responsivenessInputKindToken |> optionJsonString
-                       measuredMs = timeMs budget.Measured
-                       budgetMs = timeMs budget.Budget |},
+                    {|
+                        kind = budget.Kind
+                        scope = optionJsonString budget.Scope
+                        inputKind = budget.InputKind |> Option.map responsivenessInputKindToken |> optionJsonString
+                        measuredMs = timeMs budget.Measured
+                        budgetMs = timeMs budget.Budget
+                    |},
                     jsonOptions
                 )
             | None -> jsonNull
 
         JsonSerializer.Serialize(
-            {| runId = summary.RunId
-               scope = summary.Scope
-               overallReadiness = responsivenessReadinessToken summary.OverallReadiness
-               startedUtc = summary.StartedUtc
-               completedUtc = summary.CompletedUtc
-               recordsPath = summary.RecordsPath
-               budgets =
-                {| inputReceiptP95Ms = timeMs summary.Budgets.InputReceiptP95
-                   inputReceiptMaxMs = timeMs summary.Budgets.InputReceiptMax
-                   inputToVisibleP95Ms = timeMs summary.Budgets.InputToVisibleP95
-                   inputToVisibleMaxMs = timeMs summary.Budgets.InputToVisibleMax
-                   longFrameThresholdMs = timeMs summary.Budgets.LongFrameThreshold |}
-               firstFailedBudget = failed
-               groups =
-                (summary.Groups
-                 |> List.map (fun group ->
-                     {| page = optionJsonString group.Page
-                        inputKind = responsivenessInputKindToken group.InputKind
-                        controlGroup = optionJsonString group.ControlGroup
-                        count = group.Count
-                        p50Ms = nullableMs group.P50
-                        p95Ms = nullableMs group.P95
-                        maxMs = nullableMs group.Max
-                        longFrameCount = group.LongFrameCount
-                        readiness = responsivenessReadinessToken group.Readiness |})
-                 |> List.toArray)
-               slowestInteractions =
-                (summary.SlowestInteractions
-                 |> List.map (fun interaction ->
-                     {| recordId = interaction.RecordId
-                        inputSequenceId = interaction.InputSequenceId
-                        totalInputToVisibleMs = nullableMs interaction.TotalInputToVisible
-                        dominantPhase = optionJsonString interaction.DominantPhase |})
-                 |> List.toArray)
-               environmentLimitations = summary.EnvironmentLimitations
-               diagnostics = summary.Diagnostics |},
+            {|
+                runId = summary.RunId
+                scope = summary.Scope
+                overallReadiness = responsivenessReadinessToken summary.OverallReadiness
+                startedUtc = summary.StartedUtc
+                completedUtc = summary.CompletedUtc
+                recordsPath = summary.RecordsPath
+                budgets =
+                    {|
+                        inputReceiptP95Ms = timeMs summary.Budgets.InputReceiptP95
+                        inputReceiptMaxMs = timeMs summary.Budgets.InputReceiptMax
+                        inputToVisibleP95Ms = timeMs summary.Budgets.InputToVisibleP95
+                        inputToVisibleMaxMs = timeMs summary.Budgets.InputToVisibleMax
+                        longFrameThresholdMs = timeMs summary.Budgets.LongFrameThreshold
+                    |}
+                firstFailedBudget = failed
+                groups =
+                    (summary.Groups
+                     |> List.map (fun group ->
+                         {|
+                             page = optionJsonString group.Page
+                             inputKind = responsivenessInputKindToken group.InputKind
+                             controlGroup = optionJsonString group.ControlGroup
+                             count = group.Count
+                             p50Ms = nullableMs group.P50
+                             p95Ms = nullableMs group.P95
+                             maxMs = nullableMs group.Max
+                             longFrameCount = group.LongFrameCount
+                             readiness = responsivenessReadinessToken group.Readiness
+                         |})
+                     |> List.toArray)
+                slowestInteractions =
+                    (summary.SlowestInteractions
+                     |> List.map (fun interaction ->
+                         {|
+                             recordId = interaction.RecordId
+                             inputSequenceId = interaction.InputSequenceId
+                             totalInputToVisibleMs = nullableMs interaction.TotalInputToVisible
+                             dominantPhase = optionJsonString interaction.DominantPhase
+                         |})
+                     |> List.toArray)
+                environmentLimitations = summary.EnvironmentLimitations
+                diagnostics = summary.Diagnostics
+            |},
             jsonOptionsIndented
         )
 
     let responsivenessSummaryToMarkdown (summary: ViewerResponsivenessSummary) =
         let fmt (value: TimeSpan option) =
             value
-            |> Option.map (fun duration -> duration.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) + " ms")
+            |> Option.map (fun duration ->
+                duration.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                + " ms")
             |> Option.defaultValue "n/a"
 
         let budgetLine =
             match summary.FirstFailedBudget with
             | Some budget ->
-                let measured = budget.Measured.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                let budgetMs = budget.Budget.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                let measured =
+                    budget.Measured.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+
+                let budgetMs =
+                    budget.Budget.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+
                 $"- first failed budget: {budget.Kind} measured={measured} ms budget={budgetMs} ms"
             | None -> "- first failed budget: none"
 
@@ -438,15 +502,17 @@ module internal ViewerResponsiveness =
 
         String.concat
             Environment.NewLine
-            ([ $"# Responsiveness summary {summary.RunId}"
-               ""
-               $"- scope: {summary.Scope}"
-               $"- overall readiness: {responsivenessReadinessToken summary.OverallReadiness}"
-               $"- records: {summary.RecordsPath}"
-               budgetLine
-               ""
-               "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
-               "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|" ]
+            ([
+                $"# Responsiveness summary {summary.RunId}"
+                ""
+                $"- scope: {summary.Scope}"
+                $"- overall readiness: {responsivenessReadinessToken summary.OverallReadiness}"
+                $"- records: {summary.RecordsPath}"
+                budgetLine
+                ""
+                "| Page | Input | Control | Count | p50 | p95 | max | long frames | readiness |"
+                "|------|-------|---------|-------|-----|-----|-----|-------------|-----------|"
+             ]
              @ groupLines
              @ [ ""; "## Slowest interactions" ]
              @ (if List.isEmpty slowLines then [ "- none" ] else slowLines)
@@ -454,7 +520,11 @@ module internal ViewerResponsiveness =
              @ envLines
              @ [ "" ])
 
-    let writeResponsivenessRun (outputRoot: string) (summary: ViewerResponsivenessSummary) (records: ViewerLatencyRecord list) =
+    let writeResponsivenessRun
+        (outputRoot: string)
+        (summary: ViewerResponsivenessSummary)
+        (records: ViewerLatencyRecord list)
+        =
         let runRoot = Path.Combine(outputRoot, summary.RunId)
         Directory.CreateDirectory runRoot |> ignore
 
@@ -468,11 +538,13 @@ module internal ViewerResponsiveness =
         File.WriteAllText(summaryMarkdownPath, responsivenessSummaryToMarkdown summary)
 
         let environmentLines =
-            [ "# Responsiveness environment"
-              ""
-              $"- readiness: {responsivenessReadinessToken summary.OverallReadiness}"
-              $"- startedUtc: {summary.StartedUtc:O}"
-              $"- completedUtc: {summary.CompletedUtc:O}" ]
+            [
+                "# Responsiveness environment"
+                ""
+                $"- readiness: {responsivenessReadinessToken summary.OverallReadiness}"
+                $"- startedUtc: {summary.StartedUtc:O}"
+                $"- completedUtc: {summary.CompletedUtc:O}"
+            ]
             @ (match summary.EnvironmentLimitations with
                | [] -> [ "- limitations: none" ]
                | values -> values |> List.map (fun value -> $"- limitation: {value}"))
@@ -480,4 +552,3 @@ module internal ViewerResponsiveness =
         File.WriteAllText(environmentPath, String.concat Environment.NewLine environmentLines + Environment.NewLine)
 
         [ recordsPath; summaryJsonPath; summaryMarkdownPath; environmentPath ]
-

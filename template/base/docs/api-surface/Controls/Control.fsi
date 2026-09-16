@@ -47,8 +47,7 @@ module Control =
     /// per-node measure/paint here is factored into `ControlInternals.evaluateLayout` /
     /// `paintNode`, which the retained path reuses, so a full `renderTree` and the retained
     /// partial render are byte-for-byte identical (FR-005).
-    val renderTree:
-        theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
+    val renderTree: theme: Theme -> size: FS.GG.UI.Scene.Size -> control: Control<'msg> -> ControlRenderResult<'msg>
     /// Resolve which rendered control (if any) contains the point (x, y), from the public
     /// `renderTree` result alone. `None` when the point lies in a gap. Layered over
     /// `Layout.hitTestComputed` against the evaluated `Bounds` (FR-012).

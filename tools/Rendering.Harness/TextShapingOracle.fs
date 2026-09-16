@@ -12,8 +12,10 @@ module TextShapingOracle =
 
     let diagnosticsCoverFixture (fixture: TextShapingFixture) (result: ShapedTextResult) =
         if fixture.ExpectsMissingGlyph then
-            result.Diagnostics |> List.exists (fun d -> d.Contains("tofu") || d.Contains("missing"))
+            result.Diagnostics
+            |> List.exists (fun d -> d.Contains("tofu") || d.Contains("missing"))
         elif fixture.ExpectsFallback then
-            result.Diagnostics |> List.exists (fun d -> d.Contains("fallback") || d.Contains("substituted"))
+            result.Diagnostics
+            |> List.exists (fun d -> d.Contains("fallback") || d.Contains("substituted"))
         else
             true

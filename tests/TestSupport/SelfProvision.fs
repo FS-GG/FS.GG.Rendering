@@ -51,11 +51,17 @@ module SelfProvision =
 
             if trimmed.StartsWith("#load", StringComparison.Ordinal) then
                 let openingQuote = trimmed.IndexOf '"'
-                let closingQuote = if openingQuote < 0 then -1 else trimmed.IndexOf('"', openingQuote + 1)
+
+                let closingQuote =
+                    if openingQuote < 0 then
+                        -1
+                    else
+                        trimmed.IndexOf('"', openingQuote + 1)
 
                 if closingQuote > openingQuote then
                     trimmed.Substring(openingQuote + 1, closingQuote - openingQuote - 1)
-                    |> fun relative -> Path.Combine(scriptDirectory, relative.Replace('/', Path.DirectorySeparatorChar))
+                    |> fun relative ->
+                        Path.Combine(scriptDirectory, relative.Replace('/', Path.DirectorySeparatorChar))
                     |> Path.GetFullPath
                     |> Some
                 else
@@ -71,8 +77,7 @@ module SelfProvision =
         || (let writtenUtc = File.GetLastWriteTimeUtc reportPath
 
             verdictCoreInputs
-            |> List.exists (fun input ->
-                not (File.Exists input) || File.GetLastWriteTimeUtc input > writtenUtc))
+            |> List.exists (fun input -> not (File.Exists input) || File.GetLastWriteTimeUtc input > writtenUtc))
 
     let private regenerate (command: string list) =
         let psi = ProcessStartInfo "dotnet"
@@ -115,7 +120,8 @@ module SelfProvision =
 
         let key = Path.GetFullPath reportPath
         // Order-insensitive: staleness is "newer than the OLDEST input", so only the set matters.
-        let declaration = (verdictCoreInputs |> List.map Path.GetFullPath |> List.sort), command
+        let declaration =
+            (verdictCoreInputs |> List.map Path.GetFullPath |> List.sort), command
 
         let declared, work =
             provisioned.GetOrAdd(

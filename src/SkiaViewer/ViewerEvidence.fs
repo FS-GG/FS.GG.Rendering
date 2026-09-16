@@ -27,11 +27,13 @@ module internal ViewerEvidence =
         let summary = evidence.LastDiagnosticSummary |> Option.defaultValue ""
 
         let lines =
-            [ $"framesRendered={evidence.FramesRendered}"
-              $"elapsedMs={evidence.Elapsed.TotalMilliseconds}"
-              $"initialOutputSize={evidence.InitialOutputSize.Width}x{evidence.InitialOutputSize.Height}"
-              $"rendererMode={evidence.RendererMode}"
-              $"lastDiagnosticSummary={summary}" ]
+            [
+                $"framesRendered={evidence.FramesRendered}"
+                $"elapsedMs={evidence.Elapsed.TotalMilliseconds}"
+                $"initialOutputSize={evidence.InitialOutputSize.Width}x{evidence.InitialOutputSize.Height}"
+                $"rendererMode={evidence.RendererMode}"
+                $"lastDiagnosticSummary={summary}"
+            ]
 
         IO.File.WriteAllLines(path, lines)
 
@@ -42,35 +44,44 @@ module internal ViewerEvidence =
             IO.Directory.CreateDirectory(directory |> string) |> ignore
 
         let command = outcome.Command |> Option.defaultValue ""
-        let blockedStage = outcome.BlockedStage |> Option.map string |> Option.defaultValue ""
-        let classification = outcome.Classification |> Option.map string |> Option.defaultValue ""
+
+        let blockedStage =
+            outcome.BlockedStage |> Option.map string |> Option.defaultValue ""
+
+        let classification =
+            outcome.Classification |> Option.map string |> Option.defaultValue ""
+
         let category = outcome.Category |> Option.map string |> Option.defaultValue ""
         let closeReason = outcome.CloseReason |> Option.map string |> Option.defaultValue ""
-        let failureClass = outcome.FailureClass |> Option.map string |> Option.defaultValue ""
+
+        let failureClass =
+            outcome.FailureClass |> Option.map string |> Option.defaultValue ""
 
         let lines =
-            [ $"status={outcome.Status}"
-              $"mode={outcome.Mode}"
-              $"command={command}"
-              $"renderer-mode={outcome.RendererMode}"
-              $"window-opened={outcome.WindowOpened}"
-              $"window-visible={observedValueText outcome.WindowVisible}"
-              $"first-frame-presented={outcome.FirstFramePresented}"
-              $"close-reason={closeReason}"
-              $"user-close-observed={outcome.UserCloseObserved}"
-              $"app-close-observed={outcome.AppCloseObserved}"
-              $"evidence-close-observed={outcome.EvidenceCloseObserved}"
-              $"self-closed-for-evidence={outcome.SelfClosedForEvidence}"
-              $"input-dispatch={outcome.InputDispatch}"
-              $"exit-path={outcome.ExitPath}"
-              $"window-diagnostic-count={outcome.WindowDiagnostics.Length}"
-              $"option-result-count={outcome.OptionResults.Length}"
-              $"visual-evidence-count={outcome.VisualEvidence.Length}"
-              $"failure-class={failureClass}"
-              $"blocked-stage={blockedStage}"
-              $"classification={classification}"
-              $"category={category}"
-              $"message={outcome.Message}" ]
+            [
+                $"status={outcome.Status}"
+                $"mode={outcome.Mode}"
+                $"command={command}"
+                $"renderer-mode={outcome.RendererMode}"
+                $"window-opened={outcome.WindowOpened}"
+                $"window-visible={observedValueText outcome.WindowVisible}"
+                $"first-frame-presented={outcome.FirstFramePresented}"
+                $"close-reason={closeReason}"
+                $"user-close-observed={outcome.UserCloseObserved}"
+                $"app-close-observed={outcome.AppCloseObserved}"
+                $"evidence-close-observed={outcome.EvidenceCloseObserved}"
+                $"self-closed-for-evidence={outcome.SelfClosedForEvidence}"
+                $"input-dispatch={outcome.InputDispatch}"
+                $"exit-path={outcome.ExitPath}"
+                $"window-diagnostic-count={outcome.WindowDiagnostics.Length}"
+                $"option-result-count={outcome.OptionResults.Length}"
+                $"visual-evidence-count={outcome.VisualEvidence.Length}"
+                $"failure-class={failureClass}"
+                $"blocked-stage={blockedStage}"
+                $"classification={classification}"
+                $"category={category}"
+                $"message={outcome.Message}"
+            ]
 
         IO.File.WriteAllLines(path, lines)
 
@@ -83,14 +94,16 @@ module internal ViewerEvidence =
         let summary = failure.LastDiagnosticSummary |> Option.defaultValue ""
 
         let lines =
-            [ "status=failed"
-              $"mode={mode}"
-              $"command={command}"
-              $"blocked-stage={failure.BlockedStage}"
-              $"classification={failure.Classification}"
-              $"category={failure.DiagnosticCategory}"
-              $"message={failure.Message}"
-              $"last-diagnostic-summary={summary}" ]
+            [
+                "status=failed"
+                $"mode={mode}"
+                $"command={command}"
+                $"blocked-stage={failure.BlockedStage}"
+                $"classification={failure.Classification}"
+                $"category={failure.DiagnosticCategory}"
+                $"message={failure.Message}"
+                $"last-diagnostic-summary={summary}"
+            ]
 
         IO.File.WriteAllLines(path, lines)
 
@@ -136,8 +149,10 @@ module internal ViewerEvidence =
 
                     while x < bitmap.Width && not nonBlank do
                         let pixel = bitmap.GetPixel(x, y)
+
                         if pixel.Alpha > 0uy then
                             nonBlank <- true
+
                         x <- x + 1
 
                     y <- y + 1
@@ -201,15 +216,16 @@ module internal ViewerEvidence =
 
         writeTextEvidence
             path
-            [ $"kind={artifact.Kind}"
-              $"path={subject}"
-              $"image-decodable={decodable}"
-              $"proves-scene-rendering={flag artifact.ProvesSceneRendering}"
-              $"proves-desktop-visibility={flag artifact.ProvesDesktopVisibility}"
-              $"message={artifact.Message}" ]
+            [
+                $"kind={artifact.Kind}"
+                $"path={subject}"
+                $"image-decodable={decodable}"
+                $"proves-scene-rendering={flag artifact.ProvesSceneRendering}"
+                $"proves-desktop-visibility={flag artifact.ProvesDesktopVisibility}"
+                $"message={artifact.Message}"
+            ]
 
-    let sceneFromNode node =
-        { Nodes = [ node ] }
+    let sceneFromNode node = { Nodes = [ node ] }
 
     // Feature 105 (US3, FR-009): the closed set of renderer-mode dispatch values, parsed ONCE at
     // the edge so the case-insensitive comparison is an exhaustive DU match instead of a chain of
@@ -246,99 +262,136 @@ module internal ViewerEvidence =
         | Some path ->
             match parseRendererMode request.RendererMode with
             | RendererModeKind.UnsupportedHost ->
-                [ { Kind = UnsupportedHost
-                    Path = None
-                    ImageDecodable = None
-                    ProvesSceneRendering = false
-                    ProvesDesktopVisibility = false
-                    Message = "Visual evidence is unsupported on this host." } ]
+                [
+                    {
+                        Kind = UnsupportedHost
+                        Path = None
+                        ImageDecodable = None
+                        ProvesSceneRendering = false
+                        ProvesDesktopVisibility = false
+                        Message = "Visual evidence is unsupported on this host."
+                    }
+                ]
             | RendererModeKind.MetadataHash ->
                 match SceneEvidence.renderHash options.InitialSize (sceneFromNode scene) with
                 | Result.Ok evidence ->
                     writeTextEvidence
                         path
-                        [ "evidence-kind=metadata-hash"
-                          $"path={path}"
-                          $"hash={evidence.Value}"
-                          "proves-scene-rendering=false"
-                          "proves-desktop-visibility=false" ]
+                        [
+                            "evidence-kind=metadata-hash"
+                            $"path={path}"
+                            $"hash={evidence.Value}"
+                            "proves-scene-rendering=false"
+                            "proves-desktop-visibility=false"
+                        ]
 
-                    [ { Kind = MetadataHash
-                        Path = Some path
-                        ImageDecodable = None
-                        ProvesSceneRendering = false
-                        ProvesDesktopVisibility = false
-                        Message = "Metadata/hash evidence is labeled separately from image evidence." } ]
+                    [
+                        {
+                            Kind = MetadataHash
+                            Path = Some path
+                            ImageDecodable = None
+                            ProvesSceneRendering = false
+                            ProvesDesktopVisibility = false
+                            Message = "Metadata/hash evidence is labeled separately from image evidence."
+                        }
+                    ]
                 | Result.Error failure ->
-                    [ { Kind = UnsupportedHost
-                        Path = None
-                        ImageDecodable = None
-                        ProvesSceneRendering = false
-                        ProvesDesktopVisibility = false
-                        Message = failure.Message } ]
+                    [
+                        {
+                            Kind = UnsupportedHost
+                            Path = None
+                            ImageDecodable = None
+                            ProvesSceneRendering = false
+                            ProvesDesktopVisibility = false
+                            Message = failure.Message
+                        }
+                    ]
             | RendererModeKind.PixelReadback ->
                 match SceneEvidence.renderHash options.InitialSize (sceneFromNode scene) with
                 | Result.Ok evidence ->
                     writeTextEvidence
                         path
-                        [ "evidence-kind=pixel-readback"
-                          $"path={path}"
-                          "fallback-reason=screenshot-unavailable"
-                          $"hash={evidence.Value}"
-                          "proves-scene-rendering=true"
-                          "proves-desktop-visibility=false" ]
+                        [
+                            "evidence-kind=pixel-readback"
+                            $"path={path}"
+                            "fallback-reason=screenshot-unavailable"
+                            $"hash={evidence.Value}"
+                            "proves-scene-rendering=true"
+                            "proves-desktop-visibility=false"
+                        ]
 
-                    [ { Kind = PixelReadback
-                        Path = Some path
-                        ImageDecodable = None
-                        ProvesSceneRendering = true
-                        ProvesDesktopVisibility = false
-                        Message = "Pixel-readback fallback proves scene rendering but not desktop visibility." } ]
+                    [
+                        {
+                            Kind = PixelReadback
+                            Path = Some path
+                            ImageDecodable = None
+                            ProvesSceneRendering = true
+                            ProvesDesktopVisibility = false
+                            Message = "Pixel-readback fallback proves scene rendering but not desktop visibility."
+                        }
+                    ]
                 | Result.Error failure ->
-                    [ { Kind = UnsupportedHost
-                        Path = None
-                        ImageDecodable = None
-                        ProvesSceneRendering = false
-                        ProvesDesktopVisibility = false
-                        Message = failure.Message } ]
+                    [
+                        {
+                            Kind = UnsupportedHost
+                            Path = None
+                            ImageDecodable = None
+                            ProvesSceneRendering = false
+                            ProvesDesktopVisibility = false
+                            Message = failure.Message
+                        }
+                    ]
             | RendererModeKind.Default
             | RendererModeKind.Skia
             | RendererModeKind.DeterministicScene ->
                 if isPngPath path then
                     let decodable = writeSceneImageEvidence path options.InitialSize scene
 
-                    [ { Kind = Image
-                        Path = Some path
-                        ImageDecodable = Some decodable
-                        ProvesSceneRendering = decodable
-                        ProvesDesktopVisibility = false
-                        Message =
-                            if decodable then
-                                "Image evidence is a decodable scene-rendering artifact; desktop visibility remains a separate claim."
-                            else
-                                "Image evidence was requested but SkiaSharp could not write a decodable PNG artifact." } ]
+                    [
+                        {
+                            Kind = Image
+                            Path = Some path
+                            ImageDecodable = Some decodable
+                            ProvesSceneRendering = decodable
+                            ProvesDesktopVisibility = false
+                            Message =
+                                if decodable then
+                                    "Image evidence is a decodable scene-rendering artifact; desktop visibility remains a separate claim."
+                                else
+                                    "Image evidence was requested but SkiaSharp could not write a decodable PNG artifact."
+                        }
+                    ]
                 else
                     match SceneEvidence.renderHash options.InitialSize (sceneFromNode scene) with
                     | Result.Ok evidence ->
                         writeTextEvidence
                             path
-                            [ "evidence-kind=metadata-hash"
-                              $"path={path}"
-                              $"hash={evidence.Value}"
-                              "proves-scene-rendering=false"
-                              "proves-desktop-visibility=false" ]
+                            [
+                                "evidence-kind=metadata-hash"
+                                $"path={path}"
+                                $"hash={evidence.Value}"
+                                "proves-scene-rendering=false"
+                                "proves-desktop-visibility=false"
+                            ]
 
-                        [ { Kind = MetadataHash
-                            Path = Some path
-                            ImageDecodable = None
-                            ProvesSceneRendering = false
-                            ProvesDesktopVisibility = false
-                            Message = "Non-image evidence path is recorded as metadata/hash evidence." } ]
+                        [
+                            {
+                                Kind = MetadataHash
+                                Path = Some path
+                                ImageDecodable = None
+                                ProvesSceneRendering = false
+                                ProvesDesktopVisibility = false
+                                Message = "Non-image evidence path is recorded as metadata/hash evidence."
+                            }
+                        ]
                     | Result.Error failure ->
-                        [ { Kind = UnsupportedHost
-                            Path = None
-                            ImageDecodable = None
-                            ProvesSceneRendering = false
-                            ProvesDesktopVisibility = false
-                            Message = failure.Message } ]
-
+                        [
+                            {
+                                Kind = UnsupportedHost
+                                Path = None
+                                ImageDecodable = None
+                                ProvesSceneRendering = false
+                                ProvesDesktopVisibility = false
+                                Message = failure.Message
+                            }
+                        ]

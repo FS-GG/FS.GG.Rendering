@@ -46,21 +46,33 @@ type Msg =
 // technique): F# functions have no structural equality, so every `EventValue f` is
 // replaced by the message `f` produces for one sample event.
 let sampleEvent: ControlEvent =
-    { Kind = "sample"
-      ControlId = None
-      Origin = ControlEventOrigin.Pointer
-      Nav = Some(EditedText "alpha") }
+    {
+        Kind = "sample"
+        ControlId = None
+        Origin = ControlEventOrigin.Pointer
+        Nav = Some(EditedText "alpha")
+    }
 
 let rec normControl (control: Control<'msg>) : Control<'msg> =
     { control with
         Attributes = control.Attributes |> List.map normAttr |> List.sortBy (fun attr -> attr.Name)
-        Children = control.Children |> List.map normControl }
+        Children = control.Children |> List.map normControl
+    }
 
 and normAttr (attr: Attr<'msg>) : Attr<'msg> =
     match attr.Value with
-    | EventValue map -> { attr with Value = MessageValue(map sampleEvent) }
-    | ChildValue child -> { attr with Value = ChildValue(normControl child) }
-    | ChildrenValue children -> { attr with Value = ChildrenValue(children |> List.map normControl) }
+    | EventValue map ->
+        { attr with
+            Value = MessageValue(map sampleEvent)
+        }
+    | ChildValue child ->
+        { attr with
+            Value = ChildValue(normControl child)
+        }
+    | ChildrenValue children ->
+        { attr with
+            Value = ChildrenValue(children |> List.map normControl)
+        }
     | _ -> attr
 
 let show (control: Control<'msg>) = sprintf "%A" (normControl control)
@@ -79,16 +91,19 @@ let a11y (role: AccessibilityRole) (nameSource: string) (navigationKeys: string 
             None
             (Accessibility.keyboard true [ "Enter"; "Space" ] navigationKeys)
             None
-            None)
+            None
+    )
 
 // Issue #56: mirrors production `WidgetLowering.focusScope` — the stops are the caller's real
 // lowered content ids (no fabricated `-item-N`), and `InitialFocus` is their head.
 let private focusScope surfaceId triggerId trapMode (stops: ControlId list) =
-    { SurfaceId = surfaceId
-      Stops = stops
-      InitialFocus = List.tryHead stops
-      RecoveryTarget = Some triggerId
-      TrapMode = trapMode }
+    {
+        SurfaceId = surfaceId
+        Stops = stops
+        InitialFocus = List.tryHead stops
+        RecoveryTarget = Some triggerId
+        TrapMode = trapMode
+    }
 
 let transientMetadata
     (kind: TransientSurfaceKind)
@@ -104,20 +119,32 @@ let transientMetadata
     let trapMode = if modal then ModalTrap else LocalScope
 
     TransientWidget.attribute
-        { SurfaceKind = kind
-          SurfaceId = surfaceId
-          ParentSurfaceId = None
-          TriggerId = triggerId
-          AnchorId = triggerId
-          LayerPriority = layerPriority
-          DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
-          FocusScope = focusScope surfaceId triggerId trapMode contentStops
-          Modal = modal
-          SelectionDispatchKey = dispatchKey
-          VisibilityState = isOpen
-          TriggerEnabled = enabled }
+        {
+            SurfaceKind = kind
+            SurfaceId = surfaceId
+            ParentSurfaceId = None
+            TriggerId = triggerId
+            AnchorId = triggerId
+            LayerPriority = layerPriority
+            DismissalPolicy =
+                if modal then
+                    OverlayState.modalDismissalPolicy ()
+                else
+                    OverlayState.defaultDismissalPolicy ()
+            FocusScope = focusScope surfaceId triggerId trapMode contentStops
+            Modal = modal
+            SelectionDispatchKey = dispatchKey
+            VisibilityState = isOpen
+            TriggerEnabled = enabled
+        }
 
-let private color r g b : Color = { Red = r; Green = g; Blue = b; Alpha = 255uy }
+let private color r g b : Color =
+    {
+        Red = r
+        Green = g
+        Blue = b
+        Alpha = 255uy
+    }
 
 // ---------------------------------------------------------------------------
 // Contract — each new module exposes defaults/view and lowers to a composition
@@ -125,264 +152,374 @@ let private color r g b : Color = { Red = r; Green = g; Blue = b; Alpha = 255uy 
 // ---------------------------------------------------------------------------
 [<Tests>]
 let typedExpansionContractTests =
-    testList "Feature 072 typed expansion contract (SC-001, SC-007)" [
-        test "the five new typed modules expose defaults/view and lower to existing kinds" {
-            let kindOf (w: Widget<_>) = (Widget.toControl w).Kind
+    testList
+        "Feature 072 typed expansion contract (SC-001, SC-007)"
+        [
+            test "the five new typed modules expose defaults/view and lower to existing kinds" {
+                let kindOf (w: Widget<_>) = (Widget.toControl w).Kind
 
-            Expect.equal (kindOf (ToggleButton.view ToggleButton.defaults)) "button" "toggle-button lowers to a button"
-            Expect.equal (kindOf (SplitButton.view SplitButton.defaults)) "toolbar" "split-button lowers to a toolbar"
-            Expect.equal (kindOf (DatePicker.view DatePicker.defaults)) "stack" "date-picker lowers to a stack"
-            Expect.equal (kindOf (TimePicker.view TimePicker.defaults)) "stack" "time-picker lowers to a stack"
-            Expect.equal (kindOf (ColorPicker.view ColorPicker.defaults)) "wrap" "color-picker lowers to a wrap"
-        }
+                Expect.equal
+                    (kindOf (ToggleButton.view ToggleButton.defaults))
+                    "button"
+                    "toggle-button lowers to a button"
 
-        test "each new control renders without diagnostics for representative props" {
-            let widgets : Widget<Msg> list =
-                [ ToggleButton.view { ToggleButton.defaults with Text = "Bold"; IsOn = true; OnToggle = Some Toggled }
-                  SplitButton.view
-                      { SplitButton.defaults with
-                          Text = "Save"
-                          IsOpen = true
-                          Items = [ { Key = "cut"; Label = "Cut" } ]
-                          OnClick = Some Save
-                          OnSelected = Some Picked }
-                  DatePicker.view { DatePicker.defaults with Value = Some(DateOnly(2026, 6, 15)); IsOpen = true; OnChange = Some DateChosen }
-                  TimePicker.view { TimePicker.defaults with Value = Some(TimeOnly(10, 30)); OnChange = Some TimeChosen }
-                  ColorPicker.view
-                      { ColorPicker.defaults with
-                          Swatches = [ { Name = "Red"; Color = color 255uy 0uy 0uy } ]
-                          OnSelected = Some ColorChosen } ]
+                Expect.equal
+                    (kindOf (SplitButton.view SplitButton.defaults))
+                    "toolbar"
+                    "split-button lowers to a toolbar"
 
-            for widget in widgets do
-                let rendered = Control.render Theme.light (Widget.toControl widget)
-                Expect.isEmpty rendered.Diagnostics "new control renders with no diagnostics"
-        }
-    ]
+                Expect.equal (kindOf (DatePicker.view DatePicker.defaults)) "stack" "date-picker lowers to a stack"
+                Expect.equal (kindOf (TimePicker.view TimePicker.defaults)) "stack" "time-picker lowers to a stack"
+                Expect.equal (kindOf (ColorPicker.view ColorPicker.defaults)) "wrap" "color-picker lowers to a wrap"
+            }
+
+            test "each new control renders without diagnostics for representative props" {
+                let widgets: Widget<Msg> list =
+                    [
+                        ToggleButton.view
+                            { ToggleButton.defaults with
+                                Text = "Bold"
+                                IsOn = true
+                                OnToggle = Some Toggled
+                            }
+                        SplitButton.view
+                            { SplitButton.defaults with
+                                Text = "Save"
+                                IsOpen = true
+                                Items = [ { Key = "cut"; Label = "Cut" } ]
+                                OnClick = Some Save
+                                OnSelected = Some Picked
+                            }
+                        DatePicker.view
+                            { DatePicker.defaults with
+                                Value = Some(DateOnly(2026, 6, 15))
+                                IsOpen = true
+                                OnChange = Some DateChosen
+                            }
+                        TimePicker.view
+                            { TimePicker.defaults with
+                                Value = Some(TimeOnly(10, 30))
+                                OnChange = Some TimeChosen
+                            }
+                        ColorPicker.view
+                            { ColorPicker.defaults with
+                                Swatches =
+                                    [
+                                        {
+                                            Name = "Red"
+                                            Color = color 255uy 0uy 0uy
+                                        }
+                                    ]
+                                OnSelected = Some ColorChosen
+                            }
+                    ]
+
+                for widget in widgets do
+                    let rendered = Control.render Theme.light (Widget.toControl widget)
+                    Expect.isEmpty rendered.Diagnostics "new control renders with no diagnostics"
+            }
+        ]
 
 // ---------------------------------------------------------------------------
 // T012 — DatePicker lowering parity (P1 keystone, SC-002).
 // ---------------------------------------------------------------------------
 [<Tests>]
 let datePickerParityTests =
-    testList "Feature 072 DatePicker lowering parity (US1, SC-002)" [
-        test "DatePicker lowers structurally equal to its explicit legacy composition" {
-            let value = DateOnly(2026, 6, 15)
+    testList
+        "Feature 072 DatePicker lowering parity (US1, SC-002)"
+        [
+            test "DatePicker lowers structurally equal to its explicit legacy composition" {
+                let value = DateOnly(2026, 6, 15)
 
-            let typed =
-                DatePicker.view
-                    { DatePicker.defaults with
-                        Id = Some "d"
-                        Value = Some value
-                        IsOpen = true
-                        OnChange = Some DateChosen }
+                let typed =
+                    DatePicker.view
+                        { DatePicker.defaults with
+                            Id = Some "d"
+                            Value = Some value
+                            IsOpen = true
+                            OnChange = Some DateChosen
+                        }
 
-            let field = LTextBox.create [ LTextBox.value "2026-06-15"; LTextBox.readOnly true ]
-            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
-            // anchor resolves — the legacy golden mirrors the typed lowering.
-            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ] |> LControl.withKey "d-trigger"
+                let field = LTextBox.create [ LTextBox.value "2026-06-15"; LTextBox.readOnly true ]
+                // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+                // anchor resolves — the legacy golden mirrors the typed lowering.
+                let trigger =
+                    LButton.create [ LButton.text "Open calendar"; LButton.enabled true ]
+                    |> LControl.withKey "d-trigger"
 
-            let dayButtons =
-                [ for day in 1..30 ->
-                      LButton.create
-                          [ LButton.text (string day)
-                            LButton.enabled true
-                            LButton.onClick (DateChosen(DateOnly(2026, 6, day))) ]
-                      |> LControl.withKey (sprintf "day-%d" day) ]
+                let dayButtons =
+                    [
+                        for day in 1..30 ->
+                            LButton.create
+                                [
+                                    LButton.text (string day)
+                                    LButton.enabled true
+                                    LButton.onClick (DateChosen(DateOnly(2026, 6, day)))
+                                ]
+                            |> LControl.withKey (sprintf "day-%d" day)
+                    ]
 
-            let calendar = LGrid.create [ LGrid.children dayButtons ]
-            let overlay = LOverlay.create [ LOverlay.child calendar; Attr.selected true ]
+                let calendar = LGrid.create [ LGrid.children dayButtons ]
+                let overlay = LOverlay.create [ LOverlay.child calendar; Attr.selected true ]
 
-            let legacy =
-                LStack.create
-                    [ LStack.children [ field; trigger; overlay ]
-                      transientMetadata
-                          TransientSurfaceKind.DatePickerCalendar
-                          "d-calendar"
-                          "d-trigger"
-                          [ for day in 1..30 -> sprintf "day-%d" day ]
-                          true
-                          true
-                          60
-                          false
-                          (Some "onChange")
-                      a11y AccessibilityRole.TextBox "Date picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
-                |> LControl.withKey "d"
+                let legacy =
+                    LStack.create
+                        [
+                            LStack.children [ field; trigger; overlay ]
+                            transientMetadata
+                                TransientSurfaceKind.DatePickerCalendar
+                                "d-calendar"
+                                "d-trigger"
+                                [ for day in 1..30 -> sprintf "day-%d" day ]
+                                true
+                                true
+                                60
+                                false
+                                (Some "onChange")
+                            a11y
+                                AccessibilityRole.TextBox
+                                "Date picker"
+                                [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ]
+                        ]
+                    |> LControl.withKey "d"
 
-            parityEqual typed legacy "date-picker"
-        }
+                parityEqual typed legacy "date-picker"
+            }
 
-        test "DatePicker with no value lowers to an empty field and empty calendar" {
-            let typed =
-                DatePicker.view { DatePicker.defaults with Id = Some "d"; OnChange = Some DateChosen }
+            test "DatePicker with no value lowers to an empty field and empty calendar" {
+                let typed =
+                    DatePicker.view
+                        { DatePicker.defaults with
+                            Id = Some "d"
+                            OnChange = Some DateChosen
+                        }
 
-            let field = LTextBox.create [ LTextBox.value ""; LTextBox.readOnly true ]
-            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
-            // anchor resolves — the legacy golden mirrors the typed lowering.
-            let trigger = LButton.create [ LButton.text "Open calendar"; LButton.enabled true ] |> LControl.withKey "d-trigger"
-            let calendar = LGrid.create [ LGrid.children [] ]
-            let overlay = LOverlay.create [ LOverlay.child calendar; Attr.selected false ]
+                let field = LTextBox.create [ LTextBox.value ""; LTextBox.readOnly true ]
+                // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+                // anchor resolves — the legacy golden mirrors the typed lowering.
+                let trigger =
+                    LButton.create [ LButton.text "Open calendar"; LButton.enabled true ]
+                    |> LControl.withKey "d-trigger"
 
-            let legacy =
-                LStack.create
-                    [ LStack.children [ field; trigger; overlay ]
-                      transientMetadata
-                          TransientSurfaceKind.DatePickerCalendar
-                          "d-calendar"
-                          "d-trigger"
-                          []
-                          false
-                          true
-                          60
-                          false
-                          (Some "onChange")
-                      a11y AccessibilityRole.TextBox "Date picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
-                |> LControl.withKey "d"
+                let calendar = LGrid.create [ LGrid.children [] ]
+                let overlay = LOverlay.create [ LOverlay.child calendar; Attr.selected false ]
 
-            parityEqual typed legacy "date-picker empty"
-        }
-    ]
+                let legacy =
+                    LStack.create
+                        [
+                            LStack.children [ field; trigger; overlay ]
+                            transientMetadata
+                                TransientSurfaceKind.DatePickerCalendar
+                                "d-calendar"
+                                "d-trigger"
+                                []
+                                false
+                                true
+                                60
+                                false
+                                (Some "onChange")
+                            a11y
+                                AccessibilityRole.TextBox
+                                "Date picker"
+                                [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ]
+                        ]
+                    |> LControl.withKey "d"
+
+                parityEqual typed legacy "date-picker empty"
+            }
+        ]
 
 // ---------------------------------------------------------------------------
 // T024 — ToggleButton / SplitButton / TimePicker / ColorPicker parity (US3, SC-002).
 // ---------------------------------------------------------------------------
 [<Tests>]
 let breadthParityTests =
-    testList "Feature 072 button/picker lowering parity (US3, SC-002)" [
-        test "ToggleButton lowers structurally equal to its explicit legacy composition" {
-            let typed =
-                ToggleButton.view
-                    { ToggleButton.defaults with
-                        Id = Some "t"
-                        Text = "Bold"
-                        IsOn = true
-                        OnToggle = Some Toggled }
+    testList
+        "Feature 072 button/picker lowering parity (US3, SC-002)"
+        [
+            test "ToggleButton lowers structurally equal to its explicit legacy composition" {
+                let typed =
+                    ToggleButton.view
+                        { ToggleButton.defaults with
+                            Id = Some "t"
+                            Text = "Bold"
+                            IsOn = true
+                            OnToggle = Some Toggled
+                        }
 
-            let legacy =
-                LButton.create
-                    [ LButton.text "Bold"
-                      LButton.enabled true
-                      Attr.selected true
-                      LButton.onClick (Toggled false)
-                      a11y AccessibilityRole.Button "Toggle button" [ "Tab"; "Shift+Tab" ] ]
-                |> LControl.withKey "t"
+                let legacy =
+                    LButton.create
+                        [
+                            LButton.text "Bold"
+                            LButton.enabled true
+                            Attr.selected true
+                            LButton.onClick (Toggled false)
+                            a11y AccessibilityRole.Button "Toggle button" [ "Tab"; "Shift+Tab" ]
+                        ]
+                    |> LControl.withKey "t"
 
-            parityEqual typed legacy "toggle-button"
-        }
+                parityEqual typed legacy "toggle-button"
+            }
 
-        test "SplitButton lowers structurally equal to its explicit legacy composition" {
-            let items = [ { Key = "cut"; Label = "Cut" }; { Key = "copy"; Label = "Copy" } ]
+            test "SplitButton lowers structurally equal to its explicit legacy composition" {
+                let items = [ { Key = "cut"; Label = "Cut" }; { Key = "copy"; Label = "Copy" } ]
 
-            let typed =
-                SplitButton.view
-                    { SplitButton.defaults with
-                        Id = Some "s"
-                        Text = "Save"
-                        IsOpen = true
-                        Items = items
-                        OnClick = Some Save
-                        OnSelected = Some Picked }
+                let typed =
+                    SplitButton.view
+                        { SplitButton.defaults with
+                            Id = Some "s"
+                            Text = "Save"
+                            IsOpen = true
+                            Items = items
+                            OnClick = Some Save
+                            OnSelected = Some Picked
+                        }
 
-            let primary = LButton.create [ LButton.text "Save"; LButton.enabled true; LButton.onClick Save ]
-            // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
-            // anchor resolves — the legacy golden mirrors the typed lowering.
-            let trigger = LButton.create [ LButton.text "More"; LButton.enabled true ] |> LControl.withKey "s-trigger"
-            // Issue #56: the menu content is keyed with the surface id so the focus scope has one real stop.
-            let menu = LMenu.create [ LMenu.items [ "Cut"; "Copy" ]; LMenu.onSelected Picked ] |> LControl.withKey "s-menu"
-            let overlay = LOverlay.create [ LOverlay.child menu; Attr.selected true ]
+                let primary =
+                    LButton.create [ LButton.text "Save"; LButton.enabled true; LButton.onClick Save ]
+                // Feature 232 (#44): the trigger is keyed with its declared `triggerId` so the overlay
+                // anchor resolves — the legacy golden mirrors the typed lowering.
+                let trigger =
+                    LButton.create [ LButton.text "More"; LButton.enabled true ]
+                    |> LControl.withKey "s-trigger"
+                // Issue #56: the menu content is keyed with the surface id so the focus scope has one real stop.
+                let menu =
+                    LMenu.create [ LMenu.items [ "Cut"; "Copy" ]; LMenu.onSelected Picked ]
+                    |> LControl.withKey "s-menu"
 
-            let legacy =
-                LToolbar.create
-                    [ LToolbar.children [ primary; trigger; overlay ]
-                      transientMetadata
-                          TransientSurfaceKind.SplitButtonMenu
-                          "s-menu"
-                          "s-trigger"
-                          [ "s-menu" ]
-                          true
-                          true
-                          30
-                          false
-                          (Some "onSelected")
-                      a11y AccessibilityRole.Menu "Split button" [ "ArrowDown"; "ArrowUp"; "Tab" ] ]
-                |> LControl.withKey "s"
+                let overlay = LOverlay.create [ LOverlay.child menu; Attr.selected true ]
 
-            parityEqual typed legacy "split-button"
-        }
+                let legacy =
+                    LToolbar.create
+                        [
+                            LToolbar.children [ primary; trigger; overlay ]
+                            transientMetadata
+                                TransientSurfaceKind.SplitButtonMenu
+                                "s-menu"
+                                "s-trigger"
+                                [ "s-menu" ]
+                                true
+                                true
+                                30
+                                false
+                                (Some "onSelected")
+                            a11y AccessibilityRole.Menu "Split button" [ "ArrowDown"; "ArrowUp"; "Tab" ]
+                        ]
+                    |> LControl.withKey "s"
 
-        test "TimePicker lowers structurally equal to its explicit legacy composition" {
-            let value = TimeOnly(10, 30)
+                parityEqual typed legacy "split-button"
+            }
 
-            let typed =
-                TimePicker.view
-                    { TimePicker.defaults with
-                        Id = Some "tp"
-                        Value = Some value
-                        OnChange = Some TimeChosen }
+            test "TimePicker lowers structurally equal to its explicit legacy composition" {
+                let value = TimeOnly(10, 30)
 
-            let hour =
-                LButton.create [ LButton.text "10"; LButton.enabled true; LButton.onClick (TimeChosen(value.AddHours 1.0)) ]
-                |> LControl.withKey "hour-segment"
+                let typed =
+                    TimePicker.view
+                        { TimePicker.defaults with
+                            Id = Some "tp"
+                            Value = Some value
+                            OnChange = Some TimeChosen
+                        }
 
-            let minute =
-                LButton.create [ LButton.text "30"; LButton.enabled true; LButton.onClick (TimeChosen(value.AddMinutes 1.0)) ]
-                |> LControl.withKey "minute-segment"
+                let hour =
+                    LButton.create
+                        [
+                            LButton.text "10"
+                            LButton.enabled true
+                            LButton.onClick (TimeChosen(value.AddHours 1.0))
+                        ]
+                    |> LControl.withKey "hour-segment"
 
-            let separator = LLabel.create [ LLabel.text ":" ]
+                let minute =
+                    LButton.create
+                        [
+                            LButton.text "30"
+                            LButton.enabled true
+                            LButton.onClick (TimeChosen(value.AddMinutes 1.0))
+                        ]
+                    |> LControl.withKey "minute-segment"
 
-            let legacy =
-                LStack.create
-                    [ LStack.children [ hour; separator; minute ]
-                      a11y AccessibilityRole.TextBox "Time picker" [ "ArrowUp"; "ArrowDown" ] ]
-                |> LControl.withKey "tp"
+                let separator = LLabel.create [ LLabel.text ":" ]
 
-            parityEqual typed legacy "time-picker"
-        }
+                let legacy =
+                    LStack.create
+                        [
+                            LStack.children [ hour; separator; minute ]
+                            a11y AccessibilityRole.TextBox "Time picker" [ "ArrowUp"; "ArrowDown" ]
+                        ]
+                    |> LControl.withKey "tp"
 
-        test "ColorPicker lowers structurally equal to its explicit legacy composition" {
-            let red = { Name = "Red"; Color = color 255uy 0uy 0uy }
-            let blue = { Name = "Blue"; Color = color 0uy 0uy 255uy }
+                parityEqual typed legacy "time-picker"
+            }
 
-            let typed =
-                ColorPicker.view
-                    { ColorPicker.defaults with
-                        Id = Some "c"
-                        Swatches = [ red; blue ]
-                        Selected = Some red
-                        OnSelected = Some ColorChosen }
+            test "ColorPicker lowers structurally equal to its explicit legacy composition" {
+                let red =
+                    {
+                        Name = "Red"
+                        Color = color 255uy 0uy 0uy
+                    }
 
-            let cell (swatch: ColorSwatch) selected =
-                LButton.create
-                    [ LButton.text swatch.Name
-                      Attr.selected selected
-                      Attr.create "color" Style (UntypedValue(swatch.Color :> obj))
-                      LButton.onClick (ColorChosen swatch) ]
-                |> LControl.withKey (sprintf "swatch-%s" swatch.Name)
+                let blue =
+                    {
+                        Name = "Blue"
+                        Color = color 0uy 0uy 255uy
+                    }
 
-            let legacy =
-                LWrap.create
-                    [ LWrap.children [ cell red true; cell blue false ]
-                      transientMetadata
-                          TransientSurfaceKind.ColorPickerPalette
-                          "c-palette"
-                          "c-trigger"
-                          [ "swatch-Red"; "swatch-Blue" ]
-                          true
-                          true
-                          70
-                          false
-                          (Some "onSelected")
-                      a11y AccessibilityRole.List "Color picker" [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ] ]
-                |> LControl.withKey "c"
+                let typed =
+                    ColorPicker.view
+                        { ColorPicker.defaults with
+                            Id = Some "c"
+                            Swatches = [ red; blue ]
+                            Selected = Some red
+                            OnSelected = Some ColorChosen
+                        }
 
-            parityEqual typed legacy "color-picker"
-        }
+                let cell (swatch: ColorSwatch) selected =
+                    LButton.create
+                        [
+                            LButton.text swatch.Name
+                            Attr.selected selected
+                            Attr.create "color" Style (UntypedValue(swatch.Color :> obj))
+                            LButton.onClick (ColorChosen swatch)
+                        ]
+                    |> LControl.withKey (sprintf "swatch-%s" swatch.Name)
 
-        test "empty Items / Swatches lower without failing (edge case)" {
-            let split = SplitButton.view { SplitButton.defaults with Text = "Save" } |> Widget.toControl
-            Expect.equal split.Kind "toolbar" "empty split-button still lowers to a toolbar"
+                let legacy =
+                    LWrap.create
+                        [
+                            LWrap.children [ cell red true; cell blue false ]
+                            transientMetadata
+                                TransientSurfaceKind.ColorPickerPalette
+                                "c-palette"
+                                "c-trigger"
+                                [ "swatch-Red"; "swatch-Blue" ]
+                                true
+                                true
+                                70
+                                false
+                                (Some "onSelected")
+                            a11y
+                                AccessibilityRole.List
+                                "Color picker"
+                                [ "ArrowLeft"; "ArrowRight"; "ArrowUp"; "ArrowDown" ]
+                        ]
+                    |> LControl.withKey "c"
 
-            let palette = ColorPicker.view ColorPicker.defaults |> Widget.toControl
-            Expect.equal palette.Kind "wrap" "empty color-picker still lowers to a wrap"
-            Expect.isEmpty palette.Children "empty color-picker has no swatch cells"
-        }
-    ]
+                parityEqual typed legacy "color-picker"
+            }
+
+            test "empty Items / Swatches lower without failing (edge case)" {
+                let split =
+                    SplitButton.view
+                        { SplitButton.defaults with
+                            Text = "Save"
+                        }
+                    |> Widget.toControl
+
+                Expect.equal split.Kind "toolbar" "empty split-button still lowers to a toolbar"
+
+                let palette = ColorPicker.view ColorPicker.defaults |> Widget.toControl
+                Expect.equal palette.Kind "wrap" "empty color-picker still lowers to a wrap"
+                Expect.isEmpty palette.Children "empty color-picker has no swatch cells"
+            }
+        ]

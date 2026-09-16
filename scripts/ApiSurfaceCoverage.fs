@@ -38,29 +38,35 @@ module Coverage =
     /// the package that ships it, the pin's `.fsi` file it lives in, its F# kind (`type`/`val`/`and`),
     /// and the dotted path within that file (`Paint.fill`). This is the join key between the three sets.
     type MemberKey =
-        { Package: string
-          Source: string
-          Kind: string
-          Path: string }
+        {
+            Package: string
+            Source: string
+            Kind: string
+            Path: string
+        }
 
     /// Build a key. A function, not a record literal at the call sites, because the generator's own
     /// `Include` record shares `Source`/`Kind`/`Path` — an unqualified `{ Source = … }` there binds to
     /// `Include`, so a helper defined HERE (where there is no such collision) is what keeps the callers clean.
     let key package source kind path =
-        { Package = package
-          Source = source
-          Kind = kind
-          Path = path }
+        {
+            Package = package
+            Source = source
+            Kind = kind
+            Path = path
+        }
 
     /// A declaration projected from the pin's parse tree — just what coverage needs: its F# kind, its
     /// dotted name within the file, whether its OWN line declared it `internal`/`private`, and (for a
     /// module) its children. The generator projects `FsiSurface.Node` onto this; keeping the decision that
     /// consumes it here — rather than in the `.fsx` — is what makes it testable without a package restore.
     type Decl =
-        { Kind: string
-          Name: string
-          Internal: bool
-          Children: Decl list }
+        {
+            Kind: string
+            Name: string
+            Internal: bool
+            Children: Decl list
+        }
 
     /// The public `type`/`val`/`and` members a source file exports, as coverage keys. Two things make this
     /// more than a filter, and both are why it is tested:
@@ -82,16 +88,22 @@ module Coverage =
                 match d.Kind with
                 | "type" ->
                     groupPublic <- not d.Internal
-                    if groupPublic then acc.Add(key package source d.Kind d.Name)
+
+                    if groupPublic then
+                        acc.Add(key package source d.Kind d.Name)
                 | "and" ->
                     if groupPublic && not d.Internal then
                         acc.Add(key package source d.Kind d.Name)
                 | "val" ->
                     groupPublic <- true
-                    if not d.Internal then acc.Add(key package source d.Kind d.Name)
+
+                    if not d.Internal then
+                        acc.Add(key package source d.Kind d.Name)
                 | "module" ->
                     groupPublic <- true
-                    if not d.Internal then acc.AddRange(collect d.Children)
+
+                    if not d.Internal then
+                        acc.AddRange(collect d.Children)
                 | _ -> ()
 
             List.ofSeq acc
@@ -100,17 +112,17 @@ module Coverage =
 
     /// The reconciliation verdict. Both lists EMPTY is the only pass.
     type Verdict =
-        { /// Public members the pin exports that are neither taught nor waived — the gap #925 closes.
-          Untaught: MemberKey list
-          /// Waivers that no longer waive anything: their member is absent from the pin's current public
-          /// surface (removed/renamed), or it is now TAUGHT. A rotted waiver must red, or the list
-          /// accretes dead entries the next real omission can hide behind.
-          StaleWaivers: MemberKey list }
+        {
+            /// Public members the pin exports that are neither taught nor waived — the gap #925 closes.
+            Untaught: MemberKey list
+            /// Waivers that no longer waive anything: their member is absent from the pin's current public
+            /// surface (removed/renamed), or it is now TAUGHT. A rotted waiver must red, or the list
+            /// accretes dead entries the next real omission can hide behind.
+            StaleWaivers: MemberKey list
+        }
 
     let private ordered (keys: MemberKey seq) =
-        keys
-        |> Seq.sortBy (fun m -> m.Package, m.Source, m.Path, m.Kind)
-        |> Seq.toList
+        keys |> Seq.sortBy (fun m -> m.Package, m.Source, m.Path, m.Kind) |> Seq.toList
 
     /// Reconcile the pin's public surface against the manifest's teach + waive decisions.
     ///
@@ -128,16 +140,20 @@ module Coverage =
             waived
             |> Set.filter (fun w -> not (universeSet.Contains w) || taught.Contains w)
 
-        { Untaught = ordered untaught
-          StaleWaivers = ordered staleWaivers }
+        {
+            Untaught = ordered untaught
+            StaleWaivers = ordered staleWaivers
+        }
 
     /// True when the pin's public surface is fully accounted for: every member taught or waived, and no
     /// waiver rotted.
-    let isClean (v: Verdict) = v.Untaught.IsEmpty && v.StaleWaivers.IsEmpty
+    let isClean (v: Verdict) =
+        v.Untaught.IsEmpty && v.StaleWaivers.IsEmpty
 
     /// The manifest line that would waive a member — the token order the generator's `+` includes use
     /// (`waive <pkg> <source> <kind> <path>`), so a maintainer can paste an `Untaught` report straight in.
-    let waiveLine (m: MemberKey) = sprintf "waive %s %s %s %s" m.Package m.Source m.Kind m.Path
+    let waiveLine (m: MemberKey) =
+        sprintf "waive %s %s %s %s" m.Package m.Source m.Kind m.Path
 
     // #984 — THE PROFILE-COMPLETENESS HALF: a game-profile module may not be ENTIRELY waived.
     //
@@ -159,47 +175,93 @@ module Coverage =
 
     /// A declared game-profile module that is NOT fully vendored, with the reason. Empty is the only pass.
     type ProfileGap =
-        { Package: string
-          Source: string
-          /// `AllWaived` — the pin ships public members but the manifest teaches none of them (the #984
-          /// regression). `Vanished` — the pin ships no public member under this source at all, so the
-          /// declaration has rotted and must be removed or corrected.
-          Reason: string }
+        {
+            Package: string
+            Source: string
+            /// `AllWaived` — the pin ships public members but the manifest teaches none of them (the #984
+            /// regression). `Vanished` — the pin ships no public member under this source at all, so the
+            /// declaration has rotted and must be removed or corrected.
+            Reason: string
+        }
 
     /// The game-profile modules a scaffolded product must vendor in FULL — at least one taught member each,
     /// never entirely waived (#984). These are the modules a game/sample-pack profile reaches for, that the
     /// pre-#984 manifest had dropped wholesale. Editing this list is the deliberate act that adds or retires
     /// a completeness guarantee; the reconcile below turns it into a merge-blocking check.
     let gameProfileModules: ProfileModule list =
-        [ { Package = "FS.GG.Game.Core"; Source = "Ai.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Ballistics.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Dice.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Effects.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Fov.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Los.fsi" }
-          { Package = "FS.GG.Game.Core"; Source = "Visibility.fsi" }
-          { Package = "FS.GG.UI.Scene"; Source = "Animation.fsi" } ]
+        [
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Ai.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Ballistics.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Dice.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Effects.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Fov.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Los.fsi"
+            }
+            {
+                Package = "FS.GG.Game.Core"
+                Source = "Visibility.fsi"
+            }
+            {
+                Package = "FS.GG.UI.Scene"
+                Source = "Animation.fsi"
+            }
+        ]
 
     /// Reconcile the declared game-profile modules against the pin's surface and the manifest's taught set:
     /// each declared module must have at least one public member the manifest teaches. Reported sorted so a
     /// diff shows what regressed.
-    let profileGaps (universe: MemberKey list) (taught: Set<MemberKey>) (declared: ProfileModule list) : ProfileGap list =
-        let bySource =
-            universe
-            |> List.groupBy (fun m -> m.Package, m.Source)
-            |> Map.ofList
+    let profileGaps
+        (universe: MemberKey list)
+        (taught: Set<MemberKey>)
+        (declared: ProfileModule list)
+        : ProfileGap list =
+        let bySource = universe |> List.groupBy (fun m -> m.Package, m.Source) |> Map.ofList
 
         declared
         |> List.choose (fun m ->
             match bySource |> Map.tryFind (m.Package, m.Source) with
-            | None -> Some { Package = m.Package; Source = m.Source; Reason = "Vanished" }
+            | None ->
+                Some
+                    {
+                        Package = m.Package
+                        Source = m.Source
+                        Reason = "Vanished"
+                    }
             | Some members when members |> List.exists taught.Contains -> None
-            | Some _ -> Some { Package = m.Package; Source = m.Source; Reason = "AllWaived" })
+            | Some _ ->
+                Some
+                    {
+                        Package = m.Package
+                        Source = m.Source
+                        Reason = "AllWaived"
+                    })
         |> List.sortBy (fun g -> g.Package, g.Source)
 
     /// One `+` include of a `file` stanza, addressed the way the manifest writes it — the `.fsi` it draws
     /// from, the F# kind, and the dotted path within that file.
-    type Include = { Source: string; Kind: string; Path: string }
+    type Include =
+        {
+            Source: string
+            Kind: string
+            Path: string
+        }
 
     /// The `+` includes a single `file` stanza REPEATS. The generator emits each `+` line's member verbatim,
     /// in list order, so a member named twice in ONE stanza is RENDERED twice — the `Pathfinding.fsi`

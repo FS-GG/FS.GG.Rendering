@@ -18,24 +18,28 @@ let private boardScript: Msg list = [ for _ in 1..120 -> Tick dt ]
 // sized to the board extent. The host `Tick` drives the simulation; the model carries all state.
 let private view (_: Size) (model: Model) : Control<Msg> =
     Canvas.create
-        [ Attr.width BoardWidth
-          Attr.height BoardHeight
-          Canvas.volatile'
-          Canvas.scene (renderScene model) ]
+        [
+            Attr.width BoardWidth
+            Attr.height BoardHeight
+            Canvas.volatile'
+            Canvas.scene (renderScene model)
+        ]
     |> Control.withKey "board"
 
 let private host: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> init Seed, []
-      Update = fun msg model -> update msg model, []
-      View = view
-      Theme = Theme.light
-      MapKey = fun _ _ -> None
-      MapPointer = fun _ -> None
-      // The board animates continuously; emit a fixed-interval tick every frame.
-      Tick = fun _ -> Some(Tick dt)
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> init Seed, []
+        Update = fun msg model -> update msg model, []
+        View = view
+        Theme = Theme.light
+        MapKey = fun _ _ -> None
+        MapPointer = fun _ -> None
+        // The board animates continuously; emit a fixed-interval tick every frame.
+        Tick = fun _ -> Some(Tick dt)
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 // The `evidence` subcommand is the repro-CHECK wrapper around the pure `Board.evidence` fingerprint: call
 // it twice from the SAME seed + script and compare. Never report divergence as success (FR-005/Constitution
@@ -60,10 +64,17 @@ let private runInteractive () =
         0
     else
         let options: ViewerOptions =
-            { Title = "Symbology Board — live roster"
-              InitialSize = { Width = int BoardWidth; Height = int BoardHeight }
-              PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60; LogicalSize = None }
+            {
+                Title = "Symbology Board — live roster"
+                InitialSize =
+                    {
+                        Width = int BoardWidth
+                        Height = int BoardHeight
+                    }
+                PresentMode = ViewerPresentMode.DirectToSwapchain
+                FrameRateCap = Some 60
+                LogicalSize = None
+            }
 
         match ControlsElmish.runInteractiveApp options host with
         | Result.Ok outcome ->

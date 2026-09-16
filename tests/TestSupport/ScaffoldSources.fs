@@ -47,11 +47,13 @@ module ScaffoldSources =
     let files (repositoryRoot: string) : string list =
         roots repositoryRoot
         |> List.collect (fun root ->
-            let full = Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
+            let full =
+                Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
 
             if Directory.Exists full then
                 [ "*.fs"; "*.fsi" ]
-                |> List.collect (fun pattern -> Directory.GetFiles(full, pattern, SearchOption.AllDirectories) |> Array.toList)
+                |> List.collect (fun pattern ->
+                    Directory.GetFiles(full, pattern, SearchOption.AllDirectories) |> Array.toList)
                 |> List.filter (fun p ->
                     let n = p.Replace('\\', '/')
                     not (n.Contains "/obj/") && not (n.Contains "/bin/"))
@@ -85,7 +87,12 @@ module ScaffoldSources =
         while index < pattern.Length do
             let remaining = pattern.Length - index
 
-            if remaining >= 3 && pattern.[index] = '*' && pattern.[index + 1] = '*' && pattern.[index + 2] = '/' then
+            if
+                remaining >= 3
+                && pattern.[index] = '*'
+                && pattern.[index + 1] = '*'
+                && pattern.[index + 2] = '/'
+            then
                 // `**/` spans ZERO or more leading directories, so `**/bin/**` matches a top-level
                 // `bin/x` as well as a nested `a/bin/x`.
                 translated.Append "(?:.*/)?" |> ignore
@@ -127,7 +134,9 @@ module ScaffoldSources =
 
         document.RootElement.GetProperty("sources").EnumerateArray()
         |> Seq.map (fun source ->
-            let root = (requiredString (source.GetProperty "source") "sources[].source").TrimEnd '/'
+            let root =
+                (requiredString (source.GetProperty "source") "sources[].source").TrimEnd '/'
+
             root, globList source "include", globList source "exclude", globList source "copyOnly")
         |> Seq.toList
 
@@ -141,7 +150,11 @@ module ScaffoldSources =
         let resolved =
             sources
             |> List.map (fun (root, includes, excludes, copyOnly) ->
-                root, Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar)), includes, excludes, copyOnly)
+                root,
+                Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar)),
+                includes,
+                excludes,
+                copyOnly)
 
         // A declared source root that does not exist on disk is NOT "zero files to scan" — it is a
         // renamed or deleted tree that the scan would silently stop covering while staying green.
@@ -163,7 +176,9 @@ module ScaffoldSources =
             |> Array.toList
             |> List.filter (fun path ->
                 let relative = Path.GetRelativePath(full, path).Replace('\\', '/')
-                let matches (patterns: Regex list) = patterns |> List.exists (fun rx -> rx.IsMatch relative)
+
+                let matches (patterns: Regex list) =
+                    patterns |> List.exists (fun rx -> rx.IsMatch relative)
 
                 // `bin/`/`obj/` are excluded by entry 1's globs but NOT by the other source entries,
                 // so this is load-bearing rather than belt-and-braces.

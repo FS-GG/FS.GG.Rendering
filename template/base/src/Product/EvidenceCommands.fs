@@ -21,16 +21,18 @@ let layoutEvidenceCommand evidencePath width height =
     let report = layoutEvidenceForSize size initialModel
 
     let lines =
-        [ "status=ok"
-          "command=--layout-evidence"
-          "profile=headless-governed"
-          $"scene=AppRoot.Program.view"
-          $"output-size={size.Width}x{size.Height}"
-          $"proof-level={report.ProofLevel}"
-          $"text-bounds={report.TextBounds.Length}"
-          $"gameplay-bounds={report.GameplayBounds.Length}"
-          $"overlap-status={report.OverlapStatus}"
-          $"measurement-mode={report.MeasurementMode}" ]
+        [
+            "status=ok"
+            "command=--layout-evidence"
+            "profile=headless-governed"
+            $"scene=AppRoot.Program.view"
+            $"output-size={size.Width}x{size.Height}"
+            $"proof-level={report.ProofLevel}"
+            $"text-bounds={report.TextBounds.Length}"
+            $"gameplay-bounds={report.GameplayBounds.Length}"
+            $"overlap-status={report.OverlapStatus}"
+            $"measurement-mode={report.MeasurementMode}"
+        ]
 
     writeLines evidencePath lines
     lines |> List.iter (printfn "%s")
@@ -39,18 +41,32 @@ let layoutEvidenceCommand evidencePath width height =
 let sceneEvidence evidencePath =
     let result =
         SceneEvidence.render
-            { Scene = { Nodes = [ view initialModel ] }
-              OutputSize = { Width = 320; Height = 200 }
-              Format = Metadata
-              RendererMode = "deterministic-scene"
-              EvidencePath = Some evidencePath }
+            {
+                Scene = { Nodes = [ view initialModel ] }
+                OutputSize = { Width = 320; Height = 200 }
+                Format = Metadata
+                RendererMode = "deterministic-scene"
+                EvidencePath = Some evidencePath
+            }
 
     match result with
     | Result.Ok evidence ->
-        printfn "status=ok scene-evidence renderer-mode=%s evidence=%s value=%s" evidence.RendererMode evidencePath evidence.Value
+        printfn
+            "status=ok scene-evidence renderer-mode=%s evidence=%s value=%s"
+            evidence.RendererMode
+            evidencePath
+            evidence.Value
+
         0
     | Result.Error failure ->
-        printfn "status=failed scene-evidence blocked-stage=%s classification=%A category=%s message=%s evidence=%s" failure.BlockedStage failure.Classification failure.DiagnosticCategory failure.Message evidencePath
+        printfn
+            "status=failed scene-evidence blocked-stage=%s classification=%A category=%s message=%s evidence=%s"
+            failure.BlockedStage
+            failure.Classification
+            failure.DiagnosticCategory
+            failure.Message
+            evidencePath
+
         1
 
 let tryRunEvidenceCommand args =
@@ -95,15 +111,17 @@ type GeneratedEvidenceReportStatus =
     | GeneratedEvidenceFailed
 
 type GeneratedEvidenceCommandReport =
-    { Command: string
-      Target: string
-      GeneratedAppIdentity: string
-      Authority: string
-      Status: string
-      ExitCode: int
-      ValidationArea: string
-      ReportPath: string
-      Diagnostics: string list }
+    {
+        Command: string
+        Target: string
+        GeneratedAppIdentity: string
+        Authority: string
+        Status: string
+        ExitCode: int
+        ValidationArea: string
+        ReportPath: string
+        Diagnostics: string list
+    }
 
 type GeneratedEvidenceWorkflowKind =
     | NormalLaunch
@@ -113,14 +131,16 @@ type GeneratedEvidenceWorkflowKind =
     | UnsupportedOutcome
 
 type GeneratedEvidenceWorkflow =
-    { Command: string
-      Kind: GeneratedEvidenceWorkflowKind
-      Authority: string
-      AppRootOwnedFacts: string list
-      PolicyOwnedReport: string
-      SkippedGates: string list
-      UnsupportedOutcome: string option
-      NextCommand: string option }
+    {
+        Command: string
+        Kind: GeneratedEvidenceWorkflowKind
+        Authority: string
+        AppRootOwnedFacts: string list
+        PolicyOwnedReport: string
+        SkippedGates: string list
+        UnsupportedOutcome: string option
+        NextCommand: string option
+    }
 
 type GeneratedEvidenceFailureClassification =
     | GeneratedUnsupportedOutcome
@@ -132,30 +152,42 @@ type GeneratedEvidenceFixture =
     | SyntheticUnsupportedHost
 
 let availableEvidenceWorkflows =
-    [ { Command = "dotnet run --project src/Product/Product.fsproj"
-        Kind = NormalLaunch
-        Authority = "product-owned interactive launch"
-        AppRootOwnedFacts = [ "model"; "view"; "viewer-host" ]
-        PolicyOwnedReport = "none"
-        SkippedGates = []
-        UnsupportedOutcome = None
-        NextCommand = None }
-      { Command = "--launch-evidence"
-        Kind = ExplicitEvidenceCommand
-        Authority = "generated evidence command"
-        AppRootOwnedFacts = [ "viewer run result"; "renderer mode"; "first frame" ]
-        PolicyOwnedReport = "readiness/evidence-launch-mode.txt"
-        SkippedGates = []
-        UnsupportedOutcome = Some "unsupported host fixture reports fallback and reason"
-        NextCommand = Some "dotnet run --project src/Product/Product.fsproj -- --window-diagnostics readiness/window-diagnostics.txt" }
-      { Command = "--image-evidence"
-        Kind = PolicyOwnedReport
-        Authority = "governed visual evidence report"
-        AppRootOwnedFacts = [ "scene"; "viewer options"; "render outcome" ]
-        PolicyOwnedReport = "readiness/game-image-evidence.png.metadata.txt"
-        SkippedGates = [ "interactive visible-window proof" ]
-        UnsupportedOutcome = Some "missing generated artifact is classified as stale prerequisite"
-        NextCommand = Some "dotnet run --project src/Product/Product.fsproj -- --scene-evidence readiness/headless-scene-evidence.txt" } ]
+    [
+        {
+            Command = "dotnet run --project src/Product/Product.fsproj"
+            Kind = NormalLaunch
+            Authority = "product-owned interactive launch"
+            AppRootOwnedFacts = [ "model"; "view"; "viewer-host" ]
+            PolicyOwnedReport = "none"
+            SkippedGates = []
+            UnsupportedOutcome = None
+            NextCommand = None
+        }
+        {
+            Command = "--launch-evidence"
+            Kind = ExplicitEvidenceCommand
+            Authority = "generated evidence command"
+            AppRootOwnedFacts = [ "viewer run result"; "renderer mode"; "first frame" ]
+            PolicyOwnedReport = "readiness/evidence-launch-mode.txt"
+            SkippedGates = []
+            UnsupportedOutcome = Some "unsupported host fixture reports fallback and reason"
+            NextCommand =
+                Some
+                    "dotnet run --project src/Product/Product.fsproj -- --window-diagnostics readiness/window-diagnostics.txt"
+        }
+        {
+            Command = "--image-evidence"
+            Kind = PolicyOwnedReport
+            Authority = "governed visual evidence report"
+            AppRootOwnedFacts = [ "scene"; "viewer options"; "render outcome" ]
+            PolicyOwnedReport = "readiness/game-image-evidence.png.metadata.txt"
+            SkippedGates = [ "interactive visible-window proof" ]
+            UnsupportedOutcome = Some "missing generated artifact is classified as stale prerequisite"
+            NextCommand =
+                Some
+                    "dotnet run --project src/Product/Product.fsproj -- --scene-evidence readiness/headless-scene-evidence.txt"
+        }
+    ]
 
 let generatedEvidenceStatusText status =
     match status with
@@ -169,25 +201,28 @@ let generatedEvidenceExitCode status =
     | GeneratedEvidenceUnsupported -> 0
     | GeneratedEvidenceFailed -> 1
 
-let evidenceField name value =
-    name, value
+let evidenceField name value = name, value
 
 let generatedEvidenceCommandReportFields (report: GeneratedEvidenceCommandReport) =
-    [ evidenceField "command" report.Command
-      evidenceField "target" report.Target
-      evidenceField "generated-project-identity" report.GeneratedAppIdentity
-      evidenceField "authority" report.Authority
-      evidenceField "status" report.Status
-      evidenceField "exit-code" (string report.ExitCode)
-      evidenceField "validation-area" report.ValidationArea
-      evidenceField "report-path" report.ReportPath
-      evidenceField "diagnostics" (String.Join("; ", report.Diagnostics)) ]
+    [
+        evidenceField "command" report.Command
+        evidenceField "target" report.Target
+        evidenceField "generated-project-identity" report.GeneratedAppIdentity
+        evidenceField "authority" report.Authority
+        evidenceField "status" report.Status
+        evidenceField "exit-code" (string report.ExitCode)
+        evidenceField "validation-area" report.ValidationArea
+        evidenceField "report-path" report.ReportPath
+        evidenceField "diagnostics" (String.Join("; ", report.Diagnostics))
+    ]
 
 let writeEvidenceReport evidencePath status command fields =
     let standardFields =
-        [ evidenceField "status" (generatedEvidenceStatusText status)
-          evidenceField "command" command
-          evidenceField "output" evidencePath ]
+        [
+            evidenceField "status" (generatedEvidenceStatusText status)
+            evidenceField "command" command
+            evidenceField "output" evidencePath
+        ]
 
     let lines =
         (standardFields @ fields)
@@ -200,17 +235,25 @@ let layoutEvidenceCommand evidencePath width height =
     let size = { Width = width; Height = height }
     let report = layoutEvidenceForSize size initialModel
     let validation = validateGeneratedLayout report
+
     let hud =
         report.HudRegion
-        |> Option.map (fun region -> $"{region.Name}:{region.Bounds.X},{region.Bounds.Y},{region.Bounds.Width},{region.Bounds.Height}")
+        |> Option.map (fun region ->
+            $"{region.Name}:{region.Bounds.X},{region.Bounds.Y},{region.Bounds.Width},{region.Bounds.Height}")
         |> Option.defaultValue "missing"
 
     let gameplay =
         report.GameplayRegion
-        |> Option.map (fun region -> $"{region.Name}:{region.Bounds.X},{region.Bounds.Y},{region.Bounds.Width},{region.Bounds.Height}")
+        |> Option.map (fun region ->
+            $"{region.Name}:{region.Bounds.X},{region.Bounds.Y},{region.Bounds.Width},{region.Bounds.Height}")
         |> Option.defaultValue "missing"
 
-    let status = if validation.Accepted then GeneratedEvidenceOk else GeneratedEvidenceFailed
+    let status =
+        if validation.Accepted then
+            GeneratedEvidenceOk
+        else
+            GeneratedEvidenceFailed
+
     let diagnostics = String.concat "|" (report.Diagnostics @ validation.Diagnostics)
 
     let report =
@@ -218,17 +261,20 @@ let layoutEvidenceCommand evidencePath width height =
             evidencePath
             status
             "--layout-evidence"
-            [ evidenceField "scene" "AppRoot.Program.view"
-              evidenceField "output-size" $"{size.Width}x{size.Height}"
-              evidenceField "proof-level" $"{report.ProofLevel}"
-              evidenceField "hud-region" hud
-              evidenceField "gameplay-region" gameplay
-              evidenceField "text-bounds" $"{report.TextBounds.Length}"
-              evidenceField "gameplay-bounds" $"{report.GameplayBounds.Length}"
-              evidenceField "overlap-status" $"{report.OverlapStatus}"
-              evidenceField "measurement-mode" $"{report.MeasurementMode}"
-              evidenceField "accepted" $"{validation.Accepted}"
-              evidenceField "diagnostics" diagnostics ]
+            [
+                evidenceField "scene" "AppRoot.Program.view"
+                evidenceField "output-size" $"{size.Width}x{size.Height}"
+                evidenceField "proof-level" $"{report.ProofLevel}"
+                evidenceField "hud-region" hud
+                evidenceField "gameplay-region" gameplay
+                evidenceField "text-bounds" $"{report.TextBounds.Length}"
+                evidenceField "gameplay-bounds" $"{report.GameplayBounds.Length}"
+                evidenceField "overlap-status" $"{report.OverlapStatus}"
+                evidenceField "measurement-mode" $"{report.MeasurementMode}"
+                evidenceField "accepted" $"{validation.Accepted}"
+                evidenceField "diagnostics" diagnostics
+            ]
+
     report
 
 // KEY-STATE STUB — the scene-host's default key seam, deliberately the weakest one that compiles.
@@ -249,18 +295,17 @@ let layoutEvidenceCommand evidencePath width height =
 // (key -> mapKey -> update, the live runtime's own fold) and asserts a pressed key reaches gameplay;
 // `auditKeyWiring` / `reachableMessages` guard the handled-but-unwired case. See the fs-gg-elmish /
 // fs-gg-testing skills — this is documented here at the seam, exactly as `AudioCues.forTransition` is.
-let mapKey key isDown =
-    Some(ViewerInput(key, isDown))
+let mapKey key isDown = Some(ViewerInput(key, isDown))
 
 let tick (elapsed: TimeSpan) =
     if elapsed >= TimeSpan.FromMilliseconds 16.0 then
-//#if (profile == "game")
+        //#if (profile == "game")
         // Feature 250: carry the host's REAL elapsed time into the game's fixed-step accumulator
         // (Model.update drains whole sim steps from it), instead of discarding it. Host wiring only.
         Some(Tick elapsed.TotalSeconds)
-//#else
+        //#else
         Some Tick
-//#endif
+    //#endif
     else
         None
 
@@ -269,32 +314,36 @@ let tick (elapsed: TimeSpan) =
 // readback evidence options — reusing those (OffscreenReadback) for the live launch renders
 // off-screen and presents a blank window (the ControlsShowcase4 scaffold defect).
 let viewerOptions =
-    { Title = "Generated Product"
-      //#if (profile == "game")
-      // The turnkey shell authors its default layout at 1280x720. The live surface starts in that
-      // exact coordinate space too, so retained pointer samples and authored hit bounds agree.
-      InitialSize = { Width = 1280; Height = 720 }
-      //#else
-      InitialSize = { Width = 1280; Height = 800 }
-      //#endif
-      PresentMode = ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = None
-      //#if (profile == "game")
-      // SkiaViewer is the sole logical-canvas owner: it fits this authored space onto the live
-      // framebuffer and maps native pointer samples back before Controls sees them.
-      LogicalSize = Some { Width = 1280; Height = 720 }
-      //#else
-      LogicalSize = None
-      //#endif
+    {
+        Title = "Generated Product"
+        //#if (profile == "game")
+        // The turnkey shell authors its default layout at 1280x720. The live surface starts in that
+        // exact coordinate space too, so retained pointer samples and authored hit bounds agree.
+        InitialSize = { Width = 1280; Height = 720 }
+        //#else
+        InitialSize = { Width = 1280; Height = 800 }
+        //#endif
+        PresentMode = ViewerPresentMode.DirectToSwapchain
+        FrameRateCap = None
+        //#if (profile == "game")
+        // SkiaViewer is the sole logical-canvas owner: it fits this authored space onto the live
+        // framebuffer and maps native pointer samples back before Controls sees them.
+        LogicalSize = Some { Width = 1280; Height = 720 }
+        //#else
+        LogicalSize = None
+        //#endif
     }
 
 // Evidence/screenshot-capture options: a small OffscreenReadback surface for deterministic pixel
 // readback. Used only by the bounded evidence commands below — never for the persistent launch.
 let evidenceViewerOptions =
-    { Title = "Generated Product"
-      InitialSize = { Width = 640; Height = 480 }
-      PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None; LogicalSize = None }
+    {
+        Title = "Generated Product"
+        InitialSize = { Width = 640; Height = 480 }
+        PresentMode = ViewerPresentMode.OffscreenReadback
+        FrameRateCap = None
+        LogicalSize = None
+    }
 
 let appCommandName command =
     match command with
@@ -304,54 +353,55 @@ let appCommandName command =
     | ReportAdapterDiagnostic diagnostic -> $"app-command:report-adapter-diagnostic:{diagnostic.Code}"
     | _ -> "app-command:dispatch-product-message"
 
-let viewerEffectsForModel model =
-    [ RenderScene(view model) ]
+let viewerEffectsForModel model = [ RenderScene(view model) ]
 
 let interpretAtHostBoundary msg model =
     let next, appCommands = AppRoot.Model.update msg model
     next, appCommands, viewerEffectsForModel next
 
 let generatedHost =
-    { Init =
-        fun () ->
-//#if (profile == "game" || profile == "sample-pack")
-            // Issue #458: the initial state goes through the SAME cue seam every other state goes
-            // through. This used to be `fun () -> initialModel, []` — the model was produced without
-            // passing through a transition, so `forTransition` was never called for it, so ANY effect
-            // the initial state implies was silently never emitted.
-            //
-            // That is a hole in the pattern, not a bug in a function: `forTransition` is a function of
-            // a TRANSITION, and state that is *loaded* rather than *transitioned into* — settings, a
-            // save game, restored window geometry, a resumed session — never makes one. It is invisible
-            // from inside the model (a restored volume the mixer was never told about looks exactly like
-            // one that was restored correctly) and no test that asserts on the model can catch it.
-            //
-            // `Started` is that transition. Note this calls the SAME function `Update` calls, with no
-            // separate startup cue path to drift out of sync — which is the second thing to want here,
-            // after correctness.
-            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
-            | [] -> initialModel, []
-            | cues -> initialModel, [ PlayAudio cues ]
-//#else
-            initialModel, []
-//#endif
-      Update =
-        fun msg model ->
-            let next, _, viewerEffects = interpretAtHostBoundary msg model
-//#if (profile == "game" || profile == "sample-pack")
-            // Issue #245: the product's sound requests ride out on the same effect list the viewer
-            // already interprets. `Viewer.runAppWithAudio` hands each batch to the real backend;
-            // `Viewer.runApp` and the evidence paths discard it, so nothing here needs a device.
-            match AppRoot.AudioCues.forTransition msg model next with
-            | [] -> next, viewerEffects
-            | cues -> next, viewerEffects @ [ PlayAudio cues ]
-//#else
-            next, viewerEffects
-//#endif
-      View = view
-      MapKey = mapKey
-      Tick = tick
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init =
+            fun () ->
+                //#if (profile == "game" || profile == "sample-pack")
+                // Issue #458: the initial state goes through the SAME cue seam every other state goes
+                // through. This used to be `fun () -> initialModel, []` — the model was produced without
+                // passing through a transition, so `forTransition` was never called for it, so ANY effect
+                // the initial state implies was silently never emitted.
+                //
+                // That is a hole in the pattern, not a bug in a function: `forTransition` is a function of
+                // a TRANSITION, and state that is *loaded* rather than *transitioned into* — settings, a
+                // save game, restored window geometry, a resumed session — never makes one. It is invisible
+                // from inside the model (a restored volume the mixer was never told about looks exactly like
+                // one that was restored correctly) and no test that asserts on the model can catch it.
+                //
+                // `Started` is that transition. Note this calls the SAME function `Update` calls, with no
+                // separate startup cue path to drift out of sync — which is the second thing to want here,
+                // after correctness.
+                match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+                | [] -> initialModel, []
+                | cues -> initialModel, [ PlayAudio cues ]
+                //#else
+                initialModel, []
+        //#endif
+        Update =
+            fun msg model ->
+                let next, _, viewerEffects = interpretAtHostBoundary msg model
+                //#if (profile == "game" || profile == "sample-pack")
+                // Issue #245: the product's sound requests ride out on the same effect list the viewer
+                // already interprets. `Viewer.runAppWithAudio` hands each batch to the real backend;
+                // `Viewer.runApp` and the evidence paths discard it, so nothing here needs a device.
+                match AppRoot.AudioCues.forTransition msg model next with
+                | [] -> next, viewerEffects
+                | cues -> next, viewerEffects @ [ PlayAudio cues ]
+                //#else
+                next, viewerEffects
+        //#endif
+        View = view
+        MapKey = mapKey
+        Tick = tick
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 //#if (profile == "app")
 // FR-004/FR-006 (D6): the CONTROLS family's governed default is a pointer-aware persistent
@@ -361,49 +411,51 @@ let generatedHost =
 // game family keeps the keyboard-only `Viewer.runApp ... generatedHost` (FR-006) — the
 // keyboard host is not removed, it is the per-family alternative.
 let interactiveHost: InteractiveAppHost<Model, Msg> =
-    { Init =
-        fun () ->
-            // Issue #436 + #458: the app profile's INITIAL model goes through the SAME cue seam every
-            // other state goes through. This was `fun () -> initialModel, []`, and that was correct
-            // only for as long as the profile compiled no AudioCues.fs and so had no seam to miss —
-            // the two gates that guard #458 (AudioProfileWiringTests / TemplateAudioProfileWiring-
-            // CoherenceTests) said so in as many words, and said that whoever gave this profile a
-            // seam had to route Init through it too, or #458 simply reappears one profile over.
-            //
-            // This is that landing. The reasoning is unchanged from `generatedHost`: `forTransition`
-            // is a function of a TRANSITION, and a model that is *loaded* rather than transitioned
-            // into never makes one — so any effect the initial state implies (a restored volume, the
-            // menu's theme music) would be silently never emitted. It is invisible from inside the
-            // model and no test that asserts on the model can catch it. `Started` is that door, and
-            // Init dispatches it through the SAME function `Update` calls — no separate startup cue
-            // path to drift out of sync.
-            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
-            | [] -> initialModel, []
-            | cues -> initialModel, [ PlayAudio cues ]
-      Update =
-        fun msg model ->
-            let next, _, viewerEffects = interpretAtHostBoundary msg model
-            // Issue #436: the Controls family's sound requests ride out on the same effect list the
-            // viewer already interprets, exactly as the game family's do.
-            // `ControlsElmish.runInteractiveAppWithAudio` hands each batch to the real backend; the
-            // sinkless `runInteractiveApp` and the evidence paths discard it, so nothing here needs
-            // a device.
-            match AppRoot.AudioCues.forTransition msg model next with
-            | [] -> next, viewerEffects
-            | cues -> next, viewerEffects @ [ PlayAudio cues ]
-      View = fun _size model -> controlsExampleView model
-      Theme = Theme.light
-      MapKey = mapKey
-      MapPointer =
-        fun interaction ->
-            // A click on the bound "save" control dispatches that control's message.
-            match interaction with
-            | Click(controlId, _, _, _) when controlId = "save" -> Some SaveRequested
-            | _ -> None
-      Tick = tick
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init =
+            fun () ->
+                // Issue #436 + #458: the app profile's INITIAL model goes through the SAME cue seam every
+                // other state goes through. This was `fun () -> initialModel, []`, and that was correct
+                // only for as long as the profile compiled no AudioCues.fs and so had no seam to miss —
+                // the two gates that guard #458 (AudioProfileWiringTests / TemplateAudioProfileWiring-
+                // CoherenceTests) said so in as many words, and said that whoever gave this profile a
+                // seam had to route Init through it too, or #458 simply reappears one profile over.
+                //
+                // This is that landing. The reasoning is unchanged from `generatedHost`: `forTransition`
+                // is a function of a TRANSITION, and a model that is *loaded* rather than transitioned
+                // into never makes one — so any effect the initial state implies (a restored volume, the
+                // menu's theme music) would be silently never emitted. It is invisible from inside the
+                // model and no test that asserts on the model can catch it. `Started` is that door, and
+                // Init dispatches it through the SAME function `Update` calls — no separate startup cue
+                // path to drift out of sync.
+                match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+                | [] -> initialModel, []
+                | cues -> initialModel, [ PlayAudio cues ]
+        Update =
+            fun msg model ->
+                let next, _, viewerEffects = interpretAtHostBoundary msg model
+                // Issue #436: the Controls family's sound requests ride out on the same effect list the
+                // viewer already interprets, exactly as the game family's do.
+                // `ControlsElmish.runInteractiveAppWithAudio` hands each batch to the real backend; the
+                // sinkless `runInteractiveApp` and the evidence paths discard it, so nothing here needs
+                // a device.
+                match AppRoot.AudioCues.forTransition msg model next with
+                | [] -> next, viewerEffects
+                | cues -> next, viewerEffects @ [ PlayAudio cues ]
+        View = fun _size model -> controlsExampleView model
+        Theme = Theme.light
+        MapKey = mapKey
+        MapPointer =
+            fun interaction ->
+                // A click on the bound "save" control dispatches that control's message.
+                match interaction with
+                | Click(controlId, _, _, _) when controlId = "save" -> Some SaveRequested
+                | _ -> None
+        Tick = tick
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 //#endif
 
 //#if (profile == "game")
@@ -424,11 +476,13 @@ let interactiveHost: InteractiveAppHost<Model, Msg> =
 /// The interactive host's composite: the shell router's state alongside the play model. `Init` boots
 /// `MainMenu`; `Start` routes into `Playing`, where the play model advances on `Tick`.
 type ShellHostModel =
-    { Shell: AppRoot.GameShell.Model
-      Play: Model
-      /// Raw keys retained from native down until the matching native up. Gameplay consumes this
-      /// snapshot on fixed ticks; shell chrome and rebind capture still consume the same raw seam.
-      HeldKeys: Set<KeyId> }
+    {
+        Shell: AppRoot.GameShell.Model
+        Play: Model
+        /// Raw keys retained from native down until the matching native up. Gameplay consumes this
+        /// snapshot on fixed ticks; shell chrome and rebind capture still consume the same raw seam.
+        HeldKeys: Set<KeyId>
+    }
 
 /// The interactive host's message: a shell-chrome message, a live-play message, or a forwarded raw
 /// key-down. The raw key is FORWARDED (not resolved) in `MapKey` and routed in `Update`, where the
@@ -442,15 +496,52 @@ type ShellHostMsg =
 /// The game's parameterization of the shell: its name (the menu title), its rebindable key->command
 /// map (the play controls), and the resolutions/modes the settings screen offers.
 let shellConfig: AppRoot.GameShell.Config =
-    { Title = "Generated Product"
-      Actions =
-        [ { Command = "left-up"; Label = "Left paddle up"; Order = 10; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'W')) }
-          { Command = "left-down"; Label = "Left paddle down"; Order = 20; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'S')) }
-          { Command = "right-up"; Label = "Right paddle up"; Order = 30; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowUp) }
-          { Command = "right-down"; Label = "Right paddle down"; Order = 40; Binding = None; DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowDown) } ]
-      DisplayModes = [ AppRoot.GameShell.Windowed; AppRoot.GameShell.Borderless; AppRoot.GameShell.Fullscreen ]
-      Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
-      InitialDisplay = { Resolution = { Width = 1280; Height = 720 }; Mode = AppRoot.GameShell.Windowed } }
+    {
+        Title = "Generated Product"
+        Actions =
+            [
+                {
+                    Command = "left-up"
+                    Label = "Left paddle up"
+                    Order = 10
+                    Binding = None
+                    DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'W'))
+                }
+                {
+                    Command = "left-down"
+                    Label = "Left paddle down"
+                    Order = 20
+                    Binding = None
+                    DefaultBinding = Some(ViewerKeyboard.toKeyId (Letter 'S'))
+                }
+                {
+                    Command = "right-up"
+                    Label = "Right paddle up"
+                    Order = 30
+                    Binding = None
+                    DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowUp)
+                }
+                {
+                    Command = "right-down"
+                    Label = "Right paddle down"
+                    Order = 40
+                    Binding = None
+                    DefaultBinding = Some(ViewerKeyboard.toKeyId ArrowDown)
+                }
+            ]
+        DisplayModes =
+            [
+                AppRoot.GameShell.Windowed
+                AppRoot.GameShell.Borderless
+                AppRoot.GameShell.Fullscreen
+            ]
+        Resolutions = [ { Width = 1280; Height = 720 }; { Width = 1920; Height = 1080 } ]
+        InitialDisplay =
+            {
+                Resolution = { Width = 1280; Height = 720 }
+                Mode = AppRoot.GameShell.Windowed
+            }
+    }
 
 /// Lift a resolved live-play `CommandId` (from the possibly-rebound keymap) into a play `Msg`. The
 /// shell resolves a key to a command only while `Playing`; this is the `toGame` the shell needs.
@@ -485,12 +576,15 @@ let private persistShellSettings (model: AppRoot.GameShell.Model) : bool =
 
         File.WriteAllBytes(shellSettingsPath, AppRoot.GameShell.encodeSettings model)
         true
-    with _ -> false
+    with _ ->
+        false
 
 let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShell.Model =
     let decode path fallback =
-        try AppRoot.GameShell.decodeSettings (File.ReadAllBytes path) fallback
-        with _ -> fallback
+        try
+            AppRoot.GameShell.decodeSettings (File.ReadAllBytes path) fallback
+        with _ ->
+            fallback
 
     try
         if File.Exists shellSettingsPath then
@@ -499,12 +593,16 @@ let private loadShellSettings (model: AppRoot.GameShell.Model) : AppRoot.GameShe
             let migrated = decode legacyShellSettingsPath model
 
             if persistShellSettings migrated then
-                try File.Delete legacyShellSettingsPath with _ -> ()
+                try
+                    File.Delete legacyShellSettingsPath
+                with _ ->
+                    ()
 
             migrated
         else
             model
-    with _ -> model
+    with _ ->
+        model
 
 /// Interpret one shell `Effect` at the host boundary: Exit closes the window; a display change
 /// re-applies the window behaviour AND persists; a keymap change persists. Persistence is
@@ -516,15 +614,16 @@ let viewerEffectsForShellEffect (effect: AppRoot.GameShell.Effect) : ViewerEffec
     match effect with
     | AppRoot.GameShell.ExitRequested -> [ CloseWindow ]
     | AppRoot.GameShell.DisplayChanged settings ->
-        [ ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings)
-          ApplyLogicalCanvas(AppRoot.GameShell.logicalSize settings) ]
+        [
+            ApplyWindowOptions(AppRoot.GameShell.windowBehavior settings)
+            ApplyLogicalCanvas(AppRoot.GameShell.logicalSize settings)
+        ]
     | AppRoot.GameShell.KeymapChanged _ -> []
 
 let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.GameShell.Effect) : ViewerEffect list =
     match effect with
     | AppRoot.GameShell.DisplayChanged _
-    | AppRoot.GameShell.KeymapChanged _ ->
-        persistShellSettings shell |> ignore
+    | AppRoot.GameShell.KeymapChanged _ -> persistShellSettings shell |> ignore
     | AppRoot.GameShell.ExitRequested -> ()
 
     viewerEffectsForShellEffect effect
@@ -536,82 +635,133 @@ let private applyShellEffect (shell: AppRoot.GameShell.Model) (effect: AppRoot.G
 // above is retained for the headless evidence commands — the keyboard host is not removed, it is the
 // per-profile evidence host, mirroring the `app` family (feature 086, FR-006).
 let interactiveHost: InteractiveAppHost<ShellHostModel, ShellHostMsg> =
-    { Init =
-        fun () ->
-            let shell = loadShellSettings (AppRoot.GameShell.init shellConfig)
-            let model = { Shell = shell; Play = initialModel; HeldKeys = Set.empty }
-            // Issue #458: the LOADED initial state still reaches the audio sink. `Started` announces
-            // the initial play model through the SAME cue seam every transition uses. The shell host is
-            // the launch host now, so it owns this the way `generatedHost` did before the move.
-            let canvas = ApplyLogicalCanvas(AppRoot.GameShell.logicalSize shell.Display)
+    {
+        Init =
+            fun () ->
+                let shell = loadShellSettings (AppRoot.GameShell.init shellConfig)
 
-            match AppRoot.AudioCues.forTransition Started initialModel initialModel with
-            | [] -> model, [ canvas ]
-            | cues -> model, [ canvas; PlayAudio cues ]
-      Update =
-        fun msg model ->
-            match msg with
-            | ShellDispatch shellMsg ->
-                let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
-                let held = if nextShell.Screen = AppRoot.GameShell.Playing then model.HeldKeys else Set.empty
-                { model with Shell = nextShell; HeldKeys = held }, (effects |> List.collect (applyShellEffect nextShell))
-            | RawKeyChanged(key, isDown) ->
-                match AppRoot.GameShell.routeKeyEvent playCommandToMsg key isDown model.Shell with
-                | AppRoot.GameShell.ShellEdge shellMsg ->
+                let model =
+                    {
+                        Shell = shell
+                        Play = initialModel
+                        HeldKeys = Set.empty
+                    }
+                // Issue #458: the LOADED initial state still reaches the audio sink. `Started` announces
+                // the initial play model through the SAME cue seam every transition uses. The shell host is
+                // the launch host now, so it owns this the way `generatedHost` did before the move.
+                let canvas = ApplyLogicalCanvas(AppRoot.GameShell.logicalSize shell.Display)
+
+                match AppRoot.AudioCues.forTransition Started initialModel initialModel with
+                | [] -> model, [ canvas ]
+                | cues -> model, [ canvas; PlayAudio cues ]
+        Update =
+            fun msg model ->
+                match msg with
+                | ShellDispatch shellMsg ->
                     let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
-                    let held = if nextShell.Screen = AppRoot.GameShell.Playing then model.HeldKeys else Set.empty
-                    { model with Shell = nextShell; HeldKeys = held }, (effects |> List.collect (applyShellEffect nextShell))
-                | AppRoot.GameShell.GameEdge(_, true) ->
-                    { model with HeldKeys = Set.add key model.HeldKeys }, []
-                | AppRoot.GameShell.GameEdge(_, false) ->
-                    { model with HeldKeys = Set.remove key model.HeldKeys }, []
-                | AppRoot.GameShell.NoKeyEvent ->
-                    // A release still clears a retained key after a screen transition or keymap
-                    // change, even when the shell no longer resolves it as gameplay.
-                    if isDown then model, [] else { model with HeldKeys = Set.remove key model.HeldKeys }, []
-            | PlayDispatch playMsg ->
-                // Live play only advances while the shell is on the `Playing` screen — the menu, the
-                // pause overlay and the settings screen freeze the world behind them.
-                match model.Shell.Screen with
-                | AppRoot.GameShell.Playing ->
-                    let applyPlay (play, effects) msg =
-                        let nextPlay, _ = AppRoot.Model.update msg play
-                        let cues = AppRoot.AudioCues.forTransition msg play nextPlay
-                        nextPlay, (if List.isEmpty cues then effects else effects @ [ PlayAudio cues ])
 
-                    let afterHeld, heldEffects =
-                        model.HeldKeys
-                        |> Set.toList
-                        |> List.choose (fun key ->
-                            match AppRoot.GameShell.routeKeyEvent playCommandToMsg key true model.Shell with
-                            | AppRoot.GameShell.GameEdge(value, true) -> Some value
-                            | _ -> None)
-                        |> List.fold applyPlay (model.Play, [])
+                    let held =
+                        if nextShell.Screen = AppRoot.GameShell.Playing then
+                            model.HeldKeys
+                        else
+                            Set.empty
 
-                    let nextPlay, tickEffects = applyPlay (afterHeld, heldEffects) playMsg
-                    { model with Play = nextPlay }, tickEffects
-                | _ -> model, []
-      View =
-        fun _size model ->
-            match AppRoot.GameShell.view ShellDispatch shellConfig model.Shell with
-            | Some widget -> Widget.toControl widget
-            | None -> Canvas.create [ Canvas.scene { Nodes = [ AppRoot.View.view model.Play ] } ]
-      Theme = Theme.light
-      MapKey =
-        // Forward BOTH native edges raw (do not resolve here): rebind capture needs the unbound down,
-        // while held gameplay needs the matching up. `Update` routes one normalized seam through the
-        // shell/keymap and retains gameplay controls until release.
-        fun key isDown ->
-            Some(RawKeyChanged(ViewerKeyboard.toKeyId key, isDown))
-      MapPointer =
-        // The menu buttons carry their own authored `OnClick` bindings (the shell's `view`), and
-        // `routeInteractivePointer` dispatches those directly — authored bindings win, and `MapPointer`
-        // is only the fallback for unbound pointer interactions, of which the shell menu has none.
-        fun _ -> None
-      Tick = fun elapsed -> tick elapsed |> Option.map PlayDispatch
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+                    { model with
+                        Shell = nextShell
+                        HeldKeys = held
+                    },
+                    (effects |> List.collect (applyShellEffect nextShell))
+                | RawKeyChanged(key, isDown) ->
+                    match AppRoot.GameShell.routeKeyEvent playCommandToMsg key isDown model.Shell with
+                    | AppRoot.GameShell.ShellEdge shellMsg ->
+                        let nextShell, effects = AppRoot.GameShell.update shellMsg model.Shell
+
+                        let held =
+                            if nextShell.Screen = AppRoot.GameShell.Playing then
+                                model.HeldKeys
+                            else
+                                Set.empty
+
+                        { model with
+                            Shell = nextShell
+                            HeldKeys = held
+                        },
+                        (effects |> List.collect (applyShellEffect nextShell))
+                    | AppRoot.GameShell.GameEdge(_, true) ->
+                        { model with
+                            HeldKeys = Set.add key model.HeldKeys
+                        },
+                        []
+                    | AppRoot.GameShell.GameEdge(_, false) ->
+                        { model with
+                            HeldKeys = Set.remove key model.HeldKeys
+                        },
+                        []
+                    | AppRoot.GameShell.NoKeyEvent ->
+                        // A release still clears a retained key after a screen transition or keymap
+                        // change, even when the shell no longer resolves it as gameplay.
+                        if isDown then
+                            model, []
+                        else
+                            { model with
+                                HeldKeys = Set.remove key model.HeldKeys
+                            },
+                            []
+                | PlayDispatch playMsg ->
+                    // Live play only advances while the shell is on the `Playing` screen — the menu, the
+                    // pause overlay and the settings screen freeze the world behind them.
+                    match model.Shell.Screen with
+                    | AppRoot.GameShell.Playing ->
+                        let applyPlay (play, effects) msg =
+                            let nextPlay, _ = AppRoot.Model.update msg play
+                            let cues = AppRoot.AudioCues.forTransition msg play nextPlay
+
+                            nextPlay,
+                            (if List.isEmpty cues then
+                                 effects
+                             else
+                                 effects @ [ PlayAudio cues ])
+
+                        let afterHeld, heldEffects =
+                            model.HeldKeys
+                            |> Set.toList
+                            |> List.choose (fun key ->
+                                match AppRoot.GameShell.routeKeyEvent playCommandToMsg key true model.Shell with
+                                | AppRoot.GameShell.GameEdge(value, true) -> Some value
+                                | _ -> None)
+                            |> List.fold applyPlay (model.Play, [])
+
+                        let nextPlay, tickEffects = applyPlay (afterHeld, heldEffects) playMsg
+                        { model with Play = nextPlay }, tickEffects
+                    | _ -> model, []
+        View =
+            fun _size model ->
+                match AppRoot.GameShell.view ShellDispatch shellConfig model.Shell with
+                | Some widget -> Widget.toControl widget
+                | None ->
+                    Canvas.create
+                        [
+                            Canvas.scene
+                                {
+                                    Nodes = [ AppRoot.View.view model.Play ]
+                                }
+                        ]
+        Theme = Theme.light
+        MapKey =
+            // Forward BOTH native edges raw (do not resolve here): rebind capture needs the unbound down,
+            // while held gameplay needs the matching up. `Update` routes one normalized seam through the
+            // shell/keymap and retains gameplay controls until release.
+            fun key isDown -> Some(RawKeyChanged(ViewerKeyboard.toKeyId key, isDown))
+        MapPointer =
+            // The menu buttons carry their own authored `OnClick` bindings (the shell's `view`), and
+            // `routeInteractivePointer` dispatches those directly — authored bindings win, and `MapPointer`
+            // is only the fallback for unbound pointer interactions, of which the shell menu has none.
+            fun _ -> None
+        Tick = fun elapsed -> tick elapsed |> Option.map PlayDispatch
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 //#endif
 
 let defaultCommand = "dotnet run --project src/Product/Product.fsproj"
@@ -631,144 +781,218 @@ let private writeFallbackPngEvidence (path: string) =
         Directory.CreateDirectory(directory |> string) |> ignore
 
     let bytes =
-        Convert.FromBase64String "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+        Convert.FromBase64String
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
 
     File.WriteAllBytes(path, bytes)
 
 let boundedSmoke includeFrameDiagnostics evidencePath =
     let capturedDiagnostics = ResizeArray<ViewerDiagnosticEvent>()
+
     let diagnosticCategories =
         if includeFrameDiagnostics then
-            Set.ofList [ ViewerDiagnosticCategory.Startup; ViewerDiagnosticCategory.Renderer; ViewerDiagnosticCategory.Frame ]
+            Set.ofList
+                [
+                    ViewerDiagnosticCategory.Startup
+                    ViewerDiagnosticCategory.Renderer
+                    ViewerDiagnosticCategory.Frame
+                ]
         else
             Set.ofList [ ViewerDiagnosticCategory.Startup; ViewerDiagnosticCategory.Renderer ]
 
     let request: ViewerRunRequest =
-        { Target = FirstFrame
-          Timeout = TimeSpan.FromSeconds 10.0
-          Diagnostics =
-            { Viewer.defaultDiagnostics with
-                Categories = diagnosticCategories
-                FrameLogLimit = if includeFrameDiagnostics then Some 1 else Some 0
-                Sink = Some capturedDiagnostics.Add }
-          // The viewer host presents through OpenGL; the emitted evidence names the backend that
-          // actually initialized (single source of truth, #135) regardless of this field.
-          RendererMode = "opengl"
-          EvidencePath = Some evidencePath }
+        {
+            Target = FirstFrame
+            Timeout = TimeSpan.FromSeconds 10.0
+            Diagnostics =
+                { Viewer.defaultDiagnostics with
+                    Categories = diagnosticCategories
+                    FrameLogLimit = if includeFrameDiagnostics then Some 1 else Some 0
+                    Sink = Some capturedDiagnostics.Add
+                }
+            // The viewer host presents through OpenGL; the emitted evidence names the backend that
+            // actually initialized (single source of truth, #135) regardless of this field.
+            RendererMode = "opengl"
+            EvidencePath = Some evidencePath
+        }
 
     let scene =
         Text(
             (24.0, 48.0),
             "Generated bounded smoke",
-            { Red = 240uy
-              Green = 240uy
-              Blue = 240uy
-              Alpha = 255uy }
+            {
+                Red = 240uy
+                Green = 240uy
+                Blue = 240uy
+                Alpha = 255uy
+            }
         )
 
     let result: Result<ViewerRunEvidence, ViewerRunFailure> =
         Viewer.runBounded
             request
-            { Title = "Generated Product Bounded Smoke"
-              InitialSize = { Width = 320; Height = 200 }; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None }
+            {
+                Title = "Generated Product Bounded Smoke"
+                InitialSize = { Width = 320; Height = 200 }
+                PresentMode = ViewerPresentMode.OffscreenReadback
+                FrameRateCap = None
+                LogicalSize = None
+            }
             scene
 
     match result with
     | Result.Ok evidence ->
         let diagnosticMode =
-            if includeFrameDiagnostics then "frame-focused" else "startup-focused"
+            if includeFrameDiagnostics then
+                "frame-focused"
+            else
+                "startup-focused"
 
         let diagnosticCategories =
             String.Join(",", capturedDiagnostics |> Seq.map _.Category)
 
         let lines =
-            [ "status=ok"
-              "smoke=bounded-viewer"
-              $"frames-rendered={evidence.FramesRendered}"
-              $"elapsed-ms={evidence.Elapsed.TotalMilliseconds}"
-              $"initial-output-size={evidence.InitialOutputSize.Width}x{evidence.InitialOutputSize.Height}"
-              $"renderer-mode={evidence.RendererMode}"
-              $"diagnostic-mode={diagnosticMode}"
-              $"diagnostic-categories={diagnosticCategories}" ]
+            [
+                "status=ok"
+                "smoke=bounded-viewer"
+                $"frames-rendered={evidence.FramesRendered}"
+                $"elapsed-ms={evidence.Elapsed.TotalMilliseconds}"
+                $"initial-output-size={evidence.InitialOutputSize.Width}x{evidence.InitialOutputSize.Height}"
+                $"renderer-mode={evidence.RendererMode}"
+                $"diagnostic-mode={diagnosticMode}"
+                $"diagnostic-categories={diagnosticCategories}"
+            ]
 
         writeGeneratedEvidenceLines evidencePath false 0 lines |> ignore
-        printfn "status=ok smoke=bounded-viewer frames-rendered=%d renderer-mode=%s evidence=%s" evidence.FramesRendered evidence.RendererMode evidencePath
+
+        printfn
+            "status=ok smoke=bounded-viewer frames-rendered=%d renderer-mode=%s evidence=%s"
+            evidence.FramesRendered
+            evidence.RendererMode
+            evidencePath
+
         0
     | Result.Error failure ->
         let summary = failure.LastDiagnosticSummary |> Option.defaultValue ""
+
         let diagnosticMode =
-            if includeFrameDiagnostics then "frame-focused" else "startup-focused"
+            if includeFrameDiagnostics then
+                "frame-focused"
+            else
+                "startup-focused"
 
         let diagnosticCategories =
             String.Join(",", capturedDiagnostics |> Seq.map _.Category)
 
         let lines =
-            [ if failure.Classification = UnsupportedEnvironment then
-                  "status=unsupported"
-              else
-                  "status=failed"
-              "smoke=bounded-viewer"
-              $"blocked-stage={failure.BlockedStage}"
-              $"classification={failure.Classification}"
-              $"diagnostic-category={failure.DiagnosticCategory}"
-              $"message={failure.Message}"
-              $"last-diagnostic-summary={summary}"
-              $"diagnostic-mode={diagnosticMode}"
-              $"diagnostic-categories={diagnosticCategories}" ]
+            [
+                if failure.Classification = UnsupportedEnvironment then
+                    "status=unsupported"
+                else
+                    "status=failed"
+                "smoke=bounded-viewer"
+                $"blocked-stage={failure.BlockedStage}"
+                $"classification={failure.Classification}"
+                $"diagnostic-category={failure.DiagnosticCategory}"
+                $"message={failure.Message}"
+                $"last-diagnostic-summary={summary}"
+                $"diagnostic-mode={diagnosticMode}"
+                $"diagnostic-categories={diagnosticCategories}"
+            ]
 
         writeGeneratedEvidenceLines evidencePath false 0 lines |> ignore
-        printfn "status=%s smoke=bounded-viewer blocked-stage=%A classification=%A evidence=%s" (if failure.Classification = UnsupportedEnvironment then "unsupported" else "failed") failure.BlockedStage failure.Classification evidencePath
 
-        if failure.Classification = UnsupportedEnvironment then 0 else 1
+        printfn
+            "status=%s smoke=bounded-viewer blocked-stage=%A classification=%A evidence=%s"
+            (if failure.Classification = UnsupportedEnvironment then
+                 "unsupported"
+             else
+                 "failed")
+            failure.BlockedStage
+            failure.Classification
+            evidencePath
+
+        if failure.Classification = UnsupportedEnvironment then
+            0
+        else
+            1
 
 let launchEvidence evidencePath =
     let request: ViewerRunRequest =
-        { Target = FirstFrame
-          Timeout = TimeSpan.FromSeconds 10.0
-          Diagnostics = Viewer.defaultDiagnostics
-          RendererMode = "skia"
-          EvidencePath = Some evidencePath }
+        {
+            Target = FirstFrame
+            Timeout = TimeSpan.FromSeconds 10.0
+            Diagnostics = Viewer.defaultDiagnostics
+            RendererMode = "skia"
+            EvidencePath = Some evidencePath
+        }
 
     match Viewer.runBounded request evidenceViewerOptions (view initialModel) with
     | Result.Ok evidence ->
-        [ "status=ok"
-          "mode=persistent-evidence"
-          "command=--launch-evidence"
-          "self-closed-for-evidence=true"
-          $"first-frame-presented={evidence.FramesRendered > 0}"
-          "input-dispatch=not-required"
-          "window-opened=true"
-          $"renderer-mode={evidence.RendererMode}"
-          "user-close-observed=false"
-          "exit-path=true" ]
+        [
+            "status=ok"
+            "mode=persistent-evidence"
+            "command=--launch-evidence"
+            "self-closed-for-evidence=true"
+            $"first-frame-presented={evidence.FramesRendered > 0}"
+            "input-dispatch=not-required"
+            "window-opened=true"
+            $"renderer-mode={evidence.RendererMode}"
+            "user-close-observed=false"
+            "exit-path=true"
+        ]
         |> writeGeneratedEvidenceLines evidencePath false 0
         |> ignore
 
-        printfn "status=ok mode=persistent-evidence command=--launch-evidence self-closed-for-evidence=true first-frame-presented=%b input-dispatch=not-required evidence=%s" (evidence.FramesRendered > 0) evidencePath
+        printfn
+            "status=ok mode=persistent-evidence command=--launch-evidence self-closed-for-evidence=true first-frame-presented=%b input-dispatch=not-required evidence=%s"
+            (evidence.FramesRendered > 0)
+            evidencePath
+
         0
     | Result.Error failure ->
-        let status = if failure.Classification = UnsupportedEnvironment then "unsupported" else "failed"
+        let status =
+            if failure.Classification = UnsupportedEnvironment then
+                "unsupported"
+            else
+                "failed"
 
-        [ $"status={status}"
-          "mode=persistent-evidence"
-          "command=--launch-evidence"
-          $"blocked-stage={failure.BlockedStage}"
-          $"classification={failure.Classification}"
-          $"category={failure.DiagnosticCategory}"
-          $"message={failure.Message}" ]
+        [
+            $"status={status}"
+            "mode=persistent-evidence"
+            "command=--launch-evidence"
+            $"blocked-stage={failure.BlockedStage}"
+            $"classification={failure.Classification}"
+            $"category={failure.DiagnosticCategory}"
+            $"message={failure.Message}"
+        ]
         |> writeGeneratedEvidenceLines evidencePath false 0
         |> ignore
 
-        printfn "status=%s mode=persistent-evidence command=--launch-evidence blocked-stage=%A classification=%A evidence=%s" (if failure.Classification = UnsupportedEnvironment then "unsupported" else "failed") failure.BlockedStage failure.Classification evidencePath
-        if failure.Classification = UnsupportedEnvironment then 0 else 1
+        printfn
+            "status=%s mode=persistent-evidence command=--launch-evidence blocked-stage=%A classification=%A evidence=%s"
+            (if failure.Classification = UnsupportedEnvironment then
+                 "unsupported"
+             else
+                 "failed")
+            failure.BlockedStage
+            failure.Classification
+            evidencePath
+
+        if failure.Classification = UnsupportedEnvironment then
+            0
+        else
+            1
 
 let imageEvidence evidencePath =
     let request: ViewerRunRequest =
-        { Target = FirstFrame
-          Timeout = TimeSpan.FromSeconds 10.0
-          Diagnostics = Viewer.defaultDiagnostics
-          RendererMode = "skia"
-          EvidencePath = Some evidencePath }
+        {
+            Target = FirstFrame
+            Timeout = TimeSpan.FromSeconds 10.0
+            Diagnostics = Viewer.defaultDiagnostics
+            RendererMode = "skia"
+            EvidencePath = Some evidencePath
+        }
 
     match Viewer.runAppEvidence request evidenceViewerOptions generatedHost with
     | Result.Ok outcome ->
@@ -776,21 +1000,25 @@ let imageEvidence evidencePath =
             writeFallbackPngEvidence evidencePath
 
         let decodable = isPngFile evidencePath
+
         let report =
             writeEvidenceReport
                 (evidencePath + ".metadata.txt")
                 GeneratedEvidenceOk
                 "--image-evidence"
-                [ evidenceField "mode" "persistent-evidence"
-                  evidenceField "evidence-kind" "image"
-                  evidenceField "path" evidencePath
-                  evidenceField "image-decodable" $"{decodable}"
-                  evidenceField "proves-scene-rendering" "true"
-                  evidenceField "proves-desktop-visibility" "false"
-                  evidenceField "renderer-mode" outcome.RendererMode
-                  evidenceField "self-closed-for-evidence" "true"
-                  evidenceField "input-dispatch" "not-required"
-                  evidenceField "first-frame-presented" "true" ]
+                [
+                    evidenceField "mode" "persistent-evidence"
+                    evidenceField "evidence-kind" "image"
+                    evidenceField "path" evidencePath
+                    evidenceField "image-decodable" $"{decodable}"
+                    evidenceField "proves-scene-rendering" "true"
+                    evidenceField "proves-desktop-visibility" "false"
+                    evidenceField "renderer-mode" outcome.RendererMode
+                    evidenceField "self-closed-for-evidence" "true"
+                    evidenceField "input-dispatch" "not-required"
+                    evidenceField "first-frame-presented" "true"
+                ]
+
         report
     | Result.Error failure ->
         let report =
@@ -798,13 +1026,16 @@ let imageEvidence evidencePath =
                 (evidencePath + ".metadata.txt")
                 GeneratedEvidenceUnsupported
                 "--image-evidence"
-                [ evidenceField "mode" "persistent-evidence"
-                  evidenceField "evidence-kind" "unsupported-host"
-                  evidenceField "unsupported-host-reason" failure.Message
-                  evidenceField "fallback" "deterministic-scene-evidence"
-                  evidenceField "blocked-stage" $"{failure.BlockedStage}"
-                  evidenceField "classification" $"{failure.Classification}"
-                  evidenceField "category" $"{failure.DiagnosticCategory}" ]
+                [
+                    evidenceField "mode" "persistent-evidence"
+                    evidenceField "evidence-kind" "unsupported-host"
+                    evidenceField "unsupported-host-reason" failure.Message
+                    evidenceField "fallback" "deterministic-scene-evidence"
+                    evidenceField "blocked-stage" $"{failure.BlockedStage}"
+                    evidenceField "classification" $"{failure.Classification}"
+                    evidenceField "category" $"{failure.DiagnosticCategory}"
+                ]
+
         report
 
 // Issue #901: render the FULL product view at LOGICAL resolution to a real, eyeballable PNG.
@@ -831,8 +1062,10 @@ let private tryPngDimensions (pngBytes: byte array) =
 
     if pngBytes.Length >= 24 && pngBytes[..7] = signature then
         Some
-            { Width = readBigEndianInt32 16
-              Height = readBigEndianInt32 20 }
+            {
+                Width = readBigEndianInt32 16
+                Height = readBigEndianInt32 20
+            }
     else
         None
 
@@ -855,6 +1088,7 @@ let private renderViewImageAtSize (evidencePath: string) width height =
         let decodable = isPngFile evidencePath
         let actualSize = tryPngDimensions pngBytes
         let dimensionsMatch = actualSize = Some size
+
         let status =
             if decodable && dimensionsMatch then
                 GeneratedEvidenceOk
@@ -865,24 +1099,26 @@ let private renderViewImageAtSize (evidencePath: string) width height =
             (evidencePath + ".metadata.txt")
             status
             "--view-image"
-            [ evidenceField "mode" "headless-readback"
-              evidenceField "evidence-kind" "view-image"
-              evidenceField "path" evidencePath
-              evidenceField "requested-size" $"{size.Width}x{size.Height}"
-              evidenceField "output-size" $"{size.Width}x{size.Height}"
-              evidenceField
-                  "actual-size"
-                  (actualSize
-                   |> Option.map (fun actual -> $"{actual.Width}x{actual.Height}")
-                   |> Option.defaultValue "unreadable")
-              evidenceField "dimensions-match" $"{dimensionsMatch}"
-              evidenceField "image-decodable" $"{decodable}"
-              evidenceField "png-bytes" $"{pngBytes.Length}"
-              evidenceField "renders-full-view" "true"
-              evidenceField "renderer-mode" "headless-cpu-readback"
-              evidenceField "readback-frame" "logical-canvas"
-              evidenceField "input-dispatch" "not-required"
-              evidenceField "self-closed-for-evidence" "true" ]
+            [
+                evidenceField "mode" "headless-readback"
+                evidenceField "evidence-kind" "view-image"
+                evidenceField "path" evidencePath
+                evidenceField "requested-size" $"{size.Width}x{size.Height}"
+                evidenceField "output-size" $"{size.Width}x{size.Height}"
+                evidenceField
+                    "actual-size"
+                    (actualSize
+                     |> Option.map (fun actual -> $"{actual.Width}x{actual.Height}")
+                     |> Option.defaultValue "unreadable")
+                evidenceField "dimensions-match" $"{dimensionsMatch}"
+                evidenceField "image-decodable" $"{decodable}"
+                evidenceField "png-bytes" $"{pngBytes.Length}"
+                evidenceField "renders-full-view" "true"
+                evidenceField "renderer-mode" "headless-cpu-readback"
+                evidenceField "readback-frame" "logical-canvas"
+                evidenceField "input-dispatch" "not-required"
+                evidenceField "self-closed-for-evidence" "true"
+            ]
     | Result.Error failure ->
         // Match only UnsupportedEnvironment explicitly; the wildcard catches the defect case. The
         // literal name of that other case is NOT spelled out on purpose — the scaffold's sourceName
@@ -901,27 +1137,33 @@ let private renderViewImageAtSize (evidencePath: string) width height =
             (evidencePath + ".metadata.txt")
             status
             "--view-image"
-            [ evidenceField "mode" "headless-readback"
-              evidenceField "evidence-kind" evidenceKind
-              evidenceField "path" evidencePath
-              evidenceField "requested-size" $"{size.Width}x{size.Height}"
-              evidenceField "output-size" $"{size.Width}x{size.Height}"
-              evidenceField "actual-size" "unavailable"
-              evidenceField "dimensions-match" "false"
-              evidenceField "blocked-stage" $"{failure.BlockedStage}"
-              evidenceField "classification" $"{failure.Classification}"
-              evidenceField "category" $"{failure.DiagnosticCategory}"
-              evidenceField "message" failure.Message ]
+            [
+                evidenceField "mode" "headless-readback"
+                evidenceField "evidence-kind" evidenceKind
+                evidenceField "path" evidencePath
+                evidenceField "requested-size" $"{size.Width}x{size.Height}"
+                evidenceField "output-size" $"{size.Width}x{size.Height}"
+                evidenceField "actual-size" "unavailable"
+                evidenceField "dimensions-match" "false"
+                evidenceField "blocked-stage" $"{failure.BlockedStage}"
+                evidenceField "classification" $"{failure.Classification}"
+                evidenceField "category" $"{failure.DiagnosticCategory}"
+                evidenceField "message" failure.Message
+            ]
 
 let viewImageAtSize (evidencePath: string) width height =
     let requestedPixels = int64 width * int64 height
 
     if width <= 0 || height <= 0 then
-        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be positive integers"
+        printfn
+            "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be positive integers"
+
         1
-    elif width > maxViewImageDimension
-         || height > maxViewImageDimension
-         || requestedPixels > maxViewImagePixels then
+    elif
+        width > maxViewImageDimension
+        || height > maxViewImageDimension
+        || requestedPixels > maxViewImagePixels
+    then
         printfn
             "status=failed command=--view-image diagnostic-category=resource-limit requested-size=%dx%d requested-pixels=%d max-dimension=%d max-pixels=%d diagnostics=request exceeds the safe CPU raster budget"
             width
@@ -929,33 +1171,38 @@ let viewImageAtSize (evidencePath: string) width height =
             requestedPixels
             maxViewImageDimension
             maxViewImagePixels
+
         1
     else
         renderViewImageAtSize evidencePath width height
 
-let viewImage (evidencePath: string) =
-    viewImageAtSize evidencePath 1280 720
+let viewImage (evidencePath: string) = viewImageAtSize evidencePath 1280 720
 
 let private tryRunViewImage evidencePath (width: string) (height: string) =
     match Int32.TryParse width, Int32.TryParse height with
     | (true, parsedWidth), (true, parsedHeight) -> viewImageAtSize evidencePath parsedWidth parsedHeight
     | _ ->
-        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be integers"
+        printfn
+            "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=width and height must be integers"
+
         1
 
 let screenshotEvidence evidencePath =
     let deterministicFallback = "deterministic-scene-evidence"
+
     let result =
         Viewer.captureScreenshotEvidence
-            { Command = "--screenshot-evidence"
-              AppOrSample = "Generated Product"
-              OutputPath = evidencePath
-              Width = evidenceViewerOptions.InitialSize.Width
-              Height = evidenceViewerOptions.InitialSize.Height
-              RendererMode = "skia"
-              CaptureMode = ViewerRenderTargetPng
-              HostFacts = [ $"os={Environment.OSVersion.Platform}"; $"machine={Environment.MachineName}" ]
-              Timeout = TimeSpan.FromSeconds 10.0 }
+            {
+                Command = "--screenshot-evidence"
+                AppOrSample = "Generated Product"
+                OutputPath = evidencePath
+                Width = evidenceViewerOptions.InitialSize.Width
+                Height = evidenceViewerOptions.InitialSize.Height
+                RendererMode = "skia"
+                CaptureMode = ViewerRenderTargetPng
+                HostFacts = [ $"os={Environment.OSVersion.Platform}"; $"machine={Environment.MachineName}" ]
+                Timeout = TimeSpan.FromSeconds 10.0
+            }
             evidenceViewerOptions
             (view initialModel)
 
@@ -976,44 +1223,55 @@ let screenshotEvidence evidencePath =
             evidencePath
             reportStatus
             "--screenshot-evidence"
-            [ evidenceField "mode" "persistent-evidence"
-              evidenceField "evidence-kind" "screenshot"
-              evidenceField "renderer-mode" result.RendererMode
-              evidenceField "unsupported-host-reason" (result.UnsupportedHostReason |> Option.defaultValue "none")
-              evidenceField "fallback" fallback
-              evidenceField "app-or-sample" result.AppOrSample
-              evidenceField "host-facts" (String.concat "," result.HostFacts)
-              evidenceField "capture-mode" $"{result.CaptureMode}"
-              evidenceField "artifact-path" (result.ScreenshotPath |> Option.defaultValue "none")
-              evidenceField "screenshot-path" (result.ScreenshotPath |> Option.defaultValue "none")
-              evidenceField "image-width" (result.Width |> Option.map string |> Option.defaultValue "none")
-              evidenceField "image-height" (result.Height |> Option.map string |> Option.defaultValue "none")
-              evidenceField "width" (result.Width |> Option.map string |> Option.defaultValue "none")
-              evidenceField "height" (result.Height |> Option.map string |> Option.defaultValue "none")
-              evidenceField "pixel-content-validation" $"{result.PixelContentValidation}"
-              evidenceField "frames-rendered" (result.FramesRendered |> Option.map string |> Option.defaultValue "none")
-              evidenceField "viewer-open-status" $"{result.ViewerOpenStatus}"
-              evidenceField "first-frame-status" $"{result.FirstFrameStatus}"
-              evidenceField "capture-availability" $"{result.CaptureAvailability}"
-              evidenceField "capture-source" $"{result.CaptureSource}"
-              evidenceField "deterministic-fallback-kind" (result.DeterministicFallbackKind |> Option.defaultValue "none")
-              evidenceField "proves-screenshot" $"{result.ProvesScreenshot}"
-              evidenceField "blocked-stage" (result.BlockedStage |> Option.map string |> Option.defaultValue "none")
-              evidenceField "classification" (result.Classification |> Option.map string |> Option.defaultValue "none")
-              evidenceField "category" (result.Category |> Option.map string |> Option.defaultValue "none")
-              evidenceField "message" result.Message
-              evidenceField "timestamp" $"{result.Timestamp:O}"
-              evidenceField "diagnostics" (String.concat "|" result.Diagnostics) ]
+            [
+                evidenceField "mode" "persistent-evidence"
+                evidenceField "evidence-kind" "screenshot"
+                evidenceField "renderer-mode" result.RendererMode
+                evidenceField "unsupported-host-reason" (result.UnsupportedHostReason |> Option.defaultValue "none")
+                evidenceField "fallback" fallback
+                evidenceField "app-or-sample" result.AppOrSample
+                evidenceField "host-facts" (String.concat "," result.HostFacts)
+                evidenceField "capture-mode" $"{result.CaptureMode}"
+                evidenceField "artifact-path" (result.ScreenshotPath |> Option.defaultValue "none")
+                evidenceField "screenshot-path" (result.ScreenshotPath |> Option.defaultValue "none")
+                evidenceField "image-width" (result.Width |> Option.map string |> Option.defaultValue "none")
+                evidenceField "image-height" (result.Height |> Option.map string |> Option.defaultValue "none")
+                evidenceField "width" (result.Width |> Option.map string |> Option.defaultValue "none")
+                evidenceField "height" (result.Height |> Option.map string |> Option.defaultValue "none")
+                evidenceField "pixel-content-validation" $"{result.PixelContentValidation}"
+                evidenceField
+                    "frames-rendered"
+                    (result.FramesRendered |> Option.map string |> Option.defaultValue "none")
+                evidenceField "viewer-open-status" $"{result.ViewerOpenStatus}"
+                evidenceField "first-frame-status" $"{result.FirstFrameStatus}"
+                evidenceField "capture-availability" $"{result.CaptureAvailability}"
+                evidenceField "capture-source" $"{result.CaptureSource}"
+                evidenceField
+                    "deterministic-fallback-kind"
+                    (result.DeterministicFallbackKind |> Option.defaultValue "none")
+                evidenceField "proves-screenshot" $"{result.ProvesScreenshot}"
+                evidenceField "blocked-stage" (result.BlockedStage |> Option.map string |> Option.defaultValue "none")
+                evidenceField
+                    "classification"
+                    (result.Classification |> Option.map string |> Option.defaultValue "none")
+                evidenceField "category" (result.Category |> Option.map string |> Option.defaultValue "none")
+                evidenceField "message" result.Message
+                evidenceField "timestamp" $"{result.Timestamp:O}"
+                evidenceField "diagnostics" (String.concat "|" result.Diagnostics)
+            ]
+
     report
 
 let visualEvidence command _commandLine format evidenceKind _evidenceKindLine fallbackReason evidencePath =
     let result =
         SceneEvidence.render
-            { Scene = { Nodes = [ view initialModel ] }
-              OutputSize = evidenceViewerOptions.InitialSize
-              Format = format
-              RendererMode = "deterministic-scene"
-              EvidencePath = None }
+            {
+                Scene = { Nodes = [ view initialModel ] }
+                OutputSize = evidenceViewerOptions.InitialSize
+                Format = format
+                RendererMode = "deterministic-scene"
+                EvidencePath = None
+            }
 
     match result with
     | Result.Ok evidence ->
@@ -1022,36 +1280,46 @@ let visualEvidence command _commandLine format evidenceKind _evidenceKindLine fa
                 evidencePath
                 GeneratedEvidenceOk
                 command
-                [ evidenceField "mode" "persistent-evidence"
-                  evidenceField "evidence-kind" evidenceKind
-                  evidenceField "supported-host" "true"
-                  evidenceField "fallback-reason" fallbackReason
-                  evidenceField "playfield-readable" "true"
-                  evidenceField "input-or-progress-observed" "true"
-                  evidenceField "self-closed-for-evidence" "true"
-                  evidenceField "input-dispatch" "not-required"
-                  evidenceField "first-frame-presented" "true"
-                  evidenceField "renderer-mode" evidence.RendererMode
-                  evidenceField "scene-evidence-format" $"{evidence.Format}"
-                  evidenceField "value" evidence.Value ]
+                [
+                    evidenceField "mode" "persistent-evidence"
+                    evidenceField "evidence-kind" evidenceKind
+                    evidenceField "supported-host" "true"
+                    evidenceField "fallback-reason" fallbackReason
+                    evidenceField "playfield-readable" "true"
+                    evidenceField "input-or-progress-observed" "true"
+                    evidenceField "self-closed-for-evidence" "true"
+                    evidenceField "input-dispatch" "not-required"
+                    evidenceField "first-frame-presented" "true"
+                    evidenceField "renderer-mode" evidence.RendererMode
+                    evidenceField "scene-evidence-format" $"{evidence.Format}"
+                    evidenceField "value" evidence.Value
+                ]
+
         report
     | Result.Error failure ->
-        let unsupportedReason = if String.IsNullOrWhiteSpace failure.Message then "visual evidence unavailable" else failure.Message
+        let unsupportedReason =
+            if String.IsNullOrWhiteSpace failure.Message then
+                "visual evidence unavailable"
+            else
+                failure.Message
 
         let report =
             writeEvidenceReport
                 evidencePath
                 GeneratedEvidenceUnsupported
                 command
-                [ evidenceField "mode" "persistent-evidence"
-                  evidenceField "evidence-kind" evidenceKind
-                  evidenceField "supported-host" "false"
-                  evidenceField "unsupported-host-reason" unsupportedReason
-                  evidenceField "fallback" "deterministic-scene-evidence"
-                  evidenceField "blocked-stage" $"{failure.BlockedStage}"
-                  evidenceField "classification" $"{failure.Classification}"
-                  evidenceField "category" $"{failure.DiagnosticCategory}"
-                  evidenceField "message" failure.Message ]
+                [
+                    evidenceField "mode" "persistent-evidence"
+                    evidenceField "evidence-kind" evidenceKind
+                    evidenceField "supported-host" "false"
+                    evidenceField "unsupported-host-reason" unsupportedReason
+                    evidenceField "fallback" "deterministic-scene-evidence"
+                    evidenceField "blocked-stage" $"{failure.BlockedStage}"
+                    evidenceField "classification" $"{failure.Classification}"
+                    evidenceField "category" $"{failure.DiagnosticCategory}"
+                    evidenceField "message" failure.Message
+                ]
+
         report
 
 let sceneEvidence evidencePath =
@@ -1059,26 +1327,42 @@ let sceneEvidence evidencePath =
         Text(
             (24.0, 48.0),
             "Generated scene evidence",
-            { Red = 240uy
-              Green = 240uy
-              Blue = 240uy
-              Alpha = 255uy }
+            {
+                Red = 240uy
+                Green = 240uy
+                Blue = 240uy
+                Alpha = 255uy
+            }
         )
 
     let result =
         SceneEvidence.render
-            { Scene = { Nodes = [ scene ] }
-              OutputSize = { Width = 320; Height = 200 }
-              Format = Metadata
-              RendererMode = "deterministic-scene"
-              EvidencePath = Some evidencePath }
+            {
+                Scene = { Nodes = [ scene ] }
+                OutputSize = { Width = 320; Height = 200 }
+                Format = Metadata
+                RendererMode = "deterministic-scene"
+                EvidencePath = Some evidencePath
+            }
 
     match result with
     | Result.Ok evidence ->
-        printfn "status=ok scene-evidence renderer-mode=%s evidence=%s value=%s" evidence.RendererMode evidencePath evidence.Value
+        printfn
+            "status=ok scene-evidence renderer-mode=%s evidence=%s value=%s"
+            evidence.RendererMode
+            evidencePath
+            evidence.Value
+
         0
     | Result.Error failure ->
-        printfn "status=failed scene-evidence blocked-stage=%s classification=%A category=%s message=%s evidence=%s" failure.BlockedStage failure.Classification failure.DiagnosticCategory failure.Message evidencePath
+        printfn
+            "status=failed scene-evidence blocked-stage=%s classification=%A category=%s message=%s evidence=%s"
+            failure.BlockedStage
+            failure.Classification
+            failure.DiagnosticCategory
+            failure.Message
+            evidencePath
+
         1
 
 let windowDiagnostics (evidencePath: string) =
@@ -1089,8 +1373,8 @@ let windowDiagnostics (evidencePath: string) =
     // gate) and marks the live-window classes as not observed here — it never fabricates an `observed:*`
     // window failure it did not see, and never implies "a live window is impossible" on a host that
     // actually supports one (the self-report/reality mismatch #136 fixes).
-    let desktop = Viewer.desktopSessionDiagnostic()
-    let capability = Viewer.runtimeCapability()
+    let desktop = Viewer.desktopSessionDiagnostic ()
+    let capability = Viewer.runtimeCapability ()
     let windowSupported = capability.PersistentWindow
     let supportedText = if windowSupported then "true" else "false"
 
@@ -1102,7 +1386,10 @@ let windowDiagnostics (evidencePath: string) =
     // The interactive live-window path is available exactly when the shared gate says so, so the
     // environment-session line reports the real desktop-session verdict rather than a fixed status.
     let environmentStatus =
-        if desktop.DiagnosticClass = "unsupported-host" then "unsupported" else "ok"
+        if desktop.DiagnosticClass = "unsupported-host" then
+            "unsupported"
+        else
+            "ok"
 
     // The three live-window classes cannot be OBSERVED by a headless probe (no visible window is
     // created here). On a host that supports the live window they are `degraded` (a check this probe
@@ -1129,10 +1416,12 @@ let windowDiagnostics (evidencePath: string) =
     let approotDefectMessage = liveClassMessage "product-defect"
 
     let lines =
-        [ $"status={environmentStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=environment-session persistent-window-supported={supportedText} {notObserved} fallback-is-full-desktop-session={desktop.FallbackIsFullDesktopSession} message={desktop.Message}"
-          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=window-visibility persistent-window-supported={supportedText} {notObserved} message={visibilityMessage}"
-          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=app-lifecycle persistent-window-supported={supportedText} {notObserved} message={lifecycleMessage}"
-          $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect persistent-window-supported={supportedText} {notObserved} message={approotDefectMessage}" ]
+        [
+            $"status={environmentStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=environment-session persistent-window-supported={supportedText} {notObserved} fallback-is-full-desktop-session={desktop.FallbackIsFullDesktopSession} message={desktop.Message}"
+            $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=window-visibility persistent-window-supported={supportedText} {notObserved} message={visibilityMessage}"
+            $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=app-lifecycle persistent-window-supported={supportedText} {notObserved} message={lifecycleMessage}"
+            $"status={liveClassStatus} mode=interactive-window command=--window-diagnostics diagnostic-class=product-defect persistent-window-supported={supportedText} {notObserved} message={approotDefectMessage}"
+        ]
 
     let directory = Path.GetDirectoryName evidencePath
 
@@ -1158,7 +1447,8 @@ let tryRunEvidenceCommand args =
     | "--bounded-smoke" :: path :: _ -> Some(boundedSmoke false path)
     | "--bounded-smoke" :: _ -> Some(boundedSmoke false "readiness/bounded-viewer-smoke.txt")
     | "--bounded-smoke-frame-diagnostics" :: path :: _ -> Some(boundedSmoke true path)
-    | "--bounded-smoke-frame-diagnostics" :: _ -> Some(boundedSmoke true "readiness/bounded-viewer-frame-diagnostics.txt")
+    | "--bounded-smoke-frame-diagnostics" :: _ ->
+        Some(boundedSmoke true "readiness/bounded-viewer-frame-diagnostics.txt")
     | "--scene-evidence" :: path :: _ -> Some(sceneEvidence path)
     | "--scene-evidence" :: _ -> Some(sceneEvidence "readiness/headless-scene-evidence.txt")
     | "--window-diagnostics" :: path :: _ -> Some(windowDiagnostics path)
@@ -1169,22 +1459,46 @@ let tryRunEvidenceCommand args =
     | "--image-evidence" :: _ -> Some(imageEvidence "readiness/game-image-evidence.png")
     | "--view-image" :: path :: width :: height :: _ -> Some(tryRunViewImage path width height)
     | "--view-image" :: _path :: _width :: [] ->
-        printfn "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=provide both width and height"
+        printfn
+            "status=failed command=--view-image diagnostic-category=invalid-dimensions diagnostics=provide both width and height"
+
         Some 1
     | "--view-image" :: path :: _ -> Some(viewImage path)
     | "--view-image" :: _ -> Some(viewImage "readiness/view-image.png")
     | "--screenshot-evidence" :: path :: _ -> Some(screenshotEvidence path)
     | "--screenshot-evidence" :: _ -> Some(screenshotEvidence "readiness/game-screenshot-evidence.txt")
     | "--performance-evidence" :: path :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence path)
-    | "--performance-evidence" :: _ -> Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence "readiness/performance-evidence.json")
+    | "--performance-evidence" :: _ ->
+        Some(AppRoot.PerformanceEvidence.writeExpectedWorkloadEvidence "readiness/performance-evidence.json")
     | "--performance-critic-request" :: path :: _ ->
         Some(AppRoot.PerformanceEvidence.writePerformanceCriticRequest path)
     | "--performance-critic-request" :: _ ->
         Some(AppRoot.PerformanceEvidence.writePerformanceCriticRequest "readiness/performance-critic-request.json")
     | "--performance-intent" :: path :: _ -> Some(AppRoot.PerformanceEvidence.writePerformanceIntentDeclaration path)
-    | "--performance-intent" :: _ -> Some(AppRoot.PerformanceEvidence.writePerformanceIntentDeclaration "readiness/performance-intent.yml")
-    | "--pixel-readback-evidence" :: path :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" path)
-    | "--pixel-readback-evidence" :: _ -> Some(visualEvidence "--pixel-readback-evidence" "command=--pixel-readback-evidence" Hash "pixel-readback" "evidence-kind=pixel-readback" "screenshot-unavailable" "readiness/game-pixel-readback-evidence.txt")
+    | "--performance-intent" :: _ ->
+        Some(AppRoot.PerformanceEvidence.writePerformanceIntentDeclaration "readiness/performance-intent.yml")
+    | "--pixel-readback-evidence" :: path :: _ ->
+        Some(
+            visualEvidence
+                "--pixel-readback-evidence"
+                "command=--pixel-readback-evidence"
+                Hash
+                "pixel-readback"
+                "evidence-kind=pixel-readback"
+                "screenshot-unavailable"
+                path
+        )
+    | "--pixel-readback-evidence" :: _ ->
+        Some(
+            visualEvidence
+                "--pixel-readback-evidence"
+                "command=--pixel-readback-evidence"
+                Hash
+                "pixel-readback"
+                "evidence-kind=pixel-readback"
+                "screenshot-unavailable"
+                "readiness/game-pixel-readback-evidence.txt"
+        )
     | _ -> None
 
 //#endif

@@ -32,7 +32,9 @@ let private validationReportPath =
     repositoryPath "specs/204-template-lifecycle-symbol/readiness/lifecycle-template-validation.md"
 
 let private templateJsonPath = repositoryPath ".template.config/template.json"
-let private skillManifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
+
+let private skillManifestPath =
+    repositoryPath "template/skill-manifest/skill-manifest.json"
 
 let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 
@@ -88,11 +90,57 @@ let private SPEC_KIT_COND = "lifecycle == \"spec-kit\""
 // delivery is FS.GG.SDD's surface, not this template's emission. `fs-gg-audio` leaves app; all four leave
 // sample-pack and game.
 let private expectedFrameworkSkills =
-    [ "app", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-game-shell"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-testing" ]
-      "headless-scene", set [ "fs-gg-scene"; "fs-gg-testing" ]
-      "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
-      "sample-pack", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ]
-      "game", set [ "fs-gg-scene"; "fs-gg-skiaviewer"; "fs-gg-elmish"; "fs-gg-keyboard-input"; "fs-gg-game-shell"; "fs-gg-ui-widgets"; "fs-gg-styling"; "fs-gg-layout"; "fs-gg-symbology"; "fs-gg-symbol-design"; "fs-gg-collision"; "fs-gg-visibility"; "fs-gg-grids"; "fs-gg-line-drawing"; "fs-gg-testing" ] ]
+    [
+        "app",
+        set
+            [
+                "fs-gg-scene"
+                "fs-gg-skiaviewer"
+                "fs-gg-elmish"
+                "fs-gg-keyboard-input"
+                "fs-gg-game-shell"
+                "fs-gg-ui-widgets"
+                "fs-gg-styling"
+                "fs-gg-layout"
+                "fs-gg-symbology"
+                "fs-gg-testing"
+            ]
+        "headless-scene", set [ "fs-gg-scene"; "fs-gg-testing" ]
+        "governed", set [ "fs-gg-scene"; "fs-gg-testing" ]
+        "sample-pack",
+        set
+            [
+                "fs-gg-scene"
+                "fs-gg-skiaviewer"
+                "fs-gg-elmish"
+                "fs-gg-symbology"
+                "fs-gg-symbol-design"
+                "fs-gg-collision"
+                "fs-gg-visibility"
+                "fs-gg-grids"
+                "fs-gg-line-drawing"
+                "fs-gg-testing"
+            ]
+        "game",
+        set
+            [
+                "fs-gg-scene"
+                "fs-gg-skiaviewer"
+                "fs-gg-elmish"
+                "fs-gg-keyboard-input"
+                "fs-gg-game-shell"
+                "fs-gg-ui-widgets"
+                "fs-gg-styling"
+                "fs-gg-layout"
+                "fs-gg-symbology"
+                "fs-gg-symbol-design"
+                "fs-gg-collision"
+                "fs-gg-visibility"
+                "fs-gg-grids"
+                "fs-gg-line-drawing"
+                "fs-gg-testing"
+            ]
+    ]
 
 // The env-free G-EMIT matrix above covers all five scene-bearing profiles (game's symbology emit is
 // proven directly from template.json). The live lifecycle-validation REPORT, however, only scaffolds
@@ -110,15 +158,14 @@ let private validatorScriptRelPath = "scripts/validate-lifecycle-template.fsx"
 // ensureFresh is memoised per report path, so whichever of the two modules initializes first
 // regenerates it, once.
 let private verdictCoreInputs =
-    [ templateJsonPath
-      repositoryPath validatorScriptRelPath
-      repositoryPath "template/base/README.md" ]
+    [
+        templateJsonPath
+        repositoryPath validatorScriptRelPath
+        repositoryPath "template/base/README.md"
+    ]
 
 let private reportProvisioned =
-    SelfProvision.ensureFresh
-        validationReportPath
-        verdictCoreInputs
-        [ "fsi"; validatorScriptRelPath; "--emit-report" ]
+    SelfProvision.ensureFresh validationReportPath verdictCoreInputs [ "fsi"; validatorScriptRelPath; "--emit-report" ]
 
 let private readValidationReport () =
     Expect.isTrue
@@ -126,6 +173,7 @@ let private readValidationReport () =
         (sprintf
             "lifecycle validation report missing at %s — regenerate via FS_GG_RUN_LIFECYCLE_VALIDATION=1 dotnet fsi scripts/validate-lifecycle-template.fsx"
             validationReportPath)
+
     File.ReadAllText validationReportPath
 
 // ---- env-free emission facts re-derived from template.json -------------------------------------
@@ -134,23 +182,36 @@ let private elemStr (e: JsonElement) : string =
     e.GetString() |> Option.ofObj |> Option.defaultValue ""
 
 type private SkillSource =
-    { Id: string
-      Target: string
-      Condition: string }
+    {
+        Id: string
+        Target: string
+        Condition: string
+    }
 
 /// All framework product-skill sources (source under template/product-skills/), with skill id, the
 /// destination target, and the condition.
 let private frameworkSkillSources () =
     use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
-    [ for s in doc.RootElement.GetProperty("sources").EnumerateArray() do
-        let str (prop: string) =
-            match s.TryGetProperty prop with
-            | true, v -> elemStr v
-            | _ -> ""
-        let source = (str "source").Replace('\\', '/')
-        if source.StartsWith "template/product-skills/" then
-            let id = source.TrimEnd('/').Split('/') |> Array.last
-            yield { Id = id; Target = (str "target").Replace('\\', '/'); Condition = str "condition" } ]
+
+    [
+        for s in doc.RootElement.GetProperty("sources").EnumerateArray() do
+            let str (prop: string) =
+                match s.TryGetProperty prop with
+                | true, v -> elemStr v
+                | _ -> ""
+
+            let source = (str "source").Replace('\\', '/')
+
+            if source.StartsWith "template/product-skills/" then
+                let id = source.TrimEnd('/').Split('/') |> Array.last
+
+                yield
+                    {
+                        Id = id
+                        Target = (str "target").Replace('\\', '/')
+                        Condition = str "condition"
+                    }
+    ]
 
 /// The set of framework skill ids that emit for `profile` under a NON-spec-kit lifecycle = sources
 /// with a matching profile predicate and no spec-kit clause.
@@ -167,138 +228,209 @@ let feature219EmitFrameworkSkillsTests =
     testList
         "Feature219 emit framework skills on every lifecycle"
         [
-          // G-EMIT (FR-001/FR-002, env-free): for each profile the framework `fs-gg-*` skills emitted
-          // under a non-spec-kit lifecycle equal the data-model matrix (symbology vendored, Feature 223).
-          test "G-EMIT framework skill set per profile is lifecycle-independent and matches the matrix" {
-              let sources = frameworkSkillSources ()
-              for profile, expected in expectedFrameworkSkills do
-                  let actual = emittedFor profile sources
-                  Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
-          }
+            // G-EMIT (FR-001/FR-002, env-free): for each profile the framework `fs-gg-*` skills emitted
+            // under a non-spec-kit lifecycle equal the data-model matrix (symbology vendored, Feature 223).
+            test "G-EMIT framework skill set per profile is lifecycle-independent and matches the matrix" {
+                let sources = frameworkSkillSources ()
 
-          // G-EMIT (FR-001, Feature 231 / ADR-0014): each framework product-skill emits to the provider
-          // source root `.agents/skills/` ONLY (profile-gated, EVERY lifecycle, copyOnly canonical body).
-          // Feature 230's 24 per-skill `.claude`/`.codex` twins are superseded by the SINGLE standalone
-          // materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, spec-kit) / the
-          // orchestrator fan-out (sdd) — a product-skill row targeting another root is a resurrected twin.
-          test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
-              use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
-              let sources = frameworkSkillSources ()
-              Expect.equal sources.Length 15 (sprintf "expected exactly 15 framework skill sources (.agents-only, no twins; ADR-0063 retired the 4 game-owned copies, #991 added fs-gg-game-shell), found %d" sources.Length)
-              for s in sources do
-                  Expect.stringContains s.Condition "profile ==" (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
-                  Expect.isTrue (s.Target.StartsWith ".agents/skills/") (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)
-                  Expect.isFalse (s.Condition.Contains SPEC_KIT_COND) (sprintf "%s -> %s (.agents/ provider surface) must NOT be lifecycle-gated" s.Id s.Target)
-              // The three structural ADR-0014 rows exist and are correctly gated:
-              let rows =
-                  [ for s in doc.RootElement.GetProperty("sources").EnumerateArray() ->
-                      let str (prop: string) =
-                          match s.TryGetProperty prop with
-                          | true, v -> elemStr v
-                          | _ -> ""
-                      let arr (prop: string) =
-                          match s.TryGetProperty prop with
-                          | true, a -> [ for e in a.EnumerateArray() -> elemStr e ]
-                          | _ -> []
-                      {| Source = (str "source").Replace('\\', '/')
-                         Target = (str "target").Replace('\\', '/')
-                         Condition = str "condition"
-                         Include = arr "include"
-                         CopyOnly = arr "copyOnly" |} ]
-              // 1. the tracked-root blanket vendors ONLY the speckit-* process skills (issue #1126).
-              let speckit = rows |> List.filter (fun r -> r.Source = ".claude/skills/")
-              Expect.equal speckit.Length 1 "exactly one tracked .claude/skills/ source"
-              Expect.equal speckit.Head.Include [ "speckit-*/**" ] "the tracked-root blanket includes ONLY speckit-*/** (no dev-surface wrappers)"
-              Expect.stringContains speckit.Head.Condition SPEC_KIT_COND "the speckit process-skill copy is spec-kit-gated"
-              // 2. the ungated skill-manifest row ships provider data in every lifecycle.
-              let manifest = rows |> List.filter (fun r -> r.Source = "template/skill-manifest/")
-              Expect.equal manifest.Length 1 "exactly one skill-manifest source"
-              Expect.equal manifest.Head.Condition "" "the skill-manifest row is ungated (ships under sdd/none too)"
-              Expect.isTrue (manifest.Head.Target.StartsWith ".agents/skills/") "the manifest lands inside the provider-owned .agents/skills/"
-              // 3. the single spec-kit materialize step replaces the twins.
-              let materialize = rows |> List.filter (fun r -> r.Source = "template/lifecycle/")
-              Expect.equal materialize.Length 1 "exactly one materialize-step source"
-              Expect.equal materialize.Head.Target ".specify/scripts/fs-gg/" "the materialize step lands under .specify/scripts/fs-gg/"
-              Expect.stringContains materialize.Head.Condition SPEC_KIT_COND "the materialize step is spec-kit-gated (orchestrator owns sdd mirroring)"
-              // 4. no source anywhere writes a skill into .claude/ or .codex/ except the base
-              //    .claude/ agent-context tree (settings/hooks + the fs-gg-project base body).
-              for r in rows do
-                  if (r.Target.StartsWith ".claude/skills/" || r.Target.StartsWith ".codex/skills/") then
-                      failtestf "resurrected per-root skill row: %s -> %s (ADR-0014 forbids hand-written twins)" r.Source r.Target
-          }
+                for profile, expected in expectedFrameworkSkills do
+                    let actual = emittedFor profile sources
+                    Expect.equal actual expected (sprintf "profile %s framework skill set" profile)
+            }
 
-          // G-EMIT (FR-001 positive, report-backed): sdd and none carry the framework skills.
-          test "G-EMIT report records framework-skills-present under sdd and none for every profile" {
-              let report = readValidationReport ()
-              for p in profiles do
-                  Expect.stringContains report (sprintf "sdd/%s: framework-skills-present=ok" p) (sprintf "sdd/%s skills present" p)
-                  Expect.stringContains report (sprintf "none/%s: framework-skills-present=ok" p) (sprintf "none/%s skills present" p)
-          }
+            // G-EMIT (FR-001, Feature 231 / ADR-0014): each framework product-skill emits to the provider
+            // source root `.agents/skills/` ONLY (profile-gated, EVERY lifecycle, copyOnly canonical body).
+            // Feature 230's 24 per-skill `.claude`/`.codex` twins are superseded by the SINGLE standalone
+            // materialize step (`.specify/scripts/fs-gg/materialize-skill-roots.fsx`, spec-kit) / the
+            // orchestrator fan-out (sdd) — a product-skill row targeting another root is a resurrected twin.
+            test "G-EMIT framework skill sources emit to .agents only (one materialize step owns the other roots)" {
+                use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
+                let sources = frameworkSkillSources ()
 
-          // G-CATALOG (FR-005/FR-006, env-free): the docs/skillist-reference.md catalog is emitted from
-          // a spec-kit-gated source (the named lifecycle-workspace exception), NOT the ungated base
-          // copyOnly list — so it is suppressed under sdd/none and never dangles.
-          test "G-CATALOG skillist-reference.md is spec-kit-gated, not ungated on the base source" {
-              use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
-              let sources = doc.RootElement.GetProperty("sources")
-              let str (s: JsonElement) (prop: string) =
-                  match s.TryGetProperty prop with
-                  | true, v -> elemStr v
-                  | _ -> ""
-              let arr (s: JsonElement) (prop: string) =
-                  match s.TryGetProperty prop with
-                  | true, a -> [ for e in a.EnumerateArray() -> elemStr e ]
-                  | _ -> []
-              // the base source (target ./) must NOT emit the catalog (it is excluded there).
-              let baseSource =
-                  sources.EnumerateArray() |> Seq.find (fun s -> str s "source" = "template/base/" && str s "target" = "./" && (str s "condition" = ""))
-              Expect.isTrue
-                  (List.contains "docs/skillist-reference.md" (arr baseSource "exclude"))
-                  "base source must exclude docs/skillist-reference.md"
-              Expect.isFalse
-                  (List.contains "docs/skillist-reference.md" (arr baseSource "copyOnly"))
-                  "base source must NOT list docs/skillist-reference.md in copyOnly"
-              // exactly one spec-kit-gated source re-emits the catalog (copyOnly, no sourceName rewrite).
-              let catalogSources =
-                  sources.EnumerateArray()
-                  |> Seq.filter (fun s ->
-                      List.contains "docs/skillist-reference.md" (arr s "include")
-                      || str s "target" = "docs/skillist-reference.md")
-                  |> Seq.toList
-              Expect.equal catalogSources.Length 1 "exactly one source re-emits the catalog"
-              let catalog = catalogSources.[0]
-              Expect.stringContains (str catalog "condition") SPEC_KIT_COND "the catalog source is spec-kit-gated"
-              Expect.isTrue
-                  (List.contains "docs/skillist-reference.md" (arr catalog "copyOnly"))
-                  "the catalog is copyOnly (governance tokens preserved verbatim)"
-          }
+                Expect.equal
+                    sources.Length
+                    15
+                    (sprintf
+                        "expected exactly 15 framework skill sources (.agents-only, no twins; ADR-0063 retired the 4 game-owned copies, #991 added fs-gg-game-shell), found %d"
+                        sources.Length)
 
-          // G-CATALOG (report-backed): no emitted catalog lists absent skills.
-          test "G-CATALOG report records catalog-dangling: none" {
-              let report = readValidationReport ()
-              Expect.stringContains report "catalog-dangling: none" "no scaffold emits a dangling catalog"
-          }
+                for s in sources do
+                    Expect.stringContains
+                        s.Condition
+                        "profile =="
+                        (sprintf "%s -> %s must carry a profile predicate" s.Id s.Target)
 
-          // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is either wired
-          // by this native template or explicitly declared package-only for an external provider.
-          test "G-NODANGLE-SYMB no product-skill directory is silently unwired; package-only rows are explicit" {
-              let productSkillsDir = repositoryPath "template/product-skills"
-              let onDisk =
-                  Directory.EnumerateDirectories productSkillsDir
-                  |> Seq.map Path.GetFileName
-                  |> Set.ofSeq
-              let wired = frameworkSkillSources () |> List.map (fun s -> s.Id) |> Set.ofList
-              let unwired = Set.difference onDisk wired
-              use manifest = JsonDocument.Parse(File.ReadAllText skillManifestPath)
-              let deliveryOnly =
-                  manifest.RootElement.GetProperty("skills").EnumerateArray()
-                  |> Seq.choose (fun entry ->
-                      match entry.TryGetProperty "delivery-only" with
-                      | true, value when value.GetBoolean() -> Some (elemStr (entry.GetProperty "id"))
-                      | _ -> None)
-                  |> Set.ofSeq
-              Expect.equal unwired deliveryOnly "every unwired product-skill directory is explicitly package-only, and every package-only row remains external"
-              let report = readValidationReport ()
-              Expect.stringContains report "symbology: vendored" "symbology status is explicitly resolved as vendored"
-          }
+                    Expect.isTrue
+                        (s.Target.StartsWith ".agents/skills/")
+                        (sprintf "%s -> %s: product skills emit to .agents/skills/ ONLY (ADR-0014)" s.Id s.Target)
+
+                    Expect.isFalse
+                        (s.Condition.Contains SPEC_KIT_COND)
+                        (sprintf "%s -> %s (.agents/ provider surface) must NOT be lifecycle-gated" s.Id s.Target)
+                // The three structural ADR-0014 rows exist and are correctly gated:
+                let rows =
+                    [
+                        for s in doc.RootElement.GetProperty("sources").EnumerateArray() ->
+                            let str (prop: string) =
+                                match s.TryGetProperty prop with
+                                | true, v -> elemStr v
+                                | _ -> ""
+
+                            let arr (prop: string) =
+                                match s.TryGetProperty prop with
+                                | true, a -> [ for e in a.EnumerateArray() -> elemStr e ]
+                                | _ -> []
+
+                            {|
+                                Source = (str "source").Replace('\\', '/')
+                                Target = (str "target").Replace('\\', '/')
+                                Condition = str "condition"
+                                Include = arr "include"
+                                CopyOnly = arr "copyOnly"
+                            |}
+                    ]
+                // 1. the tracked-root blanket vendors ONLY the speckit-* process skills (issue #1126).
+                let speckit = rows |> List.filter (fun r -> r.Source = ".claude/skills/")
+                Expect.equal speckit.Length 1 "exactly one tracked .claude/skills/ source"
+
+                Expect.equal
+                    speckit.Head.Include
+                    [ "speckit-*/**" ]
+                    "the tracked-root blanket includes ONLY speckit-*/** (no dev-surface wrappers)"
+
+                Expect.stringContains
+                    speckit.Head.Condition
+                    SPEC_KIT_COND
+                    "the speckit process-skill copy is spec-kit-gated"
+                // 2. the ungated skill-manifest row ships provider data in every lifecycle.
+                let manifest = rows |> List.filter (fun r -> r.Source = "template/skill-manifest/")
+                Expect.equal manifest.Length 1 "exactly one skill-manifest source"
+                Expect.equal manifest.Head.Condition "" "the skill-manifest row is ungated (ships under sdd/none too)"
+
+                Expect.isTrue
+                    (manifest.Head.Target.StartsWith ".agents/skills/")
+                    "the manifest lands inside the provider-owned .agents/skills/"
+                // 3. the single spec-kit materialize step replaces the twins.
+                let materialize = rows |> List.filter (fun r -> r.Source = "template/lifecycle/")
+                Expect.equal materialize.Length 1 "exactly one materialize-step source"
+
+                Expect.equal
+                    materialize.Head.Target
+                    ".specify/scripts/fs-gg/"
+                    "the materialize step lands under .specify/scripts/fs-gg/"
+
+                Expect.stringContains
+                    materialize.Head.Condition
+                    SPEC_KIT_COND
+                    "the materialize step is spec-kit-gated (orchestrator owns sdd mirroring)"
+                // 4. no source anywhere writes a skill into .claude/ or .codex/ except the base
+                //    .claude/ agent-context tree (settings/hooks + the fs-gg-project base body).
+                for r in rows do
+                    if (r.Target.StartsWith ".claude/skills/" || r.Target.StartsWith ".codex/skills/") then
+                        failtestf
+                            "resurrected per-root skill row: %s -> %s (ADR-0014 forbids hand-written twins)"
+                            r.Source
+                            r.Target
+            }
+
+            // G-EMIT (FR-001 positive, report-backed): sdd and none carry the framework skills.
+            test "G-EMIT report records framework-skills-present under sdd and none for every profile" {
+                let report = readValidationReport ()
+
+                for p in profiles do
+                    Expect.stringContains
+                        report
+                        (sprintf "sdd/%s: framework-skills-present=ok" p)
+                        (sprintf "sdd/%s skills present" p)
+
+                    Expect.stringContains
+                        report
+                        (sprintf "none/%s: framework-skills-present=ok" p)
+                        (sprintf "none/%s skills present" p)
+            }
+
+            // G-CATALOG (FR-005/FR-006, env-free): the docs/skillist-reference.md catalog is emitted from
+            // a spec-kit-gated source (the named lifecycle-workspace exception), NOT the ungated base
+            // copyOnly list — so it is suppressed under sdd/none and never dangles.
+            test "G-CATALOG skillist-reference.md is spec-kit-gated, not ungated on the base source" {
+                use doc = JsonDocument.Parse(File.ReadAllText templateJsonPath)
+                let sources = doc.RootElement.GetProperty("sources")
+
+                let str (s: JsonElement) (prop: string) =
+                    match s.TryGetProperty prop with
+                    | true, v -> elemStr v
+                    | _ -> ""
+
+                let arr (s: JsonElement) (prop: string) =
+                    match s.TryGetProperty prop with
+                    | true, a -> [ for e in a.EnumerateArray() -> elemStr e ]
+                    | _ -> []
+                // the base source (target ./) must NOT emit the catalog (it is excluded there).
+                let baseSource =
+                    sources.EnumerateArray()
+                    |> Seq.find (fun s ->
+                        str s "source" = "template/base/"
+                        && str s "target" = "./"
+                        && (str s "condition" = ""))
+
+                Expect.isTrue
+                    (List.contains "docs/skillist-reference.md" (arr baseSource "exclude"))
+                    "base source must exclude docs/skillist-reference.md"
+
+                Expect.isFalse
+                    (List.contains "docs/skillist-reference.md" (arr baseSource "copyOnly"))
+                    "base source must NOT list docs/skillist-reference.md in copyOnly"
+                // exactly one spec-kit-gated source re-emits the catalog (copyOnly, no sourceName rewrite).
+                let catalogSources =
+                    sources.EnumerateArray()
+                    |> Seq.filter (fun s ->
+                        List.contains "docs/skillist-reference.md" (arr s "include")
+                        || str s "target" = "docs/skillist-reference.md")
+                    |> Seq.toList
+
+                Expect.equal catalogSources.Length 1 "exactly one source re-emits the catalog"
+                let catalog = catalogSources.[0]
+                Expect.stringContains (str catalog "condition") SPEC_KIT_COND "the catalog source is spec-kit-gated"
+
+                Expect.isTrue
+                    (List.contains "docs/skillist-reference.md" (arr catalog "copyOnly"))
+                    "the catalog is copyOnly (governance tokens preserved verbatim)"
+            }
+
+            // G-CATALOG (report-backed): no emitted catalog lists absent skills.
+            test "G-CATALOG report records catalog-dangling: none" {
+                let report = readValidationReport ()
+                Expect.stringContains report "catalog-dangling: none" "no scaffold emits a dangling catalog"
+            }
+
+            // G-NODANGLE-SYMB (FR-007): every template/product-skills/<id> directory is either wired
+            // by this native template or explicitly declared package-only for an external provider.
+            test "G-NODANGLE-SYMB no product-skill directory is silently unwired; package-only rows are explicit" {
+                let productSkillsDir = repositoryPath "template/product-skills"
+
+                let onDisk =
+                    Directory.EnumerateDirectories productSkillsDir
+                    |> Seq.map Path.GetFileName
+                    |> Set.ofSeq
+
+                let wired = frameworkSkillSources () |> List.map (fun s -> s.Id) |> Set.ofList
+                let unwired = Set.difference onDisk wired
+                use manifest = JsonDocument.Parse(File.ReadAllText skillManifestPath)
+
+                let deliveryOnly =
+                    manifest.RootElement.GetProperty("skills").EnumerateArray()
+                    |> Seq.choose (fun entry ->
+                        match entry.TryGetProperty "delivery-only" with
+                        | true, value when value.GetBoolean() -> Some(elemStr (entry.GetProperty "id"))
+                        | _ -> None)
+                    |> Set.ofSeq
+
+                Expect.equal
+                    unwired
+                    deliveryOnly
+                    "every unwired product-skill directory is explicitly package-only, and every package-only row remains external"
+
+                let report = readValidationReport ()
+                Expect.stringContains report "symbology: vendored" "symbology status is explicitly resolved as vendored"
+            }
         ]

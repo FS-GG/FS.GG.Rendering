@@ -14,22 +14,28 @@ open SecondAntShowcase.Core.Model
 let private size: Size = { Width = 1024; Height = 768 }
 
 let private noMods: KeyModifiers =
-    { Ctrl = false
-      Alt = false
-      Shift = false
-      Meta = false }
+    {
+        Ctrl = false
+        Alt = false
+        Shift = false
+        Meta = false
+    }
 
 let private options () =
-    { Title = "Second Ant Showcase Render Lag Probe"
-      InitialSize = size
-      PresentMode = ViewerPresentMode.DirectToSwapchain
-      FrameRateCap = Some 60; LogicalSize = None }
+    {
+        Title = "Second Ant Showcase Render Lag Probe"
+        InitialSize = size
+        PresentMode = ViewerPresentMode.DirectToSwapchain
+        FrameRateCap = Some 60
+        LogicalSize = None
+    }
 
 let private windowBehavior () =
     { Viewer.defaultWindowBehavior with
         StartupState = ViewerWindowStartupState.Normal
         StartupPosition = Some ViewerWindowPosition.Centered
-        BackendPreference = Some ViewerBackendPreference.OpenGL }
+        BackendPreference = Some ViewerBackendPreference.OpenGL
+    }
 
 let private flag name args =
     let rec loop items =
@@ -64,11 +70,7 @@ let private outDir args =
     |> Option.defaultValue "specs/174-fix-render-lag/readiness/render-lag"
 
 let private forceSubstitute () =
-    String.Equals(
-        Environment.GetEnvironmentVariable "FS_GG_RENDER_LAG_FORCE_SUBSTITUTE",
-        "1",
-        StringComparison.Ordinal
-    )
+    String.Equals(Environment.GetEnvironmentVariable "FS_GG_RENDER_LAG_FORCE_SUBSTITUTE", "1", StringComparison.Ordinal)
 
 let private hostFor scenario theme =
     let baseHost = Host.create theme
@@ -76,19 +78,23 @@ let private hostFor scenario theme =
     match scenario with
     | "page-cycle" ->
         let pages = PageRegistry.all |> List.toArray
+
         { baseHost with
             MapKey =
                 fun key pressed ->
                     match key, pressed with
-                    | Function index, true when index >= 1 && index <= pages.Length -> Some(NavigateTo pages[index - 1].Id)
-                    | _ -> baseHost.MapKey key pressed }
+                    | Function index, true when index >= 1 && index <= pages.Length ->
+                        Some(NavigateTo pages[index - 1].Id)
+                    | _ -> baseHost.MapKey key pressed
+        }
     | "page-change" ->
         { baseHost with
             MapKey =
                 fun key pressed ->
                     match key, pressed with
                     | Function 2, true -> Some(NavigateTo "text-numeric-input")
-                    | _ -> baseHost.MapKey key pressed }
+                    | _ -> baseHost.MapKey key pressed
+        }
     | _ -> baseHost
 
 let private scriptFor args scenario =
@@ -99,31 +105,34 @@ let private scriptFor args scenario =
         let totalFrames = max 1 (durationSeconds * 60)
         let pageCount = max 1 PageRegistry.all.Length
 
-        [ for frame in 1..totalFrames do
-              if frame % pageIntervalFrames = 0 then
-                  let pageIndex = ((frame / pageIntervalFrames) % pageCount) + 1
-                  FrameInput.Key(Function pageIndex, noMods)
-              else
-                  FrameInput.Idle ]
+        [
+            for frame in 1..totalFrames do
+                if frame % pageIntervalFrames = 0 then
+                    let pageIndex = ((frame / pageIntervalFrames) % pageCount) + 1
+                    FrameInput.Key(Function pageIndex, noMods)
+                else
+                    FrameInput.Idle
+        ]
     | _ ->
         let key =
             match scenario with
             | "page-change" -> Function 2
             | _ -> Enter
 
-        [ FrameInput.Tick(TimeSpan.FromMilliseconds 16.0)
-          FrameInput.Key(key, noMods)
-          FrameInput.Tick(TimeSpan.FromMilliseconds 32.0)
-          FrameInput.Idle ]
+        [
+            FrameInput.Tick(TimeSpan.FromMilliseconds 16.0)
+            FrameInput.Key(key, noMods)
+            FrameInput.Tick(TimeSpan.FromMilliseconds 32.0)
+            FrameInput.Idle
+        ]
 
-let private jsonOptions =
-    JsonSerializerOptions(WriteIndented = true)
+let private jsonOptions = JsonSerializerOptions(WriteIndented = true)
 
-let private jsonLineOptions =
-    JsonSerializerOptions(WriteIndented = false)
+let private jsonLineOptions = JsonSerializerOptions(WriteIndented = false)
 
 let private runId () =
-    "lag-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff", CultureInfo.InvariantCulture)
+    "lag-"
+    + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff", CultureInfo.InvariantCulture)
 
 let private ms (duration: TimeSpan) =
     Math.Round(duration.TotalMilliseconds, 3)
@@ -136,7 +145,11 @@ let private percentile q values =
         sorted.[Math.Clamp(index, 0, sorted.Length - 1)] |> Some
 
 let private dominantPhase framePreparation paint presentation =
-    [ "frame-preparation", framePreparation; "paint", paint; "presentation", presentation ]
+    [
+        "frame-preparation", framePreparation
+        "paint", paint
+        "presentation", presentation
+    ]
     |> List.maxBy snd
     |> fst
 
@@ -162,52 +175,61 @@ let private phaseRecord run scenario frameIndex environmentStatus (metric: Frame
     | Some metric ->
         let paint = ms metric.PaintDuration
         let presentation = ms metric.ComposeDuration
+
         let framePreparation =
             metric.FrameDuration - metric.PaintDuration - metric.ComposeDuration
             |> fun value -> if value < TimeSpan.Zero then TimeSpan.Zero else value
             |> ms
+
         let total = framePreparation + paint + presentation
+
         JsonSerializer.Serialize(
-            {| runId = run
-               scenarioId = scenario
-               frameIndex = frameIndex
-               environmentStatus = environmentStatus
-               inputHandlingMs = 0.0
-               modelUpdateMs = if metric.ProductModelChanged then framePreparation else 0.0
-               framePreparationMs = framePreparation
-               layoutMs = if metric.LayoutRan then framePreparation else 0.0
-               textMs = 0.0
-               retainedStepMs = framePreparation
-               paintMs = paint
-               presentationMs = presentation
-               totalInputToVisibleMs = total
-               dominantPhase = dominantPhase framePreparation paint presentation
-               metadataVisitedNodeCount = metric.RemeasuredNodeCount + metric.RepaintedNodeCount
-               baselineNodeCount = metric.RemeasuredNodeCount + metric.RepaintedNodeCount
-               fallbackCount = metric.FullRenderFallbackCount
-               diagnostics = diagnostics |> List.toArray |},
-            jsonLineOptions)
+            {|
+                runId = run
+                scenarioId = scenario
+                frameIndex = frameIndex
+                environmentStatus = environmentStatus
+                inputHandlingMs = 0.0
+                modelUpdateMs = if metric.ProductModelChanged then framePreparation else 0.0
+                framePreparationMs = framePreparation
+                layoutMs = if metric.LayoutRan then framePreparation else 0.0
+                textMs = 0.0
+                retainedStepMs = framePreparation
+                paintMs = paint
+                presentationMs = presentation
+                totalInputToVisibleMs = total
+                dominantPhase = dominantPhase framePreparation paint presentation
+                metadataVisitedNodeCount = metric.RemeasuredNodeCount + metric.RepaintedNodeCount
+                baselineNodeCount = metric.RemeasuredNodeCount + metric.RepaintedNodeCount
+                fallbackCount = metric.FullRenderFallbackCount
+                diagnostics = diagnostics |> List.toArray
+            |},
+            jsonLineOptions
+        )
     | None ->
         JsonSerializer.Serialize(
-            {| runId = run
-               scenarioId = scenario
-               frameIndex = frameIndex
-               environmentStatus = environmentStatus
-               inputHandlingMs = 0.0
-               modelUpdateMs = 0.0
-               framePreparationMs = 0.0
-               layoutMs = 0.0
-               textMs = 0.0
-               retainedStepMs = 0.0
-               paintMs = 0.0
-               presentationMs = 0.0
-               totalInputToVisibleMs = 0.0
-               dominantPhase = "unknown"
-               metadataVisitedNodeCount = 0
-               baselineNodeCount = 0
-               fallbackCount = 0
-               diagnostics = diagnostics |> List.toArray |},
-            jsonLineOptions)
+            {|
+                runId = run
+                scenarioId = scenario
+                frameIndex = frameIndex
+                environmentStatus = environmentStatus
+                inputHandlingMs = 0.0
+                modelUpdateMs = 0.0
+                framePreparationMs = 0.0
+                layoutMs = 0.0
+                textMs = 0.0
+                retainedStepMs = 0.0
+                paintMs = 0.0
+                presentationMs = 0.0
+                totalInputToVisibleMs = 0.0
+                dominantPhase = "unknown"
+                metadataVisitedNodeCount = 0
+                baselineNodeCount = 0
+                fallbackCount = 0
+                diagnostics = diagnostics |> List.toArray
+            |},
+            jsonLineOptions
+        )
 
 let private writeArtifacts outDir run scenario status metrics diagnostics =
     let root = Path.Combine(outDir, "optimized-" + run)
@@ -219,12 +241,17 @@ let private writeArtifacts outDir run scenario status metrics diagnostics =
     let tracePath = Path.Combine(root, "trace.log")
 
     let environmentStatus =
-        if status = "measured" then "measured" else "environment-limited"
+        if status = "measured" then
+            "measured"
+        else
+            "environment-limited"
 
     let phaseLines =
         match metrics with
         | [] -> [ phaseRecord run scenario 0 environmentStatus None diagnostics ]
-        | metrics -> metrics |> List.mapi (fun i metric -> phaseRecord run scenario (i + 1) environmentStatus (Some metric) diagnostics)
+        | metrics ->
+            metrics
+            |> List.mapi (fun i metric -> phaseRecord run scenario (i + 1) environmentStatus (Some metric) diagnostics)
 
     File.WriteAllLines(phaseRecordsPath, phaseLines)
     File.WriteAllLines(tracePath, diagnostics)
@@ -248,30 +275,47 @@ let private writeArtifacts outDir run scenario status metrics diagnostics =
 
     let median = percentile 0.50 totals
     let p95 = percentile 0.95 totals
-    let largestPreparation = if List.isEmpty framePreparations then None else Some(List.max framePreparations)
+
+    let largestPreparation =
+        if List.isEmpty framePreparations then
+            None
+        else
+            Some(List.max framePreparations)
+
     let firstFramePreparation = framePreparations |> List.tryHead
-    let preparationReduction = reductionPercent (baselinePreparation scenario) largestPreparation
-    let firstFrameReduction = reductionPercent (baselineFirstFramePreparation scenario) firstFramePreparation
+
+    let preparationReduction =
+        reductionPercent (baselinePreparation scenario) largestPreparation
+
+    let firstFrameReduction =
+        reductionPercent (baselineFirstFramePreparation scenario) firstFramePreparation
 
     let summaryJson =
         JsonSerializer.Serialize(
-            {| runId = run
-               scenarioId = scenario
-               scenarios = [| scenario |]
-               baselineProfileId = "2026-06-19"
-               optimizedProfileId = run
-               status = status
-               medianInputToVisibleMs = median |> Option.toNullable
-               p95InputToVisibleMs = p95 |> Option.toNullable
-               largestNonPaintPreparationAfterMs = largestPreparation |> Option.toNullable
-               preparationReductionPercent = preparationReduction |> Option.toNullable
-               firstFramePreparationAfterMs = firstFramePreparation |> Option.toNullable
-               firstFramePreparationReductionPercent = firstFrameReduction |> Option.toNullable
-               parityStatus = "not-run"
-               parityArtifacts = [||]
-               environmentLimitations = if status = "measured" then [||] else [| "live-evidence:environment-limited" |]
-               diagnostics = diagnostics |> List.toArray |},
-            jsonOptions)
+            {|
+                runId = run
+                scenarioId = scenario
+                scenarios = [| scenario |]
+                baselineProfileId = "2026-06-19"
+                optimizedProfileId = run
+                status = status
+                medianInputToVisibleMs = median |> Option.toNullable
+                p95InputToVisibleMs = p95 |> Option.toNullable
+                largestNonPaintPreparationAfterMs = largestPreparation |> Option.toNullable
+                preparationReductionPercent = preparationReduction |> Option.toNullable
+                firstFramePreparationAfterMs = firstFramePreparation |> Option.toNullable
+                firstFramePreparationReductionPercent = firstFrameReduction |> Option.toNullable
+                parityStatus = "not-run"
+                parityArtifacts = [||]
+                environmentLimitations =
+                    if status = "measured" then
+                        [||]
+                    else
+                        [| "live-evidence:environment-limited" |]
+                diagnostics = diagnostics |> List.toArray
+            |},
+            jsonOptions
+        )
 
     File.WriteAllText(summaryJsonPath, summaryJson)
 
@@ -283,16 +327,19 @@ let private writeArtifacts outDir run scenario status metrics diagnostics =
 
     File.WriteAllLines(
         summaryMdPath,
-        [ "# Render lag probe " + run
-          ""
-          "- scenario: `" + scenario + "`"
-          "- status: " + status
-          "- baseline profile: 2026-06-19"
-          "- optimized profile: " + run
-          "- phase records: `phase-records.jsonl`"
-          "- trace: `trace.log`"
-          "- parity: not-run" ]
-        @ caveatLines)
+        [
+            "# Render lag probe " + run
+            ""
+            "- scenario: `" + scenario + "`"
+            "- status: " + status
+            "- baseline profile: 2026-06-19"
+            "- optimized profile: " + run
+            "- phase records: `phase-records.jsonl`"
+            "- trace: `trace.log`"
+            "- parity: not-run"
+        ]
+        @ caveatLines
+    )
 
     summaryJsonPath
 
@@ -313,16 +360,37 @@ let run args =
                 scenario
                 "environment-limited"
                 []
-                [ "headless-substitute:no-live-presentation-boundary"; "test-override:forced-substitute" ]
+                [
+                    "headless-substitute:no-live-presentation-boundary"
+                    "test-override:forced-substitute"
+                ]
 
         eprintfn "render-lag-probe: forced substitute wrote %s" summaryPath
         1
     else
-        match ControlsElmish.Live.runScriptWithWindowBehavior (options ()) (windowBehavior ()) host (scriptFor args scenario) with
+        match
+            ControlsElmish.Live.runScriptWithWindowBehavior
+                (options ())
+                (windowBehavior ())
+                host
+                (scriptFor args scenario)
+        with
         | Result.Ok result ->
-            let status = if result.Outcome.FirstFramePresented then "measured" else "environment-limited"
-            let diagnostics = [ $"viewerOutcome={result.Outcome.Status}"; $"firstFramePresented={result.Outcome.FirstFramePresented}" ]
-            let summaryPath = writeArtifacts outDir run scenario status result.Metrics diagnostics
+            let status =
+                if result.Outcome.FirstFramePresented then
+                    "measured"
+                else
+                    "environment-limited"
+
+            let diagnostics =
+                [
+                    $"viewerOutcome={result.Outcome.Status}"
+                    $"firstFramePresented={result.Outcome.FirstFramePresented}"
+                ]
+
+            let summaryPath =
+                writeArtifacts outDir run scenario status result.Metrics diagnostics
+
             printfn
                 "render-lag-probe: scenario=%s status=%s firstFramePresented=%b metrics=%d summary=%s"
                 scenario
@@ -333,7 +401,9 @@ let run args =
 
             0
         | Result.Error failure ->
-            let summaryPath = writeArtifacts outDir run scenario "environment-limited" [] [ failure.Message ]
+            let summaryPath =
+                writeArtifacts outDir run scenario "environment-limited" [] [ failure.Message ]
+
             eprintfn "render-lag-probe: wrote %s" summaryPath
             eprintfn "render-lag-probe: failed: %s" failure.Message
             1

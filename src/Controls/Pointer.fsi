@@ -32,27 +32,33 @@ type PointerPhase =
 /// source), applying the same device-pixel scaling / pixel-snap policy already
 /// applied to layout so X/Y share the control-bounds coordinate space.
 type PointerSample =
-    { Phase: PointerPhase
-      X: float
-      Y: float
-      Button: PointerButton option
-      DeltaX: float
-      DeltaY: float }
+    {
+        Phase: PointerPhase
+        X: float
+        Y: float
+        Button: PointerButton option
+        DeltaX: float
+        DeltaY: float
+    }
 
 /// A press in flight for a single button (the click-or-drag candidate).
 type PressCandidate =
-    { Control: ControlId
-      StartX: float
-      StartY: float
-      Dragging: bool }
+    {
+        Control: ControlId
+        StartX: float
+        StartY: float
+        Dragging: bool
+    }
 
 /// Durable coordination state (the MVU Model), owned alongside ControlRuntimeModel.
 type PointerState =
-    { Hover: ControlId option
-      Presses: Map<PointerButton, PressCandidate>
-      LastX: float
-      LastY: float
-      DragThreshold: float }
+    {
+        Hover: ControlId option
+        Presses: Map<PointerButton, PressCandidate>
+        LastX: float
+        LastY: float
+        DragThreshold: float
+    }
 
 /// Reason a pointer event could not be resolved to a current control (FR-010).
 type PointerDiagnosticCode =
@@ -63,11 +69,13 @@ type PointerDiagnosticCode =
 /// carrying the reason code, a human-readable message, the candidate control (if
 /// any), and the pointer coordinates (FR-010).
 type PointerDiagnostic =
-    { Code: PointerDiagnosticCode
-      Message: string
-      Control: ControlId option
-      X: float
-      Y: float }
+    {
+        Code: PointerDiagnosticCode
+        Message: string
+        Control: ControlId option
+        X: float
+        Y: float
+    }
 
 /// Consumer-facing, control-addressed interactions emitted in order by update.
 type PointerInteraction =
@@ -88,11 +96,13 @@ type PointerInteraction =
 /// routing, the topmost decision that was recorded, and the overlay effects the
 /// host must interpret before lower content sees the original input.
 type PointerOverlayRoutingResult =
-    { State: OverlayState
-      Decision: TopmostHitDecision
-      Effects: OverlayEffect list
-      PassThrough: bool
-      Diagnostics: ControlDiagnostic list }
+    {
+        State: OverlayState
+        Decision: TopmostHitDecision
+        Effects: OverlayEffect list
+        PassThrough: bool
+        Diagnostics: ControlDiagnostic list
+    }
 
 /// Internal transition input derived from a PointerSample.
 type PointerMsg =

@@ -6,18 +6,29 @@ open Expecto
 open FS.GG.TestSupport
 
 let private root = RepositoryRoot.value
-let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
+
+let private repo (path: string) =
+    Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
 [<Tests>]
 let tests =
-    testList "Feature151CompositorReadinessRegression" [
-        test "compositor readiness remains environment-limited and non-blocking for P8" {
-            let regression = File.ReadAllText(repo "specs/151-complete-p8-layout/readiness/regression-evidence.md")
-            let limitations = File.ReadAllText(repo "specs/151-complete-p8-layout/readiness/limitations.md")
+    testList
+        "Feature151CompositorReadinessRegression"
+        [
+            test "compositor readiness remains environment-limited and non-blocking for P8" {
+                let regression =
+                    File.ReadAllText(repo "specs/151-complete-p8-layout/readiness/regression-evidence.md")
 
-            Expect.stringContains regression "compositor readiness" "compositor row"
-            Expect.stringContains regression "environment-limited" "environment-limited classification"
-            Expect.stringContains regression "Feature151 does not accept live" "non-overclaim"
-            Expect.stringContains limitations "does not turn environment-limited compositor evidence into an accepted performance" "limitation"
-        }
-    ]
+                let limitations =
+                    File.ReadAllText(repo "specs/151-complete-p8-layout/readiness/limitations.md")
+
+                Expect.stringContains regression "compositor readiness" "compositor row"
+                Expect.stringContains regression "environment-limited" "environment-limited classification"
+                Expect.stringContains regression "Feature151 does not accept live" "non-overclaim"
+
+                Expect.stringContains
+                    limitations
+                    "does not turn environment-limited compositor evidence into an accepted performance"
+                    "limitation"
+            }
+        ]

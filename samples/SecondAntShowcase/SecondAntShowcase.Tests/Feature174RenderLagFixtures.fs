@@ -9,7 +9,8 @@ let tempDir () =
     Path.Combine(Path.GetTempPath(), "second-antshowcase-feature174-" + Guid.NewGuid().ToString("N"))
 
 let withForcedSubstitute action =
-    let previous = Environment.GetEnvironmentVariable "FS_GG_RENDER_LAG_FORCE_SUBSTITUTE"
+    let previous =
+        Environment.GetEnvironmentVariable "FS_GG_RENDER_LAG_FORCE_SUBSTITUTE"
 
     try
         Environment.SetEnvironmentVariable("FS_GG_RENDER_LAG_FORCE_SUBSTITUTE", "1")
@@ -21,12 +22,8 @@ let runProbe scenario =
     let outDir = tempDir ()
 
     let code =
-        withForcedSubstitute
-            (fun () ->
-                RenderLagProbe.run
-                    [ "--scenario"; scenario
-                      "--theme"; "light"
-                      "--out"; outDir ])
+        withForcedSubstitute (fun () ->
+            RenderLagProbe.run [ "--scenario"; scenario; "--theme"; "light"; "--out"; outDir ])
 
     code, outDir
 
@@ -55,18 +52,12 @@ let runRoot outDir =
         | directory -> directory.FullName
 
 let summaryJson outDir =
-    summaryFile outDir
-    |> File.ReadAllText
-    |> JsonDocument.Parse
+    summaryFile outDir |> File.ReadAllText |> JsonDocument.Parse
 
 let firstPhaseRecord outDir =
-    phaseRecordsFile outDir
-    |> File.ReadAllLines
-    |> Array.head
-    |> JsonDocument.Parse
+    phaseRecordsFile outDir |> File.ReadAllLines |> Array.head |> JsonDocument.Parse
 
 let arrayStrings (element: JsonElement) =
     element.EnumerateArray()
     |> Seq.map (fun value -> value.GetString())
     |> Seq.toList
-

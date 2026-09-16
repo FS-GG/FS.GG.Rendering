@@ -32,8 +32,8 @@
       "supplied-by": "template/feedback-report/skill/",
       "files": [
         { "path": "SKILL.md", "sha256": "1b6888de4b8ce96f61e7a98c2bb9e0b249cdca2cd90da7bec6884bdccf055fe2" },
-        { "path": "scripts/FeedbackReportTool.fs", "sha256": "a2c60784a5821fcccad3c1d0961b85369266de2a37db4a08e9fa15b01fd0a3e4" },
-        { "path": "scripts/feedback-tool.fsx", "sha256": "28b41c0ba94d581184a47b6560561c08b097abcaae248b9f72e6145954028929" }
+        { "path": "scripts/FeedbackReportTool.fs", "sha256": "583cda537018ef9bd89fe15bf6e3b9525f5406ff0ff71959714e61da02684bc5" },
+        { "path": "scripts/feedback-tool.fsx", "sha256": "67fb8fac8609b9e8f38939c92031367856582c82c276f0a8ce5b9f65ef5e5da5" }
       ]
     },
     {
@@ -179,7 +179,7 @@
       "supplied-by": "template/product-skills/fs-gg-symbol-design/",
       "files": [
         { "path": "SKILL.md", "sha256": "1a28af97d907265344ce65a5458de2f74395c29be347fd16e5404908aa98803e" },
-        { "path": "reference.fsx", "sha256": "83cdf5654c59a94f1456806375b24072fc19f0d87c91fa03666349f3f1fa1331" },
+        { "path": "reference.fsx", "sha256": "a0d39a112fc54a9493d8a4c071e93e33bd3bcd2bfc08463cee6a0f19fe859470" },
         { "path": "reference/candidates.md", "sha256": "ff30943fdafbfce5960bc5cd65d477ae0a564b19816f8c7f8bb9db91e5b81f9b" }
       ]
     },
@@ -192,7 +192,7 @@
       "supplied-by": "template/product-skills/fs-gg-symbology/",
       "files": [
         { "path": "SKILL.md", "sha256": "519155cc317fc990fb20bda41011fe4a01576060e7677ebd857084d1e42b1525" },
-        { "path": "reference.fsx", "sha256": "f33bfdc68684db16bb024eafecb6539740a5d9a60c66570c8291f9f3f9776067" },
+        { "path": "reference.fsx", "sha256": "8df33c32b128613950bd5915d791593fad3dacb1f981ca56910ce479a2b1df95" },
         { "path": "reference/labels.md", "sha256": "22f6f73fd1b83223ab0ccb37b9ddfc6168e3646d31f9154760f4ff05e6119226" }
       ]
     },

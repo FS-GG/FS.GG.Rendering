@@ -69,12 +69,16 @@ let private repositoryRoot = FS.GG.TestSupport.RepositoryRoot.value
 /// umbrella these two never could. The dot is now optional, so the text scan sees all 17 and the tripwire
 /// can finally fire on the package it was written to protect.
 let private looksPackable (projectText: string) =
-    let packageId = Regex.Match(projectText, @"<PackageId>\s*(FS\.GG\.UI(?:\.[^<\s]+)?)\s*</PackageId>")
+    let packageId =
+        Regex.Match(projectText, @"<PackageId>\s*(FS\.GG\.UI(?:\.[^<\s]+)?)\s*</PackageId>")
 
     let packable =
         Regex.IsMatch(projectText, @"<IsPackable>\s*true\s*</IsPackable>", RegexOptions.IgnoreCase)
 
-    if packageId.Success && packable then Some packageId.Groups.[1].Value else None
+    if packageId.Success && packable then
+        Some packageId.Groups.[1].Value
+    else
+        None
 
 /// THE TRIPWIRE: discovery must not silently LOSE a package.
 ///
@@ -140,7 +144,9 @@ let private discovered =
         // consumer stays in the hermetic default tier (#540) and runs pre-merge. The feed path only
         // names the .nupkg each package WOULD produce; discovery never looks for it.
         (let packages =
-            PackageFeed.discoverPackablePackages repositoryRoot (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
+            PackageFeed.discoverPackablePackages
+                repositoryRoot
+                (Path.Combine(Path.GetTempPath(), "fs-gg-packable-probe"))
 
          if List.isEmpty packages then
              failwith
@@ -165,11 +171,14 @@ let private discovered =
 let packablePackages () : PackageFeed.PackablePackage list = discovered.Value
 
 /// Their package ids (all 17).
-let packablePackageIds () = packablePackages () |> List.map _.PackageId |> Set.ofList
+let packablePackageIds () =
+    packablePackages () |> List.map _.PackageId |> Set.ofList
 
 /// id -> the `<Version>` its project declares (all 17).
 let packablePackageVersions () =
-    packablePackages () |> List.map (fun package -> package.PackageId, package.Version) |> Map.ofList
+    packablePackages ()
+    |> List.map (fun package -> package.PackageId, package.Version)
+    |> Map.ofList
 
 /// The BOM's MEMBERS: the 16 dotted packages, WITHOUT the umbrella itself.
 ///
@@ -189,7 +198,8 @@ let memberPackages () : PackageFeed.PackablePackage list =
     |> List.filter (fun package -> package.PackageId <> PackageFeed.UmbrellaPackageId)
 
 /// Their package ids (the 16).
-let memberPackageIds () = memberPackages () |> List.map _.PackageId |> Set.ofList
+let memberPackageIds () =
+    memberPackages () |> List.map _.PackageId |> Set.ofList
 
 /// The umbrella / BOM package itself, as the pack path sees it.
 ///
@@ -197,7 +207,10 @@ let memberPackageIds () = memberPackages () |> List.map _.PackageId |> Set.ofLis
 /// it is not is a discovery regression — the exact one that hid the unrestorable BOM — not a repository
 /// that happens to have no BOM. A test that skipped quietly here would go green on the bug.
 let umbrellaPackage () : PackageFeed.PackablePackage =
-    match packablePackages () |> List.tryFind (fun p -> p.PackageId = PackageFeed.UmbrellaPackageId) with
+    match
+        packablePackages ()
+        |> List.tryFind (fun p -> p.PackageId = PackageFeed.UmbrellaPackageId)
+    with
     | Some package -> package
     | None ->
         failwith

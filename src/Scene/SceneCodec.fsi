@@ -1,9 +1,7 @@
 namespace FS.GG.UI.Scene
 
 /// Durable protocol version for portable scene packages.
-type ProtocolVersion =
-    { Major: int
-      Minor: int }
+type ProtocolVersion = { Major: int; Minor: int }
 
 /// Whether a package requirement is mandatory or degradable.
 type RequirementLevel =
@@ -18,10 +16,12 @@ type DegradationPolicy =
 
 /// Stable capability requirement encoded in a portable scene package.
 type CapabilityRequirement =
-    { CapabilityId: string
-      RequirementLevel: RequirementLevel
-      DegradationPolicy: DegradationPolicy
-      AffectedScenePaths: string list }
+    {
+        CapabilityId: string
+        RequirementLevel: RequirementLevel
+        DegradationPolicy: DegradationPolicy
+        AffectedScenePaths: string list
+    }
 
 /// Portable resource kind.
 type ResourceKind =
@@ -31,13 +31,15 @@ type ResourceKind =
 
 /// Resource manifest entry. `SourceLabel` is diagnostic-only and never the package identity.
 type ResourceEntry =
-    { ResourceId: string
-      Kind: ResourceKind
-      ContentHash: string
-      ByteLength: int64 option
-      Required: bool
-      MediaType: string option
-      SourceLabel: string option }
+    {
+        ResourceId: string
+        Kind: ResourceKind
+        ContentHash: string
+        ByteLength: int64 option
+        Required: bool
+        MediaType: string option
+        SourceLabel: string option
+    }
 
 /// Consumer-observed resource state used during inspection.
 type ResourceAvailabilityStatus =
@@ -49,27 +51,35 @@ type ResourceAvailabilityStatus =
 
 /// Consumer-observed resource metadata used during inspection.
 type ResourceAvailability =
-    { ResourceId: string
-      Kind: ResourceKind option
-      ContentHash: string option
-      ByteLength: int64 option
-      Status: ResourceAvailabilityStatus }
+    {
+        ResourceId: string
+        Kind: ResourceKind option
+        ContentHash: string option
+        ByteLength: int64 option
+        Status: ResourceAvailabilityStatus
+    }
 
 /// Target capability profile used by package inspection.
 type TargetCapabilityProfile =
-    { ProfileId: string
-      SupportedCapabilities: string list }
+    {
+        ProfileId: string
+        SupportedCapabilities: string list
+    }
 
 /// Export options for a portable scene package.
 type PackageExportOptions =
-    { ProfileId: string
-      Resources: ResourceEntry list
-      OptionalCapabilities: string list }
+    {
+        ProfileId: string
+        Resources: ResourceEntry list
+        OptionalCapabilities: string list
+    }
 
 /// Inspection options for a portable scene package.
 type PackageInspectionOptions =
-    { TargetProfile: TargetCapabilityProfile option
-      Resources: ResourceAvailability list }
+    {
+        TargetProfile: TargetCapabilityProfile option
+        Resources: ResourceAvailability list
+    }
 
 /// Package diagnostic stage.
 type PackageDiagnosticStage =
@@ -82,12 +92,14 @@ type PackageDiagnosticStage =
 
 /// Diagnostic emitted by export, import, inspection, or comparison.
 type PackageDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: PackageDiagnosticStage
-      Message: string
-      ScenePath: string option
-      CapabilityId: string option
-      ResourceId: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: PackageDiagnosticStage
+        Message: string
+        ScenePath: string option
+        CapabilityId: string option
+        ResourceId: string option
+    }
 
 /// Package inspection status.
 type PackageInspectionStatus =
@@ -97,46 +109,56 @@ type PackageInspectionStatus =
 
 /// Per-capability inspection verdict.
 type CapabilityVerdict =
-    { Requirement: CapabilityRequirement
-      Supported: bool
-      Degraded: bool
-      Diagnostics: PackageDiagnostic list }
+    {
+        Requirement: CapabilityRequirement
+        Supported: bool
+        Degraded: bool
+        Diagnostics: PackageDiagnostic list
+    }
 
 /// Per-resource inspection verdict.
 type ResourceVerdict =
-    { Entry: ResourceEntry
-      Availability: ResourceAvailability option
-      Accepted: bool
-      Degraded: bool
-      Diagnostics: PackageDiagnostic list }
+    {
+        Entry: ResourceEntry
+        Availability: ResourceAvailability option
+        Accepted: bool
+        Degraded: bool
+        Diagnostics: PackageDiagnostic list
+    }
 
 /// Parsed portable scene package.
 type PortableScenePackage =
-    { Version: ProtocolVersion
-      ProfileId: string
-      Capabilities: CapabilityRequirement list
-      Resources: ResourceEntry list
-      Scene: Scene
-      CanonicalBytes: byte[]
-      PackageIdentity: string
-      Diagnostics: PackageDiagnostic list }
+    {
+        Version: ProtocolVersion
+        ProfileId: string
+        Capabilities: CapabilityRequirement list
+        Resources: ResourceEntry list
+        Scene: Scene
+        CanonicalBytes: byte[]
+        PackageIdentity: string
+        Diagnostics: PackageDiagnostic list
+    }
 
 /// Inspection report for a portable scene package.
 type PackageInspectionReport =
-    { Status: PackageInspectionStatus
-      PackageIdentity: string option
-      Version: ProtocolVersion option
-      ProfileId: string option
-      CapabilityVerdicts: CapabilityVerdict list
-      ResourceVerdicts: ResourceVerdict list
-      Diagnostics: PackageDiagnostic list }
+    {
+        Status: PackageInspectionStatus
+        PackageIdentity: string option
+        Version: ProtocolVersion option
+        ProfileId: string option
+        CapabilityVerdicts: CapabilityVerdict list
+        ResourceVerdicts: ResourceVerdict list
+        Diagnostics: PackageDiagnostic list
+    }
 
 /// Semantic comparison of two scenes.
 type SemanticComparison =
-    { Equivalent: bool
-      ExpectedCapabilities: SceneElementKind list
-      ActualCapabilities: SceneElementKind list
-      Diagnostics: PackageDiagnostic list }
+    {
+        Equivalent: bool
+        ExpectedCapabilities: SceneElementKind list
+        ActualCapabilities: SceneElementKind list
+        Diagnostics: PackageDiagnostic list
+    }
 
 /// Public portable scene package functions.
 module SceneCodec =

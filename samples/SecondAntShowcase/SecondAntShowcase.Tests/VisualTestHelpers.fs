@@ -8,10 +8,15 @@ let preferredSize = VisualConfig.preferredSize
 let minimumSize = VisualConfig.minimumSize
 
 let renderShell size mode pageId =
-    let model = { Host.initModel with Mode = mode; CurrentPage = pageId }
+    let model =
+        { Host.initModel with
+            Mode = mode
+            CurrentPage = pageId
+        }
+
     Control.renderTree (AntTheme.resolve mode) size (Shell.view size model)
 
-let rec kinds (control: Control<'msg>): string list =
+let rec kinds (control: Control<'msg>) : string list =
     control.Kind :: (control.Children |> List.collect kinds)
 
 let renderPage page =

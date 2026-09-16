@@ -7,34 +7,41 @@ open FS.GG.TestSupport
 
 [<Tests>]
 let tests =
-    testList "Feature168 ParityFindings" [
-        test "all synthetic fixture cases produce the expected finding categories" {
-            let root = Feature168SkillParityFixtures.createTempRoot "feature168-findings"
+    testList
+        "Feature168 ParityFindings"
+        [
+            test "all synthetic fixture cases produce the expected finding categories" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature168-findings"
 
-            try
-                let report = SkillParity.runCheck (Feature168SkillParityFixtures.request root "all")
-                let categories = report.Findings |> List.map (fun finding -> finding.Category) |> Set.ofList
+                try
+                    let report = SkillParity.runCheck (Feature168SkillParityFixtures.request root "all")
 
-                Expect.contains categories SkillParity.MissingWrapper "missing wrapper"
-                Expect.contains categories SkillParity.WrapperOnly "wrapper only"
-                Expect.contains categories SkillParity.StaleDescription "stale description"
-                Expect.contains categories SkillParity.BrokenTarget "broken target"
-                Expect.contains categories SkillParity.CanonicalDrift "canonical drift"
-                Expect.contains categories SkillParity.UnresolvedApiSymbol "documents an API that does not exist"
-                Expect.contains categories SkillParity.UnexercisedApiSymbol "documents an API no test exercises"
-                Expect.isTrue (report.FindingCountsBySeverity.High > 0) "high severity fixture findings"
-            finally
-                Feature168SkillParityFixtures.deleteTempRoot root
-        }
+                    let categories =
+                        report.Findings |> List.map (fun finding -> finding.Category) |> Set.ofList
 
-        test "repository parity check does not rewrite existing skill files" {
-            let root = RepositoryRoot.value
+                    Expect.contains categories SkillParity.MissingWrapper "missing wrapper"
+                    Expect.contains categories SkillParity.WrapperOnly "wrapper only"
+                    Expect.contains categories SkillParity.StaleDescription "stale description"
+                    Expect.contains categories SkillParity.BrokenTarget "broken target"
+                    Expect.contains categories SkillParity.CanonicalDrift "canonical drift"
+                    Expect.contains categories SkillParity.UnresolvedApiSymbol "documents an API that does not exist"
+                    Expect.contains categories SkillParity.UnexercisedApiSymbol "documents an API no test exercises"
+                    Expect.isTrue (report.FindingCountsBySeverity.High > 0) "high severity fixture findings"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-            let skillPath = Path.Combine(root, ".agents", "skills", "fs-gg-testing", "SKILL.md")
-            let before = Feature168SkillParityFixtures.fileHash skillPath
-            SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root) |> ignore
-            let after = Feature168SkillParityFixtures.fileHash skillPath
+            test "repository parity check does not rewrite existing skill files" {
+                let root = RepositoryRoot.value
 
-            Expect.equal after before "non-destructive checker"
-        }
-    ]
+                let skillPath = Path.Combine(root, ".agents", "skills", "fs-gg-testing", "SKILL.md")
+                let before = Feature168SkillParityFixtures.fileHash skillPath
+
+                SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root)
+                |> ignore
+
+                let after = Feature168SkillParityFixtures.fileHash skillPath
+
+                Expect.equal after before "non-destructive checker"
+            }
+        ]

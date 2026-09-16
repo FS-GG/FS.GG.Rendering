@@ -30,8 +30,4 @@ module Animation =
     /// host must, or it will mutate its model and drive its graphics context
     /// off-thread.
     val tickSubscription:
-        isAnimating: ('model -> bool) ->
-        toMsg: (TimeSpan -> 'msg) ->
-        interval: TimeSpan ->
-        model: 'model ->
-            Sub<'msg>
+        isAnimating: ('model -> bool) -> toMsg: (TimeSpan -> 'msg) -> interval: TimeSpan -> model: 'model -> Sub<'msg>

@@ -8,15 +8,19 @@ open FS.GG.UI.SkiaViewer
 module GoldenImage =
 
     type ImageComparison =
-        { Width: int
-          Height: int
-          TotalPixels: int
-          DiffPixelCount: int
-          MaxChannelDelta: int }
+        {
+            Width: int
+            Height: int
+            TotalPixels: int
+            DiffPixelCount: int
+            MaxChannelDelta: int
+        }
 
     type GoldenTolerance =
-        { ChannelTolerance: int
-          MaxDiffPixels: int }
+        {
+            ChannelTolerance: int
+            MaxDiffPixels: int
+        }
 
     type GoldenOutcome =
         | Equivalent of ImageComparison
@@ -30,17 +34,27 @@ module GoldenImage =
         | RenderFailed of reason: string
 
     type SceneGolden =
-        { ScenarioId: string
-          Status: CandidateStatus
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            Status: CandidateStatus
+            Diagnostics: string list
+        }
 
-    let exact = { ChannelTolerance = 0; MaxDiffPixels = 0 }
+    let exact =
+        {
+            ChannelTolerance = 0
+            MaxDiffPixels = 0
+        }
 
     // A deliberately small budget: a couple of levels of per-channel drift on a handful of antialiased
     // edge pixels, which is the shape a benign Skia/font-version change takes. It is nowhere near large
     // enough to hide a structural render regression (a moved/dropped shape moves thousands of pixels by
     // hundreds of levels), which the injected-regression test pins.
-    let perceptual = { ChannelTolerance = 2; MaxDiffPixels = 16 }
+    let perceptual =
+        {
+            ChannelTolerance = 2
+            MaxDiffPixels = 16
+        }
 
     // The size `RenderAnywhere.runReferenceCommand` renders the corpus at, and therefore the size of
     // every committed reference PNG. Kept in lockstep with that command so the candidate and the
@@ -86,11 +100,13 @@ module GoldenImage =
                         diffPixelCount <- diffPixelCount + 1
 
                 let comparison =
-                    { Width = reference.Width
-                      Height = reference.Height
-                      TotalPixels = referencePixels.Length
-                      DiffPixelCount = diffPixelCount
-                      MaxChannelDelta = maxChannelDelta }
+                    {
+                        Width = reference.Width
+                        Height = reference.Height
+                        TotalPixels = referencePixels.Length
+                        DiffPixelCount = diffPixelCount
+                        MaxChannelDelta = maxChannelDelta
+                    }
 
                 if diffPixelCount <= tolerance.MaxDiffPixels then
                     Equivalent comparison
@@ -107,50 +123,71 @@ module GoldenImage =
             | [||] -> Result.Error $"no reference PNG under {directory}"
             | files -> Result.Ok(File.ReadAllBytes(Array.head files))
 
-    let gateScene (tolerance: GoldenTolerance) (referenceDirectory: string) (item: RenderAnywhere.CorpusItem) : SceneGolden =
+    let gateScene
+        (tolerance: GoldenTolerance)
+        (referenceDirectory: string)
+        (item: RenderAnywhere.CorpusItem)
+        : SceneGolden =
         let scenarioId = item.ScenarioId
 
         match SceneCodec.importPackage item.Package.CanonicalBytes with
         | Result.Error diagnostics ->
-            { ScenarioId = scenarioId
-              Status = RenderFailed "package import failed"
-              Diagnostics = SceneCodec.formatDiagnostics diagnostics }
+            {
+                ScenarioId = scenarioId
+                Status = RenderFailed "package import failed"
+                Diagnostics = SceneCodec.formatDiagnostics diagnostics
+            }
         | Result.Ok package ->
             match ReferenceRendering.renderScenePngResult referenceOutputSize package.Scene with
-            | Result.Error failure when failure.Classification = SceneEvidenceFailureClassification.UnsupportedEnvironment ->
-                { ScenarioId = scenarioId
-                  Status = EnvironmentLimited failure.Message
-                  Diagnostics = [ failure.Message ] }
+            | Result.Error failure when
+                failure.Classification = SceneEvidenceFailureClassification.UnsupportedEnvironment
+                ->
+                {
+                    ScenarioId = scenarioId
+                    Status = EnvironmentLimited failure.Message
+                    Diagnostics = [ failure.Message ]
+                }
             | Result.Error failure ->
-                { ScenarioId = scenarioId
-                  Status = RenderFailed failure.Message
-                  Diagnostics = [ failure.Message ] }
+                {
+                    ScenarioId = scenarioId
+                    Status = RenderFailed failure.Message
+                    Diagnostics = [ failure.Message ]
+                }
             | Result.Ok candidatePng ->
                 match referencePng referenceDirectory scenarioId with
                 | Result.Error message ->
-                    { ScenarioId = scenarioId
-                      Status = RenderFailed message
-                      Diagnostics = [ message ] }
+                    {
+                        ScenarioId = scenarioId
+                        Status = RenderFailed message
+                        Diagnostics = [ message ]
+                    }
                 | Result.Ok referenceBytes ->
-                    { ScenarioId = scenarioId
-                      Status = Rendered(compareImages tolerance referenceBytes candidatePng)
-                      Diagnostics = [] }
+                    {
+                        ScenarioId = scenarioId
+                        Status = Rendered(compareImages tolerance referenceBytes candidatePng)
+                        Diagnostics = []
+                    }
 
     let gateCorpus (tolerance: GoldenTolerance) (referenceDirectory: string) : SceneGolden list =
         RenderAnywhere.corpus () |> List.map (gateScene tolerance referenceDirectory)
 
     let summarize (results: SceneGolden list) : string list =
-        [ "# Golden-image gate"
-          ""
-          for result in results do
-              let status =
-                  match result.Status with
-                  | Rendered(Equivalent c) -> $"equivalent (max-channel-delta={c.MaxChannelDelta}, diff-pixels={c.DiffPixelCount}/{c.TotalPixels})"
-                  | Rendered(Drifted c) -> $"DRIFTED (max-channel-delta={c.MaxChannelDelta}, diff-pixels={c.DiffPixelCount}/{c.TotalPixels})"
-                  | Rendered(DimensionMismatch(rw, rh, cw, ch)) -> $"DIMENSION-MISMATCH (reference={rw}x{rh}, candidate={cw}x{ch})"
-                  | Rendered(Undecodable reason) -> $"UNDECODABLE ({reason})"
-                  | EnvironmentLimited reason -> $"environment-limited ({reason})"
-                  | RenderFailed reason -> $"RENDER-FAILED ({reason})"
+        [
+            "# Golden-image gate"
+            ""
+            for result in results do
+                let status =
+                    match result.Status with
+                    | Rendered(Equivalent c) ->
+                        $"equivalent (max-channel-delta={c.MaxChannelDelta}, diff-pixels={c.DiffPixelCount}/{c.TotalPixels})"
+                    | Rendered(Drifted c) ->
+                        $"DRIFTED (max-channel-delta={c.MaxChannelDelta}, diff-pixels={c.DiffPixelCount}/{c.TotalPixels})"
+                    | Rendered(DimensionMismatch(rw, rh, cw, ch)) ->
+                        $"DIMENSION-MISMATCH (reference={rw}x{rh}, candidate={cw}x{ch})"
+                    | Rendered(Undecodable reason) -> $"UNDECODABLE ({reason})"
+                    | EnvironmentLimited reason -> $"environment-limited ({reason})"
+                    | RenderFailed reason -> $"RENDER-FAILED ({reason})"
 
-              $"- {result.ScenarioId}: {status}"
-              yield! result.Diagnostics |> List.map (fun d -> $"    - {d}") ]
+                $"- {result.ScenarioId}: {status}"
+                yield! result.Diagnostics |> List.map (fun d -> $"    - {d}")
+        ]

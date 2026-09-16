@@ -9,15 +9,18 @@ open FS.GG.UI.SkiaViewer
 open AntShowcase.Core
 open AntShowcase.Core.Model
 
-let run (mode: ThemeMode) (startPage: string): int =
+let run (mode: ThemeMode) (startPage: string) : int =
     let capability = Viewer.runtimeCapability ()
+
     if not capability.PersistentWindow then
         printfn "ant-showcase: interactive mode skipped — no live window/GL host."
         let reasons = capability.UnsupportedHostReasons
+
         if not (List.isEmpty reasons) then
             printfn "  reason: %s" (String.concat "; " reasons)
         else
             printfn "  reason: renderer mode '%s' reports no persistent window." capability.RendererMode
+
         0
     else
         let baseHost = Host.create mode
@@ -27,18 +30,32 @@ let run (mode: ThemeMode) (startPage: string): int =
         // to the log. Core's `update` stays pure; the file write lives only here (Principle IV).
         let host =
             { baseHost with
-                Init = fun () -> { Host.initModel with Mode = mode; CurrentPage = page.Id; Feedback = FeedbackStore.load () }, []
+                Init =
+                    fun () ->
+                        { Host.initModel with
+                            Mode = mode
+                            CurrentPage = page.Id
+                            Feedback = FeedbackStore.load ()
+                        },
+                        []
                 Update =
                     fun msg model ->
                         let model', effects = baseHost.Update msg model
+
                         if List.length model'.Feedback > List.length model.Feedback then
                             FeedbackStore.append (List.head model'.Feedback)
-                        model', effects }
+
+                        model', effects
+            }
+
         let options: ViewerOptions =
-            { Title = "Ant Design Controls Showcase"
-              InitialSize = VisualConfig.preferredSize
-              PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60; LogicalSize = None }
+            {
+                Title = "Ant Design Controls Showcase"
+                InitialSize = VisualConfig.preferredSize
+                PresentMode = ViewerPresentMode.DirectToSwapchain
+                FrameRateCap = Some 60
+                LogicalSize = None
+            }
         // `Result.Ok`/`Result.Error` are qualified: a viewer namespace also defines an
         // `Ok` union case which would otherwise shadow the F# Result constructors.
         match ControlsElmish.runInteractiveApp options host with

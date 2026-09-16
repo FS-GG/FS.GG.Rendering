@@ -5,11 +5,12 @@ open System
 open FS.GG.UI.SkiaViewer
 open FS.GG.UI.Controls.Elmish
 
-let proofStatus = CompositorProof.ProofReadiness.EnvironmentLimited "missing display"
+let proofStatus =
+    CompositorProof.ProofReadiness.EnvironmentLimited "missing display"
+
 let proofToken = CompositorProof.readinessToken proofStatus
 
-let metrics =
-    Unchecked.defaultof<FrameMetrics>
+let metrics = Unchecked.defaultof<FrameMetrics>
 
 let _diagnosticsTypeName = typeof<CompositorFrameDiagnostics>.FullName
 

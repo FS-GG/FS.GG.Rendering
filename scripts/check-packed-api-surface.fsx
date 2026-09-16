@@ -104,7 +104,11 @@ let expectedFsi (projectDir: string) =
     Directory.GetFiles(projectDir, "*.fsi", SearchOption.AllDirectories)
     |> Array.filter (fun f ->
         let rel = Path.GetRelativePath(projectDir, f).Replace('\\', '/')
-        not (rel.StartsWith("bin/", StringComparison.Ordinal) || rel.StartsWith("obj/", StringComparison.Ordinal)))
+
+        not (
+            rel.StartsWith("bin/", StringComparison.Ordinal)
+            || rel.StartsWith("obj/", StringComparison.Ordinal)
+        ))
     |> Array.map (fun f -> Path.GetRelativePath(projectDir, f).Replace('\\', '/'))
     |> Set.ofArray
 
@@ -116,18 +120,24 @@ let packedFsi (nupkg: string) =
 
     archive.Entries
     |> Seq.map (fun entry -> entry.FullName)
-    |> Seq.filter (fun name -> name.StartsWith(prefix, StringComparison.Ordinal) && name.EndsWith(".fsi", StringComparison.Ordinal))
+    |> Seq.filter (fun name ->
+        name.StartsWith(prefix, StringComparison.Ordinal)
+        && name.EndsWith(".fsi", StringComparison.Ordinal))
     |> Seq.map (fun name -> name.Substring prefix.Length)
     |> Set.ofSeq
 
 if not (Directory.Exists feedDir) then
-    eprintfn $"::error::feed directory does not exist: {feedDir} — nothing to check, so nothing was proved. NOT a pass (#266)."
+    eprintfn
+        $"::error::feed directory does not exist: {feedDir} — nothing to check, so nothing was proved. NOT a pass (#266)."
+
     exit 1
 
 let nupkgs = Directory.GetFiles(feedDir, "*.nupkg") |> Array.toList
 
 if List.isEmpty nupkgs then
-    eprintfn $"::error::no .nupkg in {feedDir} — this check's subject does not exist, so nothing was proved. NOT a pass (#266)."
+    eprintfn
+        $"::error::no .nupkg in {feedDir} — this check's subject does not exist, so nothing was proved. NOT a pass (#266)."
+
     exit 1
 
 /// nupkg -> its package id, read from the NUSPEC (authoritative: it is what actually shipped). The filename
@@ -136,7 +146,9 @@ let idOf (nupkg: string) =
     use archive = ZipFile.OpenRead nupkg
 
     archive.Entries
-    |> Seq.tryFind (fun e -> e.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase) && not (e.FullName.Contains '/'))
+    |> Seq.tryFind (fun e ->
+        e.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase)
+        && not (e.FullName.Contains '/'))
     |> Option.bind (fun entry ->
         use reader = new StreamReader(entry.Open())
         let m = Regex.Match(reader.ReadToEnd(), @"<id>\s*([^<\s]+)\s*</id>")
@@ -206,4 +218,5 @@ if failures > 0 then
 
     exit 1
 
-printfn $"\napi-surface: all {List.length discovered} packable packages carry their .fsi, exactly as the source has them."
+printfn
+    $"\napi-surface: all {List.length discovered} packable packages carry their .fsi, exactly as the source has them."

@@ -19,43 +19,76 @@ open FS.GG.UI.Controls.Typed
 
 [<Tests>]
 let chartValuesExtractionTests =
-    testList "Feature 080 chartValues extraction (T005, FR-002)" [
-        test "line-chart from a typed ChartSeries yields all points with X/Y preserved" {
-            let series: ChartSeries list =
-                [ { Name = "Sales"
-                    Points =
-                      [ { X = 0.0; Y = 3.0; Label = None }
-                        { X = 1.0; Y = 7.0; Label = None }
-                        { X = 2.0; Y = 5.0; Label = None }
-                        { X = 3.0; Y = 9.0; Label = None } ] } ]
+    testList
+        "Feature 080 chartValues extraction (T005, FR-002)"
+        [
+            test "line-chart from a typed ChartSeries yields all points with X/Y preserved" {
+                let series: ChartSeries list =
+                    [
+                        {
+                            Name = "Sales"
+                            Points =
+                                [
+                                    { X = 0.0; Y = 3.0; Label = None }
+                                    { X = 1.0; Y = 7.0; Label = None }
+                                    { X = 2.0; Y = 5.0; Label = None }
+                                    { X = 3.0; Y = 9.0; Label = None }
+                                ]
+                        }
+                    ]
 
-            let control = LineChart.view { LineChart.defaults with Series = series } |> Widget.toControl
-            let points = ControlInternals.chartValues control
+                let control =
+                    LineChart.view
+                        { LineChart.defaults with
+                            Series = series
+                        }
+                    |> Widget.toControl
 
-            Expect.equal (List.length points) 4 "chartValues yields all four series points (pre-fix: [])"
-            Expect.equal (points |> List.map (fun p -> p.Y)) [ 3.0; 7.0; 5.0; 9.0 ] "Y values preserved in order"
-            Expect.equal (points |> List.map (fun p -> p.X)) [ 0.0; 1.0; 2.0; 3.0 ] "X values preserved in order"
-        }
+                let points = ControlInternals.chartValues control
 
-        test "bar-chart from a typed ChartSeries yields its points" {
-            let series: ChartSeries list =
-                [ { Name = "Q"; Points = [ { X = 0.0; Y = 2.0; Label = None }; { X = 1.0; Y = 6.0; Label = None } ] } ]
+                Expect.equal (List.length points) 4 "chartValues yields all four series points (pre-fix: [])"
+                Expect.equal (points |> List.map (fun p -> p.Y)) [ 3.0; 7.0; 5.0; 9.0 ] "Y values preserved in order"
+                Expect.equal (points |> List.map (fun p -> p.X)) [ 0.0; 1.0; 2.0; 3.0 ] "X values preserved in order"
+            }
 
-            let control = BarChart.view { BarChart.defaults with Series = series } |> Widget.toControl
-            let points = ControlInternals.chartValues control
-            Expect.equal (points |> List.map (fun p -> p.Y)) [ 2.0; 6.0 ] "bar magnitudes preserved"
-        }
+            test "bar-chart from a typed ChartSeries yields its points" {
+                let series: ChartSeries list =
+                    [
+                        {
+                            Name = "Q"
+                            Points = [ { X = 0.0; Y = 2.0; Label = None }; { X = 1.0; Y = 6.0; Label = None } ]
+                        }
+                    ]
 
-        test "pie-chart from typed ChartPoint values yields its points with labels" {
-            let values: ChartPoint list =
-                [ { X = 0.0; Y = 30.0; Label = Some "A" }
-                  { X = 1.0; Y = 50.0; Label = Some "B" }
-                  { X = 2.0; Y = 20.0; Label = Some "C" } ]
+                let control =
+                    BarChart.view
+                        { BarChart.defaults with
+                            Series = series
+                        }
+                    |> Widget.toControl
 
-            let control = PieChart.view { PieChart.defaults with Values = values } |> Widget.toControl
-            let points = ControlInternals.chartValues control
+                let points = ControlInternals.chartValues control
+                Expect.equal (points |> List.map (fun p -> p.Y)) [ 2.0; 6.0 ] "bar magnitudes preserved"
+            }
 
-            Expect.equal (points |> List.map (fun p -> p.Y)) [ 30.0; 50.0; 20.0 ] "pie slice magnitudes preserved"
-            Expect.equal (points |> List.choose (fun p -> p.Label)) [ "A"; "B"; "C" ] "pie slice labels preserved"
-        }
-    ]
+            test "pie-chart from typed ChartPoint values yields its points with labels" {
+                let values: ChartPoint list =
+                    [
+                        { X = 0.0; Y = 30.0; Label = Some "A" }
+                        { X = 1.0; Y = 50.0; Label = Some "B" }
+                        { X = 2.0; Y = 20.0; Label = Some "C" }
+                    ]
+
+                let control =
+                    PieChart.view
+                        { PieChart.defaults with
+                            Values = values
+                        }
+                    |> Widget.toControl
+
+                let points = ControlInternals.chartValues control
+
+                Expect.equal (points |> List.map (fun p -> p.Y)) [ 30.0; 50.0; 20.0 ] "pie slice magnitudes preserved"
+                Expect.equal (points |> List.choose (fun p -> p.Label)) [ "A"; "B"; "C" ] "pie slice labels preserved"
+            }
+        ]

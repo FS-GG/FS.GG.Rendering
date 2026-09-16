@@ -31,8 +31,7 @@ module internal ControlPrimitives =
 
     /// Feature 117 (Phase 8): install (or clear with `None`) the per-pass text-measure cache hook on this
     /// thread. Called by `RetainedRender.step` around the frame's layout + paint measurement.
-    let setMeasureTextHook (hook: (string -> FontSpec -> TextMetrics) option) =
-        TextMeasureHookHolder.Slot <- hook
+    let setMeasureTextHook (hook: (string -> FontSpec -> TextMetrics) option) = TextMeasureHookHolder.Slot <- hook
 
     /// Measure text through the active text-measure cache hook when one is installed (inside a retained
     /// `step`), else directly via the pure `Scene.measureText`. All six layout/paint text-measure call
@@ -47,14 +46,10 @@ module internal ControlPrimitives =
         | None -> Scene.measureTextResolved text font
 
     let tryLast name (attrs: Attr<'msg> list) =
-        attrs
-        |> List.rev
-        |> List.tryFind (fun attr -> attr.Name = name)
+        attrs |> List.rev |> List.tryFind (fun attr -> attr.Name = name)
 
     let tryLastAny names (attrs: Attr<'msg> list) =
-        attrs
-        |> List.rev
-        |> List.tryFind (fun attr -> names |> List.contains attr.Name)
+        attrs |> List.rev |> List.tryFind (fun attr -> names |> List.contains attr.Name)
 
     let textFrom (attrs: Attr<'msg> list) =
         AttrKeys.tryKey AttrKeys.Text attrs
@@ -106,7 +101,11 @@ module internal ControlPrimitives =
     /// the typed `Props` views call this; a consumer never names a slot string. Mirrors
     /// `Attributes.styleClasses` but kept off the public surface.
     let slotFill (fills: (string * Control<'msg>) list) : Attr<'msg> =
-        { Name = AttrKeys.nameOf AttrKeys.Slot; Category = Slot; Value = SlotFillsValue fills }
+        {
+            Name = AttrKeys.nameOf AttrKeys.Slot
+            Category = Slot
+            Value = SlotFillsValue fills
+        }
 
     /// Feature 095 (E5): the ordered slot fills carried by the last `slot` attribute (last-writer
     /// convention). Absent ≡ `[]` ≡ no slot filled ≡ the byte-identical base case (FR-003).
@@ -165,13 +164,17 @@ module internal ControlPrimitives =
         | [] -> control
         | fills ->
             let pick names =
-                names |> List.choose (fun n -> fills |> List.tryFind (fun (fn, _) -> fn = slotName n) |> Option.map snd)
+                names
+                |> List.choose (fun n -> fills |> List.tryFind (fun (fn, _) -> fn = slotName n) |> Option.map snd)
 
             let leadingNames, trailingNames = slotRegions control.Kind
 
             { control with
-                Attributes = control.Attributes |> List.filter (fun a -> a.Name <> AttrKeys.nameOf AttrKeys.Slot)
-                Children = pick leadingNames @ control.Children @ pick trailingNames }
+                Attributes =
+                    control.Attributes
+                    |> List.filter (fun a -> a.Name <> AttrKeys.nameOf AttrKeys.Slot)
+                Children = pick leadingNames @ control.Children @ pick trailingNames
+            }
 
     let floatValue name defaultValue (attrs: Attr<'msg> list) =
         tryLast name attrs
@@ -196,13 +199,14 @@ module internal ControlPrimitives =
             | _ -> None)
 
     let uniformSpacing value : FS.GG.UI.Layout.LayoutPadding =
-        { Left = value
-          Top = value
-          Right = value
-          Bottom = value }
+        {
+            Left = value
+            Top = value
+            Right = value
+            Bottom = value
+        }
 
-    let uniformGap value : FS.GG.UI.Layout.LayoutGap =
-        { Row = value; Column = value }
+    let uniformGap value : FS.GG.UI.Layout.LayoutGap = { Row = value; Column = value }
 
     let alignFromString value =
         match value with
@@ -278,8 +282,7 @@ module internal ControlPrimitives =
         | "onClick" -> "click"
         | "onChanged" -> "changed"
         | "onSelected" -> "selected"
-        | value when value.StartsWith("on", StringComparison.Ordinal) ->
-            value.Substring(2).ToLowerInvariant()
+        | value when value.StartsWith("on", StringComparison.Ordinal) -> value.Substring(2).ToLowerInvariant()
         | value -> value
 
     // FR-001 (feature 098): bindings key by the unified canonical `ControlId` — `Key ?? path`,
@@ -297,8 +300,20 @@ module internal ControlPrimitives =
                 let kind = eventKind attr.Name
 
                 match attr.Value with
-                | MessageValue msg -> Some { ControlId = id; EventKind = kind; Dispatch = fun _ -> msg }
-                | EventValue map -> Some { ControlId = id; EventKind = kind; Dispatch = map }
+                | MessageValue msg ->
+                    Some
+                        {
+                            ControlId = id
+                            EventKind = kind
+                            Dispatch = fun _ -> msg
+                        }
+                | EventValue map ->
+                    Some
+                        {
+                            ControlId = id
+                            EventKind = kind
+                            Dispatch = map
+                        }
                 | _ -> None)
 
     let rec recursively collect (control: Control<'msg>) =
@@ -308,7 +323,14 @@ module internal ControlPrimitives =
         let availableWidth = max 1.0 (width - 16.0)
         let availableHeight = max 1.0 (height - 8.0)
         let upper = Math.Clamp(maxSize, minSize, max minSize availableHeight)
-        let font size = { Family = family; Size = size; Weight = None }
+
+        let font size =
+            {
+                Family = family
+                Size = size
+                Weight = None
+            }
+
         let fits size =
             let metrics = measureText label (font size)
             metrics.Width <= availableWidth && metrics.Height <= availableHeight
@@ -335,7 +357,13 @@ module internal ControlPrimitives =
     /// explicit "more here" affordance — instead of letting the box clip drop characters silently. The
     /// label is returned unchanged when it already fits; a single-character label is never truncated.
     let ellipsize family (size: float) (maxWidth: float) (label: string) : string =
-        let font = { Family = family; Size = size; Weight = None }
+        let font =
+            {
+                Family = family
+                Size = size
+                Weight = None
+            }
+
         let width (s: string) = (measureText s font).Width
 
         if maxWidth <= 0.0 || label.Length <= 1 || width label <= maxWidth then
@@ -363,8 +391,7 @@ module internal ControlPrimitives =
             tryLast name control.Attributes
             |> Option.bind (fun attr ->
                 match attr.Value with
-                | UntypedValue(:? (ChartSeries list) as series) ->
-                    Some(series |> List.collect (fun s -> s.Points))
+                | UntypedValue(:? (ChartSeries list) as series) -> Some(series |> List.collect (fun s -> s.Points))
                 | UntypedValue(:? (ChartPoint list) as pts) -> Some pts
                 | FloatValue value -> Some [ { X = 0.0; Y = value; Label = None } ]
                 | _ -> None)
@@ -377,7 +404,15 @@ module internal ControlPrimitives =
             |> Option.bind (fun attr ->
                 match attr.Value with
                 | StringListValue values ->
-                    Some(values |> List.mapi (fun index label -> { X = float index; Y = float index; Label = Some label }))
+                    Some(
+                        values
+                        |> List.mapi (fun index label ->
+                            {
+                                X = float index
+                                Y = float index
+                                Label = Some label
+                            })
+                    )
                 | _ -> None)
             |> Option.defaultValue []
 
@@ -391,7 +426,9 @@ module internal ControlPrimitives =
             | Some ControlKindRegistry.Values -> points "values" |> Option.defaultValue []
             | Some ControlKindRegistry.GraphNodes -> nodesAsPoints ()
             | None -> []
-        raw |> List.filter (fun p -> System.Double.IsFinite p.X && System.Double.IsFinite p.Y)
+
+        raw
+        |> List.filter (fun p -> System.Double.IsFinite p.X && System.Double.IsFinite p.Y)
 
     /// Read the field-name-free run projection (text, colour, size, weight) that `RichText.create`
     /// stashes in the `richTextRuns` attr, so the preview can draw real per-run colour/weight
@@ -427,7 +464,12 @@ module internal ControlPrimitives =
         match kind.Split('-') |> Array.toList with
         | [] -> kind
         | head :: tail ->
-            let cap (w: string) = if w.Length = 0 then w else string (System.Char.ToUpper w[0]) + w.Substring 1
+            let cap (w: string) =
+                if w.Length = 0 then
+                    w
+                else
+                    string (System.Char.ToUpper w[0]) + w.Substring 1
+
             cap head :: tail |> String.concat " "
 
     // Feature 101/138: the layout-driving attribute names flow through the shared internal
@@ -439,24 +481,32 @@ module internal ControlPrimitives =
 
     /// Preview node width: explicit `width` wins; rich families fill the preview canvas.
     let nodeWidth (control: Control<'msg>) =
-        if hasAttr AttrWidth control.Attributes then floatValue AttrWidth 240.0 control.Attributes
-        elif ControlKindRegistry.isRich control.Kind then 304.0
-        else 240.0
+        if hasAttr AttrWidth control.Attributes then
+            floatValue AttrWidth 240.0 control.Attributes
+        elif ControlKindRegistry.isRich control.Kind then
+            304.0
+        else
+            240.0
 
     /// Preview node height: explicit `height` wins; rich families get a tall box so geometry
     /// sits below the title band (a 24-px box would put everything inside the band).
     let nodeHeight (control: Control<'msg>) =
-        if hasAttr AttrHeight control.Attributes then max 20.0 (floatValue AttrHeight 24.0 control.Attributes)
-        elif ControlKindRegistry.isRich control.Kind then 132.0
-        else 24.0
+        if hasAttr AttrHeight control.Attributes then
+            max 20.0 (floatValue AttrHeight 24.0 control.Attributes)
+        elif ControlKindRegistry.isRich control.Kind then
+            132.0
+        else
+            24.0
 
     let palette (theme: Theme) =
-        [ theme.Accent
-          Colors.rgb 210uy 95uy 75uy
-          Colors.rgb 90uy 165uy 95uy
-          Colors.rgb 150uy 110uy 205uy
-          Colors.rgb 215uy 165uy 65uy
-          Colors.rgb 80uy 150uy 205uy ]
+        [
+            theme.Accent
+            Colors.rgb 210uy 95uy 75uy
+            Colors.rgb 90uy 165uy 95uy
+            Colors.rgb 150uy 110uy 205uy
+            Colors.rgb 215uy 165uy 65uy
+            Colors.rgb 80uy 150uy 205uy
+        ]
 
     let colorAt theme i =
         let p = palette theme
@@ -468,7 +518,14 @@ module internal ControlPrimitives =
     // that one is pinned to literals for the EXISTING charts' Default byte-identity (SC-004); the
     // net-new charts have no baseline, so every colour traces to a token-sourced role here.
     let chartPalette (theme: Theme) : Color list =
-        [ theme.Accent; theme.Danger; theme.Success; theme.Warning; theme.Muted; theme.Foreground ]
+        [
+            theme.Accent
+            theme.Danger
+            theme.Success
+            theme.Warning
+            theme.Muted
+            theme.Foreground
+        ]
 
     let chartColorAt (theme: Theme) i =
         let p = chartPalette theme
@@ -478,23 +535,48 @@ module internal ControlPrimitives =
     /// scale runs `Muted`→`Accent` from theme roles, with no inline hex.
     let lerpColor (a: Color) (b: Color) (t: float) : Color =
         let t = max 0.0 (min 1.0 t)
-        let mix (x: byte) (y: byte) = byte (float x + (float y - float x) * t)
+
+        let mix (x: byte) (y: byte) =
+            byte (float x + (float y - float x) * t)
+
         Colors.rgba (mix a.Red b.Red) (mix a.Green b.Green) (mix a.Blue b.Blue) (mix a.Alpha b.Alpha)
 
     let mkText (theme: Theme) (x: float) (baseline: float) (size: float) (color: Color) (s: string) =
         Scene.textRun
-            { Text = s
-              Position = { X = x; Y = baseline }
-              Font = { Family = theme.FontFamily; Size = size; Weight = None }
-              Paint = Paint.fill color }
+            {
+                Text = s
+                Position = { X = x; Y = baseline }
+                Font =
+                    {
+                        Family = theme.FontFamily
+                        Size = size
+                        Weight = None
+                    }
+                Paint = Paint.fill color
+            }
 
     /// `mkText` with an explicit weight — used by the rich-text schematic to draw bold runs.
-    let mkTextW (theme: Theme) (x: float) (baseline: float) (size: float) (weight: int option) (color: Color) (s: string) =
+    let mkTextW
+        (theme: Theme)
+        (x: float)
+        (baseline: float)
+        (size: float)
+        (weight: int option)
+        (color: Color)
+        (s: string)
+        =
         Scene.textRun
-            { Text = s
-              Position = { X = x; Y = baseline }
-              Font = { Family = theme.FontFamily; Size = size; Weight = weight }
-              Paint = Paint.fill color }
+            {
+                Text = s
+                Position = { X = x; Y = baseline }
+                Font =
+                    {
+                        Family = theme.FontFamily
+                        Size = size
+                        Weight = weight
+                    }
+                Paint = Paint.fill color
+            }
 
     let stringListOf name (control: Control<'msg>) =
         tryLast name control.Attributes

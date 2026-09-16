@@ -50,15 +50,17 @@ module internal ControlKindRegistry =
     /// One internal record per control kind — the data dispatch (the painter and required-attribute
     /// validation are FR-010 retentions, kept at their original sites).
     type ControlKindEntry =
-        { IsRich: bool
-          IsChart: bool
-          ChartSource: ChartDataSource option
-          LayoutRow: bool
-          HasScrollAffordance: bool
-          Virtualization: VirtualizationRole option
-          InspectionNodeKind: VisualInspectionNodeKind
-          SurfaceRole: VisualInspectionSurfaceRole
-          A11yRole: AccessibilityRole }
+        {
+            IsRich: bool
+            IsChart: bool
+            ChartSource: ChartDataSource option
+            LayoutRow: bool
+            HasScrollAffordance: bool
+            Virtualization: VirtualizationRole option
+            InspectionNodeKind: VisualInspectionNodeKind
+            SurfaceRole: VisualInspectionSurfaceRole
+            A11yRole: AccessibilityRole
+        }
 
     /// The per-kind dispatch table — one entry for every catalog kind (the catalog↔registry
     /// completeness oracle, SC-001). Built once at module load.

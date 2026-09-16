@@ -57,7 +57,8 @@ let private repositoryRoot = RepositoryRoot.value
 // restated here. `Feature264FragmentProseTests` and `ScaffoldIdentifierLeakGuardTests` scan the
 // narrower `.fs`/`.fsi` view (`ScaffoldSources.files`) because their defects are F#-only. #282's is
 // not: four of its nine sites are `.props`, `.fsx` and `.md`.
-let private substitutionSubjectFiles = ScaffoldSources.substitutionSubjectFiles repositoryRoot
+let private substitutionSubjectFiles =
+    ScaffoldSources.substitutionSubjectFiles repositoryRoot
 
 /// `product`/`Product` with a word character welded to it on either side — the exact shape the
 /// substring `replaces` mangles and a word-boundary `replaces` would not. Case is SIGNIFICANT: the
@@ -73,13 +74,21 @@ let private enclosingWord (line: string) (index: int) =
     // The SAME ASCII class the matcher uses. `Char.IsLetterOrDigit` is Unicode-aware and would widen
     // the reported word across letters the pattern never considered an adjacency, so the message
     // would name a word the scan did not actually match on.
-    let isWord c = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c = '_'
+    let isWord c =
+        (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9')
+        || c = '_'
+
     let mutable start = index
     let mutable finish = index
+
     while start > 0 && isWord line.[start - 1] do
         start <- start - 1
+
     while finish < line.Length - 1 && isWord line.[finish + 1] do
         finish <- finish + 1
+
     line.Substring(start, finish - start + 1)
 
 let private scanLine (line: string) : string list =
@@ -89,10 +98,12 @@ let private scanLine (line: string) : string list =
     |> Seq.toList
 
 type private Finding =
-    { File: string
-      Line: int
-      Word: string
-      Text: string }
+    {
+        File: string
+        Line: int
+        Word: string
+        Text: string
+    }
 
 let private scanFile (path: string) : Finding list =
     let relative = Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/')
@@ -102,10 +113,12 @@ let private scanFile (path: string) : Finding list =
     |> Array.collect (fun (n, line) ->
         scanLine line
         |> List.map (fun word ->
-            { File = relative
-              Line = n
-              Word = word
-              Text = line.Trim() })
+            {
+                File = relative
+                Line = n
+                Word = word
+                Text = line.Trim()
+            })
         |> List.toArray)
     |> Array.toList
 
@@ -117,156 +130,189 @@ let private isTextFile (path: string) =
     | null -> true
     | extension ->
         match extension.ToLowerInvariant() with
-        | ".png" | ".jpg" | ".jpeg" | ".gif" | ".ico" | ".woff" | ".woff2" | ".ttf" | ".zip" | ".dll" | ".pdb" -> false
+        | ".png"
+        | ".jpg"
+        | ".jpeg"
+        | ".gif"
+        | ".ico"
+        | ".woff"
+        | ".woff2"
+        | ".ttf"
+        | ".zip"
+        | ".dll"
+        | ".pdb" -> false
         | _ -> true
 
-let private findings = substitutionSubjectFiles |> List.filter isTextFile |> List.collect scanFile
+let private findings =
+    substitutionSubjectFiles |> List.filter isTextFile |> List.collect scanFile
 
 [<Tests>]
 let feature282EmbeddedTokenGuardTests =
     testList
         "scaffold embedded-token substitution guard (#282)"
-        [ test "no word merely CONTAINING the `product` substitution token survives in a substituted scaffold file" {
-              // A hit here means `dotnet new` will rewrite the token inside a longer word and leave the
-              // remainder dangling (`production` -> `<Name>ion`, `products` -> `<Name>s`). Reword to a
-              // token-free synonym — `scaffolds`/`generated apps` for the generic plural, `framework`
-              // or `real` for `production` used as an adjective.
-              Expect.isEmpty
-                  findings
-                  (findings
-                   |> List.map (fun f -> sprintf "%s:%d [%s] %s" f.File f.Line f.Word f.Text)
-                   |> String.concat "\n"
-                   |> sprintf
-                       "a word containing the `product` substitution token as a proper substring survives\n\
+        [
+            test "no word merely CONTAINING the `product` substitution token survives in a substituted scaffold file" {
+                // A hit here means `dotnet new` will rewrite the token inside a longer word and leave the
+                // remainder dangling (`production` -> `<Name>ion`, `products` -> `<Name>s`). Reword to a
+                // token-free synonym — `scaffolds`/`generated apps` for the generic plural, `framework`
+                // or `real` for `production` used as an adjective.
+                Expect.isEmpty
+                    findings
+                    (findings
+                     |> List.map (fun f -> sprintf "%s:%d [%s] %s" f.File f.Line f.Word f.Text)
+                     |> String.concat "\n"
+                     |> sprintf
+                         "a word containing the `product` substitution token as a proper substring survives\n\
                         in a substituted scaffold file; `dotnet new` will mangle it:\n%s")
-          }
+            }
 
-          test "the scan enumerates the substituted scaffold files (must not silently narrow to zero)" {
-              // Backstop: if the `template.json` read or the glob translation ever returns an empty set,
-              // the guard above passes vacuously. Pin a lower bound and the four non-F# sites the F#-only
-              // enumeration (`ScaffoldSources.files`) structurally cannot reach.
-              Expect.isGreaterThan
-                  (List.length substitutionSubjectFiles)
-                  20
-                  "substitution-subject enumeration collapsed — the embedded-token scan would pass vacuously"
+            test "the scan enumerates the substituted scaffold files (must not silently narrow to zero)" {
+                // Backstop: if the `template.json` read or the glob translation ever returns an empty set,
+                // the guard above passes vacuously. Pin a lower bound and the four non-F# sites the F#-only
+                // enumeration (`ScaffoldSources.files`) structurally cannot reach.
+                Expect.isGreaterThan
+                    (List.length substitutionSubjectFiles)
+                    20
+                    "substitution-subject enumeration collapsed — the embedded-token scan would pass vacuously"
 
-              let mustScan =
-                  [ "template/base/Directory.Build.props"
-                    "template/base/Directory.Packages.props"
-                    "template/base/build.fsx"
-                    "template/base/docs/product.md"
-                    "template/base/src/Product/View.fs"
-                    "template/base/tests/Product.Tests/BehaviorTests.fs" ]
+                let mustScan =
+                    [
+                        "template/base/Directory.Build.props"
+                        "template/base/Directory.Packages.props"
+                        "template/base/build.fsx"
+                        "template/base/docs/product.md"
+                        "template/base/src/Product/View.fs"
+                        "template/base/tests/Product.Tests/BehaviorTests.fs"
+                    ]
 
-              let scanned =
-                  substitutionSubjectFiles
-                  |> List.map (fun p -> Path.GetRelativePath(repositoryRoot, p).Replace('\\', '/'))
-                  |> Set.ofList
+                let scanned =
+                    substitutionSubjectFiles
+                    |> List.map (fun p -> Path.GetRelativePath(repositoryRoot, p).Replace('\\', '/'))
+                    |> Set.ofList
 
-              mustScan
-              |> List.iter (fun p ->
-                  Expect.isTrue (Set.contains p scanned) (sprintf "a known #282 mangle site is not in the scanned set: %s" p))
-          }
+                mustScan
+                |> List.iter (fun p ->
+                    Expect.isTrue
+                        (Set.contains p scanned)
+                        (sprintf "a known #282 mangle site is not in the scanned set: %s" p))
+            }
 
-          test "the scan honours copyOnly and exclude (must not over-scan into verbatim trees)" {
-              // The `copyOnly` trees are NOT substituted, so their prose is safe by construction and a
-              // hit there would be a false positive. `docs/api-surface/**` in particular is full of
-              // `ProductDefect`, and `template/base/` is re-emitted a second time with an `include` that
-              // a naive union would read as "all of template/base", dragging in `.claude/` too.
-              let scanned =
-                  substitutionSubjectFiles
-                  |> List.map (fun p -> Path.GetRelativePath(repositoryRoot, p).Replace('\\', '/'))
-                  |> Set.ofList
+            test "the scan honours copyOnly and exclude (must not over-scan into verbatim trees)" {
+                // The `copyOnly` trees are NOT substituted, so their prose is safe by construction and a
+                // hit there would be a false positive. `docs/api-surface/**` in particular is full of
+                // `ProductDefect`, and `template/base/` is re-emitted a second time with an `include` that
+                // a naive union would read as "all of template/base", dragging in `.claude/` too.
+                let scanned =
+                    substitutionSubjectFiles
+                    |> List.map (fun p -> Path.GetRelativePath(repositoryRoot, p).Replace('\\', '/'))
+                    |> Set.ofList
 
-              let mustNotScan =
-                  [ "template/base/docs/evidence-formats.md" // copyOnly
-                    "template/base/docs/scaffold-map.md" // copyOnly
-                    "template/base/docs/interactive-readiness.md" ] // copyOnly
+                let mustNotScan =
+                    [
+                        "template/base/docs/evidence-formats.md" // copyOnly
+                        "template/base/docs/scaffold-map.md" // copyOnly
+                        "template/base/docs/interactive-readiness.md"
+                    ] // copyOnly
 
-              mustNotScan
-              |> List.iter (fun p ->
-                  Expect.isFalse (Set.contains p scanned) (sprintf "a copyOnly (verbatim) file leaked into the scanned set: %s" p))
+                mustNotScan
+                |> List.iter (fun p ->
+                    Expect.isFalse
+                        (Set.contains p scanned)
+                        (sprintf "a copyOnly (verbatim) file leaked into the scanned set: %s" p))
 
-              Expect.isFalse
-                  (scanned |> Set.exists (fun p -> p.StartsWith "template/base/docs/api-surface/"))
-                  "the copyOnly docs/api-surface/** contract tree leaked into the scanned set"
+                Expect.isFalse
+                    (scanned |> Set.exists (fun p -> p.StartsWith "template/base/docs/api-surface/"))
+                    "the copyOnly docs/api-surface/** contract tree leaked into the scanned set"
 
-              Expect.isFalse
-                  (scanned |> Set.exists (fun p -> p.StartsWith "template/base/.claude/"))
-                  "the excluded template/base/.claude/ tree leaked into the scanned set (an `include` was ignored)"
-          }
+                Expect.isFalse
+                    (scanned |> Set.exists (fun p -> p.StartsWith "template/base/.claude/"))
+                    "the excluded template/base/.claude/ tree leaked into the scanned set (an `include` was ignored)"
+            }
 
-          test "the scanner detects the real mangle sites and spares the intended common noun" {
-              // Prove the pattern separates collateral from intent. `mustFlag` is the nine sites #282
-              // found, verbatim; `mustPass` is the deliberate common-noun prose the rewrite exists to
-              // serve, which a bare-token scan would have condemned.
-              let mustFlag =
-                  [ "// production tree-render path (`Control.renderTree`) at the output extent, so the"
-                    "test \"default view renders real controls through the production render path\" {"
-                    "       spec-kit lifecycle emitted the vendored script (sdd/none products never run it — the"
-                    "         products pin it here; simulation profiles only. -->"
-                    "// are copied into or executed by generated products; the only retained external process is"
-                    "Generated products expose a compact consumer API map before app-specific code:"
-                    "let dotProduct a b = a.X * b.X + a.Y * b.Y" // leading adjacency mangles too
-                    "  <ProductName>x</ProductName>" ]
+            test "the scanner detects the real mangle sites and spares the intended common noun" {
+                // Prove the pattern separates collateral from intent. `mustFlag` is the nine sites #282
+                // found, verbatim; `mustPass` is the deliberate common-noun prose the rewrite exists to
+                // serve, which a bare-token scan would have condemned.
+                let mustFlag =
+                    [
+                        "// production tree-render path (`Control.renderTree`) at the output extent, so the"
+                        "test \"default view renders real controls through the production render path\" {"
+                        "       spec-kit lifecycle emitted the vendored script (sdd/none products never run it — the"
+                        "         products pin it here; simulation profiles only. -->"
+                        "// are copied into or executed by generated products; the only retained external process is"
+                        "Generated products expose a compact consumer API map before app-specific code:"
+                        "let dotProduct a b = a.X * b.X + a.Y * b.Y" // leading adjacency mangles too
+                        "  <ProductName>x</ProductName>"
+                    ]
 
-              let mustPass =
-                  [ "/// Product-owned 2D-visibility helper — THIS FILE IS YOURS TO ADAPT." // the intended header
-                    "/// Where `resolver` looks for PCM WAV files, relative to the running product."
-                    "/// the ONE place bare `Scene` record literals appear in your product tree, where only `Scene` types"
-                    "// `forTransition` is the ONLY place this product decides what to play."
-                    "Expect.isEmpty subscriptions \"default generated product has no subscriptions\""
-                    "namespace Product.Tests" // `.` is not a word character
-                    "// see src/Product/View.fs" // `/` is not a word character
-                    "// a cross-product, which is #264's business and not this gate's"
-                    "// PRODUCTION, shouted, is not a declared token and is never rewritten" ] // case is significant
+                let mustPass =
+                    [
+                        "/// Product-owned 2D-visibility helper — THIS FILE IS YOURS TO ADAPT." // the intended header
+                        "/// Where `resolver` looks for PCM WAV files, relative to the running product."
+                        "/// the ONE place bare `Scene` record literals appear in your product tree, where only `Scene` types"
+                        "// `forTransition` is the ONLY place this product decides what to play."
+                        "Expect.isEmpty subscriptions \"default generated product has no subscriptions\""
+                        "namespace Product.Tests" // `.` is not a word character
+                        "// see src/Product/View.fs" // `/` is not a word character
+                        "// a cross-product, which is #264's business and not this gate's"
+                        "// PRODUCTION, shouted, is not a declared token and is never rewritten"
+                    ] // case is significant
 
-              mustFlag
-              |> List.iter (fun l -> Expect.isNonEmpty (scanLine l) (sprintf "real mangle site not detected: %s" l))
+                mustFlag
+                |> List.iter (fun l -> Expect.isNonEmpty (scanLine l) (sprintf "real mangle site not detected: %s" l))
 
-              mustPass
-              |> List.iter (fun l -> Expect.isEmpty (scanLine l) (sprintf "false positive on legitimate line: %s" l))
-          }
+                mustPass
+                |> List.iter (fun l -> Expect.isEmpty (scanLine l) (sprintf "false positive on legitimate line: %s" l))
+            }
 
-          test "a finding names the whole enclosing word, not the two-character match" {
-              // The message must be actionable: `products`, not `ts`.
-              Expect.equal (scanLine "generated products pin it") [ "products" ] "the plural is reported whole"
-              Expect.equal (scanLine "// production path") [ "production" ] "the adjective is reported whole"
-              Expect.equal (scanLine "let dotProduct a b = 0") [ "dotProduct" ] "a leading-adjacency identifier is reported whole"
-          }
+            test "a finding names the whole enclosing word, not the two-character match" {
+                // The message must be actionable: `products`, not `ts`.
+                Expect.equal (scanLine "generated products pin it") [ "products" ] "the plural is reported whole"
+                Expect.equal (scanLine "// production path") [ "production" ] "the adjective is reported whole"
 
-          test "a declared source root that vanished fails loudly instead of narrowing the scan" {
-              // The one narrowing no downstream count backstop can see: rename `template/fragments/vec2/src`
-              // and its files simply stop being scanned, while the OTHER roots keep the total well above
-              // any lower bound. So drive the real branch with a fixture repo whose template.json declares
-              // one root that exists and one that does not.
-              let fixture = Path.Combine(Path.GetTempPath(), "fsgg-282-fixture-" + string (System.Guid.NewGuid()))
-              let present = Path.Combine(fixture, "template", "base")
+                Expect.equal
+                    (scanLine "let dotProduct a b = 0")
+                    [ "dotProduct" ]
+                    "a leading-adjacency identifier is reported whole"
+            }
 
-              try
-                  Directory.CreateDirectory(Path.Combine(fixture, ".template.config")) |> ignore
-                  Directory.CreateDirectory present |> ignore
-                  File.WriteAllText(Path.Combine(present, "View.fs"), "// nothing to see")
+            test "a declared source root that vanished fails loudly instead of narrowing the scan" {
+                // The one narrowing no downstream count backstop can see: rename `template/fragments/vec2/src`
+                // and its files simply stop being scanned, while the OTHER roots keep the total well above
+                // any lower bound. So drive the real branch with a fixture repo whose template.json declares
+                // one root that exists and one that does not.
+                let fixture =
+                    Path.Combine(Path.GetTempPath(), "fsgg-282-fixture-" + string (System.Guid.NewGuid()))
 
-                  let templateJson =
-                      """{ "sources": [ { "source": "template/base/" }, { "source": "template/gone/" } ] }"""
+                let present = Path.Combine(fixture, "template", "base")
 
-                  File.WriteAllText(Path.Combine(fixture, ".template.config", "template.json"), templateJson)
+                try
+                    Directory.CreateDirectory(Path.Combine(fixture, ".template.config")) |> ignore
+                    Directory.CreateDirectory present |> ignore
+                    File.WriteAllText(Path.Combine(present, "View.fs"), "// nothing to see")
 
-                  Expect.throws
-                      (fun () -> ScaffoldSources.substitutionSubjectFiles fixture |> ignore)
-                      "a declared-but-absent source root must raise, not silently contribute zero files"
+                    let templateJson =
+                        """{ "sources": [ { "source": "template/base/" }, { "source": "template/gone/" } ] }"""
 
-                  // And the same fixture WITHOUT the absent root scans normally — proving the throw is
-                  // caused by the missing root, not by the fixture being malformed.
-                  File.WriteAllText(
-                      Path.Combine(fixture, ".template.config", "template.json"),
-                      """{ "sources": [ { "source": "template/base/" } ] }"""
-                  )
+                    File.WriteAllText(Path.Combine(fixture, ".template.config", "template.json"), templateJson)
 
-                  Expect.hasLength (ScaffoldSources.substitutionSubjectFiles fixture) 1 "the surviving root is scanned normally"
-              finally
-                  if Directory.Exists fixture then
-                      Directory.Delete(fixture, true)
-          }
+                    Expect.throws
+                        (fun () -> ScaffoldSources.substitutionSubjectFiles fixture |> ignore)
+                        "a declared-but-absent source root must raise, not silently contribute zero files"
+
+                    // And the same fixture WITHOUT the absent root scans normally — proving the throw is
+                    // caused by the missing root, not by the fixture being malformed.
+                    File.WriteAllText(
+                        Path.Combine(fixture, ".template.config", "template.json"),
+                        """{ "sources": [ { "source": "template/base/" } ] }"""
+                    )
+
+                    Expect.hasLength
+                        (ScaffoldSources.substitutionSubjectFiles fixture)
+                        1
+                        "the surviving root is scanned normally"
+                finally
+                    if Directory.Exists fixture then
+                        Directory.Delete(fixture, true)
+            }
         ]

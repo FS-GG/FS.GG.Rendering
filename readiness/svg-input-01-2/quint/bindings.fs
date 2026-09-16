@@ -3,14 +3,20 @@ module InputCommandModelGenerated
 
 [<Literal>]
 let Schema = "fsgg.quint.compiled-contract/v2"
+
 [<Literal>]
 let Profile = "fsgg-quint-profile/2"
+
 [<Literal>]
 let Specification = "InputCommandModelGenerated"
+
 [<Literal>]
-let ContractFingerprint = "fa1142f2d50027baacd9510ae7131dce8a9e521fb79ad814791b89489e18e036"
+let ContractFingerprint =
+    "fa1142f2d50027baacd9510ae7131dce8a9e521fb79ad814791b89489e18e036"
+
 [<Literal>]
-let CanonicalContractJson = "{\"schema\":\"fsgg.quint.compiled-contract/v2\",\"profile\":\"fsgg-quint-profile/2\",\"specification\":\"InputCommandModelGenerated\",\"exports\":[],\"catalogue\":[],\"actionEffects\":[{\"actionId\":\"ACT-CancelTransient\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Deadline\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Init\",\"reads\":[],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressContinuation\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressHeld\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressPrefix\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressRoot\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-ReleaseHeld\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Step\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]}],\"relationships\":[],\"verificationProfiles\":[],\"bounds\":[],\"impacts\":[],\"compatibility\":[],\"digests\":[{\"name\":\"sandbox-contract\",\"sha256\":\"2bf8ff26ddb488444c59daa77515b183008c352213e48ac6e36e15e0bc08c122\"},{\"name\":\"typed-effect\",\"sha256\":\"9052788695cdfda3be0b6d2468997dda932fa66a56a4ae29c68139134326644c\"}]}\n"
+let CanonicalContractJson =
+    "{\"schema\":\"fsgg.quint.compiled-contract/v2\",\"profile\":\"fsgg-quint-profile/2\",\"specification\":\"InputCommandModelGenerated\",\"exports\":[],\"catalogue\":[],\"actionEffects\":[{\"actionId\":\"ACT-CancelTransient\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Deadline\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Init\",\"reads\":[],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressContinuation\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressHeld\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressPrefix\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-PressRoot\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-ReleaseHeld\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]},{\"actionId\":\"ACT-Step\",\"reads\":[\"state\"],\"writes\":[\"state\"],\"subjects\":[\"state\"]}],\"relationships\":[],\"verificationProfiles\":[],\"bounds\":[],\"impacts\":[],\"compatibility\":[],\"digests\":[{\"name\":\"sandbox-contract\",\"sha256\":\"2bf8ff26ddb488444c59daa77515b183008c352213e48ac6e36e15e0bc08c122\"},{\"name\":\"typed-effect\",\"sha256\":\"9052788695cdfda3be0b6d2468997dda932fa66a56a4ae29c68139134326644c\"}]}\n"
 
 type QuintValue =
     | Bool of bool
@@ -24,21 +30,24 @@ type QuintValue =
     | Map of (QuintValue * QuintValue) list
 
 type QuintExport =
-    { Id: string
-      ModuleName: string
-      DeclarationName: string
-      Value: QuintValue }
+    {
+        Id: string
+        ModuleName: string
+        DeclarationName: string
+        Value: QuintValue
+    }
 
 type CatalogueEntry =
-    { Id: string
-      Kind: string
-      ExportId: string
-      Value: QuintValue }
+    {
+        Id: string
+        Kind: string
+        ExportId: string
+        Value: QuintValue
+    }
 
 module Ids =
+    let private noIds = ()
 
-let Exports : QuintExport list =
-    []
+let Exports: QuintExport list = []
 
-let Catalogue : CatalogueEntry list =
-    []
+let Catalogue: CatalogueEntry list = []

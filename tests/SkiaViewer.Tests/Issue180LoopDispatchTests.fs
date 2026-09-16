@@ -36,12 +36,14 @@ type private Msg =
 /// What one simulated run observed. `Counter` only ever increments, so a value that repeats or goes
 /// backwards in `Observed` is a torn read-modify-write across two threads.
 type private RunReport =
-    { LoopThreadId: int
-      /// Distinct threads that actually executed `update`.
-      UpdateThreads: int Set
-      /// Every counter value `update` produced, in the order it produced them.
-      Observed: int list
-      Ticks: int }
+    {
+        LoopThreadId: int
+        /// Distinct threads that actually executed `update`.
+        UpdateThreads: int Set
+        /// Every counter value `update` produced, in the order it produced them.
+        Observed: int list
+        Ticks: int
+    }
 
 let private onThread (body: unit -> unit) =
     let thread = Thread(ThreadStart(body), IsBackground = true)
@@ -55,7 +57,7 @@ let private simulateRun (gated: bool) : RunReport =
     let mutable report = Unchecked.defaultof<RunReport>
 
     let body () =
-        let gate = LoopDispatch.forCurrentThread<Msg> ()
+        let gate = LoopDispatch.forCurrentThread<Msg>()
         let loopThreadId = Environment.CurrentManagedThreadId
 
         // Deliberately unsynchronized, mirroring the host's `currentModel` and effect statics. The
@@ -101,10 +103,12 @@ let private simulateRun (gated: bool) : RunReport =
         started |> List.iter (fun disposable -> disposable.Dispose())
 
         report <-
-            { LoopThreadId = loopThreadId
-              UpdateThreads = Set.ofSeq updateThreads
-              Observed = List.ofSeq observed
-              Ticks = ticks }
+            {
+                LoopThreadId = loopThreadId
+                UpdateThreads = Set.ofSeq updateThreads
+                Observed = List.ofSeq observed
+                Ticks = ticks
+            }
 
     let thread = onThread body
 
@@ -130,103 +134,116 @@ let private queueOffThread (guarded: Dispatch<Msg>) (messages: Msg list) =
 let tests =
     testList
         "Issue180 LoopDispatch"
-        [ test "guard runs a loop-thread dispatch inline" {
-            let gate = LoopDispatch.forCurrentThread<Msg> ()
-            let seen = ResizeArray<Msg>()
-            let guarded = LoopDispatch.guard gate (fun msg -> seen.Add msg)
+        [
+            test "guard runs a loop-thread dispatch inline" {
+                let gate = LoopDispatch.forCurrentThread<Msg>()
+                let seen = ResizeArray<Msg>()
+                let guarded = LoopDispatch.guard gate (fun msg -> seen.Add msg)
 
-            guarded LoopInput
+                guarded LoopInput
 
-            Expect.sequenceEqual seen [ LoopInput ] "a loop-thread dispatch must not be deferred"
-            Expect.equal (LoopDispatch.pending gate) 0 "nothing should have been queued"
-          }
+                Expect.sequenceEqual seen [ LoopInput ] "a loop-thread dispatch must not be deferred"
+                Expect.equal (LoopDispatch.pending gate) 0 "nothing should have been queued"
+            }
 
-          test "guard queues a dispatch raised off the loop thread" {
-              let gate = LoopDispatch.forCurrentThread<Msg> ()
-              let seen = ResizeArray<Msg>()
-              let guarded = LoopDispatch.guard gate (fun msg -> seen.Add msg)
+            test "guard queues a dispatch raised off the loop thread" {
+                let gate = LoopDispatch.forCurrentThread<Msg>()
+                let seen = ResizeArray<Msg>()
+                let guarded = LoopDispatch.guard gate (fun msg -> seen.Add msg)
 
-              queueOffThread guarded [ LoopInput ]
+                queueOffThread guarded [ LoopInput ]
 
-              Expect.isEmpty seen "an off-thread dispatch must not run inline"
-              Expect.equal (LoopDispatch.pending gate) 1 "it must be queued for the loop to drain"
-          }
+                Expect.isEmpty seen "an off-thread dispatch must not run inline"
+                Expect.equal (LoopDispatch.pending gate) 1 "it must be queued for the loop to drain"
+            }
 
-          test "drain replays queued messages on the draining thread, in order" {
-              let gate = LoopDispatch.forCurrentThread<Msg> ()
-              let queued = [ Tick(TimeSpan.FromMilliseconds 1.0); LoopInput; Tick(TimeSpan.FromMilliseconds 2.0) ]
+            test "drain replays queued messages on the draining thread, in order" {
+                let gate = LoopDispatch.forCurrentThread<Msg>()
 
-              queueOffThread (LoopDispatch.guard gate ignore) queued
+                let queued =
+                    [
+                        Tick(TimeSpan.FromMilliseconds 1.0)
+                        LoopInput
+                        Tick(TimeSpan.FromMilliseconds 2.0)
+                    ]
 
-              let seen = ResizeArray<Msg>()
-              let threads = ResizeArray<int>()
+                queueOffThread (LoopDispatch.guard gate ignore) queued
 
-              let ran =
-                  LoopDispatch.drain gate (fun msg ->
-                      threads.Add Environment.CurrentManagedThreadId
-                      seen.Add msg)
+                let seen = ResizeArray<Msg>()
+                let threads = ResizeArray<int>()
 
-              Expect.equal ran 3 "drain reports how many it replayed"
-              Expect.sequenceEqual seen queued "FIFO order is preserved"
-              Expect.equal (Set.ofSeq threads) (Set.ofList [ Environment.CurrentManagedThreadId ]) "replay happens on the draining thread"
-              Expect.equal (LoopDispatch.pending gate) 0 "the queue is emptied"
-          }
+                let ran =
+                    LoopDispatch.drain gate (fun msg ->
+                        threads.Add Environment.CurrentManagedThreadId
+                        seen.Add msg)
 
-          test "drain off the loop thread replays nothing and keeps the queue" {
-              let gate = LoopDispatch.forCurrentThread<Msg> ()
+                Expect.equal ran 3 "drain reports how many it replayed"
+                Expect.sequenceEqual seen queued "FIFO order is preserved"
 
-              queueOffThread (LoopDispatch.guard gate ignore) [ LoopInput ]
+                Expect.equal
+                    (Set.ofSeq threads)
+                    (Set.ofList [ Environment.CurrentManagedThreadId ])
+                    "replay happens on the draining thread"
 
-              let mutable ran = -1
-              let mutable escaped = 0
+                Expect.equal (LoopDispatch.pending gate) 0 "the queue is emptied"
+            }
 
-              let drainer =
-                  onThread (fun () -> ran <- LoopDispatch.drain gate (fun _ -> escaped <- escaped + 1))
+            test "drain off the loop thread replays nothing and keeps the queue" {
+                let gate = LoopDispatch.forCurrentThread<Msg>()
 
-              if not (drainer.Join(TimeSpan.FromSeconds 10.0)) then
-                  failtest "drainer thread did not finish"
+                queueOffThread (LoopDispatch.guard gate ignore) [ LoopInput ]
 
-              Expect.equal ran 0 "draining off the loop thread must replay nothing"
-              Expect.equal escaped 0 "…and must not run a single message"
-              Expect.equal (LoopDispatch.pending gate) 1 "the message stays queued for the real loop"
-          }
+                let mutable ran = -1
+                let mutable escaped = 0
 
-          test "drain is bounded by the depth it observed on entry" {
-              let gate = LoopDispatch.forCurrentThread<Msg> ()
+                let drainer =
+                    onThread (fun () -> ran <- LoopDispatch.drain gate (fun _ -> escaped <- escaped + 1))
 
-              queueOffThread (LoopDispatch.guard gate ignore) (List.replicate 64 LoopInput)
+                if not (drainer.Join(TimeSpan.FromSeconds 10.0)) then
+                    failtest "drainer thread did not finish"
 
-              let ran = LoopDispatch.drain gate ignore
+                Expect.equal ran 0 "draining off the loop thread must replay nothing"
+                Expect.equal escaped 0 "…and must not run a single message"
+                Expect.equal (LoopDispatch.pending gate) 1 "the message stays queued for the real loop"
+            }
 
-              Expect.equal ran 64 "every message queued before entry is replayed"
-              Expect.equal (LoopDispatch.pending gate) 0 "and none is left behind"
-          }
+            test "drain is bounded by the depth it observed on entry" {
+                let gate = LoopDispatch.forCurrentThread<Msg>()
 
-          // The witness: this is what the host did before the gate existed. It asserts only the
-          // thread, which is certain — a threadpool callback is never the loop thread. The torn reads
-          // that follow from it are a race, so they are left unasserted here rather than made into a
-          // test that can go red on a machine where the timer never happens to collide.
-          test "ungated, the animation tick really does dispatch off the loop thread" {
-              let report = simulateRun false
+                queueOffThread (LoopDispatch.guard gate ignore) (List.replicate 64 LoopInput)
 
-              Expect.isGreaterThan report.Ticks 1 "the recurring timer must fire past the immediate first frame"
+                let ran = LoopDispatch.drain gate ignore
 
-              Expect.isTrue
-                  (report.UpdateThreads |> Set.exists (fun threadId -> threadId <> report.LoopThreadId))
-                  "without the gate, update runs on the timer's threadpool thread — the race this issue reports"
-          }
+                Expect.equal ran 64 "every message queued before entry is replayed"
+                Expect.equal (LoopDispatch.pending gate) 0 "and none is left behind"
+            }
 
-          // The criterion: the animation subscription drives the loop, and the model is never torn.
-          test "gated, the animation tick only updates on the loop thread and never tears the model" {
-              let report = simulateRun true
+            // The witness: this is what the host did before the gate existed. It asserts only the
+            // thread, which is certain — a threadpool callback is never the loop thread. The torn reads
+            // that follow from it are a race, so they are left unasserted here rather than made into a
+            // test that can go red on a machine where the timer never happens to collide.
+            test "ungated, the animation tick really does dispatch off the loop thread" {
+                let report = simulateRun false
 
-              Expect.isGreaterThan report.Ticks 1 "the recurring timer must fire, or this proves nothing"
+                Expect.isGreaterThan report.Ticks 1 "the recurring timer must fire past the immediate first frame"
 
-              Expect.equal
-                  report.UpdateThreads
-                  (Set.ofList [ report.LoopThreadId ])
-                  "every update must run on the loop thread"
+                Expect.isTrue
+                    (report.UpdateThreads
+                     |> Set.exists (fun threadId -> threadId <> report.LoopThreadId))
+                    "without the gate, update runs on the timer's threadpool thread — the race this issue reports"
+            }
 
-              Expect.isEmpty (tornReads report.Observed) "a monotonic counter must never repeat or regress"
-          } ]
+            // The criterion: the animation subscription drives the loop, and the model is never torn.
+            test "gated, the animation tick only updates on the loop thread and never tears the model" {
+                let report = simulateRun true
 
+                Expect.isGreaterThan report.Ticks 1 "the recurring timer must fire, or this proves nothing"
+
+                Expect.equal
+                    report.UpdateThreads
+                    (Set.ofList [ report.LoopThreadId ])
+                    "every update must run on the loop thread"
+
+                Expect.isEmpty (tornReads report.Observed) "a monotonic counter must never repeat or regress"
+            }
+        ]

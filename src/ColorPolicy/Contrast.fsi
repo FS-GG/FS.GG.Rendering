@@ -22,9 +22,11 @@ type Verdict =
 /// for an `Exempt` (Decorative) input `Ratio` carries the measured value but no
 /// threshold is applied.
 type ContrastResult =
-    { Ratio: float
-      Role: Role
-      Verdict: Verdict }
+    {
+        Ratio: float
+        Role: Role
+        Verdict: Verdict
+    }
 
 /// WCAG 2.x relative-luminance + contrast measurement over Scene colors.
 module Contrast =

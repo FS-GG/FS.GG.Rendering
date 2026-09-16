@@ -25,21 +25,25 @@ module Perf =
         | DamageScoped
 
     type TimingSample =
-        { ScenarioId: string
-          Path: TimingPath
-          RunId: string
-          HostProfileId: string
-          DurationMs: float
-          ArtifactPath: string }
+        {
+            ScenarioId: string
+            Path: TimingPath
+            RunId: string
+            HostProfileId: string
+            DurationMs: float
+            ArtifactPath: string
+        }
 
     type SampleDistribution =
-        { Count: int
-          P50Ms: float
-          P95Ms: float
-          P99Ms: float
-          MinMs: float
-          MaxMs: float
-          RawSamplePath: string }
+        {
+            Count: int
+            P50Ms: float
+            P95Ms: float
+            P99Ms: float
+            MinMs: float
+            MaxMs: float
+            RawSamplePath: string
+        }
 
     type TimingVerdict =
         | Positive
@@ -51,10 +55,12 @@ module Perf =
         | Limited
 
     type ScenarioTimingDecision =
-        { NoiseBandMs: float
-          Verdict: TimingVerdict
-          ConfidenceDecision: string
-          Reasons: string list }
+        {
+            NoiseBandMs: float
+            Verdict: TimingVerdict
+            ConfidenceDecision: string
+            Reasons: string list
+        }
 
     type ExpectedWorkloadClass =
         | NormalPlay
@@ -63,10 +69,12 @@ module Perf =
         | LiveCompositor
 
     type ExpectedWorkloadBudget =
-        { P95Ms: float
-          P99Ms: float
-          MaximumSceneNodes: int
-          AllowSustainedCatchUp: bool }
+        {
+            P95Ms: float
+            P99Ms: float
+            MaximumSceneNodes: int
+            AllowSustainedCatchUp: bool
+        }
 
     type ExpectedWorkloadVerdict = { Passed: bool; Reasons: string list }
 
@@ -119,17 +127,19 @@ module Perf =
         | FailedProofReadback
 
     type ClassifiedTimingSample =
-        { ScenarioId: string
-          ScenarioDefinitionId: string
-          Path: TimingPath
-          RunId: string
-          HostProfileId: string
-          PackageVersion: string
-          DurationMs: float
-          MeasurementPolicy: MeasurementPolicy
-          InclusionStatus: InclusionStatus
-          ExclusionReason: ExclusionReason option
-          ArtifactPath: string }
+        {
+            ScenarioId: string
+            ScenarioDefinitionId: string
+            Path: TimingPath
+            RunId: string
+            HostProfileId: string
+            PackageVersion: string
+            DurationMs: float
+            MeasurementPolicy: MeasurementPolicy
+            InclusionStatus: InclusionStatus
+            ExclusionReason: ExclusionReason option
+            ArtifactPath: string
+        }
 
     /// Parse a `--mode` token; `None` if unrecognised.
     val parseMode: token: string -> PerfMode option

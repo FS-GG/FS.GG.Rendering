@@ -16,12 +16,14 @@ type SavePayload = SavePayload of string
 /// product-stamped save-format version (normalized to `>= minVersion` at the boundary) that lets a
 /// future load migrate or reject old saves; the framework never interprets `Payload`.
 type SaveEnvelope =
-    { /// Product-stamped save-format version, normalized to `>= minVersion`.
-      Version: int
-      /// Target save slot.
-      Slot: SaveSlot
-      /// Opaque, product-serialized payload.
-      Payload: SavePayload }
+    {
+        /// Product-stamped save-format version, normalized to `>= minVersion`.
+        Version: int
+        /// Target save slot.
+        Slot: SaveSlot
+        /// Opaque, product-serialized payload.
+        Payload: SavePayload
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 /// A requested save/load action, expressed as a pure value from a product's `update`. Data only —
@@ -90,14 +92,16 @@ type PersistenceBackend = RecordOnly
 /// evidence of intent, NOT of durability: nothing in this framework writes a byte, so `Requested`
 /// proves your `update` asked to save — never that a save happened.
 type PersistenceEvidence =
-    { /// Requested effects in dispatch order, oldest first, with `Save` versions normalized and
-      /// payloads carried verbatim. Recorded and dropped: no file was written, read, or deleted.
-      Requested: PersistenceEffect list
+    {
+        /// Requested effects in dispatch order, oldest first, with `Save` versions normalized and
+        /// payloads carried verbatim. Recorded and dropped: no file was written, read, or deleted.
+        Requested: PersistenceEffect list
 
-      /// Which interpreter produced this value — always `RecordOnly`. Carried on the type so a
-      /// consumer holding an evidence value learns that nothing was persisted from the TYPE, not
-      /// from a doc comment it may never read (#445's type-mark half, paid for by the #537 major).
-      Backend: PersistenceBackend }
+        /// Which interpreter produced this value — always `RecordOnly`. Carried on the type so a
+        /// consumer holding an evidence value learns that nothing was persisted from the TYPE, not
+        /// from a doc comment it may never read (#445's type-mark half, paid for by the #537 major).
+        Backend: PersistenceBackend
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 /// The persistence request vocabulary plus a pure RECORD-ONLY interpreter. A product's `update`

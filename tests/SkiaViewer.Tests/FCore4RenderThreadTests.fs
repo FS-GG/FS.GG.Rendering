@@ -45,58 +45,73 @@ let tests =
     testSequenced
     <| testList
         "RenderThread affinity guard (F-CORE-4)"
-        [ test "verify passes on the owning thread and trips off it, naming the accessor" {
-              try
-                  RenderThread.claim ()
-                  // The owning (this) thread may touch a static freely.
-                  RenderThread.verify "on-thread-accessor"
+        [
+            test "verify passes on the owning thread and trips off it, naming the accessor" {
+                try
+                    RenderThread.claim ()
+                    // The owning (this) thread may touch a static freely.
+                    RenderThread.verify "on-thread-accessor"
 
-                  // Another thread touching a static while this run owns them fails loudly.
-                  let offThread = capturingOffThread (fun () -> RenderThread.verify "off-thread-accessor")
+                    // Another thread touching a static while this run owns them fails loudly.
+                    let offThread =
+                        capturingOffThread (fun () -> RenderThread.verify "off-thread-accessor")
 
-                  Expect.isSome offThread "an off-thread access must trip the affinity guard"
-                  Expect.stringContains offThread.Value.Message "off-thread-accessor" "the error names the offending accessor"
-                  Expect.stringContains offThread.Value.Message "single-threaded" "the error explains the invariant it enforces"
-              finally
-                  RenderThread.release ()
+                    Expect.isSome offThread "an off-thread access must trip the affinity guard"
 
-              // With no run owning the statics, the guard is inert on any thread.
-              let afterRelease = capturingOffThread (fun () -> RenderThread.verify "post-release")
-              Expect.isNone afterRelease "between runs (no owner claimed) the guard is inert"
-          }
+                    Expect.stringContains
+                        offThread.Value.Message
+                        "off-thread-accessor"
+                        "the error names the offending accessor"
 
-          test "ownerThreadId tracks claim and release" {
-              Expect.isNone (RenderThread.ownerThreadId ()) "no owner before a run claims"
+                    Expect.stringContains
+                        offThread.Value.Message
+                        "single-threaded"
+                        "the error explains the invariant it enforces"
+                finally
+                    RenderThread.release ()
 
-              try
-                  RenderThread.claim ()
+                // With no run owning the statics, the guard is inert on any thread.
+                let afterRelease = capturingOffThread (fun () -> RenderThread.verify "post-release")
+                Expect.isNone afterRelease "between runs (no owner claimed) the guard is inert"
+            }
 
-                  Expect.equal
-                      (RenderThread.ownerThreadId ())
-                      (Some Environment.CurrentManagedThreadId)
-                      "claim records the calling loop thread"
-              finally
-                  RenderThread.release ()
+            test "ownerThreadId tracks claim and release" {
+                Expect.isNone (RenderThread.ownerThreadId ()) "no owner before a run claims"
 
-              Expect.isNone (RenderThread.ownerThreadId ()) "release clears the owner"
-          }
+                try
+                    RenderThread.claim ()
 
-          test "FrameCache.current trips off-thread while a run owns the statics, inert otherwise" {
-              // Unowned — exactly how the Issue #177 direct-call lifetime tests run: cross-thread access
-              // is inert, so those tests are unaffected by the new guard.
-              let unowned = capturingOffThread (fun () -> FrameCache.current () |> ignore)
-              Expect.isNone unowned "with no run active, a direct FrameCache read is unaffected"
+                    Expect.equal
+                        (RenderThread.ownerThreadId ())
+                        (Some Environment.CurrentManagedThreadId)
+                        "claim records the calling loop thread"
+                finally
+                    RenderThread.release ()
 
-              try
-                  RenderThread.claim ()
-                  // The owning thread reads the (empty) cache normally.
-                  Expect.isNone (FrameCache.current ()) "the owning thread reads the cache"
+                Expect.isNone (RenderThread.ownerThreadId ()) "release clears the owner"
+            }
 
-                  // Off the owning thread the read fails loudly instead of racing the cached SKImage handle.
-                  let offThread = capturingOffThread (fun () -> FrameCache.current () |> ignore)
+            test "FrameCache.current trips off-thread while a run owns the statics, inert otherwise" {
+                // Unowned — exactly how the Issue #177 direct-call lifetime tests run: cross-thread access
+                // is inert, so those tests are unaffected by the new guard.
+                let unowned = capturingOffThread (fun () -> FrameCache.current () |> ignore)
+                Expect.isNone unowned "with no run active, a direct FrameCache read is unaffected"
 
-                  Expect.isSome offThread "an off-thread FrameCache read must trip the guard"
-                  Expect.stringContains offThread.Value.Message "FrameCache.current" "the error names the FrameCache seam"
-              finally
-                  RenderThread.release ()
-          } ]
+                try
+                    RenderThread.claim ()
+                    // The owning thread reads the (empty) cache normally.
+                    Expect.isNone (FrameCache.current ()) "the owning thread reads the cache"
+
+                    // Off the owning thread the read fails loudly instead of racing the cached SKImage handle.
+                    let offThread = capturingOffThread (fun () -> FrameCache.current () |> ignore)
+
+                    Expect.isSome offThread "an off-thread FrameCache read must trip the guard"
+
+                    Expect.stringContains
+                        offThread.Value.Message
+                        "FrameCache.current"
+                        "the error names the FrameCache seam"
+                finally
+                    RenderThread.release ()
+            }
+        ]

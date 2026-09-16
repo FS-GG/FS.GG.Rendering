@@ -1,12 +1,14 @@
 module SecondAntShowcase.Core.ResponsivenessWorkflow
 
 type RunRequest =
-    { RunId: string
-      Scope: string
-      Theme: string
-      OutputRoot: string
-      RequireLive: bool
-      ActionIds: string list }
+    {
+        RunId: string
+        Scope: string
+        Theme: string
+        OutputRoot: string
+        RequireLive: bool
+        ActionIds: string list
+    }
 
 type RunStatus =
     | NotStarted
@@ -20,12 +22,14 @@ type RunStatus =
     | Failed
 
 type Model =
-    { Request: RunRequest
-      Status: RunStatus
-      MeasuredActionIds: string list
-      EnvironmentLimitations: string list
-      ArtifactPaths: string list
-      Diagnostics: string list }
+    {
+        Request: RunRequest
+        Status: RunStatus
+        MeasuredActionIds: string list
+        EnvironmentLimitations: string list
+        ArtifactPaths: string list
+        Diagnostics: string list
+    }
 
 type Msg =
     | Start
@@ -43,9 +47,11 @@ type Effect =
     | PersistArtifacts
 
 type Interpreter =
-    { CheckLiveSession: unit -> Result<unit, string>
-      ExerciseActions: string list -> Result<string list, string>
-      PersistArtifacts: Model -> Result<string list, string> }
+    {
+        CheckLiveSession: unit -> Result<unit, string>
+        ExerciseActions: string list -> Result<string list, string>
+        PersistArtifacts: Model -> Result<string list, string>
+    }
 
 val init: request: RunRequest -> Model * Effect list
 val update: msg: Msg -> model: Model -> Model * Effect list

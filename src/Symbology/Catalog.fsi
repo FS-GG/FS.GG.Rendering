@@ -35,9 +35,7 @@ module Catalog =
 
     /// One catalog row: a gameplay element (a stable id — the element's DU-case name is the canonical
     /// choice) paired with its approved `Visual`.
-    type Entry =
-        { Element: string
-          Visual: Visual }
+    type Entry = { Element: string; Visual: Visual }
 
     /// The whole element↔visual catalog: rows in DECLARED order (the order the elements are enumerated /
     /// authored). Order is significant and preserved by `render`/`parse`, so a re-render is a byte
@@ -57,9 +55,11 @@ module Catalog =
 
     /// One independently derived visual binding problem.
     type BindingFinding =
-        { Element: string
-          Gap: BindingGap
-          Message: string }
+        {
+            Element: string
+            Gap: BindingGap
+            Message: string
+        }
 
     type BindingVerdict =
         | Complete
@@ -68,20 +68,24 @@ module Catalog =
     /// Digests computed by the caller from the exact inventory declaration, catalog bytes, and
     /// representative runtime-render evidence that produced the mechanical report.
     type EvidenceDigests =
-        { Inventory: string
-          Catalog: string
-          Render: string }
+        {
+            Inventory: string
+            Catalog: string
+            Render: string
+        }
 
     /// Mechanical coverage kept separate from the independent critic. `Complete` means the runtime
     /// inventory is non-empty and unique, catalog rows exactly match it, shown handles resolve through
     /// the runtime registry and were observed through representative runtime rendering, and every
     /// hidden row uses the explicit `<mechanic>: <explanation>` form.
     type BindingReport =
-        { DeclaredElements: string list
-          EvidenceDigests: EvidenceDigests
-          Findings: BindingFinding list
-          OptedOut: (string * string) list
-          Verdict: BindingVerdict }
+        {
+            DeclaredElements: string list
+            EvidenceDigests: EvidenceDigests
+            Findings: BindingFinding list
+            OptedOut: (string * string) list
+            Verdict: BindingVerdict
+        }
 
     /// The element ids the catalog declares, in row order — the "renderable-element set" `Coverage.check`
     /// runs against when the catalog is checked against ITSELF (`validate`).

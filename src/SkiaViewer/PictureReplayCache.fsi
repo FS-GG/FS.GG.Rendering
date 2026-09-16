@@ -23,23 +23,27 @@ module internal PictureReplayCache =
 
     /// Feature 159: pure request shape for content-keyed replay with separate placement evidence.
     type internal SplitReplayRequest =
-        { ContentCacheId: uint64
-          ContentFingerprint: uint64
-          PlacementFingerprint: uint64
-          RunProfileMatches: bool
-          RetainedResident: bool
-          ResourceLimited: bool
-          ParityPassed: bool
-          ReplayEnabled: bool }
+        {
+            ContentCacheId: uint64
+            ContentFingerprint: uint64
+            PlacementFingerprint: uint64
+            RunProfileMatches: bool
+            RetainedResident: bool
+            ResourceLimited: bool
+            ParityPassed: bool
+            ReplayEnabled: bool
+        }
 
     /// Feature 159: replay decision diagnostics. Placement-only change is true when content matches
     /// and placement differs from the previous request.
     type internal SplitReplayDecision =
-        { Status: string
-          FallbackReason: SplitReplayFallbackReason option
-          ContentKey: uint64
-          PlacementOnlyChange: bool
-          RecordRequired: bool }
+        {
+            Status: string
+            FallbackReason: SplitReplayFallbackReason option
+            ContentKey: uint64
+            PlacementOnlyChange: bool
+            RecordRequired: bool
+        }
 
     /// Create an empty cache. `enabled = false` makes every `paintBoundary` recurse directly into the
     /// boundary scene (the always-direct parity oracle) — never recording or replaying.
@@ -47,10 +51,7 @@ module internal PictureReplayCache =
 
     /// Classify a split replay request without touching native resources. A content match with changed
     /// placement is a replay hit only when run/profile, residency, resource, parity, and enabled gates pass.
-    val classifySplitReplay:
-        previous: SplitReplayRequest option ->
-        current: SplitReplayRequest ->
-            SplitReplayDecision
+    val classifySplitReplay: previous: SplitReplayRequest option -> current: SplitReplayRequest -> SplitReplayDecision
 
     /// Paint a `CachedSubtree` boundary: on a valid hit (resident + matching fingerprint) replay the
     /// recorded picture via `DrawPicture`; otherwise record (`SKPictureRecorder` over the canvas's device
@@ -68,12 +69,14 @@ module internal PictureReplayCache =
     /// (FR-013/FR-014) for the non-golden live timing baseline.
     val stats:
         cache: Cache ->
-            {| Entries: int
-               NativeBytes: int
-               Hits: int
-               Misses: int
-               Records: int
-               SkippedNodes: int |}
+            {|
+                Entries: int
+                NativeBytes: int
+                Hits: int
+                Misses: int
+                Records: int
+                SkippedNodes: int
+            |}
 
     /// Reset the per-frame hit/miss/record/skipped counters (the residency + native bytes persist).
     val resetCounters: cache: Cache -> unit

@@ -55,25 +55,35 @@ let private labelFont (theme: Theme) (control: Control<'msg>) (text: string) : F
 let private typographyTheme: Theme =
     { Theme.light with
         IntentPolicy =
-            { Name = "issue-383-typography"
-              ApplyIntent = fun _ _ _ style -> { style with FontSize = 42.0; FontWeight = Some 700 } } }
+            {
+                Name = "issue-383-typography"
+                ApplyIntent =
+                    fun _ _ _ style ->
+                        { style with
+                            FontSize = 42.0
+                            FontWeight = Some 700
+                        }
+            }
+    }
 
 [<Tests>]
 let issue383TypographyResolverTests =
     testList
         "Issue383 · resolver typography reaches the text sites"
-        [ test "a button label carries the RESOLVED FontSize/FontWeight, not a discarded literal" {
-              // The policy sets FontSize 42.0 / Weight 700; the wired buttonGeom must emit them.
-              let font = labelFont typographyTheme (Button.create [ Button.text "Go" ]) "Go"
-              Expect.equal font.Size 42.0 "the label font size is the resolved size, not the literal 15.0"
-              Expect.equal font.Weight (Some 700) "the label font weight is the resolved weight, not a hardcoded None"
-          }
+        [
+            test "a button label carries the RESOLVED FontSize/FontWeight, not a discarded literal" {
+                // The policy sets FontSize 42.0 / Weight 700; the wired buttonGeom must emit them.
+                let font = labelFont typographyTheme (Button.create [ Button.text "Go" ]) "Go"
+                Expect.equal font.Size 42.0 "the label font size is the resolved size, not the literal 15.0"
+                Expect.equal font.Weight (Some 700) "the label font weight is the resolved weight, not a hardcoded None"
+            }
 
-          test "under the neutral Default policy the button label tracks theme.FontSize (#384)" {
-              // Theme.light carries IntentPolicy.neutral, so the resolved base is unperturbed. #384
-              // reconciled the base FontSize (was a frozen 15.0) to `theme.FontSize`, so a neutral
-              // button now paints the theme's body size; weight stays the hardcoded None.
-              let font = labelFont Theme.light (Button.create [ Button.text "Go" ]) "Go"
-              Expect.equal font.Size Theme.light.FontSize "default button label tracks theme.FontSize (#384)"
-              Expect.equal font.Weight None "default button label weight stays None"
-          } ]
+            test "under the neutral Default policy the button label tracks theme.FontSize (#384)" {
+                // Theme.light carries IntentPolicy.neutral, so the resolved base is unperturbed. #384
+                // reconciled the base FontSize (was a frozen 15.0) to `theme.FontSize`, so a neutral
+                // button now paints the theme's body size; weight stays the hardcoded None.
+                let font = labelFont Theme.light (Button.create [ Button.text "Go" ]) "Go"
+                Expect.equal font.Size Theme.light.FontSize "default button label tracks theme.FontSize (#384)"
+                Expect.equal font.Weight None "default button label weight stays None"
+            }
+        ]

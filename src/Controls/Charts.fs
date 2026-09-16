@@ -7,18 +7,21 @@ open System
 // here.
 
 module ChartAttrs =
-    let finite values =
-        values |> List.filter Double.IsFinite
+    let finite values = values |> List.filter Double.IsFinite
 
     let seriesValues (values: ChartSeries list) =
         values |> List.collect (fun series -> series.Points |> List.map _.Y) |> finite
 
-    let pointValues (values: ChartPoint list) =
-        values |> List.map _.Y |> finite
+    let pointValues (values: ChartPoint list) = values |> List.map _.Y |> finite
 
-    let series (values: ChartSeries list) = Attr.create "series" Data (UntypedValue values)
-    let points (values: ChartPoint list) = Attr.create "values" Data (UntypedValue values)
-    let nodes (values: string list) = Attr.create "nodes" Data (StringListValue values)
+    let series (values: ChartSeries list) =
+        Attr.create "series" Data (UntypedValue values)
+
+    let points (values: ChartPoint list) =
+        Attr.create "values" Data (UntypedValue values)
+
+    let nodes (values: string list) =
+        Attr.create "nodes" Data (StringListValue values)
 
 module LineChart =
     let create attrs = Control.create "line-chart" attrs

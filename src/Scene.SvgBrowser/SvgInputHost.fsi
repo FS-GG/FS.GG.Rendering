@@ -6,32 +6,38 @@ open FS.GG.UI.KeyboardInput
 
 /// <summary>One browser Gamepad API snapshot, expressed without synthetic keyboard events.</summary>
 type SvgGamepadSnapshot =
-    { /// <summary>Stable source identity for the connected pad.</summary>
-      Source: InputSourceId
-      /// <summary>Pressed state for each button in browser index order.</summary>
-      Buttons: bool list }
+    {
+        /// <summary>Stable source identity for the connected pad.</summary>
+        Source: InputSourceId
+        /// <summary>Pressed state for each button in browser index order.</summary>
+        Buttons: bool list
+    }
 
 /// <summary>Host policy and injectable browser observations for the SVG command adapter.</summary>
 type SvgInputHostOptions =
-    { /// <summary>Delay used when the resolver requests a sequence deadline.</summary>
-      SequenceTimeoutMilliseconds: int
-      /// <summary>Whether the host continuously polls the Gamepad API.</summary>
-      PollGamepads: bool
-      /// <summary>Returns the current pads; production callers normally use <c>SvgInputHost.browserGamepads</c>.</summary>
-      Gamepads: unit -> SvgGamepadSnapshot list }
+    {
+        /// <summary>Delay used when the resolver requests a sequence deadline.</summary>
+        SequenceTimeoutMilliseconds: int
+        /// <summary>Whether the host continuously polls the Gamepad API.</summary>
+        PollGamepads: bool
+        /// <summary>Returns the current pads; production callers normally use <c>SvgInputHost.browserGamepads</c>.</summary>
+        Gamepads: unit -> SvgGamepadSnapshot list
+    }
 
 /// <summary>Bounded ownership counters exposed for browser lifecycle evidence.</summary>
 type SvgInputHostObservation =
-    { /// <summary>Listeners still owned by the host.</summary>
-      OwnedListenerCount: int
-      /// <summary>Sequence deadlines still owned by the host.</summary>
-      OwnedDeadlineCount: int
-      /// <summary>Whether a Gamepad API animation-frame poll is scheduled.</summary>
-      GamepadPollScheduled: bool
-      /// <summary>Keyboard, pointer, touch, and gamepad sources with retained presses.</summary>
-      OwnedSourceCount: int
-      /// <summary>Whether disposal has made the adapter inert.</summary>
-      IsDisposed: bool }
+    {
+        /// <summary>Listeners still owned by the host.</summary>
+        OwnedListenerCount: int
+        /// <summary>Sequence deadlines still owned by the host.</summary>
+        OwnedDeadlineCount: int
+        /// <summary>Whether a Gamepad API animation-frame poll is scheduled.</summary>
+        GamepadPollScheduled: bool
+        /// <summary>Keyboard, pointer, touch, and gamepad sources with retained presses.</summary>
+        OwnedSourceCount: int
+        /// <summary>Whether disposal has made the adapter inert.</summary>
+        IsDisposed: bool
+    }
 
 /// <summary>
 /// Disposable DOM adapter that normalizes keyboard, pointer, touch, and Gamepad API observations
@@ -46,7 +52,8 @@ type SvgInputHost =
         initialState: CommandResolverState *
         availableCommands: (unit -> CommandId list) *
         onEffect: (CommandResolverEffect -> unit) *
-        options: SvgInputHostOptions -> SvgInputHost
+        options: SvgInputHostOptions ->
+            SvgInputHost
 
     /// <summary>The current pure resolver state.</summary>
     member State: CommandResolverState
@@ -70,4 +77,3 @@ module SvgInputHost =
 
     /// <summary>Default sequence timeout and live Gamepad API polling policy.</summary>
     val defaultOptions: SvgInputHostOptions
-

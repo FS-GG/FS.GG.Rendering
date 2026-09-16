@@ -68,31 +68,33 @@ module Physics =
     /// has none — it changes how fast the solver converges, not what it converges to, and is always on.
     type Config =
         /// Uniform acceleration applied to every `Dynamic` body each step.
-        { Gravity: Point
-          /// Fixed velocity-solver iterations per step. 8 is the usual answer. Warm starting buys roughly
-          /// an order of magnitude here: 4 warm iterations settle a box flatter than 10 cold ones.
-          VelocityIterations: int
-          /// Fixed position-correction iterations per step. 3 is the usual answer.
-          PositionIterations: int
-          /// Penetration tolerated before positional correction acts (~0.01).
-          Slop: float
-          /// Baumgarte correction fraction (~0.2).
-          Correction: float
-          /// Restitution applies only where `|v·n|` exceeds this; below it `e = 0`, or a resting box
-          /// jitters forever and never sleeps.
-          BounceThreshold: float
-          /// A body is a candidate for sleep while its SQUARED linear speed is strictly below this.
-          /// Non-positive disables sleeping.
-          SleepLinearSq: float
-          /// ...and while its angular speed magnitude is strictly below this. Non-positive disables
-          /// sleeping. Both must hold on the same tick for the counter to advance.
-          SleepAngular: float
-          /// Consecutive ticks — not cumulative — a body must spend under both thresholds before it
-          /// sleeps. Non-positive disables sleeping. 60 is a second at the usual step rate.
-          SleepTicks: int
-          /// Cell size handed to the `SpatialGrid` broad phase. A non-positive or non-finite value
-          /// degrades to a single bucket — slower, never wrong (`SpatialGrid.build`'s own contract).
-          BroadPhaseCellSize: float }
+        {
+            Gravity: Point
+            /// Fixed velocity-solver iterations per step. 8 is the usual answer. Warm starting buys roughly
+            /// an order of magnitude here: 4 warm iterations settle a box flatter than 10 cold ones.
+            VelocityIterations: int
+            /// Fixed position-correction iterations per step. 3 is the usual answer.
+            PositionIterations: int
+            /// Penetration tolerated before positional correction acts (~0.01).
+            Slop: float
+            /// Baumgarte correction fraction (~0.2).
+            Correction: float
+            /// Restitution applies only where `|v·n|` exceeds this; below it `e = 0`, or a resting box
+            /// jitters forever and never sleeps.
+            BounceThreshold: float
+            /// A body is a candidate for sleep while its SQUARED linear speed is strictly below this.
+            /// Non-positive disables sleeping.
+            SleepLinearSq: float
+            /// ...and while its angular speed magnitude is strictly below this. Non-positive disables
+            /// sleeping. Both must hold on the same tick for the counter to advance.
+            SleepAngular: float
+            /// Consecutive ticks — not cumulative — a body must spend under both thresholds before it
+            /// sleeps. Non-positive disables sleeping. 60 is a second at the usual step rate.
+            SleepTicks: int
+            /// Cell size handed to the `SpatialGrid` broad phase. A non-positive or non-finite value
+            /// degrades to a single bucket — slower, never wrong (`SpatialGrid.build`'s own contract).
+            BroadPhaseCellSize: float
+        }
 
     /// Public contract type exposed by the FS.GG.Game.Core package.
     /// A rigid-body simulation world. The representation is **opaque** (hidden in the `.fsi`), exactly as

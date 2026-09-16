@@ -9,12 +9,14 @@ namespace FS.GG.UI.Controls
 /// `Canvas.scene`), which carries an immutable `Scene` through the render path; to compose must-show
 /// chrome, build it from the primitive controls (`Border`/`TextBlock`/`Stack`).
 type CustomControlDefinition =
-    { Id: ControlId
-      /// Author-declared effect names. Metadata only: surfaced through `CustomControl.validate`
-      /// diagnostics, never applied by the renderer.
-      Effects: string list
-      Accessibility: AccessibilityMetadata option
-      Diagnostics: ControlDiagnostic list }
+    {
+        Id: ControlId
+        /// Author-declared effect names. Metadata only: surfaced through `CustomControl.validate`
+        /// diagnostics, never applied by the renderer.
+        Effects: string list
+        Accessibility: AccessibilityMetadata option
+        Diagnostics: ControlDiagnostic list
+    }
 
 /// Author a bespoke control from a `CustomControlDefinition`: `create` it as a `Control<'msg>` and `validate` it.
 module CustomControl =

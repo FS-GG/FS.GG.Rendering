@@ -29,7 +29,9 @@ type private Msg = Bump
 let private size: Size = { Width = 1024; Height = 768 }
 let private noMods = ViewerKeyboard.noModifiers
 let private key () = FrameInput.Key(Enter, noMods)
-let private tick (ms: float) = FrameInput.Tick(TimeSpan.FromMilliseconds ms)
+
+let private tick (ms: float) =
+    FrameInput.Tick(TimeSpan.FromMilliseconds ms)
 
 let private corpusRoot =
     Path.GetFullPath(
@@ -38,26 +40,32 @@ let private corpusRoot =
 
 // A scenario: a name + a thunk that runs its host/script through Perf.runScript. The generic
 // model/msg types are erased behind the thunk so a single corpus list can hold heterogeneous hosts.
-type private Scenario = { Name: string; Run: unit -> FrameMetrics list }
+type private Scenario =
+    {
+        Name: string
+        Run: unit -> FrameMetrics list
+    }
 
 // Build a Bump-counter host (Enter -> Bump -> model + 1) over the supplied view + script.
 let private intHost (view: int -> Control<Msg>) (script: FrameInput<Msg> list) : unit -> FrameMetrics list =
     fun () ->
         let host: InteractiveAppHost<int, Msg> =
-            { Init = fun () -> 0, []
-              Update = fun Bump model -> model + 1, []
-              View = fun _ model -> view model
-              Theme = Theme.light
-              MapKey =
-                fun k _ ->
-                    match k with
-                    | Enter -> Some Bump
-                    | _ -> None
-              MapPointer = fun _ -> None
-              Tick = fun _ -> None
-              MapKeyChord = fun _ _ -> None
-              OnFrameMetrics = ignore
-              Diagnostics = Viewer.defaultDiagnostics }
+            {
+                Init = fun () -> 0, []
+                Update = fun Bump model -> model + 1, []
+                View = fun _ model -> view model
+                Theme = Theme.light
+                MapKey =
+                    fun k _ ->
+                        match k with
+                        | Enter -> Some Bump
+                        | _ -> None
+                MapPointer = fun _ -> None
+                Tick = fun _ -> None
+                MapKeyChord = fun _ _ -> None
+                OnFrameMetrics = ignore
+                Diagnostics = Viewer.defaultDiagnostics
+            }
 
         ControlsElmish.Perf.runScript host size script
 
@@ -66,85 +74,170 @@ let private intHost (view: int -> Control<Msg>) (script: FrameInput<Msg> list) :
 // N simple keyed buttons in a stack; the hover sweep moves across each of them.
 let private buttonsView (n: int) (_: int) : Control<Msg> =
     Stack.create
-        [ Stack.children
-              [ for i in 0 .. n - 1 ->
-                    Button.create [ Button.text (sprintf "b%d" i); Button.onClick Bump ] |> Control.withKey (sprintf "b%d" i) ] ]
+        [
+            Stack.children
+                [
+                    for i in 0 .. n - 1 ->
+                        Button.create [ Button.text (sprintf "b%d" i); Button.onClick Bump ]
+                        |> Control.withKey (sprintf "b%d" i)
+                ]
+        ]
 
 let private hoverSweepScript (n: int) : FrameInput<Msg> list =
-    [ for i in 0 .. n - 1 -> FrameInput.Pointer(HoverEnter(sprintf "b%d" i, float i, float i)) ]
+    [
+        for i in 0 .. n - 1 -> FrameInput.Pointer(HoverEnter(sprintf "b%d" i, float i, float i))
+    ]
 
 // A fully-materialized DataGrid of `rowCount` rows (current non-virtualized path).
 let private gridColumns: DataGridColumn list =
-    [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn }
-      { Key = "qty"; Header = "Qty"; Width = 80.0; ColumnType = NumericColumn }
-      { Key = "ok"; Header = "OK"; Width = 60.0; ColumnType = BooleanColumn } ]
+    [
+        {
+            Key = "name"
+            Header = "Name"
+            Width = 200.0
+            ColumnType = TextColumn
+        }
+        {
+            Key = "qty"
+            Header = "Qty"
+            Width = 80.0
+            ColumnType = NumericColumn
+        }
+        {
+            Key = "ok"
+            Header = "OK"
+            Width = 60.0
+            ColumnType = BooleanColumn
+        }
+    ]
 
 let private gridRows (rowCount: int) : DataGridRow list =
-    [ for r in 0 .. rowCount - 1 ->
-          { Key = sprintf "r%d" r
-            Cells =
-              [ { RowKey = sprintf "r%d" r; ColumnKey = "name"; Value = sprintf "Row %d" r }
-                { RowKey = sprintf "r%d" r; ColumnKey = "qty"; Value = string (r % 100) }
-                { RowKey = sprintf "r%d" r; ColumnKey = "ok"; Value = (if r % 2 = 0 then "true" else "false") } ] } ]
+    [
+        for r in 0 .. rowCount - 1 ->
+            {
+                Key = sprintf "r%d" r
+                Cells =
+                    [
+                        {
+                            RowKey = sprintf "r%d" r
+                            ColumnKey = "name"
+                            Value = sprintf "Row %d" r
+                        }
+                        {
+                            RowKey = sprintf "r%d" r
+                            ColumnKey = "qty"
+                            Value = string (r % 100)
+                        }
+                        {
+                            RowKey = sprintf "r%d" r
+                            ColumnKey = "ok"
+                            Value = (if r % 2 = 0 then "true" else "false")
+                        }
+                    ]
+            }
+    ]
 
 // The grid is wrapped in a stack whose orientation toggles on model parity, so the second frame
 // re-measures the whole materialized grid — a RemeasuredNodeCount baseline that scales with row count
 // (SC-006: how many nodes a layout-affecting interaction re-measures over the non-virtualized path).
 let private gridView (rowCount: int) (model: int) : Control<Msg> =
     Stack.create
-        [ Stack.orientation (if model % 2 = 0 then "vertical" else "horizontal")
-          Stack.children [ DataGrid.create gridColumns [ DataGrid.rows (gridRows rowCount) ] |> Control.withKey "grid" ] ]
+        [
+            Stack.orientation (if model % 2 = 0 then "vertical" else "horizontal")
+            Stack.children
+                [
+                    DataGrid.create gridColumns [ DataGrid.rows (gridRows rowCount) ]
+                    |> Control.withKey "grid"
+                ]
+        ]
 
 // A deeply nested layout of repeated labels + buttons; the root orientation toggles on model parity
 // so the second frame re-measures the whole nest (a real RemeasuredNodeCount baseline).
 let rec private nest (depth: int) : Control<Msg> =
     if depth <= 0 then
         Stack.create
-            [ Stack.children
-                  [ TextBlock.create [ TextBlock.text "leaf" ]
-                    Button.create [ Button.text "go"; Button.onClick Bump ] |> Control.withKey (sprintf "leaf%d" depth) ] ]
+            [
+                Stack.children
+                    [
+                        TextBlock.create [ TextBlock.text "leaf" ]
+                        Button.create [ Button.text "go"; Button.onClick Bump ]
+                        |> Control.withKey (sprintf "leaf%d" depth)
+                    ]
+            ]
     else
-        Stack.create [ Stack.children [ TextBlock.create [ TextBlock.text (sprintf "n%d" depth) ]; nest (depth - 1) ] ]
+        Stack.create
+            [
+                Stack.children [ TextBlock.create [ TextBlock.text (sprintf "n%d" depth) ]; nest (depth - 1) ]
+            ]
 
 let private deepNestView (depth: int) (model: int) : Control<Msg> =
     Stack.create
-        [ Stack.orientation (if model % 2 = 0 then "vertical" else "horizontal")
-          Stack.children [ nest depth ] ]
+        [
+            Stack.orientation (if model % 2 = 0 then "vertical" else "horizontal")
+            Stack.children [ nest depth ]
+        ]
 
 // A focused text field whose value tracks the model, beside a Switch that enters Hover (a live
 // cross-fade clock) once the model reaches 2 — so text-entry frames (ProductModelChanged) interleave
 // with animation-only ticks (ViewCalled, no product message).
 let private textAndAnimView (model: int) : Control<Msg> =
     Stack.create
-        [ Stack.children
-              [ TextBox.create [ TextBox.value (sprintf "entry-%d" model) ] |> Control.withKey "field"
-                Switch.create [ Attr.visualState (if model >= 2 then Hover else Normal) ] |> Control.withKey "sw" ] ]
+        [
+            Stack.children
+                [
+                    TextBox.create [ TextBox.value (sprintf "entry-%d" model) ]
+                    |> Control.withKey "field"
+                    Switch.create [ Attr.visualState (if model >= 2 then Hover else Normal) ]
+                    |> Control.withKey "sw"
+                ]
+        ]
 
 // A moderate dashboard whose theme toggles on model parity (theme is part of the fragment-reuse key,
 // so a theme switch re-renders the dashboard).
 let private dashboardView (model: int) : Control<Msg> =
     let tiles =
-        [ for i in 0 .. 11 -> Button.create [ Button.text (sprintf "tile %d" i); Button.onClick Bump ] |> Control.withKey (sprintf "tile%d" i) ]
+        [
+            for i in 0..11 ->
+                Button.create [ Button.text (sprintf "tile %d" i); Button.onClick Bump ]
+                |> Control.withKey (sprintf "tile%d" i)
+        ]
 
     Stack.create
-        [ Attr.theme (if model % 2 = 0 then Theme.light else Theme.dark)
-          Stack.children (TextBlock.create [ TextBlock.text "Dashboard" ] :: tiles) ]
+        [
+            Attr.theme (if model % 2 = 0 then Theme.light else Theme.dark)
+            Stack.children (TextBlock.create [ TextBlock.text "Dashboard" ] :: tiles)
+        ]
 
 // Feature 116 (Phase 7): a stack of stable cacheable data-grid rows (identical across model values),
 // so the second frame reuses every row picture (hits) with zero damage. With `n` above the picture-
 // cache cap the cross-frame LRU evicts and `PictureCacheEntryCount` reports the bounded live size.
 let private cacheRow (key: string) (content: string) : Control<Msg> =
-    { Kind = "data-grid-row"
-      Key = Some key
-      Attributes =
-        [ { Name = "width"; Category = AttrCategory.Style; Value = FloatValue 200.0 }
-          { Name = "height"; Category = AttrCategory.Style; Value = FloatValue 24.0 } ]
-      Children = []
-      Content = Some content
-      Accessibility = None }
+    {
+        Kind = "data-grid-row"
+        Key = Some key
+        Attributes =
+            [
+                {
+                    Name = "width"
+                    Category = AttrCategory.Style
+                    Value = FloatValue 200.0
+                }
+                {
+                    Name = "height"
+                    Category = AttrCategory.Style
+                    Value = FloatValue 24.0
+                }
+            ]
+        Children = []
+        Content = Some content
+        Accessibility = None
+    }
 
 let private cacheGridView (n: int) (_: int) : Control<Msg> =
-    Stack.create [ Stack.children [ for i in 0 .. n - 1 -> cacheRow (sprintf "r%d" i) (sprintf "row-%d" i) ] ]
+    Stack.create
+        [
+            Stack.children [ for i in 0 .. n - 1 -> cacheRow (sprintf "r%d" i) (sprintf "row-%d" i) ]
+        ]
 
 // Feature 117 (Phase 8): a text-heavy stack of `n` FIXED-label rows whose `selected` style flips with
 // model parity — every step repaints (and so RE-MEASURES the unchanged text) with NO layout change. The
@@ -152,48 +245,120 @@ let private cacheGridView (n: int) (_: int) : Control<Msg> =
 // hits with zero misses (cold → warm, SC-001/SC-002); the repaint is style-only (zero layout-invalidated
 // / zero re-measured, SC-003). With `n` above the cap the text cache evicts and re-misses deterministically.
 let private textHeavyRow (key: string) (content: string) (model: int) : Control<Msg> =
-    { Kind = "data-grid-row"
-      Key = Some key
-      Attributes =
-        [ { Name = "width"; Category = AttrCategory.Style; Value = FloatValue 200.0 }
-          { Name = "height"; Category = AttrCategory.Style; Value = FloatValue 24.0 }
-          { Name = "selected"; Category = AttrCategory.Style; Value = BoolValue(model % 2 = 0) } ]
-      Children = []
-      Content = Some content
-      Accessibility = None }
+    {
+        Kind = "data-grid-row"
+        Key = Some key
+        Attributes =
+            [
+                {
+                    Name = "width"
+                    Category = AttrCategory.Style
+                    Value = FloatValue 200.0
+                }
+                {
+                    Name = "height"
+                    Category = AttrCategory.Style
+                    Value = FloatValue 24.0
+                }
+                {
+                    Name = "selected"
+                    Category = AttrCategory.Style
+                    Value = BoolValue(model % 2 = 0)
+                }
+            ]
+        Children = []
+        Content = Some content
+        Accessibility = None
+    }
 
 let private textHeavyView (n: int) (model: int) : Control<Msg> =
-    Stack.create [ Stack.children [ for i in 0 .. n - 1 -> textHeavyRow (sprintf "r%d" i) (sprintf "label-%d" i) model ] ]
+    Stack.create
+        [
+            Stack.children
+                [
+                    for i in 0 .. n - 1 -> textHeavyRow (sprintf "r%d" i) (sprintf "label-%d" i) model
+                ]
+        ]
 
 // A single canvas dragged through hundreds of raw samples (coalesced for processing).
 let private canvasView (_: int) : Control<Msg> =
-    Stack.create [ Stack.children [ Button.create [ Button.text "canvas" ] |> Control.withKey "canvas" ] ]
+    Stack.create
+        [
+            Stack.children [ Button.create [ Button.text "canvas" ] |> Control.withKey "canvas" ]
+        ]
 
 let private dragScript (samples: int) : FrameInput<Msg> list =
-    [ for i in 0 .. samples - 1 -> FrameInput.Pointer(DragMove("canvas", PointerButton.Primary, float i, float (i * 2))) ]
+    [
+        for i in 0 .. samples - 1 ->
+            FrameInput.Pointer(DragMove("canvas", PointerButton.Primary, float i, float (i * 2)))
+    ]
 
 // ---- the corpus (FR-013) ----------------------------------------------------------------------
 
 let private corpus: Scenario list =
-    [ { Name = "hover-sweep-100"; Run = intHost (buttonsView 100) (hoverSweepScript 100) }
-      { Name = "hover-sweep-1000"; Run = intHost (buttonsView 1000) (hoverSweepScript 1000) }
-      { Name = "hover-sweep-5000"; Run = intHost (buttonsView 5000) (hoverSweepScript 5000) }
-      { Name = "datagrid-100"; Run = intHost (gridView 100) [ key (); key () ] }
-      { Name = "datagrid-1000"; Run = intHost (gridView 1000) [ key (); key () ] }
-      { Name = "datagrid-10000"; Run = intHost (gridView 10000) [ key (); key () ] }
-      { Name = "deep-nested-layout"; Run = intHost (deepNestView 30) [ key (); key () ] }
-      { Name = "text-entry-while-animating"; Run = intHost textAndAnimView [ key (); key (); tick 16.0; key (); tick 16.0 ] }
-      { Name = "theme-switch-dashboard"; Run = intHost dashboardView [ key (); key () ] }
-      { Name = "continuous-drag-400"; Run = intHost canvasView (dragScript 400) }
-      // Feature 116 (Phase 7): stable-subtree reuse (every row a hit, zero damage) + cache-cap eviction
-      // (320 distinct rows > the 256 cap → bounded live entry count).
-      { Name = "picture-cache-reuse"; Run = intHost (cacheGridView 20) [ key (); key () ] }
-      { Name = "picture-cache-eviction"; Run = intHost (cacheGridView 320) [ key (); key () ] }
-      // Feature 117 (Phase 8): text-heavy cold → warm (the first step misses every label, the second
-      // step over unchanged text hits every label; both style-only — zero invalidated / zero re-measured),
-      // and a text-cache eviction layout (320 distinct labels > the 256 cap → bounded, deterministic).
-      { Name = "text-heavy-cold-warm"; Run = intHost (textHeavyView 40) [ key (); key (); key () ] }
-      { Name = "text-cache-eviction"; Run = intHost (textHeavyView 320) [ key (); key (); key () ] } ]
+    [
+        {
+            Name = "hover-sweep-100"
+            Run = intHost (buttonsView 100) (hoverSweepScript 100)
+        }
+        {
+            Name = "hover-sweep-1000"
+            Run = intHost (buttonsView 1000) (hoverSweepScript 1000)
+        }
+        {
+            Name = "hover-sweep-5000"
+            Run = intHost (buttonsView 5000) (hoverSweepScript 5000)
+        }
+        {
+            Name = "datagrid-100"
+            Run = intHost (gridView 100) [ key (); key () ]
+        }
+        {
+            Name = "datagrid-1000"
+            Run = intHost (gridView 1000) [ key (); key () ]
+        }
+        {
+            Name = "datagrid-10000"
+            Run = intHost (gridView 10000) [ key (); key () ]
+        }
+        {
+            Name = "deep-nested-layout"
+            Run = intHost (deepNestView 30) [ key (); key () ]
+        }
+        {
+            Name = "text-entry-while-animating"
+            Run = intHost textAndAnimView [ key (); key (); tick 16.0; key (); tick 16.0 ]
+        }
+        {
+            Name = "theme-switch-dashboard"
+            Run = intHost dashboardView [ key (); key () ]
+        }
+        {
+            Name = "continuous-drag-400"
+            Run = intHost canvasView (dragScript 400)
+        }
+        // Feature 116 (Phase 7): stable-subtree reuse (every row a hit, zero damage) + cache-cap eviction
+        // (320 distinct rows > the 256 cap → bounded live entry count).
+        {
+            Name = "picture-cache-reuse"
+            Run = intHost (cacheGridView 20) [ key (); key () ]
+        }
+        {
+            Name = "picture-cache-eviction"
+            Run = intHost (cacheGridView 320) [ key (); key () ]
+        }
+        // Feature 117 (Phase 8): text-heavy cold → warm (the first step misses every label, the second
+        // step over unchanged text hits every label; both style-only — zero invalidated / zero re-measured),
+        // and a text-cache eviction layout (320 distinct labels > the 256 cap → bounded, deterministic).
+        {
+            Name = "text-heavy-cold-warm"
+            Run = intHost (textHeavyView 40) [ key (); key (); key () ]
+        }
+        {
+            Name = "text-cache-eviction"
+            Run = intHost (textHeavyView 320) [ key (); key (); key () ]
+        }
+    ]
 
 // ---- golden serialization (counts + booleans only; FrameDuration / allocation EXCLUDED) --------
 
@@ -250,39 +415,58 @@ let private serializeFrame (f: FrameMetrics) : string =
 let private serialize (frames: FrameMetrics list) : string =
     (frames |> List.map serializeFrame |> String.concat "\n") + "\n"
 
-let private goldenPath (name: string) = Path.Combine(corpusRoot, name + ".golden.txt")
-let private regen = not (String.IsNullOrEmpty(Environment.GetEnvironmentVariable "PERF_CORPUS_REGEN"))
-let private scheduled = Environment.GetEnvironmentVariable("FSGG_SCHEDULED_PENDING_TESTS") = "1"
+let private goldenPath (name: string) =
+    Path.Combine(corpusRoot, name + ".golden.txt")
+
+let private regen =
+    not (String.IsNullOrEmpty(Environment.GetEnvironmentVariable "PERF_CORPUS_REGEN"))
+
+let private scheduled =
+    Environment.GetEnvironmentVariable("FSGG_SCHEDULED_PENDING_TESTS") = "1"
 
 [<Tests>]
 let tests =
-    let cases = [
-        for scenario in corpus ->
-            test (sprintf "scenario '%s' matches its generated snapshot and re-runs byte-identically" scenario.Name) {
-                let produced = serialize (scenario.Run())
+    let cases =
+        [
+            for scenario in corpus ->
+                test (sprintf "scenario '%s' matches its generated snapshot and re-runs byte-identically" scenario.Name) {
+                    let produced = serialize (scenario.Run())
 
-                if regen then
-                    Directory.CreateDirectory corpusRoot |> ignore
-                    File.WriteAllText(goldenPath scenario.Name, produced)
+                    if regen then
+                        Directory.CreateDirectory corpusRoot |> ignore
+                        File.WriteAllText(goldenPath scenario.Name, produced)
 
-                let path = goldenPath scenario.Name
-                Expect.isTrue (File.Exists path) (sprintf "snapshot generated for '%s' (run with PERF_CORPUS_REGEN=1)" scenario.Name)
+                    let path = goldenPath scenario.Name
 
-                let golden = File.ReadAllText path
-                Expect.equal produced golden (sprintf "scenario '%s' metrics match the generated snapshot (SC-005)" scenario.Name)
+                    Expect.isTrue
+                        (File.Exists path)
+                        (sprintf "snapshot generated for '%s' (run with PERF_CORPUS_REGEN=1)" scenario.Name)
 
-                // Re-run: the deterministic driver is byte-for-byte identical (no timing leaks in).
-                let rerun = serialize (scenario.Run())
-                Expect.equal rerun produced (sprintf "scenario '%s' re-runs byte-identically (SC-005)" scenario.Name)
+                    let golden = File.ReadAllText path
 
-                // SC-009: no timing/allocation field may appear in the golden surface.
-                Expect.isFalse (golden.Contains "FrameDuration") "the golden carries no FrameDuration field"
-                Expect.isFalse (golden.Contains "Allocated") "the golden carries no allocation field"
-            }
-    ]
+                    Expect.equal
+                        produced
+                        golden
+                        (sprintf "scenario '%s' metrics match the generated snapshot (SC-005)" scenario.Name)
+
+                    // Re-run: the deterministic driver is byte-for-byte identical (no timing leaks in).
+                    let rerun = serialize (scenario.Run())
+
+                    Expect.equal
+                        rerun
+                        produced
+                        (sprintf "scenario '%s' re-runs byte-identically (SC-005)" scenario.Name)
+
+                    // SC-009: no timing/allocation field may appear in the golden surface.
+                    Expect.isFalse (golden.Contains "FrameDuration") "the golden carries no FrameDuration field"
+                    Expect.isFalse (golden.Contains "Allocated") "the golden carries no allocation field"
+                }
+        ]
 
     if scheduled then
-        testList "Feature 109 performance-scenario corpus — scheduled deterministic metrics goldens (US2, SC-005/006)" cases
+        testList
+            "Feature 109 performance-scenario corpus — scheduled deterministic metrics goldens (US2, SC-005/006)"
+            cases
     else
         // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-10-26
         ptestList "Feature 109 performance-scenario corpus — runs in pending-tests.yml scheduled cadence" cases

@@ -9,11 +9,15 @@ module ApiSurfaceRestore =
         psi.WorkingDirectory <- workingDirectory
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
-        [ "restore"
-          project
-          "--packages"
-          packagesDirectory
-          "--configfile"
-          configPath ]
+
+        [
+            "restore"
+            project
+            "--packages"
+            packagesDirectory
+            "--configfile"
+            configPath
+        ]
         |> List.iter psi.ArgumentList.Add
+
         psi

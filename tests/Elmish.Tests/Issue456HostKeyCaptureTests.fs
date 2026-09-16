@@ -41,14 +41,17 @@ let private noMods = ViewerKeyboard.noModifiers
 
 /// The product's model. `Rebinding` is the armed capture: the command awaiting a new key.
 type private Model =
-    { Keymap: Keymap
-      Rebinding: CommandId option
-      Dispatched: CommandId list }
+    {
+        Keymap: Keymap
+        Rebinding: CommandId option
+        Dispatched: CommandId list
+    }
 
 /// Every key-down and key-up arrives raw. The product — not the seam — decides what it means.
 type private Msg = Key of KeyId * isDown: bool
 
-let private mapKey = ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
+let private mapKey =
+    ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
 
 /// The routing the model-blind `MapKey` seam CANNOT do, done where the model is in scope.
 let private update (Key(key, isDown)) model =
@@ -62,26 +65,32 @@ let private update (Key(key, isDown)) model =
         | Some command ->
             { model with
                 Keymap = model.Keymap |> Keymap.rebind key command
-                Rebinding = None },
+                Rebinding = None
+            },
             []
         // No capture armed: resolve the key through the keymap, as normal play.
         | None ->
             match Keymap.resolve model.Keymap key with
             | Some command ->
-                { model with Dispatched = model.Dispatched @ [ command ] }, []
+                { model with
+                    Dispatched = model.Dispatched @ [ command ]
+                },
+                []
             | None -> model, []
 
 let private hostFrom (initial: Model) : InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> initial, []
-      Update = update
-      View = fun _ _ -> Stack.create []
-      Theme = Theme.light
-      MapKey = mapKey
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> initial, []
+        Update = update
+        View = fun _ _ -> Stack.create []
+        Theme = Theme.light
+        MapKey = mapKey
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 /// Drive keys through the real host path and return the resulting model.
 let private run (initial: Model) (keys: ViewerKey list) : Model =
@@ -91,9 +100,11 @@ let private run (initial: Model) (keys: ViewerKey list) : Model =
 
 /// `w` -> MoveUp, and a rebind of MoveUp armed.
 let private armed =
-    { Keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
-      Rebinding = Some "MoveUp"
-      Dispatched = [] }
+    {
+        Keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
+        Rebinding = Some "MoveUp"
+        Dispatched = []
+    }
 
 let private idle = { armed with Rebinding = None }
 
@@ -102,148 +113,149 @@ let tests =
     testList
         "Issue 456 host key capture"
         [
-          // -------------------------------------------------------------------------------------------
-          // (2) The capture completes — the acceptance criterion, end to end through the live host path.
-          // -------------------------------------------------------------------------------------------
+            // -------------------------------------------------------------------------------------------
+            // (2) The capture completes — the acceptance criterion, end to end through the live host path.
+            // -------------------------------------------------------------------------------------------
 
-          test "the OLD seam cannot see the key a capture waits for (the defect, pinned)" {
-              // `mapKeyOfKeymap` is what issue 333 blessed and what a product would reach for. Resolve 'j'
-              // — the unbound key a user presses to rebind — through it: it yields None. The product never
-              // learns the key was pressed, so the capture it armed can never complete. This is the gap.
-              let mapCommand cmd = Some(Key(cmd, true))
-              let seam = ViewerKeyboard.mapKeyOfKeymap idle.Keymap mapCommand
+            test "the OLD seam cannot see the key a capture waits for (the defect, pinned)" {
+                // `mapKeyOfKeymap` is what issue 333 blessed and what a product would reach for. Resolve 'j'
+                // — the unbound key a user presses to rebind — through it: it yields None. The product never
+                // learns the key was pressed, so the capture it armed can never complete. This is the gap.
+                let mapCommand cmd = Some(Key(cmd, true))
+                let seam = ViewerKeyboard.mapKeyOfKeymap idle.Keymap mapCommand
 
-              Expect.isNone
-                  (seam (Letter 'j') true)
-                  "the keymap-resolving seam drops an UNBOUND key — which is exactly the key a rebind capture is waiting for"
-          }
+                Expect.isNone
+                    (seam (Letter 'j') true)
+                    "the keymap-resolving seam drops an UNBOUND key — which is exactly the key a rebind capture is waiting for"
+            }
 
-          test "capture->rebind: an unbound key is captured and becomes the new binding (acceptance)" {
-              // The user armed a rebind of MoveUp, then pressed 'j' — a key bound to nothing.
-              let after = run armed [ Letter 'j' ]
+            test "capture->rebind: an unbound key is captured and becomes the new binding (acceptance)" {
+                // The user armed a rebind of MoveUp, then pressed 'j' — a key bound to nothing.
+                let after = run armed [ Letter 'j' ]
 
-              Expect.equal after.Rebinding None "the armed capture completed and disarmed"
+                Expect.equal after.Rebinding None "the armed capture completed and disarmed"
 
-              Expect.equal
-                  (Keymap.resolve after.Keymap "j")
-                  (Some "MoveUp")
-                  "the captured key is now bound to the command that armed the capture — the capture FIRED"
-          }
+                Expect.equal
+                    (Keymap.resolve after.Keymap "j")
+                    (Some "MoveUp")
+                    "the captured key is now bound to the command that armed the capture — the capture FIRED"
+            }
 
-          test "the captured key routes live on the very next press (the rebind is real)" {
-              // Arm, capture 'j', then press 'j' again — as a player would. The rebind must take effect
-              // immediately, on the same host, with no reconstruction: the seam is model-blind, so this
-              // only works because `update` (which SEES the model) does the resolving.
-              let after = run armed [ Letter 'j'; Letter 'j' ]
+            test "the captured key routes live on the very next press (the rebind is real)" {
+                // Arm, capture 'j', then press 'j' again — as a player would. The rebind must take effect
+                // immediately, on the same host, with no reconstruction: the seam is model-blind, so this
+                // only works because `update` (which SEES the model) does the resolving.
+                let after = run armed [ Letter 'j'; Letter 'j' ]
 
-              Expect.equal
-                  after.Dispatched
-                  [ "MoveUp" ]
-                  "the key captured a moment ago now dispatches its command through the SAME live host"
-          }
+                Expect.equal
+                    after.Dispatched
+                    [ "MoveUp" ]
+                    "the key captured a moment ago now dispatches its command through the SAME live host"
+            }
 
-          test "a key press with no capture armed still routes through the keymap (no regression)" {
-              let after = run idle [ Letter 'w' ]
+            test "a key press with no capture armed still routes through the keymap (no regression)" {
+                let after = run idle [ Letter 'w' ]
 
-              Expect.equal after.Dispatched [ "MoveUp" ] "ordinary play is unaffected: 'w' still resolves to MoveUp"
-          }
+                Expect.equal after.Dispatched [ "MoveUp" ] "ordinary play is unaffected: 'w' still resolves to MoveUp"
+            }
 
-          test "an unbound key with no capture armed dispatches nothing (no false capture)" {
-              let after = run idle [ Letter 'j' ]
+            test "an unbound key with no capture armed dispatches nothing (no false capture)" {
+                let after = run idle [ Letter 'j' ]
 
-              Expect.equal after.Dispatched [] "an unbound key resolves to no command when no capture is armed"
-              Expect.equal (Keymap.resolve after.Keymap "j") None "and it does NOT silently become a binding"
-          }
+                Expect.equal after.Dispatched [] "an unbound key resolves to no command when no capture is armed"
+                Expect.equal (Keymap.resolve after.Keymap "j") None "and it does NOT silently become a binding"
+            }
 
-          test "the product can DECLINE a captured key (Escape cancels, binding nothing)" {
-              // `mapKeyRaw` forwards the key and imposes no policy, so 'cancel' is the product's to define.
-              let after = run armed [ Escape ]
+            test "the product can DECLINE a captured key (Escape cancels, binding nothing)" {
+                // `mapKeyRaw` forwards the key and imposes no policy, so 'cancel' is the product's to define.
+                let after = run armed [ Escape ]
 
-              Expect.equal after.Rebinding None "Escape cancelled the armed capture"
-              Expect.equal (Keymap.resolve after.Keymap "Escape") None "Escape did NOT get bound to the command"
-              Expect.equal (Keymap.resolve after.Keymap "w") (Some "MoveUp") "the original binding survives a cancel"
-          }
+                Expect.equal after.Rebinding None "Escape cancelled the armed capture"
+                Expect.equal (Keymap.resolve after.Keymap "Escape") None "Escape did NOT get bound to the command"
+                Expect.equal (Keymap.resolve after.Keymap "w") (Some "MoveUp") "the original binding survives a cancel"
+            }
 
-          test "mapKeyRaw forwards key-UP too — the old seam dropped it silently" {
-              let seam = ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
+            test "mapKeyRaw forwards key-UP too — the old seam dropped it silently" {
+                let seam = ViewerKeyboard.mapKeyRaw (fun key isDown -> Some(Key(key, isDown)))
 
-              Expect.equal (seam (Letter 'j') false) (Some(Key("j", false))) "a key-up reaches the product"
-              Expect.equal (seam (Letter 'j') true) (Some(Key("j", true))) "a key-down reaches the product"
-              Expect.isNone (ViewerKeyboard.mapKeyOfKeymap idle.Keymap (fun c -> Some c) (Letter 'w') false)
-                  "the keymap seam, by contrast, drops key-up entirely"
-          }
+                Expect.equal (seam (Letter 'j') false) (Some(Key("j", false))) "a key-up reaches the product"
+                Expect.equal (seam (Letter 'j') true) (Some(Key("j", true))) "a key-down reaches the product"
 
-          // -------------------------------------------------------------------------------------------
-          // (1) The decoy is dead: the request that no host interprets now SAYS so.
-          // -------------------------------------------------------------------------------------------
+                Expect.isNone
+                    (ViewerKeyboard.mapKeyOfKeymap idle.Keymap (fun c -> Some c) (Letter 'w') false)
+                    "the keymap seam, by contrast, drops key-up entirely"
+            }
 
-          test "RequestHostKeyCapture raises a diagnostic naming the uninterpreted effect (acceptance)" {
-              let command =
-                  ControlsElmish.interpretKeyboardEffect id (RequestHostKeyCapture "j")
+            // -------------------------------------------------------------------------------------------
+            // (1) The decoy is dead: the request that no host interprets now SAYS so.
+            // -------------------------------------------------------------------------------------------
 
-              let diagnostics = AdapterCmd.diagnostics command
+            test "RequestHostKeyCapture raises a diagnostic naming the uninterpreted effect (acceptance)" {
+                let command = ControlsElmish.interpretKeyboardEffect id (RequestHostKeyCapture "j")
 
-              Expect.hasLength diagnostics 1 "the uninterpretable request produces exactly one diagnostic"
+                let diagnostics = AdapterCmd.diagnostics command
 
-              let d = List.head diagnostics
-              Expect.equal d.Source "keyboard-input" "the diagnostic is sourced to the keyboard package"
-              Expect.equal d.Code "HostKeyCaptureNotInterpreted" "the code names the defect"
+                Expect.hasLength diagnostics 1 "the uninterpretable request produces exactly one diagnostic"
 
-              Expect.stringContains
-                  d.Message
-                  "RequestHostKeyCapture"
-                  "the message NAMES the effect that is not interpreted"
+                let d = List.head diagnostics
+                Expect.equal d.Source "keyboard-input" "the diagnostic is sourced to the keyboard package"
+                Expect.equal d.Code "HostKeyCaptureNotInterpreted" "the code names the defect"
 
-              // `toKeyId`, NOT `mapKeyRaw` (#598). The diagnostic is read by a product author on the
-              // PINNED package, and no released FS.GG.UI.KeyboardInput exports `mapKeyRaw` — so naming
-              // the helper pointed them at a symbol they cannot bind. `toKeyId` ships, and the lambda
-              // the message now spells out is what `mapKeyRaw` was sugar for, so the advice is
-              // actionable for the reader who actually receives it.
-              Expect.stringContains
-                  d.Message
-                  "ViewerKeyboard.toKeyId"
-                  "and points at the seam that DOES capture a key, in a spelling the pinned package exports"
+                Expect.stringContains
+                    d.Message
+                    "RequestHostKeyCapture"
+                    "the message NAMES the effect that is not interpreted"
 
-              // NAMING the symbol is not TEACHING the seam. The message earns its keep by spelling the
-              // lambda out, so a reader can paste it; asserting only the symbol would let someone drop
-              // the lambda and still go green, leaving a diagnostic that names an API without showing
-              // how to use it — a weaker form of the very defect #598 fixed.
-              Expect.stringContains
-                  d.Message
-                  "fun key isDown ->"
-                  "and SHOWS the lambda, so the advice can be copied rather than merely looked up"
-          }
+                // `toKeyId`, NOT `mapKeyRaw` (#598). The diagnostic is read by a product author on the
+                // PINNED package, and no released FS.GG.UI.KeyboardInput exports `mapKeyRaw` — so naming
+                // the helper pointed them at a symbol they cannot bind. `toKeyId` ships, and the lambda
+                // the message now spells out is what `mapKeyRaw` was sugar for, so the advice is
+                // actionable for the reader who actually receives it.
+                Expect.stringContains
+                    d.Message
+                    "ViewerKeyboard.toKeyId"
+                    "and points at the seam that DOES capture a key, in a spelling the pinned package exports"
 
-          test "RequestHostKeyCapture no longer lowers to a host command (the decoy is gone)" {
-              let command =
-                  ControlsElmish.interpretKeyboardEffect id (RequestHostKeyCapture "j")
+                // NAMING the symbol is not TEACHING the seam. The message earns its keep by spelling the
+                // lambda out, so a reader can paste it; asserting only the symbol would let someone drop
+                // the lambda and still go green, leaving a diagnostic that names an API without showing
+                // how to use it — a weaker form of the very defect #598 fixed.
+                Expect.stringContains
+                    d.Message
+                    "fun key isDown ->"
+                    "and SHOWS the lambda, so the advice can be copied rather than merely looked up"
+            }
 
-              // The old arm produced `DispatchHostCommand "capture-key:j"` — an effect nothing interprets,
-              // whose only consumer anywhere turns it into a log string. A request that cannot be served
-              // must not look served.
-              let hostCommands =
-                  command
-                  |> List.choose (function
-                      | DispatchHostCommand name -> Some name
-                      | _ -> None)
+            test "RequestHostKeyCapture no longer lowers to a host command (the decoy is gone)" {
+                let command = ControlsElmish.interpretKeyboardEffect id (RequestHostKeyCapture "j")
 
-              Expect.isEmpty hostCommands "no DispatchHostCommand is emitted — the decoy lowering is gone"
+                // The old arm produced `DispatchHostCommand "capture-key:j"` — an effect nothing interprets,
+                // whose only consumer anywhere turns it into a log string. A request that cannot be served
+                // must not look served.
+                let hostCommands =
+                    command
+                    |> List.choose (function
+                        | DispatchHostCommand name -> Some name
+                        | _ -> None)
 
-              Expect.isEmpty
-                  (AdapterCmd.productMessages command)
-                  "and it dispatches no product message: nothing pretends the capture happened"
-          }
+                Expect.isEmpty hostCommands "no DispatchHostCommand is emitted — the decoy lowering is gone"
 
-          test "the other keyboard effects are untouched by the fix" {
-              let resolved = ControlsElmish.interpretKeyboardEffect id (CommandResolved "MoveUp")
+                Expect.isEmpty
+                    (AdapterCmd.productMessages command)
+                    "and it dispatches no product message: nothing pretends the capture happened"
+            }
 
-              Expect.equal
-                  (AdapterCmd.productMessages resolved)
-                  [ "MoveUp" ]
-                  "CommandResolved still dispatches its command as a product message"
+            test "the other keyboard effects are untouched by the fix" {
+                let resolved = ControlsElmish.interpretKeyboardEffect id (CommandResolved "MoveUp")
 
-              Expect.isEmpty (AdapterCmd.diagnostics resolved) "and raises no diagnostic"
+                Expect.equal
+                    (AdapterCmd.productMessages resolved)
+                    [ "MoveUp" ]
+                    "CommandResolved still dispatches its command as a product message"
 
-              let echo = ControlsElmish.interpretKeyboardEffect id (KeyStateChanged [ "w" ])
-              Expect.isEmpty echo "a state-echo effect still carries no host action"
-          } ]
+                Expect.isEmpty (AdapterCmd.diagnostics resolved) "and raises no diagnostic"
+
+                let echo = ControlsElmish.interpretKeyboardEffect id (KeyStateChanged [ "w" ])
+                Expect.isEmpty echo "a state-echo effect still carries no host action"
+            }
+        ]

@@ -34,72 +34,78 @@ let tests =
     testSequenced
     <| testList
         "FrameCache lifetime (issue #177)"
-        [ test "the run's teardown disposes the cached frame and empties the cache" {
-              FrameCache.beginRun ()
-              let painted = frame ()
-              FrameCache.replace painted
+        [
+            test "the run's teardown disposes the cached frame and empties the cache" {
+                FrameCache.beginRun ()
+                let painted = frame ()
+                FrameCache.replace painted
 
-              FrameCache.release ()
+                FrameCache.release ()
 
-              Expect.isTrue (isDisposed painted) "teardown disposes the frame it cached"
-              Expect.isNone (FrameCache.current ()) "teardown leaves the cache empty"
-          }
+                Expect.isTrue (isDisposed painted) "teardown disposes the frame it cached"
+                Expect.isNone (FrameCache.current ()) "teardown leaves the cache empty"
+            }
 
-          test "a run's start never disposes a frame left behind by a dead context" {
-              // Reachable only if a previous teardown did not complete: the image's GRContext is
-              // already gone, so `beginRun` must drop the reference rather than dispose through it.
-              FrameCache.beginRun ()
-              let orphan = frame ()
-              FrameCache.replace orphan
+            test "a run's start never disposes a frame left behind by a dead context" {
+                // Reachable only if a previous teardown did not complete: the image's GRContext is
+                // already gone, so `beginRun` must drop the reference rather than dispose through it.
+                FrameCache.beginRun ()
+                let orphan = frame ()
+                FrameCache.replace orphan
 
-              FrameCache.beginRun ()
+                FrameCache.beginRun ()
 
-              Expect.isFalse (isDisposed orphan) "a new run does not dispose a frame it does not own"
-              Expect.isNone (FrameCache.current ()) "a new run starts with an empty cache"
-              orphan.Dispose()
-          }
+                Expect.isFalse (isDisposed orphan) "a new run does not dispose a frame it does not own"
+                Expect.isNone (FrameCache.current ()) "a new run starts with an empty cache"
+                orphan.Dispose()
+            }
 
-          test "two sequential runs each release their own frame, and no frame outlives its run" {
-              // Run 1.
-              FrameCache.beginRun ()
-              let first = frame ()
-              FrameCache.replace first
-              FrameCache.release ()
+            test "two sequential runs each release their own frame, and no frame outlives its run" {
+                // Run 1.
+                FrameCache.beginRun ()
+                let first = frame ()
+                FrameCache.replace first
+                FrameCache.release ()
 
-              // Run 2 starts with nothing to dispose — the previous teardown already emptied the cache,
-              // so there is no image here whose context has been torn down.
-              FrameCache.beginRun ()
-              Expect.isNone (FrameCache.current ()) "run 2 inherits no frame from run 1"
+                // Run 2 starts with nothing to dispose — the previous teardown already emptied the cache,
+                // so there is no image here whose context has been torn down.
+                FrameCache.beginRun ()
+                Expect.isNone (FrameCache.current ()) "run 2 inherits no frame from run 1"
 
-              let second = frame ()
-              FrameCache.replace second
-              FrameCache.release ()
+                let second = frame ()
+                FrameCache.replace second
+                FrameCache.release ()
 
-              Expect.isTrue (isDisposed first) "run 1's frame was released by run 1"
-              Expect.isTrue (isDisposed second) "run 2's frame was released by run 2"
-              Expect.isNone (FrameCache.current ()) "no frame survives the last run"
-          }
+                Expect.isTrue (isDisposed first) "run 1's frame was released by run 1"
+                Expect.isTrue (isDisposed second) "run 2's frame was released by run 2"
+                Expect.isNone (FrameCache.current ()) "no frame survives the last run"
+            }
 
-          test "the paint path disposes the frame it supersedes" {
-              FrameCache.beginRun ()
-              let superseded = frame ()
-              FrameCache.replace superseded
-              let latest = frame ()
-              FrameCache.replace latest
+            test "the paint path disposes the frame it supersedes" {
+                FrameCache.beginRun ()
+                let superseded = frame ()
+                FrameCache.replace superseded
+                let latest = frame ()
+                FrameCache.replace latest
 
-              Expect.isTrue (isDisposed superseded) "replacing the cached frame disposes the old one"
-              Expect.isFalse (isDisposed latest) "the newly cached frame stays alive for re-present"
-              Expect.equal (FrameCache.current () |> Option.map isDisposed) (Some false) "the cache holds a live frame"
+                Expect.isTrue (isDisposed superseded) "replacing the cached frame disposes the old one"
+                Expect.isFalse (isDisposed latest) "the newly cached frame stays alive for re-present"
 
-              FrameCache.release ()
-          }
+                Expect.equal
+                    (FrameCache.current () |> Option.map isDisposed)
+                    (Some false)
+                    "the cache holds a live frame"
 
-          test "release is idempotent" {
-              FrameCache.beginRun ()
-              FrameCache.replace (frame ())
+                FrameCache.release ()
+            }
 
-              FrameCache.release ()
-              FrameCache.release ()
+            test "release is idempotent" {
+                FrameCache.beginRun ()
+                FrameCache.replace (frame ())
 
-              Expect.isNone (FrameCache.current ()) "a second teardown pass releases nothing and does not throw"
-          } ]
+                FrameCache.release ()
+                FrameCache.release ()
+
+                Expect.isNone (FrameCache.current ()) "a second teardown pass releases nothing and does not throw"
+            }
+        ]

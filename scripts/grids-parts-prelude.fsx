@@ -13,18 +13,28 @@ open FS.GG.UI.Canvas
 open AppRoot
 
 let c: Cell = { Col = 3; Row = 2 }
-let spec: Grids.GridSpec = { CellSize = 32.0; Origin = { X = 0.0; Y = 0.0 } }
+
+let spec: Grids.GridSpec =
+    {
+        CellSize = 32.0
+        Origin = { X = 0.0; Y = 0.0 }
+    }
 
 // The parts of cell (3,2): four corners, four edges.
 printfn "cell (3,2) corners = %A" (Grids.cellCorners c)
 printfn "cell (3,2) edges   = %A" (Grids.cellEdges c)
 
 // Adjacency round-trip: each edge of the cell reports the cell back among the two it separates.
-let roundTrip = Grids.cellEdges c |> List.forall (fun e -> Grids.edgeCells e |> List.contains c)
+let roundTrip =
+    Grids.cellEdges c |> List.forall (fun e -> Grids.edgeCells e |> List.contains c)
+
 printfn "edges round-trip to the cell = %b" roundTrip
 
 // Corner round-trip: each corner reports the cell back among the four faces around it.
-let cornerTrip = Grids.cellCorners c |> List.forall (fun v -> Grids.vertexCells v |> List.contains c)
+let cornerTrip =
+    Grids.cellCorners c
+    |> List.forall (fun v -> Grids.vertexCells v |> List.contains c)
+
 printfn "corners round-trip to cell   = %b" cornerTrip
 
 // Pixel mapping + inverse: snap the cell's centre pixel back to the cell.
@@ -40,6 +50,11 @@ printfn "top-edge segment   = %A" (Grids.edgeSegment spec top)
 printfn "deterministic      = %b" (Grids.cellEdges c = Grids.cellEdges c)
 
 // Totality: a degenerate GridSpec never throws or yields a NaN pixel.
-let bad: Grids.GridSpec = { CellSize = 0.0; Origin = { X = nan; Y = 0.0 } }
+let bad: Grids.GridSpec =
+    {
+        CellSize = 0.0
+        Origin = { X = nan; Y = 0.0 }
+    }
+
 let r = Grids.cellRect bad c
 printfn "degenerate spec safe = %b" (System.Double.IsFinite r.X && r.Width > 0.0)

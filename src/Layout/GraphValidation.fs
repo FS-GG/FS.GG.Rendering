@@ -18,6 +18,7 @@ module GraphValidation =
             false
         else
             let nodes = graph.Nodes |> List.map _.Id |> Set.ofList
+
             let outgoing =
                 graph.Edges
                 |> List.filter (fun edge -> nodes.Contains edge.Source && nodes.Contains edge.Target)
@@ -30,7 +31,9 @@ module GraphValidation =
                 elif Set.contains node visited then
                     false
                 else
-                    let next = outgoing |> Map.tryFind node |> Option.defaultValue [] |> List.map _.Target
+                    let next =
+                        outgoing |> Map.tryFind node |> Option.defaultValue [] |> List.map _.Target
+
                     next |> List.exists (visit (Set.add node visiting) (Set.add node visited))
 
             graph.Nodes |> List.exists (fun node -> visit Set.empty Set.empty node.Id)
@@ -44,13 +47,17 @@ module GraphValidation =
         let edgeIssues =
             graph.Edges
             |> List.mapi (fun index edge ->
-                [ if not (nodeSet.Contains edge.Source) then MissingSource(index, edge.Source)
-                  if not (nodeSet.Contains edge.Target) then MissingTarget(index, edge.Target)
-                  if edge.Source = edge.Target then SelfLoop(index, edge.Source) ])
+                [
+                    if not (nodeSet.Contains edge.Source) then
+                        MissingSource(index, edge.Source)
+                    if not (nodeSet.Contains edge.Target) then
+                        MissingTarget(index, edge.Target)
+                    if edge.Source = edge.Target then
+                        SelfLoop(index, edge.Source)
+                ])
             |> List.concat
 
-        let cycleIssues =
-            if hasCycle graph then [ CycleDetected nodeIds ] else []
+        let cycleIssues = if hasCycle graph then [ CycleDetected nodeIds ] else []
 
         duplicateIssues @ edgeIssues @ cycleIssues
 

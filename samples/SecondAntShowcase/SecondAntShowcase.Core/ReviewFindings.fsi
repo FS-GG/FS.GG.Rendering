@@ -24,21 +24,25 @@ type FindingStatus =
     | Closed
 
 type VisualFinding =
-    { FindingId: string
-      TargetIds: string list
-      Category: FindingCategory
-      Severity: Severity
-      Status: FindingStatus
-      Description: string
-      Expected: string
-      Actual: string
-      FixReference: string option
-      ReviewedAt: string option }
+    {
+        FindingId: string
+        TargetIds: string list
+        Category: FindingCategory
+        Severity: Severity
+        Status: FindingStatus
+        Description: string
+        Expected: string
+        Actual: string
+        FixReference: string option
+        ReviewedAt: string option
+    }
 
 type ValidationResult =
-    { MalformedFindingIds: string list
-      MissingClassificationTargetIds: string list
-      UnresolvedFindingIds: string list }
+    {
+        MalformedFindingIds: string list
+        MissingClassificationTargetIds: string list
+        UnresolvedFindingIds: string list
+    }
 
 val create:
     findingId: string ->
@@ -49,6 +53,7 @@ val create:
     expected: string ->
     actual: string ->
         VisualFinding
+
 val markFixed: fixReference: string -> finding: VisualFinding -> VisualFinding
 val markReviewed: reviewedAt: string -> finding: VisualFinding -> VisualFinding
 val close: finding: VisualFinding -> VisualFinding

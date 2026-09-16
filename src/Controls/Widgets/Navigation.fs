@@ -3,25 +3,33 @@ namespace FS.GG.UI.Controls.Typed
 open FS.GG.UI.Controls
 
 type TabsProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      SelectedKey: string option
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        SelectedKey: string option
+        OnChanged: (string -> 'msg) option
+    }
 
 type MenuProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 type ContextMenuProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 type ToolbarProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list
-      OnClick: 'msg option }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+        OnClick: 'msg option
+    }
 
 // `menu` and `context-menu` are distinct per-id modules over the same legacy menu
 // mechanic; `context-menu` lowers via `Control.standard (Custom "context-menu")`. Key
@@ -29,45 +37,59 @@ type ToolbarProps<'msg> =
 
 module Tabs =
     let defaults: TabsProps<'msg> =
-        { Id = None; Items = []; SelectedKey = None; OnChanged = None }
+        {
+            Id = None
+            Items = []
+            SelectedKey = None
+            OnChanged = None
+        }
 
     let view (props: TabsProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield FS.GG.UI.Controls.Tabs.items props.Items
-              match props.SelectedKey with
-              | Some key -> yield FS.GG.UI.Controls.Tabs.selected key
-              | None -> ()
-              match props.OnChanged with
-              | Some map -> yield FS.GG.UI.Controls.Tabs.onChanged map
-              | None -> () ]
+            [
+                yield FS.GG.UI.Controls.Tabs.items props.Items
+                match props.SelectedKey with
+                | Some key -> yield FS.GG.UI.Controls.Tabs.selected key
+                | None -> ()
+                match props.OnChanged with
+                | Some map -> yield FS.GG.UI.Controls.Tabs.onChanged map
+                | None -> ()
+            ]
 
         FS.GG.UI.Controls.Tabs.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module Menu =
-    let defaults: MenuProps<'msg> = { Id = None; Items = []; OnSelected = None }
+    let defaults: MenuProps<'msg> =
+        {
+            Id = None
+            Items = []
+            OnSelected = None
+        }
 
     let view (props: MenuProps<'msg>) : Widget<'msg> =
         let surfaceId = props.Id |> Option.defaultValue "menu"
         let triggerId = surfaceId + "-trigger"
 
         let attrs =
-            [ yield FS.GG.UI.Controls.Menu.items props.Items
-              yield
-                  WidgetLowering.transientMetadata
-                      TransientSurfaceKind.Menu
-                      surfaceId
-                      triggerId
-                      [ surfaceId ]
-                      true
-                      true
-                      10
-                      false
-                      (Some "onSelected")
-              match props.OnSelected with
-              | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
-              | None -> () ]
+            [
+                yield FS.GG.UI.Controls.Menu.items props.Items
+                yield
+                    WidgetLowering.transientMetadata
+                        TransientSurfaceKind.Menu
+                        surfaceId
+                        triggerId
+                        [ surfaceId ]
+                        true
+                        true
+                        10
+                        false
+                        (Some "onSelected")
+                match props.OnSelected with
+                | Some map -> yield FS.GG.UI.Controls.Menu.onSelected map
+                | None -> ()
+            ]
 
         // Issue #56: key the menu with the declared `surfaceId` (not `withKeyOpt props.Id`, which
         // left the default-id menu unkeyed) so its NodeId IS `surfaceId` — the one real focus stop
@@ -77,28 +99,35 @@ module Menu =
         |> Widget.ofControl
 
 module ContextMenu =
-    let defaults: ContextMenuProps<'msg> = { Id = None; Items = []; OnSelected = None }
+    let defaults: ContextMenuProps<'msg> =
+        {
+            Id = None
+            Items = []
+            OnSelected = None
+        }
 
     let view (props: ContextMenuProps<'msg>) : Widget<'msg> =
         let surfaceId = props.Id |> Option.defaultValue "context-menu"
         let triggerId = surfaceId + "-trigger"
 
         let attrs =
-            [ yield Attr.items props.Items
-              yield
-                  WidgetLowering.transientMetadata
-                      TransientSurfaceKind.ContextMenu
-                      surfaceId
-                      triggerId
-                      [ surfaceId ]
-                      true
-                      true
-                      20
-                      false
-                      (Some "onSelected")
-              match props.OnSelected with
-              | Some map -> yield WidgetLowering.onString "onSelected" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield
+                    WidgetLowering.transientMetadata
+                        TransientSurfaceKind.ContextMenu
+                        surfaceId
+                        triggerId
+                        [ surfaceId ]
+                        true
+                        true
+                        20
+                        false
+                        (Some "onSelected")
+                match props.OnSelected with
+                | Some map -> yield WidgetLowering.onString "onSelected" map
+                | None -> ()
+            ]
 
         // Issue #56: key the context-menu with `surfaceId` so its NodeId IS the one real focus
         // stop the metadata declares (was `withKeyOpt props.Id`, unkeyed on the default id).
@@ -107,16 +136,23 @@ module ContextMenu =
         |> Widget.ofControl
 
 module Toolbar =
-    let defaults: ToolbarProps<'msg> = { Id = None; Children = []; OnClick = None }
+    let defaults: ToolbarProps<'msg> =
+        {
+            Id = None
+            Children = []
+            OnClick = None
+        }
 
     let view (props: ToolbarProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
-            [ yield FS.GG.UI.Controls.Toolbar.children children
-              match props.OnClick with
-              | Some msg -> yield Attr.on "onClick" msg
-              | None -> () ]
+            [
+                yield FS.GG.UI.Controls.Toolbar.children children
+                match props.OnClick with
+                | Some msg -> yield Attr.on "onClick" msg
+                | None -> ()
+            ]
 
         FS.GG.UI.Controls.Toolbar.create attrs
         |> WidgetLowering.withKeyOpt props.Id

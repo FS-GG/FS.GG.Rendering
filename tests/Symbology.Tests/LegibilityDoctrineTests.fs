@@ -54,9 +54,11 @@ let private flattenProse (markdown: string) =
 
 /// One parsed §4 row: the channel it names, and the raw `Kind` / `Capacity` cells as written.
 type private DoctrineRow =
-    { Channel: Legibility.Channel
-      Kind: string
-      Capacity: string }
+    {
+        Channel: Legibility.Channel
+        Kind: string
+        Capacity: string
+    }
 
 /// The `| … |` rows of the first markdown table under the §4 heading, header and separator dropped.
 let private doctrineRows () =
@@ -93,9 +95,11 @@ let private doctrineRows () =
         match channelOfField fieldName with
         | None -> failwithf "§4 row names unknown Token field `%s`: %s" fieldName line
         | Some channel ->
-            { Channel = channel
-              Kind = cells.[4]
-              Capacity = cells.[5] })
+            {
+                Channel = channel
+                Kind = cells.[4]
+                Capacity = cells.[5]
+            })
     |> Array.toList
 
 /// The whole-board rhythm budget, read from the linter's own overload message so the number lives in
@@ -115,7 +119,9 @@ let private motionBudgetFromLinter () =
         |> List.tryFind (fun f -> f.Channel = Legibility.Motion)
         |> Option.map (fun f -> f.Message)
         |> Option.defaultWith (fun () ->
-            failwithf "every rhythm at once (%d) produced no Motion overload — is the budget now unbounded?" allRhythms.Length)
+            failwithf
+                "every rhythm at once (%d) produced no Motion overload — is the budget now unbounded?"
+                allRhythms.Length)
 
     let m = Regex.Match(message, @"budget (\d+)")
 
@@ -128,94 +134,99 @@ let private motionBudgetFromLinter () =
 let doctrineDrift =
     testList
         "Legibility doctrine (#285)"
-        [ test "the §4 table names every per-unit channel exactly once, in Legibility.table order" {
-              let prose = doctrineRows () |> List.filter (fun r -> r.Channel <> Legibility.Motion)
+        [
+            test "the §4 table names every per-unit channel exactly once, in Legibility.table order" {
+                let prose = doctrineRows () |> List.filter (fun r -> r.Channel <> Legibility.Motion)
 
-              Expect.equal
-                  (prose |> List.map (fun r -> r.Channel))
-                  (Legibility.table |> List.map (fun s -> s.Channel))
-                  "the §4 rows are Legibility.table's channels, in its order — add/reorder the F# table first"
-          }
+                Expect.equal
+                    (prose |> List.map (fun r -> r.Channel))
+                    (Legibility.table |> List.map (fun s -> s.Channel))
+                    "the §4 rows are Legibility.table's channels, in its order — add/reorder the F# table first"
+            }
 
-          test "every §4 Kind and Capacity cell equals Legibility.table (the single source)" {
-              let prose =
-                  doctrineRows ()
-                  |> List.filter (fun r -> r.Channel <> Legibility.Motion)
-                  |> List.map (fun r -> r.Channel, r)
-                  |> Map.ofList
+            test "every §4 Kind and Capacity cell equals Legibility.table (the single source)" {
+                let prose =
+                    doctrineRows ()
+                    |> List.filter (fun r -> r.Channel <> Legibility.Motion)
+                    |> List.map (fun r -> r.Channel, r)
+                    |> Map.ofList
 
-              for spec in Legibility.table do
-                  let row = prose.[spec.Channel]
+                for spec in Legibility.table do
+                    let row = prose.[spec.Channel]
 
-                  let expectedKind =
-                      match spec.Kind with
-                      | Legibility.Categorical -> "Categorical"
-                      | Legibility.Ordered -> "Ordered"
-                      | Legibility.Continuous -> "Continuous"
+                    let expectedKind =
+                        match spec.Kind with
+                        | Legibility.Categorical -> "Categorical"
+                        | Legibility.Ordered -> "Ordered"
+                        | Legibility.Continuous -> "Continuous"
 
-                  // An em-dash, not "0": a Continuous channel has no capacity, and printing 0 would read
-                  // as "zero levels are legible" rather than "this channel is not ranked".
-                  let expectedCapacity =
-                      match spec.Kind with
-                      | Legibility.Continuous -> "—"
-                      | _ -> string spec.Capacity
+                    // An em-dash, not "0": a Continuous channel has no capacity, and printing 0 would read
+                    // as "zero levels are legible" rather than "this channel is not ranked".
+                    let expectedCapacity =
+                        match spec.Kind with
+                        | Legibility.Continuous -> "—"
+                        | _ -> string spec.Capacity
 
-                  Expect.equal row.Kind expectedKind (sprintf "§4 Kind cell for %A" spec.Channel)
+                    Expect.equal row.Kind expectedKind (sprintf "§4 Kind cell for %A" spec.Channel)
 
-                  Expect.equal
-                      row.Capacity
-                      expectedCapacity
-                      (sprintf "§4 Capacity cell for %A — change Legibility.table, then this prose" spec.Channel)
-          }
+                    Expect.equal
+                        row.Capacity
+                        expectedCapacity
+                        (sprintf "§4 Capacity cell for %A — change Legibility.table, then this prose" spec.Channel)
+            }
 
-          test "the §4 Motion row states the linter's whole-board rhythm budget" {
-              let motion =
-                  doctrineRows ()
-                  |> List.tryFind (fun r -> r.Channel = Legibility.Motion)
-                  |> Option.defaultWith (fun () -> failwith "the §4 table has no Motion row")
+            test "the §4 Motion row states the linter's whole-board rhythm budget" {
+                let motion =
+                    doctrineRows ()
+                    |> List.tryFind (fun r -> r.Channel = Legibility.Motion)
+                    |> Option.defaultWith (fun () -> failwith "the §4 table has no Motion row")
 
-              Expect.equal motion.Kind "whole board" "Motion is scored per board, and the table must say so"
+                Expect.equal motion.Kind "whole board" "Motion is scored per board, and the table must say so"
 
-              Expect.equal
-                  motion.Capacity
-                  (sprintf "budget %d" (motionBudgetFromLinter ()))
-                  "the §4 Motion row must quote the budget the linter actually enforces"
-          }
+                Expect.equal
+                    motion.Capacity
+                    (sprintf "budget %d" (motionBudgetFromLinter ()))
+                    "the §4 Motion row must quote the budget the linter actually enforces"
+            }
 
-          test "no channel carrying a capacity is overload-exempt, and no exempt channel carries one" {
-              // The invariant the drift produced: a channel the doctrine assigns a level count to, that
-              // `overloadFindings` then skips. Continuous ⇒ exempt ⇒ must not advertise a capacity.
-              for spec in Legibility.table do
-                  match spec.Kind with
-                  | Legibility.Continuous ->
-                      Expect.equal spec.Capacity 0 (sprintf "%A is overload-exempt, so it must not claim a capacity" spec.Channel)
-                  | Legibility.Categorical
-                  | Legibility.Ordered ->
-                      Expect.isGreaterThan
-                          spec.Capacity
-                          0
-                          (sprintf "%A is enforced, so it must carry the capacity the doctrine quotes" spec.Channel)
-          }
+            test "no channel carrying a capacity is overload-exempt, and no exempt channel carries one" {
+                // The invariant the drift produced: a channel the doctrine assigns a level count to, that
+                // `overloadFindings` then skips. Continuous ⇒ exempt ⇒ must not advertise a capacity.
+                for spec in Legibility.table do
+                    match spec.Kind with
+                    | Legibility.Continuous ->
+                        Expect.equal
+                            spec.Capacity
+                            0
+                            (sprintf "%A is overload-exempt, so it must not claim a capacity" spec.Channel)
+                    | Legibility.Categorical
+                    | Legibility.Ordered ->
+                        Expect.isGreaterThan
+                            spec.Capacity
+                            0
+                            (sprintf "%A is enforced, so it must carry the capacity the doctrine quotes" spec.Channel)
+            }
 
-          test "the §4 table cites Legibility.table as the source, so a reader knows which to edit" {
-              let body = flattenProse (File.ReadAllText skillPath)
-              Expect.stringContains body "`legibility.table` is the single source" "the §4 preamble names the source"
-          }
+            test "the §4 table cites Legibility.table as the source, so a reader knows which to edit" {
+                let body = flattenProse (File.ReadAllText skillPath)
+                Expect.stringContains body "`legibility.table` is the single source" "the §4 preamble names the source"
+            }
 
-          test "the vacuous per-symbol motion rule is gone from BOTH skill variants; the board rule is written down" {
-              // `animate : Motion -> Token -> float -> Scene` takes ONE Motion, so "never stack rhythms on
-              // one symbol" cannot be violated and taught nothing. The rule that can be violated is the
-              // board-wide budget — it was enforced and undocumented.
-              for path in [ skillPath; productSkillPath ] do
-                  let body = flattenProse (File.ReadAllText path)
-                  let name = Path.GetFileName(Path.GetDirectoryName path)
+            test "the vacuous per-symbol motion rule is gone from BOTH skill variants; the board rule is written down" {
+                // `animate : Motion -> Token -> float -> Scene` takes ONE Motion, so "never stack rhythms on
+                // one symbol" cannot be violated and taught nothing. The rule that can be violated is the
+                // board-wide budget — it was enforced and undocumented.
+                for path in [ skillPath; productSkillPath ] do
+                    let body = flattenProse (File.ReadAllText path)
+                    let name = Path.GetFileName(Path.GetDirectoryName path)
 
-                  Expect.isFalse
-                      (body.Contains "one active motion at a time")
-                      (sprintf "%s: the per-symbol rule is a type-level guarantee, not a legibility rule" name)
+                    Expect.isFalse
+                        (body.Contains "one active motion at a time")
+                        (sprintf "%s: the per-symbol rule is a type-level guarantee, not a legibility rule" name)
 
-                  Expect.stringContains
-                      body
-                      "one active rhythm per board"
-                      (sprintf "%s: the board-wide rule is stated as a rule" name)
-          } ]
+                    Expect.stringContains
+                        body
+                        "one active rhythm per board"
+                        (sprintf "%s: the board-wide rule is stated as a rule" name)
+            }
+        ]

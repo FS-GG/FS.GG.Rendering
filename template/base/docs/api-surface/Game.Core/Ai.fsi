@@ -19,14 +19,16 @@ type AgentId = AgentId of int
 /// it without inspecting it, so this type never grows a game's stat block.
 [<Struct>]
 type Sighting<'T> =
-    { /// The perceived entity's identity.
-      Agent: AgentId
-      /// Where it was when last seen — a ghost's position is stale by construction.
-      Position: Point
-      /// The caller's payload. Opaque to this module.
-      Seen: 'T
-      /// The tick at which this sighting was taken.
-      LastSeenTick: int }
+    {
+        /// The perceived entity's identity.
+        Agent: AgentId
+        /// Where it was when last seen — a ghost's position is stale by construction.
+        Position: Point
+        /// The caller's payload. Opaque to this module.
+        Seen: 'T
+        /// The tick at which this sighting was taken.
+        LastSeenTick: int
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// **The fog boundary, made a compile-time guarantee.** A `TeamView` is what one team knows: entities it
@@ -66,16 +68,18 @@ type TeamView<'T>
 /// beatable by understanding the same systems the player already has.
 [<Struct>]
 type Difficulty =
-    { /// Ticks between spotting a target and the first response. Higher is easier.
-      ReactionTicks: int
-      /// Standard deviation of the Gaussian aim error, in radians. Higher is easier.
-      AimErrorSigma: float
-      /// Ticks between perception refreshes. Higher is easier (staler ghosts).
-      SpotCycleTicks: int
-      /// Whether the agent aims at weak points rather than centre-mass.
-      UsesWeakPointTargeting: bool
-      /// How much the agent weighs danger against progress when costing a route. Higher is more cautious.
-      ThreatWeight: float }
+    {
+        /// Ticks between spotting a target and the first response. Higher is easier.
+        ReactionTicks: int
+        /// Standard deviation of the Gaussian aim error, in radians. Higher is easier.
+        AimErrorSigma: float
+        /// Ticks between perception refreshes. Higher is easier (staler ghosts).
+        SpotCycleTicks: int
+        /// Whether the agent aims at weak points rather than centre-mass.
+        UsesWeakPointTargeting: bool
+        /// How much the agent weighs danger against progress when costing a route. Higher is more cautious.
+        ThreatWeight: float
+    }
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
 /// The thin, pure vocabulary the decision layer needs, and nothing more. This is **not** a behaviour-tree
@@ -173,10 +177,7 @@ module Ai =
     /// out of range everywhere. Cells absent from `cells` are absent from the result — this never
     /// enumerates a grid it was not given.
     val threatField:
-        hasLos: (Cell -> Cell -> bool) ->
-        sources: (Cell * float * int) list ->
-        cells: Cell list ->
-            Map<Cell, float>
+        hasLos: (Cell -> Cell -> bool) -> sources: (Cell * float * int) list -> cells: Cell list -> Map<Cell, float>
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// A **flee field**, built the way `Pathfinding.distanceField` says one is built: scale a desire map by

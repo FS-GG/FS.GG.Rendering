@@ -4,11 +4,7 @@ open System
 open FS.GG.UI.Diagnostics
 
 let source =
-    RuntimeDiagnostics.source
-        (Some "FS.GG.UI.Diagnostics")
-        "semantic-prelude"
-        None
-        (Some "feature169")
+    RuntimeDiagnostics.source (Some "FS.GG.UI.Diagnostics") "semantic-prelude" None (Some "feature169")
 
 let context =
     RuntimeDiagnostics.context
@@ -38,7 +34,10 @@ let blocker =
         context
 
 let repeated = [ for _ in 1..100 -> backend ]
-let summary = RuntimeDiagnostics.summarize (Some "feature169-prelude") [] [ "diagnostics-summary.json" ] (blocker :: repeated)
+
+let summary =
+    RuntimeDiagnostics.summarize (Some "feature169-prelude") [] [ "diagnostics-summary.json" ] (blocker :: repeated)
+
 let console = RuntimeDiagnostics.renderConsole false 12 summary
 let json = RuntimeDiagnostics.renderJson summary
 let markdown = RuntimeDiagnostics.renderMarkdown summary
@@ -58,7 +57,8 @@ if not (json.Contains("\"schemaVersion\":\"runtime-diagnostics-v1\"")) then
 if not (markdown.Contains("blocked")) then
     failwith "expected Markdown status token"
 
-printfn "diagnostics-prelude: status=%s groups=%d console-lines=%d"
+printfn
+    "diagnostics-prelude: status=%s groups=%d console-lines=%d"
     (RuntimeDiagnostics.readinessStatusToken summary.Status)
     summary.Groups.Length
     console.Length

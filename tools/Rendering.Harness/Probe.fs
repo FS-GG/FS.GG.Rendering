@@ -14,6 +14,7 @@ module Probe =
             psi.RedirectStandardOutput <- true
             psi.RedirectStandardError <- true
             psi.UseShellExecute <- false
+
             match Process.Start(psi) with
             | null -> None
             | proc ->
@@ -21,7 +22,8 @@ module Probe =
                 let out = p.StandardOutput.ReadToEnd()
                 p.WaitForExit(5000) |> ignore
                 if p.HasExited && p.ExitCode = 0 then Some out else None
-        with _ -> None
+        with _ ->
+            None
 
     let env (name: string) =
         match Environment.GetEnvironmentVariable(name) with
@@ -29,7 +31,8 @@ module Probe =
         | "" -> None
         | v -> Some v
 
-    let knownExtensions = [ "XTEST"; "Present"; "RANDR"; "DRI3"; "XInputExtension"; "XInput" ]
+    let knownExtensions =
+        [ "XTEST"; "Present"; "RANDR"; "DRI3"; "XInputExtension"; "XInput" ]
 
     let probe () : ProbeFacts =
         let display = env "DISPLAY"
@@ -57,11 +60,13 @@ module Probe =
             | None -> None
             | Some text ->
                 let m = Regex.Match(text, @"(\d+\.\d+)\*")
+
                 if m.Success then
                     match Double.TryParse(m.Groups.[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture) with
                     | true, v -> Some v
                     | _ -> None
-                else None
+                else
+                    None
 
         let vblankSource =
             match xrandr with
@@ -75,27 +80,29 @@ module Probe =
             | None -> None
             | Some text ->
                 let m = Regex.Match(text, @"OpenGL renderer string:\s*(.+)")
-                if m.Success then Some (m.Groups.[1].Value.Trim()) else None
+                if m.Success then Some(m.Groups.[1].Value.Trim()) else None
 
         let glVersion =
             match glx with
             | None -> None
             | Some text ->
                 let m = Regex.Match(text, @"OpenGL version string:\s*(.+)")
-                if m.Success then Some (m.Groups.[1].Value.Trim()) else None
+                if m.Success then Some(m.Groups.[1].Value.Trim()) else None
 
         let glDirect =
             match glx with
             | Some text -> text.Contains("direct rendering: Yes")
             | None -> false
 
-        { EffectiveBackend = backend
-          Display = display
-          GlRenderer = glRenderer
-          GlVersion = glVersion
-          GlDirect = glDirect
-          RefreshHz = refreshHz
-          Extensions = extensions
-          SwapControl = None // requires a live GL context; populated by T3 when available
-          VblankSource = vblankSource
-          UinputAvailable = IO.File.Exists("/dev/uinput") && IO.Directory.Exists("/dev/input") }
+        {
+            EffectiveBackend = backend
+            Display = display
+            GlRenderer = glRenderer
+            GlVersion = glVersion
+            GlDirect = glDirect
+            RefreshHz = refreshHz
+            Extensions = extensions
+            SwapControl = None // requires a live GL context; populated by T3 when available
+            VblankSource = vblankSource
+            UinputAvailable = IO.File.Exists("/dev/uinput") && IO.Directory.Exists("/dev/input")
+        }

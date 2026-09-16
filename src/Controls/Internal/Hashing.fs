@@ -26,6 +26,8 @@ module internal Hashing =
     /// Fold the FNV-1a step over raw bytes (the UTF-8/byte convention) from a given seed.
     let foldBytes (seed: uint64) (bytes: byte seq) : uint64 =
         let mutable h = seed // mutable: hot path / FNV-1a accumulator
+
         for b in bytes do
             h <- step h (uint64 b)
+
         h

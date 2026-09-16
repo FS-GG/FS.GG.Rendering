@@ -18,13 +18,21 @@ let b: Cell = { Col = 5; Row = 2 }
 let tiles = LineDrawing.line a b
 printfn "line a..b                  = %A" tiles
 printfn "endpoints included         = %b" (List.head tiles = a && List.last tiles = b)
-printfn "every step adjacent        = %b"
-    (tiles |> List.pairwise |> List.forall (fun (p, q) -> abs (p.Col - q.Col) <= 1 && abs (p.Row - q.Row) <= 1))
+
+printfn
+    "every step adjacent        = %b"
+    (tiles
+     |> List.pairwise
+     |> List.forall (fun (p, q) -> abs (p.Col - q.Col) <= 1 && abs (p.Row - q.Row) <= 1))
 
 // The supercover walk: strictly 4-connected (no diagonal gap) — the variant sight walks.
 let cover = LineDrawing.supercover a b
-printfn "supercover 4-connected     = %b"
-    (cover |> List.pairwise |> List.forall (fun (p, q) -> abs (p.Col - q.Col) + abs (p.Row - q.Row) = 1))
+
+printfn
+    "supercover 4-connected     = %b"
+    (cover
+     |> List.pairwise
+     |> List.forall (fun (p, q) -> abs (p.Col - q.Col) + abs (p.Row - q.Row) = 1))
 
 // Grid line-of-sight: a wall tile blocks sight; removing it restores it.
 let wall: Cell = { Col = 3; Row = 1 }

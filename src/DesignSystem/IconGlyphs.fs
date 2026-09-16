@@ -21,32 +21,34 @@ module internal IconGlyphs =
     let private house (cx: float) (cy: float) (r: float) : PathSpec =
         Path.create
             Winding
-            [ Path.moveTo (cx - r) cy
-              Path.lineTo cx (cy - r)
-              Path.lineTo (cx + r) cy
-              Path.lineTo (cx + r - 3.0) cy
-              Path.lineTo (cx + r - 3.0) (cy + r)
-              Path.lineTo (cx - r + 3.0) (cy + r)
-              Path.lineTo (cx - r + 3.0) cy
-              Path.close ]
+            [
+                Path.moveTo (cx - r) cy
+                Path.lineTo cx (cy - r)
+                Path.lineTo (cx + r) cy
+                Path.lineTo (cx + r - 3.0) cy
+                Path.lineTo (cx + r - 3.0) (cy + r)
+                Path.lineTo (cx - r + 3.0) (cy + r)
+                Path.lineTo (cx - r + 3.0) cy
+                Path.close
+            ]
 
     /// A second, deliberately-distinct primitive so name→glyph selection is real and testable (not a
     /// one-entry table): a filled diamond with apexes up/right/down/left.
     let private diamond (cx: float) (cy: float) (r: float) : PathSpec =
         Path.create
             Winding
-            [ Path.moveTo cx (cy - r)
-              Path.lineTo (cx + r) cy
-              Path.lineTo cx (cy + r)
-              Path.lineTo (cx - r) cy
-              Path.close ]
+            [
+                Path.moveTo cx (cy - r)
+                Path.lineTo (cx + r) cy
+                Path.lineTo cx (cy + r)
+                Path.lineTo (cx - r) cy
+                Path.close
+            ]
 
     // The vocabulary. Names are the icon-set keys the `Icon`/`IconButton` `name` attribute looks up.
     // `"house"`/`"home"` name the default glyph explicitly; new glyphs are added as one line each.
     let private table: Map<string, float -> float -> float -> PathSpec> =
-        Map [ "house", house
-              "home", house
-              "diamond", diamond ]
+        Map [ "house", house; "home", house; "diamond", diamond ]
 
     let pathFor (name: string) (cx: float) (cy: float) (r: float) : PathSpec =
         let glyph = table |> Map.tryFind name |> Option.defaultValue house

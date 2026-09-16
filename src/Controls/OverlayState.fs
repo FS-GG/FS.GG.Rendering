@@ -47,97 +47,123 @@ type TrapMode =
     | NoFocusCapture
 
 type OverlaySurfaceId =
-    { SurfaceId: ControlId
-      ParentSurfaceId: ControlId option
-      TriggerId: ControlId }
+    {
+        SurfaceId: ControlId
+        ParentSurfaceId: ControlId option
+        TriggerId: ControlId
+    }
 
 type OverlayTrigger =
-    { ControlId: ControlId
-      Enabled: bool
-      ActivationSource: OverlayActivationSource
-      RecoveryTarget: ControlId option }
+    {
+        ControlId: ControlId
+        Enabled: bool
+        ActivationSource: OverlayActivationSource
+        RecoveryTarget: ControlId option
+    }
 
 type AnchorEvidence =
-    { AnchorId: ControlId
-      AnchorBounds: Rect option
-      SurfaceBounds: Rect option
-      Placement: string
-      NoFit: string option
-      FrameFingerprint: uint64 option }
+    {
+        AnchorId: ControlId
+        AnchorBounds: Rect option
+        SurfaceBounds: Rect option
+        Placement: string
+        NoFit: string option
+        FrameFingerprint: uint64 option
+    }
 
 type DismissalPolicy =
-    { Escape: DismissalRule
-      OutsidePointer: DismissalRule
-      SelectionCompletion: SelectionCompletionPolicy
-      ExplicitClose: DismissalRule
-      AnchorRemoval: AnchorRemovalPolicy
-      PassThroughAfterDismissal: bool }
+    {
+        Escape: DismissalRule
+        OutsidePointer: DismissalRule
+        SelectionCompletion: SelectionCompletionPolicy
+        ExplicitClose: DismissalRule
+        AnchorRemoval: AnchorRemovalPolicy
+        PassThroughAfterDismissal: bool
+    }
 
 type FocusScope =
-    { SurfaceId: ControlId
-      Stops: ControlId list
-      InitialFocus: ControlId option
-      RecoveryTarget: ControlId option
-      TrapMode: TrapMode }
+    {
+        SurfaceId: ControlId
+        Stops: ControlId list
+        InitialFocus: ControlId option
+        RecoveryTarget: ControlId option
+        TrapMode: TrapMode
+    }
 
 type OverlaySurface =
-    { Id: OverlaySurfaceId
-      Kind: TransientSurfaceKind
-      Trigger: OverlayTrigger
-      LayerPriority: int
-      Anchor: AnchorEvidence
-      DismissalPolicy: DismissalPolicy
-      FocusScope: FocusScope
-      Modal: bool }
+    {
+        Id: OverlaySurfaceId
+        Kind: TransientSurfaceKind
+        Trigger: OverlayTrigger
+        LayerPriority: int
+        Anchor: AnchorEvidence
+        DismissalPolicy: DismissalPolicy
+        FocusScope: FocusScope
+        Modal: bool
+    }
 
 type TopmostHitDecision =
-    { Input: string
-      CandidateLayers: ControlId list
-      ChosenTarget: ControlId option
-      BlockedByModal: ControlId option
-      OutsideOfSurface: ControlId option }
+    {
+        Input: string
+        CandidateLayers: ControlId list
+        ChosenTarget: ControlId option
+        BlockedByModal: ControlId option
+        OutsideOfSurface: ControlId option
+    }
 
 type OverlayTransition =
-    { SurfaceId: ControlId option
-      Kind: string
-      Reason: string
-      Stack: ControlId list }
+    {
+        SurfaceId: ControlId option
+        Kind: string
+        Reason: string
+        Stack: ControlId list
+    }
 
 type FocusTransition =
-    { From: ControlId option
-      To: ControlId option
-      Reason: string }
+    {
+        From: ControlId option
+        To: ControlId option
+        Reason: string
+    }
 
 type ProductDispatch =
-    { SurfaceId: ControlId
-      DispatchKey: string
-      Payload: string option }
+    {
+        SurfaceId: ControlId
+        DispatchKey: string
+        Payload: string option
+    }
 
 type DismissalOutcome =
-    { SurfaceId: ControlId
-      Reason: DismissalReason
-      Dismissed: bool
-      PassThrough: bool
-      Diagnostic: ControlDiagnostic option }
+    {
+        SurfaceId: ControlId
+        Reason: DismissalReason
+        Dismissed: bool
+        PassThrough: bool
+        Diagnostic: ControlDiagnostic option
+    }
 
 type InteractionReplayLog =
-    { Inputs: string list
-      OverlayTransitions: OverlayTransition list
-      FocusTransitions: FocusTransition list
-      ProductDispatches: ProductDispatch list
-      DismissalReasons: DismissalOutcome list
-      Diagnostics: ControlDiagnostic list
-      HitDecisions: TopmostHitDecision list
-      RenderEvidence: string list }
+    {
+        Inputs: string list
+        OverlayTransitions: OverlayTransition list
+        FocusTransitions: FocusTransition list
+        ProductDispatches: ProductDispatch list
+        DismissalReasons: DismissalOutcome list
+        Diagnostics: ControlDiagnostic list
+        HitDecisions: TopmostHitDecision list
+        RenderEvidence: string list
+    }
 
 type OverlayState =
-    { OpenSurfaces: OverlaySurface list
-      ActiveSurface: ControlId option
-      FocusedControl: ControlId option
-      RecentTransitions: OverlayTransition list
-      ReplayLog: InteractionReplayLog
-      Diagnostics: ControlDiagnostic list
-      DispatchedSelectionKeys: Set<string> }
+    {
+        OpenSurfaces: OverlaySurface list
+        ActiveSurface: ControlId option
+        FocusedControl: ControlId option
+        RecentTransitions: OverlayTransition list
+        ReplayLog: InteractionReplayLog
+        Diagnostics: ControlDiagnostic list
+        DispatchedSelectionKeys: Set<string>
+    }
 
 type OverlayEffect =
     | DispatchProductMessage of surface: ControlId * payload: string option
@@ -161,40 +187,48 @@ type OverlayMsg =
 
 module OverlayState =
     let supportedSurfaceKinds () =
-        [ TransientSurfaceKind.Menu
-          TransientSurfaceKind.ContextMenu
-          TransientSurfaceKind.SplitButtonMenu
-          TransientSurfaceKind.ComboDropdown
-          TransientSurfaceKind.AutoCompleteSuggestions
-          TransientSurfaceKind.DatePickerCalendar
-          TransientSurfaceKind.ColorPickerPalette
-          TransientSurfaceKind.DialogModal ]
+        [
+            TransientSurfaceKind.Menu
+            TransientSurfaceKind.ContextMenu
+            TransientSurfaceKind.SplitButtonMenu
+            TransientSurfaceKind.ComboDropdown
+            TransientSurfaceKind.AutoCompleteSuggestions
+            TransientSurfaceKind.DatePickerCalendar
+            TransientSurfaceKind.ColorPickerPalette
+            TransientSurfaceKind.DialogModal
+        ]
 
     let defaultDismissalPolicy () =
-        { Escape = AllowDismiss
-          OutsidePointer = AllowDismiss
-          SelectionCompletion = CloseOnSelection
-          ExplicitClose = AllowDismiss
-          AnchorRemoval = CloseOnAnchorRemoval
-          PassThroughAfterDismissal = false }
+        {
+            Escape = AllowDismiss
+            OutsidePointer = AllowDismiss
+            SelectionCompletion = CloseOnSelection
+            ExplicitClose = AllowDismiss
+            AnchorRemoval = CloseOnAnchorRemoval
+            PassThroughAfterDismissal = false
+        }
 
     let modalDismissalPolicy () =
-        { Escape = AllowDismiss
-          OutsidePointer = BlockDismiss
-          SelectionCompletion = CloseOnSelection
-          ExplicitClose = AllowDismiss
-          AnchorRemoval = CloseOnAnchorRemoval
-          PassThroughAfterDismissal = false }
+        {
+            Escape = AllowDismiss
+            OutsidePointer = BlockDismiss
+            SelectionCompletion = CloseOnSelection
+            ExplicitClose = AllowDismiss
+            AnchorRemoval = CloseOnAnchorRemoval
+            PassThroughAfterDismissal = false
+        }
 
     let private emptyReplayLog =
-        { Inputs = []
-          OverlayTransitions = []
-          FocusTransitions = []
-          ProductDispatches = []
-          DismissalReasons = []
-          Diagnostics = []
-          HitDecisions = []
-          RenderEvidence = [] }
+        {
+            Inputs = []
+            OverlayTransitions = []
+            FocusTransitions = []
+            ProductDispatches = []
+            DismissalReasons = []
+            Diagnostics = []
+            HitDecisions = []
+            RenderEvidence = []
+        }
 
     let private stackIds surfaces =
         surfaces |> List.map (fun surface -> surface.Id.SurfaceId)
@@ -209,58 +243,95 @@ module OverlayState =
         |> List.map snd
 
     let init () =
-        { OpenSurfaces = []
-          ActiveSurface = None
-          FocusedControl = None
-          RecentTransitions = []
-          ReplayLog = emptyReplayLog
-          Diagnostics = []
-          DispatchedSelectionKeys = Set.empty }
+        {
+            OpenSurfaces = []
+            ActiveSurface = None
+            FocusedControl = None
+            RecentTransitions = []
+            ReplayLog = emptyReplayLog
+            Diagnostics = []
+            DispatchedSelectionKeys = Set.empty
+        }
 
-    let diagnostics state =
-        state.Diagnostics
+    let diagnostics state = state.Diagnostics
 
-    let replayLog state =
-        state.ReplayLog
+    let replayLog state = state.ReplayLog
 
     let private rememberInput input state =
-        { state with ReplayLog = { state.ReplayLog with Inputs = state.ReplayLog.Inputs @ [ input ] } }
+        { state with
+            ReplayLog =
+                { state.ReplayLog with
+                    Inputs = state.ReplayLog.Inputs @ [ input ]
+                }
+        }
 
     let private recordTransition surfaceId kind reason surfaces state =
         let transition =
-            { SurfaceId = surfaceId
-              Kind = kind
-              Reason = reason
-              Stack = stackIds surfaces }
+            {
+                SurfaceId = surfaceId
+                Kind = kind
+                Reason = reason
+                Stack = stackIds surfaces
+            }
 
         { state with
             RecentTransitions = state.RecentTransitions @ [ transition ]
-            ReplayLog = { state.ReplayLog with OverlayTransitions = state.ReplayLog.OverlayTransitions @ [ transition ] } }
+            ReplayLog =
+                { state.ReplayLog with
+                    OverlayTransitions = state.ReplayLog.OverlayTransitions @ [ transition ]
+                }
+        }
 
     let private recordFocus fromFocus toFocus reason state =
         if fromFocus = toFocus then
             state
         else
             let transition =
-                { From = fromFocus
-                  To = toFocus
-                  Reason = reason }
+                {
+                    From = fromFocus
+                    To = toFocus
+                    Reason = reason
+                }
 
-            { state with ReplayLog = { state.ReplayLog with FocusTransitions = state.ReplayLog.FocusTransitions @ [ transition ] } }
+            { state with
+                ReplayLog =
+                    { state.ReplayLog with
+                        FocusTransitions = state.ReplayLog.FocusTransitions @ [ transition ]
+                    }
+            }
 
     let private addDiagnostic diagnostic state =
         { state with
             Diagnostics = state.Diagnostics @ [ diagnostic ]
-            ReplayLog = { state.ReplayLog with Diagnostics = state.ReplayLog.Diagnostics @ [ diagnostic ] } }
+            ReplayLog =
+                { state.ReplayLog with
+                    Diagnostics = state.ReplayLog.Diagnostics @ [ diagnostic ]
+                }
+        }
 
     let private addDismissal outcome state =
-        { state with ReplayLog = { state.ReplayLog with DismissalReasons = state.ReplayLog.DismissalReasons @ [ outcome ] } }
+        { state with
+            ReplayLog =
+                { state.ReplayLog with
+                    DismissalReasons = state.ReplayLog.DismissalReasons @ [ outcome ]
+                }
+        }
 
     let private addDispatch dispatch state =
-        { state with ReplayLog = { state.ReplayLog with ProductDispatches = state.ReplayLog.ProductDispatches @ [ dispatch ] } }
+        { state with
+            ReplayLog =
+                { state.ReplayLog with
+                    ProductDispatches = state.ReplayLog.ProductDispatches @ [ dispatch ]
+                }
+        }
 
     let private addHit decision state =
-        { state with ReplayLog = { state.ReplayLog with HitDecisions = state.ReplayLog.HitDecisions @ [ decision ] } }
+        { state with
+            ReplayLog =
+                { state.ReplayLog with
+                    HitDecisions = state.ReplayLog.HitDecisions @ [ decision ]
+                }
+        }
 
     let private invalid surfaceId message state =
         let diagnostic = Diagnostics.invalidOverlayMessage surfaceId message
@@ -314,23 +385,28 @@ module OverlayState =
             { state with
                 OpenSurfaces = removed
                 ActiveSurface = activeSurface removed
-                FocusedControl = focus }
+                FocusedControl = focus
+            }
             |> recordFocus state.FocusedControl focus (reasonText reason)
             |> recordTransition (Some surface.Id.SurfaceId) "dismiss" (reasonText reason) removed
             |> addDismissal
-                { SurfaceId = surface.Id.SurfaceId
-                  Reason = reason
-                  Dismissed = true
-                  PassThrough = surface.DismissalPolicy.PassThroughAfterDismissal
-                  Diagnostic = None }
+                {
+                    SurfaceId = surface.Id.SurfaceId
+                    Reason = reason
+                    Dismissed = true
+                    PassThrough = surface.DismissalPolicy.PassThroughAfterDismissal
+                    Diagnostic = None
+                }
 
         let effects =
-            [ RequestOpenStateChange(surface.Id.SurfaceId, false)
-              RequestFocus focus
-              if surface.DismissalPolicy.PassThroughAfterDismissal then
-                  AllowPassThrough
-              else
-                  ConsumeInput ]
+            [
+                RequestOpenStateChange(surface.Id.SurfaceId, false)
+                RequestFocus focus
+                if surface.DismissalPolicy.PassThroughAfterDismissal then
+                    AllowPassThrough
+                else
+                    ConsumeInput
+            ]
 
         next, effects
 
@@ -343,20 +419,30 @@ module OverlayState =
         match target with
         | None -> invalid surfaceId $"Overlay dismiss `{reasonText reason}` referenced no open surface." state
         | Some surface ->
-            let topmost = state.OpenSurfaces |> List.tryLast |> Option.map (fun candidate -> candidate.Id.SurfaceId)
+            let topmost =
+                state.OpenSurfaces
+                |> List.tryLast
+                |> Option.map (fun candidate -> candidate.Id.SurfaceId)
 
-            if (reason = DismissalReason.Escape || reason = DismissalReason.OutsidePointer) && surfaceId.IsSome && topmost <> Some surface.Id.SurfaceId then
-                let diagnostic = Diagnostics.blockedOverlayDismissal surface.Id.SurfaceId $"{reasonText reason}:not-topmost"
+            if
+                (reason = DismissalReason.Escape || reason = DismissalReason.OutsidePointer)
+                && surfaceId.IsSome
+                && topmost <> Some surface.Id.SurfaceId
+            then
+                let diagnostic =
+                    Diagnostics.blockedOverlayDismissal surface.Id.SurfaceId $"{reasonText reason}:not-topmost"
 
                 let next =
                     state
                     |> addDiagnostic diagnostic
                     |> addDismissal
-                        { SurfaceId = surface.Id.SurfaceId
-                          Reason = reason
-                          Dismissed = false
-                          PassThrough = false
-                          Diagnostic = Some diagnostic }
+                        {
+                            SurfaceId = surface.Id.SurfaceId
+                            Reason = reason
+                            Dismissed = false
+                            PassThrough = false
+                            Diagnostic = Some diagnostic
+                        }
 
                 next, [ ReportOverlayDiagnostic diagnostic; ConsumeInput ]
             else
@@ -368,66 +454,89 @@ module OverlayState =
                         let next =
                             state
                             |> addDismissal
-                                { SurfaceId = surface.Id.SurfaceId
-                                  Reason = reason
-                                  Dismissed = false
-                                  PassThrough = false
-                                  Diagnostic = None }
+                                {
+                                    SurfaceId = surface.Id.SurfaceId
+                                    Reason = reason
+                                    Dismissed = false
+                                    PassThrough = false
+                                    Diagnostic = None
+                                }
 
                         next, [ ConsumeInput ]
                 | DismissalReason.AnchorRemoved ->
                     match surface.DismissalPolicy.AnchorRemoval with
                     | CloseOnAnchorRemoval -> closeSurface surface reason state
                     | KeepOpenWithDiagnostic ->
-                        let diagnostic = Diagnostics.missingOverlayAnchor surface.Id.SurfaceId surface.Anchor.AnchorId
+                        let diagnostic =
+                            Diagnostics.missingOverlayAnchor surface.Id.SurfaceId surface.Anchor.AnchorId
+
                         let next =
                             state
                             |> addDiagnostic diagnostic
                             |> addDismissal
-                                { SurfaceId = surface.Id.SurfaceId
-                                  Reason = reason
-                                  Dismissed = false
-                                  PassThrough = false
-                                  Diagnostic = Some diagnostic }
+                                {
+                                    SurfaceId = surface.Id.SurfaceId
+                                    Reason = reason
+                                    Dismissed = false
+                                    PassThrough = false
+                                    Diagnostic = Some diagnostic
+                                }
 
                         next, [ ReportOverlayDiagnostic diagnostic; ConsumeInput ]
                 | _ ->
                     match dismissRule reason surface.DismissalPolicy with
                     | Some AllowDismiss -> closeSurface surface reason state
                     | Some BlockDismiss ->
-                        let diagnostic = Diagnostics.blockedOverlayDismissal surface.Id.SurfaceId (reasonText reason)
+                        let diagnostic =
+                            Diagnostics.blockedOverlayDismissal surface.Id.SurfaceId (reasonText reason)
+
                         let next =
                             state
                             |> addDiagnostic diagnostic
                             |> addDismissal
-                                { SurfaceId = surface.Id.SurfaceId
-                                  Reason = reason
-                                  Dismissed = false
-                                  PassThrough = false
-                                  Diagnostic = Some diagnostic }
+                                {
+                                    SurfaceId = surface.Id.SurfaceId
+                                    Reason = reason
+                                    Dismissed = false
+                                    PassThrough = false
+                                    Diagnostic = Some diagnostic
+                                }
 
                         next, [ ReportOverlayDiagnostic diagnostic; ConsumeInput ]
                     | Some IgnoreDismiss ->
                         let next =
                             state
                             |> addDismissal
-                                { SurfaceId = surface.Id.SurfaceId
-                                  Reason = reason
-                                  Dismissed = false
-                                  PassThrough = true
-                                  Diagnostic = None }
+                                {
+                                    SurfaceId = surface.Id.SurfaceId
+                                    Reason = reason
+                                    Dismissed = false
+                                    PassThrough = true
+                                    Diagnostic = None
+                                }
 
                         next, [ AllowPassThrough ]
-                    | None -> invalid (Some surface.Id.SurfaceId) $"Overlay dismiss `{reasonText reason}` has no policy rule." state
+                    | None ->
+                        invalid
+                            (Some surface.Id.SurfaceId)
+                            $"Overlay dismiss `{reasonText reason}` has no policy rule."
+                            state
 
     let private openSurface surface state =
         if not surface.Trigger.Enabled then
-            let diagnostic = Diagnostics.disabledOverlayTrigger surface.Trigger.ControlId surface.Id.SurfaceId
+            let diagnostic =
+                Diagnostics.disabledOverlayTrigger surface.Trigger.ControlId surface.Id.SurfaceId
+
             addDiagnostic diagnostic state, [ ReportOverlayDiagnostic diagnostic; AllowPassThrough ]
         elif surface.Id.TriggerId <> surface.Trigger.ControlId then
-            invalid (Some surface.Id.SurfaceId) $"Overlay surface `{surface.Id.SurfaceId}` trigger identity does not match its trigger record." state
+            invalid
+                (Some surface.Id.SurfaceId)
+                $"Overlay surface `{surface.Id.SurfaceId}` trigger identity does not match its trigger record."
+                state
         elif surface.Anchor.AnchorBounds.IsNone then
-            let diagnostic = Diagnostics.missingOverlayAnchor surface.Id.SurfaceId surface.Anchor.AnchorId
+            let diagnostic =
+                Diagnostics.missingOverlayAnchor surface.Id.SurfaceId surface.Anchor.AnchorId
+
             addDiagnostic diagnostic state, [ ReportOverlayDiagnostic diagnostic; AllowPassThrough ]
         else
             let diagnostics =
@@ -447,21 +556,25 @@ module OverlayState =
                 { state with
                     OpenSurfaces = opened
                     ActiveSurface = activeSurface opened
-                    FocusedControl = nextFocus }
+                    FocusedControl = nextFocus
+                }
                 |> recordFocus state.FocusedControl nextFocus "open"
                 |> recordTransition (Some surface.Id.SurfaceId) "open" $"{surface.Kind}" opened
 
             let nextWithDiagnostics =
-                diagnostics |> List.fold (fun current diagnostic -> addDiagnostic diagnostic current) next
+                diagnostics
+                |> List.fold (fun current diagnostic -> addDiagnostic diagnostic current) next
 
             let effects =
-                [ yield RequestOpenStateChange(surface.Id.SurfaceId, true)
-                  match focus with
-                  | Some target -> yield RequestFocus(Some target)
-                  | None -> ()
-                  yield ConsumeInput
-                  for diagnostic in diagnostics do
-                      yield ReportOverlayDiagnostic diagnostic ]
+                [
+                    yield RequestOpenStateChange(surface.Id.SurfaceId, true)
+                    match focus with
+                    | Some target -> yield RequestFocus(Some target)
+                    | None -> ()
+                    yield ConsumeInput
+                    for diagnostic in diagnostics do
+                        yield ReportOverlayDiagnostic diagnostic
+                ]
 
             nextWithDiagnostics, effects
 
@@ -473,7 +586,9 @@ module OverlayState =
             let surface =
                 surfaceId
                 |> Option.orElse state.ActiveSurface
-                |> Option.bind (fun id -> state.OpenSurfaces |> List.tryFind (fun candidate -> candidate.Id.SurfaceId = id))
+                |> Option.bind (fun id ->
+                    state.OpenSurfaces
+                    |> List.tryFind (fun candidate -> candidate.Id.SurfaceId = id))
 
             match surface with
             | None -> invalid surfaceId $"Overlay key `{key}` referenced no open surface." state
@@ -481,15 +596,15 @@ module OverlayState =
             | Some active ->
                 match active.FocusScope.Stops with
                 | [] ->
-                    let diagnostic = Diagnostics.staleOverlayFocusTarget (Some active.Id.SurfaceId) "<empty-focus-scope>"
+                    let diagnostic =
+                        Diagnostics.staleOverlayFocusTarget (Some active.Id.SurfaceId) "<empty-focus-scope>"
+
                     addDiagnostic diagnostic state, [ ReportOverlayDiagnostic diagnostic; ConsumeInput ]
                 | stops ->
                     let current =
                         state.FocusedControl
                         |> Option.bind (fun id ->
-                            stops
-                            |> List.tryFindIndex ((=) id)
-                            |> Option.map (fun index -> index, id))
+                            stops |> List.tryFindIndex ((=) id) |> Option.map (fun index -> index, id))
 
                     let nextIndex =
                         match current, key with
@@ -499,6 +614,7 @@ module OverlayState =
                         | None, _ -> 0
 
                     let focus = Some stops[nextIndex]
+
                     let next =
                         { state with FocusedControl = focus }
                         |> recordFocus state.FocusedControl focus key
@@ -518,11 +634,15 @@ module OverlayState =
             match decision.BlockedByModal with
             | Some modalId ->
                 let diagnostic = Diagnostics.lowerLayerBlocked modalId decision.ChosenTarget
-                addDiagnostic diagnostic stateWithHit, [ RecordTopmostHit decision; ReportOverlayDiagnostic diagnostic; ConsumeInput ]
+
+                addDiagnostic diagnostic stateWithHit,
+                [ RecordTopmostHit decision; ReportOverlayDiagnostic diagnostic; ConsumeInput ]
             | None ->
                 match decision.OutsideOfSurface with
                 | Some surfaceId ->
-                    let next, effects = dismiss (Some surfaceId) DismissalReason.OutsidePointer stateWithHit
+                    let next, effects =
+                        dismiss (Some surfaceId) DismissalReason.OutsidePointer stateWithHit
+
                     next, RecordTopmostHit decision :: effects
                 | None -> stateWithHit, [ RecordTopmostHit decision ]
         | KeyRouted(surfaceId, key) -> routeKey surfaceId key state
@@ -532,15 +652,21 @@ module OverlayState =
                 addDiagnostic diagnostic state, [ ReportOverlayDiagnostic diagnostic; ConsumeInput ]
             else
                 let dispatch =
-                    { SurfaceId = surfaceId
-                      DispatchKey = dispatchKey
-                      Payload = payload }
+                    {
+                        SurfaceId = surfaceId
+                        DispatchKey = dispatchKey
+                        Payload = payload
+                    }
 
                 let withDispatch =
-                    { state with DispatchedSelectionKeys = state.DispatchedSelectionKeys.Add dispatchKey }
+                    { state with
+                        DispatchedSelectionKeys = state.DispatchedSelectionKeys.Add dispatchKey
+                    }
                     |> addDispatch dispatch
 
-                let dismissed, effects = dismiss (Some surfaceId) DismissalReason.SelectionCompletion withDispatch
+                let dismissed, effects =
+                    dismiss (Some surfaceId) DismissalReason.SelectionCompletion withDispatch
+
                 dismissed, DispatchProductMessage(surfaceId, payload) :: effects
         | AnchorChanged(surfaceId, anchor) ->
             let mutable found = false
@@ -574,7 +700,12 @@ module OverlayState =
 
             let surfaceId = active |> Option.map (fun surface -> surface.Id.SurfaceId)
 
-            if state.FocusedControl <> Some targetId && (active |> Option.exists (fun surface -> surface.FocusScope.Stops |> List.contains targetId) |> not) then
+            if
+                state.FocusedControl <> Some targetId
+                && (active
+                    |> Option.exists (fun surface -> surface.FocusScope.Stops |> List.contains targetId)
+                    |> not)
+            then
                 state, []
             else
                 let focus =

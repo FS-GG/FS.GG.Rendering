@@ -2,28 +2,28 @@
 namespace FS.GG.UI.Scene
 
 /// Public contract type exposed by this FS.GG.UI package.
-type Size =
-    { Width: int
-      Height: int }
+type Size = { Width: int; Height: int }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Color =
-    { Red: byte
-      Green: byte
-      Blue: byte
-      Alpha: byte }
+    {
+        Red: byte
+        Green: byte
+        Blue: byte
+        Alpha: byte
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type Point =
-    { X: float
-      Y: float }
+type Point = { X: float; Y: float }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Rect =
-    { X: float
-      Y: float
-      Width: float
-      Height: float }
+    {
+        X: float
+        Y: float
+        Width: float
+        Height: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type StrokeCap =
@@ -55,10 +55,12 @@ type BlendMode =
 /// Geometry only — `Stroke` carries no colour. A stroked paint's colour lives in `Paint.Fill`
 /// (see `Paint` and `Paint.stroke`).
 type Stroke =
-    { Width: float
-      Cap: StrokeCap
-      Join: StrokeJoin
-      Miter: float }
+    {
+        Width: float
+        Cap: StrokeCap
+        Join: StrokeJoin
+        Miter: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Shader =
@@ -96,16 +98,18 @@ type PathEffect =
 /// So a stroke built by `Paint.stroke` stores its stroke colour in `Fill` — read it back from
 /// `Fill`, not `Stroke`.
 type Paint =
-    { Fill: Color option
-      Stroke: Stroke option
-      Opacity: float
-      Antialias: bool
-      BlendMode: BlendMode
-      Shader: Shader option
-      ColorFilter: ColorFilter
-      MaskFilter: MaskFilter
-      ImageFilter: ImageFilter
-      PathEffect: PathEffect }
+    {
+        Fill: Color option
+        Stroke: Stroke option
+        Opacity: float
+        Antialias: bool
+        BlendMode: BlendMode
+        Shader: Shader option
+        ColorFilter: ColorFilter
+        MaskFilter: MaskFilter
+        ImageFilter: ImageFilter
+        PathEffect: PathEffect
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathFillType =
@@ -123,8 +127,10 @@ type PathCommand =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathSpec =
-    { Commands: PathCommand list
-      FillType: PathFillType }
+    {
+        Commands: PathCommand list
+        FillType: PathFillType
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Clip =
@@ -140,8 +146,10 @@ type RegionOperation =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Region =
-    { Bounds: Rect list
-      Operation: RegionOperation }
+    {
+        Bounds: Rect list
+        Operation: RegionOperation
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ColorSpace =
@@ -151,15 +159,17 @@ type ColorSpace =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PerspectiveTransform =
-    { M11: float
-      M12: float
-      M13: float
-      M21: float
-      M22: float
-      M23: float
-      M31: float
-      M32: float
-      M33: float }
+    {
+        M11: float
+        M12: float
+        M13: float
+        M21: float
+        M22: float
+        M23: float
+        M31: float
+        M32: float
+        M33: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathOperation =
@@ -172,36 +182,43 @@ type PathOperation =
 /// Why `Path.combine` could not honestly produce a result: the Skia-free `Scene` layer has no
 /// boolean-geometry kernel, so `Intersect`/`Difference` fail loud with this rather than returning
 /// wrong-but-success-shaped geometry (P6 / R2).
-type PathCombineError = { Operation: PathOperation; Message: string }
+type PathCombineError =
+    {
+        Operation: PathOperation
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type PathMeasure =
-    { Length: float
-      IsClosed: bool }
+type PathMeasure = { Length: float; IsClosed: bool }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type FontSpec =
-    { Family: string option
-      Size: float
-      Weight: int option }
+    {
+        Family: string option
+        Size: float
+        Weight: int option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type TextRun =
-    { Text: string
-      Position: Point
-      Font: FontSpec
-      Paint: Paint }
+    {
+        Text: string
+        Position: Point
+        Font: FontSpec
+        Paint: Paint
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type TextMetrics =
-    { Width: float
-      Height: float
-      Baseline: float }
+    {
+        Width: float
+        Height: float
+        Baseline: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Vertex =
-    { Position: Point
-      Color: Color option }
+    { Position: Point; Color: Color option }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type VertexMode =
@@ -261,20 +278,24 @@ type SceneViewportRelation =
 
 /// One deterministic authored-hierarchy row from `SceneInspection.inspect`.
 type SceneInspectionNode =
-    { Path: string
-      ParentPath: string option
-      Kind: SceneElementKind
-      Bounds: SceneDrawableBounds
-      ViewportRelation: SceneViewportRelation
-      Contributes: bool
-      Children: string list }
+    {
+        Path: string
+        ParentPath: string option
+        Kind: SceneElementKind
+        Bounds: SceneDrawableBounds
+        ViewportRelation: SceneViewportRelation
+        Contributes: bool
+        Children: string list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderReadbackEvidence =
-    { Size: Size
-      CapabilityCount: int
-      Capabilities: string list
-      DeterministicHash: string }
+    {
+        Size: Size
+        CapabilityCount: int
+        Capabilities: string list
+        DeterministicHash: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ShapePlacement =
@@ -284,17 +305,21 @@ type ShapePlacement =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type CircleShapeEvidence =
-    { Center: Point
-      Radius: float
-      Bounds: Rect
-      Fill: Color
-      Placement: ShapePlacement }
+    {
+        Center: Point
+        Radius: float
+        Bounds: Rect
+        Fill: Color
+        Placement: ShapePlacement
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type EllipseShapeEvidence =
-    { Bounds: Rect
-      Fill: Color
-      Placement: ShapePlacement }
+    {
+        Bounds: Rect
+        Fill: Color
+        Placement: ShapePlacement
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutProofLevel =
@@ -316,11 +341,13 @@ type LayoutOverlapKind =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutOverlapDiagnostic =
-    { Kind: LayoutOverlapKind
-      FirstName: string
-      SecondName: string option
-      Bounds: Rect
-      Message: string }
+    {
+        Kind: LayoutOverlapKind
+        FirstName: string
+        SecondName: string option
+        Bounds: Rect
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutOverlapStatus =
@@ -328,27 +355,27 @@ type LayoutOverlapStatus =
     | LayoutOverlaps of LayoutOverlapDiagnostic list
 
 /// Public contract type exposed by this FS.GG.UI package.
-type LayoutRegionEvidence =
-    { Name: string
-      Bounds: Rect }
+type LayoutRegionEvidence = { Name: string; Bounds: Rect }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutTextBounds =
-    { Name: string
-      Text: string
-      Bounds: Rect
-      MeasurementMode: LayoutMeasurementMode }
+    {
+        Name: string
+        Text: string
+        Bounds: Rect
+        MeasurementMode: LayoutMeasurementMode
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type LayoutGameplayBounds =
-    { Name: string
-      Bounds: Rect }
+type LayoutGameplayBounds = { Name: string; Bounds: Rect }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutUnsupportedReason =
-    { Fact: string
-      Reason: string
-      Diagnostic: string }
+    {
+        Fact: string
+        Reason: string
+        Diagnostic: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 ///
@@ -363,15 +390,16 @@ type DiagnosticSeverity =
     | Fatal
 
 /// Public contract type exposed by this FS.GG.UI package.
-type DiagnosticStage =
-    | FrameRender
+type DiagnosticStage = | FrameRender
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: DiagnosticStage
-      Message: string
-      Cause: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: DiagnosticStage
+        Message: string
+        Cause: string option
+    }
 
 /// Direction evidence associated with a shaped text run.
 type TextDirection =
@@ -401,10 +429,12 @@ type ShapingProviderAvailability =
 
 /// Dependency-light provider evidence stored with shaped text results.
 type ShapingProviderEvidence =
-    { Availability: ShapingProviderAvailability
-      ProviderId: string
-      VersionBucket: string
-      Failure: string option }
+    {
+        Availability: ShapingProviderAvailability
+        ProviderId: string
+        VersionBucket: string
+        Failure: string option
+    }
 
 /// Fallback decision for one shaped run or glyph range.
 type TextFallbackDecision =
@@ -416,26 +446,30 @@ type TextFallbackDecision =
 
 /// One stable, drawable glyph emitted by a shaped text result.
 type ShapedGlyph =
-    { GlyphId: int
-      SourceCluster: int
-      SourceText: string
-      ResolvedFace: string option
-      Advance: float
-      Offset: Point
-      Position: Point
-      Missing: bool }
+    {
+        GlyphId: int
+        SourceCluster: int
+        SourceText: string
+        ResolvedFace: string option
+        Advance: float
+        Offset: Point
+        Position: Point
+        Missing: bool
+    }
 
 /// One homogeneous text run and its shaping/fallback evidence.
 type TextShapeRun =
-    { TextRange: int * int
-      SourceText: string
-      ResolvedFont: string option
-      Direction: TextDirection
-      Script: TextScript
-      FallbackDecision: TextFallbackDecision
-      Glyphs: ShapedGlyph list
-      Advance: float
-      Diagnostics: string list }
+    {
+        TextRange: int * int
+        SourceText: string
+        ResolvedFont: string option
+        Direction: TextDirection
+        Script: TextScript
+        FallbackDecision: TextFallbackDecision
+        Glyphs: ShapedGlyph list
+        Advance: float
+        Diagnostics: string list
+    }
 
 /// Indicates whether a shaped text result came from shaping or explicit fallback.
 type ShapedTextFallbackMode =
@@ -448,38 +482,46 @@ type ShapedTextFallbackMode =
 /// package-owned representation for measurement, drawing, diagnostics, and
 /// future cache/protocol work; it is not a full shaping engine.
 type GlyphRunGlyph =
-    { GlyphId: int
-      SourceText: string
-      Advance: float
-      Offset: Point
-      Cluster: int
-      Position: Point
-      ResolvedFace: string option
-      Missing: bool }
+    {
+        GlyphId: int
+        SourceText: string
+        Advance: float
+        Offset: Point
+        Cluster: int
+        Position: Point
+        ResolvedFace: string option
+        Missing: bool
+    }
 
 /// Aggregate metrics for a glyph-run proof.
 type GlyphRunMetrics =
-    { Advance: float
-      Height: float
-      Baseline: float }
+    {
+        Advance: float
+        Height: float
+        Baseline: float
+    }
 
 /// Stable glyph-run proof payload.
 type GlyphRunData =
-    { Text: string
-      Font: FontSpec
-      Provider: ShapingProviderEvidence
-      Runs: TextShapeRun list
-      Glyphs: GlyphRunGlyph list
-      Metrics: GlyphRunMetrics
-      Fingerprint: string
-      FallbackMode: ShapedTextFallbackMode
-      FallbackDiagnostics: string list }
+    {
+        Text: string
+        Font: FontSpec
+        Provider: ShapingProviderEvidence
+        Runs: TextShapeRun list
+        Glyphs: GlyphRunGlyph list
+        Metrics: GlyphRunMetrics
+        Fingerprint: string
+        FallbackMode: ShapedTextFallbackMode
+        FallbackDiagnostics: string list
+    }
 
 /// Drawable glyph-run proof node payload.
 type GlyphRun =
-    { Data: GlyphRunData
-      Position: Point
-      Paint: Paint }
+    {
+        Data: GlyphRunData
+        Position: Point
+        Paint: Paint
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneNode =
@@ -524,39 +566,40 @@ type SceneNode =
     /// `Scene` identically to the direct walk (the parity oracle).
     | CachedSubtree of CacheBoundary
 
-and Scene =
-    { Nodes: SceneNode list }
+and Scene = { Nodes: SceneNode list }
 
-and Picture =
-    { Name: string
-      Scene: Scene }
+and Picture = { Name: string; Scene: Scene }
 
 /// Feature 120 (FR-007): the payload of `SceneNode.CachedSubtree` — a stable subtree identity, a
 /// collision-resistant structural fingerprint of its render-affecting inputs, and the wrapped
 /// subtree itself (both the record source and the transparent fallback).
 and CacheBoundary =
-    { /// Stable subtree identity (from `RetainedId`) — the replay cache slot.
-      CacheId: uint64
-      /// Collision-resistant structural fingerprint of the wrapped subtree's render-affecting
-      /// inputs; replay is valid iff a cached picture's fingerprint matches this.
-      Fingerprint: uint64
-      /// The wrapped subtree — record source and transparent fallback.
-      Scene: Scene }
+    {
+        /// Stable subtree identity (from `RetainedId`) — the replay cache slot.
+        CacheId: uint64
+        /// Collision-resistant structural fingerprint of the wrapped subtree's render-affecting
+        /// inputs; replay is valid iff a cached picture's fingerprint matches this.
+        Fingerprint: uint64
+        /// The wrapped subtree — record source and transparent fallback.
+        Scene: Scene
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutEvidenceReport =
-    { Scene: Scene
-      OutputSize: Size
-      ProofLevel: LayoutProofLevel
-      HudRegion: LayoutRegionEvidence option
-      GameplayRegion: LayoutRegionEvidence option
-      TextBounds: LayoutTextBounds list
-      GameplayBounds: LayoutGameplayBounds list
-      OverlapStatus: LayoutOverlapStatus
-      MeasurementMode: LayoutMeasurementMode
-      UnsupportedReasons: LayoutUnsupportedReason list
-      Diagnostics: string list
-      RenderEvidence: RenderReadbackEvidence option }
+    {
+        Scene: Scene
+        OutputSize: Size
+        ProofLevel: LayoutProofLevel
+        HudRegion: LayoutRegionEvidence option
+        GameplayRegion: LayoutRegionEvidence option
+        TextBounds: LayoutTextBounds list
+        GameplayBounds: LayoutGameplayBounds list
+        OverlapStatus: LayoutOverlapStatus
+        MeasurementMode: LayoutMeasurementMode
+        UnsupportedReasons: LayoutUnsupportedReason list
+        Diagnostics: string list
+        RenderEvidence: RenderReadbackEvidence option
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 module Colors =
@@ -718,8 +761,7 @@ module SceneInspection =
     /// clipped drawable bounds relative to `viewport`.
     val inspect: viewport: Rect -> scene: Scene -> SceneInspectionNode list
     /// Select contributing rows at or below `subtreePath`.
-    val contributingDescendants:
-        subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
+    val contributingDescendants: subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
     /// Select contributing rows that are partly or wholly outside the inspection viewport.
     val outsideViewport: nodes: SceneInspectionNode list -> SceneInspectionNode list
 
@@ -736,26 +778,32 @@ type SceneEvidenceFailureClassification =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidenceFailure =
-    { BlockedStage: string
-      Classification: SceneEvidenceFailureClassification
-      DiagnosticCategory: string
-      Message: string }
+    {
+        BlockedStage: string
+        Classification: SceneEvidenceFailureClassification
+        DiagnosticCategory: string
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidenceRequest =
-    { Scene: Scene
-      OutputSize: Size
-      Format: SceneEvidenceFormat
-      RendererMode: string
-      EvidencePath: string option }
+    {
+        Scene: Scene
+        OutputSize: Size
+        Format: SceneEvidenceFormat
+        RendererMode: string
+        EvidencePath: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidence =
-    { Format: SceneEvidenceFormat
-      OutputSize: Size
-      RendererMode: string
-      EvidencePath: string option
-      Value: string }
+    {
+        Format: SceneEvidenceFormat
+        OutputSize: Size
+        RendererMode: string
+        EvidencePath: string option
+        Value: string
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 module SceneEvidence =

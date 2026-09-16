@@ -15,20 +15,46 @@ open FS.GG.UI.Symbology
 // projectiles/explosions/doors/hazards/…), not just the unit roster.
 // ---------------------------------------------------------------------------------------------------
 let private sampleCatalog: Catalog.Catalog =
-    { Entries =
-        [ { Element = "Enemy"; Visual = Catalog.Shown "token/enemy" }
-          { Element = "Door"; Visual = Catalog.Shown "token/door" }
-          { Element = "Bomb"; Visual = Catalog.Shown "token/bomb" }
-          { Element = "Explosion"; Visual = Catalog.Shown "token/explosion" }
-          { Element = "Projectile"; Visual = Catalog.Shown "token/projectile" }
-          { Element = "Hazard"; Visual = Catalog.Shown "token/hazard" }
-          { Element = "StealthAmbusher"
-            Visual = Catalog.Hidden "stealth: invisible to the player until it attacks (fog-of-war mechanic)" } ] }
+    {
+        Entries =
+            [
+                {
+                    Element = "Enemy"
+                    Visual = Catalog.Shown "token/enemy"
+                }
+                {
+                    Element = "Door"
+                    Visual = Catalog.Shown "token/door"
+                }
+                {
+                    Element = "Bomb"
+                    Visual = Catalog.Shown "token/bomb"
+                }
+                {
+                    Element = "Explosion"
+                    Visual = Catalog.Shown "token/explosion"
+                }
+                {
+                    Element = "Projectile"
+                    Visual = Catalog.Shown "token/projectile"
+                }
+                {
+                    Element = "Hazard"
+                    Visual = Catalog.Shown "token/hazard"
+                }
+                {
+                    Element = "StealthAmbusher"
+                    Visual = Catalog.Hidden "stealth: invisible to the player until it attacks (fog-of-war mechanic)"
+                }
+            ]
+    }
 
 let private evidence: Catalog.EvidenceDigests =
-    { Inventory = "inventory"
-      Catalog = "catalog"
-      Render = "render" }
+    {
+        Inventory = "inventory"
+        Catalog = "catalog"
+        Render = "render"
+    }
 
 [<Tests>]
 let catalogTests =
@@ -36,154 +62,209 @@ let catalogTests =
         "Issue990 Catalog — element↔visual catalog format"
         [
 
-          // ---- FORMAT: deterministic serialization + round-trip ------------------------------------
-          test "render is deterministic and carries the versioned header" {
-              let text = Catalog.render sampleCatalog
-              Expect.stringContains text "# fs-gg element-visual catalog v1" "the versioned header is present"
-              Expect.equal (Catalog.render sampleCatalog) text "an unchanged catalog re-renders byte-identically"
-          }
+            // ---- FORMAT: deterministic serialization + round-trip ------------------------------------
+            test "render is deterministic and carries the versioned header" {
+                let text = Catalog.render sampleCatalog
+                Expect.stringContains text "# fs-gg element-visual catalog v1" "the versioned header is present"
+                Expect.equal (Catalog.render sampleCatalog) text "an unchanged catalog re-renders byte-identically"
+            }
 
-          test "parse of render round-trips every well-formed catalog" {
-              match Catalog.parse (Catalog.render sampleCatalog) with
-              | Ok parsed -> Expect.equal parsed sampleCatalog "parse (render c) = Ok c"
-              | Error e -> failtestf "expected a round-trip, got Error %s" e
-          }
+            test "parse of render round-trips every well-formed catalog" {
+                match Catalog.parse (Catalog.render sampleCatalog) with
+                | Ok parsed -> Expect.equal parsed sampleCatalog "parse (render c) = Ok c"
+                | Error e -> failtestf "expected a round-trip, got Error %s" e
+            }
 
-          test "the row form is element<TAB>disposition<TAB>payload, in declared order" {
-              let lines = (Catalog.render sampleCatalog).TrimEnd('\n').Split('\n')
-              Expect.equal lines.[1] "Enemy\tshown\ttoken/enemy" "a shown row names its token handle"
+            test "the row form is element<TAB>disposition<TAB>payload, in declared order" {
+                let lines = (Catalog.render sampleCatalog).TrimEnd('\n').Split('\n')
+                Expect.equal lines.[1] "Enemy\tshown\ttoken/enemy" "a shown row names its token handle"
 
-              Expect.equal
-                  lines.[7]
-                  "StealthAmbusher\thidden\tstealth: invisible to the player until it attacks (fog-of-war mechanic)"
-                  "a hidden row carries its mechanic reason; order matches declaration"
-          }
+                Expect.equal
+                    lines.[7]
+                    "StealthAmbusher\thidden\tstealth: invisible to the player until it attacks (fog-of-war mechanic)"
+                    "a hidden row carries its mechanic reason; order matches declaration"
+            }
 
-          // ---- PARSE: malformed artifacts are rejected ---------------------------------------------
-          test "a missing/wrong header is rejected" {
-              Expect.isError (Catalog.parse "Enemy\tshown\ttoken/enemy\n") "no header is an error"
-          }
+            // ---- PARSE: malformed artifacts are rejected ---------------------------------------------
+            test "a missing/wrong header is rejected" {
+                Expect.isError (Catalog.parse "Enemy\tshown\ttoken/enemy\n") "no header is an error"
+            }
 
-          test "a shown row with a blank token handle is a malformed shown-as-nothing row" {
-              let text = "# fs-gg element-visual catalog v1\nEnemy\tshown\t\n"
-              Expect.isError (Catalog.parse text) "shown-as-nothing must be rejected at parse"
-          }
+            test "a shown row with a blank token handle is a malformed shown-as-nothing row" {
+                let text = "# fs-gg element-visual catalog v1\nEnemy\tshown\t\n"
+                Expect.isError (Catalog.parse text) "shown-as-nothing must be rejected at parse"
+            }
 
-          test "an unknown disposition is rejected" {
-              let text = "# fs-gg element-visual catalog v1\nEnemy\tmaybe\tx\n"
-              Expect.isError (Catalog.parse text) "only 'shown'/'hidden' are legal dispositions"
-          }
+            test "an unknown disposition is rejected" {
+                let text = "# fs-gg element-visual catalog v1\nEnemy\tmaybe\tx\n"
+                Expect.isError (Catalog.parse text) "only 'shown'/'hidden' are legal dispositions"
+            }
 
-          test "a duplicate element id is rejected" {
-              let text = "# fs-gg element-visual catalog v1\nEnemy\tshown\ta\nEnemy\tshown\tb\n"
-              Expect.isError (Catalog.parse text) "an element may have at most one catalog row"
-          }
+            test "a duplicate element id is rejected" {
+                let text = "# fs-gg element-visual catalog v1\nEnemy\tshown\ta\nEnemy\tshown\tb\n"
+                Expect.isError (Catalog.parse text) "an element may have at most one catalog row"
+            }
 
-          test "blank lines and # comments after the header are ignored" {
-              let text = "# fs-gg element-visual catalog v1\n\n# a note\nEnemy\tshown\ttoken/enemy\n"
+            test "blank lines and # comments after the header are ignored" {
+                let text =
+                    "# fs-gg element-visual catalog v1\n\n# a note\nEnemy\tshown\ttoken/enemy\n"
 
-              match Catalog.parse text with
-              | Ok c -> Expect.equal c.Entries [ { Element = "Enemy"; Visual = Catalog.Shown "token/enemy" } ] "one row parsed"
-              | Error e -> failtestf "expected Ok, got %s" e
-          }
+                match Catalog.parse text with
+                | Ok c ->
+                    Expect.equal
+                        c.Entries
+                        [
+                            {
+                                Element = "Enemy"
+                                Visual = Catalog.Shown "token/enemy"
+                            }
+                        ]
+                        "one row parsed"
+                | Error e -> failtestf "expected Ok, got %s" e
+            }
 
-          // ---- COVERAGE BRIDGE: the artifact IS what #989 checks ------------------------------------
-          test "validate — a complete, well-formed catalog is Covered with the opt-out on the ledger" {
-              let report = Catalog.validate sampleCatalog
-              Expect.equal report.Verdict Coverage.Covered "every row is shown or reasoned-hidden"
-              Expect.isEmpty report.Findings "a well-formed catalog has no gaps"
+            // ---- COVERAGE BRIDGE: the artifact IS what #989 checks ------------------------------------
+            test "validate — a complete, well-formed catalog is Covered with the opt-out on the ledger" {
+                let report = Catalog.validate sampleCatalog
+                Expect.equal report.Verdict Coverage.Covered "every row is shown or reasoned-hidden"
+                Expect.isEmpty report.Findings "a well-formed catalog has no gaps"
 
-              Expect.equal
-                  (report.OptedOut |> List.map fst)
-                  [ "StealthAmbusher" ]
-                  "the deliberately-hidden element is on the audit ledger"
-          }
+                Expect.equal
+                    (report.OptedOut |> List.map fst)
+                    [ "StealthAmbusher" ]
+                    "the deliberately-hidden element is on the audit ledger"
+            }
 
-          test "coverage — a declared element the catalog forgot is a Missing gap (the silent omission)" {
-              // The product adds `Pickup` to its declared element set but forgets to catalog it.
-              let declared = Catalog.declaredElements sampleCatalog @ [ "Pickup" ]
-              let report = Catalog.coverage declared sampleCatalog
+            test "coverage — a declared element the catalog forgot is a Missing gap (the silent omission)" {
+                // The product adds `Pickup` to its declared element set but forgets to catalog it.
+                let declared = Catalog.declaredElements sampleCatalog @ [ "Pickup" ]
+                let report = Catalog.coverage declared sampleCatalog
 
-              Expect.equal report.Verdict Coverage.HasGaps "a forgotten element fails coverage"
-              Expect.equal report.Findings.Length 1 "exactly the forgotten element is reported"
-              Expect.equal report.Findings.Head.Element "Pickup" "the finding names the un-catalogued element"
-              Expect.equal report.Findings.Head.Gap Coverage.Missing "no row -> Missing"
-          }
+                Expect.equal report.Verdict Coverage.HasGaps "a forgotten element fails coverage"
+                Expect.equal report.Findings.Length 1 "exactly the forgotten element is reported"
+                Expect.equal report.Findings.Head.Element "Pickup" "the finding names the un-catalogued element"
+                Expect.equal report.Findings.Head.Gap Coverage.Missing "no row -> Missing"
+            }
 
-          test "validate — a blank-reason opt-out surfaces as Unreasoned (format parses, policy rejects)" {
-              let blank: Catalog.Catalog =
-                  { Entries = [ { Element = "Ghost"; Visual = Catalog.Hidden "  " } ] }
+            test "validate — a blank-reason opt-out surfaces as Unreasoned (format parses, policy rejects)" {
+                let blank: Catalog.Catalog =
+                    {
+                        Entries =
+                            [
+                                {
+                                    Element = "Ghost"
+                                    Visual = Catalog.Hidden "  "
+                                }
+                            ]
+                    }
 
-              let report = Catalog.validate blank
-              Expect.equal report.Verdict Coverage.HasGaps "a blank opt-out is not a reasoned one"
-              Expect.equal report.Findings.Head.Gap Coverage.Unreasoned "blank Hidden reason -> Unreasoned"
-          }
+                let report = Catalog.validate blank
+                Expect.equal report.Verdict Coverage.HasGaps "a blank opt-out is not a reasoned one"
+                Expect.equal report.Findings.Head.Gap Coverage.Unreasoned "blank Hidden reason -> Unreasoned"
+            }
 
-          test "toRepresentation bridges shown->Shown and hidden->Hidden for Coverage" {
-              match Catalog.toRepresentation (Catalog.Shown "token/x") with
-              | Coverage.Shown _ -> ()
-              | other -> failtestf "expected Coverage.Shown, got %A" other
+            test "toRepresentation bridges shown->Shown and hidden->Hidden for Coverage" {
+                match Catalog.toRepresentation (Catalog.Shown "token/x") with
+                | Coverage.Shown _ -> ()
+                | other -> failtestf "expected Coverage.Shown, got %A" other
 
-              Expect.equal
-                  (Catalog.toRepresentation (Catalog.Hidden "off-screen"))
-                  (Coverage.Hidden "off-screen")
-                  "a hidden reason passes straight through to Coverage.Hidden"
-          }
+                Expect.equal
+                    (Catalog.toRepresentation (Catalog.Hidden "off-screen"))
+                    (Coverage.Hidden "off-screen")
+                    "a hidden reason passes straight through to Coverage.Hidden"
+            }
 
-          test "tryFind resolves a catalogued element and misses an un-catalogued one" {
-              Expect.equal (Catalog.tryFind "Door" sampleCatalog) (Some(Catalog.Shown "token/door")) "found"
-              Expect.equal (Catalog.tryFind "Nope" sampleCatalog) None "an absent element resolves to None"
-          }
+            test "tryFind resolves a catalogued element and misses an un-catalogued one" {
+                Expect.equal (Catalog.tryFind "Door" sampleCatalog) (Some(Catalog.Shown "token/door")) "found"
+                Expect.equal (Catalog.tryFind "Nope" sampleCatalog) None "an absent element resolves to None"
+            }
 
-          test "audit derives subjects from production inventory and distinguishes missing, stale, unbound, and unobserved" {
-              let catalog: Catalog.Catalog =
-                  { Entries =
-                      [ { Element = "Door"; Visual = Catalog.Shown "token/door" }
-                        { Element = "Trapdoor"; Visual = Catalog.Shown "token/trapdoor" }
-                        { Element = "Ball"; Visual = Catalog.Shown "token/ball" } ] }
+            test
+                "audit derives subjects from production inventory and distinguishes missing, stale, unbound, and unobserved" {
+                let catalog: Catalog.Catalog =
+                    {
+                        Entries =
+                            [
+                                {
+                                    Element = "Door"
+                                    Visual = Catalog.Shown "token/door"
+                                }
+                                {
+                                    Element = "Trapdoor"
+                                    Visual = Catalog.Shown "token/trapdoor"
+                                }
+                                {
+                                    Element = "Ball"
+                                    Visual = Catalog.Shown "token/ball"
+                                }
+                            ]
+                    }
 
-              let report =
-                  Catalog.audit
-                      [ "Door"; "Trapdoor"; "Hazard" ]
-                      catalog
-                      [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
-                      [ "Door", "token/door" ]
-                      evidence
+                let report =
+                    Catalog.audit
+                        [ "Door"; "Trapdoor"; "Hazard" ]
+                        catalog
+                        [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
+                        [ "Door", "token/door" ]
+                        evidence
 
-              let gaps =
-                  report.Findings
-                  |> List.map (fun finding -> finding.Element, finding.Gap)
+                let gaps = report.Findings |> List.map (fun finding -> finding.Element, finding.Gap)
 
-              Expect.contains gaps ("Trapdoor", Catalog.BindingGap.Unobserved) "registered but unseen is distinct"
-              Expect.contains gaps ("Hazard", Catalog.BindingGap.Missing) "production inventory omission is named"
-              Expect.contains gaps ("Ball", Catalog.BindingGap.Stale) "catalog-only starter row is stale"
-              Expect.equal report.Verdict Catalog.BindingVerdict.Incomplete "any binding gap blocks completeness"
+                Expect.contains gaps ("Trapdoor", Catalog.BindingGap.Unobserved) "registered but unseen is distinct"
+                Expect.contains gaps ("Hazard", Catalog.BindingGap.Missing) "production inventory omission is named"
+                Expect.contains gaps ("Ball", Catalog.BindingGap.Stale) "catalog-only starter row is stale"
+                Expect.equal report.Verdict Catalog.BindingVerdict.Incomplete "any binding gap blocks completeness"
 
-              let swapped =
-                  Catalog.audit
-                      [ "Door"; "Trapdoor" ]
-                      { Entries =
-                          [ { Element = "Door"; Visual = Catalog.Shown "token/door" }
-                            { Element = "Trapdoor"; Visual = Catalog.Shown "token/trapdoor" } ] }
-                      [ "Door", "token/trapdoor"; "Trapdoor", "token/door" ]
-                      [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
-                      evidence
+                let swapped =
+                    Catalog.audit
+                        [ "Door"; "Trapdoor" ]
+                        {
+                            Entries =
+                                [
+                                    {
+                                        Element = "Door"
+                                        Visual = Catalog.Shown "token/door"
+                                    }
+                                    {
+                                        Element = "Trapdoor"
+                                        Visual = Catalog.Shown "token/trapdoor"
+                                    }
+                                ]
+                        }
+                        [ "Door", "token/trapdoor"; "Trapdoor", "token/door" ]
+                        [ "Door", "token/door"; "Trapdoor", "token/trapdoor" ]
+                        evidence
 
-              Expect.equal swapped.Findings.Head.Gap Catalog.BindingGap.Unbound "swapped element/handle pairs fail"
-          }
+                Expect.equal swapped.Findings.Head.Gap Catalog.BindingGap.Unbound "swapped element/handle pairs fail"
+            }
 
-          test "audit rejects empty/duplicate inventories, orphan handles, and generic hidden reasons" {
-              let empty = Catalog.audit [] { Entries = [] } [] [] evidence
-              Expect.equal empty.Findings.Head.Gap Catalog.BindingGap.EmptyInventory "empty game inventory fails closed"
+            test "audit rejects empty/duplicate inventories, orphan handles, and generic hidden reasons" {
+                let empty = Catalog.audit [] { Entries = [] } [] [] evidence
 
-              let catalog: Catalog.Catalog =
-                  { Entries =
-                      [ { Element = "Door"; Visual = Catalog.Shown "token/orphan" }
-                        { Element = "Fog"; Visual = Catalog.Hidden "other: not shown" } ] }
+                Expect.equal
+                    empty.Findings.Head.Gap
+                    Catalog.BindingGap.EmptyInventory
+                    "empty game inventory fails closed"
 
-              let report = Catalog.audit [ "Door"; "Door"; "Fog" ] catalog [] [] evidence
-              let gaps = report.Findings |> List.map _.Gap
-              Expect.contains gaps Catalog.BindingGap.DuplicateDeclared "duplicate inventory is refused"
-              Expect.contains gaps Catalog.BindingGap.Unbound "a nonblank orphan handle is not a binding"
-              Expect.contains gaps Catalog.BindingGap.UnsupportedHidden "generic hidden prose is not a mechanic"
-          } ]
+                let catalog: Catalog.Catalog =
+                    {
+                        Entries =
+                            [
+                                {
+                                    Element = "Door"
+                                    Visual = Catalog.Shown "token/orphan"
+                                }
+                                {
+                                    Element = "Fog"
+                                    Visual = Catalog.Hidden "other: not shown"
+                                }
+                            ]
+                    }
+
+                let report = Catalog.audit [ "Door"; "Door"; "Fog" ] catalog [] [] evidence
+                let gaps = report.Findings |> List.map _.Gap
+                Expect.contains gaps Catalog.BindingGap.DuplicateDeclared "duplicate inventory is refused"
+                Expect.contains gaps Catalog.BindingGap.Unbound "a nonblank orphan handle is not a binding"
+                Expect.contains gaps Catalog.BindingGap.UnsupportedHidden "generic hidden prose is not a mechanic"
+            }
+        ]

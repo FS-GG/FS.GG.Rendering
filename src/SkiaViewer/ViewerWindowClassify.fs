@@ -8,16 +8,18 @@ open FS.GG.UI.SkiaViewer
 
 module internal ViewerWindowClassify =
     let productDefectDiagnostic (phase: string) (message: string) : ViewerDiagnosticEvent =
-        { Level = ViewerDiagnosticLevel.Error
-          Category = ViewerDiagnosticCategory.Scene
-          Message =
-            sprintf
-                "Product %s raised an exception (%s). The input was dropped and the persistent window kept alive."
-                phase
-                message
-          FrameIndex = None
-          Stage = Some ViewerRunBlockedStage.App
-          Elapsed = None }
+        {
+            Level = ViewerDiagnosticLevel.Error
+            Category = ViewerDiagnosticCategory.Scene
+            Message =
+                sprintf
+                    "Product %s raised an exception (%s). The input was dropped and the persistent window kept alive."
+                    phase
+                    message
+            FrameIndex = None
+            Stage = Some ViewerRunBlockedStage.App
+            Elapsed = None
+        }
 
     /// Issue #365: guard a presented-host product `Update`/`View`. A throwing step used to escape the
     /// Silk callback and tear the persistent window down (mislabeled `frameRenderFailed` by the GL
@@ -26,11 +28,13 @@ module internal ViewerWindowClassify =
     /// same input is not retried.
 
     let defaultWindowBehavior =
-        { ResizePolicy = Resizable
-          MaximizePolicy = Maximizable
-          StartupState = ViewerWindowStartupState.WindowedFullscreen
-          StartupPosition = Some Centered
-          BackendPreference = Some DefaultBackend }
+        {
+            ResizePolicy = Resizable
+            MaximizePolicy = Maximizable
+            StartupState = ViewerWindowStartupState.WindowedFullscreen
+            StartupPosition = Some Centered
+            BackendPreference = Some DefaultBackend
+        }
 
     let validateWindowBehavior request =
         WindowBehaviorValidation.validateBehavior request
@@ -53,7 +57,8 @@ module internal ViewerWindowClassify =
             | None -> true
 
         match diagnostic.FailureClass with
-        | Some failureClass when failureClass = "environment-session" || failureClass = "unsupported-host" -> Unsupported
+        | Some failureClass when failureClass = "environment-session" || failureClass = "unsupported-host" ->
+            Unsupported
         | _ ->
             match diagnostic.Visible with
             | ViewerObservedValue.Unsupported -> Unsupported
@@ -100,11 +105,13 @@ module internal ViewerWindowClassify =
             | Timeout
             | Unknown -> ProductDefect
 
-        { BlockedStage = stage
-          Classification = classification
-          DiagnosticCategory = diagnostic.Category
-          Message = diagnostic.Message
-          LastDiagnosticSummary = Some diagnostic.Message }
+        {
+            BlockedStage = stage
+            Classification = classification
+            DiagnosticCategory = diagnostic.Category
+            Message = diagnostic.Message
+            LastDiagnosticSummary = Some diagnostic.Message
+        }
 
     let tryFirstProductView
         (report: ViewerDiagnosticEvent -> unit)
@@ -120,7 +127,8 @@ module internal ViewerWindowClassify =
                         sprintf
                             "Product %s raised an exception (%s) producing its first frame; the run cannot start (App-stage product defect, not a render failure)."
                             phase
-                            ex.Message }
+                            ex.Message
+                }
 
             report diagnostic
             Result.Error(failureFromDiagnostic diagnostic)
@@ -133,22 +141,21 @@ module internal ViewerWindowClassify =
         let viewerFactsPresent = outcome.WindowOpened && outcome.FirstFramePresented
 
         let externalObservationMissing =
-            externalObservationAttempted
-            && externalWindowMatched <> Some true
+            externalObservationAttempted && externalWindowMatched <> Some true
 
-        let captureMissing =
-            captureAttempted
-            && captureSucceeded <> Some true
+        let captureMissing = captureAttempted && captureSucceeded <> Some true
 
         let missingFacts =
-            [ if not outcome.WindowOpened then
-                  "viewer-window-opened"
-              if not outcome.FirstFramePresented then
-                  "viewer-first-frame-presented"
-              if externalObservationMissing then
-                  "external-window-match"
-              if captureMissing then
-                  "capture-succeeded" ]
+            [
+                if not outcome.WindowOpened then
+                    "viewer-window-opened"
+                if not outcome.FirstFramePresented then
+                    "viewer-first-frame-presented"
+                if externalObservationMissing then
+                    "external-window-match"
+                if captureMissing then
+                    "capture-succeeded"
+            ]
 
         let blockedStage, classification, message =
             if viewerFactsPresent && externalObservationMissing then
@@ -163,9 +170,11 @@ module internal ViewerWindowClassify =
                 outcome.BlockedStage, outcome.Classification, outcome.Message
 
         let hostFacts =
-            [ $"mode={outcome.Mode}"
-              $"renderer-mode={outcome.RendererMode}"
-              $"exit-path={outcome.ExitPath}" ]
+            [
+                $"mode={outcome.Mode}"
+                $"renderer-mode={outcome.RendererMode}"
+                $"exit-path={outcome.ExitPath}"
+            ]
 
         let observedText =
             match outcome.WindowVisible with
@@ -175,23 +184,27 @@ module internal ViewerWindowClassify =
             | ViewerObservedValue.Unavailable -> "unavailable"
 
         let viewerFacts =
-            [ $"window-opened={outcome.WindowOpened}"
-              $"first-frame-presented={outcome.FirstFramePresented}"
-              $"window-visible={observedText}"
-              $"input-dispatch={outcome.InputDispatch}" ]
+            [
+                $"window-opened={outcome.WindowOpened}"
+                $"first-frame-presented={outcome.FirstFramePresented}"
+                $"window-visible={observedText}"
+                $"input-dispatch={outcome.InputDispatch}"
+            ]
 
-        { DiagnosticSource = "real-launch"
-          Command = outcome.Command
-          HostFacts = hostFacts
-          ViewerFacts = viewerFacts
-          ViewerWindowOpened = outcome.WindowOpened
-          ViewerFirstFramePresented = outcome.FirstFramePresented
-          ViewerWindowVisible = outcome.WindowVisible
-          ExternalObservationAttempted = externalObservationAttempted
-          ExternalWindowMatched = externalWindowMatched
-          CaptureAttempted = captureAttempted
-          CaptureSucceeded = captureSucceeded
-          BlockedStage = blockedStage
-          Classification = classification
-          MissingFacts = missingFacts
-          Message = message }
+        {
+            DiagnosticSource = "real-launch"
+            Command = outcome.Command
+            HostFacts = hostFacts
+            ViewerFacts = viewerFacts
+            ViewerWindowOpened = outcome.WindowOpened
+            ViewerFirstFramePresented = outcome.FirstFramePresented
+            ViewerWindowVisible = outcome.WindowVisible
+            ExternalObservationAttempted = externalObservationAttempted
+            ExternalWindowMatched = externalWindowMatched
+            CaptureAttempted = captureAttempted
+            CaptureSucceeded = captureSucceeded
+            BlockedStage = blockedStage
+            Classification = classification
+            MissingFacts = missingFacts
+            Message = message
+        }

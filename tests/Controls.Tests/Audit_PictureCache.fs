@@ -23,29 +23,57 @@ let private size: Size = { Width = 640; Height = 480 }
 let private rinit (t: Theme) (s: Size) (c: Control<'msg>) : RetainedRender<'msg> = (RetainedRender.init t s c).Retained
 
 let private row (key: string) (content: string) (width: float) (state: VisualState) : Control<int> =
-    { Kind = "data-grid-row"
-      Key = Some key
-      Attributes =
-        [ { Name = "width"; Category = AttrCategory.Style; Value = FloatValue width }
-          { Name = "height"; Category = AttrCategory.Style; Value = FloatValue 24.0 }
-          Attr.visualState state ]
-      Children = []
-      Content = Some content
-      Accessibility = None }
+    {
+        Kind = "data-grid-row"
+        Key = Some key
+        Attributes =
+            [
+                {
+                    Name = "width"
+                    Category = AttrCategory.Style
+                    Value = FloatValue width
+                }
+                {
+                    Name = "height"
+                    Category = AttrCategory.Style
+                    Value = FloatValue 24.0
+                }
+                Attr.visualState state
+            ]
+        Children = []
+        Content = Some content
+        Accessibility = None
+    }
 
 let private plainRow (key: string) (content: string) = row key content 200.0 Normal
-let private grid (rows: Control<int> list) : Control<int> =
-    { Kind = "stack"; Key = None; Attributes = []; Children = rows; Content = None; Accessibility = None }
 
-let private threeRows = grid [ plainRow "r0" "zero"; plainRow "r1" "one"; plainRow "r2" "two" ]
+let private grid (rows: Control<int> list) : Control<int> =
+    {
+        Kind = "stack"
+        Key = None
+        Attributes = []
+        Children = rows
+        Content = None
+        Accessibility = None
+    }
+
+let private threeRows =
+    grid [ plainRow "r0" "zero"; plainRow "r1" "one"; plainRow "r2" "two" ]
 
 let private clippedOffsetRows =
-    { Kind = "stack"
-      Key = Some "clip-offset"
-      Attributes = [ Attr.width 150.0; Attr.height 76.0; Attr.margin 18.0; Attr.padding 0.0 ]
-      Children = [ plainRow "co0" "offset zero"; plainRow "co1" "offset one"; plainRow "co2" "offset two" ]
-      Content = None
-      Accessibility = None }
+    {
+        Kind = "stack"
+        Key = Some "clip-offset"
+        Attributes = [ Attr.width 150.0; Attr.height 76.0; Attr.margin 18.0; Attr.padding 0.0 ]
+        Children =
+            [
+                plainRow "co0" "offset zero"
+                plainRow "co1" "offset one"
+                plainRow "co2" "offset two"
+            ]
+        Content = None
+        Accessibility = None
+    }
 
 let rec private clipNodes (s: Scene) : (Clip * Scene) list = s.Nodes |> List.collect clipNodesNode
 
@@ -69,6 +97,7 @@ let private rectClipRects (s: Scene) : Rect list =
 
 // Flatten the paint-order leaf stream, normalizing transparent grouping (Group / CachedSubtree).
 let rec private flattenScene (s: Scene) : SceneNode list = s.Nodes |> List.collect flattenNode
+
 and private flattenNode (n: SceneNode) : SceneNode list =
     match n with
     | CachedSubtree b -> flattenScene b.Scene
@@ -77,85 +106,162 @@ and private flattenNode (n: SceneNode) : SceneNode list =
     | ColorSpaceNode(c, s) -> [ ColorSpaceNode(c, { Nodes = flattenScene s }) ]
     | PerspectiveNode(t, s) -> [ PerspectiveNode(t, { Nodes = flattenScene s }) ]
     | Translate(o, s) -> [ Translate(o, { Nodes = flattenScene s }) ]
-    | PictureNode p -> [ PictureNode { p with Scene = { Nodes = flattenScene p.Scene } } ]
+    | PictureNode p ->
+        [
+            PictureNode
+                { p with
+                    Scene = { Nodes = flattenScene p.Scene }
+                }
+        ]
     | other -> [ other ]
 
 let private flat (r: ControlRenderResult<int>) = flattenScene r.Scene
 
 [<Tests>]
 let tests =
-    testList "Audit_PictureCache: Picture cache parity + present-but-dead + effectiveness (FR-004/008/010, D5)" [
+    testList
+        "Audit_PictureCache: Picture cache parity + present-but-dead + effectiveness (FR-004/008/010, D5)"
+        [
 
-        // ---- T004 scaffold sanity ----
-        test "Audit: PictureCache scaffold reachability — PictureCacheEnabled + counters (T004)" {
-            let disabled = { rinit theme size threeRows with PictureCacheEnabled = false }
-            Expect.isFalse disabled.PictureCacheEnabled "PictureCacheEnabled oracle reachable + settable"
-            let s = RetainedRender.step theme size (rinit theme size threeRows) threeRows
-            Expect.isTrue (s.WorkReduction.PictureCacheHits >= 0 && s.WorkReduction.PictureCacheMisses >= 0 && s.WorkReduction.PictureCacheEntryCount >= 0) "picture-cache counters reachable"
-        }
+            // ---- T004 scaffold sanity ----
+            test "Audit: PictureCache scaffold reachability — PictureCacheEnabled + counters (T004)" {
+                let disabled =
+                    { rinit theme size threeRows with
+                        PictureCacheEnabled = false
+                    }
 
-        // ---- PRESENT-BUT-DEAD: the hit counter must provably move ----
-        test "Audit: PRESENT-BUT-DEAD — PictureCacheHits provably MOVES on a representative repeated scene (FR-010, D5)" {
-            let r0 = rinit theme size threeRows
-            let s = RetainedRender.step theme size r0 threeRows
-            Expect.isTrue (s.WorkReduction.PictureCacheHits > 0)
-                "FINDING-GATE: the picture cache is NOT dead — a stable 3-row frame produces >0 hits"
-            Expect.equal s.WorkReduction.PictureCacheHits 3 "all three stable rows hit"
-            Expect.equal s.WorkReduction.PictureCacheMisses 0 "a stable frame recomputes no picture"
-        }
+                Expect.isFalse disabled.PictureCacheEnabled "PictureCacheEnabled oracle reachable + settable"
+                let s = RetainedRender.step theme size (rinit theme size threeRows) threeRows
 
-        // ---- T020 PARITY with DISCRIMINATING proof ----
-        test "Audit: cache-on ≡ cache-off byte-identical, with a discriminating divergence check (FR-004)" {
-            let enabled = rinit theme size threeRows
-            let disabled = { rinit theme size threeRows with PictureCacheEnabled = false }
-            let on = RetainedRender.step theme size enabled threeRows
-            let off = RetainedRender.step theme size disabled threeRows
+                Expect.isTrue
+                    (s.WorkReduction.PictureCacheHits >= 0
+                     && s.WorkReduction.PictureCacheMisses >= 0
+                     && s.WorkReduction.PictureCacheEntryCount >= 0)
+                    "picture-cache counters reachable"
+            }
 
-            Expect.equal off.WorkReduction.PictureCacheHits 0 "the disabled oracle reports zero hits"
-            Expect.isTrue (off.WorkReduction.PictureCacheMisses > 0) "the disabled oracle re-misses every picture"
-            Expect.equal (flat off.Render) (flat on.Render) "cache-off scene is byte-identical (paint-order) to cache-on"
+            // ---- PRESENT-BUT-DEAD: the hit counter must provably move ----
+            test
+                "Audit: PRESENT-BUT-DEAD — PictureCacheHits provably MOVES on a representative repeated scene (FR-010, D5)" {
+                let r0 = rinit theme size threeRows
+                let s = RetainedRender.step theme size r0 threeRows
 
-            // DISCRIMINATING: the byte-identity oracle is NOT vacuous — a genuinely different scene
-            // (one changed row's content) is NOT equal to the cache-on scene. So the parity assertion
-            // above would go RED on a real divergence.
-            let differentScene = RetainedRender.step theme size (rinit theme size threeRows) (grid [ plainRow "r0" "zero"; plainRow "r1" "CHANGED"; plainRow "r2" "two" ])
-            Expect.notEqual (flat differentScene.Render) (flat on.Render) "a genuinely different scene is caught by the byte-identity oracle (discriminating)"
-        }
+                Expect.isTrue
+                    (s.WorkReduction.PictureCacheHits > 0)
+                    "FINDING-GATE: the picture cache is NOT dead — a stable 3-row frame produces >0 hits"
 
-        test "Audit: cache-disabled parity holds for cached rows inside clipped and offset content (Feature139)" {
-            let tree = grid [ clippedOffsetRows ]
-            let enabled = rinit theme size tree
-            let disabled = { rinit theme size tree with PictureCacheEnabled = false }
-            let on = RetainedRender.step theme size enabled tree
-            let off = RetainedRender.step theme size disabled tree
+                Expect.equal s.WorkReduction.PictureCacheHits 3 "all three stable rows hit"
+                Expect.equal s.WorkReduction.PictureCacheMisses 0 "a stable frame recomputes no picture"
+            }
 
-            Expect.isNonEmpty (rectClipRects on.Render.Scene) "the fixture exercises a container clip around cached rows"
-            Expect.isTrue (on.WorkReduction.PictureCacheHits > 0) "cache-on reuses the clipped cached row boundaries"
-            Expect.equal off.WorkReduction.PictureCacheHits 0 "the disabled oracle reports no hits"
-            Expect.isTrue (off.WorkReduction.PictureCacheMisses > 0) "the disabled oracle re-misses the cached row boundaries"
-            Expect.equal (flat off.Render) (flat on.Render) "cache-off scene is byte-identical to cache-on inside clipped and offset content"
-        }
+            // ---- T020 PARITY with DISCRIMINATING proof ----
+            test "Audit: cache-on ≡ cache-off byte-identical, with a discriminating divergence check (FR-004)" {
+                let enabled = rinit theme size threeRows
 
-        // ---- T031 EFFECTIVENESS: steady-state hits ≫ 0, misses → 0 ----
-        test "Audit: EFFECTIVENESS — PictureCacheHits reach steady-state ≫0 while misses→0 across repeated frames (T031)" {
-            let frameCount = 30
-            let r0 = rinit theme size threeRows
-            let _, totalHits, totalMisses, lastHits, lastMisses =
-                [ 1 .. frameCount ]
-                |> List.fold (fun (prev, h, m, _, _) _ ->
-                    let s = RetainedRender.step theme size prev threeRows
-                    s.Retained, h + s.WorkReduction.PictureCacheHits, m + s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses)
-                    (r0, 0, 0, 0, 0)
+                let disabled =
+                    { rinit theme size threeRows with
+                        PictureCacheEnabled = false
+                    }
 
-            Expect.equal lastMisses 0 "steady-state: a repeated stable frame misses no picture"
-            Expect.equal lastHits 3 "steady-state: all 3 rows hit every frame"
-            Expect.isTrue (totalHits > 0) "the picture cache provably accumulates hits across frames"
+                let on = RetainedRender.step theme size enabled threeRows
+                let off = RetainedRender.step theme size disabled threeRows
 
-            // disabled baseline: zero hits across the same drive.
-            let _, offHits =
-                [ 1 .. frameCount ]
-                |> List.fold (fun (prev, h) _ -> let s = RetainedRender.step theme size prev threeRows in s.Retained, h + s.WorkReduction.PictureCacheHits) ({ r0 with PictureCacheEnabled = false }, 0)
-            Expect.equal offHits 0 "the disabled baseline accumulates zero hits"
-            printfn "AUDIT-MARGIN PictureCache: enabled hits=%d/%d frames (steady %d/3 per frame) misses_total=%d | disabled hits=%d" totalHits frameCount lastHits totalMisses offHits
-        }
-    ]
+                Expect.equal off.WorkReduction.PictureCacheHits 0 "the disabled oracle reports zero hits"
+                Expect.isTrue (off.WorkReduction.PictureCacheMisses > 0) "the disabled oracle re-misses every picture"
+
+                Expect.equal
+                    (flat off.Render)
+                    (flat on.Render)
+                    "cache-off scene is byte-identical (paint-order) to cache-on"
+
+                // DISCRIMINATING: the byte-identity oracle is NOT vacuous — a genuinely different scene
+                // (one changed row's content) is NOT equal to the cache-on scene. So the parity assertion
+                // above would go RED on a real divergence.
+                let differentScene =
+                    RetainedRender.step
+                        theme
+                        size
+                        (rinit theme size threeRows)
+                        (grid [ plainRow "r0" "zero"; plainRow "r1" "CHANGED"; plainRow "r2" "two" ])
+
+                Expect.notEqual
+                    (flat differentScene.Render)
+                    (flat on.Render)
+                    "a genuinely different scene is caught by the byte-identity oracle (discriminating)"
+            }
+
+            test "Audit: cache-disabled parity holds for cached rows inside clipped and offset content (Feature139)" {
+                let tree = grid [ clippedOffsetRows ]
+                let enabled = rinit theme size tree
+
+                let disabled =
+                    { rinit theme size tree with
+                        PictureCacheEnabled = false
+                    }
+
+                let on = RetainedRender.step theme size enabled tree
+                let off = RetainedRender.step theme size disabled tree
+
+                Expect.isNonEmpty
+                    (rectClipRects on.Render.Scene)
+                    "the fixture exercises a container clip around cached rows"
+
+                Expect.isTrue
+                    (on.WorkReduction.PictureCacheHits > 0)
+                    "cache-on reuses the clipped cached row boundaries"
+
+                Expect.equal off.WorkReduction.PictureCacheHits 0 "the disabled oracle reports no hits"
+
+                Expect.isTrue
+                    (off.WorkReduction.PictureCacheMisses > 0)
+                    "the disabled oracle re-misses the cached row boundaries"
+
+                Expect.equal
+                    (flat off.Render)
+                    (flat on.Render)
+                    "cache-off scene is byte-identical to cache-on inside clipped and offset content"
+            }
+
+            // ---- T031 EFFECTIVENESS: steady-state hits ≫ 0, misses → 0 ----
+            test
+                "Audit: EFFECTIVENESS — PictureCacheHits reach steady-state ≫0 while misses→0 across repeated frames (T031)" {
+                let frameCount = 30
+                let r0 = rinit theme size threeRows
+
+                let _, totalHits, totalMisses, lastHits, lastMisses =
+                    [ 1..frameCount ]
+                    |> List.fold
+                        (fun (prev, h, m, _, _) _ ->
+                            let s = RetainedRender.step theme size prev threeRows
+
+                            s.Retained,
+                            h + s.WorkReduction.PictureCacheHits,
+                            m + s.WorkReduction.PictureCacheMisses,
+                            s.WorkReduction.PictureCacheHits,
+                            s.WorkReduction.PictureCacheMisses)
+                        (r0, 0, 0, 0, 0)
+
+                Expect.equal lastMisses 0 "steady-state: a repeated stable frame misses no picture"
+                Expect.equal lastHits 3 "steady-state: all 3 rows hit every frame"
+                Expect.isTrue (totalHits > 0) "the picture cache provably accumulates hits across frames"
+
+                // disabled baseline: zero hits across the same drive.
+                let _, offHits =
+                    [ 1..frameCount ]
+                    |> List.fold
+                        (fun (prev, h) _ ->
+                            let s = RetainedRender.step theme size prev threeRows in
+                            s.Retained, h + s.WorkReduction.PictureCacheHits)
+                        ({ r0 with PictureCacheEnabled = false }, 0)
+
+                Expect.equal offHits 0 "the disabled baseline accumulates zero hits"
+
+                printfn
+                    "AUDIT-MARGIN PictureCache: enabled hits=%d/%d frames (steady %d/3 per frame) misses_total=%d | disabled hits=%d"
+                    totalHits
+                    frameCount
+                    lastHits
+                    totalMisses
+                    offHits
+            }
+        ]

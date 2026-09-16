@@ -12,12 +12,19 @@ type TextShapingParityMode =
     | PureFallback
 
 type TextShapingParityCapture =
-    { FixtureId: string
-      Mode: TextShapingParityMode
-      Metrics: TextMetrics
-      Fingerprint: string
-      Diagnostics: string list }
+    {
+        FixtureId: string
+        Mode: TextShapingParityMode
+        Metrics: TextMetrics
+        Fingerprint: string
+        Diagnostics: string list
+    }
 
 module TextShapingParity =
-    val capture: mode: TextShapingParityMode -> fixture: TextShapingFixture -> result: ShapedTextResult -> TextShapingParityCapture
+    val capture:
+        mode: TextShapingParityMode ->
+        fixture: TextShapingFixture ->
+        result: ShapedTextResult ->
+            TextShapingParityCapture
+
     val equivalent: left: TextShapingParityCapture -> right: TextShapingParityCapture -> bool

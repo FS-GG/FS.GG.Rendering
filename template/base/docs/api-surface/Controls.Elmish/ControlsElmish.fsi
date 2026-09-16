@@ -12,9 +12,11 @@ open FS.GG.UI.DesignSystem
 
 /// Public contract type exposed by this FS.GG.UI package.
 type AdapterDiagnostic =
-    { Code: string
-      Message: string
-      Source: string }
+    {
+        Code: string
+        Message: string
+        Source: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type AdapterEffect<'msg> =
@@ -29,15 +31,19 @@ type AdapterCommand<'msg> = AdapterEffect<'msg> list
 
 /// Public contract type exposed by this FS.GG.UI package.
 type AdapterSubscription<'msg> =
-    { Id: string
-      Subscribe: unit -> AdapterCommand<'msg> }
+    {
+        Id: string
+        Subscribe: unit -> AdapterCommand<'msg>
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type AdapterProgram<'model, 'msg> =
-    { Init: unit -> 'model * AdapterCommand<'msg>
-      Update: 'msg -> 'model -> 'model * AdapterCommand<'msg>
-      View: 'model -> Control<'msg>
-      Subscriptions: 'model -> AdapterSubscription<'msg> list }
+    {
+        Init: unit -> 'model * AdapterCommand<'msg>
+        Update: 'msg -> 'model -> 'model * AdapterCommand<'msg>
+        View: 'model -> Control<'msg>
+        Subscriptions: 'model -> AdapterSubscription<'msg> list
+    }
 
 [<RequireQualifiedAccess>]
 /// Feature 111 (US1, FR-001): the closed TRIGGER taxonomy naming WHY a frame ran. The scheduler
@@ -69,199 +75,209 @@ type FrameCause =
 /// `ViewCalled`) and narrowed `ViewCalled`/`FullRenderCount` to `false`/`0` on a model-unchanged frame
 /// (the scheduler reuses the already-produced view tree, FR-003/FR-011).
 type FrameMetrics =
-    { /// A product message actually changed the model this frame (the reference identity of the folded
-      /// model changed across `host.Update`). `false` for a no-message frame, a pure hover/focus
-      /// frame, and an animation-only tick (FR-001/003/005).
-      ProductModelChanged: bool
-      /// THE VIEW PHASE: `host.View size model` actually ran this frame to (re)produce a tree. Feature
-      /// 111 narrows this — it is `false` on a model-unchanged frame (including an animation-only tick,
-      /// which formerly reported `true`) because the scheduler reuses the already-produced view tree and
-      /// skips `host.View` (FR-003/FR-011); the overlay/paint fact moves to `PaintRan`. Still equals
-      /// `FullRenderCount > 0`. Feature 110: retained pointer routing does not set it true either.
-      ViewCalled: bool
-      /// Number of full `host.View` + `Control.renderTree` materializations this frame performed — the
-      /// retained-step render where it occurs, plus any oracle fallback render. Feature 110 narrowed
-      /// this: routing a pointer event via the retained path increments NEITHER this nor `ViewCalled`
-      /// (the per-sample routing full render is removed from the hot path, FR-008); a model-driven
-      /// re-render after a dispatched message still counts.
-      FullRenderCount: int
-      /// Nodes re-measured this frame (from `WorkReductionRecord.RemeasuredNodeCount`); 0 on an idle
-      /// frame, bounded (overlay-assembly, not whole-tree) on an animation-only frame.
-      RemeasuredNodeCount: int
-      /// Feature 113 (Phase 5, FR-009/FR-010): memoized-projection HITS while building this frame — a
-      /// memoizable control (the DataGrid row/column projection) whose declared dependency was
-      /// unchanged and whose previously-lowered subtree was reused without recomputing. `0` on an idle
-      /// frame or any frame that evaluates no memoizable control. Deterministic, golden-asserted via
-      /// `Perf.runScript`.
-      MemoHitCount: int
-      /// Feature 113 (Phase 5, FR-009/FR-010): memoized-projection MISSES while building this frame — a
-      /// memoizable control whose dependency changed, or a cold first evaluation, so the projection was
-      /// recomputed and stored. `0` on an idle frame or any frame that evaluates no memoizable control.
-      /// Deterministic, golden-asserted via `Perf.runScript`.
-      MemoMissCount: int
-      /// Feature 114 (Phase 6, FR-013): the number of repeated-control row items actually MATERIALIZED
-      /// this frame — the count of `data-grid-row` nodes the virtualized control(s) realized. Bounded by
-      /// `visibleCount + 2 * overscan` and does NOT scale with the total logical row count: a 100-, 1000-,
-      /// and 10000-row grid with the same viewport + overscan all report the same materialized count.
-      /// `0` on a frame that evaluates no virtualized control; aggregates across virtualized controls.
-      /// Deterministic, golden-asserted via `Perf.runScript`.
-      VirtualItemsMaterialized: int
-      /// Feature 114 (Phase 6, FR-013): the total LOGICAL item count the virtualized control(s) represent
-      /// this frame (the sum of each `data-grid`'s logical `Total`). Equals `VirtualItemsMaterialized` only
-      /// when the whole collection fits the realized window; otherwise it scales with the data while
-      /// `VirtualItemsMaterialized` stays bounded. `0` on a frame with no virtualized control. Deterministic,
-      /// golden-asserted via `Perf.runScript`.
-      VirtualItemsTotal: int
-      /// Feature 116 (Phase 7, FR-001/FR-002, US1): the number of nodes whose paint was REPAINTED this
-      /// frame — the damage set: the changed node(s) plus any genuinely-shifted nodes. A localized
-      /// visual-state change reports a small count (the changed control + its immediate shifted
-      /// neighbours, `<= 4` for a leaf hover, `< TotalNodeCount`); a theme switch that invalidates all
-      /// paint reports every node; an idle frame reports `0`. Deterministic, golden-asserted via
-      /// `Perf.runScript`.
-      RepaintedNodeCount: int
-      /// Feature 116 (Phase 7, FR-001/FR-004, US1): the number of DISTINCT axis-aligned damage rectangles
-      /// this frame — one per repainted node's evaluated box, identical boxes deduplicated (`None` boxes
-      /// contribute none), so `<= RepaintedNodeCount`. `0` on an idle frame. Deterministic integer,
-      /// golden-asserted via `Perf.runScript`.
-      DirtyRectCount: int
-      /// Feature 116 (Phase 7, FR-001/FR-004, US1); Feature 120 (FR-015) corrected the computation: the
-      /// integer area of the **union** of distinct damage rectangles this frame (no longer the sum of their
-      /// areas), so overlapping damage is counted once and the value never exceeds the frame area. A
-      /// localized change covers only the changed box(es) (`< FrameArea`); a theme switch covers the frame;
-      /// an idle frame reports `0`. Deterministic integer, golden-asserted via `Perf.runScript`.
-      DirtyArea: int
-      /// Feature 116 (Phase 7, FR-005/FR-007, US2): picture-cache HITS this frame — cacheable boundaries
-      /// (a `data-grid-row` identity) whose full correctness key was unchanged and whose cached picture was
-      /// still resident, reused without recomputing. `0` on a frame with no cacheable picture or under the
-      /// always-miss oracle. Deterministic, golden-asserted via `Perf.runScript`.
-      PictureCacheHitCount: int
-      /// Feature 116 (Phase 7, FR-006/FR-010, US2/US3): picture-cache MISSES this frame — a cacheable
-      /// boundary recomputed because its correctness key changed, the identity was cold, or its entry had
-      /// been evicted. `0` on a frame with no cacheable picture. Deterministic, golden-asserted via
-      /// `Perf.runScript`.
-      PictureCacheMissCount: int
-      /// Feature 116 (Phase 7, FR-009, US3): the live bounded-LRU picture-cache entry count after this
-      /// frame — `<= PictureCacheCap` at all times, even under eviction pressure (more distinct cacheable
-      /// pictures than the cap). A steady cache may retain entries across an idle frame, so this reflects
-      /// live size, not necessarily `0`. Deterministic, golden-asserted via `Perf.runScript`.
-      PictureCacheEntryCount: int
-      /// Feature 117/138: text-measure cache HITS this frame — measurements `(text, font)` whose key was
-      /// resident before this frame's measurement window began, reused without re-invoking
-      /// `Scene.measureText`. Same-frame duplicate text may reuse the cache internally, but is not reported
-      /// as a hit. `0` on a frame that measures no text or under the always-miss oracle. A warm text-heavy
-      /// frame whose text inputs did not change reports `> 0`. Deterministic, golden-asserted via
-      /// `Perf.runScript`.
-      TextMeasureCacheHitCount: int
-      /// Feature 117 (Phase 8, FR-001/FR-005, US1): text-measure cache MISSES this frame — measurements
-      /// whose key was not resident before the frame and therefore required a fresh measurement. `0` on a
-      /// frame that measures no text; `> 0` on a cold frame and on a style-only frame only if new text
-      /// appeared. Deterministic, golden-asserted via `Perf.runScript`.
-      TextMeasureCacheMissCount: int
-      /// Feature 117 (Phase 8, FR-006, US2): the size of the layout dirty set fed into incremental layout
-      /// this frame (the patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). Distinct
-      /// from `RemeasuredNodeCount` (the POST-pinning set actually re-measured); because propagation expands
-      /// each dirty node to its first fixed-size ancestor's whole subtree, `LayoutInvalidatedNodeCount <=
-      /// RemeasuredNodeCount`. `0` on an idle / style-only / visual-state-only frame; bounded and explainable
-      /// on a geometry frame. Deterministic, golden-asserted via `Perf.runScript`.
-      LayoutInvalidatedNodeCount: int
-      /// Raw pointer samples that arrived this frame, including deferred/queued moves carried from a
-      /// prior boundary (K before coalescing) (FR-008).
-      PointerSamplesReceived: int
-      /// Pointer MOVES actually applied after coalescing — at most one per frame (FR-009/SC-002).
-      PointerMovesProcessed: int
-      /// Feature 110 (FR-009): how many times retained pointer routing fell back to a full render to
-      /// route an event this frame. `0` for every normal scripted pointer scenario (SC-005); non-zero
-      /// only when the retained frame could not resolve a bindable hit and the preserved full-render
-      /// oracle had to run (a counted correctness escape hatch, never the normal path). Deterministic,
-      /// golden-asserted.
-      FullRenderFallbackCount: int
-      /// Feature 111 (FR-001): the trigger that caused this frame (idle / pointer-move / pointer-discrete
-      /// / key / tick / resize / theme). Deterministic, golden-asserted. Names the trigger, not the
-      /// effect — a key that changes the model is `FrameCause.Key` with `ProductModelChanged = true`.
-      FrameCause: FrameCause
-      /// Feature 111 (FR-002): the DIFF/reconcile phase ran — a newly-produced view tree was reconciled
-      /// against the retained tree this frame (the retained step ran on a fresh `host.View`). An
-      /// animation-only tick re-samples the overlay WITHOUT producing a new tree, so it reports `false`.
-      DiffRan: bool
-      /// Feature 111 (FR-002): the LAYOUT phase ran — at least one node was re-measured this frame
-      /// (equivalent to `RemeasuredNodeCount > 0`, but set explicitly as part of the phase record).
-      LayoutRan: bool
-      /// Feature 111 (FR-002): the PAINT phase ran — the painted scene (a model render) or the animation
-      /// overlay was (re)assembled this frame. `true` on model frames AND animation-only ticks; `false`
-      /// on idle and pure routing frames. (Hit-test is intentionally NOT a phase field — clarified
-      /// 2026-06-12: the deterministic path does not hit-test coalesced moves; routing work stays in
-      /// `PointerSamplesReceived`/`PointerMovesProcessed`/`FullRenderFallbackCount`.)
-      PaintRan: bool
-      /// Wall-clock duration of the frame's work — reported, EXCLUDED from the golden/determinism
-      /// surface (FR-012).
-      FrameDuration: TimeSpan
-      /// Feature 120 (US1, FR-001/FR-002): scene→canvas paint-walk time. Live diagnostic only — EXCLUDED
-      /// from count goldens (mirrors `FrameDuration`); `TimeSpan.Zero` on the deterministic `Perf.runScript`
-      /// path so adding it leaves every golden byte-identical (SC-001).
-      PaintDuration: TimeSpan
-      /// Feature 120 (US1, FR-001/FR-002): flush + buffer-swap present/compose time. Live diagnostic only;
-      /// non-golden; `TimeSpan.Zero` on the deterministic path.
-      ComposeDuration: TimeSpan
-      /// Feature 120 (US3, FR-014): replay HITS this frame — `CachedSubtree` boundaries whose recorded
-      /// picture was resident and whose fingerprint matched, so the recorded draw commands were replayed
-      /// instead of re-walked. `0` on a frame with no cacheable boundary or under the replay-disable oracle.
-      /// Deterministic, golden-asserted via `Perf.runScript`.
-      ReplayHitCount: int
-      /// Feature 120 (US3, FR-014): replay MISSES this frame — boundaries (re)recorded because the identity
-      /// was cold, its fingerprint changed, or its entry had been evicted. `0` on a frame with no cacheable
-      /// boundary. Deterministic, golden-asserted.
-      ReplayMissCount: int
-      /// Feature 120 (US3, FR-014): pictures recorded this frame (one per miss). Deterministic, golden-asserted.
-      ReplayRecordCount: int
-      /// Feature 120 (US3, FR-014/SC-004): subtree paint-nodes skipped by replay this frame — the summed
-      /// node count of every replayed (hit) boundary's recorded subtree, i.e. the draw-call walk avoided.
-      /// The work-reduction signal. `0` on a frame with no replay hit. Deterministic, golden-asserted.
-      ReplaySkippedNodeCount: int
-      /// Feature 120 (US3, FR-013): native bytes held by the replay cache after this frame — a deterministic
-      /// model estimate (resident recorded-picture subtree node counts), bounded by the cap so a memory
-      /// regression is observable. Deterministic, golden-asserted. The live backend additionally reports its
-      /// real `SKPicture` native byte total in the non-golden timing baseline.
-      ReplayCacheNativeBytes: int }
+    {
+        /// A product message actually changed the model this frame (the reference identity of the folded
+        /// model changed across `host.Update`). `false` for a no-message frame, a pure hover/focus
+        /// frame, and an animation-only tick (FR-001/003/005).
+        ProductModelChanged: bool
+        /// THE VIEW PHASE: `host.View size model` actually ran this frame to (re)produce a tree. Feature
+        /// 111 narrows this — it is `false` on a model-unchanged frame (including an animation-only tick,
+        /// which formerly reported `true`) because the scheduler reuses the already-produced view tree and
+        /// skips `host.View` (FR-003/FR-011); the overlay/paint fact moves to `PaintRan`. Still equals
+        /// `FullRenderCount > 0`. Feature 110: retained pointer routing does not set it true either.
+        ViewCalled: bool
+        /// Number of full `host.View` + `Control.renderTree` materializations this frame performed — the
+        /// retained-step render where it occurs, plus any oracle fallback render. Feature 110 narrowed
+        /// this: routing a pointer event via the retained path increments NEITHER this nor `ViewCalled`
+        /// (the per-sample routing full render is removed from the hot path, FR-008); a model-driven
+        /// re-render after a dispatched message still counts.
+        FullRenderCount: int
+        /// Nodes re-measured this frame (from `WorkReductionRecord.RemeasuredNodeCount`); 0 on an idle
+        /// frame, bounded (overlay-assembly, not whole-tree) on an animation-only frame.
+        RemeasuredNodeCount: int
+        /// Feature 113 (Phase 5, FR-009/FR-010): memoized-projection HITS while building this frame — a
+        /// memoizable control (the DataGrid row/column projection) whose declared dependency was
+        /// unchanged and whose previously-lowered subtree was reused without recomputing. `0` on an idle
+        /// frame or any frame that evaluates no memoizable control. Deterministic, golden-asserted via
+        /// `Perf.runScript`.
+        MemoHitCount: int
+        /// Feature 113 (Phase 5, FR-009/FR-010): memoized-projection MISSES while building this frame — a
+        /// memoizable control whose dependency changed, or a cold first evaluation, so the projection was
+        /// recomputed and stored. `0` on an idle frame or any frame that evaluates no memoizable control.
+        /// Deterministic, golden-asserted via `Perf.runScript`.
+        MemoMissCount: int
+        /// Feature 114 (Phase 6, FR-013): the number of repeated-control row items actually MATERIALIZED
+        /// this frame — the count of `data-grid-row` nodes the virtualized control(s) realized. Bounded by
+        /// `visibleCount + 2 * overscan` and does NOT scale with the total logical row count: a 100-, 1000-,
+        /// and 10000-row grid with the same viewport + overscan all report the same materialized count.
+        /// `0` on a frame that evaluates no virtualized control; aggregates across virtualized controls.
+        /// Deterministic, golden-asserted via `Perf.runScript`.
+        VirtualItemsMaterialized: int
+        /// Feature 114 (Phase 6, FR-013): the total LOGICAL item count the virtualized control(s) represent
+        /// this frame (the sum of each `data-grid`'s logical `Total`). Equals `VirtualItemsMaterialized` only
+        /// when the whole collection fits the realized window; otherwise it scales with the data while
+        /// `VirtualItemsMaterialized` stays bounded. `0` on a frame with no virtualized control. Deterministic,
+        /// golden-asserted via `Perf.runScript`.
+        VirtualItemsTotal: int
+        /// Feature 116 (Phase 7, FR-001/FR-002, US1): the number of nodes whose paint was REPAINTED this
+        /// frame — the damage set: the changed node(s) plus any genuinely-shifted nodes. A localized
+        /// visual-state change reports a small count (the changed control + its immediate shifted
+        /// neighbours, `<= 4` for a leaf hover, `< TotalNodeCount`); a theme switch that invalidates all
+        /// paint reports every node; an idle frame reports `0`. Deterministic, golden-asserted via
+        /// `Perf.runScript`.
+        RepaintedNodeCount: int
+        /// Feature 116 (Phase 7, FR-001/FR-004, US1): the number of DISTINCT axis-aligned damage rectangles
+        /// this frame — one per repainted node's evaluated box, identical boxes deduplicated (`None` boxes
+        /// contribute none), so `<= RepaintedNodeCount`. `0` on an idle frame. Deterministic integer,
+        /// golden-asserted via `Perf.runScript`.
+        DirtyRectCount: int
+        /// Feature 116 (Phase 7, FR-001/FR-004, US1); Feature 120 (FR-015) corrected the computation: the
+        /// integer area of the **union** of distinct damage rectangles this frame (no longer the sum of their
+        /// areas), so overlapping damage is counted once and the value never exceeds the frame area. A
+        /// localized change covers only the changed box(es) (`< FrameArea`); a theme switch covers the frame;
+        /// an idle frame reports `0`. Deterministic integer, golden-asserted via `Perf.runScript`.
+        DirtyArea: int
+        /// Feature 116 (Phase 7, FR-005/FR-007, US2): picture-cache HITS this frame — cacheable boundaries
+        /// (a `data-grid-row` identity) whose full correctness key was unchanged and whose cached picture was
+        /// still resident, reused without recomputing. `0` on a frame with no cacheable picture or under the
+        /// always-miss oracle. Deterministic, golden-asserted via `Perf.runScript`.
+        PictureCacheHitCount: int
+        /// Feature 116 (Phase 7, FR-006/FR-010, US2/US3): picture-cache MISSES this frame — a cacheable
+        /// boundary recomputed because its correctness key changed, the identity was cold, or its entry had
+        /// been evicted. `0` on a frame with no cacheable picture. Deterministic, golden-asserted via
+        /// `Perf.runScript`.
+        PictureCacheMissCount: int
+        /// Feature 116 (Phase 7, FR-009, US3): the live bounded-LRU picture-cache entry count after this
+        /// frame — `<= PictureCacheCap` at all times, even under eviction pressure (more distinct cacheable
+        /// pictures than the cap). A steady cache may retain entries across an idle frame, so this reflects
+        /// live size, not necessarily `0`. Deterministic, golden-asserted via `Perf.runScript`.
+        PictureCacheEntryCount: int
+        /// Feature 117/138: text-measure cache HITS this frame — measurements `(text, font)` whose key was
+        /// resident before this frame's measurement window began, reused without re-invoking
+        /// `Scene.measureText`. Same-frame duplicate text may reuse the cache internally, but is not reported
+        /// as a hit. `0` on a frame that measures no text or under the always-miss oracle. A warm text-heavy
+        /// frame whose text inputs did not change reports `> 0`. Deterministic, golden-asserted via
+        /// `Perf.runScript`.
+        TextMeasureCacheHitCount: int
+        /// Feature 117 (Phase 8, FR-001/FR-005, US1): text-measure cache MISSES this frame — measurements
+        /// whose key was not resident before the frame and therefore required a fresh measurement. `0` on a
+        /// frame that measures no text; `> 0` on a cold frame and on a style-only frame only if new text
+        /// appeared. Deterministic, golden-asserted via `Perf.runScript`.
+        TextMeasureCacheMissCount: int
+        /// Feature 117 (Phase 8, FR-006, US2): the size of the layout dirty set fed into incremental layout
+        /// this frame (the patch-derived self-dirty nodes BEFORE fixed-size-ancestor propagation). Distinct
+        /// from `RemeasuredNodeCount` (the POST-pinning set actually re-measured); because propagation expands
+        /// each dirty node to its first fixed-size ancestor's whole subtree, `LayoutInvalidatedNodeCount <=
+        /// RemeasuredNodeCount`. `0` on an idle / style-only / visual-state-only frame; bounded and explainable
+        /// on a geometry frame. Deterministic, golden-asserted via `Perf.runScript`.
+        LayoutInvalidatedNodeCount: int
+        /// Raw pointer samples that arrived this frame, including deferred/queued moves carried from a
+        /// prior boundary (K before coalescing) (FR-008).
+        PointerSamplesReceived: int
+        /// Pointer MOVES actually applied after coalescing — at most one per frame (FR-009/SC-002).
+        PointerMovesProcessed: int
+        /// Feature 110 (FR-009): how many times retained pointer routing fell back to a full render to
+        /// route an event this frame. `0` for every normal scripted pointer scenario (SC-005); non-zero
+        /// only when the retained frame could not resolve a bindable hit and the preserved full-render
+        /// oracle had to run (a counted correctness escape hatch, never the normal path). Deterministic,
+        /// golden-asserted.
+        FullRenderFallbackCount: int
+        /// Feature 111 (FR-001): the trigger that caused this frame (idle / pointer-move / pointer-discrete
+        /// / key / tick / resize / theme). Deterministic, golden-asserted. Names the trigger, not the
+        /// effect — a key that changes the model is `FrameCause.Key` with `ProductModelChanged = true`.
+        FrameCause: FrameCause
+        /// Feature 111 (FR-002): the DIFF/reconcile phase ran — a newly-produced view tree was reconciled
+        /// against the retained tree this frame (the retained step ran on a fresh `host.View`). An
+        /// animation-only tick re-samples the overlay WITHOUT producing a new tree, so it reports `false`.
+        DiffRan: bool
+        /// Feature 111 (FR-002): the LAYOUT phase ran — at least one node was re-measured this frame
+        /// (equivalent to `RemeasuredNodeCount > 0`, but set explicitly as part of the phase record).
+        LayoutRan: bool
+        /// Feature 111 (FR-002): the PAINT phase ran — the painted scene (a model render) or the animation
+        /// overlay was (re)assembled this frame. `true` on model frames AND animation-only ticks; `false`
+        /// on idle and pure routing frames. (Hit-test is intentionally NOT a phase field — clarified
+        /// 2026-06-12: the deterministic path does not hit-test coalesced moves; routing work stays in
+        /// `PointerSamplesReceived`/`PointerMovesProcessed`/`FullRenderFallbackCount`.)
+        PaintRan: bool
+        /// Wall-clock duration of the frame's work — reported, EXCLUDED from the golden/determinism
+        /// surface (FR-012).
+        FrameDuration: TimeSpan
+        /// Feature 120 (US1, FR-001/FR-002): scene→canvas paint-walk time. Live diagnostic only — EXCLUDED
+        /// from count goldens (mirrors `FrameDuration`); `TimeSpan.Zero` on the deterministic `Perf.runScript`
+        /// path so adding it leaves every golden byte-identical (SC-001).
+        PaintDuration: TimeSpan
+        /// Feature 120 (US1, FR-001/FR-002): flush + buffer-swap present/compose time. Live diagnostic only;
+        /// non-golden; `TimeSpan.Zero` on the deterministic path.
+        ComposeDuration: TimeSpan
+        /// Feature 120 (US3, FR-014): replay HITS this frame — `CachedSubtree` boundaries whose recorded
+        /// picture was resident and whose fingerprint matched, so the recorded draw commands were replayed
+        /// instead of re-walked. `0` on a frame with no cacheable boundary or under the replay-disable oracle.
+        /// Deterministic, golden-asserted via `Perf.runScript`.
+        ReplayHitCount: int
+        /// Feature 120 (US3, FR-014): replay MISSES this frame — boundaries (re)recorded because the identity
+        /// was cold, its fingerprint changed, or its entry had been evicted. `0` on a frame with no cacheable
+        /// boundary. Deterministic, golden-asserted.
+        ReplayMissCount: int
+        /// Feature 120 (US3, FR-014): pictures recorded this frame (one per miss). Deterministic, golden-asserted.
+        ReplayRecordCount: int
+        /// Feature 120 (US3, FR-014/SC-004): subtree paint-nodes skipped by replay this frame — the summed
+        /// node count of every replayed (hit) boundary's recorded subtree, i.e. the draw-call walk avoided.
+        /// The work-reduction signal. `0` on a frame with no replay hit. Deterministic, golden-asserted.
+        ReplaySkippedNodeCount: int
+        /// Feature 120 (US3, FR-013): native bytes held by the replay cache after this frame — a deterministic
+        /// model estimate (resident recorded-picture subtree node counts), bounded by the cap so a memory
+        /// regression is observable. Deterministic, golden-asserted. The live backend additionally reports its
+        /// real `SKPicture` native byte total in the non-golden timing baseline.
+        ReplayCacheNativeBytes: int
+    }
 
 /// Feature 147: derived compositor diagnostics over the existing per-frame metrics. This keeps
 /// `FrameMetrics` source-compatible while giving readiness reviewers named damage, fallback,
 /// promotion/reuse, and snapshot-budget fields.
 type CompositorFrameDiagnostics =
-    { ProofStatus: string
-      DamageUnionArea: int
-      ScissorCandidateArea: int
-      FallbackReason: string option
-      PromotionDecisionCount: int
-      ReuseHitCount: int
-      ReuseMissCount: int
-      DemotionCount: int
-      SnapshotResourceBytes: int }
+    {
+        ProofStatus: string
+        DamageUnionArea: int
+        ScissorCandidateArea: int
+        FallbackReason: string option
+        PromotionDecisionCount: int
+        ReuseHitCount: int
+        ReuseMissCount: int
+        DemotionCount: int
+        SnapshotResourceBytes: int
+    }
 
 /// Feature 150: deterministic layout/intrinsic work projection for Controls.Elmish consumers.
 type LayoutWorkMetrics =
-    { LayoutWorkCount: int
-      IntrinsicQueryWorkCount: int
-      IntrinsicCacheHitCount: int
-      IntrinsicCacheMissCount: int
-      IntrinsicInvalidationCount: int }
+    {
+        LayoutWorkCount: int
+        IntrinsicQueryWorkCount: int
+        IntrinsicCacheHitCount: int
+        IntrinsicCacheMissCount: int
+        IntrinsicInvalidationCount: int
+    }
 
 /// Feature 167: adapter contribution to one responsiveness latency record.
 type ResponsivenessTimingContribution =
-    { RoutingDuration: TimeSpan
-      UpdateDuration: TimeSpan
-      RetainedStepDuration: TimeSpan
-      LayoutDuration: TimeSpan
-      TextDuration: TimeSpan
-      ProductMessageCount: int
-      ProductModelChanged: bool
-      RuntimeStateChanged: bool
-      NoVisibleResponseReason: string option }
+    {
+        RoutingDuration: TimeSpan
+        UpdateDuration: TimeSpan
+        RetainedStepDuration: TimeSpan
+        LayoutDuration: TimeSpan
+        TextDuration: TimeSpan
+        ProductMessageCount: int
+        ProductModelChanged: bool
+        RuntimeStateChanged: bool
+        NoVisibleResponseReason: string option
+    }
 
 /// Feature 167: deterministic compatibility verdict when diagnostics are disabled.
 type DiagnosticsDisabledCompatibility =
-    { FrameMetricsUnchanged: bool
-      RecordsWritten: int
-      ClockFreePerfScript: bool }
+    {
+        FrameMetricsUnchanged: bool
+        RecordsWritten: int
+        ClockFreePerfScript: bool
+    }
 
 [<RequireQualifiedAccess>]
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver. `Key` carries the
@@ -278,8 +294,10 @@ type FrameInput<'msg> =
 
 /// Result of a bounded live script delivered through the GL-backed interactive viewer.
 type LiveScriptRunResult =
-    { Outcome: ViewerLaunchOutcome
-      Metrics: FrameMetrics list }
+    {
+        Outcome: ViewerLaunchOutcome
+        Metrics: FrameMetrics list
+    }
 
 /// Pointer-routing, size-aware durable host (feature 085, research D3-AMEND). Mirrors
 /// `GeneratedAppHost` field-for-field PLUS a `MapPointer` seam over `PointerInteraction` and a
@@ -292,28 +310,32 @@ type LiveScriptRunResult =
 /// `routeFocusedText`, and `runInteractiveApp`). Feature 108: the additive `MapKeyChord` /
 /// `OnFrameMetrics` fields carry inert defaults (at-rest byte-identical).
 type InteractiveAppHost<'model, 'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: Size -> 'model -> Control<'msg>
-      Theme: Theme
-      MapKey: ViewerKey -> bool -> 'msg option
-      MapPointer: PointerInteraction -> 'msg option
-      Tick: TimeSpan -> 'msg option
-      /// Feature 108 (US5, FR-016): an additive modifier-aware key seam consulted BEFORE `MapKey`.
-      /// The default (`fun _ _ -> None`) ignores modifiers and defers to `MapKey`, so unmodified
-      /// keys route exactly as today (at-rest byte-identical, SC-012).
-      MapKeyChord: ViewerKey -> KeyModifiers -> 'msg option
-      /// Feature 108 (US2, FR-006): an additive opt-in observability sink called once per frame with
-      /// that frame's `FrameMetrics`. The default (`ignore`) is inert, so a host that does not
-      /// observe metrics is byte-identical to its pre-108 behaviour (SC-012).
-      OnFrameMetrics: FrameMetrics -> unit
-      Diagnostics: ViewerDiagnosticsOptions }
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: Size -> 'model -> Control<'msg>
+        Theme: Theme
+        MapKey: ViewerKey -> bool -> 'msg option
+        MapPointer: PointerInteraction -> 'msg option
+        Tick: TimeSpan -> 'msg option
+        /// Feature 108 (US5, FR-016): an additive modifier-aware key seam consulted BEFORE `MapKey`.
+        /// The default (`fun _ _ -> None`) ignores modifiers and defers to `MapKey`, so unmodified
+        /// keys route exactly as today (at-rest byte-identical, SC-012).
+        MapKeyChord: ViewerKey -> KeyModifiers -> 'msg option
+        /// Feature 108 (US2, FR-006): an additive opt-in observability sink called once per frame with
+        /// that frame's `FrameMetrics`. The default (`ignore`) is inert, so a host that does not
+        /// observe metrics is byte-identical to its pre-108 behaviour (SC-012).
+        OnFrameMetrics: FrameMetrics -> unit
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 /// Additive gamepad-capable Controls host. Existing `InteractiveAppHost` records and launchers
 /// remain source-compatible; use this variant when a product needs a native frame source.
 type InteractiveAppGamepadHost<'model, 'msg> =
-    { Host: InteractiveAppHost<'model, 'msg>
-      Gamepad: GamepadFrameSource<'msg> }
+    {
+        Host: InteractiveAppHost<'model, 'msg>
+        Gamepad: GamepadFrameSource<'msg>
+    }
 
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`Before` ≠ `After`), `Inert` when
@@ -329,9 +351,11 @@ type RespondsVerdict =
 /// route probe (model layer only): an app that renders but does not respond yields identical frames and
 /// an `Inert` verdict, so "renders" cannot be passed off as "responds".
 type RespondsProof =
-    { Before: Scene
-      After: Scene
-      Verdict: RespondsVerdict }
+    {
+        Before: Scene
+        After: Scene
+        Verdict: RespondsVerdict
+    }
 
 /// Pure, total bridge between the adapter's effect-list command model
 /// (`AdapterCommand<'msg>`) and Elmish `Cmd<'msg>` (068, additive).
@@ -383,8 +407,11 @@ module ControlsElmish =
     /// Surface the diagnostic with `AdapterCmd.diagnostics`: `AdapterCmd.productMessages` keeps only
     /// product messages and would drop it.
     val interpretKeyboardEffect: mapCommand: (CommandId -> 'msg) -> effect: KeyboardEffect -> AdapterCommand<'msg>
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val interpretControlEffect: mapRuntime: (ControlRuntimeMsg -> 'msg) -> effect: ControlRuntimeEffect -> AdapterCommand<'msg>
+    val interpretControlEffect:
+        mapRuntime: (ControlRuntimeMsg -> 'msg) -> effect: ControlRuntimeEffect -> AdapterCommand<'msg>
+
     /// Interpret one overlay effect at the host boundary. Open/close requests
     /// and product dispatches are mapped to product messages; focus requests
     /// always update ControlRuntime and may also emit a product focus message.
@@ -394,6 +421,7 @@ module ControlsElmish =
         mapFocus: (ControlId option -> 'msg option) ->
         effect: OverlayEffect ->
             AdapterCommand<'msg>
+
     /// Interpret an ordered overlay effect list, preserving dispatch order.
     val interpretOverlayOutcome:
         mapOpen: (ControlId -> bool -> 'msg) ->
@@ -401,6 +429,7 @@ module ControlsElmish =
         mapFocus: (ControlId option -> 'msg option) ->
         effects: OverlayEffect list ->
             AdapterCommand<'msg>
+
     /// Lower a single pointer interaction (075) into adapter commands. Diagnostics
     /// lower to `ReportAdapterDiagnostic`; every other interaction is offered to the
     /// consumer router `mapInteraction` (a `None` result is a no-op `[]`). Mirrors
@@ -408,6 +437,7 @@ module ControlsElmish =
     /// case is required. FR-001/FR-010/FR-011.
     val interpretPointerEffect:
         mapInteraction: (PointerInteraction -> 'msg option) -> interaction: PointerInteraction -> AdapterCommand<'msg>
+
     /// Convenience: lower the `(PointerInteraction list, ControlRuntimeMsg list)`
     /// produced by `Pointer.update` in one call — runtime messages through
     /// `DispatchControlRuntimeMessage` (applied first to keep `ControlRuntime`
@@ -417,23 +447,26 @@ module ControlsElmish =
         interactions: PointerInteraction list ->
         runtimeMessages: ControlRuntimeMsg list ->
             AdapterCommand<'msg>
+
     /// Feature 147: derive compositor readiness diagnostics from existing `FrameMetrics`.
     val compositorDiagnostics:
-        proofReady: bool ->
-        fallbackReason: string option ->
-        metrics: FrameMetrics ->
-            CompositorFrameDiagnostics
+        proofReady: bool -> fallbackReason: string option -> metrics: FrameMetrics -> CompositorFrameDiagnostics
+
     /// Feature 150: project layout and intrinsic cache work from a frame metrics record.
     val layoutMetrics: metrics: FrameMetrics -> LayoutWorkMetrics
     /// Feature 167: project existing frame metrics into a latency-record timing contribution.
     val responsivenessTimingContribution: metrics: FrameMetrics -> ResponsivenessTimingContribution
+
     /// Feature 167: verify disabled diagnostics leave deterministic frame metrics unchanged.
     val diagnosticsDisabledCompatibility:
-        before: FrameMetrics list ->
-        after: FrameMetrics list ->
-            DiagnosticsDisabledCompatibility
+        before: FrameMetrics list -> after: FrameMetrics list -> DiagnosticsDisabledCompatibility
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val subscriptions: keyboard: AdapterSubscription<'msg> list -> controls: AdapterSubscription<'msg> list -> AdapterSubscription<'msg> list
+    val subscriptions:
+        keyboard: AdapterSubscription<'msg> list ->
+        controls: AdapterSubscription<'msg> list ->
+            AdapterSubscription<'msg> list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val program:
         init: (unit -> 'model * AdapterCommand<'msg>) ->
@@ -441,17 +474,21 @@ module ControlsElmish =
         view: ('model -> Control<'msg>) ->
         subscriptions: ('model -> AdapterSubscription<'msg> list) ->
             AdapterProgram<'model, 'msg>
+
     /// Public contract function exposed by this FS.GG.UI package.
     val diagnostic: source: string -> code: string -> message: string -> AdapterDiagnostic
+
     /// Converts an adapter diagnostic into the shared runtime diagnostics taxonomy.
     val adapterDiagnosticToRuntimeDiagnostic:
         context: FS.GG.UI.Diagnostics.DiagnosticContext ->
         diagnostic: AdapterDiagnostic ->
             FS.GG.UI.Diagnostics.RuntimeDiagnostic
+
     /// Adapt a typed (`Widget<'msg>`-returning) view to the `Control<'msg>` view the
     /// program record expects (= `view >> Widget.toControl`). Lets typed authoring
     /// compose through the adapter with no boundary shim in product code. FR-001/FR-004.
     val widgetView: view: ('model -> Widget<'msg>) -> ('model -> Control<'msg>)
+
     /// Build a program whose view is authored with the typed front door (returns
     /// `Widget<'msg>`); the adapter lowers internally via `Widget.toControl`. Equivalent
     /// to `program init update (widgetView view) subscriptions`. FR-001/FR-004.
@@ -537,7 +574,9 @@ module ControlsElmish =
     /// `Diagnostics` contract is unchanged — an existing consumer needs zero changes to benefit
     /// (FR-008).
     val runInteractiveApp:
-        options: ViewerOptions -> host: InteractiveAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+        options: ViewerOptions ->
+        host: InteractiveAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Runs the retained Controls host and polls `Gamepad.Poll` once per presentation frame. The
     /// snapshot is mapped into replayable product messages before the host's ordinary `Tick`.
@@ -684,10 +723,7 @@ module ControlsElmish =
         /// returning the per-frame `FrameMetrics` (consecutive pointer-MOVE inputs coalesce into one
         /// frame). Pure, headless, byte-stable in its count/bool fields (SC-003/004/005).
         val runScript:
-            host: InteractiveAppHost<'model, 'msg> ->
-            size: Size ->
-            script: FrameInput<'msg> list ->
-                FrameMetrics list
+            host: InteractiveAppHost<'model, 'msg> -> size: Size -> script: FrameInput<'msg> list -> FrameMetrics list
 
         /// As `runScript`, but also returns the FINAL folded model so a caller can render the
         /// POST-interaction frame — e.g. capture an offscreen screenshot of the scene AFTER a

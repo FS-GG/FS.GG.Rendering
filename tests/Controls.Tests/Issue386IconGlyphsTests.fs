@@ -23,14 +23,16 @@ let private theme = Theme.light
 let private expectedHouse (cx: float) (cy: float) (r: float) : PathSpec =
     Path.create
         Winding
-        [ Path.moveTo (cx - r) cy
-          Path.lineTo cx (cy - r)
-          Path.lineTo (cx + r) cy
-          Path.lineTo (cx + r - 3.0) cy
-          Path.lineTo (cx + r - 3.0) (cy + r)
-          Path.lineTo (cx - r + 3.0) (cy + r)
-          Path.lineTo (cx - r + 3.0) cy
-          Path.close ]
+        [
+            Path.moveTo (cx - r) cy
+            Path.lineTo cx (cy - r)
+            Path.lineTo (cx + r) cy
+            Path.lineTo (cx + r - 3.0) cy
+            Path.lineTo (cx + r - 3.0) (cy + r)
+            Path.lineTo (cx - r + 3.0) (cy + r)
+            Path.lineTo (cx - r + 3.0) cy
+            Path.close
+        ]
 
 // The filled path `iconGeom` emits first (the glyph), for a given icon name.
 let private iconPathSpec (name: string) (box: Rect) : PathSpec option =
@@ -43,35 +45,46 @@ let private iconPathSpec (name: string) (box: Rect) : PathSpec option =
 
 [<Tests>]
 let feature386IconGlyphsTests =
-    testList "Feature 386 icon glyphs" [
+    testList
+        "Feature 386 icon glyphs"
+        [
 
-        test "house glyph is byte-identical to the pre-386 hardcoded iconGeom path" {
-            let cx, cy, r = 22.0, 10.0, 16.0
-            Expect.equal (IconGlyphs.pathFor "house" cx cy r) (expectedHouse cx cy r) "house path unchanged"
-        }
+            test "house glyph is byte-identical to the pre-386 hardcoded iconGeom path" {
+                let cx, cy, r = 22.0, 10.0, 16.0
+                Expect.equal (IconGlyphs.pathFor "house" cx cy r) (expectedHouse cx cy r) "house path unchanged"
+            }
 
-        test "an unknown icon name falls back to the house glyph (byte-identical legacy behaviour)" {
-            let cx, cy, r = 5.0, 7.0, 16.0
-            Expect.equal
-                (IconGlyphs.pathFor "no-such-glyph" cx cy r)
-                (IconGlyphs.pathFor "house" cx cy r)
-                "unknown name → house"
-        }
+            test "an unknown icon name falls back to the house glyph (byte-identical legacy behaviour)" {
+                let cx, cy, r = 5.0, 7.0, 16.0
 
-        test "a registered name selects a distinct glyph (name→glyph selection is real)" {
-            let cx, cy, r = 5.0, 7.0, 16.0
-            Expect.notEqual
-                (IconGlyphs.pathFor "diamond" cx cy r)
-                (IconGlyphs.pathFor "house" cx cy r)
-                "diamond ≠ house"
-        }
+                Expect.equal
+                    (IconGlyphs.pathFor "no-such-glyph" cx cy r)
+                    (IconGlyphs.pathFor "house" cx cy r)
+                    "unknown name → house"
+            }
 
-        test "iconGeom routes the name through the glyph table end-to-end" {
-            let box = { X = 0.0; Y = 0.0; Width = 120.0; Height = 40.0 }
-            let cx, cy, r = box.X + 22.0, box.Y + box.Height / 2.0, 16.0
-            // The default/house path is byte-identical through the whole render seam.
-            Expect.equal (iconPathSpec "house" box) (Some(expectedHouse cx cy r)) "iconGeom house is unchanged"
-            // A different name reaches a different glyph — the selection is not swallowed by iconGeom.
-            Expect.notEqual (iconPathSpec "diamond" box) (iconPathSpec "house" box) "iconGeom diamond ≠ house"
-        }
-    ]
+            test "a registered name selects a distinct glyph (name→glyph selection is real)" {
+                let cx, cy, r = 5.0, 7.0, 16.0
+
+                Expect.notEqual
+                    (IconGlyphs.pathFor "diamond" cx cy r)
+                    (IconGlyphs.pathFor "house" cx cy r)
+                    "diamond ≠ house"
+            }
+
+            test "iconGeom routes the name through the glyph table end-to-end" {
+                let box =
+                    {
+                        X = 0.0
+                        Y = 0.0
+                        Width = 120.0
+                        Height = 40.0
+                    }
+
+                let cx, cy, r = box.X + 22.0, box.Y + box.Height / 2.0, 16.0
+                // The default/house path is byte-identical through the whole render seam.
+                Expect.equal (iconPathSpec "house" box) (Some(expectedHouse cx cy r)) "iconGeom house is unchanged"
+                // A different name reaches a different glyph — the selection is not swallowed by iconGeom.
+                Expect.notEqual (iconPathSpec "diamond" box) (iconPathSpec "house" box) "iconGeom diamond ≠ house"
+            }
+        ]

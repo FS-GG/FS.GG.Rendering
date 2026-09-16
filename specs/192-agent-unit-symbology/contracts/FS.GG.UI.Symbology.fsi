@@ -8,7 +8,7 @@
 
 namespace FS.GG.UI.Symbology
 
-open FS.GG.UI.Scene   // Scene, Color, Point, Rect, Size, PathSpec (Types/Scene)
+open FS.GG.UI.Scene // Scene, Color, Point, Rect, Size, PathSpec (Types/Scene)
 
 /// Affiliation → stroke hue (saturated faction palette; never the state palette — FR-019).
 type Faction =
@@ -47,19 +47,21 @@ type Motion =
 /// The symbol description: the full fixed channel set as typed fields (FR-002).
 /// Pure over this value (FR-003): equal Token ⇒ equal Scene ⇒ equal SceneCodec canonical bytes.
 type Token =
-    { Cx: float
-      Cy: float
-      R: float            // size; R <= 0 ⇒ visible placeholder, never a blank/crash (FR-020)
-      Heading: float      // radians; whole-body rotation (gauges stay screen-aligned)
-      Faction: Faction    // stroke hue
-      Klass: Klass        // silhouette
-      Sigil: Sigil        // centre identity mark
-      State: TokenState   // stroke dash (inspection state)
-      Threat: float       // stroke width   (normalised 0..1)
-      Charge: float       // interior radial-gradient intensity — charge/energy (normalised 0..1)
-      Speed: int          // tail bead count (0..4)
-      Health: float       // belly arc len + hue (0..1)
-      Shield: bool }      // corner mount (boolean mount flag; one slot in v1)
+    {
+        Cx: float
+        Cy: float
+        R: float // size; R <= 0 ⇒ visible placeholder, never a blank/crash (FR-020)
+        Heading: float // radians; whole-body rotation (gauges stay screen-aligned)
+        Faction: Faction // stroke hue
+        Klass: Klass // silhouette
+        Sigil: Sigil // centre identity mark
+        State: TokenState // stroke dash (inspection state)
+        Threat: float // stroke width   (normalised 0..1)
+        Charge: float // interior radial-gradient intensity — charge/energy (normalised 0..1)
+        Speed: int // tail bead count (0..4)
+        Health: float // belly arc len + hue (0..1)
+        Shield: bool
+    } // corner mount (boolean mount flag; one slot in v1)
 
 /// The fixed grammar (FR-004/FR-006). The per-game `'stats -> Token` mapping lives OUTSIDE this library.
 [<RequireQualifiedAccess>]

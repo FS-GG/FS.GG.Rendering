@@ -20,14 +20,16 @@ open FS.GG.UI.Symbology.Render
 
 // --- INTAKE: a unit roster with per-unit stats ---
 type UnitStats =
-    { Side: string
-      Role: string
-      Dps: float
-      Hp: float
-      HpMax: float
-      Speed: float
-      Armor: float
-      Facing: float }
+    {
+        Side: string
+        Role: string
+        Dps: float
+        Hp: float
+        HpMax: float
+        Speed: float
+        Armor: float
+        Facing: float
+    }
 
 // Five units spanning the speed range. That span is what will overload a channel below — a roster
 // wide enough to exercise the grammar is also wide enough to break it.
@@ -38,11 +40,58 @@ type UnitStats =
 // Reorder the roster and a different index gets named (the lint still fires; the guard below will
 // tell you which unit it expected).
 let roster =
-    [ { Side = "blue"; Role = "tank";  Dps = 40.0;  Hp = 90.0; HpMax = 100.0; Speed = 2.0;  Armor = 50.0; Facing = 0.0 }
-      { Side = "blue"; Role = "dps";   Dps = 95.0;  Hp = 44.0; HpMax = 80.0;  Speed = 6.0;  Armor = 20.0; Facing = 1.9 }
-      { Side = "red";  Role = "dps";   Dps = 115.0; Hp = 50.0; HpMax = 80.0;  Speed = 9.0;  Armor = 10.0; Facing = 3.1 }
-      { Side = "red";  Role = "scout"; Dps = 70.0;  Hp = 30.0; HpMax = 60.0;  Speed = 14.0; Armor = 5.0;  Facing = 0.8 }
-      { Side = "grey"; Role = "scout"; Dps = 25.0;  Hp = 55.0; HpMax = 55.0;  Speed = 20.0; Armor = 35.0; Facing = 4.7 } ]
+    [
+        {
+            Side = "blue"
+            Role = "tank"
+            Dps = 40.0
+            Hp = 90.0
+            HpMax = 100.0
+            Speed = 2.0
+            Armor = 50.0
+            Facing = 0.0
+        }
+        {
+            Side = "blue"
+            Role = "dps"
+            Dps = 95.0
+            Hp = 44.0
+            HpMax = 80.0
+            Speed = 6.0
+            Armor = 20.0
+            Facing = 1.9
+        }
+        {
+            Side = "red"
+            Role = "dps"
+            Dps = 115.0
+            Hp = 50.0
+            HpMax = 80.0
+            Speed = 9.0
+            Armor = 10.0
+            Facing = 3.1
+        }
+        {
+            Side = "red"
+            Role = "scout"
+            Dps = 70.0
+            Hp = 30.0
+            HpMax = 60.0
+            Speed = 14.0
+            Armor = 5.0
+            Facing = 0.8
+        }
+        {
+            Side = "grey"
+            Role = "scout"
+            Dps = 25.0
+            Hp = 55.0
+            HpMax = 55.0
+            Speed = 20.0
+            Armor = 35.0
+            Facing = 4.7
+        }
+    ]
 
 // `Threat` is Ordered with capacity 4 (Legibility.table), and it carries a float — so the RAW ramp
 // `Dps / 120.0` would spend one distinct stroke width per unit and overload the channel. Quantising is
@@ -60,14 +109,27 @@ let threatBand dps =
 let mapUnitWith (speedBand: float -> int) (u: UnitStats) : Token =
     { Symbology.defaultToken with
         R = 28.0
-        Faction = (match u.Side with "blue" -> Ally | "red" -> Enemy | _ -> Neutral)
-        Klass = (match u.Role with "tank" -> Heavy | "scout" -> Scout | _ -> Mobile)
-        Sigil = (match u.Role with "tank" -> Ring | "scout" -> Fang | _ -> Bolt)
+        Faction =
+            (match u.Side with
+             | "blue" -> Ally
+             | "red" -> Enemy
+             | _ -> Neutral)
+        Klass =
+            (match u.Role with
+             | "tank" -> Heavy
+             | "scout" -> Scout
+             | _ -> Mobile)
+        Sigil =
+            (match u.Role with
+             | "tank" -> Ring
+             | "scout" -> Fang
+             | _ -> Bolt)
         Threat = threatBand u.Dps
         Health = u.Hp / u.HpMax
         Speed = speedBand u.Speed
         Shield = u.Armor > 30.0
-        Heading = u.Facing }
+        Heading = u.Facing
+    }
 
 // --- CRITIQUE (a) LINT: the mechanical backstop. Pure, no rendering, no eyeballs. ---
 let lint label (tokens: Token list) =

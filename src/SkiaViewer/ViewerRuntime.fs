@@ -39,9 +39,11 @@ type internal LegacyQueuedInput =
     | QueuedLegacyPointer of ViewerPointerInput
 
 type internal QueuedPointerState =
-    { Queue: ViewerInputQueue
-      Payloads: System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>
-      NextBatchId: int64 }
+    {
+        Queue: ViewerInputQueue
+        Payloads: System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>
+        NextBatchId: int64
+    }
 
 module internal ViewerRuntime =
     open ViewerEvidence
@@ -87,51 +89,67 @@ module internal ViewerRuntime =
         captureDiagnostic options diagnostic |> Option.defaultValue diagnostic
 
     let defaultDiagnostics =
-        { MinimumLevel = ViewerDiagnosticLevel.Info
-          Categories =
-            Set.ofList
-                [ ViewerDiagnosticCategory.Startup
-                  ViewerDiagnosticCategory.Input
-                  ViewerDiagnosticCategory.EnvironmentSession
-                  ViewerDiagnosticCategory.Window
-                  ViewerDiagnosticCategory.Renderer
-                  ViewerDiagnosticCategory.OpenGl
-                  ViewerDiagnosticCategory.Skia
-                  ViewerDiagnosticCategory.Framebuffer
-                  ViewerDiagnosticCategory.Scene
-                  ViewerDiagnosticCategory.Screenshot ]
-          FrameLogLimit = Some 0
-          Sink = None
-          Verbose = false }
+        {
+            MinimumLevel = ViewerDiagnosticLevel.Info
+            Categories =
+                Set.ofList
+                    [
+                        ViewerDiagnosticCategory.Startup
+                        ViewerDiagnosticCategory.Input
+                        ViewerDiagnosticCategory.EnvironmentSession
+                        ViewerDiagnosticCategory.Window
+                        ViewerDiagnosticCategory.Renderer
+                        ViewerDiagnosticCategory.OpenGl
+                        ViewerDiagnosticCategory.Skia
+                        ViewerDiagnosticCategory.Framebuffer
+                        ViewerDiagnosticCategory.Scene
+                        ViewerDiagnosticCategory.Screenshot
+                    ]
+            FrameLogLimit = Some 0
+            Sink = None
+            Verbose = false
+        }
 
     let emptyInputQueue = ViewerInputQueueOps.emptyInputQueue
 
     let private nextQueuedDrain state =
-        let drain, queue = ViewerInputQueueOps.drainInputQueue state.NextBatchId "frame-update" state.Queue
-        drain, { state with Queue = queue; NextBatchId = state.NextBatchId + 1L }
+        let drain, queue =
+            ViewerInputQueueOps.drainInputQueue state.NextBatchId "frame-update" state.Queue
+
+        drain,
+        { state with
+            Queue = queue
+            NextBatchId = state.NextBatchId + 1L
+        }
 
     let internal drainDeterministicPointerQueue state = nextQueuedDrain state
 
     let internal enqueueDeterministicPointer policy receivedAt input payload state =
-        let envelope, queue = ViewerInputQueueOps.enqueueInputWithPolicy policy receivedAt input payload state.Queue
+        let envelope, queue =
+            ViewerInputQueueOps.enqueueInputWithPolicy policy receivedAt input payload state.Queue
+
         envelope, { state with Queue = queue }
 
     let internal runDeterministicPacing policy receivedAt frames =
         let mutable state =
-            { Queue = emptyInputQueue
-              Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
-              NextBatchId = 1L }
+            {
+                Queue = emptyInputQueue
+                Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+                NextBatchId = 1L
+            }
 
         frames
         |> List.map (fun inputs ->
             for (kind, payload) in inputs do
                 let _, next = enqueueDeterministicPointer policy receivedAt kind payload state
                 state <- next
+
             let drain, next = drainDeterministicPointerQueue state
             state <- next
             drain)
 
-    let inputQueueDepth queue = ViewerInputQueueOps.inputQueueDepth queue
+    let inputQueueDepth queue =
+        ViewerInputQueueOps.inputQueueDepth queue
 
     let enqueueInput receivedAt inputKind payload queue =
         ViewerInputQueueOps.enqueueInput receivedAt inputKind payload queue
@@ -150,9 +168,16 @@ module internal ViewerRuntime =
         (dirtyRegion: ViewerResponsivenessDirtyRegion option)
         reason
         =
-        ViewerInputQueueOps.dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason
+        ViewerInputQueueOps.dirtyState
+            productModelChanged
+            runtimeStateChanged
+            sizeChanged
+            themeChanged
+            dirtyRegion
+            reason
 
-    let dirtyStateRequiresRecompose dirty = ViewerInputQueueOps.dirtyStateRequiresRecompose dirty
+    let dirtyStateRequiresRecompose dirty =
+        ViewerInputQueueOps.dirtyStateRequiresRecompose dirty
 
     /// F1 (Feature 175 general repaint signal): the single "runtime-state changed → repaint" policy,
     /// shared by EVERY viewer loop. After an input, if it produced product messages then
@@ -173,8 +198,10 @@ module internal ViewerRuntime =
     // S3 (Feature 175): the structured live-trace read-back path, surfaced as plain `(event, fields)`
     // tuples so a test or tool can observe live state programmatically — no env var, no repack.
     let internal traceStartCapture () = RenderLagTrace.startCapture ()
+
     let internal traceDrainCapture () : (string * (string * string) list) list =
         RenderLagTrace.drainCapture () |> List.map (fun e -> e.Event, e.Fields)
+
     let internal traceEmit (eventName: string) (fields: (string * string) list) = RenderLagTrace.emit eventName fields
 
     let desktopSessionDiagnostic () =
@@ -183,8 +210,7 @@ module internal ViewerRuntime =
     let private unsupportedHostReasons () =
         HostCapability.unsupportedHostReasons ()
 
-    let runtimeCapability () =
-        HostCapability.runtimeCapability ()
+    let runtimeCapability () = HostCapability.runtimeCapability ()
 
     let applyWindowBehaviorToOptions behavior windowOptions =
         ViewerRuntimeLifecycle.applyWindowBehaviorToOptions tryResolveWorkArea behavior windowOptions
@@ -207,41 +233,64 @@ module internal ViewerRuntime =
             with _ ->
                 None
 
-        { WindowInitialized = window.IsInitialized
-          NativeHandle = ViewerObservedValue.Observed window.IsInitialized
-          Visible = tryObserved (fun () -> window.IsVisible)
-          Focusable = ViewerObservedValue.Unsupported
-          Focused = ViewerObservedValue.Unsupported
-          Minimized =
-            match windowState with
-            | Some WindowState.Minimized -> ViewerObservedValue.Observed true
-            | Some _ -> ViewerObservedValue.Observed false
-            | None -> ViewerObservedValue.Unavailable
-          Maximized =
-            match windowState with
-            | Some WindowState.Maximized -> ViewerObservedValue.Observed true
-            | Some _ -> ViewerObservedValue.Observed false
-            | None -> ViewerObservedValue.Unavailable
-          ClientSize = sizeText
-          RenderableSurfaceAvailable = renderableSurface
-          // Name the real backend (single source of truth), not a fixed guess — this window was
-          // presented through the OpenGL host, so "skia" was an unreliable self-label (#135).
-          Backend =
-            match windowState with
-            | Some state -> Some $"{Host.GlHost.backendLabel};window-state={state}"
-            | None -> Some Host.GlHost.backendLabel
-          InputDevicesAvailable = inputAvailable
-          FailureClass = failureClass
-          Message = message }
+        {
+            WindowInitialized = window.IsInitialized
+            NativeHandle = ViewerObservedValue.Observed window.IsInitialized
+            Visible = tryObserved (fun () -> window.IsVisible)
+            Focusable = ViewerObservedValue.Unsupported
+            Focused = ViewerObservedValue.Unsupported
+            Minimized =
+                match windowState with
+                | Some WindowState.Minimized -> ViewerObservedValue.Observed true
+                | Some _ -> ViewerObservedValue.Observed false
+                | None -> ViewerObservedValue.Unavailable
+            Maximized =
+                match windowState with
+                | Some WindowState.Maximized -> ViewerObservedValue.Observed true
+                | Some _ -> ViewerObservedValue.Observed false
+                | None -> ViewerObservedValue.Unavailable
+            ClientSize = sizeText
+            RenderableSurfaceAvailable = renderableSurface
+            // Name the real backend (single source of truth), not a fixed guess — this window was
+            // presented through the OpenGL host, so "skia" was an unreliable self-label (#135).
+            Backend =
+                match windowState with
+                | Some state -> Some $"{Host.GlHost.backendLabel};window-state={state}"
+                | None -> Some Host.GlHost.backendLabel
+            InputDevicesAvailable = inputAvailable
+            FailureClass = failureClass
+            Message = message
+        }
 
-    let private runPresentedPersistentWindow options behavior diagnostics inputDispatch getScene onTick tickAtPresentation onKey onPointer onResize onFramebufferResize (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>) inputVerified scriptInputs pointerPacing getModelUpdateCount =
+    let private runPresentedPersistentWindow
+        options
+        behavior
+        diagnostics
+        inputDispatch
+        getScene
+        onTick
+        tickAtPresentation
+        onKey
+        onPointer
+        onResize
+        onFramebufferResize
+        (pendingWindowBehaviors: System.Collections.Generic.Queue<Host.RuntimeWindowBehavior>)
+        inputVerified
+        scriptInputs
+        pointerPacing
+        getModelUpdateCount
+        =
         let windowOpened = ref false
         let framePresented = ref false
         let closeReason: ViewerCloseReason option ref = ref None
+
         let mutable queuedState =
-            { Queue = emptyInputQueue
-              Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
-              NextBatchId = 1L }
+            {
+                Queue = emptyInputQueue
+                Payloads = System.Collections.Generic.Dictionary<int64, LegacyQueuedInput>()
+                NextBatchId = 1L
+            }
+
         let scriptedInputs = scriptInputs |> Option.map List.toArray
         let mutable scriptedIndex = 0
         let mutable scriptedCompletionFrames = 0
@@ -276,11 +325,10 @@ module internal ViewerRuntime =
                 // Carry the requested startup state (fullscreen / maximized /
                 // windowed-fullscreen / borderless) into the live presented window —
                 // previously `behavior` only reached the diagnostic report.
-                ConfigureWindow = Some(applyWindowBehaviorToOptions behavior) }
+                ConfigureWindow = Some(applyWindowBehaviorToOptions behavior)
+            }
 
-        let renderCurrentScene () =
-            getScene ()
-            |> nodeToScene
+        let renderCurrentScene () = getScene () |> nodeToScene
 
         let pointerInputKind input =
             match input.Phase with
@@ -304,15 +352,19 @@ module internal ViewerRuntime =
         let enqueueQueuedInput kind payloadText payload =
             let envelope, nextQueue =
                 enqueueInputWithPointerPolicy continuousPolicy DateTimeOffset.UtcNow kind payloadText queuedState.Queue
+
             queuedState <- { queuedState with Queue = nextQueue }
             queuedState.Payloads[envelope.SequenceId] <- payload
+
             RenderLagTrace.emit
                 "input-queued"
-                [ "seq", string envelope.SequenceId
-                  "kind", responsivenessInputKindToken kind
-                  "payload", payloadText
-                  "receiptDepth", string envelope.ReceiptQueueDepth
-                  "queueDepth", string (inputQueueDepth queuedState.Queue) ]
+                [
+                    "seq", string envelope.SequenceId
+                    "kind", responsivenessInputKindToken kind
+                    "payload", payloadText
+                    "receiptDepth", string envelope.ReceiptQueueDepth
+                    "queueDepth", string (inputQueueDepth queuedState.Queue)
+                ]
 
         let enqueueScriptInput input =
             match input with
@@ -320,7 +372,10 @@ module internal ViewerRuntime =
                 let rawKey = ViewerKeyboard.toKeyId key
 
                 enqueueQueuedInput
-                    (if isDown then ViewerResponsivenessInputKind.KeyDown else ViewerResponsivenessInputKind.KeyUp)
+                    (if isDown then
+                         ViewerResponsivenessInputKind.KeyDown
+                     else
+                         ViewerResponsivenessInputKind.KeyUp)
                     rawKey
                     (QueuedLegacyKey(rawKey, isDown))
             | ViewerScriptInput.Pointer input ->
@@ -331,10 +386,14 @@ module internal ViewerRuntime =
             match scriptedInputs with
             | Some inputs when !framePresented && scriptedIndex < inputs.Length ->
                 let input = inputs.[scriptedIndex]
+
                 RenderLagTrace.emit
                     "script-input-pump"
-                    [ "scriptIndex", string scriptedIndex
-                      "scriptRemaining", string (inputs.Length - scriptedIndex) ]
+                    [
+                        "scriptIndex", string scriptedIndex
+                        "scriptRemaining", string (inputs.Length - scriptedIndex)
+                    ]
+
                 scriptedIndex <- scriptedIndex + 1
                 scriptedCompletionFrames <- 0
                 enqueueScriptInput input
@@ -369,20 +428,26 @@ module internal ViewerRuntime =
             else
                 let drainStarted = DateTimeOffset.UtcNow
                 let modelUpdatesBefore = getModelUpdateCount ()
+
                 let rawPointerSamples =
                     queuedState.Payloads.Values
                     |> Seq.filter (function
                         | QueuedLegacyPointer _ -> true
                         | _ -> false)
                     |> Seq.length
+
                 let drain, nextState = nextQueuedDrain queuedState
                 queuedState <- nextState
+
                 RenderLagTrace.emit
                     "input-drain-start"
-                    [ "batch", string drain.BatchId
-                      "queueBefore", string drain.QueueDepthBeforeDrain
-                      "queueAfter", string drain.QueueDepthAfterDrain
-                      "coalesced", string drain.CoalescedMovementCount ]
+                    [
+                        "batch", string drain.BatchId
+                        "queueBefore", string drain.QueueDepthBeforeDrain
+                        "queueAfter", string drain.QueueDepthAfterDrain
+                        "coalesced", string drain.CoalescedMovementCount
+                    ]
+
                 let discreteInputs, deferredInputs =
                     drain.DiscreteInputs
                     |> List.partition (fun envelope -> envelope.PriorityLane = Discrete)
@@ -403,24 +468,31 @@ module internal ViewerRuntime =
 
                             if found then
                                 let queueDelay = drainStarted - envelope.ReceivedAt
+
                                 RenderLagTrace.emit
                                     "input-handle-start"
-                                    [ "seq", string envelope.SequenceId
-                                      "kind", responsivenessInputKindToken envelope.InputKind
-                                      "payload", envelope.Payload
-                                      "queueDelayMs", queueDelay.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                                    [
+                                        "seq", string envelope.SequenceId
+                                        "kind", responsivenessInputKindToken envelope.InputKind
+                                        "payload", envelope.Payload
+                                        "queueDelayMs",
+                                        queueDelay.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                    ]
+
                                 queuedState.Payloads.Remove envelope.SequenceId |> ignore
                                 let handled = handleQueuedPayload payload
+
                                 RenderLagTrace.emit
                                     "input-handle-end"
-                                    [ "seq", string envelope.SequenceId
-                                      "handled", string handled ]
+                                    [ "seq", string envelope.SequenceId; "handled", string handled ]
+
                                 handled || closeRequested
                             else
                                 closeRequested)
                         false
 
                 queuedState.Payloads.Clear()
+
                 match pointerPacing with
                 | Some pacing when rawPointerSamples > 0 ->
                     let appliedPointerEnvelopes =
@@ -448,118 +520,131 @@ module internal ViewerRuntime =
                         | _ -> ViewerPointerRepaintCause.DiscretePointer
 
                     pacing.OnMetrics
-                        { RawSamplesReceived = rawPointerSamples
-                          FoldedSamplesApplied = appliedPointerEnvelopes.Length
-                          CoalescedSamples = drain.CoalescedMovementCount
-                          ModelUpdates = getModelUpdateCount () - modelUpdatesBefore
-                          PresentedFrames = presentedFrames
-                          RepaintCause = cause
-                          FullRenderFallbacks = 0 }
+                        {
+                            RawSamplesReceived = rawPointerSamples
+                            FoldedSamplesApplied = appliedPointerEnvelopes.Length
+                            CoalescedSamples = drain.CoalescedMovementCount
+                            ModelUpdates = getModelUpdateCount () - modelUpdatesBefore
+                            PresentedFrames = presentedFrames
+                            RepaintCause = cause
+                            FullRenderFallbacks = 0
+                        }
                 | _ -> ()
+
                 RenderLagTrace.emit
                     "input-drain-end"
-                    [ "batch", string drain.BatchId
-                      "handled", string orderedInputs.Length
-                      "closeRequested", string closeRequested ]
+                    [
+                        "batch", string drain.BatchId
+                        "handled", string orderedInputs.Length
+                        "closeRequested", string closeRequested
+                    ]
+
                 closeRequested
 
-        let init () =
-            (), Cmd.none
+        let init () = (), Cmd.none
 
         let updateLegacy msg () =
             (match msg with
-            | LegacyLoaded ->
-                windowOpened := true
-                (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
-            | LegacyUpdateTick elapsedSeconds ->
-                pendingTickDelta <- TimeSpan.FromSeconds elapsedSeconds
-                pumpScriptInput ()
-                let closeFromQueuedInput = drainQueuedInputs ()
-                let closeFromScript = scriptWantsClose ()
-                let closeFromOrdinaryTick =
-                    not tickAtPresentation && onTick pendingTickDelta
+             | LegacyLoaded ->
+                 windowOpened := true
+                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+             | LegacyUpdateTick elapsedSeconds ->
+                 pendingTickDelta <- TimeSpan.FromSeconds elapsedSeconds
+                 pumpScriptInput ()
+                 let closeFromQueuedInput = drainQueuedInputs ()
+                 let closeFromScript = scriptWantsClose ()
+                 let closeFromOrdinaryTick = not tickAtPresentation && onTick pendingTickDelta
 
-                if closeFromQueuedInput || closeFromScript || closeFromOrdinaryTick then
-                    closeReason := Some AppRequestedClose
-                    (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
-                else
-                    (), Cmd.none
-            | LegacyRenderTick _ ->
-                RenderLagTrace.emit
-                    "render-frame-requested"
-                    [ "scriptedIndex", string scriptedIndex
-                      "completionFrames", string scriptedCompletionFrames ]
-                (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
-            | LegacyFramePresented ->
-                framePresented := true
-                presentedFrames <- presentedFrames + 1L
-                match scriptedInputs with
-                | Some inputs when scriptedIndex >= inputs.Length ->
-                    scriptedCompletionFrames <- scriptedCompletionFrames + 1
-                | _ -> ()
+                 if closeFromQueuedInput || closeFromScript || closeFromOrdinaryTick then
+                     closeReason := Some AppRequestedClose
+                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
+                 else
+                     (), Cmd.none
+             | LegacyRenderTick _ ->
+                 RenderLagTrace.emit
+                     "render-frame-requested"
+                     [
+                         "scriptedIndex", string scriptedIndex
+                         "completionFrames", string scriptedCompletionFrames
+                     ]
 
-                if tickAtPresentation && onTick pendingTickDelta then
-                    closeReason := Some AppRequestedClose
-                    (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
-                else
-                    (), Cmd.none
-            | LegacyKey(rawKey, isDown) ->
-                enqueueQueuedInput
-                    (if isDown then ViewerResponsivenessInputKind.KeyDown else ViewerResponsivenessInputKind.KeyUp)
-                    rawKey
-                    (QueuedLegacyKey(rawKey, isDown))
+                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+             | LegacyFramePresented ->
+                 framePresented := true
+                 presentedFrames <- presentedFrames + 1L
 
-                (), Cmd.none
-            | LegacyPointer input ->
-                // Feature 124: the pointer handler (run in the `when` guard) already folded any
-                // resulting messages into the model. Do NOT emit a per-event RenderFrame — a fast mouse
-                // produces hundreds of pointer events/sec, and one full repaint each bypassed the
-                // FrameRateCap (renders spiked to ~3x the cap) and backed the loop up, so input arrived
-                // in stutters/bursts. The paced RenderTick (60Hz) presents the updated scene, exactly as
-                // the LegacyKey path above already relies on.
-                enqueueQueuedInput (pointerInputKind input) (pointerPayload input) (QueuedLegacyPointer input)
-                (), Cmd.none
-            | LegacyResized size ->
-                onResize |> Option.iter (fun handle -> handle size)
-                (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
-            | LegacyFramebufferResized size ->
-                // Issue #400: the PHYSICAL framebuffer changed. A size-aware host uses it to advertise
-                // native resolution / rescale pointer; it does not itself force a present (the paired
-                // `LegacyResized` above already re-derives and repaints), so this only updates state.
-                onFramebufferResize |> Option.iter (fun handle -> handle size)
-                (), Cmd.none
-            | LegacyCloseRequested ->
-                if closeReason.Value.IsNone then
-                    closeReason := Some UserClose
+                 match scriptedInputs with
+                 | Some inputs when scriptedIndex >= inputs.Length ->
+                     scriptedCompletionFrames <- scriptedCompletionFrames + 1
+                 | _ -> ()
 
-                (), Cmd.none
-            | LegacyDiagnosticReported diagnostic ->
-                captureDiagnostic
-                    diagnostics
-                    { Level =
-                        match diagnostic.Severity with
-                        | Host.DiagnosticSeverity.Fatal
-                        | Host.DiagnosticSeverity.Error -> ViewerDiagnosticLevel.Error
-                        | Host.DiagnosticSeverity.Warning -> ViewerDiagnosticLevel.Warning
-                        | Host.DiagnosticSeverity.Info -> ViewerDiagnosticLevel.Info
-                      // Feature 118 (FR-007): carry the backend stage into the consumer-facing
-                      // category so the live present-mode / readback diagnostic surfaces as
-                      // Swapchain (or Frame), not Renderer. All other stages keep Renderer.
-                      Category =
-                        match diagnostic.Stage with
-                        | Host.DiagnosticStage.Window -> ViewerDiagnosticCategory.Window
-                        | Host.DiagnosticStage.Framebuffer -> ViewerDiagnosticCategory.Framebuffer
-                        | Host.DiagnosticStage.FrameRender -> ViewerDiagnosticCategory.Frame
-                        | _ -> ViewerDiagnosticCategory.Renderer
-                      Message = diagnostic.Message
-                      FrameIndex = None
-                      Stage = None
-                      Elapsed = None }
-                |> ignore
+                 if tickAtPresentation && onTick pendingTickDelta then
+                     closeReason := Some AppRequestedClose
+                     (), Cmd.ofMsg (LegacyHostEffect Host.ViewerEffect.Shutdown)
+                 else
+                     (), Cmd.none
+             | LegacyKey(rawKey, isDown) ->
+                 enqueueQueuedInput
+                     (if isDown then
+                          ViewerResponsivenessInputKind.KeyDown
+                      else
+                          ViewerResponsivenessInputKind.KeyUp)
+                     rawKey
+                     (QueuedLegacyKey(rawKey, isDown))
 
-                (), Cmd.none
-            | LegacyHostEffect _
-            | LegacyAppMsg _ -> (), Cmd.none)
+                 (), Cmd.none
+             | LegacyPointer input ->
+                 // Feature 124: the pointer handler (run in the `when` guard) already folded any
+                 // resulting messages into the model. Do NOT emit a per-event RenderFrame — a fast mouse
+                 // produces hundreds of pointer events/sec, and one full repaint each bypassed the
+                 // FrameRateCap (renders spiked to ~3x the cap) and backed the loop up, so input arrived
+                 // in stutters/bursts. The paced RenderTick (60Hz) presents the updated scene, exactly as
+                 // the LegacyKey path above already relies on.
+                 enqueueQueuedInput (pointerInputKind input) (pointerPayload input) (QueuedLegacyPointer input)
+                 (), Cmd.none
+             | LegacyResized size ->
+                 onResize |> Option.iter (fun handle -> handle size)
+                 (), Cmd.ofMsg (LegacyHostEffect(Host.ViewerEffect.RenderFrame(renderCurrentScene ())))
+             | LegacyFramebufferResized size ->
+                 // Issue #400: the PHYSICAL framebuffer changed. A size-aware host uses it to advertise
+                 // native resolution / rescale pointer; it does not itself force a present (the paired
+                 // `LegacyResized` above already re-derives and repaints), so this only updates state.
+                 onFramebufferResize |> Option.iter (fun handle -> handle size)
+                 (), Cmd.none
+             | LegacyCloseRequested ->
+                 if closeReason.Value.IsNone then
+                     closeReason := Some UserClose
+
+                 (), Cmd.none
+             | LegacyDiagnosticReported diagnostic ->
+                 captureDiagnostic
+                     diagnostics
+                     {
+                         Level =
+                             match diagnostic.Severity with
+                             | Host.DiagnosticSeverity.Fatal
+                             | Host.DiagnosticSeverity.Error -> ViewerDiagnosticLevel.Error
+                             | Host.DiagnosticSeverity.Warning -> ViewerDiagnosticLevel.Warning
+                             | Host.DiagnosticSeverity.Info -> ViewerDiagnosticLevel.Info
+                         // Feature 118 (FR-007): carry the backend stage into the consumer-facing
+                         // category so the live present-mode / readback diagnostic surfaces as
+                         // Swapchain (or Frame), not Renderer. All other stages keep Renderer.
+                         Category =
+                             match diagnostic.Stage with
+                             | Host.DiagnosticStage.Window -> ViewerDiagnosticCategory.Window
+                             | Host.DiagnosticStage.Framebuffer -> ViewerDiagnosticCategory.Framebuffer
+                             | Host.DiagnosticStage.FrameRender -> ViewerDiagnosticCategory.Frame
+                             | _ -> ViewerDiagnosticCategory.Renderer
+                         Message = diagnostic.Message
+                         FrameIndex = None
+                         Stage = None
+                         Elapsed = None
+                     }
+                 |> ignore
+
+                 (), Cmd.none
+             | LegacyHostEffect _
+             | LegacyAppMsg _ -> (), Cmd.none)
             |> appendPendingWindowBehaviors
 
         let eventMapper event =
@@ -575,15 +660,65 @@ module internal ViewerRuntime =
             | Host.ViewerEvent.Resized size -> Some(LegacyResized size)
             | Host.ViewerEvent.FramebufferResized size -> Some(LegacyFramebufferResized size)
             | Host.ViewerEvent.PointerMoved(x, y) ->
-                Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Moved; X = x; Y = y; Button = None; DeltaX = 0.0; DeltaY = 0.0 })
+                Some(
+                    LegacyPointer
+                        {
+                            Phase = ViewerPointerPhaseKind.Moved
+                            X = x
+                            Y = y
+                            Button = None
+                            DeltaX = 0.0
+                            DeltaY = 0.0
+                        }
+                )
             | Host.ViewerEvent.PointerPressed(x, y, button) ->
-                Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Pressed; X = x; Y = y; Button = Some(toViewerPointerButtonKind button); DeltaX = 0.0; DeltaY = 0.0 })
+                Some(
+                    LegacyPointer
+                        {
+                            Phase = ViewerPointerPhaseKind.Pressed
+                            X = x
+                            Y = y
+                            Button = Some(toViewerPointerButtonKind button)
+                            DeltaX = 0.0
+                            DeltaY = 0.0
+                        }
+                )
             | Host.ViewerEvent.PointerReleased(x, y, button) ->
-                Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Released; X = x; Y = y; Button = Some(toViewerPointerButtonKind button); DeltaX = 0.0; DeltaY = 0.0 })
+                Some(
+                    LegacyPointer
+                        {
+                            Phase = ViewerPointerPhaseKind.Released
+                            X = x
+                            Y = y
+                            Button = Some(toViewerPointerButtonKind button)
+                            DeltaX = 0.0
+                            DeltaY = 0.0
+                        }
+                )
             | Host.ViewerEvent.PointerScrolled(x, y, deltaX, deltaY) ->
-                Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Wheel; X = x; Y = y; Button = None; DeltaX = deltaX; DeltaY = deltaY })
+                Some(
+                    LegacyPointer
+                        {
+                            Phase = ViewerPointerPhaseKind.Wheel
+                            X = x
+                            Y = y
+                            Button = None
+                            DeltaX = deltaX
+                            DeltaY = deltaY
+                        }
+                )
             | Host.ViewerEvent.PointerExited ->
-                Some(LegacyPointer { Phase = ViewerPointerPhaseKind.Exited; X = 0.0; Y = 0.0; Button = None; DeltaX = 0.0; DeltaY = 0.0 })
+                Some(
+                    LegacyPointer
+                        {
+                            Phase = ViewerPointerPhaseKind.Exited
+                            X = 0.0
+                            Y = 0.0
+                            Button = None
+                            DeltaX = 0.0
+                            DeltaY = 0.0
+                        }
+                )
 
         let effectMapper msg =
             match msg with
@@ -598,29 +733,31 @@ module internal ViewerRuntime =
         match Host.Viewer.run program with
         | Ok() ->
             let visibleDiagnostic =
-                { WindowInitialized = !windowOpened
-                  NativeHandle = ViewerObservedValue.Observed !windowOpened
-                  Visible =
-                    if !framePresented then
-                        ViewerObservedValue.Observed true
-                    else
-                        ViewerObservedValue.Unavailable
-                  Focusable = ViewerObservedValue.Unsupported
-                  Focused = ViewerObservedValue.Unsupported
-                  Minimized = ViewerObservedValue.Unsupported
-                  Maximized = ViewerObservedValue.Unsupported
-                  ClientSize = Some $"{options.InitialSize.Width}x{options.InitialSize.Height}"
-                  RenderableSurfaceAvailable =
-                    if !framePresented then
-                        ViewerObservedValue.Observed true
-                    else
-                        ViewerObservedValue.Unavailable
-                  // Single source of truth for the backend label (#135); this path already
-                  // presented through the OpenGL/Skia framebuffer, as the message states.
-                  Backend = Some Host.GlHost.backendLabel
-                  InputDevicesAvailable = ViewerObservedValue.Unsupported
-                  FailureClass = None
-                  Message = "persistent viewer presented frames through the OpenGL/Skia framebuffer" }
+                {
+                    WindowInitialized = !windowOpened
+                    NativeHandle = ViewerObservedValue.Observed !windowOpened
+                    Visible =
+                        if !framePresented then
+                            ViewerObservedValue.Observed true
+                        else
+                            ViewerObservedValue.Unavailable
+                    Focusable = ViewerObservedValue.Unsupported
+                    Focused = ViewerObservedValue.Unsupported
+                    Minimized = ViewerObservedValue.Unsupported
+                    Maximized = ViewerObservedValue.Unsupported
+                    ClientSize = Some $"{options.InitialSize.Width}x{options.InitialSize.Height}"
+                    RenderableSurfaceAvailable =
+                        if !framePresented then
+                            ViewerObservedValue.Observed true
+                        else
+                            ViewerObservedValue.Unavailable
+                    // Single source of truth for the backend label (#135); this path already
+                    // presented through the OpenGL/Skia framebuffer, as the message states.
+                    Backend = Some Host.GlHost.backendLabel
+                    InputDevicesAvailable = ViewerObservedValue.Unsupported
+                    FailureClass = None
+                    Message = "persistent viewer presented frames through the OpenGL/Skia framebuffer"
+                }
 
             if not (inputVerified ()) then
                 Result.Error(
@@ -659,173 +796,242 @@ module internal ViewerRuntime =
 
     let initWithWindowBehavior options behavior =
         let diagnostic =
-            { Level = ViewerDiagnosticLevel.Info
-              Category = ViewerDiagnosticCategory.Startup
-              Message = $"viewer window open requested for '{options.Title}'"
-              FrameIndex = None
-              Stage = Some Window
-              Elapsed = None }
+            {
+                Level = ViewerDiagnosticLevel.Info
+                Category = ViewerDiagnosticCategory.Startup
+                Message = $"viewer window open requested for '{options.Title}'"
+                FrameIndex = None
+                Stage = Some Window
+                Elapsed = None
+            }
 
-        { Options = options
-          WindowBehavior = behavior
-          IsRunning = false
-          LifecycleState = NotStarted
-          FirstFramePresented = false
-          UserCloseObserved = false
-          InputDispatch = NotRequired
-          LastScene = None },
-        [ OpenWindow(options.Title, options.InitialSize)
-          ApplyWindowOptions behavior
-          EmitDiagnostic diagnostic ]
+        {
+            Options = options
+            WindowBehavior = behavior
+            IsRunning = false
+            LifecycleState = NotStarted
+            FirstFramePresented = false
+            UserCloseObserved = false
+            InputDispatch = NotRequired
+            LastScene = None
+        },
+        [
+            OpenWindow(options.Title, options.InitialSize)
+            ApplyWindowOptions behavior
+            EmitDiagnostic diagnostic
+        ]
 
-    let init options = initWithWindowBehavior options defaultWindowBehavior
+    let init options =
+        initWithWindowBehavior options defaultWindowBehavior
 
     let update msg model =
         match msg with
         | Start
-        | StartInteractive -> { model with IsRunning = true; LifecycleState = CheckingDesktopSession }, [ CheckDesktopSession ]
-        | StartEvidence request -> { model with IsRunning = true; LifecycleState = EvidenceRunning }, [ StartBoundedRun request ]
-        | Stop -> { model with IsRunning = false; LifecycleState = Closing }, [ CloseWindow ]
+        | StartInteractive ->
+            { model with
+                IsRunning = true
+                LifecycleState = CheckingDesktopSession
+            },
+            [ CheckDesktopSession ]
+        | StartEvidence request ->
+            { model with
+                IsRunning = true
+                LifecycleState = EvidenceRunning
+            },
+            [ StartBoundedRun request ]
+        | Stop ->
+            { model with
+                IsRunning = false
+                LifecycleState = Closing
+            },
+            [ CloseWindow ]
         | DesktopSessionChecked diagnostic ->
             let event =
-                { Level =
-                    if diagnostic.DiagnosticClass = "unsupported-host" then
-                        ViewerDiagnosticLevel.Error
-                    else
-                        ViewerDiagnosticLevel.Info
-                  Category = ViewerDiagnosticCategory.EnvironmentSession
-                  Message = diagnostic.Message
-                  FrameIndex = None
-                  Stage = Some Window
-                  Elapsed = None }
+                {
+                    Level =
+                        if diagnostic.DiagnosticClass = "unsupported-host" then
+                            ViewerDiagnosticLevel.Error
+                        else
+                            ViewerDiagnosticLevel.Info
+                    Category = ViewerDiagnosticCategory.EnvironmentSession
+                    Message = diagnostic.Message
+                    FrameIndex = None
+                    Stage = Some Window
+                    Elapsed = None
+                }
 
             if diagnostic.DiagnosticClass = "unsupported-host" then
-                { model with IsRunning = false; LifecycleState = Unsupported }, [ EmitDiagnostic event ]
+                { model with
+                    IsRunning = false
+                    LifecycleState = Unsupported
+                },
+                [ EmitDiagnostic event ]
             else
-                { model with LifecycleState = StartingWindow },
-                [ OpenWindow(model.Options.Title, model.Options.InitialSize)
-                  ApplyWindowOptions model.WindowBehavior
-                  EmitDiagnostic event ]
+                { model with
+                    LifecycleState = StartingWindow
+                },
+                [
+                    OpenWindow(model.Options.Title, model.Options.InitialSize)
+                    ApplyWindowOptions model.WindowBehavior
+                    EmitDiagnostic event
+                ]
         | WindowCreated diagnostic ->
-            { model with LifecycleState = ViewerLifecycleState.WindowCreated },
-            [ EmitDiagnostic
-                  { Level = ViewerDiagnosticLevel.Info
-                    Category = ViewerDiagnosticCategory.Startup
-                    Message = diagnostic.Message
-                    FrameIndex = None
-                    Stage = Some Window
-                    Elapsed = None }
-              QueryNativeWindowState ]
+            { model with
+                LifecycleState = ViewerLifecycleState.WindowCreated
+            },
+            [
+                EmitDiagnostic
+                    {
+                        Level = ViewerDiagnosticLevel.Info
+                        Category = ViewerDiagnosticCategory.Startup
+                        Message = diagnostic.Message
+                        FrameIndex = None
+                        Stage = Some Window
+                        Elapsed = None
+                    }
+                QueryNativeWindowState
+            ]
         | VisibilityCheckStarted diagnostic ->
-            { model with LifecycleState = VisibilityChecking },
-            [ EmitDiagnostic
-                  { Level = ViewerDiagnosticLevel.Info
-                    Category = ViewerDiagnosticCategory.Startup
-                    Message = diagnostic.Message
-                    FrameIndex = None
-                    Stage = Some Window
-                    Elapsed = None }
-              QueryNativeWindowState ]
+            { model with
+                LifecycleState = VisibilityChecking
+            },
+            [
+                EmitDiagnostic
+                    {
+                        Level = ViewerDiagnosticLevel.Info
+                        Category = ViewerDiagnosticCategory.Startup
+                        Message = diagnostic.Message
+                        FrameIndex = None
+                        Stage = Some Window
+                        Elapsed = None
+                    }
+                QueryNativeWindowState
+            ]
         | VisibilityObserved diagnostic ->
             let lifecycle = classifyWindowState diagnostic
 
-            { model with LifecycleState = lifecycle },
-            [ EmitDiagnostic
-                  { Level = ViewerDiagnosticLevel.Info
-                    Category = ViewerDiagnosticCategory.Startup
-                    Message = diagnostic.Message
-                    FrameIndex = None
-                    Stage = Some Window
-                    Elapsed = None } ]
+            { model with
+                LifecycleState = lifecycle
+            },
+            [
+                EmitDiagnostic
+                    {
+                        Level = ViewerDiagnosticLevel.Info
+                        Category = ViewerDiagnosticCategory.Startup
+                        Message = diagnostic.Message
+                        FrameIndex = None
+                        Stage = Some Window
+                        Elapsed = None
+                    }
+            ]
         | Render scene ->
             let diagnostic =
-                { Level = ViewerDiagnosticLevel.Debug
-                  Category = ViewerDiagnosticCategory.Scene
-                  Message = "viewer scene render requested"
-                  FrameIndex = None
-                  Stage = Some ViewerRunBlockedStage.Scene
-                  Elapsed = None }
+                {
+                    Level = ViewerDiagnosticLevel.Debug
+                    Category = ViewerDiagnosticCategory.Scene
+                    Message = "viewer scene render requested"
+                    FrameIndex = None
+                    Stage = Some ViewerRunBlockedStage.Scene
+                    Elapsed = None
+                }
 
-            { model with LastScene = Some scene },
-            [ RenderScene scene
-              EmitDiagnostic diagnostic ]
+            { model with LastScene = Some scene }, [ RenderScene scene; EmitDiagnostic diagnostic ]
         | KeyEvent event ->
             let key, isDown = ViewerKeyboard.normalizeEvent event
             let direction = if isDown then "down" else "up"
-            let diagnostic =
-                { Level = ViewerDiagnosticLevel.Info
-                  Category = ViewerDiagnosticCategory.Input
-                  Message = $"viewer input {direction}: raw='{event.RawKey}' normalized='{key}'"
-                  FrameIndex = None
-                  Stage = None
-                  Elapsed = None }
 
-            { model with InputDispatch = Verified },
-            [ DispatchInput(key, isDown)
-              EmitDiagnostic diagnostic ]
+            let diagnostic =
+                {
+                    Level = ViewerDiagnosticLevel.Info
+                    Category = ViewerDiagnosticCategory.Input
+                    Message = $"viewer input {direction}: raw='{event.RawKey}' normalized='{key}'"
+                    FrameIndex = None
+                    Stage = None
+                    Elapsed = None
+                }
+
+            { model with InputDispatch = Verified }, [ DispatchInput(key, isDown); EmitDiagnostic diagnostic ]
         | DiagnosticCaptured diagnostic -> model, [ EmitDiagnostic diagnostic ]
         | FramePresented size ->
             let diagnostic =
-                { Level = ViewerDiagnosticLevel.Debug
-                  Category = ViewerDiagnosticCategory.Frame
-                  Message = $"viewer frame presented at {size.Width}x{size.Height}"
-                  FrameIndex = None
-                  Stage = None
-                  Elapsed = None }
+                {
+                    Level = ViewerDiagnosticLevel.Debug
+                    Category = ViewerDiagnosticCategory.Frame
+                    Message = $"viewer frame presented at {size.Width}x{size.Height}"
+                    FrameIndex = None
+                    Stage = None
+                    Elapsed = None
+                }
 
             { model with
                 FirstFramePresented = true
-                LifecycleState = FirstFramePresented },
+                LifecycleState = FirstFramePresented
+            },
             [ EmitDiagnostic diagnostic ]
         | UserCloseObserved ->
             { model with
                 IsRunning = false
                 UserCloseObserved = true
-                LifecycleState = UserCloseObservedState },
+                LifecycleState = UserCloseObservedState
+            },
             [ CloseWindow ]
         | AppCloseRequested ->
             { model with
                 IsRunning = false
-                LifecycleState = CloseRequested },
+                LifecycleState = CloseRequested
+            },
             [ CloseWindow ]
         | EvidenceCloseRequested ->
             { model with
                 IsRunning = false
-                LifecycleState = EvidenceCloseObservedState },
+                LifecycleState = EvidenceCloseObservedState
+            },
             [ CloseWindow ]
         | HostCloseObserved ->
             { model with
                 IsRunning = false
-                LifecycleState = Closing },
+                LifecycleState = Closing
+            },
             [ CloseWindow ]
-        | EvidenceTargetReached -> { model with IsRunning = false; LifecycleState = Closing }, [ CloseWindow ]
+        | EvidenceTargetReached ->
+            { model with
+                IsRunning = false
+                LifecycleState = Closing
+            },
+            [ CloseWindow ]
         | RunFailed failure ->
             let diagnostic =
-                { Level = ViewerDiagnosticLevel.Error
-                  Category = failure.DiagnosticCategory
-                  Message = failure.Message
-                  FrameIndex = None
-                  Stage = Some failure.BlockedStage
-                  Elapsed = None }
+                {
+                    Level = ViewerDiagnosticLevel.Error
+                    Category = failure.DiagnosticCategory
+                    Message = failure.Message
+                    FrameIndex = None
+                    Stage = Some failure.BlockedStage
+                    Elapsed = None
+                }
 
             { model with LifecycleState = Failed }, [ EmitDiagnostic diagnostic ]
         | RunTimedOut ->
             let failureDiagnostic =
-                { Level = ViewerDiagnosticLevel.Error
-                  Category = ViewerDiagnosticCategory.Startup
-                  Message = "Viewer run timed out before requested evidence was collected."
-                  FrameIndex = None
-                  Stage = Some Timeout
-                  Elapsed = None }
+                {
+                    Level = ViewerDiagnosticLevel.Error
+                    Category = ViewerDiagnosticCategory.Startup
+                    Message = "Viewer run timed out before requested evidence was collected."
+                    FrameIndex = None
+                    Stage = Some Timeout
+                    Elapsed = None
+                }
 
             { model with LifecycleState = Failed }, [ EmitDiagnostic failureDiagnostic ]
 
     let initRun (request: ViewerRunRequest) =
-        { Request = request
-          FramesRendered = 0
-          StartedAt = None
-          LastDiagnostic = None
-          Completed = None },
+        {
+            Request = request
+            FramesRendered = 0
+            StartedAt = None
+            LastDiagnostic = None
+            Completed = None
+        },
         [ OpenBoundedWindow request ]
 
     let private elapsedForCompletion (model: ViewerRunModel) =
@@ -834,17 +1040,19 @@ module internal ViewerRuntime =
         |> Option.defaultValue (TimeSpan.FromMilliseconds 1.0)
 
     let completeEvidence size (model: ViewerRunModel) : ViewerRunEvidence =
-        { FramesRendered = model.FramesRendered
-          Elapsed = elapsedForCompletion model
-          InitialOutputSize = size
-          // A completed bounded run rendered its frames through the live OpenGL host, so the
-          // evidence names the backend that actually initialized — NOT the caller's requested
-          // `RendererMode` (which could be any label, e.g. a stale "vulkan"). Deriving from the
-          // single source of truth is what stops the self-report from disagreeing with the real
-          // launch path (#135).
-          RendererMode = Host.GlHost.backendLabel
-          LastDiagnosticSummary = model.LastDiagnostic |> Option.map _.Message
-          EvidencePath = model.Request.EvidencePath }
+        {
+            FramesRendered = model.FramesRendered
+            Elapsed = elapsedForCompletion model
+            InitialOutputSize = size
+            // A completed bounded run rendered its frames through the live OpenGL host, so the
+            // evidence names the backend that actually initialized — NOT the caller's requested
+            // `RendererMode` (which could be any label, e.g. a stale "vulkan"). Deriving from the
+            // single source of truth is what stops the self-report from disagreeing with the real
+            // launch path (#135).
+            RendererMode = Host.GlHost.backendLabel
+            LastDiagnosticSummary = model.LastDiagnostic |> Option.map _.Message
+            EvidencePath = model.Request.EvidencePath
+        }
 
     let private targetReached (model: ViewerRunModel) =
         match model.Request.Target with
@@ -857,43 +1065,71 @@ module internal ViewerRuntime =
         | BeginRun -> model, [ OpenBoundedWindow model.Request ]
         | RunStarted instant -> { model with StartedAt = Some instant }, [ RequestFrame ]
         | RecordFrame size ->
-            let next = { model with FramesRendered = model.FramesRendered + 1 }
+            let next =
+                { model with
+                    FramesRendered = model.FramesRendered + 1
+                }
 
             if targetReached next then
                 let evidence = completeEvidence size next
-                { next with Completed = Some(Result.Ok evidence) }, [ StopBoundedRun ]
+
+                { next with
+                    Completed = Some(Result.Ok evidence)
+                },
+                [ StopBoundedRun ]
             else
                 next, [ RequestFrame ]
-        | RecordDiagnostic diagnostic -> { model with LastDiagnostic = Some diagnostic }, []
+        | RecordDiagnostic diagnostic ->
+            { model with
+                LastDiagnostic = Some diagnostic
+            },
+            []
         | CompleteRun ->
             let evidence = completeEvidence { Width = 1; Height = 1 } model
-            { model with Completed = Some(Result.Ok evidence) }, [ PersistRunEvidence evidence ]
-        | FailRun failure -> { model with Completed = Some(Result.Error failure) }, [ StopBoundedRun ]
+
+            { model with
+                Completed = Some(Result.Ok evidence)
+            },
+            [ PersistRunEvidence evidence ]
+        | FailRun failure ->
+            { model with
+                Completed = Some(Result.Error failure)
+            },
+            [ StopBoundedRun ]
         | TimeoutRun ->
             let failure =
-                { BlockedStage = Timeout
-                  Classification = ProductDefect
-                  DiagnosticCategory = ViewerDiagnosticCategory.Startup
-                  Message = "Viewer run timed out before requested evidence was collected."
-                  LastDiagnosticSummary = model.LastDiagnostic |> Option.map _.Message }
+                {
+                    BlockedStage = Timeout
+                    Classification = ProductDefect
+                    DiagnosticCategory = ViewerDiagnosticCategory.Startup
+                    Message = "Viewer run timed out before requested evidence was collected."
+                    LastDiagnosticSummary = model.LastDiagnostic |> Option.map _.Message
+                }
 
-            { model with Completed = Some(Result.Error failure) }, [ StopBoundedRun ]
+            { model with
+                Completed = Some(Result.Error failure)
+            },
+            [ StopBoundedRun ]
 
     let private startupDiagnostic elapsed message : ViewerDiagnosticEvent =
-        { Level = ViewerDiagnosticLevel.Info
-          Category = ViewerDiagnosticCategory.Startup
-          Message = message
-          FrameIndex = None
-          Stage = Some Window
-          Elapsed = Some elapsed }
+        {
+            Level = ViewerDiagnosticLevel.Info
+            Category = ViewerDiagnosticCategory.Startup
+            Message = message
+            FrameIndex = None
+            Stage = Some Window
+            Elapsed = Some elapsed
+        }
 
     let private frameDiagnostic frame elapsed : ViewerDiagnosticEvent =
-        { Level = ViewerDiagnosticLevel.Info
-          Category = ViewerDiagnosticCategory.Frame
-          Message = $"frame {frame} presented"
-          FrameIndex = Some frame
-          Stage = None
-          Elapsed = Some elapsed }
+        {
+            Level = ViewerDiagnosticLevel.Info
+            Category = ViewerDiagnosticCategory.Frame
+            Message = $"frame {frame} presented"
+            FrameIndex = Some frame
+            Stage = None
+            Elapsed = Some elapsed
+        }
 
     module VisualEvidenceHandling =
         let artifacts request options scene =
@@ -920,158 +1156,184 @@ module internal ViewerRuntime =
             | Result.Ok() ->
                 // Issue #246: the bounded surface is `InitialSize`, and it never resizes.
                 let scene = presentedFor options options.InitialSize scene
+
                 match unsupportedHostFailure () with
                 | Some failure ->
                     let diagnostic =
-                        { Level = ViewerDiagnosticLevel.Error
-                          Category = failure.DiagnosticCategory
-                          Message = failure.Message
-                          FrameIndex = None
-                          Stage = Some failure.BlockedStage
-                          Elapsed = Some TimeSpan.Zero }
+                        {
+                            Level = ViewerDiagnosticLevel.Error
+                            Category = failure.DiagnosticCategory
+                            Message = failure.Message
+                            FrameIndex = None
+                            Stage = Some failure.BlockedStage
+                            Elapsed = Some TimeSpan.Zero
+                        }
 
                     dispatchDiagnostic request.Diagnostics diagnostic |> ignore
-                    Result.Error { failure with LastDiagnosticSummary = Some failure.Message }
+
+                    Result.Error
+                        { failure with
+                            LastDiagnosticSummary = Some failure.Message
+                        }
                 | None ->
                     let start = DateTimeOffset.UtcNow
                     let model, _ = initRun request
                     let model, _ = updateRun (RunStarted start) model
 
-                    let startup = dispatchDiagnostic request.Diagnostics (startupDiagnostic TimeSpan.Zero "bounded viewer run started")
-                    let mutable current: ViewerRunModel = updateRun (RecordDiagnostic startup) model |> fst
+                    let startup =
+                        dispatchDiagnostic
+                            request.Diagnostics
+                            (startupDiagnostic TimeSpan.Zero "bounded viewer run started")
+
+                    let mutable current: ViewerRunModel =
+                        updateRun (RecordDiagnostic startup) model |> fst
+
                     let mutable frame = 0
                     let stopwatch = Stopwatch.StartNew()
 
                     // #363: only window creation runs under the XWayland backend override; the
                     // bounded render loop below runs outside it (see GlHost.withWindowBackendOverride).
-                    (
-                        try
-                            let mutable windowOptions = WindowOptions.Default
-                            windowOptions.Title <- options.Title
-                            windowOptions.Size <- toNativeSize options.InitialSize
-                            windowOptions.IsVisible <- true
-                            windowOptions.API <- GraphicsAPI.Default
-                            windowOptions.FramesPerSecond <- 60.0
-                            windowOptions.UpdatesPerSecond <- 60.0
+                    (try
+                        let mutable windowOptions = WindowOptions.Default
+                        windowOptions.Title <- options.Title
+                        windowOptions.Size <- toNativeSize options.InitialSize
+                        windowOptions.IsVisible <- true
+                        windowOptions.API <- GraphicsAPI.Default
+                        windowOptions.FramesPerSecond <- 60.0
+                        windowOptions.UpdatesPerSecond <- 60.0
 
-                            let window = Host.GlHost.withWindowBackendOverride (fun () -> Window.Create windowOptions)
+                        let window =
+                            Host.GlHost.withWindowBackendOverride (fun () -> Window.Create windowOptions)
 
-                            let loadedHandler =
-                                Action(fun () ->
+                        let loadedHandler =
+                            Action(fun () ->
+                                let diagnostic =
+                                    dispatchDiagnostic
+                                        request.Diagnostics
+                                        {
+                                            Level = ViewerDiagnosticLevel.Info
+                                            Category = ViewerDiagnosticCategory.Startup
+                                            Message = $"bounded viewer window opened for '{options.Title}'"
+                                            FrameIndex = None
+                                            Stage = Some Window
+                                            Elapsed = Some stopwatch.Elapsed
+                                        }
+
+                                current <- updateRun (RecordDiagnostic diagnostic) current |> fst)
+
+                        let renderHandler =
+                            Action<float>(fun _ ->
+                                if current.Completed.IsNone then
+                                    frame <- frame + 1
+                                    let elapsed = stopwatch.Elapsed
+
                                     let diagnostic =
-                                        dispatchDiagnostic
-                                            request.Diagnostics
-                                            { Level = ViewerDiagnosticLevel.Info
-                                              Category = ViewerDiagnosticCategory.Startup
-                                              Message = $"bounded viewer window opened for '{options.Title}'"
-                                              FrameIndex = None
-                                              Stage = Some Window
-                                              Elapsed = Some stopwatch.Elapsed }
+                                        dispatchDiagnostic request.Diagnostics (frameDiagnostic frame elapsed)
 
-                                    current <- updateRun (RecordDiagnostic diagnostic) current |> fst)
+                                    let withDiagnostic, _ = updateRun (RecordDiagnostic diagnostic) current
 
-                            let renderHandler =
-                                Action<float>(fun _ ->
-                                    if current.Completed.IsNone then
-                                        frame <- frame + 1
-                                        let elapsed = stopwatch.Elapsed
-                                        let diagnostic = dispatchDiagnostic request.Diagnostics (frameDiagnostic frame elapsed)
-                                        let withDiagnostic, _ = updateRun (RecordDiagnostic diagnostic) current
+                                    if elapsed > request.Timeout then
+                                        current <- updateRun TimeoutRun withDiagnostic |> fst
+                                    else
+                                        current <- updateRun (RecordFrame options.InitialSize) withDiagnostic |> fst
 
-                                        if elapsed > request.Timeout then
-                                            current <- updateRun TimeoutRun withDiagnostic |> fst
-                                        else
-                                            current <- updateRun (RecordFrame options.InitialSize) withDiagnostic |> fst
+                                    if current.Completed.IsSome && not window.IsClosing then
+                                        window.Close())
 
-                                        if current.Completed.IsSome && not window.IsClosing then
-                                            window.Close())
+                        window.add_Load loadedHandler
+                        window.add_Render renderHandler
 
-                            window.add_Load loadedHandler
-                            window.add_Render renderHandler
+                        let handlers =
+                            [
+                                fun (w: IWindow) -> w.remove_Load loadedHandler
+                                fun (w: IWindow) -> w.remove_Render renderHandler
+                            ]
 
-                            let handlers =
-                                [ fun (w: IWindow) -> w.remove_Load loadedHandler
-                                  fun (w: IWindow) -> w.remove_Render renderHandler ]
+                        try
+                            Host.GlHost.withWindowBackendOverride (fun () -> window.Initialize())
 
-                            try
-                                Host.GlHost.withWindowBackendOverride (fun () -> window.Initialize())
-
-                                if not window.IsInitialized then
-                                    Result.Error(
-                                        makeFailure
-                                            Window
-                                            UnsupportedEnvironment
-                                            Startup
-                                            "Silk.NET bounded viewer window did not initialize."
-                                            current.LastDiagnostic
-                                    )
-                                else
-                                    while not window.IsClosing && current.Completed.IsNone do
-                                        if stopwatch.Elapsed > request.Timeout then
-                                            current <- updateRun TimeoutRun current |> fst
-                                            window.Close()
-                                        else
-                                            window.DoEvents()
-                                            window.DoUpdate()
-                                            window.DoRender()
-                                            Thread.Sleep(1)
-
-                                    match current.Completed with
-                                    | Some(Result.Ok evidence) ->
-                                        request.EvidencePath |> Option.iter (fun path -> writeRunEvidence path options scene evidence)
-                                        Result.Ok evidence
-                                    | Some(Result.Error failure) -> Result.Error failure
-                                    | None ->
-                                        Result.Error(
-                                            makeFailure
-                                                Timeout
-                                                ProductDefect
-                                                Startup
-                                                "Viewer run timed out before requested evidence was collected."
-                                                current.LastDiagnostic
-                                        )
-                            finally
-                                handlers
-                                |> List.iter (fun remove ->
-                                    try
-                                        remove window
-                                    with _ ->
-                                        ())
-
-                                window.Dispose()
-                        with ex ->
-                            match current.Completed with
-                            | Some(Result.Ok evidence) ->
-                                request.EvidencePath |> Option.iter (fun path -> writeEvidence path evidence)
-                                Result.Ok evidence
-                            | Some(Result.Error failure) -> Result.Error failure
-                            | None ->
+                            if not window.IsInitialized then
                                 Result.Error(
                                     makeFailure
                                         Window
                                         UnsupportedEnvironment
                                         Startup
-                                        $"Silk.NET bounded viewer launch failed: {ex.Message}"
+                                        "Silk.NET bounded viewer window did not initialize."
                                         current.LastDiagnostic
-                                ))
+                                )
+                            else
+                                while not window.IsClosing && current.Completed.IsNone do
+                                    if stopwatch.Elapsed > request.Timeout then
+                                        current <- updateRun TimeoutRun current |> fst
+                                        window.Close()
+                                    else
+                                        window.DoEvents()
+                                        window.DoUpdate()
+                                        window.DoRender()
+                                        Thread.Sleep(1)
+
+                                match current.Completed with
+                                | Some(Result.Ok evidence) ->
+                                    request.EvidencePath
+                                    |> Option.iter (fun path -> writeRunEvidence path options scene evidence)
+
+                                    Result.Ok evidence
+                                | Some(Result.Error failure) -> Result.Error failure
+                                | None ->
+                                    Result.Error(
+                                        makeFailure
+                                            Timeout
+                                            ProductDefect
+                                            Startup
+                                            "Viewer run timed out before requested evidence was collected."
+                                            current.LastDiagnostic
+                                    )
+                        finally
+                            handlers
+                            |> List.iter (fun remove ->
+                                try
+                                    remove window
+                                with _ ->
+                                    ())
+
+                            window.Dispose()
+                     with ex ->
+                         match current.Completed with
+                         | Some(Result.Ok evidence) ->
+                             request.EvidencePath |> Option.iter (fun path -> writeEvidence path evidence)
+                             Result.Ok evidence
+                         | Some(Result.Error failure) -> Result.Error failure
+                         | None ->
+                             Result.Error(
+                                 makeFailure
+                                     Window
+                                     UnsupportedEnvironment
+                                     Startup
+                                     $"Silk.NET bounded viewer launch failed: {ex.Message}"
+                                     current.LastDiagnostic
+                             ))
 
     let runUntilFirstFrame options (scene: SceneNode) =
         let request: ViewerRunRequest =
-            { Target = FirstFrame
-              Timeout = TimeSpan.FromSeconds 10.0
-              Diagnostics = defaultDiagnostics
-              RendererMode = "default"
-              EvidencePath = None }
+            {
+                Target = FirstFrame
+                Timeout = TimeSpan.FromSeconds 10.0
+                Diagnostics = defaultDiagnostics
+                RendererMode = "default"
+                EvidencePath = None
+            }
 
         runBounded request options scene
 
     let runForFrames frameCount options (scene: SceneNode) =
         let request: ViewerRunRequest =
-            { Target = FrameCount frameCount
-              Timeout = TimeSpan.FromSeconds 10.0
-              Diagnostics = defaultDiagnostics
-              RendererMode = "default"
-              EvidencePath = None }
+            {
+                Target = FrameCount frameCount
+                Timeout = TimeSpan.FromSeconds 10.0
+                Diagnostics = defaultDiagnostics
+                RendererMode = "default"
+                EvidencePath = None
+            }
 
         runBounded request options scene
 
@@ -1140,12 +1402,14 @@ module internal ViewerRuntime =
         // saying reassuring things about evidence that is not there.
         let report (effectName: string) (path: string) (reason: string) =
             onDiagnostic
-                { Level = ViewerDiagnosticLevel.Error
-                  Category = ViewerDiagnosticCategory.Screenshot
-                  Message = $"{effectName} failed to write '{path}': {reason}"
-                  FrameIndex = None
-                  Stage = Some ViewerRunBlockedStage.ArtifactWrite
-                  Elapsed = None }
+                {
+                    Level = ViewerDiagnosticLevel.Error
+                    Category = ViewerDiagnosticCategory.Screenshot
+                    Message = $"{effectName} failed to write '{path}': {reason}"
+                    FrameIndex = None
+                    Stage = Some ViewerRunBlockedStage.ArtifactWrite
+                    Elapsed = None
+                }
 
         let attempt (effectName: string) (path: string) (write: unit -> unit) =
             if String.IsNullOrWhiteSpace path then
@@ -1162,7 +1426,8 @@ module internal ViewerRuntime =
 
         match effect with
         | CaptureScreenshot path -> attempt "CaptureScreenshot" path (fun () -> rasterize "CaptureScreenshot" path)
-        | CaptureImageEvidence path -> attempt "CaptureImageEvidence" path (fun () -> rasterize "CaptureImageEvidence" path)
+        | CaptureImageEvidence path ->
+            attempt "CaptureImageEvidence" path (fun () -> rasterize "CaptureImageEvidence" path)
         | WriteRunEvidence(path, evidence) ->
             // The SAME rule the bounded path applies (`writeRunEvidence`): a `.png` evidence path gets the
             // rasterized scene, any other path gets the textual run summary. Writing text unconditionally
@@ -1286,7 +1551,11 @@ module internal ViewerRuntime =
         | Some logical ->
             let x, y = LogicalCanvas.toLogicalPoint logical surfaceSize physicalX physicalY
             { input with X = x; Y = y }
-        | None -> { input with X = physicalX; Y = physicalY }
+        | None ->
+            { input with
+                X = physicalX
+                Y = physicalY
+            }
 
     /// #535 — the outcome dispatch, EXTRACTED so it can be tested.
     ///
@@ -1326,7 +1595,8 @@ module internal ViewerRuntime =
                     InputDispatch = inputDispatch
                     OptionResults = validateWindowLaunchBehavior options.InitialSize behavior
                     ExitPath = initialCloseRequested || outcome.ExitPath
-                    Message = message }
+                    Message = message
+                }
             )
         | Result.Error failure -> Result.Error failure
 
@@ -1364,28 +1634,32 @@ module internal ViewerRuntime =
     // the space `View`/pointer speak). Do not collapse the trio onto one field: the divergence is real.
     [<NoEquality; NoComparison>]
     type private ProductRunState<'model> =
-        { mutable CurrentModel: 'model
-          mutable CurrentScene: SceneNode
-          mutable InputDispatch: string
-          mutable CurrentSurfaceSize: Size
-          mutable CurrentWindowSize: Size
-          mutable CurrentSize: Size
-          /// The one logical-canvas policy for presentation, View sizing, and inverse pointer
-          /// routing. Mutable because a game-shell DisplayChanged effect can replace it at runtime.
-          mutable CurrentLogicalSize: Size option }
+        {
+            mutable CurrentModel: 'model
+            mutable CurrentScene: SceneNode
+            mutable InputDispatch: string
+            mutable CurrentSurfaceSize: Size
+            mutable CurrentWindowSize: Size
+            mutable CurrentSize: Size
+            /// The one logical-canvas policy for presentation, View sizing, and inverse pointer
+            /// routing. Mutable because a game-shell DisplayChanged effect can replace it at runtime.
+            mutable CurrentLogicalSize: Size option
+        }
 
     // The seeded state plus the shared runtime closures. Both front-ends destructure this back into the
     // short local names their downstream code already uses, so extracting the bootstrap leaves the
     // dispatch/input code (Stages C/D) reading `state.CurrentX` but otherwise byte-for-byte unchanged.
     [<NoEquality; NoComparison>]
     type private ProductRuntime<'model> =
-        { State: ProductRunState<'model>
-          ReportProductDefect: ViewerDiagnosticEvent -> unit
-          SafeView: 'model -> SceneNode
-          OnScene: SceneNode -> unit
-          OnInputDispatch: unit -> unit
-          OnDiagnostic: ViewerDiagnosticEvent -> unit
-          EvidenceSink: ViewerEffect -> unit }
+        {
+            State: ProductRunState<'model>
+            ReportProductDefect: ViewerDiagnosticEvent -> unit
+            SafeView: 'model -> SceneNode
+            OnScene: SceneNode -> unit
+            OnInputDispatch: unit -> unit
+            OnDiagnostic: ViewerDiagnosticEvent -> unit
+            EvidenceSink: ViewerEffect -> unit
+        }
 
     // Bootstraps `ProductRunState` shared by both durable runners: guards the FIRST product `View`
     // (#396 — there is no last-good scene to fall back to as the steady-state `safeView` has, so a
@@ -1407,7 +1681,8 @@ module internal ViewerRuntime =
         : Result<ProductRuntime<'model>, ViewerRunFailure> =
         // Issue #365: a product `Update`/`View` fault is an App-stage defect captured through the host's
         // diagnostics, never a window teardown.
-        let reportProductDefect ev = captureDiagnostic diagnostics ev |> ignore
+        let reportProductDefect ev =
+            captureDiagnostic diagnostics ev |> ignore
         // The space this host's first `View` authors in: the fixed `LogicalSize` when set, else the
         // initial surface. At init all three tracked sizes coincide, so this equals interactive's
         // `viewSize ()` and generated-app never reads it.
@@ -1417,13 +1692,15 @@ module internal ViewerRuntime =
         | Result.Error failure -> Result.Error failure
         | Result.Ok initialScene ->
             let state =
-                { CurrentModel = initialModel
-                  CurrentScene = initialScene
-                  InputDispatch = "false"
-                  CurrentSurfaceSize = initialSize
-                  CurrentWindowSize = initialSize
-                  CurrentSize = initialViewSize
-                  CurrentLogicalSize = logicalSize }
+                {
+                    CurrentModel = initialModel
+                    CurrentScene = initialScene
+                    InputDispatch = "false"
+                    CurrentSurfaceSize = initialSize
+                    CurrentWindowSize = initialSize
+                    CurrentSize = initialViewSize
+                    CurrentLogicalSize = logicalSize
+                }
 
             // Issue #365: guard the product `Update`/`View` so one throwing step drops that input and
             // keeps the persistent window on its last-good scene, rather than escaping to a teardown
@@ -1436,7 +1713,9 @@ module internal ViewerRuntime =
             // tick and pointer sample, so building these closures inline would allocate per frame.
             let onScene scene = state.CurrentScene <- scene
             let onInputDispatch () = state.InputDispatch <- "true"
-            let onDiagnostic diagnostic = captureDiagnostic diagnostics diagnostic |> ignore
+
+            let onDiagnostic diagnostic =
+                captureDiagnostic diagnostics diagnostic |> ignore
 
             // Issue #444: evidence rasterizes at the size this host's `View` authors in — pass it in, do
             // not assume it (generated-app's InitialSize vs interactive's live CurrentSize differ).
@@ -1444,13 +1723,15 @@ module internal ViewerRuntime =
                 productEvidenceSink onDiagnostic (fun () -> evidenceSize state) (fun () -> state.CurrentScene)
 
             Result.Ok
-                { State = state
-                  ReportProductDefect = reportProductDefect
-                  SafeView = safeView
-                  OnScene = onScene
-                  OnInputDispatch = onInputDispatch
-                  OnDiagnostic = onDiagnostic
-                  EvidenceSink = evidenceSink }
+                {
+                    State = state
+                    ReportProductDefect = reportProductDefect
+                    SafeView = safeView
+                    OnScene = onScene
+                    OnInputDispatch = onInputDispatch
+                    OnDiagnostic = onDiagnostic
+                    EvidenceSink = evidenceSink
+                }
 
     // Stage C — the generated-app persistence-dispatch ASSEMBLY, lifted out of `runGeneratedApp` as a
     // named unit. This is the one place a `Load` outcome can re-enter `update`, and getting the shape
@@ -1502,7 +1783,16 @@ module internal ViewerRuntime =
 
         let rec interpretEffects effects =
             let closeRequested =
-                interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects
+                interpretViewerEffects
+                    audioSink
+                    persistenceBatchSink
+                    onScene
+                    onInputDispatch
+                    onDiagnostic
+                    evidenceSink
+                    windowBehaviorSink
+                    logicalCanvasSink
+                    effects
 
             // Sticky: a close is terminal, so an outcome-driven message that asked to close must
             // not be forgotten by the next batch that did not.
@@ -1520,13 +1810,15 @@ module internal ViewerRuntime =
                 // and `Persistence.fs` says so itself: "candor in a comment is not a mechanism —
                 // it does not survive being called from another file."
                 onDiagnostic
-                    { Level = ViewerDiagnosticLevel.Warning
-                      Category = Frame
-                      Message =
-                        $"A product emitted {List.length batch} PersistenceEffect(s), but this launch has no persistence sink — the requests were DROPPED and nothing was saved, loaded or deleted. Launch with Viewer.runAppWithPersistence (or runAppWithAudioAndPersistence) and supply a sink that performs the I/O."
-                      FrameIndex = None
-                      Stage = None
-                      Elapsed = None }
+                    {
+                        Level = ViewerDiagnosticLevel.Warning
+                        Category = Frame
+                        Message =
+                            $"A product emitted {List.length batch} PersistenceEffect(s), but this launch has no persistence sink — the requests were DROPPED and nothing was saved, loaded or deleted. Launch with Viewer.runAppWithPersistence (or runAppWithAudioAndPersistence) and supply a sink that performs the I/O."
+                        FrameIndex = None
+                        Stage = None
+                        Elapsed = None
+                    }
 
         and dispatchHostMsg msg =
             match tryProductStep reportProductDefect "Update" (fun () -> update msg state.CurrentModel) with
@@ -1615,7 +1907,9 @@ module internal ViewerRuntime =
                 let onInputDispatch = runtime.OnInputDispatch
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
-                let pendingWindowBehaviors, applyWindowBehavior = runtimeWindowBehaviorQueue onDiagnostic
+
+                let pendingWindowBehaviors, applyWindowBehavior =
+                    runtimeWindowBehaviorQueue onDiagnostic
 
                 let presentScene () =
                     presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
@@ -1626,12 +1920,14 @@ module internal ViewerRuntime =
                         state.CurrentSize <- size
                     else
                         onDiagnostic
-                            { Level = ViewerDiagnosticLevel.Error
-                              Category = Frame
-                              Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
-                              FrameIndex = None
-                              Stage = None
-                              Elapsed = None }
+                            {
+                                Level = ViewerDiagnosticLevel.Error
+                                Category = Frame
+                                Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
+                                FrameIndex = None
+                                Stage = None
+                                Elapsed = None
+                            }
 
                 let handleResize (size: Size) = state.CurrentSurfaceSize <- size
 
@@ -1661,12 +1957,14 @@ module internal ViewerRuntime =
                 let handleKey rawKey isDown =
                     let key, normalizedDown =
                         ViewerKeyboard.normalizeEvent
-                            { RawKey = rawKey
-                              Direction =
-                                if isDown then
-                                    ViewerKeyDirection.KeyDown
-                                else
-                                    ViewerKeyDirection.KeyUp }
+                            {
+                                RawKey = rawKey
+                                Direction =
+                                    if isDown then
+                                        ViewerKeyDirection.KeyDown
+                                    else
+                                        ViewerKeyDirection.KeyUp
+                            }
 
                     match host.MapKey key normalizedDown with
                     | Some msg ->
@@ -1677,13 +1975,36 @@ module internal ViewerRuntime =
                         // F1: a key that maps to no product message may still have changed
                         // host-internal runtime state (focus traversal, scroll keys); re-derive so
                         // it renders on THIS key. (Previously only the full-interactive loop did this.)
-                        state.CurrentScene <- runtimeStateRepaint false state.CurrentScene (fun () -> safeView state.CurrentModel)
+                        state.CurrentScene <-
+                            runtimeStateRepaint false state.CurrentScene (fun () -> safeView state.CurrentModel)
+
                         false
 
                 let inputVerified = makeInputVerified state
 
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick false (Some handleKey) None (Some handleResize) None pendingWindowBehaviors inputVerified None None (fun () -> 0)
-                |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent generated app host launch completed after intentional close."
+                runPresentedPersistentWindow
+                    options
+                    behavior
+                    host.Diagnostics
+                    state.InputDispatch
+                    presentScene
+                    handleTick
+                    false
+                    (Some handleKey)
+                    None
+                    (Some handleResize)
+                    None
+                    pendingWindowBehaviors
+                    inputVerified
+                    None
+                    None
+                    (fun () -> 0)
+                |> assembleLaunchOutcome
+                    options
+                    behavior
+                    state.InputDispatch
+                    initialCloseRequested
+                    "Persistent generated app host launch completed after intentional close."
 
     let runAppWithWindowBehavior options behavior (host: GeneratedAppHost<'model, 'msg>) =
         runGeneratedApp options behavior ignore None (fun (_: PersistenceOutcome) -> None) host
@@ -1710,7 +2031,13 @@ module internal ViewerRuntime =
 
     // A game usually wants both. Without this, adopting persistence would mean giving up sound — which is
     // the kind of forced choice that gets a seam worked around rather than used.
-    let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
+    let runAppWithAudioAndPersistence
+        options
+        audioSink
+        persistenceSink
+        mapOutcome
+        (host: GeneratedAppHost<'model, 'msg>)
+        =
         runGeneratedApp options defaultWindowBehavior audioSink (Some persistenceSink) mapOutcome host
 
     // Issue #979 — the last corner of the generated-app launcher matrix: window behavior AND audio AND
@@ -1721,7 +2048,14 @@ module internal ViewerRuntime =
     // siblings are one-line wrappers), so this is a pure re-composition: no interpreter change, just the
     // overload that threads the caller's `behavior`, `audioSink`, `persistenceSink` and `mapOutcome`
     // together rather than defaulting one of them away.
-    let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome (host: GeneratedAppHost<'model, 'msg>) =
+    let runAppWithWindowBehaviorAndAudioAndPersistence
+        options
+        behavior
+        audioSink
+        persistenceSink
+        mapOutcome
+        (host: GeneratedAppHost<'model, 'msg>)
+        =
         runGeneratedApp options behavior audioSink (Some persistenceSink) mapOutcome host
 
     // Feature 085 — pointer-aware, size-aware durable launch. Mirrors
@@ -1739,7 +2073,7 @@ module internal ViewerRuntime =
         (audioSink: AudioEffect list -> unit)
         pointerPacing
         gamepad
-        (host: InteractiveViewerHost<'model,'msg>)
+        (host: InteractiveViewerHost<'model, 'msg>)
         =
         match validateLaunch options behavior with
         | Result.Error failure -> Result.Error failure
@@ -1776,14 +2110,17 @@ module internal ViewerRuntime =
                 let onInputDispatch = runtime.OnInputDispatch
                 let onDiagnostic = runtime.OnDiagnostic
                 let evidenceSink = runtime.EvidenceSink
-                let pendingWindowBehaviors, applyWindowBehavior = runtimeWindowBehaviorQueue onDiagnostic
+
+                let pendingWindowBehaviors, applyWindowBehavior =
+                    runtimeWindowBehaviorQueue onDiagnostic
 
                 let presentScene () =
                     presentedForLogical state.CurrentLogicalSize state.CurrentSurfaceSize state.CurrentScene
 
                 // The space this host's `View` speaks: the fixed `LogicalSize` when set, else the live
                 // physical framebuffer. `handleFramebufferResize` re-derives `CurrentSize` from it.
-                let viewSize () = state.CurrentLogicalSize |> Option.defaultValue state.CurrentSurfaceSize
+                let viewSize () =
+                    state.CurrentLogicalSize |> Option.defaultValue state.CurrentSurfaceSize
 
                 let applyLogicalCanvas (size: Size) =
                     if size.Width > 0 && size.Height > 0 then
@@ -1791,12 +2128,14 @@ module internal ViewerRuntime =
                         state.CurrentSize <- size
                     else
                         onDiagnostic
-                            { Level = ViewerDiagnosticLevel.Error
-                              Category = Frame
-                              Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
-                              FrameIndex = None
-                              Stage = None
-                              Elapsed = None }
+                            {
+                                Level = ViewerDiagnosticLevel.Error
+                                Category = Frame
+                                Message = $"ApplyLogicalCanvas rejected non-positive size {size.Width}x{size.Height}."
+                                FrameIndex = None
+                                Stage = None
+                                Elapsed = None
+                            }
 
                 // #535 — the interactive (Controls) host family owns no persistence seam yet, and
                 // `InteractiveViewerHost.Update` returns `ViewerEffect list`, so a product on THIS host
@@ -1808,18 +2147,30 @@ module internal ViewerRuntime =
                 // author needs it on the diagnostics channel, which is right here in scope.
                 let persistenceBatchSink (batch: PersistenceEffect list) =
                     onDiagnostic
-                        { Level = ViewerDiagnosticLevel.Warning
-                          Category = Frame
-                          Message =
-                            $"A product emitted {List.length batch} PersistenceEffect(s) on the interactive (Controls) host, which has no persistence seam — the requests were DROPPED and nothing was saved, loaded or deleted. The generated-app host supports this via Viewer.runAppWithPersistence; the interactive equivalent does not exist yet."
-                          FrameIndex = None
-                          Stage = None
-                          Elapsed = None }
+                        {
+                            Level = ViewerDiagnosticLevel.Warning
+                            Category = Frame
+                            Message =
+                                $"A product emitted {List.length batch} PersistenceEffect(s) on the interactive (Controls) host, which has no persistence seam — the requests were DROPPED and nothing was saved, loaded or deleted. The generated-app host supports this via Viewer.runAppWithPersistence; the interactive equivalent does not exist yet."
+                            FrameIndex = None
+                            Stage = None
+                            Elapsed = None
+                        }
 
                 let interpretEffects effects =
                     let before = state.CurrentLogicalSize
+
                     let closeRequested =
-                        interpretViewerEffects audioSink persistenceBatchSink onScene onInputDispatch onDiagnostic evidenceSink applyWindowBehavior applyLogicalCanvas effects
+                        interpretViewerEffects
+                            audioSink
+                            persistenceBatchSink
+                            onScene
+                            onInputDispatch
+                            onDiagnostic
+                            evidenceSink
+                            applyWindowBehavior
+                            applyLogicalCanvas
+                            effects
 
                     // DisplayChanged is processed after Update. If it replaced the logical canvas,
                     // re-author the retained Controls tree in the new coordinate space immediately;
@@ -1837,43 +2188,65 @@ module internal ViewerRuntime =
                     let updateSw = Stopwatch.StartNew()
                     RenderLagTrace.emit "model-update-start" [ "msg", msgText ]
 
-                    match tryProductStep reportProductDefect "Update" (fun () -> host.Update msg state.CurrentModel) with
+                    match
+                        tryProductStep reportProductDefect "Update" (fun () -> host.Update msg state.CurrentModel)
+                    with
                     | None ->
                         // Issue #365: a throwing product Update drops this input and keeps the window
                         // alive on its last-good model/scene, rather than tearing it down.
                         updateSw.Stop()
+
                         RenderLagTrace.emit
                             "model-update-end"
-                            [ "msg", msgText
-                              "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                              "dropped", "true" ]
+                            [
+                                "msg", msgText
+                                "durationMs",
+                                updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                "dropped", "true"
+                            ]
 
                         false
                     | Some(next, effects) ->
                         modelUpdateCount <- modelUpdateCount + 1
                         updateSw.Stop()
+
                         RenderLagTrace.emit
                             "model-update-end"
-                            [ "msg", msgText
-                              "durationMs", updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                            [
+                                "msg", msgText
+                                "durationMs",
+                                updateSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                            ]
+
                         state.CurrentModel <- next
                         let viewSw = Stopwatch.StartNew()
                         RenderLagTrace.emit "view-start" [ "msg", msgText ]
                         state.CurrentScene <- safeView state.CurrentModel
                         viewSw.Stop()
+
                         RenderLagTrace.emit
                             "view-end"
-                            [ "msg", msgText
-                              "durationMs", viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                            [
+                                "msg", msgText
+                                "durationMs",
+                                viewSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                            ]
+
                         let effectsSw = Stopwatch.StartNew()
+
                         interpretEffects effects
                         |> fun closeRequested ->
                             effectsSw.Stop()
+
                             RenderLagTrace.emit
                                 "effects-end"
-                                [ "msg", msgText
-                                  "durationMs", effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
-                                  "closeRequested", string closeRequested ]
+                                [
+                                    "msg", msgText
+                                    "durationMs",
+                                    effectsSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                                    "closeRequested", string closeRequested
+                                ]
+
                             closeRequested
 
                 let handleTick delta =
@@ -1886,27 +2259,38 @@ module internal ViewerRuntime =
                 let handleKey rawKey isDown =
                     let key, normalizedDown =
                         ViewerKeyboard.normalizeEvent
-                            { RawKey = rawKey
-                              Direction =
-                                if isDown then
-                                    ViewerKeyDirection.KeyDown
-                                else
-                                    ViewerKeyDirection.KeyUp }
+                            {
+                                RawKey = rawKey
+                                Direction =
+                                    if isDown then
+                                        ViewerKeyDirection.KeyDown
+                                    else
+                                        ViewerKeyDirection.KeyUp
+                            }
 
                     let msgs = host.MapKey key normalizedDown
+
                     if not (List.isEmpty msgs) then
                         RenderLagTrace.emit
                             "key-routed"
-                            [ "key", rawKey
-                              "isDown", string normalizedDown
-                              "messageCount", string msgs.Length ]
+                            [
+                                "key", rawKey
+                                "isDown", string normalizedDown
+                                "messageCount", string msgs.Length
+                            ]
+
                         state.InputDispatch <- "true"
-                    let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+
+                    let closeRequested =
+                        msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
                     // F1 general repaint signal: if the key produced no product message it may still
                     // have changed runtime state (focus traversal, scroll keys); re-derive so it
                     // renders on THIS key, not the next. (When messages ran, dispatchHostMsg already
                     // re-derived, so this is a no-op.)
-                    state.CurrentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () -> safeView state.CurrentModel)
+                    state.CurrentScene <-
+                        runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () ->
+                            safeView state.CurrentModel)
+
                     closeRequested
 
                 let handlePointer (input: ViewerPointerInput) =
@@ -1916,9 +2300,11 @@ module internal ViewerRuntime =
                     // speak one coordinate space.
                     RenderLagTrace.emit
                         "pointer-route-start"
-                        [ "phase", string input.Phase
-                          "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
-                          "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture) ]
+                        [
+                            "phase", string input.Phase
+                            "x", input.X.ToString("0.###", CultureInfo.InvariantCulture)
+                            "y", input.Y.ToString("0.###", CultureInfo.InvariantCulture)
+                        ]
 
                     // Issue #400: Silk delivers the pointer in LOGICAL window coordinates
                     // (`IMouse.Position`), but the product now renders and hit-tests in the PHYSICAL
@@ -1937,16 +2323,21 @@ module internal ViewerRuntime =
 
                     let msgs = host.MapPointer routed state.CurrentSize state.CurrentModel
                     pointerSw.Stop()
+
                     RenderLagTrace.emit
                         "pointer-route-end"
-                        [ "phase", string input.Phase
-                          "messageCount", string msgs.Length
-                          "durationMs", pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) ]
+                        [
+                            "phase", string input.Phase
+                            "messageCount", string msgs.Length
+                            "durationMs",
+                            pointerSw.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)
+                        ]
 
                     if not (List.isEmpty msgs) then
                         state.InputDispatch <- "true"
 
-                    let closeRequested = msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
+                    let closeRequested =
+                        msgs |> List.fold (fun close msg -> dispatchHostMsg msg || close) false
 
                     // F1 general repaint signal: `MapPointer` may mutate host-internal runtime state
                     // (focus/hover/scroll) WITHOUT producing a product message, leaving the model
@@ -1954,7 +2345,9 @@ module internal ViewerRuntime =
                     // dead-hover, and dead-scroll class. `runtimeStateRepaint` re-derives from
                     // `host.View` (the single source reflecting model + every runtime ref) on the
                     // no-message path, and is a no-op when messages already drove a re-derive.
-                    state.CurrentScene <- runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () -> safeView state.CurrentModel)
+                    state.CurrentScene <-
+                        runtimeStateRepaint (not (List.isEmpty msgs)) state.CurrentScene (fun () ->
+                            safeView state.CurrentModel)
 
                     closeRequested
 
@@ -1982,8 +2375,30 @@ module internal ViewerRuntime =
                         state.CurrentScene <- safeView state.CurrentModel
 
                 let inputVerified = makeInputVerified state
-                runPresentedPersistentWindow options behavior host.Diagnostics state.InputDispatch presentScene handleTick gamepad.IsSome (Some handleKey) (Some handlePointer) (Some handleResize) (Some handleFramebufferResize) pendingWindowBehaviors inputVerified script pointerPacing (fun () -> modelUpdateCount)
-                |> assembleLaunchOutcome options behavior state.InputDispatch initialCloseRequested "Persistent interactive viewer launch completed after intentional close."
+
+                runPresentedPersistentWindow
+                    options
+                    behavior
+                    host.Diagnostics
+                    state.InputDispatch
+                    presentScene
+                    handleTick
+                    gamepad.IsSome
+                    (Some handleKey)
+                    (Some handlePointer)
+                    (Some handleResize)
+                    (Some handleFramebufferResize)
+                    pendingWindowBehaviors
+                    inputVerified
+                    script
+                    pointerPacing
+                    (fun () -> modelUpdateCount)
+                |> assembleLaunchOutcome
+                    options
+                    behavior
+                    state.InputDispatch
+                    initialCloseRequested
+                    "Persistent interactive viewer launch completed after intentional close."
 
     let runInteractiveViewerWithWindowBehavior options behavior host =
         runInteractiveViewerWithWindowBehaviorCore options behavior None ignore None None host
@@ -1991,15 +2406,31 @@ module internal ViewerRuntime =
     let runInteractiveViewer options host =
         runInteractiveViewerWithWindowBehavior options defaultWindowBehavior host
 
-    let runInteractiveViewerWithGamepad options (gamepadHost: InteractiveViewerGamepadHost<'model,'msg>) =
-        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore None (Some gamepadHost.Gamepad) gamepadHost.Host
+    let runInteractiveViewerWithGamepad options (gamepadHost: InteractiveViewerGamepadHost<'model, 'msg>) =
+        runInteractiveViewerWithWindowBehaviorCore
+            options
+            defaultWindowBehavior
+            None
+            ignore
+            None
+            (Some gamepadHost.Gamepad)
+            gamepadHost.Host
 
     let defaultPointerPacingOptions =
-        { ContinuousPolicy = ViewerContinuousPointerPolicy.CoalesceLatestPerFrame
-          OnMetrics = ignore }
+        {
+            ContinuousPolicy = ViewerContinuousPointerPolicy.CoalesceLatestPerFrame
+            OnMetrics = ignore
+        }
 
     let runInteractiveViewerWithPointerPacing options pointerPacing host =
-        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior None ignore (Some pointerPacing) None host
+        runInteractiveViewerWithWindowBehaviorCore
+            options
+            defaultWindowBehavior
+            None
+            ignore
+            (Some pointerPacing)
+            None
+            host
 
     let runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host =
         runInteractiveViewerWithWindowBehaviorCore options behavior None ignore (Some pointerPacing) None host
@@ -2011,19 +2442,47 @@ module internal ViewerRuntime =
         runInteractiveViewerScriptWithWindowBehavior options defaultWindowBehavior script host
 
     let runInteractiveViewerScriptWithPointerPacing options pointerPacing script host =
-        runInteractiveViewerWithWindowBehaviorCore options defaultWindowBehavior (Some script) ignore (Some pointerPacing) None host
+        runInteractiveViewerWithWindowBehaviorCore
+            options
+            defaultWindowBehavior
+            (Some script)
+            ignore
+            (Some pointerPacing)
+            None
+            host
 
-    let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink (host: InteractiveViewerHost<'model,'msg>) =
+    let runInteractiveViewerWithWindowBehaviorAndAudio
+        options
+        behavior
+        audioSink
+        (host: InteractiveViewerHost<'model, 'msg>)
+        =
         runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink None None host
 
-    let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model,'msg>) =
+    let runInteractiveViewerWithAudio options audioSink (host: InteractiveViewerHost<'model, 'msg>) =
         runInteractiveViewerWithWindowBehaviorAndAudio options defaultWindowBehavior audioSink host
 
-    let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
+    let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio
+        options
+        behavior
+        pointerPacing
+        audioSink
+        (host: InteractiveViewerHost<'model, 'msg>)
+        =
         runInteractiveViewerWithWindowBehaviorCore options behavior None audioSink (Some pointerPacing) None host
 
-    let runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink (host: InteractiveViewerHost<'model,'msg>) =
-        runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options defaultWindowBehavior pointerPacing audioSink host
+    let runInteractiveViewerWithPointerPacingAndAudio
+        options
+        pointerPacing
+        audioSink
+        (host: InteractiveViewerHost<'model, 'msg>)
+        =
+        runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio
+            options
+            defaultWindowBehavior
+            pointerPacing
+            audioSink
+            host
 
     // Issue #438: the scripted siblings of the two above. #429 threaded an `audioSink` through
     // `runInteractiveViewerWithWindowBehaviorCore`, but the SCRIPTED entry points kept handing it
@@ -2036,22 +2495,26 @@ module internal ViewerRuntime =
         behavior
         script
         audioSink
-        (host: InteractiveViewerHost<'model,'msg>)
+        (host: InteractiveViewerHost<'model, 'msg>)
         =
         runInteractiveViewerWithWindowBehaviorCore options behavior (Some script) audioSink None None host
 
-    let runInteractiveViewerScriptWithAudio options script audioSink (host: InteractiveViewerHost<'model,'msg>) =
+    let runInteractiveViewerScriptWithAudio options script audioSink (host: InteractiveViewerHost<'model, 'msg>) =
         runInteractiveViewerScriptWithWindowBehaviorAndAudio options defaultWindowBehavior script audioSink host
 
     let runAppEvidence (request: ViewerRunRequest) options (host: GeneratedAppHost<'model, 'msg>) =
         let model, _ = host.Init()
-        let reportProductDefect ev = captureDiagnostic host.Diagnostics ev |> ignore
+
+        let reportProductDefect ev =
+            captureDiagnostic host.Diagnostics ev |> ignore
         // Issue #396: guard the one-shot product View. A throw here is an App-stage ProductDefect (the
         // #365 classification), reported and written to the evidence path exactly like a bounded-run
         // failure, rather than escaping runAppEvidence as an uncaught exception.
         match tryFirstProductView reportProductDefect "View" (fun () -> host.View model) with
         | Result.Error failure ->
-            request.EvidencePath |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
+            request.EvidencePath
+            |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
+
             Result.Error failure
         | Result.Ok scene ->
             // Issue #246: `runBounded` fits the scene to the evidence surface itself, so hand it the raw
@@ -2062,76 +2525,91 @@ module internal ViewerRuntime =
                     VisualEvidenceHandling.artifacts request options (presentedFor options options.InitialSize scene)
 
                 let outcome =
-                    { Status = "ok"
-                      Mode = "persistent-evidence"
-                      Command = Some "runAppEvidence"
-                      RendererMode = evidence.RendererMode
-                      WindowOpened = true
-                      WindowVisible = ViewerObservedValue.Unsupported
-                      FirstFramePresented = evidence.FramesRendered > 0
-                      CloseReason = Some EvidenceRequestedClose
-                      UserCloseObserved = false
-                      AppCloseObserved = false
-                      EvidenceCloseObserved = true
-                      SelfClosedForEvidence = true
-                      InputDispatch = "not-required"
-                      ExitPath = true
-                      WindowDiagnostics = []
-                      OptionResults = []
-                      VisualEvidence = visualEvidence
-                      FailureClass = None
-                      BlockedStage = None
-                      Classification = None
-                      Category = None
-                      Message = "Persistent evidence launch completed after evidence target." }
+                    {
+                        Status = "ok"
+                        Mode = "persistent-evidence"
+                        Command = Some "runAppEvidence"
+                        RendererMode = evidence.RendererMode
+                        WindowOpened = true
+                        WindowVisible = ViewerObservedValue.Unsupported
+                        FirstFramePresented = evidence.FramesRendered > 0
+                        CloseReason = Some EvidenceRequestedClose
+                        UserCloseObserved = false
+                        AppCloseObserved = false
+                        EvidenceCloseObserved = true
+                        SelfClosedForEvidence = true
+                        InputDispatch = "not-required"
+                        ExitPath = true
+                        WindowDiagnostics = []
+                        OptionResults = []
+                        VisualEvidence = visualEvidence
+                        FailureClass = None
+                        BlockedStage = None
+                        Classification = None
+                        Category = None
+                        Message = "Persistent evidence launch completed after evidence target."
+                    }
 
                 request.EvidencePath
                 |> Option.iter (fun path ->
-                    if not (isPngPath path) && parseRendererMode request.RendererMode <> RendererModeKind.MetadataHash then
+                    if
+                        not (isPngPath path)
+                        && parseRendererMode request.RendererMode <> RendererModeKind.MetadataHash
+                    then
                         writeLaunchOutcome path outcome)
 
                 Result.Ok outcome
             | Result.Error failure ->
-                request.EvidencePath |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
+                request.EvidencePath
+                |> Option.iter (fun path -> writeLaunchFailure path "persistent-evidence" "runAppEvidence" failure)
+
                 Result.Error failure
 
-    let private captureScreenshotEvidenceResult (request: ScreenshotEvidenceRequest) (options: ViewerOptions) scene : ScreenshotEvidenceResult =
+    let private captureScreenshotEvidenceResult
+        (request: ScreenshotEvidenceRequest)
+        (options: ViewerOptions)
+        scene
+        : ScreenshotEvidenceResult =
         let diagnostics =
-            [ if request.Width <= 0 then
-                  "screenshot width must be positive"
-              if request.Height <= 0 then
-                  "screenshot height must be positive"
-              if request.Timeout <= TimeSpan.Zero then
-                  "screenshot timeout must be positive" ]
+            [
+                if request.Width <= 0 then
+                    "screenshot width must be positive"
+                if request.Height <= 0 then
+                    "screenshot height must be positive"
+                if request.Timeout <= TimeSpan.Zero then
+                    "screenshot timeout must be positive"
+            ]
 
         if not diagnostics.IsEmpty then
-            { Status = ScreenshotFailed
-              Command = request.Command
-              AppOrSample = request.AppOrSample
-              HostFacts = request.HostFacts
-              CaptureMode = request.CaptureMode
-              EvidenceKind = "screenshot"
-              OutputPath = Some request.OutputPath
-              ScreenshotPath = None
-              Width = None
-              Height = None
-              PixelContentValidation = PixelContentNotValidated "request validation failed before capture"
-              RendererMode = request.RendererMode
-              FramesRendered = None
-              ViewerOpenStatus = ViewerOpenUnknown
-              FirstFrameStatus = FirstFrameUnknownStatus
-              CaptureAvailability = CaptureAvailabilityUnknown "request validation failed before host launch"
-              CaptureSource = NoCaptureSource
-              DeterministicFallbackKind = None
-              ProvesScreenshot = false
-              BlockedStage = Some ViewerRunBlockedStage.Capture
-              Classification = Some ProductDefect
-              Category = Some ViewerDiagnosticCategory.Screenshot
-              Message = "Screenshot evidence request validation failed."
-              Timestamp = DateTimeOffset.UnixEpoch
-              UnsupportedHostReason = None
-              Fallback = None
-              Diagnostics = diagnostics }
+            {
+                Status = ScreenshotFailed
+                Command = request.Command
+                AppOrSample = request.AppOrSample
+                HostFacts = request.HostFacts
+                CaptureMode = request.CaptureMode
+                EvidenceKind = "screenshot"
+                OutputPath = Some request.OutputPath
+                ScreenshotPath = None
+                Width = None
+                Height = None
+                PixelContentValidation = PixelContentNotValidated "request validation failed before capture"
+                RendererMode = request.RendererMode
+                FramesRendered = None
+                ViewerOpenStatus = ViewerOpenUnknown
+                FirstFrameStatus = FirstFrameUnknownStatus
+                CaptureAvailability = CaptureAvailabilityUnknown "request validation failed before host launch"
+                CaptureSource = NoCaptureSource
+                DeterministicFallbackKind = None
+                ProvesScreenshot = false
+                BlockedStage = Some ViewerRunBlockedStage.Capture
+                Classification = Some ProductDefect
+                Category = Some ViewerDiagnosticCategory.Screenshot
+                Message = "Screenshot evidence request validation failed."
+                Timestamp = DateTimeOffset.UnixEpoch
+                UnsupportedHostReason = None
+                Fallback = None
+                Diagnostics = diagnostics
+            }
         else
             let screenshotPath =
                 if isPngPath request.OutputPath then
@@ -2139,53 +2617,62 @@ module internal ViewerRuntime =
                 else
                     IO.Path.ChangeExtension(request.OutputPath, ".png") |> string
 
-            let screenshotSize: FS.GG.UI.Scene.Size = { Width = request.Width; Height = request.Height }
+            let screenshotSize: FS.GG.UI.Scene.Size =
+                {
+                    Width = request.Width
+                    Height = request.Height
+                }
+
             let written = writeSceneImageEvidence screenshotPath screenshotSize scene
             let dimensions, pixelValidation = pngDimensionsAndNonBlank screenshotPath
 
             match written, dimensions, pixelValidation with
             | true, Some(width, height), PixelContentNonBlank ->
-                { Status = ScreenshotOk
-                  Command = request.Command
-                  AppOrSample = request.AppOrSample
-                  HostFacts = request.HostFacts
-                  CaptureMode = request.CaptureMode
-                  EvidenceKind = "screenshot"
-                  OutputPath = Some request.OutputPath
-                  ScreenshotPath = Some screenshotPath
-                  Width = Some width
-                  Height = Some height
-                  PixelContentValidation = PixelContentNonBlank
-                  RendererMode = request.RendererMode
-                  FramesRendered = Some 1
-                  ViewerOpenStatus = ViewerOpenConfirmed
-                  FirstFrameStatus = FirstFramePresentedStatus
-                  CaptureAvailability = CaptureAvailable
-                  // #141: this path always rasterizes offscreen through `writeSceneImageEvidence`
-                  // (CPU `SKBitmap`, no GL context, no window), so it names the offscreen scene raster
-                  // it really performs — not a `LiveViewerWindow` that never opened. `ProvesScreenshot`
-                  // stays true: a real, non-blank pixel artifact genuinely was produced (only the
-                  // capture-source/message misled; renderer-mode=skia is honest — see the issue).
-                  CaptureSource = OffscreenSceneRaster
-                  DeterministicFallbackKind = None
-                  ProvesScreenshot = true
-                  BlockedStage = None
-                  Classification = None
-                  Category = None
-                  Message = "Screenshot artifact rendered by offscreen CPU scene raster (no live viewer window)."
-                  Timestamp = DateTimeOffset.UtcNow
-                  UnsupportedHostReason = None
-                  Fallback = None
-                  Diagnostics =
-                      [ "status=ok"
-                        "evidence-kind=screenshot"
-                        $"artifact-path={screenshotPath}"
-                        $"image-width={width}"
-                        $"image-height={height}"
-                        "pixel-content-validation=non-blank"
-                        "capture-source=offscreen-scene-raster"
-                        "proves-screenshot=true"
-                        $"scene-capabilities={Scene.describe { Nodes = [ scene ] } |> List.length}" ] }
+                {
+                    Status = ScreenshotOk
+                    Command = request.Command
+                    AppOrSample = request.AppOrSample
+                    HostFacts = request.HostFacts
+                    CaptureMode = request.CaptureMode
+                    EvidenceKind = "screenshot"
+                    OutputPath = Some request.OutputPath
+                    ScreenshotPath = Some screenshotPath
+                    Width = Some width
+                    Height = Some height
+                    PixelContentValidation = PixelContentNonBlank
+                    RendererMode = request.RendererMode
+                    FramesRendered = Some 1
+                    ViewerOpenStatus = ViewerOpenConfirmed
+                    FirstFrameStatus = FirstFramePresentedStatus
+                    CaptureAvailability = CaptureAvailable
+                    // #141: this path always rasterizes offscreen through `writeSceneImageEvidence`
+                    // (CPU `SKBitmap`, no GL context, no window), so it names the offscreen scene raster
+                    // it really performs — not a `LiveViewerWindow` that never opened. `ProvesScreenshot`
+                    // stays true: a real, non-blank pixel artifact genuinely was produced (only the
+                    // capture-source/message misled; renderer-mode=skia is honest — see the issue).
+                    CaptureSource = OffscreenSceneRaster
+                    DeterministicFallbackKind = None
+                    ProvesScreenshot = true
+                    BlockedStage = None
+                    Classification = None
+                    Category = None
+                    Message = "Screenshot artifact rendered by offscreen CPU scene raster (no live viewer window)."
+                    Timestamp = DateTimeOffset.UtcNow
+                    UnsupportedHostReason = None
+                    Fallback = None
+                    Diagnostics =
+                        [
+                            "status=ok"
+                            "evidence-kind=screenshot"
+                            $"artifact-path={screenshotPath}"
+                            $"image-width={width}"
+                            $"image-height={height}"
+                            "pixel-content-validation=non-blank"
+                            "capture-source=offscreen-scene-raster"
+                            "proves-screenshot=true"
+                            $"scene-capabilities={Scene.describe { Nodes = [ scene ] } |> List.length}"
+                        ]
+                }
             | _ ->
                 let message =
                     match pixelValidation with
@@ -2194,35 +2681,41 @@ module internal ViewerRuntime =
                     | PixelContentNotValidated reason -> reason
                     | PixelContentNonBlank -> "Screenshot PNG write failed."
 
-                { Status = ScreenshotFailed
-                  Command = request.Command
-                  AppOrSample = request.AppOrSample
-                  HostFacts = request.HostFacts
-                  CaptureMode = request.CaptureMode
-                  EvidenceKind = "screenshot"
-                  OutputPath = Some request.OutputPath
-                  ScreenshotPath = if IO.File.Exists screenshotPath then Some screenshotPath else None
-                  Width = dimensions |> Option.map fst
-                  Height = dimensions |> Option.map snd
-                  PixelContentValidation = pixelValidation
-                  RendererMode = request.RendererMode
-                  FramesRendered = Some 1
-                  ViewerOpenStatus = ViewerOpenConfirmed
-                  FirstFrameStatus = FirstFramePresentedStatus
-                  CaptureAvailability = CaptureAvailable
-                  // #141: same offscreen CPU raster path as the success branch — name the raster it
-                  // actually ran, not a live viewer window.
-                  CaptureSource = OffscreenSceneRaster
-                  DeterministicFallbackKind = None
-                  ProvesScreenshot = false
-                  BlockedStage = Some ViewerRunBlockedStage.Capture
-                  Classification = Some ProductDefect
-                  Category = Some ViewerDiagnosticCategory.Screenshot
-                  Message = message
-                  Timestamp = DateTimeOffset.UtcNow
-                  UnsupportedHostReason = None
-                  Fallback = None
-                  Diagnostics = diagnostics @ [ $"failure={message}" ] }
+                {
+                    Status = ScreenshotFailed
+                    Command = request.Command
+                    AppOrSample = request.AppOrSample
+                    HostFacts = request.HostFacts
+                    CaptureMode = request.CaptureMode
+                    EvidenceKind = "screenshot"
+                    OutputPath = Some request.OutputPath
+                    ScreenshotPath =
+                        if IO.File.Exists screenshotPath then
+                            Some screenshotPath
+                        else
+                            None
+                    Width = dimensions |> Option.map fst
+                    Height = dimensions |> Option.map snd
+                    PixelContentValidation = pixelValidation
+                    RendererMode = request.RendererMode
+                    FramesRendered = Some 1
+                    ViewerOpenStatus = ViewerOpenConfirmed
+                    FirstFrameStatus = FirstFramePresentedStatus
+                    CaptureAvailability = CaptureAvailable
+                    // #141: same offscreen CPU raster path as the success branch — name the raster it
+                    // actually ran, not a live viewer window.
+                    CaptureSource = OffscreenSceneRaster
+                    DeterministicFallbackKind = None
+                    ProvesScreenshot = false
+                    BlockedStage = Some ViewerRunBlockedStage.Capture
+                    Classification = Some ProductDefect
+                    Category = Some ViewerDiagnosticCategory.Screenshot
+                    Message = message
+                    Timestamp = DateTimeOffset.UtcNow
+                    UnsupportedHostReason = None
+                    Fallback = None
+                    Diagnostics = diagnostics @ [ $"failure={message}" ]
+                }
 
     module ScreenshotEvidenceHandling =
         let capture request options scene =
@@ -2233,138 +2726,160 @@ module internal ViewerRuntime =
 
     let initEvidenceWorkflow (request: ScreenshotEvidenceRequest) =
         let model: EvidenceWorkflowModel =
-            { Request = request
-              ViewerOpenStatus = ViewerOpenUnknown
-              FirstFrameStatus = FirstFrameUnknownStatus
-              CaptureAvailability = CaptureAvailabilityUnknown "capture capability not yet checked"
-              OutputPath = Some request.OutputPath
-              Result = None
-              Diagnostics = [] }
+            {
+                Request = request
+                ViewerOpenStatus = ViewerOpenUnknown
+                FirstFrameStatus = FirstFrameUnknownStatus
+                CaptureAvailability = CaptureAvailabilityUnknown "capture capability not yet checked"
+                OutputPath = Some request.OutputPath
+                Result = None
+                Diagnostics = []
+            }
 
         model, [ LaunchViewerForEvidence request ]
 
     let updateEvidenceWorkflow (msg: EvidenceWorkflowMsg) (model: EvidenceWorkflowModel) =
         match msg with
         | LaunchStarted ->
-            { model with Diagnostics = model.Diagnostics @ [ "launch-started=true" ] },
+            { model with
+                Diagnostics = model.Diagnostics @ [ "launch-started=true" ]
+            },
             [ CollectProcessOutput ]
-        | LaunchCompleted status ->
-            { model with ViewerOpenStatus = status },
-            []
+        | LaunchCompleted status -> { model with ViewerOpenStatus = status }, []
         | FirstFrameObserved status ->
-            { model with FirstFrameStatus = status },
-            [ CaptureViewerScreenshot model.Request.OutputPath ]
+            { model with FirstFrameStatus = status }, [ CaptureViewerScreenshot model.Request.OutputPath ]
         | CaptureCapabilityKnown availability ->
-            { model with CaptureAvailability = availability },
+            { model with
+                CaptureAvailability = availability
+            },
             []
         | CaptureSucceeded(path, width, height, source) ->
             let result: ScreenshotEvidenceResult =
-                { Status = ScreenshotOk
-                  Command = model.Request.Command
-                  AppOrSample = model.Request.AppOrSample
-                  HostFacts = model.Request.HostFacts
-                  CaptureMode = model.Request.CaptureMode
-                  EvidenceKind = "screenshot"
-                  OutputPath = model.OutputPath
-                  ScreenshotPath = Some path
-                  Width = Some width
-                  Height = Some height
-                  PixelContentValidation = PixelContentNonBlank
-                  RendererMode = model.Request.RendererMode
-                  FramesRendered = Some 1
-                  ViewerOpenStatus = model.ViewerOpenStatus
-                  FirstFrameStatus = model.FirstFrameStatus
-                  CaptureAvailability = CaptureAvailable
-                  CaptureSource = source
-                  DeterministicFallbackKind = None
-                  ProvesScreenshot = source = LiveViewerWindow
-                  BlockedStage = None
-                  Classification = None
-                  Category = None
-                  Message = "Screenshot artifact captured from live viewer output."
-                  Timestamp = DateTimeOffset.UnixEpoch
-                  UnsupportedHostReason = None
-                  Fallback = None
-                  Diagnostics =
-                      model.Diagnostics
-                      @ [ "status=ok"
-                          "evidence-kind=screenshot"
-                          $"screenshot-path={path}"
-                          $"dimensions={width}x{height}"
-                          $"capture-source={source}" ] }
+                {
+                    Status = ScreenshotOk
+                    Command = model.Request.Command
+                    AppOrSample = model.Request.AppOrSample
+                    HostFacts = model.Request.HostFacts
+                    CaptureMode = model.Request.CaptureMode
+                    EvidenceKind = "screenshot"
+                    OutputPath = model.OutputPath
+                    ScreenshotPath = Some path
+                    Width = Some width
+                    Height = Some height
+                    PixelContentValidation = PixelContentNonBlank
+                    RendererMode = model.Request.RendererMode
+                    FramesRendered = Some 1
+                    ViewerOpenStatus = model.ViewerOpenStatus
+                    FirstFrameStatus = model.FirstFrameStatus
+                    CaptureAvailability = CaptureAvailable
+                    CaptureSource = source
+                    DeterministicFallbackKind = None
+                    ProvesScreenshot = source = LiveViewerWindow
+                    BlockedStage = None
+                    Classification = None
+                    Category = None
+                    Message = "Screenshot artifact captured from live viewer output."
+                    Timestamp = DateTimeOffset.UnixEpoch
+                    UnsupportedHostReason = None
+                    Fallback = None
+                    Diagnostics =
+                        model.Diagnostics
+                        @ [
+                            "status=ok"
+                            "evidence-kind=screenshot"
+                            $"screenshot-path={path}"
+                            $"dimensions={width}x{height}"
+                            $"capture-source={source}"
+                        ]
+                }
 
             { model with
                 CaptureAvailability = CaptureAvailable
-                Result = Some result },
-            [ ValidateScreenshotArtifact path
-              WriteScreenshotEvidenceReport result
-              CleanupEvidenceViewer ]
+                Result = Some result
+            },
+            [
+                ValidateScreenshotArtifact path
+                WriteScreenshotEvidenceReport result
+                CleanupEvidenceViewer
+            ]
         | CaptureUnsupported(reason, fallbackKind) ->
             let result: ScreenshotEvidenceResult =
-                { Status = ScreenshotUnsupported
-                  Command = model.Request.Command
-                  AppOrSample = model.Request.AppOrSample
-                  HostFacts = model.Request.HostFacts
-                  CaptureMode = model.Request.CaptureMode
-                  EvidenceKind = "screenshot"
-                  OutputPath = model.OutputPath
-                  ScreenshotPath = None
-                  Width = None
-                  Height = None
-                  PixelContentValidation = PixelContentNotValidated reason
-                  RendererMode = model.Request.RendererMode
-                  FramesRendered = None
-                  ViewerOpenStatus = model.ViewerOpenStatus
-                  FirstFrameStatus = model.FirstFrameStatus
-                  CaptureAvailability = CaptureUnavailable reason
-                  CaptureSource = fallbackKind |> Option.map (fun _ -> DeterministicSceneRender) |> Option.defaultValue NoCaptureSource
-                  DeterministicFallbackKind = fallbackKind
-                  ProvesScreenshot = false
-                  BlockedStage = Some Capture
-                  Classification = Some UnsupportedEnvironment
-                  Category = Some ViewerDiagnosticCategory.Screenshot
-                  Message = reason
-                  Timestamp = DateTimeOffset.UnixEpoch
-                  UnsupportedHostReason = Some reason
-                  Fallback = fallbackKind
-                  Diagnostics = model.Diagnostics @ [ "status=unsupported"; $"unsupported-host-reason={reason}" ] }
+                {
+                    Status = ScreenshotUnsupported
+                    Command = model.Request.Command
+                    AppOrSample = model.Request.AppOrSample
+                    HostFacts = model.Request.HostFacts
+                    CaptureMode = model.Request.CaptureMode
+                    EvidenceKind = "screenshot"
+                    OutputPath = model.OutputPath
+                    ScreenshotPath = None
+                    Width = None
+                    Height = None
+                    PixelContentValidation = PixelContentNotValidated reason
+                    RendererMode = model.Request.RendererMode
+                    FramesRendered = None
+                    ViewerOpenStatus = model.ViewerOpenStatus
+                    FirstFrameStatus = model.FirstFrameStatus
+                    CaptureAvailability = CaptureUnavailable reason
+                    CaptureSource =
+                        fallbackKind
+                        |> Option.map (fun _ -> DeterministicSceneRender)
+                        |> Option.defaultValue NoCaptureSource
+                    DeterministicFallbackKind = fallbackKind
+                    ProvesScreenshot = false
+                    BlockedStage = Some Capture
+                    Classification = Some UnsupportedEnvironment
+                    Category = Some ViewerDiagnosticCategory.Screenshot
+                    Message = reason
+                    Timestamp = DateTimeOffset.UnixEpoch
+                    UnsupportedHostReason = Some reason
+                    Fallback = fallbackKind
+                    Diagnostics =
+                        model.Diagnostics
+                        @ [ "status=unsupported"; $"unsupported-host-reason={reason}" ]
+                }
 
             { model with
                 CaptureAvailability = CaptureUnavailable reason
-                Result = Some result },
+                Result = Some result
+            },
             [ WriteScreenshotEvidenceReport result ]
         | CaptureFailed message ->
             let result: ScreenshotEvidenceResult =
-                { Status = ScreenshotFailed
-                  Command = model.Request.Command
-                  AppOrSample = model.Request.AppOrSample
-                  HostFacts = model.Request.HostFacts
-                  CaptureMode = model.Request.CaptureMode
-                  EvidenceKind = "screenshot"
-                  OutputPath = model.OutputPath
-                  ScreenshotPath = None
-                  Width = None
-                  Height = None
-                  PixelContentValidation = PixelContentNotValidated message
-                  RendererMode = model.Request.RendererMode
-                  FramesRendered = None
-                  ViewerOpenStatus = model.ViewerOpenStatus
-                  FirstFrameStatus = model.FirstFrameStatus
-                  CaptureAvailability = model.CaptureAvailability
-                  CaptureSource = NoCaptureSource
-                  DeterministicFallbackKind = None
-                  ProvesScreenshot = false
-                  BlockedStage = Some Capture
-                  Classification = Some ProductDefect
-                  Category = Some ViewerDiagnosticCategory.Screenshot
-                  Message = message
-                  Timestamp = DateTimeOffset.UnixEpoch
-                  UnsupportedHostReason = None
-                  Fallback = None
-                  Diagnostics = model.Diagnostics @ [ $"failure={message}" ] }
+                {
+                    Status = ScreenshotFailed
+                    Command = model.Request.Command
+                    AppOrSample = model.Request.AppOrSample
+                    HostFacts = model.Request.HostFacts
+                    CaptureMode = model.Request.CaptureMode
+                    EvidenceKind = "screenshot"
+                    OutputPath = model.OutputPath
+                    ScreenshotPath = None
+                    Width = None
+                    Height = None
+                    PixelContentValidation = PixelContentNotValidated message
+                    RendererMode = model.Request.RendererMode
+                    FramesRendered = None
+                    ViewerOpenStatus = model.ViewerOpenStatus
+                    FirstFrameStatus = model.FirstFrameStatus
+                    CaptureAvailability = model.CaptureAvailability
+                    CaptureSource = NoCaptureSource
+                    DeterministicFallbackKind = None
+                    ProvesScreenshot = false
+                    BlockedStage = Some Capture
+                    Classification = Some ProductDefect
+                    Category = Some ViewerDiagnosticCategory.Screenshot
+                    Message = message
+                    Timestamp = DateTimeOffset.UnixEpoch
+                    UnsupportedHostReason = None
+                    Fallback = None
+                    Diagnostics = model.Diagnostics @ [ $"failure={message}" ]
+                }
 
-            { model with Result = Some result },
-            [ WriteScreenshotEvidenceReport result ]
+            { model with Result = Some result }, [ WriteScreenshotEvidenceReport result ]
         | EvidenceReportWritten path ->
-            { model with OutputPath = Some path; Diagnostics = model.Diagnostics @ [ $"report-written={path}" ] },
+            { model with
+                OutputPath = Some path
+                Diagnostics = model.Diagnostics @ [ $"report-written={path}" ]
+            },
             []

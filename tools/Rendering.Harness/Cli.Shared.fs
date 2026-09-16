@@ -12,6 +12,7 @@ let outDir (rest: string list) =
         | "--out" :: d :: _ -> Some d
         | _ :: tl -> find tl
         | [] -> None
+
     match find rest with
     | Some d -> d
     | None -> Path.Combine("artifacts", "harness", "run-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"))
@@ -22,6 +23,7 @@ let flagValue (flag: string) (rest: string list) =
         | f :: v :: _ when f = flag -> Some v
         | _ :: tl -> find tl
         | [] -> None
+
     find rest
 
 // Feature 181 (US2): feature selection routes through the single FeatureCatalog descriptor table
@@ -67,35 +69,44 @@ let proofSize: Size = { Width = 640; Height = 480 }
 
 let sentinelScene () =
     SceneNode.Group
-        [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
-          Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
-          Scene.rectangle (320.0, 200.0, 96.0, 96.0) (Colors.rgb 220uy 180uy 64uy)
-          Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy) ]
+        [
+            Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
+            Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
+            Scene.rectangle (320.0, 200.0, 96.0, 96.0) (Colors.rgb 220uy 180uy 64uy)
+            Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy)
+        ]
 
 let damageScene () =
     SceneNode.Group
-        [ Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
-          Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
-          Scene.rectangle (320.0, 200.0, 96.0, 96.0) (Colors.rgb 236uy 80uy 96uy)
-          Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy) ]
+        [
+            Scene.rectangle (0.0, 0.0, 640.0, 480.0) (Colors.rgb 12uy 18uy 30uy)
+            Scene.rectangle (32.0, 32.0, 132.0, 92.0) (Colors.rgb 64uy 220uy 144uy)
+            Scene.rectangle (320.0, 200.0, 96.0, 96.0) (Colors.rgb 236uy 80uy 96uy)
+            Scene.rectangle (500.0, 48.0, 72.0, 144.0) (Colors.rgb 72uy 96uy 210uy)
+        ]
 
 let captureProofImage command app hostFacts path scene =
     let options: ViewerOptions =
-        { Title = "Feature155 native proof capture"
-          InitialSize = proofSize
-          PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None; LogicalSize = None }
+        {
+            Title = "Feature155 native proof capture"
+            InitialSize = proofSize
+            PresentMode = ViewerPresentMode.OffscreenReadback
+            FrameRateCap = None
+            LogicalSize = None
+        }
 
     let request: ScreenshotEvidenceRequest =
-        { Command = command
-          AppOrSample = app
-          OutputPath = path
-          Width = proofSize.Width
-          Height = proofSize.Height
-          RendererMode = "skia"
-          CaptureMode = ViewerRenderTargetPng
-          HostFacts = hostFacts
-          Timeout = TimeSpan.FromSeconds 10.0 }
+        {
+            Command = command
+            AppOrSample = app
+            OutputPath = path
+            Width = proofSize.Width
+            Height = proofSize.Height
+            RendererMode = "skia"
+            CaptureMode = ViewerRenderTargetPng
+            HostFacts = hostFacts
+            Timeout = TimeSpan.FromSeconds 10.0
+        }
 
     Viewer.captureScreenshotEvidence request options scene
 
@@ -105,7 +116,14 @@ let colorToken (color: SkiaSharp.SKColor) =
 let tryPixel (path: string) (x: int) (y: int) =
     try
         use bitmap = SkiaSharp.SKBitmap.Decode(path)
-        if Object.ReferenceEquals(bitmap, null) || x < 0 || y < 0 || x >= bitmap.Width || y >= bitmap.Height then
+
+        if
+            Object.ReferenceEquals(bitmap, null)
+            || x < 0
+            || y < 0
+            || x >= bitmap.Width
+            || y >= bitmap.Height
+        then
             None
         else
             Some(bitmap.GetPixel(x, y) |> colorToken)
@@ -115,19 +133,29 @@ let tryPixel (path: string) (x: int) (y: int) =
 let fileDecodableNonBlank (path: string) =
     try
         use bitmap = SkiaSharp.SKBitmap.Decode(path)
+
         if Object.ReferenceEquals(bitmap, null) then
             false
         else
             let mutable nonBlank = false
             let mutable y = 0
+
             while not nonBlank && y < bitmap.Height do
                 let mutable x = 0
+
                 while not nonBlank && x < bitmap.Width do
                     let pixel = bitmap.GetPixel(x, y)
-                    if pixel.Alpha <> 0uy && (pixel.Red <> 0uy || pixel.Green <> 0uy || pixel.Blue <> 0uy) then
+
+                    if
+                        pixel.Alpha <> 0uy
+                        && (pixel.Red <> 0uy || pixel.Green <> 0uy || pixel.Blue <> 0uy)
+                    then
                         nonBlank <- true
+
                     x <- x + 16
+
                 y <- y + 16
+
             nonBlank
     with _ ->
         false

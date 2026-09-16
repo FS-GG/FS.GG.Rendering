@@ -53,8 +53,12 @@ let private repositoryPath (relativePath: string) =
 
 let private propsPath = repositoryPath "template/base/Directory.Packages.props"
 let private projPath = repositoryPath "template/base/src/Product/Product.fsproj"
-let private testsProjPath = repositoryPath "template/base/tests/Product.Tests/Product.Tests.fsproj"
-let private manifestPath = repositoryPath "template/skill-manifest/skill-manifest.json"
+
+let private testsProjPath =
+    repositoryPath "template/base/tests/Product.Tests/Product.Tests.fsproj"
+
+let private manifestPath =
+    repositoryPath "template/skill-manifest/skill-manifest.json"
 
 /// TEST-SCOPED skills (#432). A skill's `open` lines have to land on SOME compile graph, but not always the
 /// product's: `fs-gg-testing` is about authoring the generated product's TESTS, and its helpers are consumed
@@ -79,9 +83,13 @@ let private referencingProjectsOf id =
     let product = projPath, "template/base/src/Product/Product.fsproj"
 
     if Set.contains id testScopedSkills then
-        [ testsProjPath, "template/base/tests/Product.Tests/Product.Tests.fsproj"; product ]
+        [
+            testsProjPath, "template/base/tests/Product.Tests/Product.Tests.fsproj"
+            product
+        ]
     else
         [ product ]
+
 let private skillistRel = "template/base/docs/skillist-reference.md"
 let private skillistPath = repositoryPath skillistRel
 
@@ -89,7 +97,8 @@ let private capabilitiesRel = "template/capabilities.yml"
 let private capabilitiesPath = repositoryPath capabilitiesRel
 
 /// Every profile a scaffold can be generated on (.template.config/template.json `symbols.profile`).
-let private allProfiles = set [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
+let private allProfiles =
+    set [ "app"; "headless-scene"; "governed"; "sample-pack"; "game" ]
 
 /// Package ids the scaffold COULD pin: everything packable in this repo, plus everything the template
 /// already pins (which is how the external FS.GG.Game.* / FS.GG.Audio.* components enter the set).
@@ -104,10 +113,12 @@ let private candidatePackages =
         |> Seq.choose (fun t ->
             let m = Regex.Match(t, "<PackageId>([^<]+)</PackageId>")
             if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
+
     let pinned =
         Regex.Matches(File.ReadAllText propsPath, "<PackageVersion\\s+Include=\"([^\"]+)\"")
         |> Seq.map (fun m -> m.Groups.[1].Value)
         |> Seq.filter (fun id -> id.StartsWith "FS.GG.")
+
     Set.union (Set.ofSeq packable) (Set.ofSeq pinned)
 
 /// The `dotnet new` gate opening the region a line sits in, or None when the line is ungated.
@@ -115,14 +126,23 @@ let private candidatePackages =
 /// (the same walk AudioProfileWiringTests and validate-template-payload-pins.fsx use).
 let private enclosingGate (lines: string[]) (lineIndex: int) =
     let ifRegex = Regex(@"<!--#if\s+\((?<cond>.*?)\)\s*-->")
+
     let rec walk i depth =
-        if i < 0 then None
-        elif lines.[i].Contains "<!--#endif" then walk (i - 1) (depth + 1)
+        if i < 0 then
+            None
+        elif lines.[i].Contains "<!--#endif" then
+            walk (i - 1) (depth + 1)
         else
             let m = ifRegex.Match lines.[i]
+
             if m.Success then
-                if depth = 0 then Some(m.Groups.["cond"].Value.Trim()) else walk (i - 1) (depth - 1)
-            else walk (i - 1) depth
+                if depth = 0 then
+                    Some(m.Groups.["cond"].Value.Trim())
+                else
+                    walk (i - 1) (depth - 1)
+            else
+                walk (i - 1) depth
+
     walk lineIndex 0
 
 /// The profiles on which `packageId` is declared in `text` (a props or fsproj file), or None when it is
@@ -149,7 +169,10 @@ let private profilesDeclaring (text: string) (packageId: string) =
                 |> Seq.map (fun m -> m.Groups.[1].Value)
                 |> Set.ofSeq)
 
-    if Array.isEmpty declared then None else Some(Set.unionMany declared)
+    if Array.isEmpty declared then
+        None
+    else
+        Some(Set.unionMany declared)
 
 /// The profiles on which `pkg` reaches the compile graph `id`'s `open` lands in — the UNION over every
 /// project that can carry it (see `referencingProjectsOf`). None when NO such project declares it at all,
@@ -159,7 +182,10 @@ let private refProfilesFor id pkg =
         referencingProjectsOf id
         |> List.choose (fun (path, _) -> profilesDeclaring (File.ReadAllText path) pkg)
 
-    if List.isEmpty declared then None else Some(Set.unionMany declared)
+    if List.isEmpty declared then
+        None
+    else
+        Some(Set.unionMany declared)
 
 /// The profile set of a manifest `materializes-when` clause (ADR-0017 grammar: `profile in [a, b]`,
 /// optionally `and`-ed with non-profile clauses such as `lifecycle == spec-kit`, which we ignore — they
@@ -167,11 +193,16 @@ let private refProfilesFor id pkg =
 /// A row with no profile clause constrains no profile, so it reaches all of them.
 let private profilesOf (materializesWhen: string) =
     let m = Regex.Match(materializesWhen, @"profile\s+in\s+\[([^\]]+)\]")
+
     if m.Success then
         m.Groups.[1].Value.Split(',') |> Seq.map (fun s -> s.Trim()) |> Set.ofSeq
     else
         let eq = Regex.Match(materializesWhen, @"profile\s*==\s*(\w[\w-]*)")
-        if eq.Success then set [ eq.Groups.[1].Value ] else allProfiles
+
+        if eq.Success then
+            set [ eq.Groups.[1].Value ]
+        else
+            allProfiles
 
 /// (capability id, packageId, the profiles the row CLAIMS — None when it declares none) for every RUNTIME
 /// capability in the catalog. `non-runtime` rows (samples) are dropped: they pin no package, so there is no
@@ -238,7 +269,6 @@ let private capabilityFragments =
     |> List.ofSeq
 
 /// R-SKILL's two inputs (#564).
-
 /// (capability id, its `skill:` pointer) for EVERY capability row — non-runtime included, for the same reason
 /// `capabilityFragments` includes them: `samples` carries a `skill:` too, and a rule that quietly skipped the
 /// one row that is shaped differently is how these catalogs drift in the first place.
@@ -280,7 +310,8 @@ let private manifestSuppliedByDirs =
 /// `materializes: none` row for a fragment a product receives IN FULL. That is the precise direction this rule
 /// exists to catch, so it is normalized on BOTH sides rather than trusted to a house style in a JSON file.
 let private templateJsonFragmentSources =
-    use document = JsonDocument.Parse(File.ReadAllText(repositoryPath ".template.config/template.json"))
+    use document =
+        JsonDocument.Parse(File.ReadAllText(repositoryPath ".template.config/template.json"))
 
     document.RootElement.GetProperty("sources").EnumerateArray()
     |> Seq.choose (fun source ->
@@ -290,7 +321,11 @@ let private templateJsonFragmentSources =
             | null -> None
             | raw ->
                 let root = raw.TrimEnd '/'
-                if root.StartsWith "template/fragments/" then Some root else None
+
+                if root.StartsWith "template/fragments/" then
+                    Some root
+                else
+                    None
         | _ -> None)
     |> Set.ofSeq
 
@@ -348,7 +383,7 @@ let private capabilityReach pkg =
 /// check is waived, and the "still violating" test below deletes the row the moment its defect is fixed.
 /// Adding a row requires a filed issue; the guard is worthless the moment it becomes a place to put things
 /// that are merely inconvenient. Re-opening this map should feel like taking on debt, because it is.
-let private reachExemptions : Map<string, string> = Map.empty
+let private reachExemptions: Map<string, string> = Map.empty
 
 /// (skill id, profiles it materializes on, the FS.GG.* packages its body says to `open`).
 let private productSkills =
@@ -369,6 +404,7 @@ let private productSkills =
         // source. A reference .fsx is NOT read: it is an FSI script that `#r`s its own packages from
         // nuget, so its opens prove nothing about the compiled product's reference set.
         let skillMd = Path.Combine(dir, "SKILL.md")
+
         let opens =
             if File.Exists skillMd then
                 Regex.Matches(File.ReadAllText skillMd, @"open\s+(FS\.GG\.[A-Za-z0-9_.]+)")
@@ -377,6 +413,7 @@ let private productSkills =
                 |> Set.ofSeq
             else
                 Set.empty
+
         id, profiles, opens)
     |> Seq.filter (fun (_, _, opens) -> not opens.IsEmpty)
     |> List.ofSeq
@@ -436,11 +473,13 @@ let private allProductSkills =
 
 /// A declared delegation: "I state RULE, and SKILL supplies the instrument for it."
 type InstrumentDeclaration =
-    { Linker: string
-      LinkerProfiles: Set<string>
-      LinkerBody: string
-      Rule: string
-      Target: string }
+    {
+        Linker: string
+        LinkerProfiles: Set<string>
+        LinkerBody: string
+        Rule: string
+        Target: string
+    }
 
 /// The YAML frontmatter block — the leading `---` … `---`. Read as its own region so an `instruments:`
 /// word occurring in the PROSE cannot be mistaken for the declaration.
@@ -466,15 +505,21 @@ let private instrumentDeclarations =
             let m = Regex.Match(front, @"(?m)^instruments:\s*\n(?<body>(?:[ \t]+.*\n?)+)")
             if m.Success then m.Groups.["body"].Value else ""
 
-        let body = if File.Exists bodyPath then File.ReadAllText bodyPath else ""
+        let body =
+            if File.Exists bodyPath then
+                File.ReadAllText bodyPath
+            else
+                ""
 
         instrumentEntryRegex.Matches block
         |> Seq.map (fun m ->
-            { Linker = id
-              LinkerProfiles = profiles
-              LinkerBody = body
-              Rule = m.Groups.["rule"].Value.Trim()
-              Target = m.Groups.["skill"].Value })
+            {
+                Linker = id
+                LinkerProfiles = profiles
+                LinkerBody = body
+                Rule = m.Groups.["rule"].Value.Trim()
+                Target = m.Groups.["skill"].Value
+            })
         |> List.ofSeq)
 
 
@@ -483,502 +528,521 @@ let skillPackageReachTests =
     testList
         "Skill package reach (#430) — a skill may not out-reach the packages it says to open"
         [
-          // ---- R-INST (#624) -----------------------------------------------------------------
+            // ---- R-INST (#624) -----------------------------------------------------------------
 
-          // The floor. A gate whose subject set is empty asserts nothing and reports green — the shape
-          // this whole file is written against — and R-INST is unusually exposed to it, because its
-          // subjects are OPT-IN. If the frontmatter parser breaks, or the last declaration is deleted,
-          // every assertion below passes vacuously.
-          test "R-INST has instrument declarations under test (the parser still reads frontmatter)" {
-              Expect.isNonEmpty
-                  instrumentDeclarations
-                  "NO skill declares an `instruments:` block, so R-INST judges nothing and every \
+            // The floor. A gate whose subject set is empty asserts nothing and reports green — the shape
+            // this whole file is written against — and R-INST is unusually exposed to it, because its
+            // subjects are OPT-IN. If the frontmatter parser breaks, or the last declaration is deleted,
+            // every assertion below passes vacuously.
+            test "R-INST has instrument declarations under test (the parser still reads frontmatter)" {
+                Expect.isNonEmpty
+                    instrumentDeclarations
+                    "NO skill declares an `instruments:` block, so R-INST judges nothing and every \
                    assertion below is vacuous. Either the frontmatter parser broke, or the last \
                    declaration was deleted — both are defects, and neither is a pass. The shape is in \
                    template/product-skills/README.md."
 
-              let widgets =
-                  instrumentDeclarations
-                  |> List.tryFind (fun d -> d.Linker = "fs-gg-ui-widgets" && d.Target = "fs-gg-elmish")
+                let widgets =
+                    instrumentDeclarations
+                    |> List.tryFind (fun d -> d.Linker = "fs-gg-ui-widgets" && d.Target = "fs-gg-elmish")
 
-              Expect.isSome
-                  widgets
-                  "fs-gg-ui-widgets -> fs-gg-elmish is the delegation #507 created and #624 was filed \
+                Expect.isSome
+                    widgets
+                    "fs-gg-ui-widgets -> fs-gg-elmish is the delegation #507 created and #624 was filed \
                    for; it must be one of the declarations under test."
-          }
+            }
 
-          // The rule. Containment, and only for DECLARED instruments.
-          test "R-INST — a declared instrument skill materializes wherever the skill that mandates it does" {
-              let known = allProductSkills |> List.map (fun (id, _, _) -> id) |> Set.ofList
+            // The rule. Containment, and only for DECLARED instruments.
+            test "R-INST — a declared instrument skill materializes wherever the skill that mandates it does" {
+                let known = allProductSkills |> List.map (fun (id, _, _) -> id) |> Set.ofList
 
-              // A target that is not a skill at all. Fail CLOSED: a typo'd id would otherwise resolve to
-              // no profiles and be silently excused, which turns the declaration into a decoration.
-              let unknown =
-                  instrumentDeclarations
-                  |> List.filter (fun d -> not (known.Contains d.Target))
-                  |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
+                // A target that is not a skill at all. Fail CLOSED: a typo'd id would otherwise resolve to
+                // no profiles and be silently excused, which turns the declaration into a decoration.
+                let unknown =
+                    instrumentDeclarations
+                    |> List.filter (fun d -> not (known.Contains d.Target))
+                    |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
 
-              Expect.isEmpty
-                  unknown
-                  $"an `instruments:` entry names a skill that does not exist in the manifest — so it \
+                Expect.isEmpty
+                    unknown
+                    $"an `instruments:` entry names a skill that does not exist in the manifest — so it \
                     resolves to no profiles and would be excused by every check below. Fix the id.\n\n\
                     Unknown: {commaSorted unknown}"
 
-              // The declaration must still match the PROSE. A frontmatter entry whose `[[link]]` has been
-              // deleted from the body is a mandate whose pointer is gone — the reader is told to produce
-              // evidence and never told where the instrument is.
-              let unlinked =
-                  instrumentDeclarations
-                  |> List.filter (fun d -> not (d.LinkerBody.Contains $"[[{d.Target}]]"))
-                  |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
+                // The declaration must still match the PROSE. A frontmatter entry whose `[[link]]` has been
+                // deleted from the body is a mandate whose pointer is gone — the reader is told to produce
+                // evidence and never told where the instrument is.
+                let unlinked =
+                    instrumentDeclarations
+                    |> List.filter (fun d -> not (d.LinkerBody.Contains $"[[{d.Target}]]"))
+                    |> List.map (fun d -> $"{d.Linker} -> {d.Target}")
 
-              Expect.isEmpty
-                  unlinked
-                  $"a skill DECLARES that another supplies the instrument for one of its rules, and its \
+                Expect.isEmpty
+                    unlinked
+                    $"a skill DECLARES that another supplies the instrument for one of its rules, and its \
                     body no longer links `[[that skill]]` anywhere. The declaration and the prose have \
                     drifted apart: a reader is handed the mandate and never handed the pointer.\n\n\
                     Declared but not linked: {commaSorted unlinked}"
 
-              // The invariant itself.
-              let starved =
-                  instrumentDeclarations
-                  |> List.filter (fun d -> known.Contains d.Target)
-                  |> List.choose (fun d ->
-                      let targetProfiles =
-                          allProductSkills
-                          |> List.tryPick (fun (id, profiles, _) -> if id = d.Target then Some profiles else None)
-                          |> Option.defaultValue Set.empty
+                // The invariant itself.
+                let starved =
+                    instrumentDeclarations
+                    |> List.filter (fun d -> known.Contains d.Target)
+                    |> List.choose (fun d ->
+                        let targetProfiles =
+                            allProductSkills
+                            |> List.tryPick (fun (id, profiles, _) -> if id = d.Target then Some profiles else None)
+                            |> Option.defaultValue Set.empty
 
-                      let missing = Set.difference d.LinkerProfiles targetProfiles
+                        let missing = Set.difference d.LinkerProfiles targetProfiles
 
-                      if missing.IsEmpty then
-                          None
-                      else
-                          Some
-                              $"{d.Linker} mandates \"{d.Rule}\" on [{commaSorted d.LinkerProfiles}] and \
+                        if missing.IsEmpty then
+                            None
+                        else
+                            Some
+                                $"{d.Linker} mandates \"{d.Rule}\" on [{commaSorted d.LinkerProfiles}] and \
                                 delegates its instrument to {d.Target}, which does not materialize on \
                                 [{commaSorted missing}]")
 
-              let renderedStarved = String.Join("\n", starved)
+                let renderedStarved = String.Join("\n", starved)
 
-              Expect.isEmpty
-                  starved
-                  $"a product on these profiles is handed a RULE and never handed the INSTRUMENT for it. \
+                Expect.isEmpty
+                    starved
+                    $"a product on these profiles is handed a RULE and never handed the INSTRUMENT for it. \
                     That is #507's contradiction, one level up: the skill tells the author to produce \
                     evidence, and the skill that teaches how to produce it is not in their scaffold.\n\n\
                     Either widen the instrument skill's `materializes-when`, narrow the mandating \
                     skill's, or move the rule.\n\n{renderedStarved}"
-          }
+            }
 
-          // THE ORACLE, ANCHORED — and this is the test that earns R-INST its shape. `fs-gg-testing`
-          // links `[[fs-gg-elmish]]` and ships to two profiles fs-gg-elmish does NOT reach. A gate that
-          // judged every `[[link]]` would redden it, and it is CORRECT: a headless-scene product has no
-          // controls to click, so the mandate is vacuous for it, and the skill says so.
-          //
-          // R-INST is silent on it because it is UNDECLARED, not because the numbers happen to work out.
-          // This test proves that distinction is real: the containment it would fail is asserted here
-          // explicitly, so if someone ever "helpfully" marks that link, R-INST reddens — correctly, and
-          // loudly — rather than the anchor rotting into a tautology.
-          test "R-INST does not fire on fs-gg-testing -> fs-gg-elmish (the deliberate cross-profile reference)" {
-              let profilesFor id =
-                  allProductSkills
-                  |> List.tryPick (fun (skill, profiles, _) -> if skill = id then Some profiles else None)
+            // THE ORACLE, ANCHORED — and this is the test that earns R-INST its shape. `fs-gg-testing`
+            // links `[[fs-gg-elmish]]` and ships to two profiles fs-gg-elmish does NOT reach. A gate that
+            // judged every `[[link]]` would redden it, and it is CORRECT: a headless-scene product has no
+            // controls to click, so the mandate is vacuous for it, and the skill says so.
+            //
+            // R-INST is silent on it because it is UNDECLARED, not because the numbers happen to work out.
+            // This test proves that distinction is real: the containment it would fail is asserted here
+            // explicitly, so if someone ever "helpfully" marks that link, R-INST reddens — correctly, and
+            // loudly — rather than the anchor rotting into a tautology.
+            test "R-INST does not fire on fs-gg-testing -> fs-gg-elmish (the deliberate cross-profile reference)" {
+                let profilesFor id =
+                    allProductSkills
+                    |> List.tryPick (fun (skill, profiles, _) -> if skill = id then Some profiles else None)
 
-              let testing = profilesFor "fs-gg-testing"
-              let elmish = profilesFor "fs-gg-elmish"
+                let testing = profilesFor "fs-gg-testing"
+                let elmish = profilesFor "fs-gg-elmish"
 
-              Expect.isSome testing "fs-gg-testing is in the manifest"
-              Expect.isSome elmish "fs-gg-elmish is in the manifest"
+                Expect.isSome testing "fs-gg-testing is in the manifest"
+                Expect.isSome elmish "fs-gg-elmish is in the manifest"
 
-              let body =
-                  allProductSkills
-                  |> List.tryPick (fun (id, _, path) ->
-                      if id = "fs-gg-testing" && File.Exists path then Some(File.ReadAllText path) else None)
-                  |> Option.defaultValue ""
+                let body =
+                    allProductSkills
+                    |> List.tryPick (fun (id, _, path) ->
+                        if id = "fs-gg-testing" && File.Exists path then
+                            Some(File.ReadAllText path)
+                        else
+                            None)
+                    |> Option.defaultValue ""
 
-              Expect.stringContains
-                  body
-                  "[[fs-gg-elmish]]"
-                  "fs-gg-testing really does link fs-gg-elmish — if this ever stops being true, this \
+                Expect.stringContains
+                    body
+                    "[[fs-gg-elmish]]"
+                    "fs-gg-testing really does link fs-gg-elmish — if this ever stops being true, this \
                    anchor is testing nothing and R-INST's hardest case has quietly left the repo."
 
-              let gap = Set.difference testing.Value elmish.Value
+                let gap = Set.difference testing.Value elmish.Value
 
-              Expect.isNonEmpty
-                  gap
-                  "fs-gg-testing is supposed to reach profiles fs-gg-elmish does not (headless-scene, \
+                Expect.isNonEmpty
+                    gap
+                    "fs-gg-testing is supposed to reach profiles fs-gg-elmish does not (headless-scene, \
                    governed) — that gap is the whole reason R-INST judges declarations and not links. If \
                    the gap has closed, this anchor no longer proves anything and R-INST's oracle needs \
                    re-examining, not re-blessing."
 
-              let declared =
-                  instrumentDeclarations
-                  |> List.exists (fun d -> d.Linker = "fs-gg-testing" && d.Target = "fs-gg-elmish")
+                let declared =
+                    instrumentDeclarations
+                    |> List.exists (fun d -> d.Linker = "fs-gg-testing" && d.Target = "fs-gg-elmish")
 
-              Expect.isFalse
-                  declared
-                  $"fs-gg-testing now DECLARES fs-gg-elmish as an instrument, and fs-gg-elmish does not \
+                Expect.isFalse
+                    declared
+                    $"fs-gg-testing now DECLARES fs-gg-elmish as an instrument, and fs-gg-elmish does not \
                     materialize on [{commaSorted gap}]. If that delegation is real, the rule it supplies \
                     must not be mandated on those profiles. If it is a cross-reference — which is what it \
                     has always been — it must not be declared as an instrument."
-          }
+            }
 
-          // A floor: if the manifest regex ever stops matching, every assertion below vacuously passes
-          // and the guard reads green while asserting nothing. Symbology is named because it is the bug
-          // this file exists for — it must always be one of the rows under test.
-          test "the guard actually has product skills (with FS.GG package opens) under test" {
-              Expect.isGreaterThan (List.length productSkills) 3 "several product skills open FS.GG packages"
+            // A floor: if the manifest regex ever stops matching, every assertion below vacuously passes
+            // and the guard reads green while asserting nothing. Symbology is named because it is the bug
+            // this file exists for — it must always be one of the rows under test.
+            test "the guard actually has product skills (with FS.GG package opens) under test" {
+                Expect.isGreaterThan (List.length productSkills) 3 "several product skills open FS.GG packages"
 
-              let symbology = productSkills |> List.tryFind (fun (id, _, _) -> id = "fs-gg-symbology")
-              Expect.isSome symbology "fs-gg-symbology is under test — it is the skill #430 was filed for"
+                let symbology =
+                    productSkills |> List.tryFind (fun (id, _, _) -> id = "fs-gg-symbology")
 
-              let _, _, opens = symbology.Value
-              Expect.contains opens "FS.GG.UI.Symbology" "the symbology skill's body opens the pure vocabulary"
-              Expect.contains opens "FS.GG.UI.Symbology.Render" "...and the render bridge its design loop calls"
-          }
+                Expect.isSome symbology "fs-gg-symbology is under test — it is the skill #430 was filed for"
 
-          // R-PINNED / R-REF — the package an author is told to `open` is on the compile graph at all.
-          // Which compile graph is per-skill: a test-scoped skill (#432) must be referenced by the generated
-          // product's TEST project, not its product source. Central pinning without a reference is #430's bug.
-          test "every package a product skill says to open is pinned AND referenced by the project that opens it" {
-              let props = File.ReadAllText propsPath
+                let _, _, opens = symbology.Value
+                Expect.contains opens "FS.GG.UI.Symbology" "the symbology skill's body opens the pure vocabulary"
+                Expect.contains opens "FS.GG.UI.Symbology.Render" "...and the render bridge its design loop calls"
+            }
 
-              for id, _, opens in productSkills do
-                  let refRels = referencingProjectsOf id |> List.map snd |> String.concat " or "
+            // R-PINNED / R-REF — the package an author is told to `open` is on the compile graph at all.
+            // Which compile graph is per-skill: a test-scoped skill (#432) must be referenced by the generated
+            // product's TEST project, not its product source. Central pinning without a reference is #430's bug.
+            test "every package a product skill says to open is pinned AND referenced by the project that opens it" {
+                let props = File.ReadAllText propsPath
 
-                  for pkg in opens do
-                      Expect.isSome
-                          (profilesDeclaring props pkg)
-                          $"the {id} skill tells the author to `open {pkg}`, so {pkg} must be pinned in template/base/Directory.Packages.props — a skill that names a package the scaffold does not pin does not compile (#430)"
+                for id, _, opens in productSkills do
+                    let refRels = referencingProjectsOf id |> List.map snd |> String.concat " or "
 
-                      Expect.isSome
-                          (refProfilesFor id pkg)
-                          $"the {id} skill tells the author to `open {pkg}`, so {refRels} must reference {pkg} — pinning it centrally without referencing it leaves it off the compile graph (#430)"
-          }
+                    for pkg in opens do
+                        Expect.isSome
+                            (profilesDeclaring props pkg)
+                            $"the {id} skill tells the author to `open {pkg}`, so {pkg} must be pinned in template/base/Directory.Packages.props — a skill that names a package the scaffold does not pin does not compile (#430)"
 
-          // The test-scoped redirect (#432) is the one place this guard is TOLD something rather than
-          // checking it, and a redirect that is merely declared is a fail-open hatch: drop a skill into
-          // `testScopedSkills`, move its package onto the test project, and R-REF/R-REACH stop consulting
-          // the product at all — while the author's `open` still sits in Program.fs and still does not
-          // compile. That is #430 shipped past its own guard, by the guard's own author. So the
-          // classification is ASSERTED, not assumed: a test-scoped skill's packages must be absent from
-          // every product source and present in at least one test source.
-          test "every test-scoped skill really is test-scoped (the redirect is checked, not declared)" {
-              let sourcesUnder relative =
-                  Directory.EnumerateFiles(repositoryPath relative, "*.fs", SearchOption.AllDirectories)
-                  |> Seq.map (fun path -> path, File.ReadAllText path)
-                  |> List.ofSeq
+                        Expect.isSome
+                            (refProfilesFor id pkg)
+                            $"the {id} skill tells the author to `open {pkg}`, so {refRels} must reference {pkg} — pinning it centrally without referencing it leaves it off the compile graph (#430)"
+            }
 
-              // Source files only: Product.fsproj carries a comment NAMING the package to explain its
-              // absence, and a substring scan over project files would read that tombstone as a use.
-              let productSources = sourcesUnder "template/base/src"
-              let testSources = sourcesUnder "template/base/tests"
+            // The test-scoped redirect (#432) is the one place this guard is TOLD something rather than
+            // checking it, and a redirect that is merely declared is a fail-open hatch: drop a skill into
+            // `testScopedSkills`, move its package onto the test project, and R-REF/R-REACH stop consulting
+            // the product at all — while the author's `open` still sits in Program.fs and still does not
+            // compile. That is #430 shipped past its own guard, by the guard's own author. So the
+            // classification is ASSERTED, not assumed: a test-scoped skill's packages must be absent from
+            // every product source and present in at least one test source.
+            test "every test-scoped skill really is test-scoped (the redirect is checked, not declared)" {
+                let sourcesUnder relative =
+                    Directory.EnumerateFiles(repositoryPath relative, "*.fs", SearchOption.AllDirectories)
+                    |> Seq.map (fun path -> path, File.ReadAllText path)
+                    |> List.ofSeq
 
-              for id in testScopedSkills do
-                  let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
-                  Expect.isSome row $"test-scoped skill {id} is a product skill that opens FS.GG packages"
+                // Source files only: Product.fsproj carries a comment NAMING the package to explain its
+                // absence, and a substring scan over project files would read that tombstone as a use.
+                let productSources = sourcesUnder "template/base/src"
+                let testSources = sourcesUnder "template/base/tests"
 
-                  let _, _, opens = row.Value
+                for id in testScopedSkills do
+                    let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
+                    Expect.isSome row $"test-scoped skill {id} is a product skill that opens FS.GG packages"
 
-                  for pkg in opens do
-                      let usedIn sources =
-                          sources
-                          |> List.filter (fun (_, text: string) -> text.Contains pkg)
-                          |> List.map (fun (path: string, _) -> Path.GetFileName path)
+                    let _, _, opens = row.Value
 
-                      Expect.isEmpty
-                          (usedIn productSources)
-                          $"{id} is classified test-scoped, so R-REF/R-REACH no longer require {pkg} on Product.fsproj — but product source USES it ({usedIn productSources}). The redirect is wrong: the package belongs on the product, and holding this skill to the test project instead would let a real #430 violation walk straight through."
+                    for pkg in opens do
+                        let usedIn sources =
+                            sources
+                            |> List.filter (fun (_, text: string) -> text.Contains pkg)
+                            |> List.map (fun (path: string, _) -> Path.GetFileName path)
 
-                      Expect.isNonEmpty
-                          (usedIn testSources)
-                          $"{id} is classified test-scoped, but nothing under template/base/tests uses {pkg} — no evidence supports the claim that its `open` lands in the test project. Remove it from testScopedSkills rather than let an unfounded redirect weaken the guard."
-          }
+                        Expect.isEmpty
+                            (usedIn productSources)
+                            $"{id} is classified test-scoped, so R-REF/R-REACH no longer require {pkg} on Product.fsproj — but product source USES it ({usedIn productSources}). The redirect is wrong: the package belongs on the product, and holding this skill to the test project instead would let a real #430 violation walk straight through."
 
-          // An exemption that outlives its defect is a lie of a quieter kind: it keeps the guard green
-          // over a skill that no longer needs the waiver, and the next real violation of that skill
-          // passes unseen. So every exemption must STILL be violating — fix #431 and this test fails
-          // until the row is deleted, which is exactly when it should be.
-          test "every R-REACH exemption is still violating (a stale waiver must be deleted, not kept)" {
-              let props = File.ReadAllText propsPath
+                        Expect.isNonEmpty
+                            (usedIn testSources)
+                            $"{id} is classified test-scoped, but nothing under template/base/tests uses {pkg} — no evidence supports the claim that its `open` lands in the test project. Remove it from testScopedSkills rather than let an unfounded redirect weaken the guard."
+            }
 
-              for KeyValue(id, issue) in reachExemptions do
-                  let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
-                  Expect.isSome row $"exempted skill {id} ({issue}) still exists and still opens FS.GG packages"
+            // An exemption that outlives its defect is a lie of a quieter kind: it keeps the guard green
+            // over a skill that no longer needs the waiver, and the next real violation of that skill
+            // passes unseen. So every exemption must STILL be violating — fix #431 and this test fails
+            // until the row is deleted, which is exactly when it should be.
+            test "every R-REACH exemption is still violating (a stale waiver must be deleted, not kept)" {
+                let props = File.ReadAllText propsPath
 
-                  let _, skillProfiles, opens = row.Value
-                  // `refProfilesFor`, NOT a hard-coded Product.fsproj read: if a skill were ever both
-                  // test-scoped AND exempted, reading only the product would report None for a test-only
-                  // package, fall to the `| _ -> true` arm, and leave this test unconditionally green —
-                  // a stale waiver surviving inside the very guard that exists to kill stale waivers.
-                  let stillOrphaned =
-                      opens
-                      |> Set.exists (fun pkg ->
-                          match profilesDeclaring props pkg, refProfilesFor id pkg with
-                          | Some pins, Some refs -> not (Set.isEmpty (Set.difference skillProfiles (Set.intersect pins refs)))
-                          | _ -> true)
+                for KeyValue(id, issue) in reachExemptions do
+                    let row = productSkills |> List.tryFind (fun (sid, _, _) -> sid = id)
+                    Expect.isSome row $"exempted skill {id} ({issue}) still exists and still opens FS.GG packages"
 
-                  Expect.isTrue
-                      stillOrphaned
-                      $"the {id} exemption ({issue}) no longer violates R-REACH — the defect it waives is fixed, so DELETE the row from reachExemptions and let the guard hold {id} to the invariant like every other skill"
-          }
+                    let _, skillProfiles, opens = row.Value
+                    // `refProfilesFor`, NOT a hard-coded Product.fsproj read: if a skill were ever both
+                    // test-scoped AND exempted, reading only the product would report None for a test-only
+                    // package, fall to the `| _ -> true` arm, and leave this test unconditionally green —
+                    // a stale waiver surviving inside the very guard that exists to kill stale waivers.
+                    let stillOrphaned =
+                        opens
+                        |> Set.exists (fun pkg ->
+                            match profilesDeclaring props pkg, refProfilesFor id pkg with
+                            | Some pins, Some refs ->
+                                not (Set.isEmpty (Set.difference skillProfiles (Set.intersect pins refs)))
+                            | _ -> true)
 
-          // R-DOC — `docs/skillist-reference.md` SHIPS TO THE GENERATED PRODUCT and its "Profiles" column
-          // is what an author reads to learn which skills their scaffold vendors. It is hand-maintained,
-          // and nothing asserted it against the manifest — so narrowing a skill's materializes-when left
-          // the shipped doc claiming the old reach, silently. (That is not hypothetical: #430's own first
-          // pass did exactly this, and only a manual read caught it.) A skill roster that lies to the
-          // author is the same failure as a skill with no package: it looks wired.
-          test "the shipped skillist-reference profile column matches the manifest's materializes-when" {
-              let skillist = File.ReadAllText skillistPath
-              let manifest = File.ReadAllText manifestPath
+                    Expect.isTrue
+                        stillOrphaned
+                        $"the {id} exemption ({issue}) no longer violates R-REACH — the defect it waives is fixed, so DELETE the row from reachExemptions and let the guard hold {id} to the invariant like every other skill"
+            }
 
-              // | `fs-gg-x` | .agents/skills/fs-gg-x/SKILL.md | app, game |
-              let rows =
-                  Regex.Matches(skillist, @"\|\s*`(?<id>fs-gg-[\w-]+)`\s*\|[^|]*\|\s*(?<profiles>[^|]+?)\s*\|")
-                  |> Seq.map (fun m ->
-                      m.Groups.["id"].Value,
-                      m.Groups.["profiles"].Value.Split(',') |> Seq.map (fun s -> s.Trim()) |> Set.ofSeq)
-                  |> List.ofSeq
+            // R-DOC — `docs/skillist-reference.md` SHIPS TO THE GENERATED PRODUCT and its "Profiles" column
+            // is what an author reads to learn which skills their scaffold vendors. It is hand-maintained,
+            // and nothing asserted it against the manifest — so narrowing a skill's materializes-when left
+            // the shipped doc claiming the old reach, silently. (That is not hypothetical: #430's own first
+            // pass did exactly this, and only a manual read caught it.) A skill roster that lies to the
+            // author is the same failure as a skill with no package: it looks wired.
+            test "the shipped skillist-reference profile column matches the manifest's materializes-when" {
+                let skillist = File.ReadAllText skillistPath
+                let manifest = File.ReadAllText manifestPath
 
-              Expect.isNonEmpty rows $"{skillistRel} has a parseable skill roster (if this fails the guard is vacuous)"
+                // | `fs-gg-x` | .agents/skills/fs-gg-x/SKILL.md | app, game |
+                let rows =
+                    Regex.Matches(skillist, @"\|\s*`(?<id>fs-gg-[\w-]+)`\s*\|[^|]*\|\s*(?<profiles>[^|]+?)\s*\|")
+                    |> Seq.map (fun m ->
+                        m.Groups.["id"].Value,
+                        m.Groups.["profiles"].Value.Split(',')
+                        |> Seq.map (fun s -> s.Trim())
+                        |> Set.ofSeq)
+                    |> List.ofSeq
 
-              for id, documented in rows do
-                  let m = Regex.Match(manifest, $"\"id\":\\s*\"{Regex.Escape id}\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\"")
+                Expect.isNonEmpty
+                    rows
+                    $"{skillistRel} has a parseable skill roster (if this fails the guard is vacuous)"
 
-                  // An exempted skill's row cannot be settled while its issue is open: which side is wrong
-                  // depends on how that issue resolves, so correcting it here would prejudge the answer.
-                  // `fs-gg-testing` WAS the live case; #432 settled it by widening the package rather than
-                  // narrowing the skill, so its roster row now reads all five and it is held to R-DOC like
-                  // every other skill. `fs-gg-project` (#431) remains open.
-                  if m.Success && not (reachExemptions.ContainsKey id) then
-                      let actual = profilesOf m.Groups.["when"].Value
+                for id, documented in rows do
+                    let m =
+                        Regex.Match(
+                            manifest,
+                            $"\"id\":\\s*\"{Regex.Escape id}\"[\\s\\S]*?\"materializes-when\":\\s*\"(?<when>[^\"]+)\""
+                        )
 
-                      Expect.equal
-                          documented
-                          actual
-                          $"{skillistRel} tells the product author that `{id}` vendors on {Set.toList documented}, but the manifest materializes it on {Set.toList actual} — the shipped skill roster is lying to the author. Update the row when you change a skill's gate."
-          }
+                    // An exempted skill's row cannot be settled while its issue is open: which side is wrong
+                    // depends on how that issue resolves, so correcting it here would prejudge the answer.
+                    // `fs-gg-testing` WAS the live case; #432 settled it by widening the package rather than
+                    // narrowing the skill, so its roster row now reads all five and it is held to R-DOC like
+                    // every other skill. `fs-gg-project` (#431) remains open.
+                    if m.Success && not (reachExemptions.ContainsKey id) then
+                        let actual = profilesOf m.Groups.["when"].Value
 
-          // R-CAT — `template/capabilities.yml` is the fourth roster of "what reaches which profile", and
-          // until #483 it was the one nothing held against anything. So it drifted, and not subtly: SIX of
-          // its seven runtime rows were wrong. Five over-claimed `governed` (a profile that pins no viewer,
-          // no elmish, no keyboard-input, no layout, no controls); `testing` under-claimed by three, still
-          // reading `[governed, sample-pack]` from before #432 ungated the pin — the row that prompted this
-          // issue was simply the one someone happened to read.
-          //
-          // The catalog is a PACKAGE catalog, so its `profiles:` is held to package reach (pin ∩ reference),
-          // NOT to the manifest's `materializes-when` the way R-DOC holds skillist-reference. Those two are
-          // genuinely different sets and conflating them would force a lie: `fs-gg-ui-widgets` materializes on
-          // [app, game] while FS.GG.UI.Controls is pinned and referenced on sample-pack as well. Asserting the
-          // catalog against the manifest would make it under-report its own packages to match a skill gate —
-          // trading a stale row for a wrong one.
-          test "every capability's profiles are exactly the profiles its package reaches (#483)" {
-              Expect.isGreaterThan
-                  (List.length capabilityRows)
-                  3
-                  $"{capabilitiesRel} has a parseable runtime capability roster (if this fails the guard is vacuous)"
+                        Expect.equal
+                            documented
+                            actual
+                            $"{skillistRel} tells the product author that `{id}` vendors on {Set.toList documented}, but the manifest materializes it on {Set.toList actual} — the shipped skill roster is lying to the author. Update the row when you change a skill's gate."
+            }
 
-              for id, pkg, claimed in capabilityRows do
-                  match claimed, capabilityReach pkg with
-                  | Some claimed, Some reach ->
-                      Expect.equal
-                          claimed
-                          reach
-                          $"{capabilitiesRel} says the `{id}` capability is on {Set.toList claimed}, but {pkg} is pinned-and-referenced on {Set.toList reach}. The catalog is read as authoritative and asserted by nothing else — a row that over-claims sends an author to a profile where the package is absent, and one that under-claims hides a capability their scaffold really has (#483)."
-                  | None, _ ->
-                      failtestf
-                          "%s declares the runtime capability `%s` (packageId %s) with no `profiles:` line, so R-CAT has nothing to hold it to and the row can say anything. Declare the profiles its package reaches."
-                          capabilitiesRel
-                          id
-                          pkg
-                  | _, None ->
-                      failtestf
-                          "%s declares the `%s` capability with packageId %s, but %s is not both pinned in template/base/Directory.Packages.props and referenced by Product.fsproj or Product.Tests.fsproj — the catalog names a package no generated product can compile against (#430)."
-                          capabilitiesRel
-                          id
-                          pkg
-                          pkg
-          }
+            // R-CAT — `template/capabilities.yml` is the fourth roster of "what reaches which profile", and
+            // until #483 it was the one nothing held against anything. So it drifted, and not subtly: SIX of
+            // its seven runtime rows were wrong. Five over-claimed `governed` (a profile that pins no viewer,
+            // no elmish, no keyboard-input, no layout, no controls); `testing` under-claimed by three, still
+            // reading `[governed, sample-pack]` from before #432 ungated the pin — the row that prompted this
+            // issue was simply the one someone happened to read.
+            //
+            // The catalog is a PACKAGE catalog, so its `profiles:` is held to package reach (pin ∩ reference),
+            // NOT to the manifest's `materializes-when` the way R-DOC holds skillist-reference. Those two are
+            // genuinely different sets and conflating them would force a lie: `fs-gg-ui-widgets` materializes on
+            // [app, game] while FS.GG.UI.Controls is pinned and referenced on sample-pack as well. Asserting the
+            // catalog against the manifest would make it under-report its own packages to match a skill gate —
+            // trading a stale row for a wrong one.
+            test "every capability's profiles are exactly the profiles its package reaches (#483)" {
+                Expect.isGreaterThan
+                    (List.length capabilityRows)
+                    3
+                    $"{capabilitiesRel} has a parseable runtime capability roster (if this fails the guard is vacuous)"
 
-          // R-FRAG — `templateFragment:` was read as "where this capability's scaffold content lives" while
-          // resolving to shipped content for exactly ONE row in eight (`samples`). The other seven name
-          // directories .template.config/template.json does not source, so nothing in them is ever copied into a
-          // generated product — and the READMEs in them read like shipped product guidance, which is what makes
-          // them a trap rather than merely dead (#510).
-          //
-          // The field is settled as a SOURCE pointer (see the capabilities.yml header): it says where the
-          // fragment's sources live in this repo, and never that they ship. `materializes:` carries the shipping
-          // fact per row, and this rule holds it EXACTLY to template.json — the same duplicate-then-assert
-          // discipline R-CAT applies to `profiles:`, and for the same reason. #483's lesson, restated by #510:
-          // fixing the values without adding the assertion buys correct rows and zero protection.
-          //
-          // Asserted in BOTH directions deliberately. A row over-claiming sends a reader looking for shipped
-          // content that does not exist; a fragment wired into template.json whose row still says `none` ships
-          // content the catalog denies — and that direction is the one no human notices, because the scaffold
-          // just quietly works.
-          test "every capability's materializes: is exactly what template.json sources from its fragment (#510)" {
-              Expect.isGreaterThan
-                  (List.length capabilityFragments)
-                  3
-                  $"{capabilitiesRel} has a parseable capability roster (if this fails the guard is vacuous)"
+                for id, pkg, claimed in capabilityRows do
+                    match claimed, capabilityReach pkg with
+                    | Some claimed, Some reach ->
+                        Expect.equal
+                            claimed
+                            reach
+                            $"{capabilitiesRel} says the `{id}` capability is on {Set.toList claimed}, but {pkg} is pinned-and-referenced on {Set.toList reach}. The catalog is read as authoritative and asserted by nothing else — a row that over-claims sends an author to a profile where the package is absent, and one that under-claims hides a capability their scaffold really has (#483)."
+                    | None, _ ->
+                        failtestf
+                            "%s declares the runtime capability `%s` (packageId %s) with no `profiles:` line, so R-CAT has nothing to hold it to and the row can say anything. Declare the profiles its package reaches."
+                            capabilitiesRel
+                            id
+                            pkg
+                    | _, None ->
+                        failtestf
+                            "%s declares the `%s` capability with packageId %s, but %s is not both pinned in template/base/Directory.Packages.props and referenced by Product.fsproj or Product.Tests.fsproj — the catalog names a package no generated product can compile against (#430)."
+                            capabilitiesRel
+                            id
+                            pkg
+                            pkg
+            }
 
-              Expect.isNonEmpty
-                  templateJsonFragmentSources
-                  ".template.config/template.json sources at least one template/fragments/ path (if this fails the guard is vacuous — it would bless every row as `none`)"
+            // R-FRAG — `templateFragment:` was read as "where this capability's scaffold content lives" while
+            // resolving to shipped content for exactly ONE row in eight (`samples`). The other seven name
+            // directories .template.config/template.json does not source, so nothing in them is ever copied into a
+            // generated product — and the READMEs in them read like shipped product guidance, which is what makes
+            // them a trap rather than merely dead (#510).
+            //
+            // The field is settled as a SOURCE pointer (see the capabilities.yml header): it says where the
+            // fragment's sources live in this repo, and never that they ship. `materializes:` carries the shipping
+            // fact per row, and this rule holds it EXACTLY to template.json — the same duplicate-then-assert
+            // discipline R-CAT applies to `profiles:`, and for the same reason. #483's lesson, restated by #510:
+            // fixing the values without adding the assertion buys correct rows and zero protection.
+            //
+            // Asserted in BOTH directions deliberately. A row over-claiming sends a reader looking for shipped
+            // content that does not exist; a fragment wired into template.json whose row still says `none` ships
+            // content the catalog denies — and that direction is the one no human notices, because the scaffold
+            // just quietly works.
+            test "every capability's materializes: is exactly what template.json sources from its fragment (#510)" {
+                Expect.isGreaterThan
+                    (List.length capabilityFragments)
+                    3
+                    $"{capabilitiesRel} has a parseable capability roster (if this fails the guard is vacuous)"
 
-              for id, fragment, materializes in capabilityFragments do
-                  match fragment with
-                  | None ->
-                      failtestf
-                          "%s declares the `%s` capability with no `templateFragment:` line — R-FRAG has nothing to hold it to."
-                          capabilitiesRel
-                          id
-                  | Some fragment ->
-                      let dir = repositoryPath fragment
+                Expect.isNonEmpty
+                    templateJsonFragmentSources
+                    ".template.config/template.json sources at least one template/fragments/ path (if this fails the guard is vacuous — it would bless every row as `none`)"
 
-                      Expect.isTrue
-                          (Directory.Exists dir)
-                          $"{capabilitiesRel} points the `{id}` capability's templateFragment at `{fragment}`, which does not exist. The pointer is the only thing telling a reader where the fragment's sources live."
+                for id, fragment, materializes in capabilityFragments do
+                    match fragment with
+                    | None ->
+                        failtestf
+                            "%s declares the `%s` capability with no `templateFragment:` line — R-FRAG has nothing to hold it to."
+                            capabilitiesRel
+                            id
+                    | Some fragment ->
+                        let dir = repositoryPath fragment
 
-                      // Everything template.json actually takes from THIS fragment directory. Both sides are
-                      // already TrimEnd'd, and the root itself counts: a fragment sourced whole is spelled as
-                      // the directory, not as something strictly beneath it.
-                      let frag = fragment.TrimEnd '/'
+                        Expect.isTrue
+                            (Directory.Exists dir)
+                            $"{capabilitiesRel} points the `{id}` capability's templateFragment at `{fragment}`, which does not exist. The pointer is the only thing telling a reader where the fragment's sources live."
 
-                      let actual =
-                          templateJsonFragmentSources
-                          |> Set.filter (fun s -> s = frag || s.StartsWith(frag + "/"))
+                        // Everything template.json actually takes from THIS fragment directory. Both sides are
+                        // already TrimEnd'd, and the root itself counts: a fragment sourced whole is spelled as
+                        // the directory, not as something strictly beneath it.
+                        let frag = fragment.TrimEnd '/'
 
-                      match materializes with
-                      | None ->
-                          failtestf
-                              "%s declares the `%s` capability with no `materializes:` line, so nothing says whether its fragment ships. Declare the template.json sources it materializes, or `none` (#510)."
-                              capabilitiesRel
-                              id
-                      | Some declared ->
-                          Expect.equal
-                              declared
-                              actual
-                              $"{capabilitiesRel} says the `{id}` capability materializes {Set.toList declared}, but .template.config/template.json sources {Set.toList actual} from `{fragment}`. template.json is the only thing `dotnet new` reads, so it is the authority — a row that over-claims sends a reader hunting for scaffold content that never ships, and one that under-claims hides content a generated product really receives (#510)."
-          }
+                        let actual =
+                            templateJsonFragmentSources
+                            |> Set.filter (fun s -> s = frag || s.StartsWith(frag + "/"))
 
-          // R-FRAG-ALL — the converse of R-FRAG, and without it the rule above is half a guard.
-          //
-          // R-FRAG walks the CATALOG's rows, so it can only see fragments a row already points at. Ten
-          // `template/fragments/` sources exist in template.json and only two of them (`samples/`, `samples/skill/`)
-          // belong to a capability row — so `mkdir template/fragments/foo`, wire it into template.json, add no row,
-          // and R-FRAG stays green while the scaffold ships it. That is the #510 shape again, one level out: the
-          // catalog is silent about content a generated product really receives.
-          //
-          // So every fragment source must be accounted for: claimed by a row's `materializes:`, or named in the
-          // waiver below. The waiver is not a loophole — a stale entry is a RED (the discipline R-REACH's
-          // exemption test already applies), so a fragment that stops shipping cannot rot here unnoticed.
-          test "every fragment template.json sources is claimed by a capability row or an explicit waiver (#510)" {
-              // Fragments that genuinely have NO capability row: product-OWNED source helpers the author edits
-              // (they back no package, so there is no reach to catalog) and the per-profile swap checklists.
-              // Explicit, so that an eleventh fragment source is a decision somebody makes rather than one nobody
-              // notices.
-              let nonCapabilityFragments =
-                  set
-                      [ "template/fragments/swap-checklist/game"
-                        "template/fragments/swap-checklist/app"
-                        "template/fragments/swap-checklist/governed"
-                        "template/fragments/vec2/src"
-                        "template/fragments/collision/src"
-                        "template/fragments/visibility/src"
-                        "template/fragments/grids/src"
-                        "template/fragments/line-drawing/src" ]
+                        match materializes with
+                        | None ->
+                            failtestf
+                                "%s declares the `%s` capability with no `materializes:` line, so nothing says whether its fragment ships. Declare the template.json sources it materializes, or `none` (#510)."
+                                capabilitiesRel
+                                id
+                        | Some declared ->
+                            Expect.equal
+                                declared
+                                actual
+                                $"{capabilitiesRel} says the `{id}` capability materializes {Set.toList declared}, but .template.config/template.json sources {Set.toList actual} from `{fragment}`. template.json is the only thing `dotnet new` reads, so it is the authority — a row that over-claims sends a reader hunting for scaffold content that never ships, and one that under-claims hides content a generated product really receives (#510)."
+            }
 
-              let claimed =
-                  capabilityFragments
-                  |> List.choose (fun (_, _, materializes) -> materializes)
-                  |> List.fold Set.union Set.empty
+            // R-FRAG-ALL — the converse of R-FRAG, and without it the rule above is half a guard.
+            //
+            // R-FRAG walks the CATALOG's rows, so it can only see fragments a row already points at. Ten
+            // `template/fragments/` sources exist in template.json and only two of them (`samples/`, `samples/skill/`)
+            // belong to a capability row — so `mkdir template/fragments/foo`, wire it into template.json, add no row,
+            // and R-FRAG stays green while the scaffold ships it. That is the #510 shape again, one level out: the
+            // catalog is silent about content a generated product really receives.
+            //
+            // So every fragment source must be accounted for: claimed by a row's `materializes:`, or named in the
+            // waiver below. The waiver is not a loophole — a stale entry is a RED (the discipline R-REACH's
+            // exemption test already applies), so a fragment that stops shipping cannot rot here unnoticed.
+            test "every fragment template.json sources is claimed by a capability row or an explicit waiver (#510)" {
+                // Fragments that genuinely have NO capability row: product-OWNED source helpers the author edits
+                // (they back no package, so there is no reach to catalog) and the per-profile swap checklists.
+                // Explicit, so that an eleventh fragment source is a decision somebody makes rather than one nobody
+                // notices.
+                let nonCapabilityFragments =
+                    set
+                        [
+                            "template/fragments/swap-checklist/game"
+                            "template/fragments/swap-checklist/app"
+                            "template/fragments/swap-checklist/governed"
+                            "template/fragments/vec2/src"
+                            "template/fragments/collision/src"
+                            "template/fragments/visibility/src"
+                            "template/fragments/grids/src"
+                            "template/fragments/line-drawing/src"
+                        ]
 
-              let unaccounted =
-                  Set.difference templateJsonFragmentSources (Set.union claimed nonCapabilityFragments)
+                let claimed =
+                    capabilityFragments
+                    |> List.choose (fun (_, _, materializes) -> materializes)
+                    |> List.fold Set.union Set.empty
 
-              Expect.isEmpty
-                  unaccounted
-                  $".template.config/template.json sources {Set.toList unaccounted} from template/fragments/, and NO capability row's `materializes:` claims it and no waiver names it. The scaffold ships it into a generated product while {capabilitiesRel} — the human-facing inventory of what a profile gets — says nothing about it (#510). Claim it on the owning row, or add it to nonCapabilityFragments with a reason."
+                let unaccounted =
+                    Set.difference templateJsonFragmentSources (Set.union claimed nonCapabilityFragments)
 
-              let staleWaivers = Set.difference nonCapabilityFragments templateJsonFragmentSources
+                Expect.isEmpty
+                    unaccounted
+                    $".template.config/template.json sources {Set.toList unaccounted} from template/fragments/, and NO capability row's `materializes:` claims it and no waiver names it. The scaffold ships it into a generated product while {capabilitiesRel} — the human-facing inventory of what a profile gets — says nothing about it (#510). Claim it on the owning row, or add it to nonCapabilityFragments with a reason."
 
-              Expect.isEmpty
-                  staleWaivers
-                  $"nonCapabilityFragments waives {Set.toList staleWaivers}, but .template.config/template.json no longer sources it. A waiver for a fragment that does not ship is a lie that hides the next one: delete the entry."
-          }
+                let staleWaivers = Set.difference nonCapabilityFragments templateJsonFragmentSources
 
-          // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the
-          // package does not. A `game`-gated package under an all-profile skill is the same silent
-          // failure, one profile over.
-          test "every product skill's profiles are a subset of the profiles pinning the packages it opens" {
-              let props = File.ReadAllText propsPath
+                Expect.isEmpty
+                    staleWaivers
+                    $"nonCapabilityFragments waives {Set.toList staleWaivers}, but .template.config/template.json no longer sources it. A waiver for a fragment that does not ship is a lie that hides the next one: delete the entry."
+            }
 
-              for id, skillProfiles, opens in productSkills do
-                  for pkg in opens do
-                      match profilesDeclaring props pkg, refProfilesFor id pkg with
-                      | _ when reachExemptions.ContainsKey id -> ()
-                      | Some pinProfiles, Some refProfiles ->
-                          let reachable = Set.intersect pinProfiles refProfiles
-                          let orphaned = Set.difference skillProfiles reachable
+            // R-REACH — the heart of #430. Pinning is not enough: the skill must not reach a profile the
+            // package does not. A `game`-gated package under an all-profile skill is the same silent
+            // failure, one profile over.
+            test "every product skill's profiles are a subset of the profiles pinning the packages it opens" {
+                let props = File.ReadAllText propsPath
 
-                          Expect.isEmpty
-                              orphaned
-                              $"the {id} skill materializes on {Set.toList skillProfiles} and tells the author to `open {pkg}`, but {pkg} only reaches {Set.toList reachable} — on {Set.toList orphaned} the scaffold ships the skill with no package, so the author's first line fails to compile with nothing in the type system objecting (#430). Either gate the skill to the package's profiles, or pin the package on the skill's."
-                      | _ ->
-                          // Absence is R-PINNED/R-REF's failure to report, not this test's.
-                          ()
-          }
+                for id, skillProfiles, opens in productSkills do
+                    for pkg in opens do
+                        match profilesDeclaring props pkg, refProfilesFor id pkg with
+                        | _ when reachExemptions.ContainsKey id -> ()
+                        | Some pinProfiles, Some refProfiles ->
+                            let reachable = Set.intersect pinProfiles refProfiles
+                            let orphaned = Set.difference skillProfiles reachable
 
-          // R-SKILL (#564) — a capability's `skill:` names the PRODUCT-skill the manifest supplies, and
-          // nothing else.
-          //
-          // `skill:` is meant to answer "where is the guidance for consuming this capability?", and seven of
-          // the eight rows answered it with a `template/product-skills/…` path — the SKILL.md a generated
-          // product actually receives. `layout` answered with `src/Layout/skill/SKILL.md`, the FRAMEWORK
-          // skill: guidance for working on `src/Layout/` IN THIS REPO. A reader following the catalog for
-          // `layout` was sent to instructions for building the framework when they wanted instructions for
-          // consuming it — the same "two answers, no signal which one ships" failure #510 found in
-          // `templateFragment:`, one field over. Nothing asserted it, so it drifted, exactly as `profiles:`
-          // had (#483) and `templateFragment:` had (#510).
-          //
-          // The MANIFEST is the side to hold the catalog to, not the reverse: it is what `dotnet new`
-          // materializes, and capabilities.yml's own header already concedes it is the authority. So the rule
-          // is `skill:`'s directory ∈ the manifest's `supplied-by` set — which makes the framework skill
-          // unnameable here by construction, since the manifest supplies no such directory.
-          //
-          // No row is exempt. A `skill:` line that is MISSING fails too: a pointer nobody wrote is a pointer
-          // nothing can hold, and "the row said nothing" and "the row said the right thing" must not share a
-          // verdict (FS-GG/.github#266).
-          test "R-SKILL — every capability's `skill:` is the product-skill the manifest supplies (#564)" {
-              Expect.isNonEmpty capabilitySkills $"{capabilitiesRel} declares capability rows to check"
-              Expect.isNonEmpty (Set.toList manifestSuppliedByDirs) "the skill manifest declares `supplied-by` directories"
+                            Expect.isEmpty
+                                orphaned
+                                $"the {id} skill materializes on {Set.toList skillProfiles} and tells the author to `open {pkg}`, but {pkg} only reaches {Set.toList reachable} — on {Set.toList orphaned} the scaffold ships the skill with no package, so the author's first line fails to compile with nothing in the type system objecting (#430). Either gate the skill to the package's profiles, or pin the package on the skill's."
+                        | _ ->
+                            // Absence is R-PINNED/R-REF's failure to report, not this test's.
+                            ()
+            }
 
-              for id, skill in capabilitySkills do
-                  match skill with
-                  | None ->
-                      failtestf
-                          "%s: the `%s` capability declares no `skill:` — R-SKILL has nothing to hold it to, and a reader has nowhere to go."
-                          capabilitiesRel
-                          id
+            // R-SKILL (#564) — a capability's `skill:` names the PRODUCT-skill the manifest supplies, and
+            // nothing else.
+            //
+            // `skill:` is meant to answer "where is the guidance for consuming this capability?", and seven of
+            // the eight rows answered it with a `template/product-skills/…` path — the SKILL.md a generated
+            // product actually receives. `layout` answered with `src/Layout/skill/SKILL.md`, the FRAMEWORK
+            // skill: guidance for working on `src/Layout/` IN THIS REPO. A reader following the catalog for
+            // `layout` was sent to instructions for building the framework when they wanted instructions for
+            // consuming it — the same "two answers, no signal which one ships" failure #510 found in
+            // `templateFragment:`, one field over. Nothing asserted it, so it drifted, exactly as `profiles:`
+            // had (#483) and `templateFragment:` had (#510).
+            //
+            // The MANIFEST is the side to hold the catalog to, not the reverse: it is what `dotnet new`
+            // materializes, and capabilities.yml's own header already concedes it is the authority. So the rule
+            // is `skill:`'s directory ∈ the manifest's `supplied-by` set — which makes the framework skill
+            // unnameable here by construction, since the manifest supplies no such directory.
+            //
+            // No row is exempt. A `skill:` line that is MISSING fails too: a pointer nobody wrote is a pointer
+            // nothing can hold, and "the row said nothing" and "the row said the right thing" must not share a
+            // verdict (FS-GG/.github#266).
+            test "R-SKILL — every capability's `skill:` is the product-skill the manifest supplies (#564)" {
+                Expect.isNonEmpty capabilitySkills $"{capabilitiesRel} declares capability rows to check"
 
-                  | Some path ->
-                      let normalized = path.Replace('\\', '/')
+                Expect.isNonEmpty
+                    (Set.toList manifestSuppliedByDirs)
+                    "the skill manifest declares `supplied-by` directories"
 
-                      let dir =
-                          match normalized.LastIndexOf '/' with
-                          | -1 -> ""
-                          | i -> normalized.Substring(0, i)
+                for id, skill in capabilitySkills do
+                    match skill with
+                    | None ->
+                        failtestf
+                            "%s: the `%s` capability declares no `skill:` — R-SKILL has nothing to hold it to, and a reader has nowhere to go."
+                            capabilitiesRel
+                            id
 
-                      Expect.isTrue
-                          (manifestSuppliedByDirs.Contains dir)
-                          $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, whose directory `{dir}` is NOT one the skill manifest supplies. `skill:` names the PRODUCT-skill a generated product receives — the manifest's `supplied-by` is the authority on that, and it offers: {commaSorted manifestSuppliedByDirs}. Pointing at a framework skill (e.g. `src/<Pkg>/skill/`) sends a reader to guidance for building the framework when they wanted guidance for consuming it (#564)."
+                    | Some path ->
+                        let normalized = path.Replace('\\', '/')
 
-                      // ...and it has to actually be there. A pointer at a supplied directory that ships no
-                      // SKILL.md is a dangling reference the manifest cannot catch on the catalog's behalf.
-                      Expect.isTrue
-                          (File.Exists(repositoryPath normalized))
-                          $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, which does not exist."
-          }
+                        let dir =
+                            match normalized.LastIndexOf '/' with
+                            | -1 -> ""
+                            | i -> normalized.Substring(0, i)
+
+                        Expect.isTrue
+                            (manifestSuppliedByDirs.Contains dir)
+                            $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, whose directory `{dir}` is NOT one the skill manifest supplies. `skill:` names the PRODUCT-skill a generated product receives — the manifest's `supplied-by` is the authority on that, and it offers: {commaSorted manifestSuppliedByDirs}. Pointing at a framework skill (e.g. `src/<Pkg>/skill/`) sends a reader to guidance for building the framework when they wanted guidance for consuming it (#564)."
+
+                        // ...and it has to actually be there. A pointer at a supplied directory that ships no
+                        // SKILL.md is a dangling reference the manifest cannot catch on the catalog's behalf.
+                        Expect.isTrue
+                            (File.Exists(repositoryPath normalized))
+                            $"{capabilitiesRel}: the `{id}` capability points `skill:` at `{normalized}`, which does not exist."
+            }
         ]

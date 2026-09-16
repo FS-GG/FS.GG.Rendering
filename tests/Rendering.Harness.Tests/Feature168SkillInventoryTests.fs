@@ -27,44 +27,61 @@ let private surfaceLines (path: string) =
 
 [<Tests>]
 let tests =
-    testList "Feature168 SkillInventory" [
-        test "SkillParity FSI surface matches the readiness baseline" {
-            let root = repoRoot ()
-            let fsi = Path.Combine(root, "tools", "Rendering.Harness", "SkillParity.fsi")
-            let baseline = Path.Combine(root, "specs", "168-skill-parity-evidence", "readiness", "surface-baselines", "Rendering.Harness.SkillParity.txt")
+    testList
+        "Feature168 SkillInventory"
+        [
+            test "SkillParity FSI surface matches the readiness baseline" {
+                let root = repoRoot ()
+                let fsi = Path.Combine(root, "tools", "Rendering.Harness", "SkillParity.fsi")
 
-            Expect.equal (surfaceLines fsi) (File.ReadAllLines baseline |> Array.toList) "surface drift"
-        }
+                let baseline =
+                    Path.Combine(
+                        root,
+                        "specs",
+                        "168-skill-parity-evidence",
+                        "readiness",
+                        "surface-baselines",
+                        "Rendering.Harness.SkillParity.txt"
+                    )
 
-        test "fixture passing case resolves wrapper targets without broken-target findings" {
-            let root = Feature168SkillParityFixtures.createTempRoot "feature168-inventory"
+                Expect.equal (surfaceLines fsi) (File.ReadAllLines baseline |> Array.toList) "surface drift"
+            }
 
-            try
-                let report = SkillParity.runCheck (Feature168SkillParityFixtures.request root "passing")
-                Expect.isGreaterThan report.WrapperCount 0 "wrappers discovered"
-                Expect.isFalse (report.Findings |> List.exists (fun finding -> finding.Category = SkillParity.BrokenTarget)) "target resolves"
-            finally
-                Feature168SkillParityFixtures.deleteTempRoot root
-        }
+            test "fixture passing case resolves wrapper targets without broken-target findings" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature168-inventory"
 
-        test "repository inventory includes canonical, wrapper, command, and Ant surfaces" {
-            let root = repoRoot ()
-            let surfaces = SkillParity.discoverDefaultSurfaces root
-            let ids = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+                try
+                    let report =
+                        SkillParity.runCheck (Feature168SkillParityFixtures.request root "passing")
 
-            Expect.contains ids "package-canonical" "package surface"
-            Expect.contains ids "template-canonical" "template surface"
-            Expect.contains ids "codex-local" "codex surface"
-            Expect.contains ids "claude" "claude surface"
-            Expect.contains ids "ant-canonical" "ant canonical"
-            Expect.contains ids "spec-kit-command" "command surface"
-        }
+                    Expect.isGreaterThan report.WrapperCount 0 "wrappers discovered"
 
-        test "repository parity has no unresolved findings" {
-            let root = repoRoot ()
-            let report = SkillParity.runCheck (SkillParity.defaultRequest root)
+                    Expect.isFalse
+                        (report.Findings
+                         |> List.exists (fun finding -> finding.Category = SkillParity.BrokenTarget))
+                        "target resolves"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-            Expect.equal report.OverallStatus SkillParity.Passed "repository parity status"
-            Expect.isEmpty report.Findings "unresolved findings"
-        }
-    ]
+            test "repository inventory includes canonical, wrapper, command, and Ant surfaces" {
+                let root = repoRoot ()
+                let surfaces = SkillParity.discoverDefaultSurfaces root
+                let ids = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+
+                Expect.contains ids "package-canonical" "package surface"
+                Expect.contains ids "template-canonical" "template surface"
+                Expect.contains ids "codex-local" "codex surface"
+                Expect.contains ids "claude" "claude surface"
+                Expect.contains ids "ant-canonical" "ant canonical"
+                Expect.contains ids "spec-kit-command" "command surface"
+            }
+
+            test "repository parity has no unresolved findings" {
+                let root = repoRoot ()
+                let report = SkillParity.runCheck (SkillParity.defaultRequest root)
+
+                Expect.equal report.OverallStatus SkillParity.Passed "repository parity status"
+                Expect.isEmpty report.Findings "unresolved findings"
+            }
+        ]

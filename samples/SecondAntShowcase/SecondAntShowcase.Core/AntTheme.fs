@@ -17,7 +17,7 @@ let antLight: Theme = FS.GG.UI.Themes.AntDesign.AntTheme.antLight
 let antDark: Theme = FS.GG.UI.Themes.AntDesign.AntTheme.antDark
 
 /// Resolve a mode into the renderable Ant theme.
-let resolve (mode: ThemeMode): Theme =
+let resolve (mode: ThemeMode) : Theme =
     match mode with
     | Light -> antLight
     | Dark -> antDark
@@ -27,7 +27,7 @@ let resolve (mode: ThemeMode): Theme =
 let defaultTheme: Theme = antLight
 
 /// Stable textual name for a mode (status display / evidence).
-let modeName (mode: ThemeMode): string =
+let modeName (mode: ThemeMode) : string =
     match mode with
     | Light -> "antLight"
     | Dark -> "antDark"

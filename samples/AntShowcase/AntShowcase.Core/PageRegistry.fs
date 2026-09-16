@@ -16,5 +16,5 @@ let catalogPages: Page list = all |> List.filter (fun p -> p.Kind = Catalog)
 let templatePages: Page list = all |> List.filter (fun p -> p.Kind = Template)
 
 /// Page lookup by id; falls back to the first page for an unknown id.
-let byId (id: string): Page =
+let byId (id: string) : Page =
     all |> List.tryFind (fun p -> p.Id = id) |> Option.defaultValue (List.head all)

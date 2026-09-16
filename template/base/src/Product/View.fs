@@ -5,12 +5,37 @@ open AppRoot.Model
 //#if (profile == "governed" || profile == "headless-scene")
 
 let view model =
-    let textColor = { Red = 240uy; Green = 240uy; Blue = 240uy; Alpha = 255uy }
+    let textColor =
+        {
+            Red = 240uy
+            Green = 240uy
+            Blue = 240uy
+            Alpha = 255uy
+        }
 
     Group(
-        [ { Nodes = [ Rectangle((16.0, 16.0, 288.0, 128.0), { Red = 24uy; Green = 32uy; Blue = 44uy; Alpha = 255uy }) ] }
-          { Nodes = [ Text((32.0, 56.0), $"Governed headless scene: {model.Name}", textColor) ] }
-          { Nodes = [ Text((32.0, 88.0), $"renders: {model.RenderCount}", textColor) ] } ]
+        [
+            {
+                Nodes =
+                    [
+                        Rectangle(
+                            (16.0, 16.0, 288.0, 128.0),
+                            {
+                                Red = 24uy
+                                Green = 32uy
+                                Blue = 44uy
+                                Alpha = 255uy
+                            }
+                        )
+                    ]
+            }
+            {
+                Nodes = [ Text((32.0, 56.0), $"Governed headless scene: {model.Name}", textColor) ]
+            }
+            {
+                Nodes = [ Text((32.0, 88.0), $"renders: {model.RenderCount}", textColor) ]
+            }
+        ]
     )
 
 //#else
@@ -51,9 +76,11 @@ module DataGrid = FS.GG.UI.Controls.Typed.DataGrid
 module Stack = FS.GG.UI.Controls.Typed.Stack
 
 let visibleRows model =
-    { FirstIndex = 0
-      Count = model.GridRows.Length
-      Total = model.GridRows.Length }
+    {
+        FirstIndex = 0
+        Count = model.GridRows.Length
+        Total = model.GridRows.Length
+    }
 
 // Author the example UI through the typed Props front door. Every control is a
 // `{ Module.defaults with Field = ... } |> Module.view` expression: start from `defaults`,
@@ -65,44 +92,61 @@ let controlsWidgetView (model: Model) : Widget<Msg> =
         { Stack.defaults with
             Children =
                 [
-                  // display control
-                  TextBlock.view { TextBlock.defaults with Text = "Product controls" }
-                  RichText.view { RichText.defaults with Runs = model.RichIntro.Runs }
+                    // display control
+                    TextBlock.view
+                        { TextBlock.defaults with
+                            Text = "Product controls"
+                        }
+                    RichText.view
+                        { RichText.defaults with
+                            Runs = model.RichIntro.Runs
+                        }
 
-                  // interactive input: a stateful control. Its per-identity `TextInputModel` is
-                  // seeded from the props via `TextBox.init`; the live host then RETAINS edits
-                  // across frames keyed by control identity, so typing is preserved. `OnChanged`
-                  // binds a message; `OnChanged = None` would bind nothing.
-                  (let nameProps =
-                      { TextBox.defaults "name" with
-                          Value = model.Name
-                          OnChanged = Some NameChanged }
+                    // interactive input: a stateful control. Its per-identity `TextInputModel` is
+                    // seeded from the props via `TextBox.init`; the live host then RETAINS edits
+                    // across frames keyed by control identity, so typing is preserved. `OnChanged`
+                    // binds a message; `OnChanged = None` would bind nothing.
+                    (let nameProps =
+                        { TextBox.defaults "name" with
+                            Value = model.Name
+                            OnChanged = Some NameChanged
+                        }
 
-                   TextBox.view nameProps (fst (TextBox.init nameProps)))
+                     TextBox.view nameProps (fst (TextBox.init nameProps)))
 
-                  // button with an event handler. `OnClick = Some msg` dispatches `msg` on click
-                  // (here a pointer click on the "save"-keyed control); `OnClick = None` binds
-                  // nothing. `Id = Some "save"` gives the control a stable key for the host.
-                  Button.view
-                      { Button.defaults with
-                          Id = Some "save"
-                          Text = "Save"
-                          Enabled = model.CanSave
-                          OnClick = Some SaveRequested }
+                    // button with an event handler. `OnClick = Some msg` dispatches `msg` on click
+                    // (here a pointer click on the "save"-keyed control); `OnClick = None` binds
+                    // nothing. `Id = Some "save"` gives the control a stable key for the host.
+                    Button.view
+                        { Button.defaults with
+                            Id = Some "save"
+                            Text = "Save"
+                            Enabled = model.CanSave
+                            OnClick = Some SaveRequested
+                        }
 
-                  LineChart.view { LineChart.defaults with Series = model.Revenue }
-                  GraphView.view { GraphView.defaults with Nodes = [ "form"; "chart"; "grid" ] }
+                    LineChart.view
+                        { LineChart.defaults with
+                            Series = model.Revenue
+                        }
+                    GraphView.view
+                        { GraphView.defaults with
+                            Nodes = [ "form"; "chart"; "grid" ]
+                        }
 
-                  // another stateful control: the data grid model is seeded from props the same
-                  // way as the text box (`DataGrid.init`), and retained by the host across frames.
-                  (let gridProps =
-                      { DataGrid.defaults "grid" with
-                          Columns = model.GridColumns
-                          Rows = model.GridRows
-                          RowHeight = 24.0
-                          ViewportHeight = 132.0 }
+                    // another stateful control: the data grid model is seeded from props the same
+                    // way as the text box (`DataGrid.init`), and retained by the host across frames.
+                    (let gridProps =
+                        { DataGrid.defaults "grid" with
+                            Columns = model.GridColumns
+                            Rows = model.GridRows
+                            RowHeight = 24.0
+                            ViewportHeight = 132.0
+                        }
 
-                   DataGrid.view gridProps (fst (DataGrid.init gridProps))) ] }
+                     DataGrid.view gridProps (fst (DataGrid.init gridProps)))
+                ]
+        }
 
 // `Widget.toControl` is the single documented seam that lowers the typed tree to the existing
 // `Control<'msg>` IR the render path + Elmish adapter consume. The typed front door lowers
@@ -124,7 +168,9 @@ let adapterProgram =
 let contentArea: FS.GG.UI.Scene.Size = { Width = 640; Height = 480 }
 
 let view (model: Model) : SceneNode =
-    let rendered = Control.renderTree Theme.light contentArea (controlsExampleView model)
+    let rendered =
+        Control.renderTree Theme.light contentArea (controlsExampleView model)
+
     Group [ rendered.Scene ]
 
 //#endif

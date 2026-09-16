@@ -47,8 +47,10 @@ type StyleVariant =
 /// #384: the class/state overlay was colour-only, so no attached class could restyle
 /// `FontSize`/`FontWeight`; `FontDelta` carries those deltas into the resolver fold.
 type FontDelta =
-    { Size: float option
-      Weight: int option }
+    {
+        Size: float option
+        Weight: int option
+    }
 
 /// One attached style class (`StyleClass`): a typed `Variant` wrapping a `StyleVariant`,
 /// a free-form `Custom` consumer-defined class name, or a `Font` typography delta.
@@ -74,8 +76,10 @@ type StyleClass =
 /// mutually recursive group — F# binds an ambiguous bare field name to the last declaration.
 [<CustomEquality; NoComparison>]
 type IntentPolicy =
-    { Name: string
-      ApplyIntent: Theme -> string -> string -> ResolvedStyle -> ResolvedStyle }
+    {
+        Name: string
+        ApplyIntent: Theme -> string -> string -> ResolvedStyle -> ResolvedStyle
+    }
 
 /// Resolved paint and typography for a control (`ResolvedStyle`): `Foreground`, `Fill`,
 /// `Stroke`/`StrokeWidth`/`StrokeDash`, and `FontFamily`/`FontSize`/`FontWeight`, produced by
@@ -87,16 +91,18 @@ type IntentPolicy =
 /// Declared before `Theme` so the shared field names (`Foreground`/`FontFamily`/`FontSize`)
 /// resolve to `Theme` for unannotated `theme.*` accesses; produced by `Style.resolve`.
 and ResolvedStyle =
-    { Foreground: Color
-      Fill: Color
-      Stroke: Color
-      StrokeWidth: float
-      /// The stroke's dash pattern as on/off intervals; `[]` is a solid stroke. Rendered through
-      /// `PathEffect.Dash`, so a dashed border is real rather than approximated by a thicker one.
-      StrokeDash: float list
-      FontFamily: string option
-      FontSize: float
-      FontWeight: int option }
+    {
+        Foreground: Color
+        Fill: Color
+        Stroke: Color
+        StrokeWidth: float
+        /// The stroke's dash pattern as on/off intervals; `[]` is a solid stroke. Rendered through
+        /// `PathEffect.Dash`, so a dashed border is real rather than approximated by a thicker one.
+        StrokeDash: float list
+        FontFamily: string option
+        FontSize: float
+        FontWeight: int option
+    }
 
 /// Design-token palette and metrics (`Theme`): the named color roles
 /// (`Foreground`/`Background`/`Accent`/`Danger`/`Success`/`Warning`/`Muted`), typography
@@ -104,41 +110,43 @@ and ResolvedStyle =
 /// model (`ControlHeight`/`ControlHeightSm`/`ControlHeightLg` + the `Space{Xs,Sm,Md,Lg}` scale — #385),
 /// and the `IntentPolicy` that maps this theme's semantic intents onto structural style deltas.
 and Theme =
-    { Name: string
-      Foreground: Color
-      Background: Color
-      Accent: Color
-      Danger: Color
-      /// Feature 125 (FR-004): success role colour, sourced from `DesignTokens.{Light,Dark}.success`.
-      /// Additive — no D1 render path reads it yet, so output is identical.
-      Success: Color
-      /// Feature 125 (FR-004): warning role colour, sourced from `DesignTokens.{Light,Dark}.warning`.
-      /// Additive — no D1 render path reads it yet, so output is identical.
-      Warning: Color
-      Muted: Color
-      FontFamily: string option
-      FontSize: float
-      Density: float
-      CornerRadius: float
-      /// #385: standard interactive control height (Ant `controlHeight`). Geometry reads this
-      /// instead of a frozen literal, so a theme restyles control sizing.
-      ControlHeight: float
-      /// #385: compact interactive control height (Ant `controlHeightSM`).
-      ControlHeightSm: float
-      /// #385: large interactive control height (Ant `controlHeightLG`).
-      ControlHeightLg: float
-      /// #385: extra-small spacing/gap step (Ant `Space.xs`).
-      SpaceXs: float
-      /// #385: small spacing/gap step (Ant `Space.sm`).
-      SpaceSm: float
-      /// #385: medium spacing/gap step (Ant `Space.md`).
-      SpaceMd: float
-      /// #385: large spacing/gap step (Ant `Space.lg`).
-      SpaceLg: float
-      /// How this theme perturbs a control's structural base by semantic intent. The render path
-      /// resolves through it (`StyleResolver.resolve`), so a theme's intent language reaches the
-      /// screen without any control edit. `IntentPolicy.neutral` ignores intent entirely.
-      IntentPolicy: IntentPolicy }
+    {
+        Name: string
+        Foreground: Color
+        Background: Color
+        Accent: Color
+        Danger: Color
+        /// Feature 125 (FR-004): success role colour, sourced from `DesignTokens.{Light,Dark}.success`.
+        /// Additive — no D1 render path reads it yet, so output is identical.
+        Success: Color
+        /// Feature 125 (FR-004): warning role colour, sourced from `DesignTokens.{Light,Dark}.warning`.
+        /// Additive — no D1 render path reads it yet, so output is identical.
+        Warning: Color
+        Muted: Color
+        FontFamily: string option
+        FontSize: float
+        Density: float
+        CornerRadius: float
+        /// #385: standard interactive control height (Ant `controlHeight`). Geometry reads this
+        /// instead of a frozen literal, so a theme restyles control sizing.
+        ControlHeight: float
+        /// #385: compact interactive control height (Ant `controlHeightSM`).
+        ControlHeightSm: float
+        /// #385: large interactive control height (Ant `controlHeightLG`).
+        ControlHeightLg: float
+        /// #385: extra-small spacing/gap step (Ant `Space.xs`).
+        SpaceXs: float
+        /// #385: small spacing/gap step (Ant `Space.sm`).
+        SpaceSm: float
+        /// #385: medium spacing/gap step (Ant `Space.md`).
+        SpaceMd: float
+        /// #385: large spacing/gap step (Ant `Space.lg`).
+        SpaceLg: float
+        /// How this theme perturbs a control's structural base by semantic intent. The render path
+        /// resolves through it (`StyleResolver.resolve`), so a theme's intent language reaches the
+        /// screen without any control edit. `IntentPolicy.neutral` ignores intent entirely.
+        IntentPolicy: IntentPolicy
+    }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 /// Built-in intent policies.

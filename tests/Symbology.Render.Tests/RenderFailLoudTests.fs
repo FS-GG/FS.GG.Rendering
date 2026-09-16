@@ -18,12 +18,14 @@ let private dir =
 let tests =
     testList
         "US2 render fail-loud"
-        [ test "a non-passing render raises instead of returning a blank image" {
-              let scene = Symbology.gallery 2 60.0 [ Symbology.defaultToken ]
-              // A zero-area output cannot produce a passing reference image: the helper must raise
-              // (covering ReferenceFailed / ReferenceEnvironmentLimited / ImagePath = None), never
-              // return a blank PNG path as success.
-              Expect.throws
-                  (fun () -> Render.toPng { Width = 0; Height = 0 } scene dir |> ignore)
-                  "fail-loud on any non-ReferencePassed verdict"
-          } ]
+        [
+            test "a non-passing render raises instead of returning a blank image" {
+                let scene = Symbology.gallery 2 60.0 [ Symbology.defaultToken ]
+                // A zero-area output cannot produce a passing reference image: the helper must raise
+                // (covering ReferenceFailed / ReferenceEnvironmentLimited / ImagePath = None), never
+                // return a blank PNG path as success.
+                Expect.throws
+                    (fun () -> Render.toPng { Width = 0; Height = 0 } scene dir |> ignore)
+                    "fail-loud on any non-ReferencePassed verdict"
+            }
+        ]

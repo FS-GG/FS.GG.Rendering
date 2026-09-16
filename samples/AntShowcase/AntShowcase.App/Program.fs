@@ -11,29 +11,36 @@ let private usage () =
     printfn "  AntShowcase list"
     printfn "  AntShowcase interactive [<page-id>] [--theme light|dark]"
     printfn "  AntShowcase evidence --seed <int> [--out <dir>] [--page <page-id>]"
-    printfn "  AntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
+
+    printfn
+        "  AntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
+
     printfn "  AntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
-    printfn "  AntShowcase responsiveness --page buttons --theme light --script representative [--out <dir>] [--require-live] [--json]"
+
+    printfn
+        "  AntShowcase responsiveness --page buttons --theme light --script representative [--out <dir>] [--require-live] [--json]"
+
     printfn "  AntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
     printfn "  AntShowcase coverage"
     printfn "  AntShowcase feedback [--clear]"
 
 /// Tiny flag reader: value following `--name`, if present.
-let private flag (name: string) (args: string list): string option =
+let private flag (name: string) (args: string list) : string option =
     let rec loop =
         function
         | k :: v :: _ when k = name -> Some v
         | _ :: rest -> loop rest
         | [] -> None
+
     loop args
 
-let private parseMode (args: string list): ThemeMode =
+let private parseMode (args: string list) : ThemeMode =
     match flag "--theme" args with
     | Some "dark" -> Dark
     | _ -> Light
 
 /// First non-flag positional argument (the optional page id), if any.
-let private firstPositional (args: string list): string option =
+let private firstPositional (args: string list) : string option =
     args |> List.tryFind (fun a -> not (a.StartsWith "--"))
 
 [<EntryPoint>]
@@ -50,12 +57,15 @@ let main argv =
                 match p.Kind with
                 | Catalog -> "catalog"
                 | Template -> "template"
+
             printfn "  %-22s %-9s %s" p.Id kind p.Title
+
         printfn
             "ant-showcase: %d catalog controls across %d catalog + %d template pages."
             (List.length (CoverageMap.catalogIds ()))
             (List.length PageRegistry.catalogPages)
             (List.length PageRegistry.templatePages)
+
         0
 
     | "feedback" :: rest ->
@@ -65,16 +75,21 @@ let main argv =
             0
         else
             let entries = FeedbackStore.load ()
+
             if List.isEmpty entries then
                 printfn "ant-showcase: no feedback saved yet (%s)." FeedbackStore.path
             else
                 printfn "ant-showcase: %d saved feedback item(s) from %s" (List.length entries) FeedbackStore.path
+
                 entries
                 |> List.iteri (fun i e -> printfn "  %2d. [%-22s] %s" (i + 1) e.PageId e.Text)
+
             0
 
     | "interactive" :: rest ->
-        let startPage = firstPositional rest |> Option.defaultValue (List.head PageRegistry.all).Id
+        let startPage =
+            firstPositional rest |> Option.defaultValue (List.head PageRegistry.all).Id
+
         Interactive.run (parseMode rest) startPage
 
     | "evidence" :: rest ->
@@ -92,14 +107,11 @@ let main argv =
             eprintfn "ant-showcase: evidence requires --seed <int>."
             2
 
-    | "visual-readiness" :: rest ->
-        VisualReadiness.run rest
+    | "visual-readiness" :: rest -> VisualReadiness.run rest
 
-    | "responsiveness" :: rest ->
-        Responsiveness.run rest
+    | "responsiveness" :: rest -> Responsiveness.run rest
 
-    | "diagnostics" :: rest ->
-        Diagnostics.run rest
+    | "diagnostics" :: rest -> Diagnostics.run rest
 
     | [] ->
         usage ()

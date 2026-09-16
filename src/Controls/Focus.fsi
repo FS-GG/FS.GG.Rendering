@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 /// Feature 094 (E4) — the pure focus model: a deterministic single tab order derived purely from
@@ -6,18 +7,18 @@ open FS.GG.UI.DesignSystem
 /// key against the focused control's `KeyboardOperation`. Pure, total, deterministic — no I/O, no
 /// live window, property-testable to >=1000 generated combinations (SC-006). The `ControlId`<->`RetainedId`
 /// binding lives at the host seam (`Controls.Elmish.routeFocusedKey`), so `RetainedId` is absent here (R4).
-
 /// One focusable stop in the computed tab order, derived purely from AccessibilityMetadata.
 type FocusStop =
-    { Control: ControlId
-      Role: AccessibilityRole
-      Keyboard: KeyboardOperation
-      FocusOrder: int option }
+    {
+        Control: ControlId
+        Role: AccessibilityRole
+        Keyboard: KeyboardOperation
+        FocusOrder: int option
+    }
 
 /// The deterministic single tab order over a view's focusable controls (FR-001).
 /// Stops are in traversal order: FocusOrder ascending, None last, document-order tiebreak.
-type TabOrder =
-    { Stops: FocusStop list }
+type TabOrder = { Stops: FocusStop list }
 
 /// A traversal command derived from an unconsumed traversal key (FR-002).
 type FocusMove =
@@ -64,11 +65,13 @@ type FocusRecoveryTargetKind =
 
 /// Overlay focus recovery evidence derived from the pure overlay coordinator.
 type FocusRecoveryDecision =
-    { From: ControlId option
-      To: ControlId option
-      Reason: string
-      RecoveryTargetKind: FocusRecoveryTargetKind
-      Diagnostic: ControlDiagnostic option }
+    {
+        From: ControlId option
+        To: ControlId option
+        Reason: string
+        RecoveryTargetKind: FocusRecoveryTargetKind
+        Diagnostic: ControlDiagnostic option
+    }
 
 /// The pure focus model: derive tab `order`, `traverse` it, and `route` a delivered key against the focused control.
 module Focus =
@@ -110,9 +113,7 @@ module Focus =
     /// overlay coordinator and returning the coordinator state, emitted effects,
     /// and an audit-friendly recovery decision.
     val recoverOverlayFocus:
-        overlay: OverlayState ->
-        removedTarget: ControlId ->
-            OverlayState * OverlayEffect list * FocusRecoveryDecision
+        overlay: OverlayState -> removedTarget: ControlId -> OverlayState * OverlayEffect list * FocusRecoveryDecision
 
     /// Feature 108 (US1, FR-001..005): stamp `VisualState.Focused` on the single focusable control
     /// whose identity (`Key ?? structural path`, the feature-098 unification minted root "0", child

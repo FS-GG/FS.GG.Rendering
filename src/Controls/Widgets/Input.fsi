@@ -5,37 +5,47 @@ open FS.GG.UI.Controls
 /// Immutable, compiler-checked authoring surface for an icon-only command.
 /// `OnClick = None` lowers to NO event binding (FR-005), never a default message.
 type IconButtonProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Enabled: bool
-      Intent: ButtonIntent
-      OnClick: 'msg option }
+    {
+        Id: ControlId option
+        Text: string
+        Enabled: bool
+        Intent: ButtonIntent
+        OnClick: 'msg option
+    }
 
 /// Immutable, compiler-checked authoring surface for a numeric editor.
 type NumericInputProps<'msg> =
-    { Id: ControlId option
-      Value: float
-      ReadOnly: bool
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId option
+        Value: float
+        ReadOnly: bool
+        OnChanged: (float -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a radio group. `items` required.
 type RadioGroupProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      SelectedKey: string option
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        SelectedKey: string option
+        OnChanged: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a compact boolean switch.
 type SwitchProps<'msg> =
-    { Id: ControlId option
-      Checked: bool
-      OnChanged: (bool -> 'msg) option }
+    {
+        Id: ControlId option
+        Checked: bool
+        OnChanged: (bool -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a continuous slider. `value` required.
 type SliderProps<'msg> =
-    { Id: ControlId option
-      Value: float
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId option
+        Value: float
+        OnChanged: (float -> 'msg) option
+    }
 
 /// Typed Props front door for the `IconButton` control.
 module IconButton =

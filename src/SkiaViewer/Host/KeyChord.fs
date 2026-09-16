@@ -19,10 +19,12 @@ module internal KeyChord =
 
     /// The modifiers held at the moment a key event fires, read straight off the keyboard.
     let heldModifiers (keyboard: IKeyboard) : KeyModifiers =
-        { Ctrl = keyboard.IsKeyPressed Key.ControlLeft || keyboard.IsKeyPressed Key.ControlRight
-          Alt = keyboard.IsKeyPressed Key.AltLeft || keyboard.IsKeyPressed Key.AltRight
-          Shift = keyboard.IsKeyPressed Key.ShiftLeft || keyboard.IsKeyPressed Key.ShiftRight
-          Meta = keyboard.IsKeyPressed Key.SuperLeft || keyboard.IsKeyPressed Key.SuperRight }
+        {
+            Ctrl = keyboard.IsKeyPressed Key.ControlLeft || keyboard.IsKeyPressed Key.ControlRight
+            Alt = keyboard.IsKeyPressed Key.AltLeft || keyboard.IsKeyPressed Key.AltRight
+            Shift = keyboard.IsKeyPressed Key.ShiftLeft || keyboard.IsKeyPressed Key.ShiftRight
+            Meta = keyboard.IsKeyPressed Key.SuperLeft || keyboard.IsKeyPressed Key.SuperRight
+        }
 
     /// The raw key a host reports for a key-DOWN: its name, decorated with the modifiers held
     /// alongside it. A modifier key is reported bare — `ControlLeft`, never `Ctrl+ControlLeft`,

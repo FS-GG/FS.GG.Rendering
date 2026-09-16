@@ -11,34 +11,42 @@ type RichTextWeight =
 
 /// The visual styling of a `RichTextRun`: font family/size, `Weight`, foreground/background colors, underline, and italic.
 type RichTextStyle =
-    { FontFamily: string option
-      FontSize: float
-      Weight: RichTextWeight
-      Foreground: Color
-      Background: Color option
-      Underline: bool
-      Italic: bool }
+    {
+        FontFamily: string option
+        FontSize: float
+        Weight: RichTextWeight
+        Foreground: Color
+        Background: Color option
+        Underline: bool
+        Italic: bool
+    }
 
 /// A single span of `Text` carrying one `RichTextStyle`, the atomic unit composed into a `RichTextBlock`.
 type RichTextRun =
-    { Text: string
-      Style: RichTextStyle
-      Diagnostics: ControlDiagnostic list }
+    {
+        Text: string
+        Style: RichTextStyle
+        Diagnostics: ControlDiagnostic list
+    }
 
 /// An ordered sequence of `Runs` with optional `MaxWidth`, clipping, effects, and accessibility metadata, forming a layout unit.
 type RichTextBlock =
-    { Runs: RichTextRun list
-      MaxWidth: float option
-      Clip: bool
-      Effects: string list
-      Accessibility: AccessibilityMetadata option }
+    {
+        Runs: RichTextRun list
+        MaxWidth: float option
+        Clip: bool
+        Effects: string list
+        Accessibility: AccessibilityMetadata option
+    }
 
 /// The measured layout of a `RichTextBlock`: `Width`, `Height`, `LineCount`, and any measurement diagnostics.
 type RichTextMeasurement =
-    { Width: float
-      Height: float
-      LineCount: int
-      Diagnostics: ControlDiagnostic list }
+    {
+        Width: float
+        Height: float
+        LineCount: int
+        Diagnostics: ControlDiagnostic list
+    }
 
 /// Builders for styled rich-text `RichTextRun`/`RichTextBlock` values and their lowering to a `Control`.
 module RichText =

@@ -21,63 +21,69 @@ open FS.GG.UI.Scene
 // `module internal` with no `.fsi` — the `Internal/` convention (AttrKeys/Hashing precedent).
 
 type internal WorkReductionRecord =
-    { BaselineNodeCount: int
-      MetadataVisitedNodeCount: int
-      MetadataFallbackCount: int
-      RecomputedNodeCount: int
-      ChangedSubtreeBound: int
-      ShiftedNodeCount: int
-      // Feature 097 (R2, FR-006): nodes actually re-measured this frame (post-propagation dirty set).
-      RemeasuredNodeCount: int
-      // Feature 113 (Phase 5, FR-009/FR-010): memoizable-control reuse outcomes this frame.
-      MemoHits: int
-      MemoMisses: int
-      // Feature 114 (Phase 6, FR-013): materialized data-grid-row nodes + logical row total this frame.
-      VirtualMaterialized: int
-      VirtualTotal: int
-      // Feature 116 (Phase 7, FR-001/FR-004): the damage set — repainted-node count, distinct dirty-rect
-      // count, summed integer dirty area.
-      RepaintedNodeCount: int
-      DirtyRectCount: int
-      DirtyArea: int
-      // Feature 116 (Phase 7, FR-005/FR-009/FR-010): picture-cache hits, misses, and live entry count.
-      PictureCacheHits: int
-      PictureCacheMisses: int
-      PictureCacheEntryCount: int
-      // Feature 117 (Phase 8, FR-001/FR-005): per-frame text-measure cache hits + misses.
-      TextMeasureCacheHits: int
-      TextMeasureCacheMisses: int
-      // Feature 117 (Phase 8, FR-006): the pre-pinning layout dirty-set size (<= RemeasuredNodeCount).
-      LayoutInvalidatedNodeCount: int
-      // Feature 120 (US3, FR-014): backend replay-cache per-frame outcomes (deterministic model).
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      ReplaySkippedNodes: int
-      ReplayCacheNativeBytes: int
-      AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      PromotionOverhead: int
-      NetSavedWork: int }
+    {
+        BaselineNodeCount: int
+        MetadataVisitedNodeCount: int
+        MetadataFallbackCount: int
+        RecomputedNodeCount: int
+        ChangedSubtreeBound: int
+        ShiftedNodeCount: int
+        // Feature 097 (R2, FR-006): nodes actually re-measured this frame (post-propagation dirty set).
+        RemeasuredNodeCount: int
+        // Feature 113 (Phase 5, FR-009/FR-010): memoizable-control reuse outcomes this frame.
+        MemoHits: int
+        MemoMisses: int
+        // Feature 114 (Phase 6, FR-013): materialized data-grid-row nodes + logical row total this frame.
+        VirtualMaterialized: int
+        VirtualTotal: int
+        // Feature 116 (Phase 7, FR-001/FR-004): the damage set — repainted-node count, distinct dirty-rect
+        // count, summed integer dirty area.
+        RepaintedNodeCount: int
+        DirtyRectCount: int
+        DirtyArea: int
+        // Feature 116 (Phase 7, FR-005/FR-009/FR-010): picture-cache hits, misses, and live entry count.
+        PictureCacheHits: int
+        PictureCacheMisses: int
+        PictureCacheEntryCount: int
+        // Feature 117 (Phase 8, FR-001/FR-005): per-frame text-measure cache hits + misses.
+        TextMeasureCacheHits: int
+        TextMeasureCacheMisses: int
+        // Feature 117 (Phase 8, FR-006): the pre-pinning layout dirty-set size (<= RemeasuredNodeCount).
+        LayoutInvalidatedNodeCount: int
+        // Feature 120 (US3, FR-014): backend replay-cache per-frame outcomes (deterministic model).
+        ReplayHits: int
+        ReplayMisses: int
+        ReplayRecords: int
+        ReplaySkippedNodes: int
+        ReplayCacheNativeBytes: int
+        AvoidedContentWork: int
+        PlacementOnlyReuseCount: int
+        ContentRecordCount: int
+        ContentRerecordCount: int
+        PromotionCount: int
+        DemotionCount: int
+        FallbackCount: int
+        PromotionOverhead: int
+        NetSavedWork: int
+    }
 
 type internal CompositorDamageRegion =
-    { DamageX: int
-      DamageY: int
-      DamageWidth: int
-      DamageHeight: int }
+    {
+        DamageX: int
+        DamageY: int
+        DamageWidth: int
+        DamageHeight: int
+    }
 
 type internal CompositorDamageRegionSet =
-    { FrameWidth: int
-      FrameHeight: int
-      Regions: CompositorDamageRegion list
-      UnionArea: int
-      FullFrameInvalidation: bool
-      Cause: string }
+    {
+        FrameWidth: int
+        FrameHeight: int
+        Regions: CompositorDamageRegion list
+        UnionArea: int
+        FullFrameInvalidation: bool
+        Cause: string
+    }
 
 type internal CompositorFallbackReason =
     | MissingProof
@@ -102,13 +108,15 @@ type internal PromotionDecisionKind =
     | Observe
 
 type internal PromotionDecision =
-    { BoundaryId: string
-      Decision: PromotionDecisionKind
-      Reason: string
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      Tier: CompositorTier }
+    {
+        BoundaryId: string
+        Decision: PromotionDecisionKind
+        Reason: string
+        ObservedStabilityFrames: int
+        ExpectedSavedWork: int
+        MeasuredOverhead: int
+        Tier: CompositorTier
+    }
 
 [<RequireQualifiedAccess>]
 type internal Feature159Reason =
@@ -162,92 +170,108 @@ type internal Feature159RetainedLayerState =
     | Unavailable
 
 type internal Feature159ContentIdentity =
-    { BoundaryId: string
-      ContentId: uint64
-      LocalContentFingerprint: uint64
-      AlgorithmVersion: string
-      RunId: string
-      ArtifactPath: string option }
+    {
+        BoundaryId: string
+        ContentId: uint64
+        LocalContentFingerprint: uint64
+        AlgorithmVersion: string
+        RunId: string
+        ArtifactPath: string option
+    }
 
 type internal Feature159PlacementIdentity =
-    { BoundaryId: string
-      PlacementId: uint64
-      Box: FS.GG.UI.Scene.Rect option
-      ScrollOffsetX: float
-      ScrollOffsetY: float
-      Scale: float
-      Coverage: FS.GG.UI.Scene.Rect list
-      AlgorithmVersion: string }
+    {
+        BoundaryId: string
+        PlacementId: uint64
+        Box: FS.GG.UI.Scene.Rect option
+        ScrollOffsetX: float
+        ScrollOffsetY: float
+        Scale: float
+        Coverage: FS.GG.UI.Scene.Rect list
+        AlgorithmVersion: string
+    }
 
 type internal Feature159ReuseCounters =
-    { AvoidedContentWork: int
-      PlacementOnlyReuseCount: int
-      ContentRecordCount: int
-      ContentRerecordCount: int
-      PromotionCount: int
-      DemotionCount: int
-      FallbackCount: int
-      ReplayHits: int
-      ReplayMisses: int
-      ReplayRecords: int
-      PromotionOverhead: int
-      NetSavedWork: int }
+    {
+        AvoidedContentWork: int
+        PlacementOnlyReuseCount: int
+        ContentRecordCount: int
+        ContentRerecordCount: int
+        PromotionCount: int
+        DemotionCount: int
+        FallbackCount: int
+        ReplayHits: int
+        ReplayMisses: int
+        ReplayRecords: int
+        PromotionOverhead: int
+        NetSavedWork: int
+    }
 
 type internal Feature159ReuseDecision =
-    { BoundaryId: string
-      Status: Feature159ReuseStatus
-      PrimaryReason: Feature159Reason option
-      PriorContentIdentity: Feature159ContentIdentity option
-      CurrentContentIdentity: Feature159ContentIdentity option
-      PriorPlacementIdentity: Feature159PlacementIdentity option
-      CurrentPlacementIdentity: Feature159PlacementIdentity option
-      CounterDelta: Feature159ReuseCounters
-      ArtifactPaths: string list }
+    {
+        BoundaryId: string
+        Status: Feature159ReuseStatus
+        PrimaryReason: Feature159Reason option
+        PriorContentIdentity: Feature159ContentIdentity option
+        CurrentContentIdentity: Feature159ContentIdentity option
+        PriorPlacementIdentity: Feature159PlacementIdentity option
+        CurrentPlacementIdentity: Feature159PlacementIdentity option
+        CounterDelta: Feature159ReuseCounters
+        ArtifactPaths: string list
+    }
 
 type internal Feature159PromotionCandidate =
-    { BoundaryId: string
-      ScenarioId: string
-      HostProfileId: string
-      ObservationWindow: int
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      ContentStable: bool
-      ParityPassed: bool
-      ResourceLimited: bool
-      CurrentTier: CompositorTier }
+    {
+        BoundaryId: string
+        ScenarioId: string
+        HostProfileId: string
+        ObservationWindow: int
+        ObservedStabilityFrames: int
+        ExpectedSavedWork: int
+        MeasuredOverhead: int
+        ReductionPercent: float
+        ContentStable: bool
+        ParityPassed: bool
+        ResourceLimited: bool
+        CurrentTier: CompositorTier
+    }
 
 type internal Feature159ParityResult =
-    { ScenarioId: string
-      AttemptId: string
-      Verdict: string
-      OutsideDamageDriftCount: int
-      ArtifactPaths: string list
-      Diagnostics: string list }
+    {
+        ScenarioId: string
+        AttemptId: string
+        Verdict: string
+        OutsideDamageDriftCount: int
+        ArtifactPaths: string list
+        Diagnostics: string list
+    }
 
 type internal Feature159PromotionDecision =
-    { BoundaryId: string
-      Status: Feature159PromotionStatus
-      PrimaryReason: Feature159Reason option
-      ObservedStabilityFrames: int
-      ExpectedSavedWork: int
-      MeasuredOverhead: int
-      ReductionPercent: float
-      TargetTier: CompositorTier
-      Parity: Feature159ParityResult option
-      ArtifactPaths: string list }
+    {
+        BoundaryId: string
+        Status: Feature159PromotionStatus
+        PrimaryReason: Feature159Reason option
+        ObservedStabilityFrames: int
+        ExpectedSavedWork: int
+        MeasuredOverhead: int
+        ReductionPercent: float
+        TargetTier: CompositorTier
+        Parity: Feature159ParityResult option
+        ArtifactPaths: string list
+    }
 
 type internal Feature159RetainedLayer =
-    { LayerId: string
-      BoundaryId: string
-      ContentIdentity: Feature159ContentIdentity
-      LastPlacementIdentity: Feature159PlacementIdentity
-      HostProfileId: string
-      RunId: string
-      State: Feature159RetainedLayerState
-      ResourceEstimate: int
-      Diagnostics: string list }
+    {
+        LayerId: string
+        BoundaryId: string
+        ContentIdentity: Feature159ContentIdentity
+        LastPlacementIdentity: Feature159PlacementIdentity
+        HostProfileId: string
+        RunId: string
+        State: Feature159RetainedLayerState
+        ResourceEstimate: int
+        Diagnostics: string list
+    }
 
 type internal SnapshotResourceVerdict =
     | SnapshotReady
@@ -260,8 +284,18 @@ module internal CompositorPolicy =
         match boxes with
         | [] -> 0
         | boxes ->
-            let xs = boxes |> List.collect (fun b -> [ b.X; b.X + b.Width ]) |> List.distinct |> List.sort
-            let ys = boxes |> List.collect (fun b -> [ b.Y; b.Y + b.Height ]) |> List.distinct |> List.sort
+            let xs =
+                boxes
+                |> List.collect (fun b -> [ b.X; b.X + b.Width ])
+                |> List.distinct
+                |> List.sort
+
+            let ys =
+                boxes
+                |> List.collect (fun b -> [ b.Y; b.Y + b.Height ])
+                |> List.distinct
+                |> List.sort
+
             let mutable area = 0.0 // mutable: hot path / union accumulator
 
             for i in 0 .. xs.Length - 2 do
@@ -280,17 +314,22 @@ module internal CompositorPolicy =
             min (int area) frameArea
 
     let private rectOfDamage (damage: CompositorDamageRegion) : Rect =
-        { X = float damage.DamageX
-          Y = float damage.DamageY
-          Width = float damage.DamageWidth
-          Height = float damage.DamageHeight }
+        {
+            X = float damage.DamageX
+            Y = float damage.DamageY
+            Width = float damage.DamageWidth
+            Height = float damage.DamageHeight
+        }
 
     let private damageOfRect frameWidth frameHeight (rect: Rect) : CompositorDamageRegion option =
         // Feature 178 (US3): shared Numeric.clamp (same (lo, hi, value) order, identical semantics).
         let x0 = Numeric.clamp 0 frameWidth (int (System.Math.Floor rect.X))
         let y0 = Numeric.clamp 0 frameHeight (int (System.Math.Floor rect.Y))
         let x1 = Numeric.clamp 0 frameWidth (int (System.Math.Ceiling(rect.X + rect.Width)))
-        let y1 = Numeric.clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
+
+        let y1 =
+            Numeric.clamp 0 frameHeight (int (System.Math.Ceiling(rect.Y + rect.Height)))
+
         let width = x1 - x0
         let height = y1 - y0
 
@@ -298,17 +337,21 @@ module internal CompositorPolicy =
             None
         else
             Some
-                { DamageX = x0
-                  DamageY = y0
-                  DamageWidth = width
-                  DamageHeight = height }
+                {
+                    DamageX = x0
+                    DamageY = y0
+                    DamageWidth = width
+                    DamageHeight = height
+                }
 
     type DamageSetInputs =
-        { FrameWidth: int
-          FrameHeight: int
-          FullFrameInvalidation: bool
-          Cause: string
-          Boxes: FS.GG.UI.Scene.Rect list }
+        {
+            FrameWidth: int
+            FrameHeight: int
+            FullFrameInvalidation: bool
+            Cause: string
+            Boxes: FS.GG.UI.Scene.Rect list
+        }
 
     let damageRegionSet (inputs: DamageSetInputs) =
         let frameWidth = inputs.FrameWidth
@@ -323,47 +366,57 @@ module internal CompositorPolicy =
                 if frameArea = 0 then
                     []
                 else
-                    [ { DamageX = 0
-                        DamageY = 0
-                        DamageWidth = max 0 frameWidth
-                        DamageHeight = max 0 frameHeight } ]
+                    [
+                        {
+                            DamageX = 0
+                            DamageY = 0
+                            DamageWidth = max 0 frameWidth
+                            DamageHeight = max 0 frameHeight
+                        }
+                    ]
             else
-                boxes
-                |> List.choose (damageOfRect frameWidth frameHeight)
-                |> List.distinct
+                boxes |> List.choose (damageOfRect frameWidth frameHeight) |> List.distinct
 
-        { FrameWidth = frameWidth
-          FrameHeight = frameHeight
-          Regions = regions
-          UnionArea = unionArea (regions |> List.map rectOfDamage) frameArea
-          FullFrameInvalidation = fullFrameInvalidation
-          Cause = cause }
+        {
+            FrameWidth = frameWidth
+            FrameHeight = frameHeight
+            Regions = regions
+            UnionArea = unionArea (regions |> List.map rectOfDamage) frameArea
+            FullFrameInvalidation = fullFrameInvalidation
+            Cause = cause
+        }
 
     let placementDamage frameWidth frameHeight oldBox newBox =
         damageRegionSet
-            { FrameWidth = frameWidth
-              FrameHeight = frameHeight
-              FullFrameInvalidation = false
-              Cause = "placement-only movement"
-              Boxes = [ oldBox; newBox ] }
+            {
+                FrameWidth = frameWidth
+                FrameHeight = frameHeight
+                FullFrameInvalidation = false
+                Cause = "placement-only movement"
+                Boxes = [ oldBox; newBox ]
+            }
 
     let classifyDamageFallback proofReady (proofReason: string option) (damage: CompositorDamageRegionSet) =
         match proofReady, proofReason, damage.FullFrameInvalidation, damage.Regions with
-        | false, Some reason, _, _ when reason.Contains("environment", System.StringComparison.OrdinalIgnoreCase) -> Some(CompositorFallbackReason.EnvironmentLimited reason)
+        | false, Some reason, _, _ when reason.Contains("environment", System.StringComparison.OrdinalIgnoreCase) ->
+            Some(CompositorFallbackReason.EnvironmentLimited reason)
         | false, Some reason, _, _ -> Some(FailedProof reason)
         | false, None, _, _ -> Some MissingProof
         | true, _, true, _ -> Some FullFrameInvalidation
         | true, _, false, [] -> Some EmptyDamage
-        | true, _, false, _ when damage.UnionArea > damage.FrameWidth * damage.FrameHeight -> Some(UnsafeDamage "damage exceeds frame area")
+        | true, _, false, _ when damage.UnionArea > damage.FrameWidth * damage.FrameHeight ->
+            Some(UnsafeDamage "damage exceeds frame area")
         | _ -> None
 
     type PromotionInputs =
-        { BoundaryId: string
-          ObservedStabilityFrames: int
-          ObservationWindow: int
-          ExpectedSavedWork: int
-          MeasuredOverhead: int
-          ParityPassed: bool }
+        {
+            BoundaryId: string
+            ObservedStabilityFrames: int
+            ObservationWindow: int
+            ExpectedSavedWork: int
+            MeasuredOverhead: int
+            ParityPassed: bool
+        }
 
     let promotionDecision (inputs: PromotionInputs) =
         let boundaryId = inputs.BoundaryId
@@ -372,46 +425,57 @@ module internal CompositorPolicy =
         let expectedSavedWork = inputs.ExpectedSavedWork
         let measuredOverhead = inputs.MeasuredOverhead
         let parityPassed = inputs.ParityPassed
+
         if not parityPassed then
-            { BoundaryId = boundaryId
-              Decision = Reject
-              Reason = "parity failed"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
+            {
+                BoundaryId = boundaryId
+                Decision = Reject
+                Reason = "parity failed"
+                ObservedStabilityFrames = observedStabilityFrames
+                ExpectedSavedWork = expectedSavedWork
+                MeasuredOverhead = measuredOverhead
+                Tier = NoCompositorTier
+            }
         elif observedStabilityFrames < observationWindow then
-            { BoundaryId = boundaryId
-              Decision = Observe
-              Reason = "stability window incomplete"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
+            {
+                BoundaryId = boundaryId
+                Decision = Observe
+                Reason = "stability window incomplete"
+                ObservedStabilityFrames = observedStabilityFrames
+                ExpectedSavedWork = expectedSavedWork
+                MeasuredOverhead = measuredOverhead
+                Tier = NoCompositorTier
+            }
         elif expectedSavedWork <= 0 then
-            { BoundaryId = boundaryId
-              Decision = Reject
-              Reason = "no expected saved work"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = NoCompositorTier }
+            {
+                BoundaryId = boundaryId
+                Decision = Reject
+                Reason = "no expected saved work"
+                ObservedStabilityFrames = observedStabilityFrames
+                ExpectedSavedWork = expectedSavedWork
+                MeasuredOverhead = measuredOverhead
+                Tier = NoCompositorTier
+            }
         elif measuredOverhead >= expectedSavedWork then
-            { BoundaryId = boundaryId
-              Decision = Demote
-              Reason = "bookkeeping overhead exceeds saved work"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = DemotedTier }
+            {
+                BoundaryId = boundaryId
+                Decision = Demote
+                Reason = "bookkeeping overhead exceeds saved work"
+                ObservedStabilityFrames = observedStabilityFrames
+                ExpectedSavedWork = expectedSavedWork
+                MeasuredOverhead = measuredOverhead
+                Tier = DemotedTier
+            }
         else
-            { BoundaryId = boundaryId
-              Decision = Promote
-              Reason = "stable and beneficial"
-              ObservedStabilityFrames = observedStabilityFrames
-              ExpectedSavedWork = expectedSavedWork
-              MeasuredOverhead = measuredOverhead
-              Tier = ReplayTier }
+            {
+                BoundaryId = boundaryId
+                Decision = Promote
+                Reason = "stable and beneficial"
+                ObservedStabilityFrames = observedStabilityFrames
+                ExpectedSavedWork = expectedSavedWork
+                MeasuredOverhead = measuredOverhead
+                Tier = ReplayTier
+            }
 
     let feature159ReasonToken reason =
         match reason with
@@ -458,10 +522,13 @@ module internal CompositorPolicy =
         // per-char `int ch` widening and `'|'` separator; Hashing.step h x = (h ^^^ x) * prime is
         // exactly the prior xor-then-multiply pair, so the fold is byte-identical.
         let mutable hash = Hashing.offsetBasis // mutable: compact deterministic FNV-1a fold.
+
         for part in parts do
             for ch in part do
                 hash <- Hashing.step hash (uint64 (int ch))
+
             hash <- Hashing.step hash (uint64 (int '|'))
+
         hash
 
     let private rectToken (rect: Rect option) =
@@ -470,49 +537,54 @@ module internal CompositorPolicy =
         | Some r -> sprintf "%.3f,%.3f,%.3f,%.3f" r.X r.Y r.Width r.Height
 
     let feature159ContentIdentity boundaryId runId localContentFingerprint artifactPath =
-        { BoundaryId = boundaryId
-          ContentId = feature159Hash [ boundaryId; runId; string localContentFingerprint; "content-v1" ]
-          LocalContentFingerprint = localContentFingerprint
-          AlgorithmVersion = "content-identity-v1"
-          RunId = runId
-          ArtifactPath = artifactPath }
+        {
+            BoundaryId = boundaryId
+            ContentId = feature159Hash [ boundaryId; runId; string localContentFingerprint; "content-v1" ]
+            LocalContentFingerprint = localContentFingerprint
+            AlgorithmVersion = "content-identity-v1"
+            RunId = runId
+            ArtifactPath = artifactPath
+        }
 
     let feature159PlacementIdentity boundaryId box scrollOffsetX scrollOffsetY scale coverage =
-        let coverageToken =
-            coverage
-            |> List.map (Some >> rectToken)
-            |> String.concat ";"
+        let coverageToken = coverage |> List.map (Some >> rectToken) |> String.concat ";"
 
-        { BoundaryId = boundaryId
-          PlacementId =
-            feature159Hash
-                [ boundaryId
-                  rectToken box
-                  sprintf "%.3f" scrollOffsetX
-                  sprintf "%.3f" scrollOffsetY
-                  sprintf "%.3f" scale
-                  coverageToken
-                  "placement-v1" ]
-          Box = box
-          ScrollOffsetX = scrollOffsetX
-          ScrollOffsetY = scrollOffsetY
-          Scale = scale
-          Coverage = coverage
-          AlgorithmVersion = "placement-identity-v1" }
+        {
+            BoundaryId = boundaryId
+            PlacementId =
+                feature159Hash
+                    [
+                        boundaryId
+                        rectToken box
+                        sprintf "%.3f" scrollOffsetX
+                        sprintf "%.3f" scrollOffsetY
+                        sprintf "%.3f" scale
+                        coverageToken
+                        "placement-v1"
+                    ]
+            Box = box
+            ScrollOffsetX = scrollOffsetX
+            ScrollOffsetY = scrollOffsetY
+            Scale = scale
+            Coverage = coverage
+            AlgorithmVersion = "placement-identity-v1"
+        }
 
     let private zeroFeature159Counters =
-        { AvoidedContentWork = 0
-          PlacementOnlyReuseCount = 0
-          ContentRecordCount = 0
-          ContentRerecordCount = 0
-          PromotionCount = 0
-          DemotionCount = 0
-          FallbackCount = 0
-          ReplayHits = 0
-          ReplayMisses = 0
-          ReplayRecords = 0
-          PromotionOverhead = 0
-          NetSavedWork = 0 }
+        {
+            AvoidedContentWork = 0
+            PlacementOnlyReuseCount = 0
+            ContentRecordCount = 0
+            ContentRerecordCount = 0
+            PromotionCount = 0
+            DemotionCount = 0
+            FallbackCount = 0
+            ReplayHits = 0
+            ReplayMisses = 0
+            ReplayRecords = 0
+            PromotionOverhead = 0
+            NetSavedWork = 0
+        }
 
     let private feature159ReuseDecision
         status
@@ -521,16 +593,19 @@ module internal CompositorPolicy =
         (currentContent: Feature159ContentIdentity)
         (priorPlacement: Feature159PlacementIdentity option)
         (currentPlacement: Feature159PlacementIdentity)
-        counters =
-        { BoundaryId = currentContent.BoundaryId
-          Status = status
-          PrimaryReason = reason
-          PriorContentIdentity = priorContent
-          CurrentContentIdentity = Some currentContent
-          PriorPlacementIdentity = priorPlacement
-          CurrentPlacementIdentity = Some currentPlacement
-          CounterDelta = counters
-          ArtifactPaths = [] }
+        counters
+        =
+        {
+            BoundaryId = currentContent.BoundaryId
+            Status = status
+            PrimaryReason = reason
+            PriorContentIdentity = priorContent
+            CurrentContentIdentity = Some currentContent
+            PriorPlacementIdentity = priorPlacement
+            CurrentPlacementIdentity = Some currentPlacement
+            CounterDelta = counters
+            ArtifactPaths = []
+        }
 
     let feature159ClassifyReuse
         (priorContent: Feature159ContentIdentity option)
@@ -540,54 +615,126 @@ module internal CompositorPolicy =
         retainedResident
         sameProfile
         parityPassed
-        resourceLimited =
+        resourceLimited
+        =
         let recordCounters =
             { zeroFeature159Counters with
                 ContentRecordCount = 1
                 ReplayMisses = 1
                 ReplayRecords = 1
-                NetSavedWork = -1 }
+                NetSavedWork = -1
+            }
 
         let rerecordCounters =
             { zeroFeature159Counters with
                 ContentRerecordCount = 1
                 ReplayMisses = 1
                 ReplayRecords = 1
-                NetSavedWork = -1 }
+                NetSavedWork = -1
+            }
 
         if resourceLimited then
-            feature159ReuseDecision Feature159ReuseStatus.FallbackFullRedraw (Some Feature159Reason.ResourceLimited) priorContent currentContent priorPlacement currentPlacement { zeroFeature159Counters with FallbackCount = 1 }
+            feature159ReuseDecision
+                Feature159ReuseStatus.FallbackFullRedraw
+                (Some Feature159Reason.ResourceLimited)
+                priorContent
+                currentContent
+                priorPlacement
+                currentPlacement
+                { zeroFeature159Counters with
+                    FallbackCount = 1
+                }
         elif not sameProfile then
-            feature159ReuseDecision Feature159ReuseStatus.ReuseRejected (Some Feature159Reason.CrossProfileEvidence) priorContent currentContent priorPlacement currentPlacement zeroFeature159Counters
+            feature159ReuseDecision
+                Feature159ReuseStatus.ReuseRejected
+                (Some Feature159Reason.CrossProfileEvidence)
+                priorContent
+                currentContent
+                priorPlacement
+                currentPlacement
+                zeroFeature159Counters
         elif not parityPassed then
-            feature159ReuseDecision Feature159ReuseStatus.ReuseRejected (Some Feature159Reason.ParityMismatch) priorContent currentContent priorPlacement currentPlacement zeroFeature159Counters
+            feature159ReuseDecision
+                Feature159ReuseStatus.ReuseRejected
+                (Some Feature159Reason.ParityMismatch)
+                priorContent
+                currentContent
+                priorPlacement
+                currentPlacement
+                zeroFeature159Counters
         elif not retainedResident then
-            feature159ReuseDecision Feature159ReuseStatus.FallbackFullRedraw (Some Feature159Reason.MissingRetainedContent) priorContent currentContent priorPlacement currentPlacement { zeroFeature159Counters with FallbackCount = 1 }
+            feature159ReuseDecision
+                Feature159ReuseStatus.FallbackFullRedraw
+                (Some Feature159Reason.MissingRetainedContent)
+                priorContent
+                currentContent
+                priorPlacement
+                currentPlacement
+                { zeroFeature159Counters with
+                    FallbackCount = 1
+                }
         else
             match priorContent, priorPlacement with
             | None, _ ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRecorded None priorContent currentContent priorPlacement currentPlacement recordCounters
+                feature159ReuseDecision
+                    Feature159ReuseStatus.ContentRecorded
+                    None
+                    priorContent
+                    currentContent
+                    priorPlacement
+                    currentPlacement
+                    recordCounters
             | Some prior, _ when prior.ContentId <> currentContent.ContentId ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRerecorded None priorContent currentContent priorPlacement currentPlacement rerecordCounters
+                feature159ReuseDecision
+                    Feature159ReuseStatus.ContentRerecorded
+                    None
+                    priorContent
+                    currentContent
+                    priorPlacement
+                    currentPlacement
+                    rerecordCounters
             | Some _, None ->
-                feature159ReuseDecision Feature159ReuseStatus.ContentRecorded (Some Feature159Reason.StalePlacementIdentity) priorContent currentContent priorPlacement currentPlacement recordCounters
+                feature159ReuseDecision
+                    Feature159ReuseStatus.ContentRecorded
+                    (Some Feature159Reason.StalePlacementIdentity)
+                    priorContent
+                    currentContent
+                    priorPlacement
+                    currentPlacement
+                    recordCounters
             | Some _, Some placement when placement.PlacementId <> currentPlacement.PlacementId ->
                 let counters =
                     { zeroFeature159Counters with
                         AvoidedContentWork = 1
                         PlacementOnlyReuseCount = 1
                         ReplayHits = 1
-                        NetSavedWork = 1 }
+                        NetSavedWork = 1
+                    }
 
-                feature159ReuseDecision Feature159ReuseStatus.ContentReusedPlacementUpdated None priorContent currentContent priorPlacement currentPlacement counters
+                feature159ReuseDecision
+                    Feature159ReuseStatus.ContentReusedPlacementUpdated
+                    None
+                    priorContent
+                    currentContent
+                    priorPlacement
+                    currentPlacement
+                    counters
             | Some _, Some _ ->
                 let counters =
                     { zeroFeature159Counters with
                         AvoidedContentWork = 1
                         ReplayHits = 1
-                        NetSavedWork = 1 }
+                        NetSavedWork = 1
+                    }
 
-                feature159ReuseDecision Feature159ReuseStatus.ContentReusedPlacementUpdated None priorContent currentContent priorPlacement currentPlacement counters
+                feature159ReuseDecision
+                    Feature159ReuseStatus.ContentReusedPlacementUpdated
+                    None
+                    priorContent
+                    currentContent
+                    priorPlacement
+                    currentPlacement
+                    counters
 
     let feature159EvaluatePromotion (candidate: Feature159PromotionCandidate) parity =
         let status, reason =
@@ -606,32 +753,42 @@ module internal CompositorPolicy =
             else
                 Feature159PromotionStatus.Promoted, None
 
-        { BoundaryId = candidate.BoundaryId
-          Status = status
-          PrimaryReason = reason
-          ObservedStabilityFrames = candidate.ObservedStabilityFrames
-          ExpectedSavedWork = candidate.ExpectedSavedWork
-          MeasuredOverhead = candidate.MeasuredOverhead
-          ReductionPercent = candidate.ReductionPercent
-          TargetTier = ReplayTier
-          Parity = parity
-          ArtifactPaths = [] }
+        {
+            BoundaryId = candidate.BoundaryId
+            Status = status
+            PrimaryReason = reason
+            ObservedStabilityFrames = candidate.ObservedStabilityFrames
+            ExpectedSavedWork = candidate.ExpectedSavedWork
+            MeasuredOverhead = candidate.MeasuredOverhead
+            ReductionPercent = candidate.ReductionPercent
+            TargetTier = ReplayTier
+            Parity = parity
+            ArtifactPaths = []
+        }
 
     let feature159CountersFromWork (work: WorkReductionRecord) =
-        { AvoidedContentWork = work.AvoidedContentWork
-          PlacementOnlyReuseCount = work.PlacementOnlyReuseCount
-          ContentRecordCount = work.ContentRecordCount
-          ContentRerecordCount = work.ContentRerecordCount
-          PromotionCount = work.PromotionCount
-          DemotionCount = work.DemotionCount
-          FallbackCount = work.FallbackCount
-          ReplayHits = work.ReplayHits
-          ReplayMisses = work.ReplayMisses
-          ReplayRecords = work.ReplayRecords
-          PromotionOverhead = work.PromotionOverhead
-          NetSavedWork = work.NetSavedWork }
+        {
+            AvoidedContentWork = work.AvoidedContentWork
+            PlacementOnlyReuseCount = work.PlacementOnlyReuseCount
+            ContentRecordCount = work.ContentRecordCount
+            ContentRerecordCount = work.ContentRerecordCount
+            PromotionCount = work.PromotionCount
+            DemotionCount = work.DemotionCount
+            FallbackCount = work.FallbackCount
+            ReplayHits = work.ReplayHits
+            ReplayMisses = work.ReplayMisses
+            ReplayRecords = work.ReplayRecords
+            PromotionOverhead = work.PromotionOverhead
+            NetSavedWork = work.NetSavedWork
+        }
 
-    let snapshotVerdict supported (byteEstimate: int64) (byteBudget: int64) (benefitPercent: float) (thresholdPercent: float) =
+    let snapshotVerdict
+        supported
+        (byteEstimate: int64)
+        (byteBudget: int64)
+        (benefitPercent: float)
+        (thresholdPercent: float)
+        =
         if not supported then
             SnapshotLimited "snapshot host unsupported"
         elif byteEstimate > byteBudget then

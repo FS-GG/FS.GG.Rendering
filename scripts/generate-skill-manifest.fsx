@@ -21,11 +21,13 @@ open System.Text
 
 let repoRoot =
     let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
+        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
+            dir
         else
             match Directory.GetParent dir |> Option.ofObj with
             | Some p -> find p.FullName
             | None -> failwith "Could not locate repository root (FS.GG.Rendering.slnx)."
+
     find __SOURCE_DIRECTORY__
 
 let repoPath (rel: string) =
@@ -48,53 +50,91 @@ let templateCatalog =
     // ADR-0063 (2026-07-21 amendment): the four game-owned product skills (fs-gg-game-core, fs-gg-audio,
     // fs-gg-persistence, fs-gg-model-swap) were retired from this provider (FS.GG.Rendering#965) — they are
     // now owner-sourced from FS.GG.Game.Skills, no longer frozen here — so they carry no catalog row.
-    [ "fs-gg-collision", "template/product-skills/fs-gg-collision/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      "fs-gg-elmish", "template/product-skills/fs-gg-elmish/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
-      // #434: the report is UNCONDITIONAL — its template.json row carries no `condition` at all, which
-      // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
-      // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.
-      "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", ""
-      "fs-gg-game-shell", "template/product-skills/fs-gg-game-shell/SKILL.md", "(profile == \"app\" || profile == \"game\")"
-      "fs-gg-grids", "template/product-skills/fs-gg-grids/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      "fs-gg-keyboard-input", "template/product-skills/fs-gg-keyboard-input/SKILL.md", "(profile == \"app\" || profile == \"game\")"
-      "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
-      "fs-gg-line-drawing", "template/product-skills/fs-gg-line-drawing/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      "fs-gg-project", "template/base/.agents/skills/fs-gg-project/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\")"
-      "fs-gg-scene", "template/product-skills/fs-gg-scene/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-skiaviewer", "template/product-skills/fs-gg-skiaviewer/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
-      // The divergent, whole-frame symbol-DESIGN loop on top of fs-gg-symbology. game/sample-pack only:
-      // it is meaningless without a captured gamestate frame. Kept to pure Scene + the two Symbology
-      // packages (no render adapter), so its reach is a SUBSET of fs-gg-symbology's — R-REACH holds.
-      "fs-gg-symbol-design", "template/product-skills/fs-gg-symbol-design/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")"
-      // #430: the three SkiaViewer profiles, not all five — Render.toPng reaches SkiaViewer, which
-      // `headless-scene`/`governed` do not pin. Kept identical to the template.json row by G-EQUIV.
-      "fs-gg-symbology", "template/product-skills/fs-gg-symbology/SKILL.md", "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-testing", "template/product-skills/fs-gg-testing/SKILL.md", "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
-      "fs-gg-ui-widgets", "template/product-skills/fs-gg-ui-widgets/SKILL.md", "(profile == \"app\" || profile == \"game\")"
-      "fs-gg-visibility", "template/product-skills/fs-gg-visibility/SKILL.md", "(profile == \"game\" || profile == \"sample-pack\")" ]
+    [
+        "fs-gg-collision",
+        "template/product-skills/fs-gg-collision/SKILL.md",
+        "(profile == \"game\" || profile == \"sample-pack\")"
+        "fs-gg-elmish",
+        "template/product-skills/fs-gg-elmish/SKILL.md",
+        "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
+        // #434: the report is UNCONDITIONAL — its template.json row carries no `condition` at all, which
+        // is the engine's native "always". The empty string mirrors that absent condition verbatim, and
+        // normalizeCondition maps it to the canonical `always`. Kept identical to the row by G-EQUIV.
+        "fs-gg-feedback-report", "template/feedback-report/skill/SKILL.md", ""
+        "fs-gg-game-shell",
+        "template/product-skills/fs-gg-game-shell/SKILL.md",
+        "(profile == \"app\" || profile == \"game\")"
+        "fs-gg-grids",
+        "template/product-skills/fs-gg-grids/SKILL.md",
+        "(profile == \"game\" || profile == \"sample-pack\")"
+        "fs-gg-keyboard-input",
+        "template/product-skills/fs-gg-keyboard-input/SKILL.md",
+        "(profile == \"app\" || profile == \"game\")"
+        "fs-gg-layout", "template/product-skills/fs-gg-layout/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+        "fs-gg-line-drawing",
+        "template/product-skills/fs-gg-line-drawing/SKILL.md",
+        "(profile == \"game\" || profile == \"sample-pack\")"
+        "fs-gg-project",
+        "template/base/.agents/skills/fs-gg-project/SKILL.md",
+        "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
+        "fs-gg-samples", "template/fragments/samples/skill/SKILL.md", "(profile == \"sample-pack\")"
+        "fs-gg-scene",
+        "template/product-skills/fs-gg-scene/SKILL.md",
+        "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
+        "fs-gg-skiaviewer",
+        "template/product-skills/fs-gg-skiaviewer/SKILL.md",
+        "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
+        "fs-gg-styling", "template/product-skills/fs-gg-styling/SKILL.md", "(profile == \"app\" || profile == \"game\")"
+        // The divergent, whole-frame symbol-DESIGN loop on top of fs-gg-symbology. game/sample-pack only:
+        // it is meaningless without a captured gamestate frame. Kept to pure Scene + the two Symbology
+        // packages (no render adapter), so its reach is a SUBSET of fs-gg-symbology's — R-REACH holds.
+        "fs-gg-symbol-design",
+        "template/product-skills/fs-gg-symbol-design/SKILL.md",
+        "(profile == \"game\" || profile == \"sample-pack\")"
+        // #430: the three SkiaViewer profiles, not all five — Render.toPng reaches SkiaViewer, which
+        // `headless-scene`/`governed` do not pin. Kept identical to the template.json row by G-EQUIV.
+        "fs-gg-symbology",
+        "template/product-skills/fs-gg-symbology/SKILL.md",
+        "(profile == \"app\" || profile == \"sample-pack\" || profile == \"game\")"
+        "fs-gg-testing",
+        "template/product-skills/fs-gg-testing/SKILL.md",
+        "(profile == \"app\" || profile == \"headless-scene\" || profile == \"governed\" || profile == \"sample-pack\" || profile == \"game\")"
+        "fs-gg-ui-widgets",
+        "template/product-skills/fs-gg-ui-widgets/SKILL.md",
+        "(profile == \"app\" || profile == \"game\")"
+        "fs-gg-visibility",
+        "template/product-skills/fs-gg-visibility/SKILL.md",
+        "(profile == \"game\" || profile == \"sample-pack\")"
+    ]
 
 // The owner package also serves non-Rendering template providers. These predicates are evaluated by
 // the SDD receiver, so they use the canonical registry vocabulary and do not alter this repository's
 // own dotnet-template profile behavior.
 let deliveryOverrides =
     Map.ofList
-        [ "fs-gg-scene", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
-          "fs-gg-keyboard-input", "profile in [app, game] or template == fable-game"
-          "fs-gg-game-shell", "profile in [app, game] or template == fable-game"
-          "fs-gg-testing", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
-          "fs-gg-ui-widgets", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
-          "fs-gg-styling", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
-          "fs-gg-layout", "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]" ]
+        [
+            "fs-gg-scene", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
+            "fs-gg-keyboard-input", "profile in [app, game] or template == fable-game"
+            "fs-gg-game-shell", "profile in [app, game] or template == fable-game"
+            "fs-gg-testing", "profile in [app, headless-scene, governed, sample-pack, game] or template == fable-game"
+            "fs-gg-ui-widgets",
+            "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
+            "fs-gg-styling",
+            "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
+            "fs-gg-layout",
+            "profile in [app, game] or template == fable-game and bundle in [studio, tactical, arcade, complete]"
+        ]
 
 let externalCatalog =
-    [ "fs-gg-svg-assets", "template/product-skills/fs-gg-svg-assets/SKILL.md",
-      "template == fable-game and bundle in [studio, tactical, arcade, complete]"
-      "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md",
-      "template == fable-game" ]
+    [
+        "fs-gg-svg-assets",
+        "template/product-skills/fs-gg-svg-assets/SKILL.md",
+        "template == fable-game and bundle in [studio, tactical, arcade, complete]"
+        "fs-gg-svg-performance", "template/product-skills/fs-gg-svg-performance/SKILL.md", "template == fable-game"
+    ]
 
-let deliveryOnlyIds = externalCatalog |> List.map (fun (id, _, _) -> id) |> Set.ofList
+let deliveryOnlyIds =
+    externalCatalog |> List.map (fun (id, _, _) -> id) |> Set.ofList
 
 /// Provider source directory (trailing slash) that holds the canonical SKILL.md — supplied-by.
 let suppliedByOf (source: string) : string =
@@ -115,29 +155,52 @@ let private splitTopLevel (op: string) (s: string) : string list =
     let sb = System.Text.StringBuilder()
     let mutable depth = 0
     let mutable i = 0
+
     while i < s.Length do
         let c = s.[i]
-        if c = '(' then depth <- depth + 1; sb.Append c |> ignore; i <- i + 1
-        elif c = ')' then depth <- depth - 1; sb.Append c |> ignore; i <- i + 1
+
+        if c = '(' then
+            depth <- depth + 1
+            sb.Append c |> ignore
+            i <- i + 1
+        elif c = ')' then
+            depth <- depth - 1
+            sb.Append c |> ignore
+            i <- i + 1
         elif depth = 0 && i + op.Length <= s.Length && s.Substring(i, op.Length) = op then
-            parts.Add(sb.ToString()); sb.Clear() |> ignore; i <- i + op.Length
-        else sb.Append c |> ignore; i <- i + 1
+            parts.Add(sb.ToString())
+            sb.Clear() |> ignore
+            i <- i + op.Length
+        else
+            sb.Append c |> ignore
+            i <- i + 1
+
     parts.Add(sb.ToString())
     [ for p in parts -> p.Trim() ]
 
 /// Strip one layer of parens iff they wrap the whole expression.
 let private stripOuterParens (s: string) : string =
     let t = s.Trim()
+
     if t.StartsWith "(" && t.EndsWith ")" then
         let mutable depth = 0
         let mutable wrapsWhole = true
+
         for i in 0 .. t.Length - 1 do
-            if t.[i] = '(' then depth <- depth + 1
+            if t.[i] = '(' then
+                depth <- depth + 1
             elif t.[i] = ')' then
                 depth <- depth - 1
-                if depth = 0 && i <> t.Length - 1 then wrapsWhole <- false
-        if wrapsWhole then t.Substring(1, t.Length - 2).Trim() else t
-    else t
+
+                if depth = 0 && i <> t.Length - 1 then
+                    wrapsWhole <- false
+
+        if wrapsWhole then
+            t.Substring(1, t.Length - 2).Trim()
+        else
+            t
+    else
+        t
 
 /// Parse a single comparison `param (==|!=) value` → (param, op, value-without-quotes).
 let private parseClause (c: string) : string * string * string =
@@ -150,14 +213,19 @@ let private parseClause (c: string) : string * string * string =
 /// One AND-conjunct: an OR-chain of same-param `==` collapses to `in [..]`; length-1 stays `p == v`.
 let private normalizeConjunct (conj: string) : string =
     let disjuncts = splitTopLevel "||" (stripOuterParens conj) |> List.map parseClause
+
     match disjuncts with
     | [ (p, op, v) ] -> sprintf "%s %s %s" p op v
     | many ->
         let paramsUsed = many |> List.map (fun (p, _, _) -> p) |> List.distinct
         let allEq = many |> List.forall (fun (_, op, _) -> op = "==")
+
         match paramsUsed, allEq with
         | [ p ], true -> sprintf "%s in [%s]" p (many |> List.map (fun (_, _, v) -> v) |> String.concat ", ")
-        | _ -> many |> List.map (fun (p, op, v) -> sprintf "%s %s %s" p op v) |> String.concat " or "
+        | _ ->
+            many
+            |> List.map (fun (p, op, v) -> sprintf "%s %s %s" p op v)
+            |> String.concat " or "
 
 /// #434: a `sources` row with no `condition` fires on every scaffold — the engine's native
 /// "unconditional". The canonical grammar spells that `always`; without this case the empty string
@@ -171,9 +239,16 @@ let normalizeCondition (condition: string) : string =
         |> String.concat " and "
 
 let catalog =
-    [ for id, source, condition in templateCatalog do
-          yield id, source, (deliveryOverrides |> Map.tryFind id |> Option.defaultValue (normalizeCondition condition))
-      yield! externalCatalog ]
+    [
+        for id, source, condition in templateCatalog do
+            yield
+                id,
+                source,
+                (deliveryOverrides
+                 |> Map.tryFind id
+                 |> Option.defaultValue (normalizeCondition condition))
+        yield! externalCatalog
+    ]
 
 /// Minimal JSON string escape (conditions carry embedded double quotes around literals).
 let jsonEscape (s: string) : string =
@@ -182,7 +257,10 @@ let jsonEscape (s: string) : string =
 // Normalize CRLF -> LF before hashing, matching Fsgg.SkillMirror.sha256 (FS.GG.Contracts
 // 4.0.0), so an LF-authored body digests identically on a CRLF checkout.
 let sha256Text (body: string) : string =
-    (if String.IsNullOrEmpty body then "" else body.Replace("\r\n", "\n"))
+    (if String.IsNullOrEmpty body then
+         ""
+     else
+         body.Replace("\r\n", "\n"))
     |> Encoding.UTF8.GetBytes
     |> SHA256.HashData
     |> Array.map (fun b -> b.ToString "x2")
@@ -190,9 +268,12 @@ let sha256Text (body: string) : string =
 
 let filesOf (source: string) =
     let directory = Path.GetDirectoryName(repoPath source)
+
     Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
     |> Array.map (fun path ->
-        let relative = Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/')
+        let relative =
+            Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/')
+
         relative, sha256Text (File.ReadAllText path))
     |> Array.sortBy fst
     |> Array.toList
@@ -203,16 +284,25 @@ let manifestJson =
         |> List.sortBy (fun (id, _, _) -> id)
         |> List.map (fun (id, source, materializesWhen) ->
             let body = File.ReadAllText(repoPath source)
+
             let files =
                 filesOf source
                 |> List.map (fun (path, digest) ->
                     sprintf "        { \"path\": \"%s\", \"sha256\": \"%s\" }" (jsonEscape path) digest)
                 |> String.concat ",\n"
+
             sprintf
                 "    {\n      \"id\": \"%s\",\n      \"scope\": \"product\",%s\n      \"sha256\": \"%s\",\n      \"resolvablePath\": \".agents/skills/%s/SKILL.md\",\n      \"materializes-when\": \"%s\",\n      \"supplied-by\": \"%s\",\n      \"files\": [\n%s\n      ]\n    }"
                 id
-                (if Set.contains id deliveryOnlyIds then "\n      \"delivery-only\": true," else "")
-                (sha256Text body) id (jsonEscape materializesWhen) (jsonEscape (suppliedByOf source)) files)
+                (if Set.contains id deliveryOnlyIds then
+                     "\n      \"delivery-only\": true,"
+                 else
+                     "")
+                (sha256Text body)
+                id
+                (jsonEscape materializesWhen)
+                (jsonEscape (suppliedByOf source))
+                files)
         |> String.concat ",\n"
 
     sprintf "{\n  \"schemaVersion\": 2,\n  \"skills\": [\n%s\n  ]\n}\n" entries
@@ -221,7 +311,11 @@ let manifestPath = repoPath "template/skill-manifest/skill-manifest.json"
 let check = Environment.GetCommandLineArgs() |> Array.contains "--check"
 
 if check then
-    let current = if File.Exists manifestPath then File.ReadAllText manifestPath else ""
+    let current =
+        if File.Exists manifestPath then
+            File.ReadAllText manifestPath
+        else
+            ""
 
     if current = manifestJson then
         printfn "skill-manifest: up to date (%d skills)" catalog.Length

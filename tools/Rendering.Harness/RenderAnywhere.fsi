@@ -13,15 +13,19 @@ open FS.GG.UI.SkiaViewer
 module RenderAnywhere =
 
     type CorpusItem =
-        { ScenarioId: string
-          Scene: Scene
-          Package: PortableScenePackage }
+        {
+            ScenarioId: string
+            Scene: Scene
+            Package: PortableScenePackage
+        }
 
     /// The subset of `ReferenceRenderingEvidence` that survives a round trip through `summary.md`.
     type ReferenceSummaryEntry =
-        { PackageIdentity: string
-          Verdict: ReferenceRenderVerdict
-          ImageIdentity: string option }
+        {
+            PackageIdentity: string
+            Verdict: ReferenceRenderVerdict
+            ImageIdentity: string option
+        }
 
     /// Why the browser candidate produced no image. There is no `passed` case by construction.
     type CandidateCapabilityStatus =
@@ -34,27 +38,33 @@ module RenderAnywhere =
     type BrowserFinalDecision = DocumentedFallbackPath of string
 
     type ScenarioCapability =
-        { ScenarioId: string
-          PackageIdentity: string
-          ReferenceIdentity: string option
-          Status: CandidateCapabilityStatus
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            PackageIdentity: string
+            ReferenceIdentity: string option
+            Status: CandidateCapabilityStatus
+            Diagnostics: string list
+        }
 
     type BrowserCapabilityReport =
-        { CandidateBackend: string
-          Corpus: string list
-          Scenarios: ScenarioCapability list
-          UnsupportedCapabilities: string list
-          Decision: BrowserFinalDecision
-          Diagnostics: string list }
+        {
+            CandidateBackend: string
+            Corpus: string list
+            Scenarios: ScenarioCapability list
+            UnsupportedCapabilities: string list
+            Decision: BrowserFinalDecision
+            Diagnostics: string list
+        }
 
     type BrowserFeasibilityModel =
-        { OutputDirectory: string
-          CandidateBackend: string
-          Corpus: CorpusItem list
-          ReferenceEvidence: ReferenceSummaryEntry list
-          Report: BrowserCapabilityReport option
-          Diagnostics: string list }
+        {
+            OutputDirectory: string
+            CandidateBackend: string
+            Corpus: CorpusItem list
+            ReferenceEvidence: ReferenceSummaryEntry list
+            Report: BrowserCapabilityReport option
+            Diagnostics: string list
+        }
 
     type BrowserFeasibilityMsg =
         | BrowserStart
@@ -86,10 +96,15 @@ module RenderAnywhere =
     val initBrowserFeasibility: outputDirectory: string -> BrowserFeasibilityModel * BrowserFeasibilityEffect list
 
     val updateBrowserFeasibility:
-        msg: BrowserFeasibilityMsg -> model: BrowserFeasibilityModel -> BrowserFeasibilityModel * BrowserFeasibilityEffect list
+        msg: BrowserFeasibilityMsg ->
+        model: BrowserFeasibilityModel ->
+            BrowserFeasibilityModel * BrowserFeasibilityEffect list
 
     val buildBrowserCapabilityReport:
-        corpus: CorpusItem list -> references: ReferenceSummaryEntry list -> candidateBackend: string -> BrowserCapabilityReport
+        corpus: CorpusItem list ->
+        references: ReferenceSummaryEntry list ->
+        candidateBackend: string ->
+            BrowserCapabilityReport
 
     val formatBrowserReport: report: BrowserCapabilityReport -> string list
     val writeBrowserReport: outputDirectory: string -> report: BrowserCapabilityReport -> string

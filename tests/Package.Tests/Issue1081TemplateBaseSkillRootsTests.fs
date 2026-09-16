@@ -49,7 +49,8 @@ let private agentSkillRoots = [ ".claude"; ".agents" ]
 
 let private canonicalRoot = ".agents"
 
-let private skillsDir (root: string) = native (sprintf "template/base/%s/skills" root)
+let private skillsDir (root: string) =
+    native (sprintf "template/base/%s/skills" root)
 
 /// Every skill id (a directory holding a SKILL.md) under one root of the base tree.
 let private skillIds (root: string) =
@@ -82,128 +83,130 @@ let private sha256Of (path: string) =
 
 [<Tests>]
 let templateBaseSkillRootTests =
-    testList "Issue1081 template/base carries the three-root byte-identical skill union" [
+    testList
+        "Issue1081 template/base carries the three-root byte-identical skill union"
+        [
 
-        // Guards the guard: every assertion below quantifies over the canonical root's skills, so an
-        // emptied `.agents/skills/` would satisfy all of them vacuously. That is the FS-GG/.github#266
-        // shape this whole item is about, so it gets its own failing question. (The reusable
-        // assertion fails closed the same way — "no skills found under any root", exit 2.)
-        test "the canonical root is non-empty, so the assertions below are not vacuous" {
-            let canonical = skillIds canonicalRoot
+            // Guards the guard: every assertion below quantifies over the canonical root's skills, so an
+            // emptied `.agents/skills/` would satisfy all of them vacuously. That is the FS-GG/.github#266
+            // shape this whole item is about, so it gets its own failing question. (The reusable
+            // assertion fails closed the same way — "no skills found under any root", exit 2.)
+            test "the canonical root is non-empty, so the assertions below are not vacuous" {
+                let canonical = skillIds canonicalRoot
 
-            Expect.isGreaterThan
-                (Set.count canonical)
-                0
-                "template/base/.agents/skills/ holds at least one skill; if this fails every other test in this list passes over an empty set and proves nothing"
-        }
+                Expect.isGreaterThan
+                    (Set.count canonical)
+                    0
+                    "template/base/.agents/skills/ holds at least one skill; if this fails every other test in this list passes over an empty set and proves nothing"
+            }
 
-        test "every ADR-0065 root exists and holds exactly the canonical skill set" {
-            let canonical = skillIds canonicalRoot
+            test "every ADR-0065 root exists and holds exactly the canonical skill set" {
+                let canonical = skillIds canonicalRoot
 
-            for root in agentSkillRoots do
-                Expect.isTrue
-                    (Directory.Exists(skillsDir root))
-                    (sprintf
-                        "template/base/%s/skills must exist — a missing root is a [partitioned] tree (issue #1081)"
-                        root)
-
-                Expect.equal
-                    (skillIds root)
-                    canonical
-                    (sprintf
-                        "template/base/%s/skills holds exactly the canonical .agents/skills set — a skill added to one root and not the other is [partitioned]"
-                        root)
-        }
-
-        // INVERTED from #1081's original assertion. #1081 (2026-07-27) required `template/base/.codex/`
-        // to exist and failed a missing root as a "[partitioned] tree". ADR-0067 §5 (2026-07-28,
-        // `.github#1636`) retired `.codex/skills` org-wide one day later: `.agents/skills` is Codex
-        // CLI's own second native discovery root, so a third copy carried no runtime the other two did
-        // not and only produced a duplicate model-visible catalog entry. Issue #1121 deleted
-        // `template/base/.codex/` to complete that retirement here, so an ABSENT `.codex/` is now the
-        // correct, expected state — its reappearance (a resurrected #1081 twin) is the defect.
-        test "the retired .codex/ root does not exist under template/base (issue #1121, ADR-0067 §5)" {
-            Expect.isFalse
-                (Directory.Exists(native "template/base/.codex"))
-                "template/base/.codex/ must NOT exist — .codex/skills is retired (ADR-0067 §5 / .github#1636); its presence would resurrect the #1081 three-root shape ADR-0067 superseded"
-        }
-
-        test "every file under every root is byte-identical to its canonical .agents counterpart" {
-            let canonicalFiles = relativeFiles canonicalRoot
-
-            for root in agentSkillRoots do
-                let rootFiles = relativeFiles root
-
-                Expect.equal
-                    (rootFiles |> Map.toList |> List.map fst |> List.sort)
-                    (canonicalFiles |> Map.toList |> List.map fst |> List.sort)
-                    (sprintf
-                        "template/base/%s/skills has the same file set as the canonical .agents/skills (references/** included, not only SKILL.md)"
-                        root)
-
-                for KeyValue(rel, canonicalPath) in canonicalFiles do
-                    match Map.tryFind rel rootFiles with
-                    | None -> ()
-                    | Some actualPath ->
-                        Expect.equal
-                            (sha256Of actualPath)
-                            (sha256Of canonicalPath)
-                            (sprintf
-                                "template/base/%s/skills/%s is byte-identical to the canonical .agents copy — [divergent] otherwise, which is how the .claude/ body silently sat three commits stale"
-                                root
-                                rel)
-        }
-
-        // The cross-root checks above would all stay green if every root drifted together. This is
-        // the one that anchors them to the digest the template actually SHIPS.
-        test "the canonical body matches the digest the shipped skill-manifest declares" {
-            let manifestPath = native "template/skill-manifest/skill-manifest.json"
-            use doc = JsonDocument.Parse(File.ReadAllText manifestPath)
-
-            let declared =
-                doc.RootElement.GetProperty("skills").EnumerateArray()
-                |> Seq.map (fun e -> e.GetProperty("id").GetString(), e.GetProperty("sha256").GetString())
-                |> Map.ofSeq
-
-            let mutable checkedAny = false
-
-            for id in skillIds canonicalRoot do
-                match Map.tryFind id declared with
-                | None -> ()
-                | Some digest ->
-                    checkedAny <- true
+                for root in agentSkillRoots do
+                    Expect.isTrue
+                        (Directory.Exists(skillsDir root))
+                        (sprintf
+                            "template/base/%s/skills must exist — a missing root is a [partitioned] tree (issue #1081)"
+                            root)
 
                     Expect.equal
-                        (sha256Of (Path.Combine(skillsDir canonicalRoot, id, "SKILL.md")))
-                        digest
+                        (skillIds root)
+                        canonical
                         (sprintf
-                            "template/base/.agents/skills/%s/SKILL.md matches the sha256 template/skill-manifest/skill-manifest.json declares for it ([drifted] otherwise)"
-                            id)
+                            "template/base/%s/skills holds exactly the canonical .agents/skills set — a skill added to one root and not the other is [partitioned]"
+                            root)
+            }
 
-            Expect.isTrue
-                checkedAny
-                "at least one base skill is declared in the shipped manifest, or this test compares nothing"
-        }
-
-        // The base .claude/ tree also carries Claude Code's own configuration. #1081 decided
-        // deliberately that it is NOT triplicated, and this pins the decision so a later "make the
-        // roots symmetric" sweep has to read the rationale before undoing it.
-        test "Claude-specific configuration stays in .claude/ only and is not triplicated" {
-            Expect.isTrue
-                (File.Exists(native "template/base/.claude/settings.json"))
-                "the base .claude/ workspace tree still carries Claude Code's settings.json"
-
-            for root in [ ".agents" ] do
+            // INVERTED from #1081's original assertion. #1081 (2026-07-27) required `template/base/.codex/`
+            // to exist and failed a missing root as a "[partitioned] tree". ADR-0067 §5 (2026-07-28,
+            // `.github#1636`) retired `.codex/skills` org-wide one day later: `.agents/skills` is Codex
+            // CLI's own second native discovery root, so a third copy carried no runtime the other two did
+            // not and only produced a duplicate model-visible catalog entry. Issue #1121 deleted
+            // `template/base/.codex/` to complete that retirement here, so an ABSENT `.codex/` is now the
+            // correct, expected state — its reappearance (a resurrected #1081 twin) is the defect.
+            test "the retired .codex/ root does not exist under template/base (issue #1121, ADR-0067 §5)" {
                 Expect.isFalse
-                    (File.Exists(native (sprintf "template/base/%s/settings.json" root)))
-                    (sprintf
-                        "template/base/%s/settings.json must NOT exist — settings.json is Claude Code's own schema (permissions.allow, hooks.UserPromptSubmit, $CLAUDE_PROJECT_DIR); no other runtime reads it, so a copy there is an unread file and a drift source (#1081)"
-                        root)
+                    (Directory.Exists(native "template/base/.codex"))
+                    "template/base/.codex/ must NOT exist — .codex/skills is retired (ADR-0067 §5 / .github#1636); its presence would resurrect the #1081 three-root shape ADR-0067 superseded"
+            }
 
-                Expect.isFalse
-                    (Directory.Exists(native (sprintf "template/base/%s/hooks" root)))
-                    (sprintf
-                        "template/base/%s/hooks/ must NOT exist — the hook script exists only because .claude/settings.json points at it (#1081)"
-                        root)
-        }
-    ]
+            test "every file under every root is byte-identical to its canonical .agents counterpart" {
+                let canonicalFiles = relativeFiles canonicalRoot
+
+                for root in agentSkillRoots do
+                    let rootFiles = relativeFiles root
+
+                    Expect.equal
+                        (rootFiles |> Map.toList |> List.map fst |> List.sort)
+                        (canonicalFiles |> Map.toList |> List.map fst |> List.sort)
+                        (sprintf
+                            "template/base/%s/skills has the same file set as the canonical .agents/skills (references/** included, not only SKILL.md)"
+                            root)
+
+                    for KeyValue(rel, canonicalPath) in canonicalFiles do
+                        match Map.tryFind rel rootFiles with
+                        | None -> ()
+                        | Some actualPath ->
+                            Expect.equal
+                                (sha256Of actualPath)
+                                (sha256Of canonicalPath)
+                                (sprintf
+                                    "template/base/%s/skills/%s is byte-identical to the canonical .agents copy — [divergent] otherwise, which is how the .claude/ body silently sat three commits stale"
+                                    root
+                                    rel)
+            }
+
+            // The cross-root checks above would all stay green if every root drifted together. This is
+            // the one that anchors them to the digest the template actually SHIPS.
+            test "the canonical body matches the digest the shipped skill-manifest declares" {
+                let manifestPath = native "template/skill-manifest/skill-manifest.json"
+                use doc = JsonDocument.Parse(File.ReadAllText manifestPath)
+
+                let declared =
+                    doc.RootElement.GetProperty("skills").EnumerateArray()
+                    |> Seq.map (fun e -> e.GetProperty("id").GetString(), e.GetProperty("sha256").GetString())
+                    |> Map.ofSeq
+
+                let mutable checkedAny = false
+
+                for id in skillIds canonicalRoot do
+                    match Map.tryFind id declared with
+                    | None -> ()
+                    | Some digest ->
+                        checkedAny <- true
+
+                        Expect.equal
+                            (sha256Of (Path.Combine(skillsDir canonicalRoot, id, "SKILL.md")))
+                            digest
+                            (sprintf
+                                "template/base/.agents/skills/%s/SKILL.md matches the sha256 template/skill-manifest/skill-manifest.json declares for it ([drifted] otherwise)"
+                                id)
+
+                Expect.isTrue
+                    checkedAny
+                    "at least one base skill is declared in the shipped manifest, or this test compares nothing"
+            }
+
+            // The base .claude/ tree also carries Claude Code's own configuration. #1081 decided
+            // deliberately that it is NOT triplicated, and this pins the decision so a later "make the
+            // roots symmetric" sweep has to read the rationale before undoing it.
+            test "Claude-specific configuration stays in .claude/ only and is not triplicated" {
+                Expect.isTrue
+                    (File.Exists(native "template/base/.claude/settings.json"))
+                    "the base .claude/ workspace tree still carries Claude Code's settings.json"
+
+                for root in [ ".agents" ] do
+                    Expect.isFalse
+                        (File.Exists(native (sprintf "template/base/%s/settings.json" root)))
+                        (sprintf
+                            "template/base/%s/settings.json must NOT exist — settings.json is Claude Code's own schema (permissions.allow, hooks.UserPromptSubmit, $CLAUDE_PROJECT_DIR); no other runtime reads it, so a copy there is an unread file and a drift source (#1081)"
+                            root)
+
+                    Expect.isFalse
+                        (Directory.Exists(native (sprintf "template/base/%s/hooks" root)))
+                        (sprintf
+                            "template/base/%s/hooks/ must NOT exist — the hook script exists only because .claude/settings.json points at it (#1081)"
+                            root)
+            }
+        ]

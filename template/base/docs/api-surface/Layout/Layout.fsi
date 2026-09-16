@@ -19,9 +19,10 @@ module Layout =
     /// `"FS.GG.UI.Layout.ForceYogaFailure"` is set, Yoga execution is forced to fail and this returns
     /// the empty-bounds error result above. The switch exists to exercise that path from tests; setting
     /// it changes the result of every `evaluate` in the process.
-    val evaluate : available: AvailableSpace -> root: LayoutNode -> LayoutResult
+    val evaluate: available: AvailableSpace -> root: LayoutNode -> LayoutResult
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val evaluateIncremental :
+    val evaluateIncremental:
         previous: LayoutResult ->
         changedNodeIds: LayoutNodeId list ->
         available: AvailableSpace ->
@@ -29,24 +30,27 @@ module Layout =
             LayoutResult
 
     /// Public contract function exposed by this FS.GG.UI package.
-    val renderComputed : result: LayoutResult -> root: LayoutNode -> Scene
+    val renderComputed: result: LayoutResult -> root: LayoutNode -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
-    val snapBounds : policy: PixelSnapPolicy -> bounds: LayoutBounds -> LayoutBounds
+    val snapBounds: policy: PixelSnapPolicy -> bounds: LayoutBounds -> LayoutBounds
     /// Public contract function exposed by this FS.GG.UI package.
-    val hitTestComputed : policy: PixelSnapPolicy -> result: LayoutResult -> x: float -> y: float -> LayoutNodeId option
+    val hitTestComputed: policy: PixelSnapPolicy -> result: LayoutResult -> x: float -> y: float -> LayoutNodeId option
     /// Public contract function exposed by this FS.GG.UI package.
-    val initWorkflow : available: AvailableSpace -> root: LayoutNode -> LayoutWorkflowModel * LayoutWorkflowEffect list
+    val initWorkflow: available: AvailableSpace -> root: LayoutNode -> LayoutWorkflowModel * LayoutWorkflowEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val updateWorkflow : msg: LayoutWorkflowMsg -> model: LayoutWorkflowModel -> LayoutWorkflowModel * LayoutWorkflowEffect list
+    val updateWorkflow:
+        msg: LayoutWorkflowMsg -> model: LayoutWorkflowModel -> LayoutWorkflowModel * LayoutWorkflowEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val interpretWorkflowEffect : effect: LayoutWorkflowEffect -> model: LayoutWorkflowModel -> LayoutWorkflowMsg
+    val interpretWorkflowEffect: effect: LayoutWorkflowEffect -> model: LayoutWorkflowModel -> LayoutWorkflowMsg
     /// Public contract function exposed by this FS.GG.UI package.
-    val horizontalStack : config: StackConfig -> children: LayoutChild list -> Scene
+    val horizontalStack: config: StackConfig -> children: LayoutChild list -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
-    val verticalStack : config: StackConfig -> children: LayoutChild list -> Scene
+    val verticalStack: config: StackConfig -> children: LayoutChild list -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
-    val dock : config: DockConfig -> children: LayoutChild list -> Scene
+    val dock: config: DockConfig -> children: LayoutChild list -> Scene
     /// Public contract function exposed by this FS.GG.UI package.
-    val measureHorizontal : config: StackConfig -> children: LayoutChild list -> LayoutBounds list
+    val measureHorizontal: config: StackConfig -> children: LayoutChild list -> LayoutBounds list
     /// Public contract function exposed by this FS.GG.UI package.
-    val measureVertical : config: StackConfig -> children: LayoutChild list -> LayoutBounds list
+    val measureVertical: config: StackConfig -> children: LayoutChild list -> LayoutBounds list

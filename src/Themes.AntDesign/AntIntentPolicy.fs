@@ -33,23 +33,34 @@ module AntIntentPolicy =
         // stroke and the label, never the fill.
         let outline (theme: Theme) (intent: string) (b: ResolvedStyle) =
             match intent with
-            | "default" -> { b with Stroke = border; Foreground = text }
+            | "default" ->
+                { b with
+                    Stroke = border
+                    Foreground = text
+                }
             | "dashed" ->
                 { b with
                     Stroke = border
                     Foreground = text
-                    StrokeDash = dashPattern }
+                    StrokeDash = dashPattern
+                }
             | "text" ->
                 { b with
                     Stroke = Colors.transparent
                     StrokeWidth = 0.0
-                    Foreground = text }
+                    Foreground = text
+                }
             | "link" ->
                 { b with
                     Stroke = Colors.transparent
                     StrokeWidth = 0.0
-                    Foreground = theme.Accent }
-            | "danger" -> { b with Stroke = theme.Danger; Foreground = theme.Danger }
+                    Foreground = theme.Accent
+                }
+            | "danger" ->
+                { b with
+                    Stroke = theme.Danger
+                    Foreground = theme.Danger
+                }
             // "primary" IS the accent outline the structural base already carries; "" / unknown → identity.
             | _ -> b
 
@@ -63,14 +74,16 @@ module AntIntentPolicy =
                     Foreground = theme.Background
                     Stroke = theme.Accent
                     StrokeWidth = 0.0
-                    StrokeDash = [] }
+                    StrokeDash = []
+                }
             | "default" ->
                 { b with
                     Fill = surface
                     Foreground = text
                     Stroke = border
                     StrokeWidth = 1.0
-                    StrokeDash = [] }
+                    StrokeDash = []
+                }
             | "dashed" ->
                 // As `default`, with a real dashed stroke rather than a heavier solid one.
                 { b with
@@ -78,37 +91,43 @@ module AntIntentPolicy =
                     Foreground = text
                     Stroke = border
                     StrokeWidth = 1.0
-                    StrokeDash = dashPattern }
+                    StrokeDash = dashPattern
+                }
             | "text" ->
                 { b with
                     Fill = Colors.transparent
                     Foreground = text
                     Stroke = Colors.transparent
                     StrokeWidth = 0.0
-                    StrokeDash = [] }
+                    StrokeDash = []
+                }
             | "link" ->
                 { b with
                     Fill = Colors.transparent
                     Foreground = theme.Accent
                     Stroke = Colors.transparent
                     StrokeWidth = 0.0
-                    StrokeDash = [] }
+                    StrokeDash = []
+                }
             | "danger" ->
                 { b with
                     Fill = theme.Danger
                     Foreground = theme.Background
                     Stroke = theme.Danger
                     StrokeWidth = 0.0
-                    StrokeDash = [] }
+                    StrokeDash = []
+                }
             // "" / unknown → identity (structural base unchanged) — total, never raises.
             | _ -> b
 
-        { Name = name
-          ApplyIntent =
-            fun theme kind intent baseStyle ->
-                match kind with
-                | "icon-button" -> outline theme intent baseStyle
-                | _ -> filled theme intent baseStyle }
+        {
+            Name = name
+            ApplyIntent =
+                fun theme kind intent baseStyle ->
+                    match kind with
+                    | "icon-button" -> outline theme intent baseStyle
+                    | _ -> filled theme intent baseStyle
+        }
 
     /// The policy `AntTheme.antLight` carries.
     let light: IntentPolicy =

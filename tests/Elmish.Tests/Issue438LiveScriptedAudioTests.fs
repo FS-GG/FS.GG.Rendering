@@ -32,94 +32,108 @@ let private theme = TrackId "theme"
 
 let private view (_: Size) (_: Model) : Control<Msg> =
     Stack.create
-        [ Stack.children
-              [ Button.create [ Button.text "Go"; Button.onClick Fired ] |> Control.withKey "go" ] ]
+        [
+            Stack.children
+                [
+                    Button.create [ Button.text "Go"; Button.onClick Fired ] |> Control.withKey "go"
+                ]
+        ]
 
 let private update (Fired) (model: Model) : Model * ViewerEffect list =
     { model with Fired = true }, [ PlayAudio [ Audio.playSfx blip 0.75 ] ]
 
 let private host: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> { Fired = false }, [ PlayAudio [ Audio.playMusic theme true ] ]
-      Update = update
-      View = view
-      Theme = Theme.light
-      MapKey = fun _ _ -> None
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> { Fired = false }, [ PlayAudio [ Audio.playMusic theme true ] ]
+        Update = update
+        View = view
+        Theme = Theme.light
+        MapKey = fun _ _ -> None
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 let private options: ViewerOptions =
-    { Title = "Product"
-      InitialSize = size
-      PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None
-      LogicalSize = None }
+    {
+        Title = "Product"
+        InitialSize = size
+        PresentMode = ViewerPresentMode.OffscreenReadback
+        FrameRateCap = None
+        LogicalSize = None
+    }
 
 [<Tests>]
 let tests =
     testList
         "issue-438 Live scripted audio"
         [
-          // The values half: what a scripted interaction asks for is exactly what the sink will get.
-          test "a scripted run's init and update both request the sound the product asked for" {
-            let _, initEffects = host.Init()
-            let _, updateEffects = host.Update Fired { Fired = false }
+            // The values half: what a scripted interaction asks for is exactly what the sink will get.
+            test "a scripted run's init and update both request the sound the product asked for" {
+                let _, initEffects = host.Init()
+                let _, updateEffects = host.Update Fired { Fired = false }
 
-            Expect.equal
-                (GeneratedAppHost.audioRequests (initEffects @ updateEffects))
-                [ Audio.playMusic theme true; Audio.playSfx blip 0.75 ]
-                "the opening music and the scripted click's sfx are both requested — neither is discarded"
-          }
+                Expect.equal
+                    (GeneratedAppHost.audioRequests (initEffects @ updateEffects))
+                    [ Audio.playMusic theme true; Audio.playSfx blip 0.75 ]
+                    "the opening music and the scripted click's sfx are both requested — neither is discarded"
+            }
 
-          // The entry-point half: the audio-capable scripted runner must classify an unsupported host
-          // exactly as its sinkless twin does, and must never claim to have played anything.
-          test "Live.runScriptWithAudio never reaches the sink on a host that cannot open a window" {
-            let played = ResizeArray<AudioEffect>()
+            // The entry-point half: the audio-capable scripted runner must classify an unsupported host
+            // exactly as its sinkless twin does, and must never claim to have played anything.
+            test "Live.runScriptWithAudio never reaches the sink on a host that cannot open a window" {
+                let played = ResizeArray<AudioEffect>()
 
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match ControlsElmish.Live.runScriptWithAudio options (fun batch -> played.AddRange batch) host [] with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure ->
-                    Expect.equal
-                        failure.Classification
-                        UnsupportedEnvironment
-                        "Live.runScriptWithAudio classifies an unsupported host exactly as Live.runScript does"
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match
+                        ControlsElmish.Live.runScriptWithAudio options (fun batch -> played.AddRange batch) host []
+                    with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal
+                            failure.Classification
+                            UnsupportedEnvironment
+                            "Live.runScriptWithAudio classifies an unsupported host exactly as Live.runScript does"
 
-                Expect.isEmpty played "no sound is played when no window ever opened"
-          }
+                    Expect.isEmpty played "no sound is played when no window ever opened"
+            }
 
-          test "Live.runScriptWithWindowBehaviorAndAudio holds the same contract" {
-            let played = ResizeArray<AudioEffect>()
+            test "Live.runScriptWithWindowBehaviorAndAudio holds the same contract" {
+                let played = ResizeArray<AudioEffect>()
 
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match
-                    ControlsElmish.Live.runScriptWithWindowBehaviorAndAudio
-                        options
-                        Viewer.defaultWindowBehavior
-                        (fun batch -> played.AddRange batch)
-                        host
-                        []
-                with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure ->
-                    Expect.equal failure.Classification UnsupportedEnvironment "same classification as the sinkless twin"
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match
+                        ControlsElmish.Live.runScriptWithWindowBehaviorAndAudio
+                            options
+                            Viewer.defaultWindowBehavior
+                            (fun batch -> played.AddRange batch)
+                            host
+                            []
+                    with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal
+                            failure.Classification
+                            UnsupportedEnvironment
+                            "same classification as the sinkless twin"
 
-                Expect.isEmpty played "no sound is played when no window ever opened"
-          }
+                    Expect.isEmpty played "no sound is played when no window ever opened"
+            }
 
-          // The additive guarantee: the sinkless Live runner is unchanged by #438.
-          test "the sinkless Live.runScript still refuses an unsupported host, exactly as before" {
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match ControlsElmish.Live.runScript options host [] with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure -> Expect.equal failure.Classification UnsupportedEnvironment "unchanged by #438"
-          }
+            // The additive guarantee: the sinkless Live runner is unchanged by #438.
+            test "the sinkless Live.runScript still refuses an unsupported host, exactly as before" {
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match ControlsElmish.Live.runScript options host [] with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal failure.Classification UnsupportedEnvironment "unchanged by #438"
+            }
         ]

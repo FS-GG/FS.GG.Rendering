@@ -5,8 +5,10 @@ let readinessRoot = Directory.GetParent(__SOURCE_DIRECTORY__).FullName
 
 let readRequired relativePath =
     let path = Path.Combine(readinessRoot, relativePath)
+
     if not (File.Exists path) then
         failwithf "Required readiness artifact is missing: %s" relativePath
+
     File.ReadAllText path
 
 let requireContains (label: string) (token: string) (text: string) =
@@ -15,7 +17,9 @@ let requireContains (label: string) (token: string) (text: string) =
 
 let proofSet = readRequired "proof-set.md"
 let validationSummary = readRequired "validation-summary.md"
-let unsupported = readRequired (Path.Combine("live-proof", "unsupported", "README.md"))
+
+let unsupported =
+    readRequired (Path.Combine("live-proof", "unsupported", "README.md"))
 
 requireContains "proof-set.md" "Status: `accepted`" proofSet
 requireContains "proof-set.md" "Selected attempts: `3/3`" proofSet

@@ -11,7 +11,7 @@ let dir = "artifacts/ant-showcase"
 let path = dir + "/feedback.jsonl"
 
 /// Load previously-saved feedback, newest first (matching the in-model ordering).
-let load (): FeedbackEntry list =
+let load () : FeedbackEntry list =
     if File.Exists path then
         File.ReadAllLines path
         |> Array.toList
@@ -21,10 +21,11 @@ let load (): FeedbackEntry list =
         []
 
 /// Append one freshly-submitted entry to the log.
-let append (entry: FeedbackEntry): unit =
+let append (entry: FeedbackEntry) : unit =
     Directory.CreateDirectory dir |> ignore
     File.AppendAllText(path, encodeFeedbackLine entry + "\n")
 
 /// Clear all saved feedback (acting on it / triaging to empty).
-let clear (): unit =
-    if File.Exists path then File.Delete path
+let clear () : unit =
+    if File.Exists path then
+        File.Delete path

@@ -30,12 +30,14 @@ type SavePayload = SavePayload of string
 /// product-stamped save-format version enabling a future load to migrate or reject old saves;
 /// the framework never interprets the Payload.
 type SaveEnvelope =
-    { /// Product-stamped save-format version (>= minVersion; normalized at the boundary).
-      Version: int
-      /// Target save slot.
-      Slot: SaveSlot
-      /// Opaque, product-serialized payload.
-      Payload: SavePayload }
+    {
+        /// Product-stamped save-format version (>= minVersion; normalized at the boundary).
+        Version: int
+        /// Target save slot.
+        Slot: SaveSlot
+        /// Opaque, product-serialized payload.
+        Payload: SavePayload
+    }
 
 /// A requested persistence action, expressed as a pure value from product `update`.
 type PersistenceEffect =
@@ -46,8 +48,10 @@ type PersistenceEffect =
 /// Ordered evidence of what a product requested, produced by the record-only interpreter.
 /// This is the primary, filesystem-free evidence for the headless path (US2).
 type PersistenceEvidence =
-    { /// Requested effects in dispatch order (oldest first).
-      Requested: PersistenceEffect list }
+    {
+        /// Requested effects in dispatch order (oldest first).
+        Requested: PersistenceEffect list
+    }
 
 [<RequireQualifiedAccess>]
 module Persistence =

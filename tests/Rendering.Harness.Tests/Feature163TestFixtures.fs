@@ -4,7 +4,9 @@ open System
 open System.IO
 
 let createTempRoot (name: string) =
-    let root = Path.Combine(Path.GetTempPath(), name + "-" + Guid.NewGuid().ToString("N"))
+    let root =
+        Path.Combine(Path.GetTempPath(), name + "-" + Guid.NewGuid().ToString("N"))
+
     Directory.CreateDirectory root |> ignore
     root
 
@@ -15,7 +17,9 @@ let private ensureParentDirectory (path: string) =
     | directory -> Directory.CreateDirectory directory |> ignore
 
 let writeFile (root: string) (relativePath: string) (text: string) =
-    let path = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))
+    let path =
+        Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))
+
     ensureParentDirectory path
     File.WriteAllText(path, text)
     path
@@ -36,7 +40,8 @@ let writePackageProject (root: string) (relativePath: string) (packageId: string
 let writeSampleProject (root: string) (relativePath: string) (packageReferences: (string * string) list) =
     let references =
         packageReferences
-        |> List.map (fun (packageId, version) -> $"    <PackageReference Include=\"{packageId}\" Version=\"{version}\" />")
+        |> List.map (fun (packageId, version) ->
+            $"    <PackageReference Include=\"{packageId}\" Version=\"{version}\" />")
         |> String.concat Environment.NewLine
 
     writeFile

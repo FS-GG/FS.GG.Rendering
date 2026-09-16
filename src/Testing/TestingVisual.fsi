@@ -7,6 +7,7 @@ open FS.GG.UI.Scene
 module VisualCaptureMatrix =
     /// Build a stable target id from page/theme/size/path facts.
     val targetId: page: VisualPage -> theme: VisualTheme -> size: VisualSize -> relativePath: string -> string
+
     /// Expand pages x themes x sizes into deterministic visual capture targets.
     val expand:
         pages: VisualPage list ->
@@ -37,6 +38,7 @@ module VisualReviewerClassifications =
 module VisualReadiness =
     /// Stable status token for readiness summaries.
     val statusText: status: VisualReadinessStatus -> string
+
     /// Aggregate captures, reviewer records, contact sheets, and caveats into readiness.
     val evaluate:
         runId: string ->
@@ -63,16 +65,18 @@ module internal ReadinessFormatting =
 module internal SharedTesting =
     /// Family-specific knobs for the one shared inspection-validation algorithm.
     type InspectionValidationKnobs<'finding, 'exn, 'status, 'result> =
-        { SeverityOf: 'finding -> VisualInspectionSeverity
-          FindingIdOf: 'finding -> string
-          MatchException: 'finding -> 'exn -> bool
-          ExceptionIdOf: 'exn -> string
-          Accept: VisualInspectionSeverity -> bool
-          AcceptFinding: 'finding -> 'exn -> 'finding
-          InvalidWording: string -> string
-          UnusedWording: string -> string
-          DeriveStatus: (VisualInspectionSeverity -> bool) -> 'status
-          MkResult: 'status -> 'finding list -> string list -> string list -> string list -> string list -> 'result }
+        {
+            SeverityOf: 'finding -> VisualInspectionSeverity
+            FindingIdOf: 'finding -> string
+            MatchException: 'finding -> 'exn -> bool
+            ExceptionIdOf: 'exn -> string
+            Accept: VisualInspectionSeverity -> bool
+            AcceptFinding: 'finding -> 'exn -> 'finding
+            InvalidWording: string -> string
+            UnusedWording: string -> string
+            DeriveStatus: (VisualInspectionSeverity -> bool) -> 'status
+            MkResult: 'status -> 'finding list -> string list -> string list -> string list -> string list -> 'result
+        }
 
     /// The one validate-exceptions → unused/invalid → diagnostics → derive-status algorithm.
     val validateCheck:
@@ -115,6 +119,7 @@ module VisualInspectionValidation =
     val defaultRules: VisualInspectionRule list
     /// Validate an artifact with explicit rules, exceptions, expected regions, and optional previous artifact.
     val validateCheck: check: VisualInspectionValidationCheck -> VisualInspectionValidationResult
+
     /// Validate an artifact with the default check shape.
     val validate:
         artifact: VisualInspectionArtifact ->
@@ -145,4 +150,3 @@ module VisualInspectionMarkdown =
     val renderJson: summary: VisualInspectionSummary -> string
     /// Update or insert exactly one generated inspection section while preserving manual text.
     val updateManagedSection: existingText: string -> generatedMarkdown: string -> VisualInspectionSummarySectionUpdate
-

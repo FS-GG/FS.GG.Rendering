@@ -16,9 +16,11 @@ type EvidenceState =
     | PresentInvalid of reason: string
 
 type EvidenceNode =
-    { ArtifactPath: string
-      Kind: string
-      State: EvidenceState }
+    {
+        ArtifactPath: string
+        Kind: string
+        State: EvidenceState
+    }
 
 [<RequireQualifiedAccess>]
 type Verdict =
@@ -46,31 +48,66 @@ module Sensing =
     // still passes while a stub/truncated one is caught. An empty token list (`stateOf`'s "present and
     // non-empty" fallback) is intentionally no longer used by any entry.
     let recognized: (string * string * string list * bool) list =
-        [ "layout-evidence.txt", "layout", [ "command=--layout-evidence"; "overlap-status="; "measurement-mode=" ], true
-          "headless-scene-evidence.txt", "scene", [ "size="; "capabilities="; "hash=" ], true
-          "evidence-launch-mode.txt", "launch", [ "command=--launch-evidence"; "mode=" ], false
-          "game-screenshot-evidence.txt", "screenshot", [ "command=--screenshot-evidence"; "evidence-kind=" ], false
-          "game-pixel-readback-evidence.txt", "pixel-readback", [ "command=--pixel-readback-evidence"; "evidence-kind=" ], false
-          "bounded-viewer-smoke.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
-          "bounded-viewer-frame-diagnostics.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
-          "window-diagnostics.txt", "window-diagnostics", [ "diagnostic-class=" ], false
-          "window-options.txt", "window-options", [ "option=" ], false
-          "interactive-visible-window.md",
-          "window-visibility",
-          [ "status"; "mode"; "window-visible"; "accessible-window"; "first-frame-presented"; "self-closed-for-evidence" ],
-          false
-          "window-state-diagnostics.md",
-          "window-diagnostics",
-          [ "native-handle"; "visible"; "focusable"; "renderable-surface"; "input-devices" ],
-          false
-          "real-image-evidence.md",
-          "image",
-          [ "evidence-kind"; "status"; "artifact-decodable"; "proves-scene-rendering"; "proves-desktop-visibility" ],
-          false
-          "generated-validation.md",
-          "generated-validation",
-          [ "exact-package-match"; "generated-tests-ran"; "authoritative"; "failure-class" ],
-          false ]
+        [
+            "layout-evidence.txt",
+            "layout",
+            [ "command=--layout-evidence"; "overlap-status="; "measurement-mode=" ],
+            true
+            "headless-scene-evidence.txt", "scene", [ "size="; "capabilities="; "hash=" ], true
+            "evidence-launch-mode.txt", "launch", [ "command=--launch-evidence"; "mode=" ], false
+            "game-screenshot-evidence.txt", "screenshot", [ "command=--screenshot-evidence"; "evidence-kind=" ], false
+            "game-pixel-readback-evidence.txt",
+            "pixel-readback",
+            [ "command=--pixel-readback-evidence"; "evidence-kind=" ],
+            false
+            "bounded-viewer-smoke.txt", "bounded-smoke", [ "smoke=bounded-viewer"; "diagnostic-mode=" ], false
+            "bounded-viewer-frame-diagnostics.txt",
+            "bounded-smoke",
+            [ "smoke=bounded-viewer"; "diagnostic-mode=" ],
+            false
+            "window-diagnostics.txt", "window-diagnostics", [ "diagnostic-class=" ], false
+            "window-options.txt", "window-options", [ "option=" ], false
+            "interactive-visible-window.md",
+            "window-visibility",
+            [
+                "status"
+                "mode"
+                "window-visible"
+                "accessible-window"
+                "first-frame-presented"
+                "self-closed-for-evidence"
+            ],
+            false
+            "window-state-diagnostics.md",
+            "window-diagnostics",
+            [
+                "native-handle"
+                "visible"
+                "focusable"
+                "renderable-surface"
+                "input-devices"
+            ],
+            false
+            "real-image-evidence.md",
+            "image",
+            [
+                "evidence-kind"
+                "status"
+                "artifact-decodable"
+                "proves-scene-rendering"
+                "proves-desktop-visibility"
+            ],
+            false
+            "generated-validation.md",
+            "generated-validation",
+            [
+                "exact-package-match"
+                "generated-tests-ran"
+                "authoritative"
+                "failure-class"
+            ],
+            false
+        ]
 
     // The required baseline artifacts (relative path under readiness/), derived from `recognized`.
     // The audit and graph both fail when one of these is absent (evidence-output-contract.md).
@@ -98,9 +135,13 @@ module Sensing =
         if String.IsNullOrWhiteSpace text then
             EvidenceState.PresentInvalid "empty artifact (no evidence content)"
         else
-            match requiredTokens |> List.filter (fun t -> not (text.Contains(t, StringComparison.Ordinal))) with
+            match
+                requiredTokens
+                |> List.filter (fun t -> not (text.Contains(t, StringComparison.Ordinal)))
+            with
             | [] -> EvidenceState.PresentValid
-            | missing -> EvidenceState.PresentInvalid(sprintf "missing required token(s): %s" (String.concat ", " missing))
+            | missing ->
+                EvidenceState.PresentInvalid(sprintf "missing required token(s): %s" (String.concat ", " missing))
 
     // Required baseline artifacts (`readiness/`-relative) that no sensed node covers. A required
     // artifact that is present-but-malformed is NOT reported here — its `PresentInvalid` node is
@@ -131,9 +172,11 @@ module Graph =
 
             if File.Exists full then
                 Some
-                    { ArtifactPath = "readiness/" + rel
-                      Kind = kind
-                      State = Sensing.stateOf tokens (File.ReadAllText full) }
+                    {
+                        ArtifactPath = "readiness/" + rel
+                        Kind = kind
+                        State = Sensing.stateOf tokens (File.ReadAllText full)
+                    }
             else
                 None)
 
@@ -273,8 +316,6 @@ module GeneratedRunner =
             | Verdict.Pass -> 0
             | Verdict.Fail _ -> 1
         | other ->
-            eprintfn
-                "FS.GG.UI.Build: unknown evidence target '%s' (expected 'EvidenceGraph' or 'EvidenceAudit')."
-                other
+            eprintfn "FS.GG.UI.Build: unknown evidence target '%s' (expected 'EvidenceGraph' or 'EvidenceAudit')." other
 
             2

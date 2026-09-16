@@ -40,7 +40,8 @@ module internal WidgetLowering =
                 None
                 (Accessibility.keyboard true [ "Enter"; "Space" ] navigationKeys)
                 None
-                None)
+                None
+        )
 
     // Issue #56: the focus-scope stops are the ids of the surface's REAL lowered focusable
     // content — passed by each caller, which is the only place that knows what it lowered — not
@@ -48,11 +49,13 @@ module internal WidgetLowering =
     // in-overlay focus land on non-existent ids). `InitialFocus` is the first such stop, so a
     // surface with no nameable content declares an honestly empty scope rather than a fake target.
     let private focusScope surfaceId triggerId trapMode (stops: ControlId list) =
-        { SurfaceId = surfaceId
-          Stops = stops
-          InitialFocus = List.tryHead stops
-          RecoveryTarget = Some triggerId
-          TrapMode = trapMode }
+        {
+            SurfaceId = surfaceId
+            Stops = stops
+            InitialFocus = List.tryHead stops
+            RecoveryTarget = Some triggerId
+            TrapMode = trapMode
+        }
 
     let transientMetadata
         (kind: TransientSurfaceKind)
@@ -68,15 +71,21 @@ module internal WidgetLowering =
         let trapMode = if modal then ModalTrap else LocalScope
 
         TransientWidget.attribute
-            { SurfaceKind = kind
-              SurfaceId = surfaceId
-              ParentSurfaceId = None
-              TriggerId = triggerId
-              AnchorId = triggerId
-              LayerPriority = layerPriority
-              DismissalPolicy = if modal then OverlayState.modalDismissalPolicy () else OverlayState.defaultDismissalPolicy ()
-              FocusScope = focusScope surfaceId triggerId trapMode contentStops
-              Modal = modal
-              SelectionDispatchKey = dispatchKey
-              VisibilityState = isOpen
-              TriggerEnabled = enabled }
+            {
+                SurfaceKind = kind
+                SurfaceId = surfaceId
+                ParentSurfaceId = None
+                TriggerId = triggerId
+                AnchorId = triggerId
+                LayerPriority = layerPriority
+                DismissalPolicy =
+                    if modal then
+                        OverlayState.modalDismissalPolicy ()
+                    else
+                        OverlayState.defaultDismissalPolicy ()
+                FocusScope = focusScope surfaceId triggerId trapMode contentStops
+                Modal = modal
+                SelectionDispatchKey = dispatchKey
+                VisibilityState = isOpen
+                TriggerEnabled = enabled
+            }

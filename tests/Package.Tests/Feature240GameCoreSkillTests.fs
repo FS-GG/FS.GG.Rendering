@@ -21,13 +21,23 @@ let private repositoryRoot = RepositoryRoot.value
 let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
-let private gameCoreGeometryFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Geometry.fsi"
-let private gameCoreRngFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Rng.fsi"
-let private gameCoreFixedStepFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/FixedStep.fsi"
-let private gameCorePathfindingFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/Pathfinding.fsi"
-let private gameCoreSpatialGridFsiPath = repositoryPath "template/base/docs/api-surface/Game.Core/SpatialGrid.fsi"
+let private gameCoreGeometryFsiPath =
+    repositoryPath "template/base/docs/api-surface/Game.Core/Geometry.fsi"
 
-let private gameCoreSurfaceDir = repositoryPath "template/base/docs/api-surface/Game.Core"
+let private gameCoreRngFsiPath =
+    repositoryPath "template/base/docs/api-surface/Game.Core/Rng.fsi"
+
+let private gameCoreFixedStepFsiPath =
+    repositoryPath "template/base/docs/api-surface/Game.Core/FixedStep.fsi"
+
+let private gameCorePathfindingFsiPath =
+    repositoryPath "template/base/docs/api-surface/Game.Core/Pathfinding.fsi"
+
+let private gameCoreSpatialGridFsiPath =
+    repositoryPath "template/base/docs/api-surface/Game.Core/SpatialGrid.fsi"
+
+let private gameCoreSurfaceDir =
+    repositoryPath "template/base/docs/api-surface/Game.Core"
 
 /// The cited module -> the packed .fsi its members must resolve in.
 ///
@@ -59,52 +69,84 @@ let feature240GameCoreSkillTests =
     testList
         "Feature240 fs-gg-game-core skill surface"
         [
-          // THE INSTRUMENT, before the subject (#767 / FS-GG/.github#266). `moduleSurface` is DERIVED, so a
-          // reader that comes back empty takes SC-004 with it — and it does not fail cleanly: an empty
-          // alternation makes `citedMemberRegex` match the empty module name before every `.member` in the
-          // file, and SC-004 then dies in `Map.find ""` with a KeyNotFoundException. That is red, so nothing
-          // unsafe merges; it is simply an unreadable way to say "the mirror directory vanished".
-          //
-          // So the emptiness is named HERE, where the diagnosis is in the failure message, rather than left
-          // to surface as a cryptic lookup error three tests down. An empty map is a broken reader, never a
-          // clean bill of health.
-          test "the module map is derived from the shipped Game.Core surface (the reader is not blind)" {
-              Expect.isNonEmpty
-                  (moduleSurface |> Map.toList)
-                  "no .fsi was found under docs/api-surface/Game.Core — the surface reader has stopped \
+            // THE INSTRUMENT, before the subject (#767 / FS-GG/.github#266). `moduleSurface` is DERIVED, so a
+            // reader that comes back empty takes SC-004 with it — and it does not fail cleanly: an empty
+            // alternation makes `citedMemberRegex` match the empty module name before every `.member` in the
+            // file, and SC-004 then dies in `Map.find ""` with a KeyNotFoundException. That is red, so nothing
+            // unsafe merges; it is simply an unreadable way to say "the mirror directory vanished".
+            //
+            // So the emptiness is named HERE, where the diagnosis is in the failure message, rather than left
+            // to surface as a cryptic lookup error three tests down. An empty map is a broken reader, never a
+            // clean bill of health.
+            test "the module map is derived from the shipped Game.Core surface (the reader is not blind)" {
+                Expect.isNonEmpty
+                    (moduleSurface |> Map.toList)
+                    "no .fsi was found under docs/api-surface/Game.Core — the surface reader has stopped \
                    seeing the mirror, and SC-004 below would check every citation against nothing"
 
-              // The modules this skill is ABOUT. Derivation tracks what is shipped; this is the floor of what
-              // must BE shipped, so the map cannot go quietly green by the mirror losing a file.
-              for expected in [ "Geometry"; "Rng"; "FixedStep"; "Pathfinding"; "SpatialGrid"; "Loop"; "Physics" ] do
-                  Expect.isTrue
-                      (moduleSurface |> Map.containsKey expected)
-                      (sprintf "the packed Game.Core surface no longer ships %s.fsi" expected)
-          }
+                // The modules this skill is ABOUT. Derivation tracks what is shipped; this is the floor of what
+                // must BE shipped, so the map cannot go quietly green by the mirror losing a file.
+                for expected in
+                    [
+                        "Geometry"
+                        "Rng"
+                        "FixedStep"
+                        "Pathfinding"
+                        "SpatialGrid"
+                        "Loop"
+                        "Physics"
+                    ] do
+                    Expect.isTrue
+                        (moduleSurface |> Map.containsKey expected)
+                        (sprintf "the packed Game.Core surface no longer ships %s.fsi" expected)
+            }
 
-          // SC-004 (every Module.member the SKILL.md names resolves in the packed surface) and the
-          // entry-point completeness check were REMOVED with ADR-0063 (FS.GG.Rendering#965): fs-gg-game-core
-          // is no longer shipped by this provider, so there is no body here to scan. FS.GG.Game's own gate
-          // holds its owner-sourced body against the canonical. The bundled surface and package pin below —
-          // which the retire does NOT touch (the product's starter simulation still compiles against
-          // FS.GG.Game.Core) — stay guarded here.
+            // SC-004 (every Module.member the SKILL.md names resolves in the packed surface) and the
+            // entry-point completeness check were REMOVED with ADR-0063 (FS.GG.Rendering#965): fs-gg-game-core
+            // is no longer shipped by this provider, so there is no body here to scan. FS.GG.Game's own gate
+            // holds its owner-sourced body against the canonical. The bundled surface and package pin below —
+            // which the retire does NOT touch (the product's starter simulation still compiles against
+            // FS.GG.Game.Core) — stay guarded here.
 
-          // FR-012 — the bundled surface that makes the citations resolvable exists in the product tree.
-          test "the packed FS.GG.Game.Core surface is bundled with the Geometry module (FR-012)" {
-              for path in [ gameCoreRngFsiPath; gameCoreFixedStepFsiPath; gameCorePathfindingFsiPath; gameCoreSpatialGridFsiPath; gameCoreGeometryFsiPath ] do
-                  Expect.isTrue (File.Exists path) (sprintf "packed FS.GG.Game.Core surface missing: %s" path)
-              let geometry = File.ReadAllText gameCoreGeometryFsiPath
-              Expect.stringContains geometry "module Geometry =" "packed Game.Core/Geometry.fsi must carry the Geometry module"
-          }
+            // FR-012 — the bundled surface that makes the citations resolvable exists in the product tree.
+            test "the packed FS.GG.Game.Core surface is bundled with the Geometry module (FR-012)" {
+                for path in
+                    [
+                        gameCoreRngFsiPath
+                        gameCoreFixedStepFsiPath
+                        gameCorePathfindingFsiPath
+                        gameCoreSpatialGridFsiPath
+                        gameCoreGeometryFsiPath
+                    ] do
+                    Expect.isTrue (File.Exists path) (sprintf "packed FS.GG.Game.Core surface missing: %s" path)
 
-          // FR-011 — FS.GG.Game.Core is pinned and referenced so a game/sample-pack product can compile
-          // Rng/FixedStep/Pathfinding/SpatialGrid/Geometry.
-          test "FS.GG.Game.Core is pinned in Directory.Packages.props and referenced by the product (FR-011)" {
-              let props = File.ReadAllText (repositoryPath "template/base/Directory.Packages.props")
-              let proj = File.ReadAllText (repositoryPath "template/base/src/Product/Product.fsproj")
-              Expect.stringContains props "Include=\"FS.GG.Game.Core\"" "Directory.Packages.props must pin FS.GG.Game.Core"
-              Expect.stringContains proj "Include=\"FS.GG.Game.Core\"" "Product.fsproj must reference FS.GG.Game.Core"
-              // gated to the simulation profiles only (matches the skill's materializes-when).
-              Expect.stringContains proj "profile == \"game\" || profile == \"sample-pack\"" "Game.Core reference is sim-profile gated"
-          }
+                let geometry = File.ReadAllText gameCoreGeometryFsiPath
+
+                Expect.stringContains
+                    geometry
+                    "module Geometry ="
+                    "packed Game.Core/Geometry.fsi must carry the Geometry module"
+            }
+
+            // FR-011 — FS.GG.Game.Core is pinned and referenced so a game/sample-pack product can compile
+            // Rng/FixedStep/Pathfinding/SpatialGrid/Geometry.
+            test "FS.GG.Game.Core is pinned in Directory.Packages.props and referenced by the product (FR-011)" {
+                let props =
+                    File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
+
+                let proj =
+                    File.ReadAllText(repositoryPath "template/base/src/Product/Product.fsproj")
+
+                Expect.stringContains
+                    props
+                    "Include=\"FS.GG.Game.Core\""
+                    "Directory.Packages.props must pin FS.GG.Game.Core"
+
+                Expect.stringContains proj "Include=\"FS.GG.Game.Core\"" "Product.fsproj must reference FS.GG.Game.Core"
+                // gated to the simulation profiles only (matches the skill's materializes-when).
+                Expect.stringContains
+                    proj
+                    "profile == \"game\" || profile == \"sample-pack\""
+                    "Game.Core reference is sim-profile gated"
+            }
         ]

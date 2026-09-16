@@ -42,7 +42,9 @@ let productRoot =
     | Some dir -> Path.GetFullPath dir
     | None -> Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, "..", "..", ".."))
 
-let toNative (rel: string) = Path.Combine(productRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+let toNative (rel: string) =
+    Path.Combine(productRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
 let agentsSkillsDir = toNative (SkillMirror.providerSourceRoot + "/skills")
 
 if not (Directory.Exists agentsSkillsDir) then
@@ -70,8 +72,7 @@ for rel in relSourceFiles do
         let targetRel = SkillMirror.retargetSkillPath targetRoot rel
         let targetPath = toNative targetRel
 
-        let upToDate =
-            File.Exists targetPath && File.ReadAllBytes targetPath = sourceBytes
+        let upToDate = File.Exists targetPath && File.ReadAllBytes targetPath = sourceBytes
 
         if not upToDate then
             Directory.CreateDirectory(Path.GetDirectoryName targetPath) |> ignore
@@ -81,7 +82,8 @@ for rel in relSourceFiles do
 // ---- verify: manifest-driven three-root invariant -------------------------------------------
 
 let manifestDigests =
-    let manifestPath = toNative (SkillMirror.providerSourceRoot + "/skills/skill-manifest.json")
+    let manifestPath =
+        toNative (SkillMirror.providerSourceRoot + "/skills/skill-manifest.json")
 
     if not (File.Exists manifestPath) then
         Map.empty
@@ -103,35 +105,57 @@ let expected =
     presentIds
     |> List.map (fun id ->
         match Map.tryFind id manifestDigests with
-        | Some digest -> { Id = id; Scope = Product; Sha256 = digest }: ExpectedSkill
+        | Some digest ->
+            {
+                Id = id
+                Scope = Product
+                Sha256 = digest
+            }
+            : ExpectedSkill
         // Process (or co-tenant) skill: no reference digest — presence + identity only.
-        | None -> { Id = id; Scope = Process; Sha256 = "" })
+        | None ->
+            {
+                Id = id
+                Scope = Process
+                Sha256 = ""
+            })
 
 let actual =
-    [ for root in agentSkillRoots do
-          for id in presentIds do
-              let path = toNative (skillPath root id)
+    [
+        for root in agentSkillRoots do
+            for id in presentIds do
+                let path = toNative (skillPath root id)
 
-              { Root = root
-                Id = id
-                Body = if File.Exists path then Some(File.ReadAllText path) else None }: ActualCopy ]
+                {
+                    Root = root
+                    Id = id
+                    Body =
+                        if File.Exists path then
+                            Some(File.ReadAllText path)
+                        else
+                            None
+                }
+                : ActualCopy
+    ]
 
 let drift = verify agentSkillRoots expected actual
 
 // Non-SKILL.md files (e.g. reference.fsx, skill-manifest.json) are outside the manifest's
 // granularity; assert their cross-root byte-identity directly so the whole union is covered.
 let fileDrift =
-    [ for rel in relSourceFiles do
-          let sourceBytes = File.ReadAllBytes(toNative rel)
+    [
+        for rel in relSourceFiles do
+            let sourceBytes = File.ReadAllBytes(toNative rel)
 
-          for targetRoot in targetRoots do
-              let targetRel = SkillMirror.retargetSkillPath targetRoot rel
-              let targetPath = toNative targetRel
+            for targetRoot in targetRoots do
+                let targetRel = SkillMirror.retargetSkillPath targetRoot rel
+                let targetPath = toNative targetRel
 
-              if not (File.Exists targetPath) then
-                  yield sprintf "%s missing" targetRel
-              elif File.ReadAllBytes targetPath <> sourceBytes then
-                  yield sprintf "%s divergent" targetRel ]
+                if not (File.Exists targetPath) then
+                    yield sprintf "%s missing" targetRel
+                elif File.ReadAllBytes targetPath <> sourceBytes then
+                    yield sprintf "%s divergent" targetRel
+    ]
 
 if List.isEmpty drift && List.isEmpty fileDrift then
     printfn "fs-gg-skill-roots: ok (%d skills, %d files mirrored)" presentIds.Length mirroredCount

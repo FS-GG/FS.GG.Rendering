@@ -9,14 +9,16 @@ open System.Text
 
 module Types =
     type HostProfile =
-        { ProfileId: string
-          Backend: string
-          Renderer: string option
-          PresentMode: string
-          FramebufferSize: string
-          Scale: float option
-          DisplayEnvironment: string
-          ProofAlgorithmVersion: string }
+        {
+            ProfileId: string
+            Backend: string
+            Renderer: string option
+            PresentMode: string
+            FramebufferSize: string
+            Scale: float option
+            DisplayEnvironment: string
+            ProofAlgorithmVersion: string
+        }
 
     type ProofVerdict =
         | ProofPassed
@@ -24,13 +26,15 @@ module Types =
         | ProofEnvironmentLimited of reason: string
 
     type PresentProof =
-        { ProofId: string
-          HostProfile: HostProfile
-          ScenarioId: string
-          Verdict: ProofVerdict
-          CreatedAt: DateTimeOffset
-          EvidenceArtifacts: string list
-          Diagnostics: string list }
+        {
+            ProofId: string
+            HostProfile: HostProfile
+            ScenarioId: string
+            Verdict: ProofVerdict
+            CreatedAt: DateTimeOffset
+            EvidenceArtifacts: string list
+            Diagnostics: string list
+        }
 
     type ParityVerdict =
         | ParityPassed
@@ -53,19 +57,21 @@ module Types =
         | Skipped of reason: string
 
     type Thresholds =
-        { PromotionReductionPercent: float
-          SimpleSceneOverheadPercent: float
-          SnapshotImprovementPercent: float }
+        {
+            PromotionReductionPercent: float
+            SimpleSceneOverheadPercent: float
+            SnapshotImprovementPercent: float
+        }
 
-    type SnapshotBudget =
-        { MaxEntries: int
-          MaxBytes: int64 }
+    type SnapshotBudget = { MaxEntries: int; MaxBytes: int64 }
 
     type ReadinessModel =
-        { Proofs: PresentProof list
-          Parity: Map<string, ParityVerdict>
-          TierVerdicts: Map<CompositorTier, TierVerdict>
-          Diagnostics: string list }
+        {
+            Proofs: PresentProof list
+            Parity: Map<string, ParityVerdict>
+            TierVerdicts: Map<CompositorTier, TierVerdict>
+            Diagnostics: string list
+        }
 
     type ReadinessMsg =
         | ProofLoaded of PresentProof
@@ -78,10 +84,12 @@ module Types =
         | WriteCompatibilityLedger of path: string
 
     type Feature154Model =
-        { ProofStatus: string
-          ParityStatus: string
-          TimingStatus: string
-          PublishedArtifacts: string list }
+        {
+            ProofStatus: string
+            ParityStatus: string
+            TimingStatus: string
+            PublishedArtifacts: string list
+        }
 
     type Feature154Msg =
         | ProofEvidenceRecorded of status: string
@@ -89,8 +97,7 @@ module Types =
         | TimingEvidenceRecorded of status: string
         | ArtifactPublished of path: string
 
-    type Feature154Effect =
-        | WriteFeature154Artifact of path: string
+    type Feature154Effect = WriteFeature154Artifact of path: string
 
     type Feature156ScenarioVerdict =
         | Feature156Positive
@@ -102,49 +109,57 @@ module Types =
         | Feature156Limited
 
     type Feature156PathDistribution =
-        { SampleCount: int
-          P50Ms: float
-          P95Ms: float
-          P99Ms: float
-          MinMs: float
-          MaxMs: float
-          RawSamplePath: string }
+        {
+            SampleCount: int
+            P50Ms: float
+            P95Ms: float
+            P99Ms: float
+            MinMs: float
+            MaxMs: float
+            RawSamplePath: string
+        }
 
     type Feature156ScenarioReport =
-        { ScenarioId: string
-          FullRedraw: Feature156PathDistribution option
-          DamageScoped: Feature156PathDistribution option
-          WarmupCount: int
-          MeasuredRepetitions: int
-          NoiseBandMs: float
-          Verdict: Feature156ScenarioVerdict
-          ConfidenceDecision: string
-          ArtifactPaths: string list
-          RejectionReasons: string list
-          ProofOverheadIncluded: bool }
+        {
+            ScenarioId: string
+            FullRedraw: Feature156PathDistribution option
+            DamageScoped: Feature156PathDistribution option
+            WarmupCount: int
+            MeasuredRepetitions: int
+            NoiseBandMs: float
+            Verdict: Feature156ScenarioVerdict
+            ConfidenceDecision: string
+            ArtifactPaths: string list
+            RejectionReasons: string list
+            ProofOverheadIncluded: bool
+        }
 
     type Feature156TimingSummary =
-        { RunId: string
-          HostProfile: HostProfile
-          PolicyId: string
-          WarmupCount: int
-          MeasuredRepetitions: int
-          ScenarioReports: Feature156ScenarioReport list
-          OverallVerdict: Feature156ScenarioVerdict
-          ShippedPerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            PolicyId: string
+            WarmupCount: int
+            MeasuredRepetitions: int
+            ScenarioReports: Feature156ScenarioReport list
+            OverallVerdict: Feature156ScenarioVerdict
+            ShippedPerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature156Model =
-        { RunId: string
-          ExpectedProfileId: string
-          ActiveProfile: HostProfile option
-          PolicyId: string option
-          WarmupCount: int
-          MeasuredRepetitions: int
-          ScenarioReports: Feature156ScenarioReport list
-          PublishedArtifacts: string list
-          Verdict: Feature156ScenarioVerdict
-          Diagnostics: string list }
+        {
+            RunId: string
+            ExpectedProfileId: string
+            ActiveProfile: HostProfile option
+            PolicyId: string option
+            WarmupCount: int
+            MeasuredRepetitions: int
+            ScenarioReports: Feature156ScenarioReport list
+            PublishedArtifacts: string list
+            Verdict: Feature156ScenarioVerdict
+            Diagnostics: string list
+        }
 
     type Feature156Msg =
         | Feature156HostProfileDetected of HostProfile
@@ -170,48 +185,56 @@ module Types =
         | EnvironmentLimited
 
     type Feature157DamageAttempt =
-        { AttemptId: string
-          RunId: string
-          ScenarioId: string
-          HostProfile: HostProfile
-          ProofGate: string
-          RetainedBacking: string
-          DamageValidationStatus: string
-          RenderDecision: string
-          FallbackReason: string option
-          PreservedPixelEvidence: string
-          DamagedPixelEvidence: string
-          ParityStatus: string
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            AttemptId: string
+            RunId: string
+            ScenarioId: string
+            HostProfile: HostProfile
+            ProofGate: string
+            RetainedBacking: string
+            DamageValidationStatus: string
+            RenderDecision: string
+            FallbackReason: string option
+            PreservedPixelEvidence: string
+            DamagedPixelEvidence: string
+            ParityStatus: string
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature157Fallback =
-        { ScenarioId: string
-          Reason: string
-          DamageValidationStatus: string
-          AcceptedPartialRedrawArtifacts: int
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            Reason: string
+            DamageValidationStatus: string
+            AcceptedPartialRedrawArtifacts: int
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature157DamageSummary =
-        { RunId: string
-          HostProfile: HostProfile
-          Status: Feature157DamageStatus
-          AcceptedAttempts: Feature157DamageAttempt list
-          Fallbacks: Feature157Fallback list
-          UnsupportedHostReason: string option
-          ScenarioCoverage: string list
-          PerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            Status: Feature157DamageStatus
+            AcceptedAttempts: Feature157DamageAttempt list
+            Fallbacks: Feature157Fallback list
+            UnsupportedHostReason: string option
+            ScenarioCoverage: string list
+            PerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature157Model =
-        { RunId: string
-          ActiveProfile: HostProfile option
-          Attempts: Feature157DamageAttempt list
-          Fallbacks: Feature157Fallback list
-          PublishedArtifacts: string list
-          Status: Feature157DamageStatus
-          Diagnostics: string list }
+        {
+            RunId: string
+            ActiveProfile: HostProfile option
+            Attempts: Feature157DamageAttempt list
+            Fallbacks: Feature157Fallback list
+            PublishedArtifacts: string list
+            Status: Feature157DamageStatus
+            Diagnostics: string list
+        }
 
     type Feature157Msg =
         | Feature157HostProfileDetected of HostProfile
@@ -238,80 +261,92 @@ module Types =
         | EnvironmentLimited
 
     type Feature158TimingSample =
-        { SampleId: string
-          SampleIndex: int
-          ScenarioId: string
-          ScenarioDefinitionId: string
-          Path: Perf.TimingPath
-          RunId: string
-          HostProfileId: string
-          PackageVersion: string
-          DurationMs: float
-          MeasurementPolicy: Perf.MeasurementPolicy
-          InclusionStatus: Perf.InclusionStatus
-          ExclusionReason: Perf.ExclusionReason option
-          ArtifactPath: string }
+        {
+            SampleId: string
+            SampleIndex: int
+            ScenarioId: string
+            ScenarioDefinitionId: string
+            Path: Perf.TimingPath
+            RunId: string
+            HostProfileId: string
+            PackageVersion: string
+            DurationMs: float
+            MeasurementPolicy: Perf.MeasurementPolicy
+            InclusionStatus: Perf.InclusionStatus
+            ExclusionReason: Perf.ExclusionReason option
+            ArtifactPath: string
+        }
 
     type Feature158PathDistribution =
-        { SampleCount: int
-          P50Ms: float
-          P95Ms: float
-          P99Ms: float
-          MinMs: float
-          MaxMs: float
-          RawSamplePath: string }
+        {
+            SampleCount: int
+            P50Ms: float
+            P95Ms: float
+            P99Ms: float
+            MinMs: float
+            MaxMs: float
+            RawSamplePath: string
+        }
 
     type Feature158ScenarioReport =
-        { ScenarioId: string
-          ScenarioDefinitionId: string
-          FullRedraw: Feature158PathDistribution option
-          DamageScoped: Feature158PathDistribution option
-          WarmupCount: int
-          MeasuredRepetitions: int
-          IncludedSamples: Feature158TimingSample list
-          ExcludedSamples: Feature158TimingSample list
-          ProofProbeArtifacts: string list
-          Status: Feature158ReadinessStatus
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            ScenarioDefinitionId: string
+            FullRedraw: Feature158PathDistribution option
+            DamageScoped: Feature158PathDistribution option
+            WarmupCount: int
+            MeasuredRepetitions: int
+            IncludedSamples: Feature158TimingSample list
+            ExcludedSamples: Feature158TimingSample list
+            ProofProbeArtifacts: string list
+            Status: Feature158ReadinessStatus
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature158ProofProbeEvidence =
-        { ProbeId: string
-          HostProfile: HostProfile
-          ScenarioIds: string list
-          ReadbackArtifacts: string list
-          ProbeSampleIds: string list
-          ExclusionReason: Perf.ExclusionReason
-          Diagnostics: string list }
+        {
+            ProbeId: string
+            HostProfile: HostProfile
+            ScenarioIds: string list
+            ReadbackArtifacts: string list
+            ProbeSampleIds: string list
+            ExclusionReason: Perf.ExclusionReason
+            Diagnostics: string list
+        }
 
     type Feature158TimingSummary =
-        { RunId: string
-          HostProfile: HostProfile
-          PolicyId: string
-          WarmupCount: int
-          MeasuredRepetitions: int
-          ScenarioReports: Feature158ScenarioReport list
-          IncludedSamples: Feature158TimingSample list
-          ExcludedSamples: Feature158TimingSample list
-          ProofProbeEvidence: Feature158ProofProbeEvidence list
-          UnsupportedHostReason: string option
-          Feature156Comparison: string
-          Status: Feature158ReadinessStatus
-          PerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            PolicyId: string
+            WarmupCount: int
+            MeasuredRepetitions: int
+            ScenarioReports: Feature158ScenarioReport list
+            IncludedSamples: Feature158TimingSample list
+            ExcludedSamples: Feature158TimingSample list
+            ProofProbeEvidence: Feature158ProofProbeEvidence list
+            UnsupportedHostReason: string option
+            Feature156Comparison: string
+            Status: Feature158ReadinessStatus
+            PerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature158Model =
-        { RunId: string
-          ExpectedProfileId: string
-          ActiveProfile: HostProfile option
-          PolicyId: string option
-          WarmupCount: int
-          MeasuredRepetitions: int
-          ScenarioReports: Feature158ScenarioReport list
-          ProofProbeEvidence: Feature158ProofProbeEvidence list
-          PublishedArtifacts: string list
-          Status: Feature158ReadinessStatus
-          Diagnostics: string list }
+        {
+            RunId: string
+            ExpectedProfileId: string
+            ActiveProfile: HostProfile option
+            PolicyId: string option
+            WarmupCount: int
+            MeasuredRepetitions: int
+            ScenarioReports: Feature158ScenarioReport list
+            ProofProbeEvidence: Feature158ProofProbeEvidence list
+            PublishedArtifacts: string list
+            Status: Feature158ReadinessStatus
+            Diagnostics: string list
+        }
 
     type Feature158Msg =
         | Feature158HostProfileDetected of HostProfile
@@ -340,43 +375,49 @@ module Types =
         | EnvironmentLimited
 
     type Feature159Attempt =
-        { AttemptId: string
-          RunId: string
-          ScenarioId: string
-          HostProfile: HostProfile
-          PolicyId: string
-          PromotionDecision: string
-          ReuseDecision: string
-          ContentIdentity: string
-          PlacementIdentity: string
-          PrimaryReason: string option
-          CounterNetSavedWork: int
-          ParityStatus: string
-          AcceptedReuseArtifacts: int
-          AcceptedPromotionArtifacts: int
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            AttemptId: string
+            RunId: string
+            ScenarioId: string
+            HostProfile: HostProfile
+            PolicyId: string
+            PromotionDecision: string
+            ReuseDecision: string
+            ContentIdentity: string
+            PlacementIdentity: string
+            PrimaryReason: string option
+            CounterNetSavedWork: int
+            ParityStatus: string
+            AcceptedReuseArtifacts: int
+            AcceptedPromotionArtifacts: int
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature159Summary =
-        { RunId: string
-          HostProfile: HostProfile
-          PolicyId: string
-          Status: Feature159ReadinessStatus
-          Attempts: Feature159Attempt list
-          UnsupportedHostReason: string option
-          RequiredScenarioCoverage: string list
-          CounterNetSavedWork: int
-          PerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            PolicyId: string
+            Status: Feature159ReadinessStatus
+            Attempts: Feature159Attempt list
+            UnsupportedHostReason: string option
+            RequiredScenarioCoverage: string list
+            CounterNetSavedWork: int
+            PerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature159Model =
-        { RunId: string
-          ActiveProfile: HostProfile option
-          PolicyId: string option
-          Attempts: Feature159Attempt list
-          PublishedArtifacts: string list
-          Status: Feature159ReadinessStatus
-          Diagnostics: string list }
+        {
+            RunId: string
+            ActiveProfile: HostProfile option
+            PolicyId: string option
+            Attempts: Feature159Attempt list
+            PublishedArtifacts: string list
+            Status: Feature159ReadinessStatus
+            Diagnostics: string list
+        }
 
     type Feature159Msg =
         | Feature159HostProfileDetected of HostProfile
@@ -403,68 +444,76 @@ module Types =
         | EnvironmentLimited
 
     type Feature160FullValidationRecord =
-        { Command: string
-          StartedAt: DateTimeOffset option
-          CompletedAt: DateTimeOffset option
-          Status: string
-          ImplementationCommit: string
-          PackageSurfaceBaseline: string
-          ReadinessArtifactSet: string list
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            Command: string
+            StartedAt: DateTimeOffset option
+            CompletedAt: DateTimeOffset option
+            Status: string
+            ImplementationCommit: string
+            PackageSurfaceBaseline: string
+            ReadinessArtifactSet: string list
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature160Iteration =
-        { IterationId: string
-          RunId: string
-          HostProfile: HostProfile
-          LaneId: string
-          PolicyId: string
-          DeclaredBoundMinutes: int
-          ActualDuration: TimeSpan
-          WarmupCount: int
-          MeasuredRepetitions: int
-          ScenarioReports: Feature158ScenarioReport list
-          ScenarioCoverage: string list
-          IncludedSamples: Feature158TimingSample list
-          ExcludedSamples: Feature158TimingSample list
-          Status: Feature160ReadinessStatus
-          ExclusionReason: Perf.ExclusionReason option
-          ArtifactPaths: string list
-          RestrictedScenario: string option
-          Diagnostics: string list }
+        {
+            IterationId: string
+            RunId: string
+            HostProfile: HostProfile
+            LaneId: string
+            PolicyId: string
+            DeclaredBoundMinutes: int
+            ActualDuration: TimeSpan
+            WarmupCount: int
+            MeasuredRepetitions: int
+            ScenarioReports: Feature158ScenarioReport list
+            ScenarioCoverage: string list
+            IncludedSamples: Feature158TimingSample list
+            ExcludedSamples: Feature158TimingSample list
+            Status: Feature160ReadinessStatus
+            ExclusionReason: Perf.ExclusionReason option
+            ArtifactPaths: string list
+            RestrictedScenario: string option
+            Diagnostics: string list
+        }
 
     type Feature160ThroughputSummary =
-        { RunId: string
-          HostProfile: HostProfile
-          LaneId: string
-          PolicyId: string
-          DeclaredBoundMinutes: int
-          RequiredAttempts: int
-          WarmupCount: int
-          MeasuredRepetitions: int
-          Iterations: Feature160Iteration list
-          UnsupportedHostReason: string option
-          FullValidation: Feature160FullValidationRecord option
-          CompatibilityImpact: string
-          PackageValidationStatus: string
-          RegressionValidationStatus: string
-          Status: Feature160ReadinessStatus
-          ReleaseReadyStatus: string
-          PerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            LaneId: string
+            PolicyId: string
+            DeclaredBoundMinutes: int
+            RequiredAttempts: int
+            WarmupCount: int
+            MeasuredRepetitions: int
+            Iterations: Feature160Iteration list
+            UnsupportedHostReason: string option
+            FullValidation: Feature160FullValidationRecord option
+            CompatibilityImpact: string
+            PackageValidationStatus: string
+            RegressionValidationStatus: string
+            Status: Feature160ReadinessStatus
+            ReleaseReadyStatus: string
+            PerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature160Model =
-        { RunId: string
-          ExpectedProfileId: string
-          ActiveProfile: HostProfile option
-          LaneId: string option
-          PolicyId: string option
-          DeclaredBoundMinutes: int option
-          Iterations: Feature160Iteration list
-          FullValidation: Feature160FullValidationRecord option
-          PublishedArtifacts: string list
-          Status: Feature160ReadinessStatus
-          Diagnostics: string list }
+        {
+            RunId: string
+            ExpectedProfileId: string
+            ActiveProfile: HostProfile option
+            LaneId: string option
+            PolicyId: string option
+            DeclaredBoundMinutes: int option
+            Iterations: Feature160Iteration list
+            FullValidation: Feature160FullValidationRecord option
+            PublishedArtifacts: string list
+            Status: Feature160ReadinessStatus
+            Diagnostics: string list
+        }
 
     type Feature160Msg =
         | Feature160HostProfileDetected of HostProfile
@@ -506,75 +555,87 @@ module Types =
         | EnvironmentLimited
 
     type Feature161HostFacts =
-        { DisplayServer: string
-          DisplayIdentity: string
-          RendererIdentity: string
-          DirectRendering: bool option
-          RefreshRateHz: float option
-          RefreshUnavailableReason: string option
-          DriverIdentity: string
-          PackageVersionSet: string
-          CpuLoadNote: string
-          GpuLoadNote: string
-          EnvironmentLimits: string list
-          HostProfile: HostProfile
-          RunIdentity: string
-          ScenarioIdentity: string
-          TimingPolicyIdentity: string
-          CollectionTime: DateTimeOffset
-          ArtifactLocations: string list }
+        {
+            DisplayServer: string
+            DisplayIdentity: string
+            RendererIdentity: string
+            DirectRendering: bool option
+            RefreshRateHz: float option
+            RefreshUnavailableReason: string option
+            DriverIdentity: string
+            PackageVersionSet: string
+            CpuLoadNote: string
+            GpuLoadNote: string
+            EnvironmentLimits: string list
+            HostProfile: HostProfile
+            RunIdentity: string
+            ScenarioIdentity: string
+            TimingPolicyIdentity: string
+            CollectionTime: DateTimeOffset
+            ArtifactLocations: string list
+        }
 
     type Feature161PriorGate =
-        { Feature: string
-          Status: string
-          EvidencePath: string }
+        {
+            Feature: string
+            Status: string
+            EvidencePath: string
+        }
 
     type Feature161LedgerEntry =
-        { EntryId: string
-          LaneId: string
-          HostFacts: Feature161HostFacts
-          PriorGates: Feature161PriorGate list
-          Status: Feature161ReadinessStatus
-          PrimaryExclusionReason: Perf.ExclusionReason option
-          TimingStatus: string
-          AcceptedLaneScopedPerformanceArtifacts: int
-          ArtifactPaths: string list
-          Diagnostics: string list }
+        {
+            EntryId: string
+            LaneId: string
+            HostFacts: Feature161HostFacts
+            PriorGates: Feature161PriorGate list
+            Status: Feature161ReadinessStatus
+            PrimaryExclusionReason: Perf.ExclusionReason option
+            TimingStatus: string
+            AcceptedLaneScopedPerformanceArtifacts: int
+            ArtifactPaths: string list
+            Diagnostics: string list
+        }
 
     type Feature161ClaimScope =
-        { AcceptedLaneId: string option
-          AppliesTo: string
-          NonGeneralizedLanes: string list
-          RemainingBlockers: string list
-          PerformanceClaim: string }
+        {
+            AcceptedLaneId: string option
+            AppliesTo: string
+            NonGeneralizedLanes: string list
+            RemainingBlockers: string list
+            PerformanceClaim: string
+        }
 
     type Feature161Summary =
-        { RunId: string
-          HostProfile: HostProfile
-          PolicyId: string
-          Entries: Feature161LedgerEntry list
-          UnsupportedHostReason: string option
-          ClaimScope: Feature161ClaimScope
-          FullValidationStatus: string
-          CompatibilityImpact: string
-          PackageValidationStatus: string
-          RegressionValidationStatus: string
-          Status: Feature161ReadinessStatus
-          ReleaseReadyStatus: string
-          PerformanceClaim: string
-          Diagnostics: string list }
+        {
+            RunId: string
+            HostProfile: HostProfile
+            PolicyId: string
+            Entries: Feature161LedgerEntry list
+            UnsupportedHostReason: string option
+            ClaimScope: Feature161ClaimScope
+            FullValidationStatus: string
+            CompatibilityImpact: string
+            PackageValidationStatus: string
+            RegressionValidationStatus: string
+            Status: Feature161ReadinessStatus
+            ReleaseReadyStatus: string
+            PerformanceClaim: string
+            Diagnostics: string list
+        }
 
     type Feature161Model =
-        { RunId: string
-          ExpectedProfileId: string
-          ActiveProfile: HostProfile option
-          PolicyId: string option
-          HostFacts: Feature161HostFacts option
-          Entries: Feature161LedgerEntry list
-          PriorGates: Feature161PriorGate list
-          PublishedArtifacts: string list
-          Status: Feature161ReadinessStatus
-          Diagnostics: string list }
+        {
+            RunId: string
+            ExpectedProfileId: string
+            ActiveProfile: HostProfile option
+            PolicyId: string option
+            HostFacts: Feature161HostFacts option
+            Entries: Feature161LedgerEntry list
+            PriorGates: Feature161PriorGate list
+            PublishedArtifacts: string list
+            Status: Feature161ReadinessStatus
+            Diagnostics: string list
+        }
 
     type Feature161Msg =
         | Feature161HostProfileDetected of HostProfile

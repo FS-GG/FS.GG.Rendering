@@ -5,10 +5,12 @@ open FS.GG.UI.Scene
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutBounds =
-    { X: float
-      Y: float
-      Width: float
-      Height: float }
+    {
+        X: float
+        Y: float
+        Width: float
+        Height: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutNodeId = string
@@ -37,10 +39,12 @@ type DockPosition =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutPadding =
-    { Left: float
-      Top: float
-      Right: float
-      Bottom: float }
+    {
+        Left: float
+        Top: float
+        Right: float
+        Bottom: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type MeasureMode =
@@ -77,13 +81,13 @@ type LayoutVisibility =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutSize =
-    { Width: float option
-      Height: float option }
+    {
+        Width: float option
+        Height: float option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type LayoutGap =
-    { Row: float
-      Column: float }
+type LayoutGap = { Row: float; Column: float }
 
 /// Public contract type exposed by this FS.GG.UI package.
 ///
@@ -113,74 +117,90 @@ type LayoutDiagnosticCode =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutDiagnostic =
-    { NodeId: LayoutNodeId option
-      Code: LayoutDiagnosticCode
-      Severity: DiagnosticSeverity
-      Message: string
-      Constraint: string option
-      FallbackApplied: bool }
+    {
+        NodeId: LayoutNodeId option
+        Code: LayoutDiagnosticCode
+        Severity: DiagnosticSeverity
+        Message: string
+        Constraint: string option
+        FallbackApplied: bool
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutIntent =
-    { Direction: LayoutDirection
-      Wrap: LayoutWrap
-      AlignItems: LayoutAlign
-      AlignSelf: LayoutAlign option
-      JustifyContent: LayoutAlign
-      Padding: LayoutPadding
-      Margin: LayoutPadding
-      Gap: LayoutGap
-      Size: LayoutSize
-      MinSize: LayoutSize
-      MaxSize: LayoutSize
-      FlexGrow: float
-      FlexShrink: float
-      FlexBasis: float option }
+    {
+        Direction: LayoutDirection
+        Wrap: LayoutWrap
+        AlignItems: LayoutAlign
+        AlignSelf: LayoutAlign option
+        JustifyContent: LayoutAlign
+        Padding: LayoutPadding
+        Margin: LayoutPadding
+        Gap: LayoutGap
+        Size: LayoutSize
+        MinSize: LayoutSize
+        MaxSize: LayoutSize
+        FlexGrow: float
+        FlexShrink: float
+        FlexBasis: float option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type MeasureRequest =
-    { AvailableWidth: float
-      WidthMode: MeasureMode
-      AvailableHeight: float
-      HeightMode: MeasureMode }
+    {
+        AvailableWidth: float
+        WidthMode: MeasureMode
+        AvailableHeight: float
+        HeightMode: MeasureMode
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type MeasureResponse =
-    { Width: float
-      Height: float
-      Diagnostics: LayoutDiagnostic list }
+    {
+        Width: float
+        Height: float
+        Diagnostics: LayoutDiagnostic list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ContentMeasure = MeasureRequest -> MeasureResponse
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutNode =
-    { Id: LayoutNodeId
-      Intent: LayoutIntent
-      Visibility: LayoutVisibility
-      Measure: ContentMeasure option
-      Content: Scene option
-      Children: LayoutNode list }
+    {
+        Id: LayoutNodeId
+        Intent: LayoutIntent
+        Visibility: LayoutVisibility
+        Measure: ContentMeasure option
+        Content: Scene option
+        Children: LayoutNode list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type AvailableSpace =
-    { Width: float
-      WidthMode: MeasureMode
-      Height: float
-      HeightMode: MeasureMode }
+    {
+        Width: float
+        WidthMode: MeasureMode
+        Height: float
+        HeightMode: MeasureMode
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ComputedBounds =
-    { NodeId: LayoutNodeId
-      Bounds: LayoutBounds
-      Visibility: LayoutVisibility }
+    {
+        NodeId: LayoutNodeId
+        Bounds: LayoutBounds
+        Visibility: LayoutVisibility
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutResult =
-    { Bounds: ComputedBounds list
-      Diagnostics: LayoutDiagnostic list
-      Invalidated: LayoutNodeId list
-      Revision: int64 }
+    {
+        Bounds: ComputedBounds list
+        Diagnostics: LayoutDiagnostic list
+        Invalidated: LayoutNodeId list
+        Revision: int64
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SnapMode =
@@ -189,17 +209,17 @@ type SnapMode =
     | Expand
 
 /// Public contract type exposed by this FS.GG.UI package.
-type PixelSnapPolicy =
-    { ScaleFactor: float
-      Mode: SnapMode }
+type PixelSnapPolicy = { ScaleFactor: float; Mode: SnapMode }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutWorkflowModel =
-    { Root: LayoutNode
-      Available: AvailableSpace
-      Result: LayoutResult option
-      LastChangedNodeIds: LayoutNodeId list
-      PixelSnapPolicy: PixelSnapPolicy }
+    {
+        Root: LayoutNode
+        Available: AvailableSpace
+        Result: LayoutResult option
+        LastChangedNodeIds: LayoutNodeId list
+        PixelSnapPolicy: PixelSnapPolicy
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutWorkflowMsg =
@@ -216,28 +236,36 @@ type LayoutWorkflowEffect =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutSizing =
-    { DesiredWidth: float option
-      DesiredHeight: float option
-      HorizontalAlignment: HorizontalAlignment
-      VerticalAlignment: VerticalAlignment }
+    {
+        DesiredWidth: float option
+        DesiredHeight: float option
+        HorizontalAlignment: HorizontalAlignment
+        VerticalAlignment: VerticalAlignment
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutChild =
-    { Content: Scene
-      Sizing: LayoutSizing
-      Dock: DockPosition option }
+    {
+        Content: Scene
+        Sizing: LayoutSizing
+        Dock: DockPosition option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type StackConfig =
-    { Bounds: LayoutBounds
-      Padding: LayoutPadding
-      Spacing: float }
+    {
+        Bounds: LayoutBounds
+        Padding: LayoutPadding
+        Spacing: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type DockConfig =
-    { Bounds: LayoutBounds
-      Padding: LayoutPadding
-      Spacing: float }
+    {
+        Bounds: LayoutBounds
+        Padding: LayoutPadding
+        Spacing: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphKind =
@@ -246,63 +274,75 @@ type GraphKind =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphNode =
-    { Id: string
-      Label: string
-      Style: Color option }
+    {
+        Id: string
+        Label: string
+        Style: Color option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphEdge =
-    { Source: string
-      Target: string
-      Weight: float option
-      Label: string option }
+    {
+        Source: string
+        Target: string
+        Weight: float option
+        Label: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphConfig =
-    { Kind: GraphKind
-      Bounds: LayoutBounds }
+    {
+        Kind: GraphKind
+        Bounds: LayoutBounds
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphDefinition =
-    { Config: GraphConfig
-      Nodes: GraphNode list
-      Edges: GraphEdge list }
+    {
+        Config: GraphConfig
+        Nodes: GraphNode list
+        Edges: GraphEdge list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphNodeLayout =
-    { Node: GraphNode
-      Bounds: LayoutBounds }
+    {
+        Node: GraphNode
+        Bounds: LayoutBounds
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type GraphLayoutResult =
-    { Nodes: GraphNodeLayout list
-      Edges: GraphEdge list }
+    {
+        Nodes: GraphNodeLayout list
+        Edges: GraphEdge list
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 module Defaults =
     /// Public contract function exposed by this FS.GG.UI package.
-    val padding : LayoutPadding
+    val padding: LayoutPadding
     /// Public contract function exposed by this FS.GG.UI package.
-    val layoutGap : LayoutGap
+    val layoutGap: LayoutGap
     /// Public contract function exposed by this FS.GG.UI package.
-    val layoutSize : LayoutSize
+    val layoutSize: LayoutSize
     /// Public contract function exposed by this FS.GG.UI package.
-    val layoutIntent : LayoutIntent
+    val layoutIntent: LayoutIntent
     /// Public contract function exposed by this FS.GG.UI package.
-    val layoutNode : id: LayoutNodeId -> LayoutNode
+    val layoutNode: id: LayoutNodeId -> LayoutNode
     /// Public contract function exposed by this FS.GG.UI package.
-    val availableSpace : width: float -> height: float -> AvailableSpace
+    val availableSpace: width: float -> height: float -> AvailableSpace
     /// Public contract function exposed by this FS.GG.UI package.
-    val pixelSnapPolicy : scaleFactor: float -> PixelSnapPolicy
+    val pixelSnapPolicy: scaleFactor: float -> PixelSnapPolicy
     /// Public contract function exposed by this FS.GG.UI package.
-    val sizing : LayoutSizing
+    val sizing: LayoutSizing
     /// Public contract function exposed by this FS.GG.UI package.
-    val bounds : width: float -> height: float -> LayoutBounds
+    val bounds: width: float -> height: float -> LayoutBounds
     /// Public contract function exposed by this FS.GG.UI package.
-    val stackConfig : width: float -> height: float -> StackConfig
+    val stackConfig: width: float -> height: float -> StackConfig
     /// Public contract function exposed by this FS.GG.UI package.
-    val dockConfig : width: float -> height: float -> DockConfig
+    val dockConfig: width: float -> height: float -> DockConfig
     /// Public contract function exposed by this FS.GG.UI package.
-    val graphConfig : kind: GraphKind -> width: float -> height: float -> GraphConfig
+    val graphConfig: kind: GraphKind -> width: float -> height: float -> GraphConfig
     /// Public contract function exposed by this FS.GG.UI package.
-    val child : content: Scene -> LayoutChild
+    val child: content: Scene -> LayoutChild

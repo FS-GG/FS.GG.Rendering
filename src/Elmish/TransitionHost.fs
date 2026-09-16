@@ -22,20 +22,26 @@ type TransitionFocusTarget =
     { ControlId: string; AriaLabel: string }
 
 type TransitionRequest<'target> =
-    { Target: 'target
-      PendingFocus: TransitionFocusTarget
-      CommittedFocus: TransitionFocusTarget }
+    {
+        Target: 'target
+        PendingFocus: TransitionFocusTarget
+        CommittedFocus: TransitionFocusTarget
+    }
 
 type TransitionCommitToken<'target> =
-    { Generation: TransitionGeneration
-      Target: 'target
-      Revision: int64 }
+    {
+        Generation: TransitionGeneration
+        Target: 'target
+        Revision: int64
+    }
 
 type TransitionResponse<'target, 'response> =
-    { Generation: TransitionGeneration
-      Target: 'target
-      Kind: TransitionResponseKind
-      Payload: 'response }
+    {
+        Generation: TransitionGeneration
+        Target: 'target
+        Kind: TransitionResponseKind
+        Payload: 'response
+    }
 
 [<RequireQualifiedAccess>]
 type TransitionHostInput =
@@ -56,8 +62,10 @@ type TransitionRejectionReason =
     | NoPresentationRequested
 
 type TransitionPresentation<'target, 'response> =
-    { Token: TransitionCommitToken<'target>
-      Responses: TransitionResponse<'target, 'response> list }
+    {
+        Token: TransitionCommitToken<'target>
+        Responses: TransitionResponse<'target, 'response> list
+    }
 
 [<RequireQualifiedAccess>]
 type TransitionHostEffect<'target, 'response> =
@@ -91,41 +99,50 @@ type TransitionHostMsg<'target, 'response> =
     | InputAttempted of TransitionHostInput
 
 type private CurrentTransition<'target, 'response> =
-    { Request: TransitionRequest<'target>
-      Token: TransitionCommitToken<'target>
-      Responses: TransitionResponse<'target, 'response> list }
+    {
+        Request: TransitionRequest<'target>
+        Token: TransitionCommitToken<'target>
+        Responses: TransitionResponse<'target, 'response> list
+    }
 
 type TransitionHostModel<'target, 'response> =
     private
-        { NextGeneration: int64
-          Current: CurrentTransition<'target, 'response> option
-          Requested: TransitionCommitToken<'target> option
-          Committed: TransitionCommitToken<'target> option
-          Visibility: TransitionVisibility
-          FocusTarget: TransitionFocusTarget option
-          ControlledValues: Map<string, string>
-          ControlledFiles: Map<string, string option>
-          Ledger: TransitionLedgerEntry<'target> list }
+        {
+            NextGeneration: int64
+            Current: CurrentTransition<'target, 'response> option
+            Requested: TransitionCommitToken<'target> option
+            Committed: TransitionCommitToken<'target> option
+            Visibility: TransitionVisibility
+            FocusTarget: TransitionFocusTarget option
+            ControlledValues: Map<string, string>
+            ControlledFiles: Map<string, string option>
+            Ledger: TransitionLedgerEntry<'target> list
+        }
 
 module TransitionHost =
     let init visibility =
-        { NextGeneration = 0L
-          Current = None
-          Requested = None
-          Committed = None
-          Visibility = visibility
-          FocusTarget = None
-          ControlledValues = Map.empty
-          ControlledFiles = Map.empty
-          Ledger = [] }
+        {
+            NextGeneration = 0L
+            Current = None
+            Requested = None
+            Committed = None
+            Visibility = visibility
+            FocusTarget = None
+            ControlledValues = Map.empty
+            ControlledFiles = Map.empty
+            Ledger = []
+        }
 
     let private append (entries: TransitionLedgerEntry<'target> list) (model: TransitionHostModel<'target, 'response>) =
         { model with
-            Ledger = model.Ledger @ entries }
+            Ledger = model.Ledger @ entries
+        }
 
     let private presentation (current: CurrentTransition<'target, 'response>) =
-        { Token = current.Token
-          Responses = current.Responses }
+        {
+            Token = current.Token
+            Responses = current.Responses
+        }
 
     let private pending (model: TransitionHostModel<'target, 'response>) =
         match model.Current with
@@ -153,37 +170,49 @@ module TransitionHost =
         let generationValue = model.NextGeneration + 1L
 
         let token =
-            { Generation = TransitionGeneration generationValue
-              Target = request.Target
-              Revision = 0L }
+            {
+                Generation = TransitionGeneration generationValue
+                Target = request.Target
+                Revision = 0L
+            }
 
         let current =
-            { Request = request
-              Token = token
-              Responses = [] }
+            {
+                Request = request
+                Token = token
+                Responses = []
+            }
 
         let baseModel =
             { model with
                 NextGeneration = generationValue
                 Current = Some current
                 Requested = None
-                FocusTarget = Some request.PendingFocus }
+                FocusTarget = Some request.PendingFocus
+            }
 
         match model.Visibility with
         | TransitionVisibility.Visible ->
             { baseModel with
-                Requested = Some token }
+                Requested = Some token
+            }
             |> append
-                [ TransitionLedgerEntry.Began token
-                  TransitionLedgerEntry.PresentationRequested token
-                  TransitionLedgerEntry.FocusMoved request.PendingFocus ],
-            [ TransitionHostEffect.RequestPresentation(presentation current)
-              TransitionHostEffect.MoveFocus request.PendingFocus ]
+                [
+                    TransitionLedgerEntry.Began token
+                    TransitionLedgerEntry.PresentationRequested token
+                    TransitionLedgerEntry.FocusMoved request.PendingFocus
+                ],
+            [
+                TransitionHostEffect.RequestPresentation(presentation current)
+                TransitionHostEffect.MoveFocus request.PendingFocus
+            ]
         | TransitionVisibility.Hidden ->
             baseModel
             |> append
-                [ TransitionLedgerEntry.Began token
-                  TransitionLedgerEntry.PresentationWithheld token ],
+                [
+                    TransitionLedgerEntry.Began token
+                    TransitionLedgerEntry.PresentationWithheld token
+                ],
             []
 
     let private acceptResponse
@@ -196,12 +225,14 @@ module TransitionHost =
 
         let token =
             { current.Token with
-                Revision = current.Token.Revision + 1L }
+                Revision = current.Token.Revision + 1L
+            }
 
         let nextCurrent =
             { current with
                 Token = token
-                Responses = current.Responses @ [ response ] }
+                Responses = current.Responses @ [ response ]
+            }
 
         let wasPending = pending model
 
@@ -209,7 +240,8 @@ module TransitionHost =
             { model with
                 Current = Some nextCurrent
                 Requested = None
-                FocusTarget = Some current.Request.PendingFocus }
+                FocusTarget = Some current.Request.PendingFocus
+            }
 
         let focusLedger, focusEffects =
             if wasPending || model.Visibility = TransitionVisibility.Hidden then
@@ -221,10 +253,13 @@ module TransitionHost =
         match model.Visibility with
         | TransitionVisibility.Visible ->
             { baseModel with
-                Requested = Some token }
+                Requested = Some token
+            }
             |> append (
-                [ TransitionLedgerEntry.ResponseAccepted(token, response.Kind)
-                  TransitionLedgerEntry.PresentationRequested token ]
+                [
+                    TransitionLedgerEntry.ResponseAccepted(token, response.Kind)
+                    TransitionLedgerEntry.PresentationRequested token
+                ]
                 @ focusLedger
             ),
             ([ TransitionHostEffect.RequestPresentation(presentation nextCurrent) ]
@@ -232,8 +267,10 @@ module TransitionHost =
         | TransitionVisibility.Hidden ->
             baseModel
             |> append (
-                [ TransitionLedgerEntry.ResponseAccepted(token, response.Kind)
-                  TransitionLedgerEntry.PresentationWithheld token ]
+                [
+                    TransitionLedgerEntry.ResponseAccepted(token, response.Kind)
+                    TransitionLedgerEntry.PresentationWithheld token
+                ]
                 @ focusLedger
             ),
             focusEffects
@@ -246,32 +283,38 @@ module TransitionHost =
         | None ->
             model
             |> append
-                [ TransitionLedgerEntry.ResponseRejected(
-                      response.Generation,
-                      response.Target,
-                      response.Kind,
-                      TransitionRejectionReason.StaleGeneration
-                  ) ],
+                [
+                    TransitionLedgerEntry.ResponseRejected(
+                        response.Generation,
+                        response.Target,
+                        response.Kind,
+                        TransitionRejectionReason.StaleGeneration
+                    )
+                ],
             []
         | Some current when response.Generation <> current.Token.Generation ->
             model
             |> append
-                [ TransitionLedgerEntry.ResponseRejected(
-                      response.Generation,
-                      response.Target,
-                      response.Kind,
-                      TransitionRejectionReason.StaleGeneration
-                  ) ],
+                [
+                    TransitionLedgerEntry.ResponseRejected(
+                        response.Generation,
+                        response.Target,
+                        response.Kind,
+                        TransitionRejectionReason.StaleGeneration
+                    )
+                ],
             []
         | Some current when response.Target <> current.Token.Target ->
             model
             |> append
-                [ TransitionLedgerEntry.ResponseRejected(
-                      response.Generation,
-                      response.Target,
-                      response.Kind,
-                      TransitionRejectionReason.TargetMismatch
-                  ) ],
+                [
+                    TransitionLedgerEntry.ResponseRejected(
+                        response.Generation,
+                        response.Target,
+                        response.Kind,
+                        TransitionRejectionReason.TargetMismatch
+                    )
+                ],
             []
         | Some current -> acceptResponse response current model
 
@@ -285,17 +328,24 @@ module TransitionHost =
                     Requested =
                         match visibility with
                         | TransitionVisibility.Hidden -> None
-                        | TransitionVisibility.Visible -> model.Requested }
+                        | TransitionVisibility.Visible -> model.Requested
+                }
                 |> append [ TransitionLedgerEntry.VisibilityChanged visibility ]
 
             match visibility, changed.Current, changed.FocusTarget with
             | TransitionVisibility.Visible, Some current, Some focusTarget when pending changed ->
-                { changed with Requested = Some current.Token }
+                { changed with
+                    Requested = Some current.Token
+                }
                 |> append
-                    [ TransitionLedgerEntry.PresentationRequested current.Token
-                      TransitionLedgerEntry.FocusMoved focusTarget ],
-                [ TransitionHostEffect.RequestPresentation(presentation current)
-                  TransitionHostEffect.MoveFocus focusTarget ]
+                    [
+                        TransitionLedgerEntry.PresentationRequested current.Token
+                        TransitionLedgerEntry.FocusMoved focusTarget
+                    ],
+                [
+                    TransitionHostEffect.RequestPresentation(presentation current)
+                    TransitionHostEffect.MoveFocus focusTarget
+                ]
             | TransitionVisibility.Visible, _, Some focusTarget ->
                 changed |> append [ TransitionLedgerEntry.FocusMoved focusTarget ],
                 [ TransitionHostEffect.MoveFocus focusTarget ]
@@ -306,22 +356,29 @@ module TransitionHost =
         | TransitionVisibility.Hidden, _ ->
             model
             |> append
-                [ TransitionLedgerEntry.PresentationRejected(token, TransitionRejectionReason.HiddenPresentation) ],
+                [
+                    TransitionLedgerEntry.PresentationRejected(token, TransitionRejectionReason.HiddenPresentation)
+                ],
             []
         | _, None ->
             model
             |> append
-                [ TransitionLedgerEntry.PresentationRejected(token, TransitionRejectionReason.NoPresentationRequested) ],
+                [
+                    TransitionLedgerEntry.PresentationRejected(token, TransitionRejectionReason.NoPresentationRequested)
+                ],
             []
         | TransitionVisibility.Visible, Some current when model.Requested = Some token && current.Token = token ->
             { model with
                 Requested = None
                 Committed = Some token
-                FocusTarget = Some current.Request.CommittedFocus }
+                FocusTarget = Some current.Request.CommittedFocus
+            }
             |> append
-                [ TransitionLedgerEntry.PresentationAcknowledged token
-                  TransitionLedgerEntry.Committed token
-                  TransitionLedgerEntry.FocusMoved current.Request.CommittedFocus ],
+                [
+                    TransitionLedgerEntry.PresentationAcknowledged token
+                    TransitionLedgerEntry.Committed token
+                    TransitionLedgerEntry.FocusMoved current.Request.CommittedFocus
+                ],
             [ TransitionHostEffect.MoveFocus current.Request.CommittedFocus ]
         | TransitionVisibility.Visible, Some current ->
             let reason =
@@ -342,10 +399,12 @@ module TransitionHost =
         match input with
         | TransitionHostInput.ControlledValueChanged(controlId, value) ->
             { model with
-                ControlledValues = Map.add controlId value model.ControlledValues }
+                ControlledValues = Map.add controlId value model.ControlledValues
+            }
         | TransitionHostInput.ControlledFileChanged(controlId, fileToken) ->
             { model with
-                ControlledFiles = Map.add controlId fileToken model.ControlledFiles }
+                ControlledFiles = Map.add controlId fileToken model.ControlledFiles
+            }
         | TransitionHostInput.ControlledBlurred _ -> model
         | _ -> model
 
@@ -359,10 +418,14 @@ module TransitionHost =
             | TransitionHostInput.PointerCaptureHeld pointerId ->
                 model
                 |> append
-                    [ TransitionLedgerEntry.PointerCaptureReleased pointerId
-                      TransitionLedgerEntry.InputSuppressed input ],
-                [ TransitionHostEffect.ReleasePointerCapture pointerId
-                  TransitionHostEffect.SuppressInput input ]
+                    [
+                        TransitionLedgerEntry.PointerCaptureReleased pointerId
+                        TransitionLedgerEntry.InputSuppressed input
+                    ],
+                [
+                    TransitionHostEffect.ReleasePointerCapture pointerId
+                    TransitionHostEffect.SuppressInput input
+                ]
             | _ ->
                 model |> append [ TransitionLedgerEntry.InputSuppressed input ],
                 [ TransitionHostEffect.SuppressInput input ]

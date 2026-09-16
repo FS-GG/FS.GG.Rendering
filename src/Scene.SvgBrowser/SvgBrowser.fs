@@ -39,9 +39,10 @@ module private Dom =
     [<Emit("$0.isComposing === true")>]
     let isComposing (_event: KeyboardEvent) : bool = jsNative
 
-    let create name = document.createElementNS(SvgNamespace, name)
+    let create name =
+        document.createElementNS (SvgNamespace, name)
 
-    let set name value (element: Element) = element.setAttribute(name, value)
+    let set name value (element: Element) = element.setAttribute (name, value)
 
     let clear (element: Element) = element.innerHTML <- ""
 
@@ -79,7 +80,9 @@ module private Geometry =
     let containsEllipse (point: Point) (rect: Rect) =
         let radiusX = abs rect.Width / 2.0
         let radiusY = abs rect.Height / 2.0
-        if radiusX = 0.0 || radiusY = 0.0 then false
+
+        if radiusX = 0.0 || radiusY = 0.0 then
+            false
         else
             let centerX = rect.X + rect.Width / 2.0
             let centerY = rect.Y + rect.Height / 2.0
@@ -91,9 +94,13 @@ module private Geometry =
         let vx = endPoint.X - startPoint.X
         let vy = endPoint.Y - startPoint.Y
         let lengthSquared = vx * vx + vy * vy
+
         let t =
-            if lengthSquared = 0.0 then 0.0
-            else max 0.0 (min 1.0 (((point.X - startPoint.X) * vx + (point.Y - startPoint.Y) * vy) / lengthSquared))
+            if lengthSquared = 0.0 then
+                0.0
+            else
+                max 0.0 (min 1.0 (((point.X - startPoint.X) * vx + (point.Y - startPoint.Y) * vy) / lengthSquared))
+
         let closestX = startPoint.X + t * vx
         let closestY = startPoint.Y + t * vy
         let dx = point.X - closestX
@@ -108,8 +115,21 @@ module private Geometry =
         | SceneNode.Empty -> false
         | SceneNode.Group scenes -> scenes |> List.rev |> List.exists (containsScene point)
         | SceneNode.Rectangle((x, y, width, height), _)
-        | SceneNode.PaintedRectangle({ X = x; Y = y; Width = width; Height = height }, _) ->
-            containsRect point { X = x; Y = y; Width = width; Height = height }
+        | SceneNode.PaintedRectangle({
+                                         X = x
+                                         Y = y
+                                         Width = width
+                                         Height = height
+                                     },
+                                     _) ->
+            containsRect
+                point
+                {
+                    X = x
+                    Y = y
+                    Width = width
+                    Height = height
+                }
         | SceneNode.Circle(center, radius, _) ->
             let dx = point.X - center.X
             let dy = point.Y - center.Y
@@ -117,15 +137,18 @@ module private Geometry =
         | SceneNode.FilledEllipse(rect, _)
         | SceneNode.Ellipse(rect, _) -> containsEllipse point rect
         | SceneNode.Line(startPoint, endPoint, paint) ->
-            let width = paint.Stroke |> Option.map (fun stroke -> stroke.Width) |> Option.defaultValue 1.0
+            let width =
+                paint.Stroke
+                |> Option.map (fun stroke -> stroke.Width)
+                |> Option.defaultValue 1.0
+
             containsLine point startPoint endPoint width
-        | SceneNode.Translate((x, y), child) ->
-            containsScene { X = point.X - x; Y = point.Y - y } child
+        | SceneNode.Translate((x, y), child) -> containsScene { X = point.X - x; Y = point.Y - y } child
         | SceneNode.ColorSpaceNode(ColorSpace.Srgb, child) -> containsScene point child
         | _ -> false
 
 module private Render =
-    let append (parent: Element) (child: Element) = parent.appendChild(child) |> ignore
+    let append (parent: Element) (child: Element) = parent.appendChild (child) |> ignore
 
     let setRect (rect: Rect) element =
         Dom.set "x" (Format.number rect.X) element
@@ -136,25 +159,45 @@ module private Render =
     let setPaint isLine (paint: Paint) element =
         let color = paint.Fill |> Option.map Format.color |> Option.defaultValue "none"
         Dom.set "opacity" (Format.number paint.Opacity) element
+
         match paint.Stroke with
         | Some stroke ->
             Dom.set "fill" (if isLine then "none" else color) element
             Dom.set "stroke" color element
             Dom.set "stroke-width" (Format.number stroke.Width) element
-            Dom.set "stroke-linecap" (match stroke.Cap with StrokeCap.Butt -> "butt" | StrokeCap.Round -> "round" | StrokeCap.Square -> "square") element
-            Dom.set "stroke-linejoin" (match stroke.Join with StrokeJoin.Miter -> "miter" | StrokeJoin.RoundJoin -> "round" | StrokeJoin.Bevel -> "bevel") element
+
+            Dom.set
+                "stroke-linecap"
+                (match stroke.Cap with
+                 | StrokeCap.Butt -> "butt"
+                 | StrokeCap.Round -> "round"
+                 | StrokeCap.Square -> "square")
+                element
+
+            Dom.set
+                "stroke-linejoin"
+                (match stroke.Join with
+                 | StrokeJoin.Miter -> "miter"
+                 | StrokeJoin.RoundJoin -> "round"
+                 | StrokeJoin.Bevel -> "bevel")
+                element
+
             Dom.set "stroke-miterlimit" (Format.number stroke.Miter) element
         | None ->
             Dom.set "fill" (if isLine then "none" else color) element
-            if isLine then Dom.set "stroke" color element
+
+            if isLine then
+                Dom.set "stroke" color element
 
     let pathData (path: PathSpec) =
         path.Commands
         |> List.map (function
             | PathCommand.MoveTo point -> $"M {Format.number point.X} {Format.number point.Y}"
             | PathCommand.LineTo point -> $"L {Format.number point.X} {Format.number point.Y}"
-            | PathCommand.QuadTo(control, point) -> $"Q {Format.number control.X} {Format.number control.Y} {Format.number point.X} {Format.number point.Y}"
-            | PathCommand.CubicTo(control1, control2, point) -> $"C {Format.number control1.X} {Format.number control1.Y} {Format.number control2.X} {Format.number control2.Y} {Format.number point.X} {Format.number point.Y}"
+            | PathCommand.QuadTo(control, point) ->
+                $"Q {Format.number control.X} {Format.number control.Y} {Format.number point.X} {Format.number point.Y}"
+            | PathCommand.CubicTo(control1, control2, point) ->
+                $"C {Format.number control1.X} {Format.number control1.Y} {Format.number control2.X} {Format.number control2.Y} {Format.number point.X} {Format.number point.Y}"
             | PathCommand.Close -> "Z"
             | PathCommand.ArcTo _ -> "")
         |> String.concat " "
@@ -166,16 +209,26 @@ module private Render =
             let element = Dom.create name
             configure element
             append parent element
+
         match value with
         | SceneNode.Empty -> ()
-        | SceneNode.Group scenes ->
-            add "g" (fun group -> scenes |> List.iter (scene group))
+        | SceneNode.Group scenes -> add "g" (fun group -> scenes |> List.iter (scene group))
         | SceneNode.Rectangle((x, y, width, height), color) ->
             add "rect" (fun element ->
-                setRect { X = x; Y = y; Width = width; Height = height } element
+                setRect
+                    {
+                        X = x
+                        Y = y
+                        Width = width
+                        Height = height
+                    }
+                    element
+
                 Dom.set "fill" (Format.color color) element)
         | SceneNode.PaintedRectangle(rect, paint) ->
-            add "rect" (fun element -> setRect rect element; setPaint false paint element)
+            add "rect" (fun element ->
+                setRect rect element
+                setPaint false paint element)
         | SceneNode.Circle(center, radius, color) ->
             add "circle" (fun element ->
                 Dom.set "cx" (Format.number center.X) element
@@ -206,7 +259,14 @@ module private Render =
         | SceneNode.Path(path, paint) ->
             add "path" (fun element ->
                 Dom.set "d" (pathData path) element
-                Dom.set "fill-rule" (match path.FillType with PathFillType.Winding -> "nonzero" | PathFillType.EvenOdd -> "evenodd") element
+
+                Dom.set
+                    "fill-rule"
+                    (match path.FillType with
+                     | PathFillType.Winding -> "nonzero"
+                     | PathFillType.EvenOdd -> "evenodd")
+                    element
+
                 setPaint false paint element)
         | SceneNode.Text((x, y), text, color) ->
             add "text" (fun element ->
@@ -230,28 +290,43 @@ module private Render =
 
     let documentScene mountNamespace parent (value: Scene) =
         let document =
-            { Schema = SvgDocument.schema
-              Id = "retained-document"
-              ViewBox = { X = 0.0; Y = 0.0; Width = 1.0; Height = 1.0 }
-              Definitions = []
-              Children =
-                [ { Id = "content"
-                    SemanticId = None
-                    Visible = true
-                    Transform = SvgAffine.identity
-                    ClipId = None
-                    MaskId = None
-                    Presentation = None
-                    Content = SvgElementContent.SceneLeaf value } ] }
+            {
+                Schema = SvgDocument.schema
+                Id = "retained-document"
+                ViewBox =
+                    {
+                        X = 0.0
+                        Y = 0.0
+                        Width = 1.0
+                        Height = 1.0
+                    }
+                Definitions = []
+                Children =
+                    [
+                        {
+                            Id = "content"
+                            SemanticId = None
+                            Visible = true
+                            Transform = SvgAffine.identity
+                            ClipId = None
+                            MaskId = None
+                            Presentation = None
+                            Content = SvgElementContent.SceneLeaf value
+                        }
+                    ]
+            }
+
         match SvgDocument.exportSvg mountNamespace document with
         | Error issues -> failwithf "validated retained Scene could not export: %A" issues
         | Ok svg -> Dom.appendChildren parent (Dom.parseExportedSvg svg)
 
 type SvgBrowserOptions =
-    { Width: float
-      Height: float
-      AccessibleLabel: string
-      WheelZoomFactor: float }
+    {
+        Width: float
+        Height: float
+        AccessibleLabel: string
+        WheelZoomFactor: float
+    }
 
 [<RequireQualifiedAccess>]
 type SvgBrowserMountError =
@@ -265,30 +340,37 @@ type SvgDocumentBrowserError =
     | DuplicateMountNamespace of string
 
 type SvgBrowserFontObservation =
-    { DefinitionId: string
-      Family: string
-      Ready: bool
-      Diagnostic: string option }
+    {
+        DefinitionId: string
+        Family: string
+        Ready: bool
+        Diagnostic: string option
+    }
 
 type SvgBrowserObservation =
-    { RootId: string
-      Revision: int
-      LayerCount: int
-      ObjectCount: int
-      SvgNodeCount: int
-      OwnedListenerCount: int
-      ScheduledFrameCount: int }
+    {
+        RootId: string
+        Revision: int
+        LayerCount: int
+        ObjectCount: int
+        SvgNodeCount: int
+        OwnedListenerCount: int
+        ScheduledFrameCount: int
+    }
 
 module private DocumentRegistry =
     let activeNamespaces = HashSet<string>()
 
 [<Sealed>]
-type SvgDocumentBrowserHost internal
-    (container: HTMLElement,
-     mountNamespace: string,
-     initialDocument: SvgDocument,
-     initialSvg: string,
-     initialRoot: Element) =
+type SvgDocumentBrowserHost
+    internal
+    (
+        container: HTMLElement,
+        mountNamespace: string,
+        initialDocument: SvgDocument,
+        initialSvg: string,
+        initialRoot: Element
+    ) =
 
     let mutable documentValue = initialDocument
     let mutable exportedSvg = initialSvg
@@ -303,26 +385,43 @@ type SvgDocumentBrowserHost internal
                 // FontFaceSet.check can report a locally installed family even when the declared
                 // document source failed. Bind readiness to an observed successful source load too.
                 let ready = Dom.fontReady font.Family font.Source
+
                 Some
-                    { DefinitionId = definition.Id
-                      Family = font.Family
-                      Ready = ready
-                      Diagnostic = if ready then None else Some $"font-unavailable:{definition.Id}:{font.Family}" }
+                    {
+                        DefinitionId = definition.Id
+                        Family = font.Family
+                        Ready = ready
+                        Diagnostic =
+                            if ready then
+                                None
+                            else
+                                Some $"font-unavailable:{definition.Id}:{font.Family}"
+                    }
             | _ -> None)
 
     member _.Root = root
     member _.MountNamespace = mountNamespace
     member _.Document = documentValue
     member _.ExportedSvg = exportedSvg
+
     member _.HitTest(screenPoint: Point) =
-        if disposed then invalidOp "The SVG document browser host is disposed."
+        if disposed then
+            invalidOp "The SVG document browser host is disposed."
+
         Dom.semanticIdAtSvgPoint root screenPoint.X screenPoint.Y
+
     member internal _.HitTestBounds(screenPoint: Point) =
-        if disposed then invalidOp "The SVG document browser host is disposed."
+        if disposed then
+            invalidOp "The SVG document browser host is disposed."
+
         Dom.semanticIdAtSvgBounds root screenPoint.X screenPoint.Y
+
     member _.ObserveFonts() = fontObservations ()
+
     member _.Replace(document: SvgDocument) =
-        if disposed then invalidOp "The SVG document browser host is disposed."
+        if disposed then
+            invalidOp "The SVG document browser host is disposed."
+
         match SvgDocument.exportSvg mountNamespace document with
         | Error issues -> Error(SvgDocumentBrowserError.InvalidDocument issues)
         | Ok candidateSvg ->
@@ -337,25 +436,30 @@ type SvgDocumentBrowserHost internal
     interface IDisposable with
         member _.Dispose() =
             if not disposed then
-                if root.parentNode = container then container.removeChild(root) |> ignore
+                if root.parentNode = container then
+                    container.removeChild (root) |> ignore
+
                 DocumentRegistry.activeNamespaces.Remove mountNamespace |> ignore
                 disposed <- true
 
 [<Sealed>]
-type SvgBrowserHost internal
-    (container: HTMLElement,
-     root: Element,
-     viewport: Element,
-     initialState: RetainedInteractionState,
-     options: SvgBrowserOptions,
-     onTransition: RetainedInteractionResult -> unit) =
+type SvgBrowserHost
+    internal
+    (
+        container: HTMLElement,
+        root: Element,
+        viewport: Element,
+        initialState: RetainedInteractionState,
+        options: SvgBrowserOptions,
+        onTransition: RetainedInteractionResult -> unit
+    ) =
 
     let layers = Dictionary<string, Element>()
     let objects = Dictionary<string, Element>()
     let objectValues = Dictionary<string, SemanticSceneObject>()
     let controlButtons = Dictionary<string, HTMLElement>()
-    let controls = document.createElement("div")
-    let status = document.createElement("div")
+    let controls = document.createElement ("div")
+    let status = document.createElement ("div")
     let listeners = ResizeArray<EventTarget * string * (Event -> unit)>()
     let mutable state = initialState
     let mutable disposed = false
@@ -374,38 +478,52 @@ type SvgBrowserHost internal
                 Dom.set "data-selected" (if state.SelectedObjectId = Some id then "true" else "false") element
                 Dom.set "data-focused" (if state.FocusedObjectId = Some id then "true" else "false") element
             | None ->
-                element.removeAttribute("aria-label")
-                element.removeAttribute("data-selected")
-                element.removeAttribute("data-focused")
+                element.removeAttribute ("aria-label")
+                element.removeAttribute ("data-selected")
+                element.removeAttribute ("data-focused")
 
         let selectable =
             state.Scene.Layers
             |> List.filter (fun layer -> layer.Visible)
             |> List.collect (fun layer -> layer.Objects)
             |> List.filter (fun value -> value.Selectable)
+
         let wanted = selectable |> List.map _.Id |> Set.ofList
+
         for id in controlButtons.Keys |> Seq.toArray do
             if not (wanted.Contains id) then
                 controlButtons[id].remove()
                 controlButtons.Remove id |> ignore
+
         for value in selectable do
             let button =
                 match controlButtons.TryGetValue value.Id with
                 | true, existing -> existing
                 | _ ->
-                    let created = document.createElement("button")
-                    created.setAttribute("type", "button")
-                    created.setAttribute("data-scene-control-id", value.Id)
+                    let created = document.createElement ("button")
+                    created.setAttribute ("type", "button")
+                    created.setAttribute ("data-scene-control-id", value.Id)
                     controlButtons[value.Id] <- created
                     created
+
             button.textContent <- value.AccessibleLabel
-            button.setAttribute("aria-pressed", if state.SelectedObjectId = Some value.Id then "true" else "false")
-            controls.appendChild(button) |> ignore
+
+            button.setAttribute (
+                "aria-pressed",
+                if state.SelectedObjectId = Some value.Id then
+                    "true"
+                else
+                    "false"
+            )
+
+            controls.appendChild (button) |> ignore
+
         let selectedLabel =
             state.SelectedObjectId
             |> Option.bind selectableObject
             |> Option.map _.AccessibleLabel
             |> Option.defaultValue "No object selected"
+
         status.textContent <- selectedLabel
 
     let reconcileScene () =
@@ -413,9 +531,15 @@ type SvgBrowserHost internal
         Dom.set "data-scene-root-id" state.Scene.RootId root
         Dom.set "data-scene-revision" (string state.Scene.Revision) root
         let camera = state.Scene.Camera
-        Dom.set "transform" $"translate({Format.number camera.PanX} {Format.number camera.PanY}) scale({Format.number camera.Zoom})" viewport
 
-        let wantedLayers = state.Scene.Layers |> List.map (fun layer -> layer.Id) |> Set.ofList
+        Dom.set
+            "transform"
+            $"translate({Format.number camera.PanX} {Format.number camera.PanY}) scale({Format.number camera.Zoom})"
+            viewport
+
+        let wantedLayers =
+            state.Scene.Layers |> List.map (fun layer -> layer.Id) |> Set.ofList
+
         for id in layers.Keys |> Seq.toArray do
             if not (wantedLayers.Contains id) then
                 layers[id].remove()
@@ -426,11 +550,13 @@ type SvgBrowserHost internal
             |> List.collect (fun layer -> layer.Objects)
             |> List.map _.Id
             |> Set.ofList
+
         for id in objects.Keys |> Seq.toArray do
             if not (wantedObjects.Contains id) then
                 objects[id].remove()
                 objects.Remove id |> ignore
                 objectValues.Remove id |> ignore
+
         for layer in state.Scene.Layers do
             let layerElement =
                 match layers.TryGetValue layer.Id with
@@ -440,7 +566,9 @@ type SvgBrowserHost internal
                     Dom.set "data-scene-layer-id" layer.Id created
                     layers[layer.Id] <- created
                     created
+
             Dom.set "display" (if layer.Visible then "inline" else "none") layerElement
+
             for objectValue in layer.Objects do
                 let objectElement, requiresRender =
                     match objects.TryGetValue objectValue.Id with
@@ -449,132 +577,230 @@ type SvgBrowserHost internal
                             match objectValues.TryGetValue objectValue.Id with
                             | true, previous -> previous.Content <> objectValue.Content
                             | _ -> true
+
                         existing, changed
                     | _ ->
                         let created = Dom.create "g"
                         Dom.set "data-scene-object-id" objectValue.Id created
                         created, true
+
                 if requiresRender then
                     Dom.clear objectElement
-                    Render.documentScene $"{state.Scene.RootId}:{layer.Id}:{objectValue.Id}" objectElement objectValue.Content
+
+                    Render.documentScene
+                        $"{state.Scene.RootId}:{layer.Id}:{objectValue.Id}"
+                        objectElement
+                        objectValue.Content
+
                 Render.append layerElement objectElement
                 objects[objectValue.Id] <- objectElement
                 objectValues[objectValue.Id] <- objectValue
+
             Render.append viewport layerElement
+
         syncInteraction ()
 
     let apply message =
-        if disposed then invalidOp "The SVG browser host is disposed."
+        if disposed then
+            invalidOp "The SVG browser host is disposed."
+
         let result = SvgRetained.update message state
         state <- result.State
-        if result.Error.IsNone then reconcileScene ()
-        else syncInteraction ()
+
+        if result.Error.IsNone then
+            reconcileScene ()
+        else
+            syncInteraction ()
+
         onTransition result
         result
 
     let hitTest screenPoint =
         SvgRetained.tryToScenePoint state.Scene.Camera screenPoint
         |> Option.bind (fun scenePoint ->
-            let bounds = root.getBoundingClientRect()
+            let bounds = root.getBoundingClientRect ()
             let clientX = bounds.left + screenPoint.X * bounds.width / options.Width
             let clientY = bounds.top + screenPoint.Y * bounds.height / options.Height
-            match Dom.objectIdAtClientPoint clientX clientY |> Option.filter (fun id -> selectableObject id |> Option.isSome) with
+
+            match
+                Dom.objectIdAtClientPoint clientX clientY
+                |> Option.filter (fun id -> selectableObject id |> Option.isSome)
+            with
             | Some id -> Some id
             | None -> None)
 
     let localPoint (pointer: PointerEvent) =
-        let bounds = root.getBoundingClientRect()
-        { X = (pointer.clientX - bounds.left) * options.Width / max 1.0 bounds.width
-          Y = (pointer.clientY - bounds.top) * options.Height / max 1.0 bounds.height }
+        let bounds = root.getBoundingClientRect ()
+
+        {
+            X = (pointer.clientX - bounds.left) * options.Width / max 1.0 bounds.width
+            Y = (pointer.clientY - bounds.top) * options.Height / max 1.0 bounds.height
+        }
 
     let addListener (target: EventTarget) name handler =
-        target.addEventListener(name, handler)
+        target.addEventListener (name, handler)
         listeners.Add(target, name, handler)
 
     do
         reconcileScene ()
+
         let pointerDown (event: Event) =
             let pointer = event :?> PointerEvent
             let pointerId = int pointer.pointerId
             let point = localPoint pointer
             lastPointer <- Some point
             Dom.capturePointer root pointerId
-            apply (RetainedInteractionMessage.CapturePointer(state.Scene.Revision, pointerId)) |> ignore
+
+            apply (RetainedInteractionMessage.CapturePointer(state.Scene.Revision, pointerId))
+            |> ignore
+
             match hitTest point with
             | Some id -> apply (RetainedInteractionMessage.Select(state.Scene.Revision, id)) |> ignore
             | None -> ()
-            event.preventDefault()
+
+            event.preventDefault ()
+
         let pointerMove (event: Event) =
             let pointer = event :?> PointerEvent
             let pointerId = int pointer.pointerId
+
             if state.CapturedPointerId = Some pointerId then
                 let point = localPoint pointer
+
                 match lastPointer with
                 | Some previous ->
-                    let delta = { X = point.X - previous.X; Y = point.Y - previous.Y }
+                    let delta =
+                        {
+                            X = point.X - previous.X
+                            Y = point.Y - previous.Y
+                        }
+
                     let camera = state.Scene.Camera
-                    apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, { camera with PanX = camera.PanX + delta.X; PanY = camera.PanY + delta.Y })) |> ignore
+
+                    apply (
+                        RetainedInteractionMessage.SetCamera(
+                            state.Scene.Revision,
+                            { camera with
+                                PanX = camera.PanX + delta.X
+                                PanY = camera.PanY + delta.Y
+                            }
+                        )
+                    )
+                    |> ignore
                 | None -> ()
+
                 lastPointer <- Some point
+
         let releaseState pointerId =
             if state.CapturedPointerId = Some pointerId then
-                apply (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId)) |> ignore
+                apply (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId))
+                |> ignore
+
             lastPointer <- None
+
         let release (event: Event) =
             let pointer = event :?> PointerEvent
             let pointerId = int pointer.pointerId
             releaseState pointerId
-            if Dom.hasPointerCapture root pointerId then Dom.releasePointer root pointerId
+
+            if Dom.hasPointerCapture root pointerId then
+                Dom.releasePointer root pointerId
+
         let lostCapture (event: Event) =
             let pointer = event :?> PointerEvent
             releaseState (int pointer.pointerId)
+
         let focusLost (_event: Event) =
             state.CapturedPointerId |> Option.iter releaseState
+
         let keyDown (event: Event) =
             let keyboard = event :?> KeyboardEvent
+
             let message =
-                match ViewerKeyboard.tryMapSvgIntent keyboard.key true (Dom.isComposing keyboard) (Dom.isNativeEditableTarget event.target) with
+                match
+                    ViewerKeyboard.tryMapSvgIntent
+                        keyboard.key
+                        true
+                        (Dom.isComposing keyboard)
+                        (Dom.isNativeEditableTarget event.target)
+                with
                 | Some SvgKeyboardIntent.FocusNext -> Some(RetainedInteractionMessage.FocusNext state.Scene.Revision)
-                | Some SvgKeyboardIntent.FocusPrevious -> Some(RetainedInteractionMessage.FocusPrevious state.Scene.Revision)
-                | Some SvgKeyboardIntent.ActivateFocused -> state.FocusedObjectId |> Option.map (fun id -> RetainedInteractionMessage.Select(state.Scene.Revision, id))
-                | Some SvgKeyboardIntent.ClearSelection -> Some(RetainedInteractionMessage.ClearSelection state.Scene.Revision)
+                | Some SvgKeyboardIntent.FocusPrevious ->
+                    Some(RetainedInteractionMessage.FocusPrevious state.Scene.Revision)
+                | Some SvgKeyboardIntent.ActivateFocused ->
+                    state.FocusedObjectId
+                    |> Option.map (fun id -> RetainedInteractionMessage.Select(state.Scene.Revision, id))
+                | Some SvgKeyboardIntent.ClearSelection ->
+                    Some(RetainedInteractionMessage.ClearSelection state.Scene.Revision)
                 | None -> None
+
             match message with
             | Some value ->
                 let result = apply value
-                result.State.FocusedObjectId |> Option.bind (fun id -> match objects.TryGetValue id with true, element -> Some element | _ -> None) |> Option.iter Dom.focus
-                event.preventDefault()
+
+                result.State.FocusedObjectId
+                |> Option.bind (fun id ->
+                    match objects.TryGetValue id with
+                    | true, element -> Some element
+                    | _ -> None)
+                |> Option.iter Dom.focus
+
+                event.preventDefault ()
             | None -> ()
+
         let controlClick (event: Event) =
             let target: Element = unbox event.target
-            let button = target.closest("[data-scene-control-id]")
+            let button = target.closest ("[data-scene-control-id]")
+
             match button with
             | Some button ->
-                let id = button.getAttribute("data-scene-control-id")
+                let id = button.getAttribute ("data-scene-control-id")
+
                 if not (String.IsNullOrEmpty id) then
                     apply (RetainedInteractionMessage.Select(state.Scene.Revision, id)) |> ignore
             | None -> ()
+
         let wheel (event: Event) =
             let value = event :?> WheelEvent
+
             let anchor =
-                let bounds = root.getBoundingClientRect()
-                { X = (value.clientX - bounds.left) * options.Width / max 1.0 bounds.width
-                  Y = (value.clientY - bounds.top) * options.Height / max 1.0 bounds.height }
-            let factor = if value.deltaY < 0.0 then options.WheelZoomFactor else 1.0 / options.WheelZoomFactor
+                let bounds = root.getBoundingClientRect ()
+
+                {
+                    X = (value.clientX - bounds.left) * options.Width / max 1.0 bounds.width
+                    Y = (value.clientY - bounds.top) * options.Height / max 1.0 bounds.height
+                }
+
+            let factor =
+                if value.deltaY < 0.0 then
+                    options.WheelZoomFactor
+                else
+                    1.0 / options.WheelZoomFactor
+
             let targetZoom = state.Scene.Camera.Zoom * factor
+
             match SvgRetained.tryToScenePoint state.Scene.Camera anchor with
             | Some scenePoint ->
-                let camera = { PanX = anchor.X - targetZoom * scenePoint.X; PanY = anchor.Y - targetZoom * scenePoint.Y; Zoom = targetZoom }
-                apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, camera)) |> ignore
-                event.preventDefault()
+                let camera =
+                    {
+                        PanX = anchor.X - targetZoom * scenePoint.X
+                        PanY = anchor.Y - targetZoom * scenePoint.Y
+                        Zoom = targetZoom
+                    }
+
+                apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, camera))
+                |> ignore
+
+                event.preventDefault ()
             | None -> ()
-        controls.setAttribute("data-scene-controls", state.Scene.RootId)
-        controls.setAttribute("aria-label", options.AccessibleLabel + " object selection")
-        status.setAttribute("role", "status")
-        status.setAttribute("aria-live", "polite")
-        status.setAttribute("data-scene-selection-status", "true")
-        controls.appendChild(status) |> ignore
-        container.appendChild(controls) |> ignore
+
+        controls.setAttribute ("data-scene-controls", state.Scene.RootId)
+        controls.setAttribute ("aria-label", options.AccessibleLabel + " object selection")
+        status.setAttribute ("role", "status")
+        status.setAttribute ("aria-live", "polite")
+        status.setAttribute ("data-scene-selection-status", "true")
+        controls.appendChild (status) |> ignore
+        container.appendChild (controls) |> ignore
         addListener (root :> EventTarget) "pointerdown" pointerDown
         addListener (root :> EventTarget) "pointermove" pointerMove
         addListener (root :> EventTarget) "pointerup" release
@@ -590,36 +816,72 @@ type SvgBrowserHost internal
     member _.State = state
     member _.Dispatch message = apply message
     member _.HitTest screenPoint = hitTest screenPoint
-    member _.PanBy (delta: Point) =
+
+    member _.PanBy(delta: Point) =
         let camera = state.Scene.Camera
-        apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, { camera with PanX = camera.PanX + delta.X; PanY = camera.PanY + delta.Y }))
+
+        apply (
+            RetainedInteractionMessage.SetCamera(
+                state.Scene.Revision,
+                { camera with
+                    PanX = camera.PanX + delta.X
+                    PanY = camera.PanY + delta.Y
+                }
+            )
+        )
+
     member _.ZoomAt(anchorScreen, zoom) =
         match SvgRetained.tryToScenePoint state.Scene.Camera anchorScreen with
-        | None -> apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, { state.Scene.Camera with Zoom = zoom }))
+        | None ->
+            apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision, { state.Scene.Camera with Zoom = zoom }))
         | Some scenePoint ->
-            apply (RetainedInteractionMessage.SetCamera(state.Scene.Revision,
-                { PanX = anchorScreen.X - zoom * scenePoint.X
-                  PanY = anchorScreen.Y - zoom * scenePoint.Y
-                  Zoom = zoom }))
+            apply (
+                RetainedInteractionMessage.SetCamera(
+                    state.Scene.Revision,
+                    {
+                        PanX = anchorScreen.X - zoom * scenePoint.X
+                        PanY = anchorScreen.Y - zoom * scenePoint.Y
+                        Zoom = zoom
+                    }
+                )
+            )
+
     member _.Observe() =
-        { RootId = state.Scene.RootId
-          Revision = state.Scene.Revision
-          LayerCount = state.Scene.Layers.Length
-          ObjectCount = state.Scene.Layers |> List.sumBy (fun layer -> layer.Objects.Length)
-          SvgNodeCount = root.querySelectorAll("*").length + 1
-          OwnedListenerCount = if disposed then 0 else listeners.Count
-          ScheduledFrameCount = 0 }
+        {
+            RootId = state.Scene.RootId
+            Revision = state.Scene.Revision
+            LayerCount = state.Scene.Layers.Length
+            ObjectCount = state.Scene.Layers |> List.sumBy (fun layer -> layer.Objects.Length)
+            SvgNodeCount = root.querySelectorAll("*").length + 1
+            OwnedListenerCount = if disposed then 0 else listeners.Count
+            ScheduledFrameCount = 0
+        }
 
     interface IDisposable with
         member _.Dispose() =
             if not disposed then
-                state.CapturedPointerId |> Option.iter (fun pointerId ->
-                    if Dom.hasPointerCapture root pointerId then Dom.releasePointer root pointerId
-                    state <- (SvgRetained.update (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId)) state).State)
-                for target, name, handler in listeners do target.removeEventListener(name, handler)
+                state.CapturedPointerId
+                |> Option.iter (fun pointerId ->
+                    if Dom.hasPointerCapture root pointerId then
+                        Dom.releasePointer root pointerId
+
+                    state <-
+                        (SvgRetained.update
+                            (RetainedInteractionMessage.ReleasePointer(state.Scene.Revision, pointerId))
+                            state)
+                            .State)
+
+                for target, name, handler in listeners do
+                    target.removeEventListener (name, handler)
+
                 listeners.Clear()
-                if root.parentNode = container then container.removeChild(root) |> ignore
-                if controls.parentNode = container then container.removeChild(controls) |> ignore
+
+                if root.parentNode = container then
+                    container.removeChild (root) |> ignore
+
+                if controls.parentNode = container then
+                    container.removeChild (controls) |> ignore
+
                 disposed <- true
                 lastPointer <- None
 
@@ -633,7 +895,7 @@ module SvgBrowser =
             | Error issues -> Error(SvgDocumentBrowserError.InvalidDocument issues)
             | Ok svg ->
                 let root = Dom.parseExportedSvg svg
-                container.appendChild(root) |> ignore
+                container.appendChild (root) |> ignore
                 DocumentRegistry.activeNamespaces.Add mountNamespace |> ignore
                 Ok(new SvgDocumentBrowserHost(container, mountNamespace, document, svg, root))
 
@@ -641,13 +903,31 @@ module SvgBrowser =
         match SvgRetained.tryCreateInteraction scene with
         | Error error -> Error(SvgBrowserMountError.InvalidScene error)
         | Ok state ->
-            let finite value = not (Double.IsNaN value || Double.IsInfinity value)
-            if not (finite options.Width && finite options.Height && finite options.WheelZoomFactor)
-               || options.Width <= 0.0 || options.Height <= 0.0
-               || String.IsNullOrWhiteSpace options.AccessibleLabel || options.WheelZoomFactor <= 1.0 then
-                Error(SvgBrowserMountError.InvalidOptions "width and height must be finite and positive; label must be nonblank; wheel zoom factor must be finite and greater than one")
+            let finite value =
+                not (Double.IsNaN value || Double.IsInfinity value)
+
+            if
+                not (finite options.Width && finite options.Height && finite options.WheelZoomFactor)
+                || options.Width <= 0.0
+                || options.Height <= 0.0
+                || String.IsNullOrWhiteSpace options.AccessibleLabel
+                || options.WheelZoomFactor <= 1.0
+            then
+                Error(
+                    SvgBrowserMountError.InvalidOptions
+                        "width and height must be finite and positive; label must be nonblank; wheel zoom factor must be finite and greater than one"
+                )
             else
-                match SvgDocument.ofRetainedScene { X = 0.0; Y = 0.0; Width = options.Width; Height = options.Height } scene with
+                match
+                    SvgDocument.ofRetainedScene
+                        {
+                            X = 0.0
+                            Y = 0.0
+                            Width = options.Width
+                            Height = options.Height
+                        }
+                        scene
+                with
                 | Error issues -> Error(SvgBrowserMountError.InvalidDocument issues)
                 | Ok _ ->
                     let root = Dom.create "svg"
@@ -660,11 +940,14 @@ module SvgBrowser =
                     let title = Dom.create "title"
                     title.textContent <- options.AccessibleLabel
                     let description = Dom.create "desc"
-                    description.textContent <- "Interactive retained SVG scene with an equivalent HTML object-selection control group."
+
+                    description.textContent <-
+                        "Interactive retained SVG scene with an equivalent HTML object-selection control group."
+
                     let viewport = Dom.create "g"
                     Dom.set "data-scene-viewport" "true" viewport
-                    root.appendChild(title) |> ignore
-                    root.appendChild(description) |> ignore
-                    root.appendChild(viewport) |> ignore
-                    container.appendChild(root) |> ignore
+                    root.appendChild (title) |> ignore
+                    root.appendChild (description) |> ignore
+                    root.appendChild (viewport) |> ignore
+                    container.appendChild (root) |> ignore
                     Ok(new SvgBrowserHost(container, root, viewport, state, options, onTransition))

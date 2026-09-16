@@ -4,7 +4,14 @@
 open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 
-let rect : FS.GG.UI.Scene.Rect = { X = 0.0; Y = 0.0; Width = 100.0; Height = 30.0 }
+let rect: FS.GG.UI.Scene.Rect =
+    {
+        X = 0.0
+        Y = 0.0
+        Width = 100.0
+        Height = 30.0
+    }
+
 let paint = FS.GG.UI.Scene.Paint.Solid FS.GG.UI.Scene.Colors.black
 let stack = FS.GG.UI.Controls.Stack.children []
 let text = FS.GG.UI.Controls.TextBlock.create []

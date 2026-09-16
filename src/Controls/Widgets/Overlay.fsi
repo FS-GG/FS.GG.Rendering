@@ -4,30 +4,34 @@ open FS.GG.UI.Controls
 open FS.GG.UI.DesignSystem
 
 /// Immutable, compiler-checked authoring surface for a tooltip. `text` required.
-type TooltipProps<'msg> =
-    { Id: ControlId option
-      Text: string }
+type TooltipProps<'msg> = { Id: ControlId option; Text: string }
 
 /// Immutable, compiler-checked authoring surface for a modal dialog. `children`
 /// required. `OnSelected = None` lowers to no binding.
 type DialogProps<'msg> =
-    { Id: ControlId option
-      Title: string option
-      IsOpen: bool
-      Children: Widget<'msg> list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Title: string option
+        IsOpen: bool
+        Children: Widget<'msg> list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a transient toast. `text` required.
 type ToastProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Severity: ValidationState }
+    {
+        Id: ControlId option
+        Text: string
+        Severity: ValidationState
+    }
 
 /// Immutable, compiler-checked authoring surface for a layered overlay. `child` required.
 type OverlayProps<'msg> =
-    { Id: ControlId option
-      IsOpen: bool
-      Child: Widget<'msg> }
+    {
+        Id: ControlId option
+        IsOpen: bool
+        Child: Widget<'msg>
+    }
 
 /// Typed Props front door for the `Tooltip` control.
 module Tooltip =

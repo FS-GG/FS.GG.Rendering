@@ -16,21 +16,27 @@ open AppRoot
 
 // A body at rest (zero per-step displacement) — a wall or a static overlap fixture.
 let body x y w h tag : Collision.Body<string> =
-    { Bounds = { X = x; Y = y; Width = w; Height = h }
-      Velocity = { X = 0.0; Y = 0.0 }
-      Tag = tag }
+    {
+        Bounds = { X = x; Y = y; Width = w; Height = h }
+        Velocity = { X = 0.0; Y = 0.0 }
+        Tag = tag
+    }
 
 // A body travelling `(vx, vy)` this step — the swept-detection case (#290).
 let moving x y w h vx vy tag : Collision.Body<string> =
-    { Bounds = { X = x; Y = y; Width = w; Height = h }
-      Velocity = { X = vx; Y = vy }
-      Tag = tag }
+    {
+        Bounds = { X = x; Y = y; Width = w; Height = h }
+        Velocity = { X = vx; Y = vy }
+        Tag = tag
+    }
 
 // Two overlapping bodies + a far-away one. Broad-phase should only pair the overlapping two.
 let world =
-    [ body 0.0 0.0 10.0 10.0 "player"
-      body 6.0 0.0 10.0 10.0 "wall"
-      body 100.0 100.0 8.0 8.0 "faraway" ]
+    [
+        body 0.0 0.0 10.0 10.0 "player"
+        body 6.0 0.0 10.0 10.0 "wall"
+        body 100.0 100.0 8.0 8.0 "faraway"
+    ]
 
 let contacts = Collision.collide 16.0 world
 printfn "contacts        = %A" (contacts |> List.map (fun c -> c.A.Tag, c.B.Tag, c.Depth))
@@ -52,7 +58,9 @@ printfn "wall fixed      = %b" (wallResp.A.Bounds = (List.head world).Bounds)
 // #290: a 1200 u/s round advanced by one 60 Hz step travels 20 units and would tunnel a 6-wide target
 // under a point test — its start is in front of the target, its end is behind it. The swept pass still
 // catches the crossing, and PushFirst stops the round at the target's near face instead of past it.
-let tunnelWorld = [ moving 0.0 0.0 2.0 2.0 20.0 0.0 "round"; body 10.0 -2.0 6.0 6.0 "target" ]
+let tunnelWorld =
+    [ moving 0.0 0.0 2.0 2.0 20.0 0.0 "round"; body 10.0 -2.0 6.0 6.0 "target" ]
+
 let tunnelHit = Collision.collide 16.0 tunnelWorld
 printfn "swept no-tunnel = %b" (tunnelHit |> List.exists (fun c -> c.A.Tag = "round" && c.B.Tag = "target"))
 

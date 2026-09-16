@@ -9,7 +9,8 @@ let tempDir () =
     Path.Combine(Path.GetTempPath(), "second-antshowcase-feature173-" + Guid.NewGuid().ToString("N"))
 
 let withForcedSubstitute action =
-    let previous = Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
+    let previous =
+        Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
 
     try
         Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", "1")
@@ -19,16 +20,21 @@ let withForcedSubstitute action =
 
 let runHeadlessRequireLive () =
     let outDir = tempDir ()
+
     let code =
-        withForcedSubstitute
-            (fun () ->
-                Responsiveness.run
-                    [ "--script"; "representative"
-                      "--theme"; "light"
-                      "--all-interactive"
-                      "--require-live"
-                      "--out"; outDir
-                      "--json" ])
+        withForcedSubstitute (fun () ->
+            Responsiveness.run
+                [
+                    "--script"
+                    "representative"
+                    "--theme"
+                    "light"
+                    "--all-interactive"
+                    "--require-live"
+                    "--out"
+                    outDir
+                    "--json"
+                ])
 
     code, outDir
 
@@ -45,19 +51,13 @@ let recordsFile outDir =
     |> Array.exactlyOne
 
 let summaryJson outDir =
-    summaryFile outDir
-    |> File.ReadAllText
-    |> JsonDocument.Parse
+    summaryFile outDir |> File.ReadAllText |> JsonDocument.Parse
 
 let records outDir =
-    recordsFile outDir
-    |> File.ReadAllLines
-    |> Array.toList
+    recordsFile outDir |> File.ReadAllLines |> Array.toList
 
 let firstRecord outDir =
-    records outDir
-    |> List.head
-    |> JsonDocument.Parse
+    records outDir |> List.head |> JsonDocument.Parse
 
 let arrayStrings (element: JsonElement) =
     element.EnumerateArray()

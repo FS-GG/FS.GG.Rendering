@@ -24,25 +24,33 @@ open System.IO
 
 let repoRoot =
     let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
+        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
+            dir
         else
             match Directory.GetParent dir |> Option.ofObj with
             | Some p -> find p.FullName
             | None -> failwith "Could not locate repository root (FS.GG.Rendering.slnx)."
+
     find __SOURCE_DIRECTORY__
 
 let psi = ProcessStartInfo("dotnet")
 psi.WorkingDirectory <- repoRoot
 psi.UseShellExecute <- false
-[ "test"
-  "tests/Controls.Tests/Controls.Tests.fsproj"
-  "-c"; "Debug"
-  "--filter"; "Feature127" ]
+
+[
+    "test"
+    "tests/Controls.Tests/Controls.Tests.fsproj"
+    "-c"
+    "Debug"
+    "--filter"
+    "Feature127"
+]
 |> List.iter psi.ArgumentList.Add
+
 psi.Environment["UPDATE_POLICY_REPORTS"] <- "1"
 
 printfn "Regenerating docs/reports/color-policy-{wcag,ant}.md via the env-gated test evaluator..."
-use proc = Process.Start psi
+let proc = Process.Start psi
 proc.WaitForExit()
 
 if proc.ExitCode = 0 then

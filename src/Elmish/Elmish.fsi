@@ -5,9 +5,11 @@ open FS.GG.UI.SkiaViewer
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ElmishAdapterModel<'model> =
-    { UserModel: 'model
-      Scene: SceneNode
-      Viewer: ViewerModel }
+    {
+        UserModel: 'model
+        Scene: SceneNode
+        Viewer: ViewerModel
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ElmishAdapterMsg<'msg> =

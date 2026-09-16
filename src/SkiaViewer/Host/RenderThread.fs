@@ -31,7 +31,8 @@ module internal RenderThread =
 
     /// Record the calling thread as the render-static owner for this run. Called once on `GlHost.run`
     /// entry, on the loop thread, before any static is reset.
-    let claim () = owner <- Some Environment.CurrentManagedThreadId
+    let claim () =
+        owner <- Some Environment.CurrentManagedThreadId
 
     /// Clear the ownership claim. Called from the run's teardown `finally`, so the statics are unowned
     /// (and the guard inert) between runs. Idempotent.

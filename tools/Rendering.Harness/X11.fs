@@ -13,6 +13,7 @@ module X11 =
             psi.RedirectStandardOutput <- true
             psi.RedirectStandardError <- true
             psi.UseShellExecute <- false
+
             match Process.Start psi with
             | null -> None
             | proc ->
@@ -20,7 +21,8 @@ module X11 =
                 let out = p.StandardOutput.ReadToEnd()
                 p.WaitForExit 5000 |> ignore
                 Some(p.ExitCode, out)
-        with _ -> None
+        with _ ->
+            None
 
     let findWindow (title: string) : int option =
         match sh "xdotool" (sprintf "search --name %s" title) with
@@ -50,24 +52,34 @@ module X11 =
     let pngNonBlank (path: string) : bool =
         try
             use bmp = SKBitmap.Decode path
-            if isNull bmp then false
+
+            if isNull bmp then
+                false
             else
                 let first = bmp.GetPixel(0, 0)
                 let stepX = max 1 (bmp.Width / 24)
                 let stepY = max 1 (bmp.Height / 24)
                 let mutable diff = false
                 let mutable x = 0
+
                 while x < bmp.Width && not diff do
                     let mutable y = 0
+
                     while y < bmp.Height && not diff do
-                        if bmp.GetPixel(x, y) <> first then diff <- true
+                        if bmp.GetPixel(x, y) <> first then
+                            diff <- true
+
                         y <- y + stepY
+
                     x <- x + stepX
+
                 diff
-        with _ -> false
+        with _ ->
+            false
 
     let clickAt (windowId: int) (x: int) (y: int) : unit =
-        sh "xdotool" (sprintf "mousemove --window %d %d %d click 1" windowId x y) |> ignore
+        sh "xdotool" (sprintf "mousemove --window %d %d %d click 1" windowId x y)
+        |> ignore
 
     let sendKey (windowId: int) (key: string) : unit =
         sh "xdotool" (sprintf "key --window %d %s" windowId key) |> ignore

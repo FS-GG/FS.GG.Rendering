@@ -13,148 +13,190 @@ let private lane
     (noProgress: TimeSpan option)
     : ValidationLanes.LaneDefinition =
     let dir = Path.Combine(root, id)
-    let command: ValidationLanes.LaneCommand = { FileName = "bash"; Arguments = [ "-lc"; args ] }
 
-    { Id = id
-      DisplayName = id
-      Description = id
-      ReadinessRole = ValidationLanes.Required
-      Command = command
-      WorkingDirectory = root
-      Timeout = timeout
-      NoProgressTimeout = noProgress
-      ProgressInterval = TimeSpan.FromSeconds 1.0
-      EvidenceDirectory = dir
-      LogPath = Path.Combine(dir, "log.txt")
-      ResultPath = Path.Combine(dir, "result.json")
-      DiagnosticsPath = Path.Combine(dir, "diagnostics.md")
-      OutputRoot = Path.Combine(dir, "out")
-      ConcurrencyGroup = Some "test"
-      OutputScope = Some id
-      IsAggregate = false
-      SubstitutesFor = None }
+    let command: ValidationLanes.LaneCommand =
+        {
+            FileName = "bash"
+            Arguments = [ "-lc"; args ]
+        }
+
+    {
+        Id = id
+        DisplayName = id
+        Description = id
+        ReadinessRole = ValidationLanes.Required
+        Command = command
+        WorkingDirectory = root
+        Timeout = timeout
+        NoProgressTimeout = noProgress
+        ProgressInterval = TimeSpan.FromSeconds 1.0
+        EvidenceDirectory = dir
+        LogPath = Path.Combine(dir, "log.txt")
+        ResultPath = Path.Combine(dir, "result.json")
+        DiagnosticsPath = Path.Combine(dir, "diagnostics.md")
+        OutputRoot = Path.Combine(dir, "out")
+        ConcurrencyGroup = Some "test"
+        OutputScope = Some id
+        IsAggregate = false
+        SubstitutesFor = None
+    }
 
 [<Tests>]
 let tests =
-    testList "Feature163 ValidationLanes" [
-        test "default lane definitions include required minimum lanes with isolated outputs" {
-            let root = Feature163TestFixtures.createTempRoot "feature163-lanes"
+    testList
+        "Feature163 ValidationLanes"
+        [
+            test "default lane definitions include required minimum lanes with isolated outputs" {
+                let root = Feature163TestFixtures.createTempRoot "feature163-lanes"
 
-            try
-                let lanes = ValidationLanes.defaultLaneDefinitions root (Path.Combine(root, "lanes"))
-                let ids = lanes |> List.map _.Id
+                try
+                    let lanes =
+                        ValidationLanes.defaultLaneDefinitions root (Path.Combine(root, "lanes"))
 
-                [ "build"; "library-tests"; "package-proof"; "antshowcase-sample"; "controls"; "rendering-harness"; "aggregate-solution" ]
-                |> List.iter (fun id -> Expect.contains ids id id)
+                    let ids = lanes |> List.map _.Id
 
-                let outputRoots = lanes |> List.map _.OutputRoot |> Set.ofList
-                let logPaths = lanes |> List.map _.LogPath |> Set.ofList
-                Expect.equal outputRoots.Count lanes.Length "isolated output roots"
-                Expect.equal logPaths.Count lanes.Length "isolated logs"
-            finally
-                Feature163TestFixtures.deleteTempRoot root
-        }
+                    [
+                        "build"
+                        "library-tests"
+                        "package-proof"
+                        "antshowcase-sample"
+                        "controls"
+                        "rendering-harness"
+                        "aggregate-solution"
+                    ]
+                    |> List.iter (fun id -> Expect.contains ids id id)
 
-        test "pure lane MVU records start completion cancellation and summary effects" {
-            let root = Feature163TestFixtures.createTempRoot "feature163-lane-mvu"
+                    let outputRoots = lanes |> List.map _.OutputRoot |> Set.ofList
+                    let logPaths = lanes |> List.map _.LogPath |> Set.ofList
+                    Expect.equal outputRoots.Count lanes.Length "isolated output roots"
+                    Expect.equal logPaths.Count lanes.Length "isolated logs"
+                finally
+                    Feature163TestFixtures.deleteTempRoot root
+            }
 
-            try
-                let def = lane root "pass" "printf ok" (TimeSpan.FromSeconds 2.0) None
-                let model, effects = ValidationLanes.init [ def ]
-                Expect.contains effects ValidationLanes.RegisterCancelHandler "cancel handler"
+            test "pure lane MVU records start completion cancellation and summary effects" {
+                let root = Feature163TestFixtures.createTempRoot "feature163-lane-mvu"
 
-                let request =
-                    { ValidationLanes.defaultRunRequest root with
-                        RequestedLaneIds = [ "pass" ] }
+                try
+                    let def = lane root "pass" "printf ok" (TimeSpan.FromSeconds 2.0) None
+                    let model, effects = ValidationLanes.init [ def ]
+                    Expect.contains effects ValidationLanes.RegisterCancelHandler "cancel handler"
 
-                let _, requestEffects = ValidationLanes.update (ValidationLanes.RunRequested request) model
-                Expect.contains requestEffects (ValidationLanes.ValidateRequest request) "validate"
+                    let request =
+                        { ValidationLanes.defaultRunRequest root with
+                            RequestedLaneIds = [ "pass" ]
+                        }
 
-                let plan: ValidationLanes.LaneRunPlan =
-                    { Request = request
-                      RunId = "run"
-                      SelectionMode = ValidationLanes.ExplicitSelection
-                      ArtifactRoot = Path.Combine(root, "run")
-                      SelectedLanes = [ def ]
-                      Diagnostics = []
-                      ReplacementNotice = None }
+                    let _, requestEffects =
+                        ValidationLanes.update (ValidationLanes.RunRequested request) model
 
-                let scheduled, scheduleEffects = ValidationLanes.update (ValidationLanes.PreflightPassed plan) model
-                Expect.contains scheduleEffects (ValidationLanes.CreateRunRoot plan.ArtifactRoot) "create run root"
+                    Expect.contains requestEffects (ValidationLanes.ValidateRequest request) "validate"
 
-                let running, runningEffects = ValidationLanes.update (ValidationLanes.LaneStarted("pass", DateTime.UtcNow)) scheduled
-                Expect.contains runningEffects (ValidationLanes.PollProcess "pass") "poll"
+                    let plan: ValidationLanes.LaneRunPlan =
+                        {
+                            Request = request
+                            RunId = "run"
+                            SelectionMode = ValidationLanes.ExplicitSelection
+                            ArtifactRoot = Path.Combine(root, "run")
+                            SelectedLanes = [ def ]
+                            Diagnostics = []
+                            ReplacementNotice = None
+                        }
 
-                let result: ValidationLanes.LaneResult =
-                    { LaneId = "pass"
-                      ReadinessRole = ValidationLanes.Required
-                      Status = ValidationLanes.Passed
-                      Command = "bash -lc pass"
-                      StartedUtc = None
-                      CompletedUtc = None
-                      Elapsed = None
-                      TimeoutBudget = None
-                      LastActivityUtc = None
-                      LastActivityText = None
-                      ExitCode = Some 0
-                      LogPath = "log"
-                      ResultPath = "result"
-                      DiagnosticsPath = "diagnostics"
-                      ResultArtifacts = [ "result" ]
-                      RuntimeDiagnostics = None
-                      Reason = None
-                      Diagnostics = []
-                      Caveats = []
-                      AcceptedEnvironmentLimitation = None
-                      Substitution = None
-                      IsAggregate = false }
+                    let scheduled, scheduleEffects =
+                        ValidationLanes.update (ValidationLanes.PreflightPassed plan) model
 
-                let completed, completedEffects = ValidationLanes.update (ValidationLanes.LaneCompleted result) running
-                Expect.contains completed.CompletedResults result "completed"
-                Expect.contains completedEffects (ValidationLanes.WriteLaneResult "pass") "write result"
+                    Expect.contains scheduleEffects (ValidationLanes.CreateRunRoot plan.ArtifactRoot) "create run root"
 
-                let canceled, cancelEffects = ValidationLanes.update (ValidationLanes.LaneCanceled("pass", "manual")) completed
-                Expect.contains canceled.CanceledLaneIds "pass" "canceled"
-                Expect.contains cancelEffects (ValidationLanes.StopProcess "pass") "stop"
-            finally
-                Feature163TestFixtures.deleteTempRoot root
-        }
+                    let running, runningEffects =
+                        ValidationLanes.update (ValidationLanes.LaneStarted("pass", DateTime.UtcNow)) scheduled
 
-        test "process runner classifies passed failed timed-out and no-progress lanes" {
-            let root = Feature163TestFixtures.createTempRoot "feature163-lane-runner"
+                    Expect.contains runningEffects (ValidationLanes.PollProcess "pass") "poll"
 
-            // A lane runs under `bash -lc`, so reaching the first byte of the command costs a login
-            // shell's startup. That cost is unbounded on a loaded runner, and it is spent before any
-            // behaviour under test happens. So a lane expected to *complete* gets a budget no runner
-            // can plausibly exhaust: its timeout is not the property being asserted, and a tight one
-            // only buys a flake that reads as "the runner misclassified a passing lane".
-            let ampleBudget = TimeSpan.FromMinutes 2.0
+                    let result: ValidationLanes.LaneResult =
+                        {
+                            LaneId = "pass"
+                            ReadinessRole = ValidationLanes.Required
+                            Status = ValidationLanes.Passed
+                            Command = "bash -lc pass"
+                            StartedUtc = None
+                            CompletedUtc = None
+                            Elapsed = None
+                            TimeoutBudget = None
+                            LastActivityUtc = None
+                            LastActivityText = None
+                            ExitCode = Some 0
+                            LogPath = "log"
+                            ResultPath = "result"
+                            DiagnosticsPath = "diagnostics"
+                            ResultArtifacts = [ "result" ]
+                            RuntimeDiagnostics = None
+                            Reason = None
+                            Diagnostics = []
+                            Caveats = []
+                            AcceptedEnvironmentLimitation = None
+                            Substitution = None
+                            IsAggregate = false
+                        }
 
-            // A lane expected to *trip* a bound keeps a tight one — that classification IS the
-            // property. Both are robust to a slow start: the command outlasts the bound regardless of
-            // when it began, so extra startup delays the verdict without changing it.
-            let tightBudget = TimeSpan.FromMilliseconds 100.0
+                    let completed, completedEffects =
+                        ValidationLanes.update (ValidationLanes.LaneCompleted result) running
 
-            try
-                let passed = ValidationLanes.runLane (lane root "passed" "printf ok" ampleBudget None)
-                Expect.equal passed.Status ValidationLanes.Passed "passed"
-                Expect.isTrue (File.Exists passed.LogPath) "passed log"
+                    Expect.contains completed.CompletedResults result "completed"
+                    Expect.contains completedEffects (ValidationLanes.WriteLaneResult "pass") "write result"
 
-                let failed = ValidationLanes.runLane (lane root "failed" "printf fail; exit 7" ampleBudget None)
-                Expect.equal failed.Status ValidationLanes.Failed "failed"
-                Expect.equal failed.ExitCode (Some 7) "exit code"
+                    let canceled, cancelEffects =
+                        ValidationLanes.update (ValidationLanes.LaneCanceled("pass", "manual")) completed
 
-                let timedOut = ValidationLanes.runLane (lane root "timed" "sleep 2" tightBudget None)
-                Expect.equal timedOut.Status ValidationLanes.TimedOut "timed out"
+                    Expect.contains canceled.CanceledLaneIds "pass" "canceled"
+                    Expect.contains cancelEffects (ValidationLanes.StopProcess "pass") "stop"
+                finally
+                    Feature163TestFixtures.deleteTempRoot root
+            }
 
-                // The no-progress bound is this lane's property; the overall bound is not, so it gets
-                // the ample one too. (The tight overall bound was not itself a flake here — the
-                // no-progress bound always trips first, even while the shell is still starting.)
-                let stalled =
-                    ValidationLanes.runLane (lane root "stalled" "printf 'start\n'; sleep 2" ampleBudget (Some tightBudget))
+            test "process runner classifies passed failed timed-out and no-progress lanes" {
+                let root = Feature163TestFixtures.createTempRoot "feature163-lane-runner"
 
-                Expect.equal stalled.Status ValidationLanes.NoProgressTimedOut "no-progress timeout"
-            finally
-                Feature163TestFixtures.deleteTempRoot root
-        }
-    ]
+                // A lane runs under `bash -lc`, so reaching the first byte of the command costs a login
+                // shell's startup. That cost is unbounded on a loaded runner, and it is spent before any
+                // behaviour under test happens. So a lane expected to *complete* gets a budget no runner
+                // can plausibly exhaust: its timeout is not the property being asserted, and a tight one
+                // only buys a flake that reads as "the runner misclassified a passing lane".
+                let ampleBudget = TimeSpan.FromMinutes 2.0
+
+                // A lane expected to *trip* a bound keeps a tight one — that classification IS the
+                // property. Both are robust to a slow start: the command outlasts the bound regardless of
+                // when it began, so extra startup delays the verdict without changing it.
+                let tightBudget = TimeSpan.FromMilliseconds 100.0
+
+                try
+                    let passed =
+                        ValidationLanes.runLane (lane root "passed" "printf ok" ampleBudget None)
+
+                    Expect.equal passed.Status ValidationLanes.Passed "passed"
+                    Expect.isTrue (File.Exists passed.LogPath) "passed log"
+
+                    let failed =
+                        ValidationLanes.runLane (lane root "failed" "printf fail; exit 7" ampleBudget None)
+
+                    Expect.equal failed.Status ValidationLanes.Failed "failed"
+                    Expect.equal failed.ExitCode (Some 7) "exit code"
+
+                    let timedOut =
+                        ValidationLanes.runLane (lane root "timed" "sleep 2" tightBudget None)
+
+                    Expect.equal timedOut.Status ValidationLanes.TimedOut "timed out"
+
+                    // The no-progress bound is this lane's property; the overall bound is not, so it gets
+                    // the ample one too. (The tight overall bound was not itself a flake here — the
+                    // no-progress bound always trips first, even while the shell is still starting.)
+                    let stalled =
+                        ValidationLanes.runLane (
+                            lane root "stalled" "printf 'start\n'; sleep 2" ampleBudget (Some tightBudget)
+                        )
+
+                    Expect.equal stalled.Status ValidationLanes.NoProgressTimedOut "no-progress timeout"
+                finally
+                    Feature163TestFixtures.deleteTempRoot root
+            }
+        ]

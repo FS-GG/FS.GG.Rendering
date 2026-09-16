@@ -32,10 +32,12 @@ module internal Reconcile =
 
     /// Targeted in-place change for a matched same-`Kind` node.
     and UpdatePatch<'msg> =
-        { AttrChanges: AttrChange<'msg> list
-          ContentChange: FieldChange<string option>
-          AccessibilityChange: FieldChange<AccessibilityMetadata option>
-          Children: ChildOp<'msg> list }
+        {
+            AttrChanges: AttrChange<'msg> list
+            ContentChange: FieldChange<string option>
+            AccessibilityChange: FieldChange<AccessibilityMetadata option>
+            Children: ChildOp<'msg> list
+        }
 
     /// Ordered child operation. `ChildKeep`/`ChildMove` carry the matched child's
     /// **prev**-list index as their source; the child's position in the next list is
@@ -51,8 +53,10 @@ module internal Reconcile =
     /// `diff` result: the patch plus any diagnostics (e.g. duplicate-key
     /// `KeyCollision`). The function is total and never throws (FR-011, SC-007).
     type ReconcileResult<'msg> =
-        { Patch: NodePatch<'msg>
-          Diagnostics: ControlDiagnostic list }
+        {
+            Patch: NodePatch<'msg>
+            Diagnostics: ControlDiagnostic list
+        }
 
     /// Pure, total, deterministic diff from a previous to a next `Control<'msg>`
     /// tree. Children match by `Key` first, then unkeyed residuals positionally

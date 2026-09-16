@@ -28,9 +28,11 @@ module FeatureCatalog =
     /// (≥2 features) and routing it through config reduces net lines; otherwise it stays `None`/`[]`
     /// and the value remains inline in the feature's explicit body (FR-007 / SC-005).
     type FeatureConfig =
-        { PolicyId: string option
-          AcceptedProfileId: string option
-          RequiredScenarioIds: string list }
+        {
+            PolicyId: string option
+            AcceptedProfileId: string option
+            RequiredScenarioIds: string list
+        }
 
     /// Per-descriptor override points for the genuinely divergent variant bodies (US2, FR-003).
     /// `None` = the generic template suffices; `Some f` = this feature/variant needs a bespoke body.
@@ -39,21 +41,25 @@ module FeatureCatalog =
     /// the prior per-feature function. Functions are concrete over plain string fragments (Principle
     /// III — no SRTP, and no dependency on the `Compositor.Types` records that compile after this).
     type FeatureRenderHooks =
-        { PackageValidation: (unit -> string * string * string list) option
-          RegressionValidation: (unit -> string * string list) option }
+        {
+            PackageValidation: (unit -> string * string * string list) option
+            RegressionValidation: (unit -> string * string list) option
+        }
 
     /// All-`None` hooks — the default for a descriptor whose variants all use the generic template.
     val noRenderHooks: FeatureRenderHooks
 
     /// One harness feature, the unit the renderer/CLI table/tests all iterate.
     type FeatureDescriptor =
-        { Id: int
-          Slug: string
-          CliAliases: string list
-          Variants: Set<ReportVariant>
-          RequiredHeaders: string list
-          Config: FeatureConfig
-          Renderers: FeatureRenderHooks }
+        {
+            Id: int
+            Slug: string
+            CliAliases: string list
+            Variants: Set<ReportVariant>
+            RequiredHeaders: string list
+            Config: FeatureConfig
+            Renderers: FeatureRenderHooks
+        }
 
     /// Path/predicate helpers derived from the descriptor. The path helpers reproduce the exact
     /// byte-strings the hand-declared `feature###…` constants produced today (C-FD-2).

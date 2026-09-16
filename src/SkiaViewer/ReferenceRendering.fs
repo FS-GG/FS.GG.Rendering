@@ -18,29 +18,35 @@ type ReferenceFailureClassification =
     | ReferenceVerificationDepth
 
 type ReferenceRenderingRequest =
-    { PackageBytes: byte[]
-      OutputDirectory: string
-      OutputSize: Size
-      Resources: ResourceAvailability list }
+    {
+        PackageBytes: byte[]
+        OutputDirectory: string
+        OutputSize: Size
+        Resources: ResourceAvailability list
+    }
 
 type ReferenceRenderingEvidence =
-    { PackageIdentity: string
-      ProtocolVersion: ProtocolVersion option
-      CapabilityProfile: string
-      ResourceStatus: string
-      OutputSize: Size
-      ImagePath: string option
-      ImageIdentity: string option
-      RendererIdentity: string
-      Verdict: ReferenceRenderVerdict
-      Classification: ReferenceFailureClassification option
-      Diagnostics: string list }
+    {
+        PackageIdentity: string
+        ProtocolVersion: ProtocolVersion option
+        CapabilityProfile: string
+        ResourceStatus: string
+        OutputSize: Size
+        ImagePath: string option
+        ImageIdentity: string option
+        RendererIdentity: string
+        Verdict: ReferenceRenderVerdict
+        Classification: ReferenceFailureClassification option
+        Diagnostics: string list
+    }
 
 type ReferenceRenderingModel =
-    { Request: ReferenceRenderingRequest
-      Inspection: PackageInspectionReport option
-      Evidence: ReferenceRenderingEvidence option
-      Diagnostics: string list }
+    {
+        Request: ReferenceRenderingRequest
+        Inspection: PackageInspectionReport option
+        Evidence: ReferenceRenderingEvidence option
+        Diagnostics: string list
+    }
 
 type ReferenceRenderingMsg =
     | Start
@@ -55,10 +61,11 @@ type ReferenceRenderingEffect =
 
 module ReferenceRendering =
     let private sha256Hex (bytes: byte[]) =
-        SHA256.HashData bytes |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
+        SHA256.HashData bytes
+        |> Convert.ToHexString
+        |> fun value -> value.ToLowerInvariant()
 
-    let private rendererIdentity =
-        "FS.GG.UI.SkiaViewer.SceneRenderer/skia-reference"
+    let private rendererIdentity = "FS.GG.UI.SkiaViewer.SceneRenderer/skia-reference"
 
     let private statusText status =
         match status with
@@ -90,25 +97,33 @@ module ReferenceRendering =
                     if verdict.Accepted && verdict.Degraded then "degraded"
                     elif verdict.Accepted then "accepted"
                     else "rejected"
+
                 $"{verdict.Entry.ResourceId}:{status}")
             |> String.concat ","
 
     let private failure request classification diagnostics =
-        { PackageIdentity = SceneCodec.packageIdentity request.PackageBytes
-          ProtocolVersion = None
-          CapabilityProfile = "unavailable"
-          ResourceStatus = "unavailable"
-          OutputSize = request.OutputSize
-          ImagePath = None
-          ImageIdentity = None
-          RendererIdentity = rendererIdentity
-          Verdict = if classification = ReferenceUnsupportedEnvironment then ReferenceEnvironmentLimited else ReferenceFailed
-          Classification = Some classification
-          Diagnostics = diagnostics }
+        {
+            PackageIdentity = SceneCodec.packageIdentity request.PackageBytes
+            ProtocolVersion = None
+            CapabilityProfile = "unavailable"
+            ResourceStatus = "unavailable"
+            OutputSize = request.OutputSize
+            ImagePath = None
+            ImageIdentity = None
+            RendererIdentity = rendererIdentity
+            Verdict =
+                if classification = ReferenceUnsupportedEnvironment then
+                    ReferenceEnvironmentLimited
+                else
+                    ReferenceFailed
+            Classification = Some classification
+            Diagnostics = diagnostics
+        }
 
     let private imageNonBlank (pngBytes: byte[]) =
         try
             use bitmap = SKBitmap.Decode(pngBytes)
+
             if isNull bitmap then
                 false
             else
@@ -150,10 +165,12 @@ module ReferenceRendering =
 
     let renderScenePngResult (outputSize: Size) (scene: Scene) : Result<byte[], SceneEvidenceFailure> =
         let rendererFailure classification message : SceneEvidenceFailure =
-            { BlockedStage = "renderer"
-              Classification = classification
-              DiagnosticCategory = "renderer"
-              Message = message }
+            {
+                BlockedStage = "renderer"
+                Classification = classification
+                DiagnosticCategory = "renderer"
+                Message = message
+            }
 
         lock rasterGate (fun () ->
             try
@@ -161,16 +178,23 @@ module ReferenceRendering =
                 | Result.Ok pngBytes -> Result.Ok pngBytes
                 | Result.Error message -> Result.Error(rendererFailure UnsupportedEnvironment message)
             with
-            | :? DllNotFoundException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia native library unavailable: {ex.Message}")
-            | :? EntryPointNotFoundException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia native entry point unavailable: {ex.Message}")
-            | :? TypeInitializationException as ex -> Result.Error(rendererFailure UnsupportedEnvironment $"Skia initialization failed: {ex.Message}")
+            | :? DllNotFoundException as ex ->
+                Result.Error(rendererFailure UnsupportedEnvironment $"Skia native library unavailable: {ex.Message}")
+            | :? EntryPointNotFoundException as ex ->
+                Result.Error(
+                    rendererFailure UnsupportedEnvironment $"Skia native entry point unavailable: {ex.Message}"
+                )
+            | :? TypeInitializationException as ex ->
+                Result.Error(rendererFailure UnsupportedEnvironment $"Skia initialization failed: {ex.Message}")
             | ex -> Result.Error(rendererFailure ProductDefect ex.Message))
 
     let init request =
-        { Request = request
-          Inspection = None
-          Evidence = None
-          Diagnostics = [] },
+        {
+            Request = request
+            Inspection = None
+            Evidence = None
+            Diagnostics = []
+        },
         [ InspectPackage request.PackageBytes ]
 
     let update msg model =
@@ -178,54 +202,83 @@ module ReferenceRendering =
         | Start -> model, [ InspectPackage model.Request.PackageBytes ]
         | PackageInspected report ->
             let diagnostics = SceneCodec.formatDiagnostics report.Diagnostics
-            let model = { model with Inspection = Some report; Diagnostics = diagnostics }
+
+            let model =
+                { model with
+                    Inspection = Some report
+                    Diagnostics = diagnostics
+                }
 
             match report.Status with
             | PackageRejected ->
                 let evidence =
-                    failure model.Request ReferencePackageResourceIncompatibility ("package inspection rejected reference rendering" :: diagnostics)
-                { model with Evidence = Some evidence }, [ WriteReferenceEvidence(evidence, model.Request.OutputDirectory) ]
+                    failure
+                        model.Request
+                        ReferencePackageResourceIncompatibility
+                        ("package inspection rejected reference rendering" :: diagnostics)
+
+                { model with Evidence = Some evidence },
+                [ WriteReferenceEvidence(evidence, model.Request.OutputDirectory) ]
             | PackageAccepted
             | PackageAcceptedWithDegradation ->
-                model, [ RenderPackage(model.Request.PackageBytes, model.Request.OutputSize, model.Request.OutputDirectory, model.Request.Resources) ]
+                model,
+                [
+                    RenderPackage(
+                        model.Request.PackageBytes,
+                        model.Request.OutputSize,
+                        model.Request.OutputDirectory,
+                        model.Request.Resources
+                    )
+                ]
         | RenderCompleted evidence ->
-            { model with Evidence = Some evidence; Diagnostics = evidence.Diagnostics },
+            { model with
+                Evidence = Some evidence
+                Diagnostics = evidence.Diagnostics
+            },
             [ WriteReferenceEvidence(evidence, model.Request.OutputDirectory) ]
         | RenderFailed(classification, message) ->
             let evidence = failure model.Request classification [ message ]
-            { model with Evidence = Some evidence; Diagnostics = evidence.Diagnostics },
+
+            { model with
+                Evidence = Some evidence
+                Diagnostics = evidence.Diagnostics
+            },
             [ WriteReferenceEvidence(evidence, model.Request.OutputDirectory) ]
 
     let writeEvidenceSummary outputDirectory evidence =
         Directory.CreateDirectory(outputDirectory) |> ignore
         let path = Path.Combine(outputDirectory, "reference-evidence.md")
+
         let protocolVersion =
             evidence.ProtocolVersion
             |> Option.map (fun v -> $"{v.Major}.{v.Minor}")
             |> Option.defaultValue "none"
+
         let imagePath = evidence.ImagePath |> Option.defaultValue "none"
         let imageIdentity = evidence.ImageIdentity |> Option.defaultValue "none"
 
         let lines =
-            [ "# Feature 146 Reference Rendering Evidence"
-              ""
-              $"- verdict: {verdictText evidence.Verdict}"
-              $"- classification: {classificationText evidence.Classification}"
-              $"- package-identity: {evidence.PackageIdentity}"
-              $"- protocol-version: {protocolVersion}"
-              $"- capability-profile: {evidence.CapabilityProfile}"
-              $"- resource-status: {evidence.ResourceStatus}"
-              $"- output-size: {evidence.OutputSize.Width}x{evidence.OutputSize.Height}"
-              $"- renderer-identity: {evidence.RendererIdentity}"
-              $"- image-path: {imagePath}"
-              $"- image-identity: {imageIdentity}"
-              ""
-              "## Diagnostics"
-              yield!
-                  if evidence.Diagnostics.IsEmpty then
-                      [ "- none" ]
-                  else
-                      evidence.Diagnostics |> List.map (fun item -> "- " + item) ]
+            [
+                "# Feature 146 Reference Rendering Evidence"
+                ""
+                $"- verdict: {verdictText evidence.Verdict}"
+                $"- classification: {classificationText evidence.Classification}"
+                $"- package-identity: {evidence.PackageIdentity}"
+                $"- protocol-version: {protocolVersion}"
+                $"- capability-profile: {evidence.CapabilityProfile}"
+                $"- resource-status: {evidence.ResourceStatus}"
+                $"- output-size: {evidence.OutputSize.Width}x{evidence.OutputSize.Height}"
+                $"- renderer-identity: {evidence.RendererIdentity}"
+                $"- image-path: {imagePath}"
+                $"- image-identity: {imageIdentity}"
+                ""
+                "## Diagnostics"
+                yield!
+                    if evidence.Diagnostics.IsEmpty then
+                        [ "- none" ]
+                    else
+                        evidence.Diagnostics |> List.map (fun item -> "- " + item)
+            ]
 
         File.WriteAllLines(path, lines)
         path
@@ -233,14 +286,18 @@ module ReferenceRendering =
     let renderPackage request =
         let inspectionOptions =
             { SceneCodec.defaultInspectionOptions with
-                Resources = request.Resources }
+                Resources = request.Resources
+            }
 
         let report = SceneCodec.inspectWith inspectionOptions request.PackageBytes
         let diagnostics = SceneCodec.formatDiagnostics report.Diagnostics
 
         match report.Status, SceneCodec.importPackage request.PackageBytes with
         | PackageRejected, _ ->
-            failure request ReferencePackageResourceIncompatibility ("package inspection rejected reference rendering" :: diagnostics)
+            failure
+                request
+                ReferencePackageResourceIncompatibility
+                ("package inspection rejected reference rendering" :: diagnostics)
         | _, Result.Error importDiagnostics ->
             failure request ReferencePackageResourceIncompatibility (SceneCodec.formatDiagnostics importDiagnostics)
         | _, Result.Ok package ->
@@ -249,23 +306,32 @@ module ReferenceRendering =
                 | Result.Error message -> failure request ReferenceUnsupportedEnvironment (message :: diagnostics)
                 | Result.Ok pngBytes ->
                     Directory.CreateDirectory(request.OutputDirectory) |> ignore
-                    let imagePath = Path.Combine(request.OutputDirectory, package.PackageIdentity.Replace(":", "-") + ".png")
+
+                    let imagePath =
+                        Path.Combine(request.OutputDirectory, package.PackageIdentity.Replace(":", "-") + ".png")
+
                     File.WriteAllBytes(imagePath, pngBytes)
 
                     if imageNonBlank pngBytes then
-                        { PackageIdentity = package.PackageIdentity
-                          ProtocolVersion = Some package.Version
-                          CapabilityProfile = report.ProfileId |> Option.defaultValue package.ProfileId
-                          ResourceStatus = resourceSummary report
-                          OutputSize = request.OutputSize
-                          ImagePath = Some imagePath
-                          ImageIdentity = Some("sha256:" + sha256Hex pngBytes)
-                          RendererIdentity = rendererIdentity
-                          Verdict = ReferencePassed
-                          Classification = None
-                          Diagnostics = diagnostics }
+                        {
+                            PackageIdentity = package.PackageIdentity
+                            ProtocolVersion = Some package.Version
+                            CapabilityProfile = report.ProfileId |> Option.defaultValue package.ProfileId
+                            ResourceStatus = resourceSummary report
+                            OutputSize = request.OutputSize
+                            ImagePath = Some imagePath
+                            ImageIdentity = Some("sha256:" + sha256Hex pngBytes)
+                            RendererIdentity = rendererIdentity
+                            Verdict = ReferencePassed
+                            Classification = None
+                            Diagnostics = diagnostics
+                        }
                     else
-                        failure request ReferenceVerificationDepth ("reference PNG decoded but did not contain non-transparent pixels" :: diagnostics)
+                        failure
+                            request
+                            ReferenceVerificationDepth
+                            ("reference PNG decoded but did not contain non-transparent pixels"
+                             :: diagnostics)
             with
             | :? DllNotFoundException as ex -> failure request ReferenceUnsupportedEnvironment [ ex.Message ]
             | :? EntryPointNotFoundException as ex -> failure request ReferenceUnsupportedEnvironment [ ex.Message ]

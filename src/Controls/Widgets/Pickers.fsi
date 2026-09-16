@@ -14,29 +14,35 @@ type ColorSwatch = { Name: string; Color: Color }
 /// (empty field). `IsOpen` is product-owned calendar visibility. `OnChange = None`
 /// lowers to no binding.
 type DatePickerProps<'msg> =
-    { Id: ControlId option
-      Value: DateOnly option
-      Enabled: bool
-      IsOpen: bool
-      OnChange: (DateOnly -> 'msg) option }
+    {
+        Id: ControlId option
+        Value: DateOnly option
+        Enabled: bool
+        IsOpen: bool
+        OnChange: (DateOnly -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a time entry. `Value` is a BCL
 /// `TimeOnly` (out-of-range time is unrepresentable); `None` = no selection.
 /// `OnChange = None` lowers to no binding.
 type TimePickerProps<'msg> =
-    { Id: ControlId option
-      Value: TimeOnly option
-      Enabled: bool
-      OnChange: (TimeOnly -> 'msg) option }
+    {
+        Id: ControlId option
+        Value: TimeOnly option
+        Enabled: bool
+        OnChange: (TimeOnly -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a palette/swatch color picker.
 /// `Swatches` is the required palette (empty ⇒ empty grid); `Selected` is the
 /// highlighted swatch; `OnSelected = None` lowers to no binding.
 type ColorPickerProps<'msg> =
-    { Id: ControlId option
-      Swatches: ColorSwatch list
-      Selected: ColorSwatch option
-      OnSelected: (ColorSwatch -> 'msg) option }
+    {
+        Id: ControlId option
+        Swatches: ColorSwatch list
+        Selected: ColorSwatch option
+        OnSelected: (ColorSwatch -> 'msg) option
+    }
 
 /// Typed Props front door for the `DatePicker` control.
 module DatePicker =

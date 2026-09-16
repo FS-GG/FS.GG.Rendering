@@ -4,29 +4,37 @@ open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for a tab strip. `items` required.
 type TabsProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      SelectedKey: string option
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        SelectedKey: string option
+        OnChanged: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a command menu. `items` required.
 type MenuProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a contextual command menu.
 type ContextMenuProps<'msg> =
-    { Id: ControlId option
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a compact toolbar. `children`
 /// required. `OnClick = None` lowers to no binding.
 type ToolbarProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list
-      OnClick: 'msg option }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+        OnClick: 'msg option
+    }
 
 /// Typed Props front door for the `Tabs` control.
 module Tabs =

@@ -52,7 +52,9 @@ open FS.GG.TestSupport
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
 
 let libraryPath = Path.Combine(repoRoot, "src", "Symbology", "skill", "SKILL.md")
-let productPath = Path.Combine(repoRoot, "template", "product-skills", "fs-gg-symbology", "SKILL.md")
+
+let productPath =
+    Path.Combine(repoRoot, "template", "product-skills", "fs-gg-symbology", "SKILL.md")
 
 // ---------------------------------------------------------------------------------------------------
 // Waivers — the ONLY symbols/invariants the product may legitimately omit relative to the library.
@@ -61,18 +63,20 @@ let productPath = Path.Combine(repoRoot, "template", "product-skills", "fs-gg-sy
 // that. If a future library-only symbol/invariant is genuinely product-irrelevant, add it here WITH a
 // reason rather than weakening the check.
 // ---------------------------------------------------------------------------------------------------
-let SymbolWaivers : Set<string> = Set.empty
-let InvariantWaivers : Set<string> = Set.empty
+let SymbolWaivers: Set<string> = Set.empty
+let InvariantWaivers: Set<string> = Set.empty
 
 // Canonical facts that must appear, verbatim after normalization, in BOTH variants. Normalization
 // (below) strips backticks/markdown emphasis, converts the "<=" glyph, and collapses whitespace, so
 // these are matched on meaning, not typography.
-let CanonicalFacts : (string * string) list =
-    [ "per-grammar label line budget", "Token <= 3, Badge <= 2, Ring <= 2"
-      "the three-grammar value",        "Grammar = Token | Badge | Ring"
-      "the escape-hatch move",          "ask for the channel"
-      "the secondary-heading ADR",      "ADR-0102"
-      "the escape-hatch worked example (issue #260)", "#260" ]
+let CanonicalFacts: (string * string) list =
+    [
+        "per-grammar label line budget", "Token <= 3, Badge <= 2, Ring <= 2"
+        "the three-grammar value", "Grammar = Token | Badge | Ring"
+        "the escape-hatch move", "ask for the channel"
+        "the secondary-heading ADR", "ADR-0102"
+        "the escape-hatch worked example (issue #260)", "#260"
+    ]
 
 // ---------------------------------------------------------------------------------------------------
 
@@ -80,6 +84,7 @@ let readFile (path: string) =
     if not (File.Exists path) then
         eprintfn "check-symbology-skill-parity: FILE MISSING — %s" path
         exit 2
+
     File.ReadAllText path
 
 /// Fold typographic variants onto one form so a fact matches on meaning, not on emphasis/spacing:
@@ -93,21 +98,26 @@ let normalize (text: string) =
 /// Fail-loud (exit 2) if the heading is absent — a structural change to a skill must be looked at, not
 /// silently read as an empty section that would make every parity check trivially pass.
 let section (name: string) (headingPattern: string) (boundaryPattern: string) (markdown: string) : string =
-    let m = Regex.Match(markdown, headingPattern + ".*?(?=" + boundaryPattern + @"|\z)", RegexOptions.Singleline)
-    if m.Success then m.Value
+    let m =
+        Regex.Match(markdown, headingPattern + ".*?(?=" + boundaryPattern + @"|\z)", RegexOptions.Singleline)
+
+    if m.Success then
+        m.Value
     else
         eprintfn "check-symbology-skill-parity: could not locate the '%s' section (skill structure changed?)." name
         exit 2
 
 /// The `## Public Contract` section (to the next h1/h2), where both variants document the module's
 /// public surface.
-let publicContract = section "## Public Contract" @"(?m)^##\s+Public Contract\b" @"(?m)^#{1,2}\s"
+let publicContract =
+    section "## Public Contract" @"(?m)^##\s+Public Contract\b" @"(?m)^#{1,2}\s"
 
 /// The `### The invariants ...` subsection (to the next h1/h2/h3). Both variants carry it with the SAME
 /// invariant set, whereas the surrounding sections diverge BY DESIGN (the product compresses the
 /// legibility rules into prose and omits the numbered feedback loop), so a whole-document scan would
 /// false-positive on that divergence.
-let invariantsSection = section "### The invariants" @"(?m)^###\s+The invariants\b" @"(?m)^#{1,3}\s"
+let invariantsSection =
+    section "### The invariants" @"(?m)^###\s+The invariants\b" @"(?m)^#{1,3}\s"
 
 /// Every `val NAME` / `type NAME` declared inside an ```fsharp fence WITHIN the Public Contract section.
 /// Scoping to that section — rather than the whole document — is deliberate: the FSI-recipe / Usage
@@ -139,10 +149,11 @@ let product = readFile productPath
 let libraryN = normalize library
 let productN = normalize product
 
-let mutable failures : string list = []
+let mutable failures: string list = []
 let fail msg = failures <- msg :: failures
 
-let render (s: Set<string>) = s |> Set.toList |> List.sort |> String.concat ", "
+let render (s: Set<string>) =
+    s |> Set.toList |> List.sort |> String.concat ", "
 
 // A. Public-Contract API symbols: a `val`/`type` documented in one variant but not the other. Checked
 // in BOTH directions — drift is drift whichever variant grew the symbol.
@@ -150,20 +161,29 @@ let libSymbols = fenceSymbols library
 let prodSymbols = fenceSymbols product
 let symbolsOnlyInLib = Set.difference libSymbols prodSymbols - SymbolWaivers
 let symbolsOnlyInProd = Set.difference prodSymbols libSymbols - SymbolWaivers
+
 if not (Set.isEmpty symbolsOnlyInLib) then
-    fail (sprintf
+    fail (
+        sprintf
             "A. API-symbol drift: %d Public-Contract symbol(s) in the LIBRARY skill are absent from the PRODUCT skill: %s\n   -> mirror them into template/product-skills/fs-gg-symbology/SKILL.md, or add a reasoned entry to SymbolWaivers."
-            symbolsOnlyInLib.Count (render symbolsOnlyInLib))
+            symbolsOnlyInLib.Count
+            (render symbolsOnlyInLib)
+    )
+
 if not (Set.isEmpty symbolsOnlyInProd) then
-    fail (sprintf
+    fail (
+        sprintf
             "A. API-symbol drift: %d Public-Contract symbol(s) in the PRODUCT skill are absent from the LIBRARY skill: %s\n   -> mirror them into src/Symbology/skill/SKILL.md, or add a reasoned entry to SymbolWaivers."
-            symbolsOnlyInProd.Count (render symbolsOnlyInProd))
+            symbolsOnlyInProd.Count
+            (render symbolsOnlyInProd)
+    )
 
 // B. Canonical facts present in both variants.
 for (label, fact) in CanonicalFacts do
     let factN = normalize fact
     let inLib = libraryN.Contains factN
     let inProd = productN.Contains factN
+
     if not (inLib && inProd) then
         let where =
             match inLib, inProd with
@@ -171,35 +191,61 @@ for (label, fact) in CanonicalFacts do
             | false, true -> "the LIBRARY variant"
             | true, false -> "the PRODUCT variant"
             | true, true -> "(unreachable)"
-        fail (sprintf
+
+        fail (
+            sprintf
                 "B. Canonical-fact drift: %s (\"%s\") is missing from %s.\n   -> the two skills must agree on this load-bearing fact."
-                label fact where)
+                label
+                fact
+                where
+        )
 
 // C. Identity-label invariants: a bold lead-phrase present in one variant but not the other. Bidirectional.
 let libLeads = invariantLeads library
 let prodLeads = invariantLeads product
 let leadsOnlyInLib = Set.difference libLeads prodLeads - InvariantWaivers
 let leadsOnlyInProd = Set.difference prodLeads libLeads - InvariantWaivers
-let renderLeads (s: Set<string>) = s |> Set.toList |> List.sort |> List.map (sprintf "\"%s\"") |> String.concat ", "
+
+let renderLeads (s: Set<string>) =
+    s
+    |> Set.toList
+    |> List.sort
+    |> List.map (sprintf "\"%s\"")
+    |> String.concat ", "
+
 if not (Set.isEmpty leadsOnlyInLib) then
-    fail (sprintf
+    fail (
+        sprintf
             "C. Invariant drift: %d invariant lead-phrase(s) in the LIBRARY skill are absent from the PRODUCT skill: %s\n   -> mirror the invariant, or add a reasoned entry to InvariantWaivers."
-            leadsOnlyInLib.Count (renderLeads leadsOnlyInLib))
+            leadsOnlyInLib.Count
+            (renderLeads leadsOnlyInLib)
+    )
+
 if not (Set.isEmpty leadsOnlyInProd) then
-    fail (sprintf
+    fail (
+        sprintf
             "C. Invariant drift: %d invariant lead-phrase(s) in the PRODUCT skill are absent from the LIBRARY skill: %s\n   -> mirror the invariant, or add a reasoned entry to InvariantWaivers."
-            leadsOnlyInProd.Count (renderLeads leadsOnlyInProd))
+            leadsOnlyInProd.Count
+            (renderLeads leadsOnlyInProd)
+    )
 
 match List.rev failures with
 | [] ->
     printfn "check-symbology-skill-parity: OK — the two fs-gg-symbology variants are in load-bearing content parity."
     printfn "  library %s" (Path.GetRelativePath(repoRoot, libraryPath))
     printfn "  product %s" (Path.GetRelativePath(repoRoot, productPath))
-    printfn "  checked: %d fenced API symbols, %d canonical facts, %d identity-label invariants."
-        libSymbols.Count (List.length CanonicalFacts) libLeads.Count
+
+    printfn
+        "  checked: %d fenced API symbols, %d canonical facts, %d identity-label invariants."
+        libSymbols.Count
+        (List.length CanonicalFacts)
+        libLeads.Count
+
     exit 0
 | msgs ->
-    eprintfn "check-symbology-skill-parity: DRIFT — the two fs-gg-symbology variants have diverged on load-bearing content:\n"
+    eprintfn
+        "check-symbology-skill-parity: DRIFT — the two fs-gg-symbology variants have diverged on load-bearing content:\n"
+
     msgs |> List.iteri (fun i m -> eprintfn "  [%d] %s\n" (i + 1) m)
     eprintfn "The two skills restate one body of knowledge (#279). A load-bearing change to one MUST land in the other."
     exit 1

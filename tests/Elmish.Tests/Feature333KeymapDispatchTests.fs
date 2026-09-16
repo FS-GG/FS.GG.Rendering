@@ -28,16 +28,18 @@ let private size: Size = { Width = 200; Height = 120 }
 // A host whose key seam is a keymap. The model records the commands the live routing dispatched; the
 // View is an empty stack (nothing focusable to intercept the key upstream of the key tier).
 let private hostFor (keymap: Keymap) : InteractiveAppHost<CommandId list, Msg> =
-    { Init = fun () -> [], []
-      Update = fun (Command cmd) model -> model @ [ cmd ], []
-      View = fun _ _ -> Stack.create []
-      Theme = Theme.light
-      MapKey = ViewerKeyboard.mapKeyOfKeymap keymap mapCommand
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> [], []
+        Update = fun (Command cmd) model -> model @ [ cmd ], []
+        View = fun _ _ -> Stack.create []
+        Theme = Theme.light
+        MapKey = ViewerKeyboard.mapKeyOfKeymap keymap mapCommand
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 let private noMods = ViewerKeyboard.noModifiers
 
@@ -52,34 +54,33 @@ let private commandsFor (keymap: Keymap) (key: ViewerKey) : CommandId list =
 let tests =
     testList
         "Issue 333 keymap-driven live dispatch"
-        [ test "a bound key routes to its command through the live host path" {
-              let keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
+        [
+            test "a bound key routes to its command through the live host path" {
+                let keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
 
-              Expect.equal
-                  (commandsFor keymap (Letter 'w'))
-                  [ "MoveUp" ]
-                  "the keymap-backed MapKey resolves the bound key to its command in live dispatch"
-          }
+                Expect.equal
+                    (commandsFor keymap (Letter 'w'))
+                    [ "MoveUp" ]
+                    "the keymap-backed MapKey resolves the bound key to its command in live dispatch"
+            }
 
-          test "editing the keymap re-routes the SAME key with NO code change (acceptance)" {
-              // Two keymaps, one bound differently. Host construction, Update, and mapCommand are byte-for-byte
-              // identical between the two runs — ONLY the Keymap value differs (a pure-data edit).
-              let before = Keymap.empty |> Keymap.add "w" "MoveUp"
-              let after = Keymap.empty |> Keymap.add "w" "Jump"
+            test "editing the keymap re-routes the SAME key with NO code change (acceptance)" {
+                // Two keymaps, one bound differently. Host construction, Update, and mapCommand are byte-for-byte
+                // identical between the two runs — ONLY the Keymap value differs (a pure-data edit).
+                let before = Keymap.empty |> Keymap.add "w" "MoveUp"
+                let after = Keymap.empty |> Keymap.add "w" "Jump"
 
-              Expect.equal (commandsFor before (Letter 'w')) [ "MoveUp" ] "before the edit, 'w' -> MoveUp"
+                Expect.equal (commandsFor before (Letter 'w')) [ "MoveUp" ] "before the edit, 'w' -> MoveUp"
 
-              Expect.equal
-                  (commandsFor after (Letter 'w'))
-                  [ "Jump" ]
-                  "after a pure-data keymap edit, the same 'w' now routes to Jump — no code change"
-          }
+                Expect.equal
+                    (commandsFor after (Letter 'w'))
+                    [ "Jump" ]
+                    "after a pure-data keymap edit, the same 'w' now routes to Jump — no code change"
+            }
 
-          test "an unbound key dispatches nothing" {
-              let keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
+            test "an unbound key dispatches nothing" {
+                let keymap = Keymap.empty |> Keymap.add "w" "MoveUp"
 
-              Expect.equal
-                  (commandsFor keymap (Letter 'x'))
-                  []
-                  "a key absent from the keymap resolves to no command"
-          } ]
+                Expect.equal (commandsFor keymap (Letter 'x')) [] "a key absent from the keymap resolves to no command"
+            }
+        ]

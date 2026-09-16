@@ -12,17 +12,21 @@ type SvgSessionStatus =
 
 /// <summary>Browser boundary policy for suspension detection and elapsed conversion.</summary>
 type SvgSessionPolicyConfig =
-    { /// <summary>Elapsed host time at or above this value requests explicit recovery.</summary>
-      SuspensionMilliseconds: float }
+    {
+        /// <summary>Elapsed host time at or above this value requests explicit recovery.</summary>
+        SuspensionMilliseconds: float
+    }
 
 /// <summary>Portable ownership state shared by the .NET and Fable browser adapters.</summary>
 type SvgSessionPolicyState =
-    { Generation: uint64
-      Status: SvgSessionStatus
-      LastTimestampMilliseconds: float option
-      ProjectionPending: bool
-      ProjectionQueued: bool
-      LastProjectionRevision: uint64 option }
+    {
+        Generation: uint64
+        Status: SvgSessionStatus
+        LastTimestampMilliseconds: float option
+        ProjectionPending: bool
+        ProjectionQueued: bool
+        LastProjectionRevision: uint64 option
+    }
 
 /// <summary>Observations accepted by the portable browser-boundary reducer.</summary>
 [<RequireQualifiedAccess>]
@@ -66,31 +70,36 @@ module SvgSessionPolicy =
     val update:
         config: SvgSessionPolicyConfig ->
         observation: SvgSessionPolicyObservation ->
-        state: SvgSessionPolicyState -> SvgSessionPolicyState * SvgSessionPolicyEffect list
+        state: SvgSessionPolicyState ->
+            SvgSessionPolicyState * SvgSessionPolicyEffect list
 
 /// <summary>Callbacks that interpret browser policy through the authoritative Game session.</summary>
 type SvgSessionCallbacks<'projection> =
-    { AdvanceElapsed: uint64 -> unit
-      Pause: unit -> unit
-      Resume: unit -> unit
-      StepOnce: unit -> unit
-      Reset: unit -> unit
-      RequestRecovery: uint64 -> unit
-      RequestProjection: uint64 -> unit
-      ApplyProjection: uint64 -> 'projection -> unit
-      CancelGeneration: uint64 -> unit
-      Replace: uint64 -> unit
-      Dispose: unit -> unit }
+    {
+        AdvanceElapsed: uint64 -> unit
+        Pause: unit -> unit
+        Resume: unit -> unit
+        StepOnce: unit -> unit
+        Reset: unit -> unit
+        RequestRecovery: uint64 -> unit
+        RequestProjection: uint64 -> unit
+        ApplyProjection: uint64 -> 'projection -> unit
+        CancelGeneration: uint64 -> unit
+        Replace: uint64 -> unit
+        Dispose: unit -> unit
+    }
 
 /// <summary>Resource counters and monotonic projection state for browser evidence.</summary>
 type SvgSessionHostObservation =
-    { Generation: uint64
-      Status: SvgSessionStatus
-      LastProjectionRevision: uint64 option
-      OwnedListenerCount: int
-      ScheduledFrameCount: int
-      OwnedRequestCount: int
-      IsDisposed: bool }
+    {
+        Generation: uint64
+        Status: SvgSessionStatus
+        LastProjectionRevision: uint64 option
+        OwnedListenerCount: int
+        ScheduledFrameCount: int
+        OwnedRequestCount: int
+        IsDisposed: bool
+    }
 
 /// <summary>Disposable requestAnimationFrame interpreter for one Game session.</summary>
 [<Sealed>]

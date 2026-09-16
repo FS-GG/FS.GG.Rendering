@@ -21,7 +21,7 @@ let teal: Color = Colors.rgb 20uy 184uy 166uy
 let accents: (string * Color) list = [ "indigo", indigo; "teal", teal ]
 
 /// Resolve a mode + accent into a renderable Theme over the neutral base.
-let resolve (mode: ThemeMode) (accent: Color): Theme =
+let resolve (mode: ThemeMode) (accent: Color) : Theme =
     Theming.toTheme (Theming.resolve mode accent)
 
 /// A neutral default theme (Light + indigo) for content that needs a `Theme` at build
@@ -29,13 +29,13 @@ let resolve (mode: ThemeMode) (accent: Color): Theme =
 let defaultTheme: Theme = resolve Light indigo
 
 /// Stable accent id for a color (status display / round-trip); defaults to indigo.
-let accentId (accent: Color): string =
+let accentId (accent: Color) : string =
     accents
     |> List.tryPick (fun (id, c) -> if c = accent then Some id else None)
     |> Option.defaultValue "indigo"
 
 /// Look up an accent color by id (the selector); defaults to indigo.
-let accentById (id: string): Color =
+let accentById (id: string) : Color =
     accents
     |> List.tryPick (fun (k, c) -> if k = id then Some c else None)
     |> Option.defaultValue indigo

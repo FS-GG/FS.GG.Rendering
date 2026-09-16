@@ -12,23 +12,30 @@ open ControlsGallery.Core
 open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
 
-let run (mode: ThemeMode) (accent: Color): int =
+let run (mode: ThemeMode) (accent: Color) : int =
     let capability = Viewer.runtimeCapability ()
+
     if not capability.PersistentWindow then
         printfn "controls-gallery: interactive mode skipped — no live window/GL host."
         let reasons = capability.UnsupportedHostReasons
+
         if not (List.isEmpty reasons) then
             printfn "  reason: %s" (String.concat "; " reasons)
         else
             printfn "  reason: renderer mode '%s' reports no persistent window." capability.RendererMode
+
         0
     else
         let host = Host.create mode accent
+
         let options: ViewerOptions =
-            { Title = "Controls Gallery — Indigo & Teal on Slate"
-              InitialSize = { Width = 1280; Height = 800 }
-              PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60; LogicalSize = None }
+            {
+                Title = "Controls Gallery — Indigo & Teal on Slate"
+                InitialSize = { Width = 1280; Height = 800 }
+                PresentMode = ViewerPresentMode.DirectToSwapchain
+                FrameRateCap = Some 60
+                LogicalSize = None
+            }
         // `Result.Ok`/`Result.Error` are qualified: a viewer namespace also defines an
         // `Ok` union case which would otherwise shadow the F# Result constructors.
         match ControlsElmish.runInteractiveApp options host with

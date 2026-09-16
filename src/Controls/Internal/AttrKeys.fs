@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 // Feature 105 (US3, FR-007): the closed set of control-intrinsic attribute names, as a typed

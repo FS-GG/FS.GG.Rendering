@@ -36,8 +36,7 @@ let private manifestProductSkillBodies () =
             if normalized.StartsWith("template/product-skills/") then
                 Some(normalized + "/SKILL.md")
             else
-                None
-        )
+                None)
     |> Set.ofSeq
 
 let private deliveredProductSkillBodies () =
@@ -51,9 +50,10 @@ let issue541NoUndeclaredProductSkillBodies =
     testList
         "Issue541 product-skill ownership boundary"
         [
-          test "every delivered product-skill body is declared by Rendering's manifest" {
-              Expect.equal
-                  (deliveredProductSkillBodies ())
-                  (manifestProductSkillBodies ())
-                  "template/product-skills must exactly match Rendering's generated producer manifest; a copied foreign body may not silently reappear"
-          } ]
+            test "every delivered product-skill body is declared by Rendering's manifest" {
+                Expect.equal
+                    (deliveredProductSkillBodies ())
+                    (manifestProductSkillBodies ())
+                    "template/product-skills must exactly match Rendering's generated producer manifest; a copied foreign body may not silently reappear"
+            }
+        ]

@@ -23,56 +23,69 @@ let button key label msg : Control<Msg> =
 
 let shell pageKey pageContent : Control<Msg> =
     Stack.create
-        [ Attr.width 760.0
-          Attr.height 520.0
-          Attr.gap 0.0
-          Stack.children
-              [ text "showcase-title" "Second Ant Showcase"
-                text "stable-chrome" "Controls"
-                Stack.create
-                    [ Attr.width 720.0
-                      Attr.height 420.0
-                      Attr.gap 0.0
-                      Stack.children pageContent ]
-                  |> Control.withKey pageKey ] ]
+        [
+            Attr.width 760.0
+            Attr.height 520.0
+            Attr.gap 0.0
+            Stack.children
+                [
+                    text "showcase-title" "Second Ant Showcase"
+                    text "stable-chrome" "Controls"
+                    Stack.create
+                        [
+                            Attr.width 720.0
+                            Attr.height 420.0
+                            Attr.gap 0.0
+                            Stack.children pageContent
+                        ]
+                    |> Control.withKey pageKey
+                ]
+        ]
     |> Control.withKey "showcase-root"
 
 let buttonScenario label : Control<Msg> =
     shell
         "buttons-page"
-        [ text "buttons-heading" "Buttons"
-          button "primary-button" label PrimaryClicked
-          text "buttons-note" "Primary action" ]
+        [
+            text "buttons-heading" "Buttons"
+            button "primary-button" label PrimaryClicked
+            text "buttons-note" "Primary action"
+        ]
 
 let pageNavigationSource () : Control<Msg> =
     shell
         "buttons-page"
-        [ text "buttons-heading" "Buttons"
-          button "primary-button" "Primary" PrimaryClicked
-          button "nav-text-numeric" "Text inputs" NavigateToTextNumericInput ]
+        [
+            text "buttons-heading" "Buttons"
+            button "primary-button" "Primary" PrimaryClicked
+            button "nav-text-numeric" "Text inputs" NavigateToTextNumericInput
+        ]
 
 let textNumericDestination () : Control<Msg> =
     shell
         "text-numeric-input"
-        [ text "inputs-heading" "Text and numeric inputs"
-          Stack.create
-              [ Attr.width 700.0
-                Attr.height 260.0
-                Attr.gap 0.0
-                Stack.children
-                    [ text "name-label" "Name"
-                      text "name-value" "Ada"
-                      text "amount-label" "Amount"
-                      text "amount-value" "42"
-                      text "notes-label" "Notes"
-                      text "notes-value" "Dense nested content" ] ]
-            |> Control.withKey "input-panel" ]
+        [
+            text "inputs-heading" "Text and numeric inputs"
+            Stack.create
+                [
+                    Attr.width 700.0
+                    Attr.height 260.0
+                    Attr.gap 0.0
+                    Stack.children
+                        [
+                            text "name-label" "Name"
+                            text "name-value" "Ada"
+                            text "amount-label" "Amount"
+                            text "amount-value" "42"
+                            text "notes-label" "Notes"
+                            text "notes-value" "Dense nested content"
+                        ]
+                ]
+            |> Control.withKey "input-panel"
+        ]
 
 let noReplayCachePage () : Control<Msg> =
-    shell
-        "plain-page"
-        [ for i in 0 .. 7 ->
-              text (sprintf "plain-%d" i) (sprintf "Plain row %d" i) ]
+    shell "plain-page" [ for i in 0..7 -> text (sprintf "plain-%d" i) (sprintf "Plain row %d" i) ]
 
 let internal retainedStep before after =
     let init = RetainedRender.init theme size before

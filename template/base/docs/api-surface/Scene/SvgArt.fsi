@@ -16,9 +16,7 @@ type SvgArtError =
     | MissingElement of string
     | InvalidSelection of string
 
-type SvgArtGuide =
-    { Axis: string
-      Position: float }
+type SvgArtGuide = { Axis: string; Position: float }
 
 [<RequireQualifiedAccess>]
 type SvgArtPrimitive =
@@ -36,47 +34,71 @@ type SvgArtSiblingOrder =
 
 /// Portable state owned by an SVG art tool. Accepted content and history remain in `SvgAuthoringState`.
 type SvgArtState =
-    { Camera: SvgAffine
-      Selection: string list
-      GridSize: float
-      SnapToGrid: bool }
+    {
+        Camera: SvgAffine
+        Selection: string list
+        GridSize: float
+        SnapToGrid: bool
+    }
 
 type SvgGeometryPrepared =
-    { Request: SvgGeometryRequest
-      EncodedRequest: string
-      InputVertexCount: int }
+    {
+        Request: SvgGeometryRequest
+        EncodedRequest: string
+        InputVertexCount: int
+    }
 
 /// Bounded request sent to the optional polygon-clipping worker.
 type SvgGeometryRequest =
-    { OperationId: string
-      AcceptedRevision: int
-      InputContentHash: string
-      Operation: PathOperation
-      MaximumDeviation: float
-      Subjects: Point list list
-      Clips: Point list list }
+    {
+        OperationId: string
+        AcceptedRevision: int
+        InputContentHash: string
+        Operation: PathOperation
+        MaximumDeviation: float
+        Subjects: Point list list
+        Clips: Point list list
+    }
 
 type SvgGeometryResult =
-    { OperationId: string
-      AcceptedRevision: int
-      InputContentHash: string
-      Contours: Point list list }
+    {
+        OperationId: string
+        AcceptedRevision: int
+        InputContentHash: string
+        Contours: Point list list
+    }
 
 [<RequireQualifiedAccess>]
 module SvgArt =
-    val align: alignment: SvgArtAlignment -> ids: string list -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
-    val create: elementId: string -> primitive: SvgArtPrimitive -> presentation: SvgPresentation -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+    val align:
+        alignment: SvgArtAlignment -> ids: string list -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
+    val create:
+        elementId: string ->
+        primitive: SvgArtPrimitive ->
+        presentation: SvgPresentation ->
+        document: SvgDocument ->
+            Result<SvgDocument, SvgArtError>
+
     val group: groupId: string -> ids: string list -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val guides: state: SvgArtState -> points: Point list -> Result<SvgArtGuide list, SvgArtError>
     val initialState: SvgArtState
-    val insertPathPoint: elementId: string -> index: int -> point: Point -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
-    val putGradient: id: string -> gradient: SvgGradientDefinition -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
+    val insertPathPoint:
+        elementId: string -> index: int -> point: Point -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
+    val putGradient:
+        id: string -> gradient: SvgGradientDefinition -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
     val removePathPoint: elementId: string -> index: int -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val reorder: id: string -> order: SvgArtSiblingOrder -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val replacePath: elementId: string -> path: PathSpec -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val rotate: ids: string list -> degrees: float -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val scale: ids: string list -> x: float -> y: float -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
-    val setPresentation: ids: string list -> presentation: SvgPresentation -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
+    val setPresentation:
+        ids: string list -> presentation: SvgPresentation -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
     /// Snap in document space with deterministic midpoint-away-from-zero rounding.
     val snapPoint: state: SvgArtState -> point: Point -> Result<Point, SvgArtError>
     val transform: ids: string list -> affine: SvgAffine -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
@@ -87,6 +109,19 @@ module SvgArt =
 module SvgGeometry =
     val defaultMaximumDeviation: float
     val maximumSubdivisionDepth: int
-    val prepare: operationId: string -> revision: int -> operation: PathOperation -> subjects: PathSpec list -> clips: PathSpec list -> deviation: float -> Result<SvgGeometryPrepared, SvgArtError>
+
+    val prepare:
+        operationId: string ->
+        revision: int ->
+        operation: PathOperation ->
+        subjects: PathSpec list ->
+        clips: PathSpec list ->
+        deviation: float ->
+            Result<SvgGeometryPrepared, SvgArtError>
+
     /// Validate identity and result budgets before producing one atomic replacement transaction.
-    val transaction: result: SvgGeometryResult -> prepared: SvgGeometryPrepared -> document: SvgDocument -> Result<SvgAuthoringTransaction, SvgArtError>
+    val transaction:
+        result: SvgGeometryResult ->
+        prepared: SvgGeometryPrepared ->
+        document: SvgDocument ->
+            Result<SvgAuthoringTransaction, SvgArtError>

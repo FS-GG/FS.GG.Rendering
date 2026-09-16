@@ -1,12 +1,14 @@
 module SecondAntShowcase.Core.ResponsivenessWorkflow
 
 type RunRequest =
-    { RunId: string
-      Scope: string
-      Theme: string
-      OutputRoot: string
-      RequireLive: bool
-      ActionIds: string list }
+    {
+        RunId: string
+        Scope: string
+        Theme: string
+        OutputRoot: string
+        RequireLive: bool
+        ActionIds: string list
+    }
 
 type RunStatus =
     | NotStarted
@@ -20,12 +22,14 @@ type RunStatus =
     | Failed
 
 type Model =
-    { Request: RunRequest
-      Status: RunStatus
-      MeasuredActionIds: string list
-      EnvironmentLimitations: string list
-      ArtifactPaths: string list
-      Diagnostics: string list }
+    {
+        Request: RunRequest
+        Status: RunStatus
+        MeasuredActionIds: string list
+        EnvironmentLimitations: string list
+        ArtifactPaths: string list
+        Diagnostics: string list
+    }
 
 type Msg =
     | Start
@@ -43,9 +47,11 @@ type Effect =
     | PersistArtifacts
 
 type Interpreter =
-    { CheckLiveSession: unit -> Result<unit, string>
-      ExerciseActions: string list -> Result<string list, string>
-      PersistArtifacts: Model -> Result<string list, string> }
+    {
+        CheckLiveSession: unit -> Result<unit, string>
+        ExerciseActions: string list -> Result<string list, string>
+        PersistArtifacts: Model -> Result<string list, string>
+    }
 
 let statusToken status =
     match status with
@@ -60,12 +66,14 @@ let statusToken status =
     | Failed -> "failed"
 
 let init request =
-    { Request = request
-      Status = NotStarted
-      MeasuredActionIds = []
-      EnvironmentLimitations = []
-      ArtifactPaths = []
-      Diagnostics = [] },
+    {
+        Request = request
+        Status = NotStarted
+        MeasuredActionIds = []
+        EnvironmentLimitations = []
+        ArtifactPaths = []
+        Diagnostics = []
+    },
     [ CheckLiveSession ]
 
 let private allActionsMeasured model =
@@ -75,19 +83,27 @@ let private allActionsMeasured model =
 let update msg model =
     match msg with
     | Start ->
-        { model with Status = CheckingLiveSession }, [ CheckLiveSession ]
+        { model with
+            Status = CheckingLiveSession
+        },
+        [ CheckLiveSession ]
     | LiveSessionAvailable ->
-        { model with Status = ExercisingActions }, [ ExerciseActions model.Request.ActionIds ]
+        { model with
+            Status = ExercisingActions
+        },
+        [ ExerciseActions model.Request.ActionIds ]
     | LiveSessionUnavailable reason ->
         { model with
             Status = EnvironmentLimited
             EnvironmentLimitations = reason :: model.EnvironmentLimitations
-            Diagnostics = reason :: model.Diagnostics },
+            Diagnostics = reason :: model.Diagnostics
+        },
         [ PersistArtifacts ]
     | ActionMeasured actionId ->
         let next =
             { model with
-                MeasuredActionIds = (actionId :: model.MeasuredActionIds) |> List.distinct }
+                MeasuredActionIds = (actionId :: model.MeasuredActionIds) |> List.distinct
+            }
 
         if allActionsMeasured next then
             { next with Status = WritingArtifacts }, [ PersistArtifacts ]
@@ -97,10 +113,10 @@ let update msg model =
         { model with
             Status = Rejected
             MeasuredActionIds = (actionId :: model.MeasuredActionIds) |> List.distinct
-            Diagnostics = reason :: model.Diagnostics },
+            Diagnostics = reason :: model.Diagnostics
+        },
         [ PersistArtifacts ]
-    | WriteArtifacts ->
-        { model with Status = WritingArtifacts }, [ PersistArtifacts ]
+    | WriteArtifacts -> { model with Status = WritingArtifacts }, [ PersistArtifacts ]
     | ArtifactsWritten paths ->
         let finalStatus =
             match model.Status with
@@ -113,12 +129,14 @@ let update msg model =
 
         { model with
             Status = finalStatus
-            ArtifactPaths = paths },
+            ArtifactPaths = paths
+        },
         []
     | ArtifactWriteFailed reason ->
         { model with
             Status = Failed
-            Diagnostics = reason :: model.Diagnostics },
+            Diagnostics = reason :: model.Diagnostics
+        },
         []
 
 let interpret interpreter model effect =
@@ -131,7 +149,8 @@ let interpret interpreter model effect =
         match interpreter.ExerciseActions actionIds with
         | Ok measured when measured.Length = actionIds.Length ->
             measured |> List.tryLast |> Option.defaultValue "" |> ActionMeasured
-        | Ok measured -> ActionRejected(measured |> List.tryLast |> Option.defaultValue "", "incomplete-action-coverage")
+        | Ok measured ->
+            ActionRejected(measured |> List.tryLast |> Option.defaultValue "", "incomplete-action-coverage")
         | Error reason -> ActionRejected("", reason)
     | PersistArtifacts ->
         match interpreter.PersistArtifacts model with

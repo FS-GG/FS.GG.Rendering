@@ -66,9 +66,7 @@ match argv with
     let errors = validateReportText reportText @ audit.errors
 
     if not (List.isEmpty audit.notBound) then
-        printfn
-            "feedback-tool: %d citation(s) NOT BOUND -- reported rather than checked:"
-            audit.notBound.Length
+        printfn "feedback-tool: %d citation(s) NOT BOUND -- reported rather than checked:" audit.notBound.Length
 
         for citation in audit.notBound do
             printfn "  %s %s" citation.findingId citation.locator
@@ -81,11 +79,13 @@ match argv with
         pass (sprintf "valid actionability-bound schema-v2 report: %s" path)
     else
         fail errors
-| [| "validate"; _ |] ->
-    fail [ "validate requires --audit <feedback/audits/report.audit.json>" ]
+| [| "validate"; _ |] -> fail [ "validate requires --audit <feedback/audits/report.audit.json>" ]
 | args when args.Length > 0 && args.[0] = "check-invalidation" ->
     let options = parseOptions args.[1..]
-    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+
+    let root =
+        Map.tryFind "root" options
+        |> Option.defaultValue (Directory.GetCurrentDirectory())
     // The two input forms differ in their AUDIT INDEX, not only in how they learn
     // which paths changed, and that is the whole of #1243. --base/--head indexes the
     // base ref's tree, so an audit the candidate itself introduced is not in it;
@@ -94,10 +94,13 @@ match argv with
     // one it was to be inferred.
     let result =
         match Map.tryFind "changed" options, Map.tryFind "base" options, Map.tryFind "head" options with
-        | Some value, None, None ->
-            value.Split(';') |> Array.toList |> findInvalidatedAuditBindings root
+        | Some value, None, None -> value.Split(';') |> Array.toList |> findInvalidatedAuditBindings root
         | None, Some baseRef, Some headRef -> checkInvalidationBetweenRefs root baseRef headRef
-        | _ -> fail [ "check-invalidation requires either --changed \"path;path\" or --base REF --head REF" ]
+        | _ ->
+            fail
+                [
+                    "check-invalidation requires either --changed \"path;path\" or --base REF --head REF"
+                ]
 
     if not (List.isEmpty result.errors) then
         fail result.errors
@@ -132,7 +135,11 @@ match argv with
         fail errors
 | args when args.Length > 0 && args.[0] = "validate-checkpoint-state" ->
     let options = parseOptions args.[1..]
-    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+
+    let root =
+        Map.tryFind "root" options
+        |> Option.defaultValue (Directory.GetCurrentDirectory())
+
     let cycle = required options "cycle"
     let errors = validateCheckpointState root cycle
 
@@ -142,7 +149,10 @@ match argv with
         fail errors
 | args when args.Length > 0 && args.[0] = "activate" ->
     let options = parseOptions args.[1..]
-    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+
+    let root =
+        Map.tryFind "root" options
+        |> Option.defaultValue (Directory.GetCurrentDirectory())
 
     try
         let path =
@@ -158,7 +168,10 @@ match argv with
         fail [ ex.Message ]
 | args when args.Length > 0 && args.[0] = "checkpoint" ->
     let options = parseOptions args.[1..]
-    let root = Map.tryFind "root" options |> Option.defaultValue (Directory.GetCurrentDirectory())
+
+    let root =
+        Map.tryFind "root" options
+        |> Option.defaultValue (Directory.GetCurrentDirectory())
 
     try
         let path =
@@ -178,14 +191,16 @@ match argv with
         fail [ ex.Message ]
 | _ ->
     fail
-        [ "usage:"
-          "  feedback-tool.fsx -- checkpoint --cycle ID --phase PHASE --surface ID --kind KIND --summary TEXT --evidence TEXT --cost TEXT --owner TEXT [--root PATH]"
-          "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
-          "  feedback-tool.fsx -- digest <text-file>"
-          "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
-          "  feedback-tool.fsx -- check-invalidation --base REF --head REF [--root PATH]"
-          "      audits are indexed from --base's tree; changed paths are derived from --base to --head"
-          "  feedback-tool.fsx -- check-invalidation --changed \"path;path\" [--root PATH]"
-          "      advanced: audits are indexed from the WORKING TREE and the complete name-status path set is yours to supply"
-          "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
-          "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]" ]
+        [
+            "usage:"
+            "  feedback-tool.fsx -- checkpoint --cycle ID --phase PHASE --surface ID --kind KIND --summary TEXT --evidence TEXT --cost TEXT --owner TEXT [--root PATH]"
+            "  feedback-tool.fsx -- activate --cycle ID --phases \"PHASE;PHASE\" --evidence \"LOCATOR;LOCATOR\" --reason TEXT [--root PATH]"
+            "  feedback-tool.fsx -- digest <text-file>"
+            "  feedback-tool.fsx -- validate feedback/<report>.md --audit feedback/audits/<report>.audit.json"
+            "  feedback-tool.fsx -- check-invalidation --base REF --head REF [--root PATH]"
+            "      audits are indexed from --base's tree; changed paths are derived from --base to --head"
+            "  feedback-tool.fsx -- check-invalidation --changed \"path;path\" [--root PATH]"
+            "      advanced: audits are indexed from the WORKING TREE and the complete name-status path set is yours to supply"
+            "  feedback-tool.fsx -- validate-checkpoints feedback/checkpoints/<cycle>.jsonl"
+            "  feedback-tool.fsx -- validate-checkpoint-state --cycle ID [--root PATH]"
+        ]

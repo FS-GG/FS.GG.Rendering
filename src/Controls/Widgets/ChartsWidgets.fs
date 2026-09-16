@@ -3,29 +3,39 @@ namespace FS.GG.UI.Controls.Typed
 open FS.GG.UI.Controls
 
 type LineChartProps<'msg> =
-    { Id: ControlId option
-      Series: ChartSeries list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Series: ChartSeries list
+        OnSelected: (string -> 'msg) option
+    }
 
 type BarChartProps<'msg> =
-    { Id: ControlId option
-      Series: ChartSeries list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Series: ChartSeries list
+        OnSelected: (string -> 'msg) option
+    }
 
 type PieChartProps<'msg> =
-    { Id: ControlId option
-      Values: ChartPoint list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Values: ChartPoint list
+        OnSelected: (string -> 'msg) option
+    }
 
 type ScatterPlotProps<'msg> =
-    { Id: ControlId option
-      Series: ChartSeries list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Series: ChartSeries list
+        OnSelected: (string -> 'msg) option
+    }
 
 type GraphViewProps<'msg> =
-    { Id: ControlId option
-      Nodes: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Nodes: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 // File-private lowering helpers. Charts/graph reuse the existing `ChartSeries`/
 // `ChartPoint` data types and lower to the dedicated legacy `*.create` in
@@ -37,51 +47,81 @@ module ChartLowering =
         | None -> []
 
 module LineChart =
-    let defaults: LineChartProps<'msg> = { Id = None; Series = []; OnSelected = None }
+    let defaults: LineChartProps<'msg> =
+        {
+            Id = None
+            Series = []
+            OnSelected = None
+        }
 
     let view (props: LineChartProps<'msg>) : Widget<'msg> =
-        FS.GG.UI.Controls.LineChart.create
-            (FS.GG.UI.Controls.LineChart.series props.Series
-             :: ChartLowering.eventAttrs props.OnSelected)
+        FS.GG.UI.Controls.LineChart.create (
+            FS.GG.UI.Controls.LineChart.series props.Series
+            :: ChartLowering.eventAttrs props.OnSelected
+        )
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module BarChart =
-    let defaults: BarChartProps<'msg> = { Id = None; Series = []; OnSelected = None }
+    let defaults: BarChartProps<'msg> =
+        {
+            Id = None
+            Series = []
+            OnSelected = None
+        }
 
     let view (props: BarChartProps<'msg>) : Widget<'msg> =
-        FS.GG.UI.Controls.BarChart.create
-            (FS.GG.UI.Controls.BarChart.series props.Series
-             :: ChartLowering.eventAttrs props.OnSelected)
+        FS.GG.UI.Controls.BarChart.create (
+            FS.GG.UI.Controls.BarChart.series props.Series
+            :: ChartLowering.eventAttrs props.OnSelected
+        )
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module PieChart =
-    let defaults: PieChartProps<'msg> = { Id = None; Values = []; OnSelected = None }
+    let defaults: PieChartProps<'msg> =
+        {
+            Id = None
+            Values = []
+            OnSelected = None
+        }
 
     let view (props: PieChartProps<'msg>) : Widget<'msg> =
-        FS.GG.UI.Controls.PieChart.create
-            (FS.GG.UI.Controls.PieChart.values props.Values
-             :: ChartLowering.eventAttrs props.OnSelected)
+        FS.GG.UI.Controls.PieChart.create (
+            FS.GG.UI.Controls.PieChart.values props.Values
+            :: ChartLowering.eventAttrs props.OnSelected
+        )
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module ScatterPlot =
-    let defaults: ScatterPlotProps<'msg> = { Id = None; Series = []; OnSelected = None }
+    let defaults: ScatterPlotProps<'msg> =
+        {
+            Id = None
+            Series = []
+            OnSelected = None
+        }
 
     let view (props: ScatterPlotProps<'msg>) : Widget<'msg> =
-        FS.GG.UI.Controls.ScatterPlot.create
-            (FS.GG.UI.Controls.ScatterPlot.series props.Series
-             :: ChartLowering.eventAttrs props.OnSelected)
+        FS.GG.UI.Controls.ScatterPlot.create (
+            FS.GG.UI.Controls.ScatterPlot.series props.Series
+            :: ChartLowering.eventAttrs props.OnSelected
+        )
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module GraphView =
-    let defaults: GraphViewProps<'msg> = { Id = None; Nodes = []; OnSelected = None }
+    let defaults: GraphViewProps<'msg> =
+        {
+            Id = None
+            Nodes = []
+            OnSelected = None
+        }
 
     let view (props: GraphViewProps<'msg>) : Widget<'msg> =
-        FS.GG.UI.Controls.GraphView.create
-            (FS.GG.UI.Controls.GraphView.nodes props.Nodes
-             :: ChartLowering.eventAttrs props.OnSelected)
+        FS.GG.UI.Controls.GraphView.create (
+            FS.GG.UI.Controls.GraphView.nodes props.Nodes
+            :: ChartLowering.eventAttrs props.OnSelected
+        )
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl

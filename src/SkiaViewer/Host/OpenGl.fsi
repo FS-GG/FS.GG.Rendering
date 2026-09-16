@@ -22,25 +22,31 @@ module GlResources =
 
     /// Public contract type exposed by this FS.GG.UI package.
     type OwnedResource =
-        { Id: string
-          Category: ResourceCategory
-          AcquireStage: string
-          Owner: string
-          TransferPoint: string option
-          ReleaseAction: string
-          State: OwnershipState }
+        {
+            Id: string
+            Category: ResourceCategory
+            AcquireStage: string
+            Owner: string
+            TransferPoint: string option
+            ReleaseAction: string
+            State: OwnershipState
+        }
 
     /// Public contract type exposed by this FS.GG.UI package.
     type ReleaseRecord =
-        { Id: string
-          Category: ResourceCategory
-          Stage: string
-          Order: int }
+        {
+            Id: string
+            Category: ResourceCategory
+            Stage: string
+            Order: int
+        }
 
     /// Public contract type exposed by this FS.GG.UI package.
     type ResourceLedger =
-        { Owned: OwnedResource list
-          Released: ReleaseRecord list }
+        {
+            Owned: OwnedResource list
+            Released: ReleaseRecord list
+        }
 
     /// Public contract function exposed by this FS.GG.UI package.
     val empty: ResourceLedger
@@ -66,20 +72,24 @@ module GlResources =
 module GlStartup =
     /// Public contract type exposed by this FS.GG.UI package.
     type StartupStage =
-        { Name: string
-          Order: int
-          Resource: GlResources.ResourceCategory option
-          DiagnosticStage: string }
+        {
+            Name: string
+            Order: int
+            Resource: GlResources.ResourceCategory option
+            DiagnosticStage: string
+        }
 
     /// Public contract type exposed by this FS.GG.UI package.
     type StartupFailureCase =
-        { FailedStage: StartupStage
-          AcquiredBeforeFailure: GlResources.OwnedResource list
-          ExpectedReleaseOrder: GlResources.ResourceCategory list
-          ObservedReleaseOrder: GlResources.ResourceCategory list
-          DiagnosticStage: string
-          DiagnosticCause: string
-          Synthetic: bool }
+        {
+            FailedStage: StartupStage
+            AcquiredBeforeFailure: GlResources.OwnedResource list
+            ExpectedReleaseOrder: GlResources.ResourceCategory list
+            ObservedReleaseOrder: GlResources.ResourceCategory list
+            DiagnosticStage: string
+            DiagnosticCause: string
+            Synthetic: bool
+        }
 
     /// Public contract function exposed by this FS.GG.UI package.
     val stages: StartupStage list
@@ -138,7 +148,7 @@ module GlHost =
         program: ViewerProgram<'model, 'msg> ->
         dispatch: Dispatch<'msg> ->
         result: Result<'frame, RenderDiagnostic> ->
-        Result<'frame, RenderDiagnostic>
+            Result<'frame, RenderDiagnostic>
 
     /// True exactly while the live loop may enter the renderer/presenter. Cancellation or native
     /// close suppresses both the render and its successful-presentation callback.
@@ -154,21 +164,22 @@ module GlHost =
     /// Testable native-window mutation boundary. The live host binds these members to its `IWindow`;
     /// tests bind them to an in-memory target and therefore exercise the exact transition policy.
     type internal RuntimeWindowTarget =
-        { GetState: unit -> Silk.NET.Windowing.WindowState
-          SetState: Silk.NET.Windowing.WindowState -> unit
-          GetBorder: unit -> Silk.NET.Windowing.WindowBorder
-          SetBorder: Silk.NET.Windowing.WindowBorder -> unit
-          GetPosition: unit -> Silk.NET.Maths.Vector2D<int>
-          SetPosition: Silk.NET.Maths.Vector2D<int> -> unit
-          GetSize: unit -> Silk.NET.Maths.Vector2D<int>
-          SetSize: Silk.NET.Maths.Vector2D<int> -> unit
-          GetWorkArea: unit -> (Silk.NET.Maths.Vector2D<int> * Silk.NET.Maths.Vector2D<int>) option }
+        {
+            GetState: unit -> Silk.NET.Windowing.WindowState
+            SetState: Silk.NET.Windowing.WindowState -> unit
+            GetBorder: unit -> Silk.NET.Windowing.WindowBorder
+            SetBorder: Silk.NET.Windowing.WindowBorder -> unit
+            GetPosition: unit -> Silk.NET.Maths.Vector2D<int>
+            SetPosition: Silk.NET.Maths.Vector2D<int> -> unit
+            GetSize: unit -> Silk.NET.Maths.Vector2D<int>
+            SetSize: Silk.NET.Maths.Vector2D<int> -> unit
+            GetWorkArea: unit -> (Silk.NET.Maths.Vector2D<int> * Silk.NET.Maths.Vector2D<int>) option
+        }
 
     /// Per-window state that remembers normal-window geometry across fullscreen/borderless modes.
     type internal RuntimeWindowController
 
-    val internal createRuntimeWindowController:
-        initialWindowedSize: FS.GG.UI.Scene.Size -> RuntimeWindowController
+    val internal createRuntimeWindowController: initialWindowedSize: FS.GG.UI.Scene.Size -> RuntimeWindowController
 
     /// Apply one validated request idempotently. `Ok true` means native state changed, `Ok false`
     /// means the request already held, and `Error` is an observable Window-stage host failure.
@@ -194,10 +205,12 @@ module GlHost =
     /// Feature 147: integer framebuffer scissor rectangle used by the proof and partial-redraw
     /// decision helpers. Coordinates are clamped to the framebuffer before use.
     type ScissorRect =
-        { X: int
-          Y: int
-          Width: int
-          Height: int }
+        {
+            X: int
+            Y: int
+            Width: int
+            Height: int
+        }
 
     /// Feature 147: pure decision for whether a frame may use scissored redraw or must use full redraw.
     type ScissorDecision =
@@ -231,19 +244,23 @@ module GlHost =
 
     /// Feature 157: damage validation result after framebuffer-coordinate clipping.
     type DamageValidationResult =
-        { Status: DamageValidationStatus
-          Rects: ScissorRect list
-          UnionArea: int
-          Reason: string option }
+        {
+            Status: DamageValidationStatus
+            Rects: ScissorRect list
+            UnionArea: int
+            Reason: string option
+        }
 
     /// Feature 183 (US3): the five damage-classification flags `validateDamage` takes, named so they
     /// cannot be transposed at the call site (a swap is now a compile error). Values/results unchanged.
     type DamageValidationFlags =
-        { VisibleChange: bool
-          FullFrameInvalidation: bool
-          StaleDamage: bool
-          IncompleteDamage: bool
-          AmbiguousDamage: bool }
+        {
+            VisibleChange: bool
+            FullFrameInvalidation: bool
+            StaleDamage: bool
+            IncompleteDamage: bool
+            AmbiguousDamage: bool
+        }
 
     [<RequireQualifiedAccess>]
     /// Feature 157: host render decision for the no-clear damage-scissored branch.
@@ -256,55 +273,65 @@ module GlHost =
 
     /// Feature 157: package-visible diagnostic summary for one render decision.
     type DamageRenderDecision =
-        { Kind: DamageRenderDecisionKind
-          ScissorRects: ScissorRect list
-          DamageArea: int
-          FallbackReason: string option
-          ProofGate: string
-          RetainedBacking: string
-          Parity: string }
+        {
+            Kind: DamageRenderDecisionKind
+            ScissorRects: ScissorRect list
+            DamageArea: int
+            FallbackReason: string option
+            ProofGate: string
+            RetainedBacking: string
+            Parity: string
+        }
 
     /// Feature 157: pure eligibility inputs for deciding whether the no-clear path may run.
     type DamageRenderEligibility =
-        { Proof: CompositorProof.ProofReadiness
-          RetainedBacking: RetainedBackingStatus
-          Damage: ScissorRect list
-          FrameWidth: int
-          FrameHeight: int
-          VisibleChange: bool
-          FullFrameInvalidation: bool
-          StaleDamage: bool
-          IncompleteDamage: bool
-          AmbiguousDamage: bool
-          ResourcesAvailable: bool
-          ParityAccepted: bool }
+        {
+            Proof: CompositorProof.ProofReadiness
+            RetainedBacking: RetainedBackingStatus
+            Damage: ScissorRect list
+            FrameWidth: int
+            FrameHeight: int
+            VisibleChange: bool
+            FullFrameInvalidation: bool
+            StaleDamage: bool
+            IncompleteDamage: bool
+            AmbiguousDamage: bool
+            ResourcesAvailable: bool
+            ParityAccepted: bool
+        }
 
     /// Feature 153: pure host facts used to classify whether a live sentinel/damage proof can run.
     type LiveProofHostFacts =
-        { Display: string option
-          WaylandDisplay: string option
-          SessionType: string option
-          Renderer: string option
-          ReadbackAvailable: bool
-          PermissionGranted: bool
-          TimedOut: bool }
+        {
+            Display: string option
+            WaylandDisplay: string option
+            SessionType: string option
+            Renderer: string option
+            ReadbackAvailable: bool
+            PermissionGranted: bool
+            TimedOut: bool
+        }
 
     /// Feature 167: receipt callback facts captured before queued processing/render work.
     type InputReceiptDiagnostic =
-        { SequenceId: int64
-          InputKind: string
-          ReceivedAt: System.DateTimeOffset
-          CallbackDuration: System.TimeSpan
-          QueueDepthAtReceipt: int
-          SignalRequested: bool
-          RenderWorkStarted: bool }
+        {
+            SequenceId: int64
+            InputKind: string
+            ReceivedAt: System.DateTimeOffset
+            CallbackDuration: System.TimeSpan
+            QueueDepthAtReceipt: int
+            SignalRequested: bool
+            RenderWorkStarted: bool
+        }
 
     /// Feature 167: presentation boundary timing facts for latency records.
     type PresentationTimingDiagnostic =
-        { PresentedFrameId: int64
-          PaintDuration: System.TimeSpan option
-          PresentDuration: System.TimeSpan option
-          EnvironmentStatus: string }
+        {
+            PresentedFrameId: int64
+            PaintDuration: System.TimeSpan option
+            PresentDuration: System.TimeSpan option
+            EnvironmentStatus: string
+        }
 
     [<RequireQualifiedAccess>]
     /// Feature 153: live proof host classification before attempting to accept evidence.
@@ -334,10 +361,12 @@ module GlHost =
     /// carried as a code rather than Silk's `GLEnum` to keep the GL binding out of this package's
     /// public surface. `ContextAbandoned` is the signal Skia always maintains.
     type FrameFailureFacts =
-        { GraphicsResetStatus: uint32
-          ContextAbandoned: bool
-          GlContextCurrent: bool
-          WindowSystemPresent: bool }
+        {
+            GraphicsResetStatus: uint32
+            ContextAbandoned: bool
+            GlContextCurrent: bool
+            WindowSystemPresent: bool
+        }
 
     [<RequireQualifiedAccess>]
     /// Issue #179: what a failed frame means. Constitution VI requires an implementation defect to
@@ -363,12 +392,10 @@ module GlHost =
     /// Issue #179: decide what a failed frame does to the run. `consecutiveFailures` counts this
     /// failure, so the first failed frame passes 1. A lost device and a vanished window system are
     /// terminal immediately; a transient draw failure is retried up to `retryBudget` times.
-    val decideFrameFailure:
-        kind: FrameFailureKind -> consecutiveFailures: int -> retryBudget: int -> FrameFailureAction
+    val decideFrameFailure: kind: FrameFailureKind -> consecutiveFailures: int -> retryBudget: int -> FrameFailureAction
 
     /// Issue #179: the failure streak a run carries across frames.
-    type FrameFailureTracker =
-        { mutable ConsecutiveFailures: int }
+    type FrameFailureTracker = { mutable ConsecutiveFailures: int }
 
     /// Issue #179: a fresh streak for a new run.
     val newFrameFailureTracker: unit -> FrameFailureTracker
@@ -401,8 +428,7 @@ module GlHost =
 
     /// Feature 120 (US2): pure present-or-skip decision (present iff first frame, scene changed, or the
     /// framebuffer size changed). Exposed for the idle-skip transition test (T016).
-    val shouldPresent:
-        prev: FS.GG.UI.Scene.Scene option -> next: FS.GG.UI.Scene.Scene -> sizeChanged: bool -> bool
+    val shouldPresent: prev: FS.GG.UI.Scene.Scene option -> next: FS.GG.UI.Scene.Scene -> sizeChanged: bool -> bool
 
     /// Feature 167: build a native receipt diagnostic that proves callback work stopped before rendering.
     val recordInputReceipt:
@@ -416,10 +442,7 @@ module GlHost =
 
     /// Feature 167: classify whether the receipt callback stayed within both receipt budgets.
     val receiptWithinBudget:
-        inputReceiptP95: System.TimeSpan ->
-        inputReceiptMax: System.TimeSpan ->
-        receipt: InputReceiptDiagnostic ->
-            bool
+        inputReceiptP95: System.TimeSpan -> inputReceiptMax: System.TimeSpan -> receipt: InputReceiptDiagnostic -> bool
 
     /// Feature 167: true only when the receipt callback started render/present work.
     val receiptDidRenderWork: receipt: InputReceiptDiagnostic -> bool
@@ -459,11 +482,7 @@ module GlHost =
     val shouldAdvanceFrame: lastFrameTime: float -> now: float -> frameInterval: float -> bool
 
     /// Feature 147: clamp damage rectangles to the framebuffer and discard empty regions.
-    val normalizeScissorRects:
-        frameWidth: int ->
-        frameHeight: int ->
-        rects: ScissorRect list ->
-            ScissorRect list
+    val normalizeScissorRects: frameWidth: int -> frameHeight: int -> rects: ScissorRect list -> ScissorRect list
 
     /// Feature 147: deterministic area of the scissor set after clipping.
     val scissorArea: rects: ScissorRect list -> int
@@ -486,9 +505,7 @@ module GlHost =
             DamageValidationResult
 
     /// Feature 157: decide if the real DirectToSwapchain no-clear path may be selected.
-    val decideDamageScopedRender:
-        eligibility: DamageRenderEligibility ->
-            DamageRenderDecision
+    val decideDamageScopedRender: eligibility: DamageRenderEligibility -> DamageRenderDecision
 
     /// Feature 153: classify host facts without opening native resources.
     val classifyLiveProofHost: facts: LiveProofHostFacts -> LiveProofHostReadiness

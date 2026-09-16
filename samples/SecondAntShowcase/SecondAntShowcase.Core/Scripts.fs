@@ -14,60 +14,72 @@ open FS.GG.UI.Controls.Elmish
 open FS.GG.UI.KeyboardInput
 open SecondAntShowcase.Core.Model
 
-let private noMods: KeyModifiers = { Ctrl = false; Alt = false; Shift = false; Meta = false }
+let private noMods: KeyModifiers =
+    {
+        Ctrl = false
+        Alt = false
+        Shift = false
+        Meta = false
+    }
 
-let private tick (ms: float): FrameInput<SecondAntShowcaseMsg> = FrameInput.Tick(TimeSpan.FromMilliseconds ms)
-let private press (k: ViewerKey): FrameInput<SecondAntShowcaseMsg> = FrameInput.Key(k, noMods)
+let private tick (ms: float) : FrameInput<SecondAntShowcaseMsg> =
+    FrameInput.Tick(TimeSpan.FromMilliseconds ms)
+
+let private press (k: ViewerKey) : FrameInput<SecondAntShowcaseMsg> = FrameInput.Key(k, noMods)
 
 /// Deterministic script for a page: settle, activate (Space/Enter exercise the focused
 /// command via the host key map), settle, idle.
-let forPage (_pageId: string): FrameInput<SecondAntShowcaseMsg> list =
-    [ tick 16.0
-      press Space
-      tick 16.0
-      press Enter
-      tick 16.0
-      FrameInput.Idle ]
+let forPage (_pageId: string) : FrameInput<SecondAntShowcaseMsg> list =
+    [ tick 16.0; press Space; tick 16.0; press Enter; tick 16.0; FrameInput.Idle ]
 
 /// Feature 167 representative responsiveness script. The pointer samples exercise the
 /// coalescing/activation shape, Enter and Space exercise keyboard activation, and Escape is
 /// the deterministic no-visible-response input for headless substitute evidence.
-let representative (_pageId: string): FrameInput<SecondAntShowcaseMsg> list =
-    [ tick 16.0
-      FrameInput.Pointer(HoverEnter("buttons-primary", 12.0, 12.0))
-      FrameInput.Pointer(HoverEnter("buttons-primary", 24.0, 18.0))
-      FrameInput.Pointer(Click("buttons-primary", PointerButton.Primary, 32.0, 24.0))
-      press Enter
-      press Space
-      press Escape
-      tick 64.0
-      FrameInput.Idle ]
+let representative (_pageId: string) : FrameInput<SecondAntShowcaseMsg> list =
+    [
+        tick 16.0
+        FrameInput.Pointer(HoverEnter("buttons-primary", 12.0, 12.0))
+        FrameInput.Pointer(HoverEnter("buttons-primary", 24.0, 18.0))
+        FrameInput.Pointer(Click("buttons-primary", PointerButton.Primary, 32.0, 24.0))
+        press Enter
+        press Space
+        press Escape
+        tick 64.0
+        FrameInput.Idle
+    ]
 
 let private pointerAction (contract: InteractionContracts.InteractionContract) =
-    let control = contract.ControlIds |> List.tryHead |> Option.defaultValue contract.ContractId
+    let control =
+        contract.ControlIds |> List.tryHead |> Option.defaultValue contract.ContractId
 
     match contract.ActionType with
     | "drag"
     | "value-change" ->
-        [ FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
-          FrameInput.Pointer(DragMove(control, PointerButton.Primary, 96.0, 16.0)) ]
+        [
+            FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
+            FrameInput.Pointer(DragMove(control, PointerButton.Primary, 96.0, 16.0))
+        ]
     | "navigate"
     | "open-close"
     | "select"
     | "click" ->
-        [ FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
-          FrameInput.Pointer(Click(control, PointerButton.Primary, 32.0, 24.0)) ]
+        [
+            FrameInput.Pointer(HoverEnter(control, 16.0, 16.0))
+            FrameInput.Pointer(Click(control, PointerButton.Primary, 32.0, 24.0))
+        ]
     | _ -> [ press Enter ]
 
 /// Feature 172 all-interactive representative script plan. Coordinates are deterministic
 /// placeholders for the retained routing/perf path; accepted responsiveness still requires
 /// the live CLI evidence command to measure a visible presentation boundary.
-let representativeAllInteractive (): FrameInput<SecondAntShowcaseMsg> list =
-    [ tick 16.0
-      for contract in InteractionContracts.all do
-          yield! pointerAction contract
-          tick 16.0
-      FrameInput.Idle ]
+let representativeAllInteractive () : FrameInput<SecondAntShowcaseMsg> list =
+    [
+        tick 16.0
+        for contract in InteractionContracts.all do
+            yield! pointerAction contract
+            tick 16.0
+        FrameInput.Idle
+    ]
 
 /// All page scripts, in registry order.
 let all: (string * FrameInput<SecondAntShowcaseMsg> list) list =
@@ -78,22 +90,26 @@ let all: (string * FrameInput<SecondAntShowcaseMsg> list) list =
 /// name + bad email + un-agreed), submits (→ `Invalid`), corrects each field, then
 /// submits again (→ `Submitted`).
 let formInvalidThenValid: SecondAntShowcaseMsg list =
-    [ PageMsg(FormFieldChanged("Name", ""))
-      PageMsg(FormFieldChanged("Email", "not-an-email"))
-      PageMsg(FormFieldChanged("Agree", "false"))
-      PageMsg FormSubmitted
-      PageMsg(FormFieldChanged("Name", "Ada Lovelace"))
-      PageMsg(FormFieldChanged("Email", "ada@example.com"))
-      PageMsg(FormFieldChanged("Agree", "true"))
-      PageMsg FormSubmitted ]
+    [
+        PageMsg(FormFieldChanged("Name", ""))
+        PageMsg(FormFieldChanged("Email", "not-an-email"))
+        PageMsg(FormFieldChanged("Agree", "false"))
+        PageMsg FormSubmitted
+        PageMsg(FormFieldChanged("Name", "Ada Lovelace"))
+        PageMsg(FormFieldChanged("Email", "ada@example.com"))
+        PageMsg(FormFieldChanged("Agree", "true"))
+        PageMsg FormSubmitted
+    ]
 
 /// Feature 144 reference flow for the date-picker transient calendar. This stays in the
 /// pure message layer because the overlay coordinator emits product-visible requests,
 /// while the sample keeps calendar visibility and selection product-owned.
 let datePickerReferenceFlow: SecondAntShowcaseMsg list =
-    [ NavigateTo "text-numeric-input"
-      PageMsg(DatePickerOpenChanged true)
-      PageMsg(DatePickerFocusChanged(Some "date-picker-calendar"))
-      PageMsg(DatePickerChanged(DateOnly(2026, 6, 17)))
-      PageMsg(DatePickerOpenChanged false)
-      PageMsg(DatePickerFocusChanged(Some "date-picker-trigger")) ]
+    [
+        NavigateTo "text-numeric-input"
+        PageMsg(DatePickerOpenChanged true)
+        PageMsg(DatePickerFocusChanged(Some "date-picker-calendar"))
+        PageMsg(DatePickerChanged(DateOnly(2026, 6, 17)))
+        PageMsg(DatePickerOpenChanged false)
+        PageMsg(DatePickerFocusChanged(Some "date-picker-trigger"))
+    ]

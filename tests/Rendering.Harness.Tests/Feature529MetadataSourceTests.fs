@@ -47,163 +47,198 @@ let tests =
     testList
         "Feature529 metadata.source resolves"
         [
-          // THE REGRESSION TEST FOR THE GUARD ITSELF. #466's file (template/feedback/skill/SKILL.md) is authored
-          // `fs-gg-ui`, not `FS.GG`. An FS.GG-only rule exempts it — green, with #466 fully reintroduced.
-          test "an fs-gg-ui-authored skill is held to its citation — #466's own author must not be exempt" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-fsggui"
+            // THE REGRESSION TEST FOR THE GUARD ITSELF. #466's file (template/feedback/skill/SKILL.md) is authored
+            // `fs-gg-ui`, not `FS.GG`. An FS.GG-only rule exempts it — green, with #466 fully reintroduced.
+            test "an fs-gg-ui-authored skill is held to its citation — #466's own author must not be exempt" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-fsggui"
 
-              try
-                  writeSkill root "fs-gg-feedback-capture" (danglingSource "fs-gg-ui")
+                try
+                    writeSkill root "fs-gg-feedback-capture" (danglingSource "fs-gg-ui")
 
-                  let findings = sourceFindings root
+                    let findings = sourceFindings root
 
-                  Expect.hasLength findings 1 "an `fs-gg-ui` skill is authored HERE — exempting it would exempt the exact file #466 was about"
-                  Expect.equal findings.Head.Severity SkillParity.High "High, or it does not fail the gate"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                    Expect.hasLength
+                        findings
+                        1
+                        "an `fs-gg-ui` skill is authored HERE — exempting it would exempt the exact file #466 was about"
 
-          // Fail-closed: an author nobody has heard of is CHECKED, not excused.
-          test "an unknown author is enforced, not silently exempted" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-unknown"
+                    Expect.equal findings.Head.Severity SkillParity.High "High, or it does not fail the gate"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-              try
-                  writeSkill root "fs-gg-newcomer" (danglingSource "some-new-team")
+            // Fail-closed: an author nobody has heard of is CHECKED, not excused.
+            test "an unknown author is enforced, not silently exempted" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-unknown"
 
-                  Expect.hasLength
-                      (sourceFindings root)
-                      1
-                      "the exemption is a closed allow-list of vendored authors; a new name must default to ENFORCED, or the rule fails open the first time somebody coins one"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                try
+                    writeSkill root "fs-gg-newcomer" (danglingSource "some-new-team")
 
-          test "an FS.GG-authored skill whose metadata.source does not resolve is a High finding (#466)" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-dangling"
+                    Expect.hasLength
+                        (sourceFindings root)
+                        1
+                        "the exemption is a closed allow-list of vendored authors; a new name must default to ENFORCED, or the rule fails open the first time somebody coins one"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-              try
-                  writeSkill root "fs-gg-dangling" (danglingSource "FS.GG")
+            test "an FS.GG-authored skill whose metadata.source does not resolve is a High finding (#466)" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-dangling"
 
-                  let findings = sourceFindings root
+                try
+                    writeSkill root "fs-gg-dangling" (danglingSource "FS.GG")
 
-                  Expect.hasLength findings 1 "the dangling citation is reported"
-                  Expect.stringContains findings.Head.Message "058-a-feature-that-never-existed" "the finding names the path that did not resolve, so the author need not go hunting for it"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                    let findings = sourceFindings root
 
-          test "a metadata.source resolving OUTSIDE the repository is a finding, not a pass" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-escape"
+                    Expect.hasLength findings 1 "the dangling citation is reported"
 
-              try
-                  // Both EXIST. Neither is in this repository — and "a pointer carried in from another repo that
-                  // happens to resolve on the author's disk" is #466's shape precisely.
-                  writeSkill root "fs-gg-absolute" "metadata:\n  author: \"FS.GG\"\n  source: \"/etc\"\n"
-                  writeSkill root "fs-gg-relative" "metadata:\n  author: \"FS.GG\"\n  source: \"../..\"\n"
+                    Expect.stringContains
+                        findings.Head.Message
+                        "058-a-feature-that-never-existed"
+                        "the finding names the path that did not resolve, so the author need not go hunting for it"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-                  let findings = sourceFindings root
+            test "a metadata.source resolving OUTSIDE the repository is a finding, not a pass" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-escape"
 
-                  Expect.hasLength findings 2 "existence is not enough — the citation must be inside THIS repository, or no other checkout can follow it"
-                  Expect.all findings (fun f -> f.Severity = SkillParity.High) "High"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                try
+                    // Both EXIST. Neither is in this repository — and "a pointer carried in from another repo that
+                    // happens to resolve on the author's disk" is #466's shape precisely.
+                    writeSkill root "fs-gg-absolute" "metadata:\n  author: \"FS.GG\"\n  source: \"/etc\"\n"
+                    writeSkill root "fs-gg-relative" "metadata:\n  author: \"FS.GG\"\n  source: \"../..\"\n"
 
-          test "an FS.GG-authored skill whose metadata.source resolves is clean" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-resolves"
+                    let findings = sourceFindings root
 
-              try
-                  Directory.CreateDirectory(Path.Combine(root, "specs", "131-real")) |> ignore
-                  writeSkill root "fs-gg-real" "metadata:\n  author: \"FS.GG\"\n  source: \"specs/131-real\"\n"
+                    Expect.hasLength
+                        findings
+                        2
+                        "existence is not enough — the citation must be inside THIS repository, or no other checkout can follow it"
 
-                  Expect.isEmpty (sourceFindings root) "a citation that resolves is not a finding — a DIRECTORY counts, as fs-gg-ant-design's does"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                    Expect.all findings (fun f -> f.Severity = SkillParity.High) "High"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-          // The half that must NOT fire. These are synced from upstream, so a red here is a red nobody can clear —
-          // and an unfixable red is a gate somebody switches off.
-          test "a vendored skill's upstream metadata.source is provenance, not a citation of this repo" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-vendored"
+            test "an FS.GG-authored skill whose metadata.source resolves is clean" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-resolves"
 
-              try
-                  writeSkill root "speckit-analyze" "metadata:\n  author: \"github-spec-kit\"\n  source: \"templates/commands/analyze.md\"\n"
-                  writeSkill root "speckit-git-commit" "metadata:\n  author: \"github-spec-kit\"\n  source: \"git:commands/speckit.git.commit.md\"\n"
+                try
+                    Directory.CreateDirectory(Path.Combine(root, "specs", "131-real")) |> ignore
+                    writeSkill root "fs-gg-real" "metadata:\n  author: \"FS.GG\"\n  source: \"specs/131-real\"\n"
 
-                  Expect.isEmpty (sourceFindings root) "a vendored skill's `source` names a path in the UPSTREAM repo; requiring it to resolve here would red the gate on content this repo cannot fix"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                    Expect.isEmpty
+                        (sourceFindings root)
+                        "a citation that resolves is not a finding — a DIRECTORY counts, as fs-gg-ant-design's does"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-          test "a metadata.source with no metadata.author is a High finding, not a free pass" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-unattributed"
+            // The half that must NOT fire. These are synced from upstream, so a red here is a red nobody can clear —
+            // and an unfixable red is a gate somebody switches off.
+            test "a vendored skill's upstream metadata.source is provenance, not a citation of this repo" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-vendored"
 
-              try
-                  writeSkill root "fs-gg-unattributed" "metadata:\n  source: \"specs/058-a-feature-that-never-existed/contracts/x.md\"\n"
+                try
+                    writeSkill
+                        root
+                        "speckit-analyze"
+                        "metadata:\n  author: \"github-spec-kit\"\n  source: \"templates/commands/analyze.md\"\n"
 
-                  Expect.hasLength (sourceFindings root) 1 "an unattributed source cannot fall silently into the vendored exemption — dropping a line must not be a way to evade the rule"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+                    writeSkill
+                        root
+                        "speckit-git-commit"
+                        "metadata:\n  author: \"github-spec-kit\"\n  source: \"git:commands/speckit.git.commit.md\"\n"
 
-          // Two SKILL.md can share a SurfaceId AND a SkillName (the spec-kit surface concatenates .agents and
-          // .claude), and findings are deduped by FindingId — so a finding id without the path reports ONE of two
-          // broken files and silently drops the other.
-          test "two broken copies of one skill name are two findings, not one" {
-              let root = Feature168SkillParityFixtures.createTempRoot "feature529-dedupe"
+                    Expect.isEmpty
+                        (sourceFindings root)
+                        "a vendored skill's `source` names a path in the UPSTREAM repo; requiring it to resolve here would red the gate on content this repo cannot fix"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-              try
-                  writeSkillOn root ".claude" "fs-gg-twin" (danglingSource "FS.GG")
-                  writeSkillOn root ".agents" "fs-gg-twin" (danglingSource "FS.GG")
+            test "a metadata.source with no metadata.author is a High finding, not a free pass" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-unattributed"
 
-                  let findings = sourceFindings root
+                try
+                    writeSkill
+                        root
+                        "fs-gg-unattributed"
+                        "metadata:\n  source: \"specs/058-a-feature-that-never-existed/contracts/x.md\"\n"
 
-                  Expect.hasLength findings 2 "both copies are broken and both must be reported; collapsing them hides one file from whoever fixes the other"
+                    Expect.hasLength
+                        (sourceFindings root)
+                        1
+                        "an unattributed source cannot fall silently into the vendored exemption — dropping a line must not be a way to evade the rule"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-                  Expect.equal
-                      (findings |> List.map (fun f -> f.FindingId) |> List.distinct |> List.length)
-                      2
-                      "the finding ids must differ, or List.distinctBy in classifyFindings drops one"
-              finally
-                  Feature168SkillParityFixtures.deleteTempRoot root
-          }
+            // Two SKILL.md can share a SurfaceId AND a SkillName (the spec-kit surface concatenates .agents and
+            // .claude), and findings are deduped by FindingId — so a finding id without the path reports ONE of two
+            // broken files and silently drops the other.
+            test "two broken copies of one skill name are two findings, not one" {
+                let root = Feature168SkillParityFixtures.createTempRoot "feature529-dedupe"
 
-          // Guards the live tree — and guards itself against being vacuous, using the RULE's own predicate rather
-          // than a stricter one (an exact-case "FS.GG" test would count 1 file and miss the fs-gg-ui skills the
-          // rule now covers, so the guard would not actually be guarding the rule's scope).
-          test "this repository's own skills cite nothing that does not resolve" {
-              let root = RepositoryRoot.value
-              let report = SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root)
+                try
+                    writeSkillOn root ".claude" "fs-gg-twin" (danglingSource "FS.GG")
+                    writeSkillOn root ".agents" "fs-gg-twin" (danglingSource "FS.GG")
 
-              // The entries `runCheck` really inventories — NOT every SKILL.md on disk. Some trees
-              // (template/base/.claude/skills/**) sit under no surface, so counting files would let this guard be
-              // satisfied by a skill the rule never sees, leaving the assertion below vacuous while looking green.
-              let request = Feature168SkillParityFixtures.repositoryRequest root
+                    let findings = sourceFindings root
 
-              let enforced =
-                  SkillParity.inventorySkills request (SkillParity.discoverDefaultSurfaces root)
-                  |> List.filter (fun entry ->
-                      let has key =
-                          entry.Metadata
-                          |> Map.tryFind key
-                          |> Option.map (fun v -> v.Trim())
-                          |> Option.filter (fun v -> v <> "")
+                    Expect.hasLength
+                        findings
+                        2
+                        "both copies are broken and both must be reported; collapsing them hides one file from whoever fixes the other"
 
-                      match has "source", has "author" with
-                      | Some _, Some author -> author.Trim().ToLowerInvariant() <> "github-spec-kit"
-                      | Some _, None -> true
-                      | None, _ -> false)
+                    Expect.equal
+                        (findings |> List.map (fun f -> f.FindingId) |> List.distinct |> List.length)
+                        2
+                        "the finding ids must differ, or List.distinctBy in classifyFindings drops one"
+                finally
+                    Feature168SkillParityFixtures.deleteTempRoot root
+            }
 
-              Expect.isGreaterThan
-                  (List.length enforced)
-                  0
-                  "at least one INVENTORIED skill declares a `metadata.source` this rule enforces (if this fails, the assertion below passes vacuously and the rule guards nothing)"
+            // Guards the live tree — and guards itself against being vacuous, using the RULE's own predicate rather
+            // than a stricter one (an exact-case "FS.GG" test would count 1 file and miss the fs-gg-ui skills the
+            // rule now covers, so the guard would not actually be guarding the rule's scope).
+            test "this repository's own skills cite nothing that does not resolve" {
+                let root = RepositoryRoot.value
 
-              let dangling =
-                  report.Findings
-                  |> List.filter (fun finding -> finding.Category = SkillParity.UnresolvedMetadataSource)
+                let report =
+                    SkillParity.runCheck (Feature168SkillParityFixtures.repositoryRequest root)
 
-              Expect.isEmpty
-                  dangling
-                  $"every enforced metadata.source in this repo resolves; unresolved: {dangling |> List.map (fun f -> f.CanonicalPath)}"
-          } ]
+                // The entries `runCheck` really inventories — NOT every SKILL.md on disk. Some trees
+                // (template/base/.claude/skills/**) sit under no surface, so counting files would let this guard be
+                // satisfied by a skill the rule never sees, leaving the assertion below vacuous while looking green.
+                let request = Feature168SkillParityFixtures.repositoryRequest root
+
+                let enforced =
+                    SkillParity.inventorySkills request (SkillParity.discoverDefaultSurfaces root)
+                    |> List.filter (fun entry ->
+                        let has key =
+                            entry.Metadata
+                            |> Map.tryFind key
+                            |> Option.map (fun v -> v.Trim())
+                            |> Option.filter (fun v -> v <> "")
+
+                        match has "source", has "author" with
+                        | Some _, Some author -> author.Trim().ToLowerInvariant() <> "github-spec-kit"
+                        | Some _, None -> true
+                        | None, _ -> false)
+
+                Expect.isGreaterThan
+                    (List.length enforced)
+                    0
+                    "at least one INVENTORIED skill declares a `metadata.source` this rule enforces (if this fails, the assertion below passes vacuously and the rule guards nothing)"
+
+                let dangling =
+                    report.Findings
+                    |> List.filter (fun finding -> finding.Category = SkillParity.UnresolvedMetadataSource)
+
+                Expect.isEmpty
+                    dangling
+                    $"every enforced metadata.source in this repo resolves; unresolved: {dangling |> List.map (fun f -> f.CanonicalPath)}"
+            }
+        ]

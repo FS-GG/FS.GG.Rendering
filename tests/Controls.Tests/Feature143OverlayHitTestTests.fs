@@ -6,33 +6,49 @@ open Feature143OverlayFixtures
 
 [<Tests>]
 let tests =
-    testList "Feature143 topmost hit routing" [
-        test "stack order is stable and topmost-only dismissal blocks lower surfaces" {
-            let state =
-                run [ OpenRequested(surface TransientSurfaceKind.Menu "bottom" 1)
-                      OpenRequested(surface TransientSurfaceKind.ContextMenu "top" 20) ]
+    testList
+        "Feature143 topmost hit routing"
+        [
+            test "stack order is stable and topmost-only dismissal blocks lower surfaces" {
+                let state =
+                    run
+                        [
+                            OpenRequested(surface TransientSurfaceKind.Menu "bottom" 1)
+                            OpenRequested(surface TransientSurfaceKind.ContextMenu "top" 20)
+                        ]
 
-            let blocked, effects = OverlayState.update (DismissRequested(Some "bottom", DismissalReason.Escape)) state
+                let blocked, effects =
+                    OverlayState.update (DismissRequested(Some "bottom", DismissalReason.Escape)) state
 
-            Expect.equal (blocked.OpenSurfaces |> List.map _.Id.SurfaceId) [ "bottom"; "top" ] "lower surface remains open"
-            Expect.exists blocked.Diagnostics (fun d -> d.Code = BlockedOverlayDismissal) "blocked lower dismissal diagnostic"
-            Expect.contains effects ConsumeInput "blocked dismissal consumes input"
-        }
+                Expect.equal
+                    (blocked.OpenSurfaces |> List.map _.Id.SurfaceId)
+                    [ "bottom"; "top" ]
+                    "lower surface remains open"
 
-        test "outside pointer routes through the target surface dismissal policy" {
-            let state, _ = openOne (surface TransientSurfaceKind.ComboDropdown "combo" 10)
+                Expect.exists
+                    blocked.Diagnostics
+                    (fun d -> d.Code = BlockedOverlayDismissal)
+                    "blocked lower dismissal diagnostic"
 
-            let decision =
-                { Input = "pointer:outside"
-                  CandidateLayers = [ "content"; "combo" ]
-                  ChosenTarget = Some "content"
-                  BlockedByModal = None
-                  OutsideOfSurface = Some "combo" }
+                Expect.contains effects ConsumeInput "blocked dismissal consumes input"
+            }
 
-            let closed, effects = OverlayState.update (PointerRouted decision) state
+            test "outside pointer routes through the target surface dismissal policy" {
+                let state, _ = openOne (surface TransientSurfaceKind.ComboDropdown "combo" 10)
 
-            Expect.isEmpty closed.OpenSurfaces "outside pointer dismissed top surface"
-            Expect.equal (List.head effects) (RecordTopmostHit decision) "hit evidence is first"
-            Expect.isTrue ((OverlayState.replayLog closed).HitDecisions.Length = 1) "hit decision recorded"
-        }
-    ]
+                let decision =
+                    {
+                        Input = "pointer:outside"
+                        CandidateLayers = [ "content"; "combo" ]
+                        ChosenTarget = Some "content"
+                        BlockedByModal = None
+                        OutsideOfSurface = Some "combo"
+                    }
+
+                let closed, effects = OverlayState.update (PointerRouted decision) state
+
+                Expect.isEmpty closed.OpenSurfaces "outside pointer dismissed top surface"
+                Expect.equal (List.head effects) (RecordTopmostHit decision) "hit evidence is first"
+                Expect.isTrue ((OverlayState.replayLog closed).HitDecisions.Length = 1) "hit decision recorded"
+            }
+        ]

@@ -24,7 +24,8 @@ let private rich =
         Health = 0.6
         Speed = 3
         Heading = 0.4
-        Shield = true }
+        Shield = true
+    }
 
 let private roundTrip (scene: Scene) =
     let bytes = (SceneCodec.export scene).CanonicalBytes
@@ -37,34 +38,52 @@ let private roundTrip (scene: Scene) =
 let tests =
     testList
         "US1 codec fidelity"
-        [ test "token scene survives export -> import -> re-export byte-identically" {
-              let scene = Symbology.token rich
-              let pkg = roundTrip scene
-              let reExported = (SceneCodec.export pkg.Scene).CanonicalBytes
-              let original = (SceneCodec.export scene).CanonicalBytes
-              Expect.equal reExported original "round-trip preserves canonical bytes (no codec loss)"
-          }
+        [
+            test "token scene survives export -> import -> re-export byte-identically" {
+                let scene = Symbology.token rich
+                let pkg = roundTrip scene
+                let reExported = (SceneCodec.export pkg.Scene).CanonicalBytes
+                let original = (SceneCodec.export scene).CanonicalBytes
+                Expect.equal reExported original "round-trip preserves canonical bytes (no codec loss)"
+            }
 
-          test "token scene preserves Path, Arc and gradient-bearing element kinds" {
-              let kinds = Symbology.token rich |> Scene.describe |> List.distinct
-              Expect.contains kinds PathElement "silhouette Path preserved"
-              Expect.contains kinds ArcElement "health belly Arc preserved"
-              Expect.contains kinds EllipseElement "charge radial-gradient fill (ellipse) preserved"
-          }
+            test "token scene preserves Path, Arc and gradient-bearing element kinds" {
+                let kinds = Symbology.token rich |> Scene.describe |> List.distinct
+                Expect.contains kinds PathElement "silhouette Path preserved"
+                Expect.contains kinds ArcElement "health belly Arc preserved"
+                Expect.contains kinds EllipseElement "charge radial-gradient fill (ellipse) preserved"
+            }
 
-          test "codec-capability guard: radial / linear / sweep gradients all round-trip" {
-              let center = { X = 20.0; Y = 20.0 }
-              let bounds = { X = 0.0; Y = 0.0; Width = 40.0; Height = 40.0 }
-              let colors = [ Colors.rgba 255uy 0uy 0uy 200uy; Colors.rgba 255uy 0uy 0uy 0uy ]
+            test "codec-capability guard: radial / linear / sweep gradients all round-trip" {
+                let center = { X = 20.0; Y = 20.0 }
 
-              let shaders =
-                  [ "radial", RadialGradient(center, 18.0, colors)
-                    "linear", LinearGradient({ X = 0.0; Y = 0.0 }, { X = 40.0; Y = 40.0 }, colors)
-                    "sweep", SweepGradient(center, colors) ]
+                let bounds =
+                    {
+                        X = 0.0
+                        Y = 0.0
+                        Width = 40.0
+                        Height = 40.0
+                    }
 
-              for name, shader in shaders do
-                  let scene = Scene.ellipse bounds (Paint.fill Colors.transparent |> Paint.withShader shader)
-                  let pkg = roundTrip scene
-                  let reExported = (SceneCodec.export pkg.Scene).CanonicalBytes
-                  Expect.equal reExported ((SceneCodec.export scene).CanonicalBytes) (sprintf "%s gradient round-trips" name)
-          } ]
+                let colors = [ Colors.rgba 255uy 0uy 0uy 200uy; Colors.rgba 255uy 0uy 0uy 0uy ]
+
+                let shaders =
+                    [
+                        "radial", RadialGradient(center, 18.0, colors)
+                        "linear", LinearGradient({ X = 0.0; Y = 0.0 }, { X = 40.0; Y = 40.0 }, colors)
+                        "sweep", SweepGradient(center, colors)
+                    ]
+
+                for name, shader in shaders do
+                    let scene =
+                        Scene.ellipse bounds (Paint.fill Colors.transparent |> Paint.withShader shader)
+
+                    let pkg = roundTrip scene
+                    let reExported = (SceneCodec.export pkg.Scene).CanonicalBytes
+
+                    Expect.equal
+                        reExported
+                        ((SceneCodec.export scene).CanonicalBytes)
+                        (sprintf "%s gradient round-trips" name)
+            }
+        ]

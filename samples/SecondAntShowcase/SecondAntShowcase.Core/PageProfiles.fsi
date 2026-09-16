@@ -12,12 +12,14 @@ type TransientSurfacePolicy =
     | ControlledRegion
 
 type PageVisualProfile =
-    { PageId: string
-      Density: PageDensity
-      SectionColumns: int
-      HasLargeDemonstrationRegion: bool
-      TransientPolicy: TransientSurfacePolicy
-      MinimumSizeRepresentative: bool }
+    {
+        PageId: string
+        Density: PageDensity
+        SectionColumns: int
+        HasLargeDemonstrationRegion: bool
+        TransientPolicy: TransientSurfacePolicy
+        MinimumSizeRepresentative: bool
+    }
 
 val all: PageVisualProfile list
 val byPageId: pageId: string -> PageVisualProfile

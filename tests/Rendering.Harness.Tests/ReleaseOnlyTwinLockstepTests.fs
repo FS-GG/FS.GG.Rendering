@@ -73,32 +73,39 @@ open Expecto
 open FS.GG.TestSupport
 
 let private root = RepositoryRoot.value
-let private repoPath (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
+
+let private repoPath (path: string) =
+    Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
 let private twinDirectory = "tests/Rendering.Harness.Tests"
 
 /// One hoisted rule: the slnx-resident twin, the release-only rule it mirrors, and the token the twin's
 /// header must name it by.
 type private TwinPair =
-    { /// Repo-relative path to the PR-time twin (in this project).
-      Twin: string
-      /// Repo-relative path to the release-only counterpart.
-      ReleaseOnly: string
-      /// A token the twin's header must contain so it points a reader at its counterpart.
-      HeaderNames: string }
+    {
+        /// Repo-relative path to the PR-time twin (in this project).
+        Twin: string
+        /// Repo-relative path to the release-only counterpart.
+        ReleaseOnly: string
+        /// A token the twin's header must contain so it points a reader at its counterpart.
+        HeaderNames: string
+    }
 
 let private registry =
     [ // #350 — the generated product's per-family default launch host. The counterpart is the INSTANTIATED
-      // template/base/tests/Product.Tests. Since #680 those tests DO run on every PR (gate.yml scaffolds
-      // every profile), so this pair is no longer "a release-only rule hoisted one gate earlier" — what
-      // it is now is a UNIVERSAL rule standing over an existential counterpart, which is the whole of why
-      // #719 kept it. See the twin's header. It is a directory, not a text-mirror of one source: no input
-      // set to compare, and no `test "…"` set to compare rule-for-rule (which is why it carried
-      // `SharedInputs = false` and `MirroredRules = false` while those checks existed).
-      // L-EXISTS/L-NAMES/L-CLOSED guard it.
-      { Twin = $"{twinDirectory}/TemplateLaunchExpressionCoherenceTests.fs"
-        ReleaseOnly = "template/base/tests/Product.Tests"
-        HeaderNames = "Product.Tests" } ]
+        // template/base/tests/Product.Tests. Since #680 those tests DO run on every PR (gate.yml scaffolds
+        // every profile), so this pair is no longer "a release-only rule hoisted one gate earlier" — what
+        // it is now is a UNIVERSAL rule standing over an existential counterpart, which is the whole of why
+        // #719 kept it. See the twin's header. It is a directory, not a text-mirror of one source: no input
+        // set to compare, and no `test "…"` set to compare rule-for-rule (which is why it carried
+        // `SharedInputs = false` and `MirroredRules = false` while those checks existed).
+        // L-EXISTS/L-NAMES/L-CLOSED guard it.
+        {
+            Twin = $"{twinDirectory}/TemplateLaunchExpressionCoherenceTests.fs"
+            ReleaseOnly = "template/base/tests/Product.Tests"
+            HeaderNames = "Product.Tests"
+        }
+    ]
 
 let private exists (repoRelative: string) =
     let full = repoPath repoRelative
@@ -121,65 +128,66 @@ let releaseOnlyTwinLockstepTests =
     testList
         "#366 — release-only ↔ PR-time twin lockstep"
         [
-          // L-EXISTS — neither endpoint may vanish without the other being reconciled in the same PR.
-          test "every registered twin and its release-only counterpart still exist" {
-              // Fail loud, never vacuous: an empty registry would satisfy every loop in this file
-              // trivially. If the last twin is ever retired, DELETE this guard — do not leave it
-              // asserting nothing over an empty list (#613).
-              Expect.isNonEmpty
-                  registry
-                  "the twin registry must not be empty — if the last twin was retired, delete this guard rather than leaving it reporting green over no subject"
+            // L-EXISTS — neither endpoint may vanish without the other being reconciled in the same PR.
+            test "every registered twin and its release-only counterpart still exist" {
+                // Fail loud, never vacuous: an empty registry would satisfy every loop in this file
+                // trivially. If the last twin is ever retired, DELETE this guard — do not leave it
+                // asserting nothing over an empty list (#613).
+                Expect.isNonEmpty
+                    registry
+                    "the twin registry must not be empty — if the last twin was retired, delete this guard rather than leaving it reporting green over no subject"
 
-              for pair in registry do
-                  Expect.isTrue (exists pair.Twin) (sprintf "twin %s exists" pair.Twin)
+                for pair in registry do
+                    Expect.isTrue (exists pair.Twin) (sprintf "twin %s exists" pair.Twin)
 
-                  Expect.isTrue
-                      (exists pair.ReleaseOnly)
-                      (sprintf
-                          "release-only counterpart %s exists (if it was renamed or removed, update the twin %s and this registry in lockstep)"
-                          pair.ReleaseOnly
-                          pair.Twin)
-          }
+                    Expect.isTrue
+                        (exists pair.ReleaseOnly)
+                        (sprintf
+                            "release-only counterpart %s exists (if it was renamed or removed, update the twin %s and this registry in lockstep)"
+                            pair.ReleaseOnly
+                            pair.Twin)
+            }
 
-          // L-NAMES — the twin header must point a reader at the rule it mirrors.
-          test "every twin header names its release-only counterpart" {
-              for pair in registry do
-                  let header = headerOf pair.Twin
+            // L-NAMES — the twin header must point a reader at the rule it mirrors.
+            test "every twin header names its release-only counterpart" {
+                for pair in registry do
+                    let header = headerOf pair.Twin
 
-                  Expect.isNotEmpty
-                      header
-                      (sprintf "twin %s must open with a `//` header block explaining what it mirrors" pair.Twin)
+                    Expect.isNotEmpty
+                        header
+                        (sprintf "twin %s must open with a `//` header block explaining what it mirrors" pair.Twin)
 
-                  Expect.stringContains
-                      header
-                      pair.HeaderNames
-                      (sprintf
-                          "the HEADER of twin %s must name its release-only counterpart '%s' so the two stay discoverable from each other (a mention in a path literal further down does not count — the reader lands on the header)"
-                          pair.Twin
-                          pair.HeaderNames)
-          }
+                    Expect.stringContains
+                        header
+                        pair.HeaderNames
+                        (sprintf
+                            "the HEADER of twin %s must name its release-only counterpart '%s' so the two stay discoverable from each other (a mention in a path literal further down does not count — the reader lands on the header)"
+                            pair.Twin
+                            pair.HeaderNames)
+            }
 
-          // L-CLOSED — no twin escapes the guard by being new. Every `*CoherenceTests.fs` here must be
-          // registered above, so adding one forces declaring the release-only rule it pairs with.
-          test "every *CoherenceTests.fs in this project is registered" {
-              let registeredTwins = registry |> List.map (fun p -> Path.GetFileName p.Twin) |> Set.ofList
+            // L-CLOSED — no twin escapes the guard by being new. Every `*CoherenceTests.fs` here must be
+            // registered above, so adding one forces declaring the release-only rule it pairs with.
+            test "every *CoherenceTests.fs in this project is registered" {
+                let registeredTwins =
+                    registry |> List.map (fun p -> Path.GetFileName p.Twin) |> Set.ofList
 
-              let onDisk =
-                  Directory.GetFiles(repoPath twinDirectory, "*CoherenceTests.fs")
-                  |> Array.map Path.GetFileName
-                  |> Set.ofArray
+                let onDisk =
+                    Directory.GetFiles(repoPath twinDirectory, "*CoherenceTests.fs")
+                    |> Array.map Path.GetFileName
+                    |> Set.ofArray
 
-              // Guard against a convention change silently emptying the scan.
-              Expect.isNonEmpty
-                  (Set.toList onDisk)
-                  "at least one *CoherenceTests.fs twin must exist for this lockstep guard to be meaningful"
+                // Guard against a convention change silently emptying the scan.
+                Expect.isNonEmpty
+                    (Set.toList onDisk)
+                    "at least one *CoherenceTests.fs twin must exist for this lockstep guard to be meaningful"
 
-              let unregistered = Set.difference onDisk registeredTwins |> Set.toList
+                let unregistered = Set.difference onDisk registeredTwins |> Set.toList
 
-              Expect.isEmpty
-                  unregistered
-                  (sprintf
-                      "these coherence twins are not registered in ReleaseOnlyTwinLockstepTests — register each with the release-only rule it pairs with, and check FIRST that it needs to exist at all: a Package.Tests rule already runs on the PR gate (#540, #613): %A"
-                      unregistered)
-          }
+                Expect.isEmpty
+                    unregistered
+                    (sprintf
+                        "these coherence twins are not registered in ReleaseOnlyTwinLockstepTests — register each with the release-only rule it pairs with, and check FIRST that it needs to exist at all: a Package.Tests rule already runs on the PR gate (#540, #613): %A"
+                        unregistered)
+            }
         ]

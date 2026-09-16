@@ -50,6 +50,7 @@ open Expecto
 open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
+
 let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
@@ -65,25 +66,28 @@ let private productSourceDir = repositoryPath "template/base/src/Product"
 /// references a package not here — e.g. a future edit pulls FS.GG.Game.* into the app branch — the probe
 /// can no longer be offline and must fail loudly rather than silently drop the reference.
 let private frameworkProjects =
-    Map [ "FS.GG.UI.Scene", "src/Scene/Scene.fsproj"
-          "FS.GG.UI.SkiaViewer", "src/SkiaViewer/SkiaViewer.fsproj"
-          "FS.GG.UI.Elmish", "src/Elmish/Elmish.fsproj"
-          "FS.GG.UI.KeyboardInput", "src/KeyboardInput/KeyboardInput.fsproj"
-          "FS.GG.UI.Layout", "src/Layout/Layout.fsproj"
-          "FS.GG.UI.Controls", "src/Controls/Controls.fsproj"
-          "FS.GG.UI.Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj"
-          "FS.GG.UI.DesignSystem", "src/DesignSystem/DesignSystem.fsproj"
-          "FS.GG.UI.Themes.Default", "src/Themes.Default/Themes.Default.fsproj"
-          // Issue #430: the fs-gg-symbology skill ships on the app profile, so the packages it tells the
-          // author to `open` are now referenced there (they were pinned on NO profile before — the bug).
-          // Symbology.Render is the raster bridge and reaches SkiaViewer, already mapped above.
-          "FS.GG.UI.Symbology", "src/Symbology/Symbology.fsproj"
-          "FS.GG.UI.Symbology.Render", "src/Symbology.Render/Symbology.Render.fsproj"
-          // Not in the app branch today, but legitimately reachable if a future edit widens the gate;
-          // keeping them mapped means such an edit still probes offline instead of failing P-MAP-COMPLETE.
-          "FS.GG.UI.Canvas", "src/Canvas/Canvas.Lib.fsproj"
+    Map
+        [
+            "FS.GG.UI.Scene", "src/Scene/Scene.fsproj"
+            "FS.GG.UI.SkiaViewer", "src/SkiaViewer/SkiaViewer.fsproj"
+            "FS.GG.UI.Elmish", "src/Elmish/Elmish.fsproj"
+            "FS.GG.UI.KeyboardInput", "src/KeyboardInput/KeyboardInput.fsproj"
+            "FS.GG.UI.Layout", "src/Layout/Layout.fsproj"
+            "FS.GG.UI.Controls", "src/Controls/Controls.fsproj"
+            "FS.GG.UI.Controls.Elmish", "src/Controls.Elmish/Controls.Elmish.fsproj"
+            "FS.GG.UI.DesignSystem", "src/DesignSystem/DesignSystem.fsproj"
+            "FS.GG.UI.Themes.Default", "src/Themes.Default/Themes.Default.fsproj"
+            // Issue #430: the fs-gg-symbology skill ships on the app profile, so the packages it tells the
+            // author to `open` are now referenced there (they were pinned on NO profile before — the bug).
+            // Symbology.Render is the raster bridge and reaches SkiaViewer, already mapped above.
+            "FS.GG.UI.Symbology", "src/Symbology/Symbology.fsproj"
+            "FS.GG.UI.Symbology.Render", "src/Symbology.Render/Symbology.Render.fsproj"
+            // Not in the app branch today, but legitimately reachable if a future edit widens the gate;
+            // keeping them mapped means such an edit still probes offline instead of failing P-MAP-COMPLETE.
+            "FS.GG.UI.Canvas", "src/Canvas/Canvas.Lib.fsproj"
 
-          "FS.GG.UI.Testing", "src/Testing/Testing.fsproj" ]
+            "FS.GG.UI.Testing", "src/Testing/Testing.fsproj"
+        ]
 
 /// Packages from ANOTHER FS-GG repo that the app profile references (issue #436 put FS.GG.Audio.Core
 /// and .Host on it, so the Controls family can reach #429's audio sink). This repo builds no project
@@ -107,14 +111,20 @@ let private frameworkProjects =
 /// A bare set with one shared version would hand the next maintainer a loaded gun — add FS.GG.Game.Core
 /// here and it would silently be pinned at the AUDIO version.
 let private feedOnlyPackages =
-    Map [ "FS.GG.Audio.Core", "FsGgAudioVersion"
-          "FS.GG.Audio.Host", "FsGgAudioVersion" ]
+    Map
+        [
+            "FS.GG.Audio.Core", "FsGgAudioVersion"
+            "FS.GG.Audio.Host", "FsGgAudioVersion"
+        ]
 
 /// The version the template itself pins on `axis`, read from where the template declares it, so the
 /// probe compiles the version a scaffolded product would actually get and cannot drift from it.
 let private templateVersionOnAxis (axis: string) =
-    let props = File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
-    let m = Regex.Match(props, sprintf "<%s>(?<v>[^<]+)</%s>" (Regex.Escape axis) (Regex.Escape axis))
+    let props =
+        File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
+
+    let m =
+        Regex.Match(props, sprintf "<%s>(?<v>[^<]+)</%s>" (Regex.Escape axis) (Regex.Escape axis))
 
     if not m.Success then
         failwithf
@@ -136,6 +146,7 @@ let private conditionHolds (condition: string) =
         failwithf
             "unevaluable profile marker condition: `%s` — the probe preprocessor understands only `profile == \"a\" || profile == \"b\"`; teach it the new shape rather than letting it silently mis-evaluate a branch"
             condition
+
     Regex.Matches(condition, "\"([^\"]+)\"")
     |> Seq.map (fun m -> m.Groups.[1].Value)
     |> Seq.contains profile
@@ -146,19 +157,32 @@ let private conditionHolds (condition: string) =
 /// release-only SwapChecklistTemplateTests uses (`branchFor`), generalized over the directive syntax so
 /// it serves both the `//#…` F# sources and the `<!--#… -->` fsproj.
 let private preprocess (ifRe: Regex) (elseRe: Regex) (endifRe: Regex) (text: string) =
-    let mutable levels : (bool * bool) list = []
-    let included () = levels |> List.forall (fun (holds, inElse) -> if inElse then not holds else holds)
+    let mutable levels: (bool * bool) list = []
+
+    let included () =
+        levels
+        |> List.forall (fun (holds, inElse) -> if inElse then not holds else holds)
+
     let sb = StringBuilder()
+
     for raw in text.Replace("\r\n", "\n").Split('\n') do
         let mIf = ifRe.Match raw
+
         if mIf.Success then
             levels <- (conditionHolds (mIf.Groups.[1].Value), false) :: levels
         elif endifRe.IsMatch raw then
-            levels <- (match levels with _ :: rest -> rest | [] -> [])
+            levels <-
+                (match levels with
+                 | _ :: rest -> rest
+                 | [] -> [])
         elif elseRe.IsMatch raw then
-            levels <- (match levels with (holds, _) :: rest -> (holds, true) :: rest | [] -> [])
+            levels <-
+                (match levels with
+                 | (holds, _) :: rest -> (holds, true) :: rest
+                 | [] -> [])
         elif included () then
             sb.AppendLine raw |> ignore
+
     sb.ToString()
 
 let private fsIf = Regex(@"^\s*//#if\s+\((.*?)\)\s*$")
@@ -172,14 +196,17 @@ let private preprocessFs = preprocess fsIf fsElse fsEndif
 let private preprocessXml = preprocess xmlIf xmlElse xmlEndif
 
 // ---- materialization + build ------------------------------------------------------------------
-let private packageRefRegex = Regex(@"<PackageReference\s+Include=""(?<id>[^""]+)""\s*/>")
+let private packageRefRegex =
+    Regex(@"<PackageReference\s+Include=""(?<id>[^""]+)""\s*/>")
 
 type private Materialized =
-    { Dir: string
-      CompileItems: string list
-      ProjectRefs: string list
-      /// FS.GG.* package ids the app fsproj still references AFTER preprocessing (before the rewrite).
-      ReferencedPackages: string list }
+    {
+        Dir: string
+        CompileItems: string list
+        ProjectRefs: string list
+        /// FS.GG.* package ids the app fsproj still references AFTER preprocessing (before the rewrite).
+        ReferencedPackages: string list
+    }
 
 /// Materialize the app product into `dir`: preprocessed sources + a fsproj whose FS.GG.UI.* package
 /// references are rewritten to repo ProjectReferences.
@@ -191,9 +218,11 @@ let private materialize (dir: string) : Materialized =
             match Path.GetFileName file with
             | null -> failwithf "unexpected null filename enumerating %s" productSourceDir
             | n -> n
+
         File.WriteAllText(Path.Combine(dir, name), preprocessFs (File.ReadAllText file))
 
-    let projText = preprocessXml (File.ReadAllText(Path.Combine(productSourceDir, "Product.fsproj")))
+    let projText =
+        preprocessXml (File.ReadAllText(Path.Combine(productSourceDir, "Product.fsproj")))
 
     let referencedPackages =
         packageRefRegex.Matches projText
@@ -207,6 +236,7 @@ let private materialize (dir: string) : Materialized =
             projText,
             fun m ->
                 let id = m.Groups.["id"].Value
+
                 match Map.tryFind id frameworkProjects with
                 | Some proj -> sprintf "<ProjectReference Include=\"%s\" />" (repositoryPath proj)
                 // A feed-only package from another FS-GG repo (#436): no repo project to compile
@@ -216,7 +246,8 @@ let private materialize (dir: string) : Materialized =
                 | None when Map.containsKey id feedOnlyPackages ->
                     let version = templateVersionOnAxis (Map.find id feedOnlyPackages)
                     sprintf "<PackageReference Include=\"%s\" Version=\"%s\" />" id version
-                | None -> sprintf "<!-- UNMAPPED PACKAGE: %s -->" id)
+                | None -> sprintf "<!-- UNMAPPED PACKAGE: %s -->" id
+        )
 
     File.WriteAllText(Path.Combine(dir, "Product.fsproj"), rewritten)
 
@@ -226,10 +257,12 @@ let private materialize (dir: string) : Materialized =
         |> Array.map (fun l -> l.Trim())
         |> Array.toList
 
-    { Dir = dir
-      CompileItems = itemsOf "Compile Include"
-      ProjectRefs = itemsOf "ProjectReference"
-      ReferencedPackages = referencedPackages }
+    {
+        Dir = dir
+        CompileItems = itemsOf "Compile Include"
+        ProjectRefs = itemsOf "ProjectReference"
+        ReferencedPackages = referencedPackages
+    }
 
 /// Wall-clock ceiling on the child build; a wedged MSBuild/restore must fail this test with a message,
 /// not hang until the CI job-level timeout.
@@ -249,15 +282,18 @@ let private runBuild (dir: string) : int * string =
     // the default global-packages folder the slnx restore populated.
     // -m:1 and no shared compiler: this build is nested inside `dotnet test`, and the F# compiler server
     // contends across concurrent MSBuild nodes (MSB6006). Serial + private compilation keeps it stable.
-    [ "build"
-      "Product.fsproj"
-      "-c"
-      "Debug"
-      "-m:1"
-      "/p:UseSharedCompilation=false"
-      sprintf "/p:RestoreConfigFile=%s" (repositoryPath "nuget.config")
-      "--nologo" ]
+    [
+        "build"
+        "Product.fsproj"
+        "-c"
+        "Debug"
+        "-m:1"
+        "/p:UseSharedCompilation=false"
+        sprintf "/p:RestoreConfigFile=%s" (repositoryPath "nuget.config")
+        "--nologo"
+    ]
     |> List.iter psi.ArgumentList.Add
+
     match Process.Start psi with
     | null -> failwith "could not start `dotnet` to probe-compile the app product"
     | proc ->
@@ -267,119 +303,145 @@ let private runBuild (dir: string) : int * string =
         // exits or is killed.
         let outTask = proc.StandardOutput.ReadToEndAsync()
         let errTask = proc.StandardError.ReadToEndAsync()
+
         if proc.WaitForExit buildTimeoutMs then
             proc.ExitCode, outTask.Result + errTask.Result
         else
-            (try proc.Kill true with _ -> ())
+            (try
+                proc.Kill true
+             with _ ->
+                 ())
+
             -1, sprintf "probe-compile build exceeded %d ms and was killed" buildTimeoutMs
 
 /// Materialize into a fresh scratch dir, hand it to `f`, and always clean up. Each test that needs the
 /// materialized tree gets its own, so tests stay independent (materialization is cheap file IO; only the
 /// compile test pays the build cost).
 let private withMaterialized (f: Materialized -> unit) =
-    let dir = Path.Combine(Path.GetTempPath(), "fsgg366-probe-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+    let dir =
+        Path.Combine(Path.GetTempPath(), "fsgg366-probe-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+
     try
         f (materialize dir)
     finally
-        try Directory.Delete(dir, true) with _ -> ()
+        try
+            Directory.Delete(dir, true)
+        with _ ->
+            ()
 
 [<Tests>]
 let templateProductProbeCompileTests =
     testList
         "#366 — app-profile template product probe-compile (offline)"
         [ // P-PREPROC — the load-bearing marker walk. A bug that included the wrong branch would compile
-          // the wrong thing and give false confidence, so pin it with nested fixtures: the probed profile
-          // keeps its own branch and the negation of the others', at every nesting depth.
-          test "the profile-marker preprocessor keeps exactly the probed branch, nesting included" {
-              let fixture =
-                  String.concat "\n"
-                      [ "top"
-                        "//#if (profile == \"governed\" || profile == \"headless-scene\")"
-                        "governed-only"
-                        "//#else"
-                        "//#if (profile == \"game\")"
-                        "game-only"
-                        "//#else"
-                        "app-or-samplepack"
-                        "//#if (profile == \"app\")"
-                        "app-only"
-                        "//#endif"
-                        "//#endif"
-                        "//#endif"
-                        "bottom" ]
-              let kept = preprocessFs fixture
-              // profile = "app": drops governed branch, takes the outer #else, drops the game branch,
-              // takes the inner #else, and keeps the app-only nested #if.
-              Expect.stringContains kept "top" "unconditional lines survive"
-              Expect.stringContains kept "bottom" "unconditional lines survive"
-              Expect.stringContains kept "app-or-samplepack" "the app/sample-pack branch is kept"
-              Expect.stringContains kept "app-only" "a nested app-only #if inside the kept branch is kept"
-              Expect.isFalse (kept.Contains "governed-only") "the governed branch is dropped"
-              Expect.isFalse (kept.Contains "game-only") "the game branch is dropped"
-              Expect.isFalse (kept.Contains "#if") "directive lines are stripped"
-          }
+            // the wrong thing and give false confidence, so pin it with nested fixtures: the probed profile
+            // keeps its own branch and the negation of the others', at every nesting depth.
+            test "the profile-marker preprocessor keeps exactly the probed branch, nesting included" {
+                let fixture =
+                    String.concat
+                        "\n"
+                        [
+                            "top"
+                            "//#if (profile == \"governed\" || profile == \"headless-scene\")"
+                            "governed-only"
+                            "//#else"
+                            "//#if (profile == \"game\")"
+                            "game-only"
+                            "//#else"
+                            "app-or-samplepack"
+                            "//#if (profile == \"app\")"
+                            "app-only"
+                            "//#endif"
+                            "//#endif"
+                            "//#endif"
+                            "bottom"
+                        ]
 
-          // P-MAP-COMPLETE — every FS.GG.* package the app fsproj still references after preprocessing is
-          // accounted for: either it maps to a repo project (compiled at HEAD) or it is a declared
-          // feed-only package from another FS-GG repo (restored at its pinned version, #436). One that is
-          // NEITHER means the app profile is no longer probeable as configured — e.g. a feed-only
-          // FS.GG.Game.* package crept into the app branch, or FS.GG.Audio.Engine/.Elmish did, neither of
-          // which is in the global-packages folder. Fail loudly here rather than silently dropping the
-          // reference and compiling a product that is missing a dependency.
-          test "every referenced FS.GG.* package is probeable (repo project, or a declared feed-only pin)" {
-              withMaterialized (fun mat ->
-                  let unaccounted =
-                      mat.ReferencedPackages
-                      |> List.filter (fun id ->
-                          not (Map.containsKey id frameworkProjects) && not (Map.containsKey id feedOnlyPackages))
+                let kept = preprocessFs fixture
+                // profile = "app": drops governed branch, takes the outer #else, drops the game branch,
+                // takes the inner #else, and keeps the app-only nested #if.
+                Expect.stringContains kept "top" "unconditional lines survive"
+                Expect.stringContains kept "bottom" "unconditional lines survive"
+                Expect.stringContains kept "app-or-samplepack" "the app/sample-pack branch is kept"
+                Expect.stringContains kept "app-only" "a nested app-only #if inside the kept branch is kept"
+                Expect.isFalse (kept.Contains "governed-only") "the governed branch is dropped"
+                Expect.isFalse (kept.Contains "game-only") "the game branch is dropped"
+                Expect.isFalse (kept.Contains "#if") "directive lines are stripped"
+            }
 
-                  Expect.isEmpty
-                      unaccounted
-                      (sprintf
-                          "the app profile references FS.GG.* package(s) that are neither built in this repo nor declared feed-only, so the probe cannot resolve them: %A — add a `frameworkProjects` mapping if the package is built here; add it to `feedOnlyPackages` ONLY if something in the slnx already restores it (otherwise the probe would need the network); else move the probe off the app profile"
-                          unaccounted)
-                  Expect.isFalse
-                      ((File.ReadAllText(Path.Combine(mat.Dir, "Product.fsproj"))).Contains "UNMAPPED")
-                      "no PackageReference was left unmapped in the materialized fsproj")
-          }
+            // P-MAP-COMPLETE — every FS.GG.* package the app fsproj still references after preprocessing is
+            // accounted for: either it maps to a repo project (compiled at HEAD) or it is a declared
+            // feed-only package from another FS-GG repo (restored at its pinned version, #436). One that is
+            // NEITHER means the app profile is no longer probeable as configured — e.g. a feed-only
+            // FS.GG.Game.* package crept into the app branch, or FS.GG.Audio.Engine/.Elmish did, neither of
+            // which is in the global-packages folder. Fail loudly here rather than silently dropping the
+            // reference and compiling a product that is missing a dependency.
+            test "every referenced FS.GG.* package is probeable (repo project, or a declared feed-only pin)" {
+                withMaterialized (fun mat ->
+                    let unaccounted =
+                        mat.ReferencedPackages
+                        |> List.filter (fun id ->
+                            not (Map.containsKey id frameworkProjects)
+                            && not (Map.containsKey id feedOnlyPackages))
 
-          // P-NONVACUOUS — a preprocessor bug (or a moved source tree) that yielded an empty product would
-          // make the compile pass vacuously. Pin a floor on what the app tree ships.
-          test "the materialized app product is non-empty (not a vacuous compile)" {
-              withMaterialized (fun mat ->
-                  Expect.isGreaterThan
-                      (List.length mat.CompileItems)
-                      3
-                      "the app product compiles several sources (Model/View/Program at minimum)"
-                  Expect.isGreaterThan
-                      (List.length mat.ProjectRefs)
-                      3
-                      "the app product references several FS.GG.UI.* framework projects"
-                  // The app profile must NOT drag in the game/sample-pack-only simulation helpers.
-                  // AudioCues.fs is NO LONGER one of them: #436 gave the app profile a cue seam (the
-                  // Controls host launches through `runInteractiveAppWithAudio`), so the file compiles
-                  // on every windowed profile and is asserted PRESENT just below.
-                  let joined = String.concat "\n" mat.CompileItems
-                  for gameOnly in [ "Vec2.fs"; "Collision.fs"; "Visibility.fs"; "Grids.fs"; "LineDrawing.fs" ] do
-                      Expect.isFalse (joined.Contains gameOnly) (sprintf "%s is game/sample-pack-only and must not be in the app tree" gameOnly)
+                    Expect.isEmpty
+                        unaccounted
+                        (sprintf
+                            "the app profile references FS.GG.* package(s) that are neither built in this repo nor declared feed-only, so the probe cannot resolve them: %A — add a `frameworkProjects` mapping if the package is built here; add it to `feedOnlyPackages` ONLY if something in the slnx already restores it (otherwise the probe would need the network); else move the probe off the app profile"
+                            unaccounted)
 
-                  // #436, the positive half: the app tree really does carry the cue seam. Without this,
-                  // deleting `AudioCues.fs` from the app gate would silently pass every check in this
-                  // file — the product would simply compile with no sound, which is the defect #436
-                  // fixed and precisely the state this probe was blind to before.
-                  Expect.stringContains joined "AudioCues.fs" "the app profile compiles AudioCues.fs — it has an audio cue seam (#436)")
-          }
+                    Expect.isFalse
+                        ((File.ReadAllText(Path.Combine(mat.Dir, "Product.fsproj"))).Contains "UNMAPPED")
+                        "no PackageReference was left unmapped in the materialized fsproj")
+            }
 
-          // P-COMPILES — the deliverable. The materialized app product compiles offline against the repo's
-          // HEAD framework projects. A non-zero build is the half-release defect, caught on the PR instead
-          // of the release lane.
-          test "the app-profile product compiles offline against the repo framework at HEAD" {
-              withMaterialized (fun mat ->
-                  let exitCode, output = runBuild mat.Dir
-                  Expect.equal
-                      exitCode
-                      0
-                      (sprintf
-                          "the scaffolded `app` product failed to compile against the framework at HEAD — a PR-visible half-release defect. Build output (tail):\n%s"
-                          (let lines = output.Replace("\r\n", "\n").Split('\n') in String.concat "\n" (Array.skip (max 0 (lines.Length - 40)) lines))))
-          } ]
+            // P-NONVACUOUS — a preprocessor bug (or a moved source tree) that yielded an empty product would
+            // make the compile pass vacuously. Pin a floor on what the app tree ships.
+            test "the materialized app product is non-empty (not a vacuous compile)" {
+                withMaterialized (fun mat ->
+                    Expect.isGreaterThan
+                        (List.length mat.CompileItems)
+                        3
+                        "the app product compiles several sources (Model/View/Program at minimum)"
+
+                    Expect.isGreaterThan
+                        (List.length mat.ProjectRefs)
+                        3
+                        "the app product references several FS.GG.UI.* framework projects"
+                    // The app profile must NOT drag in the game/sample-pack-only simulation helpers.
+                    // AudioCues.fs is NO LONGER one of them: #436 gave the app profile a cue seam (the
+                    // Controls host launches through `runInteractiveAppWithAudio`), so the file compiles
+                    // on every windowed profile and is asserted PRESENT just below.
+                    let joined = String.concat "\n" mat.CompileItems
+
+                    for gameOnly in [ "Vec2.fs"; "Collision.fs"; "Visibility.fs"; "Grids.fs"; "LineDrawing.fs" ] do
+                        Expect.isFalse
+                            (joined.Contains gameOnly)
+                            (sprintf "%s is game/sample-pack-only and must not be in the app tree" gameOnly)
+
+                    // #436, the positive half: the app tree really does carry the cue seam. Without this,
+                    // deleting `AudioCues.fs` from the app gate would silently pass every check in this
+                    // file — the product would simply compile with no sound, which is the defect #436
+                    // fixed and precisely the state this probe was blind to before.
+                    Expect.stringContains
+                        joined
+                        "AudioCues.fs"
+                        "the app profile compiles AudioCues.fs — it has an audio cue seam (#436)")
+            }
+
+            // P-COMPILES — the deliverable. The materialized app product compiles offline against the repo's
+            // HEAD framework projects. A non-zero build is the half-release defect, caught on the PR instead
+            // of the release lane.
+            test "the app-profile product compiles offline against the repo framework at HEAD" {
+                withMaterialized (fun mat ->
+                    let exitCode, output = runBuild mat.Dir
+
+                    Expect.equal
+                        exitCode
+                        0
+                        (sprintf
+                            "the scaffolded `app` product failed to compile against the framework at HEAD — a PR-visible half-release defect. Build output (tail):\n%s"
+                            (let lines = output.Replace("\r\n", "\n").Split('\n') in
+                             String.concat "\n" (Array.skip (max 0 (lines.Length - 40)) lines))))
+            }
+        ]

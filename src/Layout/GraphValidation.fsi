@@ -11,8 +11,8 @@ type GraphValidationIssue =
 /// Public contract module exposed by this FS.GG.UI package.
 module GraphValidation =
     /// Public contract function exposed by this FS.GG.UI package.
-    val validate : graph: GraphDefinition -> GraphValidationIssue list
+    val validate: graph: GraphDefinition -> GraphValidationIssue list
     /// Public contract function exposed by this FS.GG.UI package.
-    val hasCycle : graph: GraphDefinition -> bool
+    val hasCycle: graph: GraphDefinition -> bool
     /// Public contract function exposed by this FS.GG.UI package.
-    val disconnectedComponents : graph: GraphDefinition -> string list list
+    val disconnectedComponents: graph: GraphDefinition -> string list list

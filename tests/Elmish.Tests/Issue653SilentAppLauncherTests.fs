@@ -48,74 +48,86 @@ let private click = SoundId "ui-click"
 /// it would be a fact that cannot fail dressed up as evidence. What IS under test is the launch outcome,
 /// which is observable and which the two launchers must agree on.
 let private menuHost: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> { Started = false }, [ PlayAudio [ Audio.playMusic music true ] ]
-      Update = fun StartPressed model -> { model with Started = true }, [ PlayAudio [ Audio.playSfx click 1.0 ] ]
-      View =
-        fun _ _ ->
-            Stack.create
-                [ Stack.children
-                      [ Button.create [ Button.text "Start"; Button.onClick StartPressed ]
-                        |> Control.withKey "start" ] ]
-      Theme = Theme.light
-      MapKey = fun _ _ -> None
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> { Started = false }, [ PlayAudio [ Audio.playMusic music true ] ]
+        Update = fun StartPressed model -> { model with Started = true }, [ PlayAudio [ Audio.playSfx click 1.0 ] ]
+        View =
+            fun _ _ ->
+                Stack.create
+                    [
+                        Stack.children
+                            [
+                                Button.create [ Button.text "Start"; Button.onClick StartPressed ]
+                                |> Control.withKey "start"
+                            ]
+                    ]
+        Theme = Theme.light
+        MapKey = fun _ _ -> None
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 let private options: ViewerOptions =
-    { Title = "Menu"
-      InitialSize = { Width = 640; Height = 480 }
-      PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None
-      LogicalSize = None }
+    {
+        Title = "Menu"
+        InitialSize = { Width = 640; Height = 480 }
+        PresentMode = ViewerPresentMode.OffscreenReadback
+        FrameRateCap = None
+        LogicalSize = None
+    }
 
 [<Tests>]
 let tests =
     testList
         "issue-653 silent app launcher"
         [
-          // The seam is not dead: the symbol the skill teaches resolves, launches, and reports a
-          // coherent failure rather than throwing — the minimum a published launcher must do.
-          test "runInteractiveApp reports an unsupported host instead of pretending to launch" {
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the live launch would run until user close"
-            else
-                match ControlsElmish.runInteractiveApp options menuHost with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful launch"
-                | Result.Error failure ->
-                    Expect.equal
-                        failure.Classification
-                        UnsupportedEnvironment
-                        "the silent launcher classifies an unsupported host as an environment failure"
+            // The seam is not dead: the symbol the skill teaches resolves, launches, and reports a
+            // coherent failure rather than throwing — the minimum a published launcher must do.
+            test "runInteractiveApp reports an unsupported host instead of pretending to launch" {
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the live launch would run until user close"
+                else
+                    match ControlsElmish.runInteractiveApp options menuHost with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful launch"
+                    | Result.Error failure ->
+                        Expect.equal
+                            failure.Classification
+                            UnsupportedEnvironment
+                            "the silent launcher classifies an unsupported host as an environment failure"
 
-                    Expect.equal failure.BlockedStage Window "an unsupported host is blocked before window lifecycle"
-          }
+                        Expect.equal
+                            failure.BlockedStage
+                            Window
+                            "an unsupported host is blocked before window lifecycle"
+            }
 
-          // The invariant the skill states, and the one #429 asserted only in prose: the silent launcher
-          // and the audio twin are the SAME code path (`runInteractiveAppWithLauncher`) up to the
-          // terminal viewer launcher, so over one host and one set of options they cannot disagree.
-          test "the silent launcher and its audio twin agree on the same host, sink aside" {
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the live launch would run until user close"
-            else
-                // The sink is `ignore` deliberately: it is never called on this path (the launch is
-                // refused before `Init`), so capturing into a list and asserting it empty would assert
-                // nothing. The claim under test is that the OUTCOMES agree.
-                let silent = ControlsElmish.runInteractiveApp options menuHost
-                let sounded = ControlsElmish.runInteractiveAppWithAudio options ignore menuHost
+            // The invariant the skill states, and the one #429 asserted only in prose: the silent launcher
+            // and the audio twin are the SAME code path (`runInteractiveAppWithLauncher`) up to the
+            // terminal viewer launcher, so over one host and one set of options they cannot disagree.
+            test "the silent launcher and its audio twin agree on the same host, sink aside" {
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the live launch would run until user close"
+                else
+                    // The sink is `ignore` deliberately: it is never called on this path (the launch is
+                    // refused before `Init`), so capturing into a list and asserting it empty would assert
+                    // nothing. The claim under test is that the OUTCOMES agree.
+                    let silent = ControlsElmish.runInteractiveApp options menuHost
+                    let sounded = ControlsElmish.runInteractiveAppWithAudio options ignore menuHost
 
-                match silent, sounded with
-                | Result.Error silentFailure, Result.Error soundedFailure ->
-                    Expect.equal
-                        silentFailure.Classification
-                        soundedFailure.Classification
-                        "the two launchers classify one unsupported host identically"
+                    match silent, sounded with
+                    | Result.Error silentFailure, Result.Error soundedFailure ->
+                        Expect.equal
+                            silentFailure.Classification
+                            soundedFailure.Classification
+                            "the two launchers classify one unsupported host identically"
 
-                    Expect.equal
-                        silentFailure.BlockedStage
-                        soundedFailure.BlockedStage
-                        "the two launchers are blocked at the same stage"
-                | _ -> failtest "an unsupported host cannot report a successful launch on either launcher"
-          } ]
+                        Expect.equal
+                            silentFailure.BlockedStage
+                            soundedFailure.BlockedStage
+                            "the two launchers are blocked at the same stage"
+                    | _ -> failtest "an unsupported host cannot report a successful launch on either launcher"
+            }
+        ]

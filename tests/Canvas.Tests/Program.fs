@@ -3,4 +3,5 @@ module Canvas.Tests.Program
 open Expecto
 
 [<EntryPoint>]
-let main argv = Tests.runTestsInAssemblyWithCLIArgs [] argv
+let main argv =
+    Tests.runTestsInAssemblyWithCLIArgs [] argv

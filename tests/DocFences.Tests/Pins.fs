@@ -20,8 +20,11 @@ module Pins =
 
     let private axis (name: string) =
         let m = Regex.Match(props.Value, $"<{name}>([^<]+)</{name}>")
-        if m.Success then m.Groups.[1].Value
-        else failwithf "<%s> not found in %s" name propsPath
+
+        if m.Success then
+            m.Groups.[1].Value
+        else
+            failwithf "<%s> not found in %s" name propsPath
 
     /// The live UI-axis pin — the one THIS repo's merge publishes, and the axis the `PinPending` waiver can
     /// apply to.
@@ -40,8 +43,11 @@ module Pins =
 
     /// Every pinned FS.GG.* package, paired with the version its axis resolves to. This is the reference set
     /// the harness hands the generated fence project.
-    let pinnedPackages : (string * string) list =
-        Regex.Matches(props.Value, @"<PackageVersion\s+Include=""(FS\.GG\.[^""]+)""\s+Version=""\$\((FsGg\w+Version)\)""")
+    let pinnedPackages: (string * string) list =
+        Regex.Matches(
+            props.Value,
+            @"<PackageVersion\s+Include=""(FS\.GG\.[^""]+)""\s+Version=""\$\((FsGg\w+Version)\)"""
+        )
         |> Seq.map (fun m -> m.Groups.[1].Value, versionForAxisToken (m.Groups.[2].Value))
         |> Seq.distinctBy fst
         |> List.ofSeq

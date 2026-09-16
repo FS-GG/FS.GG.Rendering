@@ -37,105 +37,123 @@ module ValidationLanes =
         | ListOnlySelection
 
     type LaneCommand =
-        { FileName: string
-          Arguments: string list }
+        {
+            FileName: string
+            Arguments: string list
+        }
 
     type LaneDefinition =
-        { Id: string
-          DisplayName: string
-          Description: string
-          ReadinessRole: ReadinessRole
-          Command: LaneCommand
-          WorkingDirectory: string
-          Timeout: TimeSpan
-          NoProgressTimeout: TimeSpan option
-          ProgressInterval: TimeSpan
-          EvidenceDirectory: string
-          LogPath: string
-          ResultPath: string
-          DiagnosticsPath: string
-          OutputRoot: string
-          ConcurrencyGroup: string option
-          OutputScope: string option
-          IsAggregate: bool
-          SubstitutesFor: string option }
+        {
+            Id: string
+            DisplayName: string
+            Description: string
+            ReadinessRole: ReadinessRole
+            Command: LaneCommand
+            WorkingDirectory: string
+            Timeout: TimeSpan
+            NoProgressTimeout: TimeSpan option
+            ProgressInterval: TimeSpan
+            EvidenceDirectory: string
+            LogPath: string
+            ResultPath: string
+            DiagnosticsPath: string
+            OutputRoot: string
+            ConcurrencyGroup: string option
+            OutputScope: string option
+            IsAggregate: bool
+            SubstitutesFor: string option
+        }
 
     type RunRequest =
-        { RequestedLaneIds: string list
-          IncludeOptionalLaneIds: string list
-          OutDir: string
-          RunId: string option
-          ReplaceRun: bool
-          ListOnly: bool
-          AllowParallel: bool }
+        {
+            RequestedLaneIds: string list
+            IncludeOptionalLaneIds: string list
+            OutDir: string
+            RunId: string option
+            ReplaceRun: bool
+            ListOnly: bool
+            AllowParallel: bool
+        }
 
     type PreflightDiagnostic =
-        { Code: string
-          Message: string
-          LaneIds: string list }
+        {
+            Code: string
+            Message: string
+            LaneIds: string list
+        }
 
     type LaneRunPlan =
-        { Request: RunRequest
-          RunId: string
-          SelectionMode: SelectionMode
-          ArtifactRoot: string
-          SelectedLanes: LaneDefinition list
-          Diagnostics: PreflightDiagnostic list
-          ReplacementNotice: string option }
+        {
+            Request: RunRequest
+            RunId: string
+            SelectionMode: SelectionMode
+            ArtifactRoot: string
+            SelectedLanes: LaneDefinition list
+            Diagnostics: PreflightDiagnostic list
+            ReplacementNotice: string option
+        }
 
     type LaneResult =
-        { LaneId: string
-          ReadinessRole: ReadinessRole
-          Status: LaneStatus
-          Command: string
-          StartedUtc: DateTime option
-          CompletedUtc: DateTime option
-          Elapsed: TimeSpan option
-          TimeoutBudget: TimeSpan option
-          LastActivityUtc: DateTime option
-          LastActivityText: string option
-          ExitCode: int option
-          LogPath: string
-          ResultPath: string
-          DiagnosticsPath: string
-          ResultArtifacts: string list
-          RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
-          Reason: string option
-          Diagnostics: string list
-          Caveats: string list
-          AcceptedEnvironmentLimitation: string option
-          Substitution: string option
-          IsAggregate: bool }
+        {
+            LaneId: string
+            ReadinessRole: ReadinessRole
+            Status: LaneStatus
+            Command: string
+            StartedUtc: DateTime option
+            CompletedUtc: DateTime option
+            Elapsed: TimeSpan option
+            TimeoutBudget: TimeSpan option
+            LastActivityUtc: DateTime option
+            LastActivityText: string option
+            ExitCode: int option
+            LogPath: string
+            ResultPath: string
+            DiagnosticsPath: string
+            ResultArtifacts: string list
+            RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
+            Reason: string option
+            Diagnostics: string list
+            Caveats: string list
+            AcceptedEnvironmentLimitation: string option
+            Substitution: string option
+            IsAggregate: bool
+        }
 
     type ValidationSummary =
-        { RunId: string
-          PolicyVersion: string
-          OverallReadiness: OverallReadiness
-          ArtifactRoot: string
-          StartedUtc: DateTime
-          CompletedUtc: DateTime
-          FirstBlockingRequiredLane: string option
-          LaneResults: LaneResult list
-          Caveats: string list
-          ReplacementNotice: string option }
+        {
+            RunId: string
+            PolicyVersion: string
+            OverallReadiness: OverallReadiness
+            ArtifactRoot: string
+            StartedUtc: DateTime
+            CompletedUtc: DateTime
+            FirstBlockingRequiredLane: string option
+            LaneResults: LaneResult list
+            Caveats: string list
+            ReplacementNotice: string option
+        }
 
     type ResponsivenessSummaryResult =
-        { SummaryPath: string
-          OverallReadiness: string
-          RecordCount: int
-          FirstFailedBudget: string option
-          EnvironmentLimitations: string list
-          Diagnostics: string list }
+        {
+            SummaryPath: string
+            OverallReadiness: string
+            RecordCount: int
+            FirstFailedBudget: string option
+            EnvironmentLimitations: string list
+            Diagnostics: string list
+        }
 
     type Model =
-        { LaneDefinitions: LaneDefinition list
-          RunPlan: LaneRunPlan option
-          ActiveLaneId: string option
-          PendingLaneIds: string list
-          CompletedResults: LaneResult list
-          CanceledLaneIds: string list
-          Summary: ValidationSummary option
-          Diagnostics: string list }
+        {
+            LaneDefinitions: LaneDefinition list
+            RunPlan: LaneRunPlan option
+            ActiveLaneId: string option
+            PendingLaneIds: string list
+            CompletedResults: LaneResult list
+            CanceledLaneIds: string list
+            Summary: ValidationSummary option
+            Diagnostics: string list
+        }
 
     type Msg =
         | RunRequested of RunRequest
@@ -250,12 +268,14 @@ module ValidationLanes =
                     | _ -> "failed"
 
                 Result.Ok
-                    { SummaryPath = path
-                      OverallReadiness = readiness
-                      RecordCount = recordCount root
-                      FirstFailedBudget = failedBudgetKind root
-                      EnvironmentLimitations = stringArray "environmentLimitations" root
-                      Diagnostics = stringArray "diagnostics" root }
+                    {
+                        SummaryPath = path
+                        OverallReadiness = readiness
+                        RecordCount = recordCount root
+                        FirstFailedBudget = failedBudgetKind root
+                        EnvironmentLimitations = stringArray "environmentLimitations" root
+                        Diagnostics = stringArray "diagnostics" root
+                    }
         with ex ->
             Result.Error $"Could not read responsiveness summary '{path}': {ex.Message}"
 
@@ -278,21 +298,24 @@ module ValidationLanes =
         String.concat " " (command.FileName :: (command.Arguments |> List.map quoteArg))
 
     let createRunId () =
-        let stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
+        let stamp =
+            DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
+
         let suffix = Guid.NewGuid().ToString("N").Substring(0, 6)
         $"validation-{stamp}-{suffix}"
 
     let defaultRunRequest outDir =
-        { RequestedLaneIds = []
-          IncludeOptionalLaneIds = []
-          OutDir = outDir
-          RunId = None
-          ReplaceRun = false
-          ListOnly = false
-          AllowParallel = false }
+        {
+            RequestedLaneIds = []
+            IncludeOptionalLaneIds = []
+            OutDir = outDir
+            RunId = None
+            ReplaceRun = false
+            ListOnly = false
+            AllowParallel = false
+        }
 
-    let laneDirectory (runRoot: string) (laneId: string) =
-        Path.Combine(runRoot, laneId)
+    let laneDirectory (runRoot: string) (laneId: string) = Path.Combine(runRoot, laneId)
 
     let laneDefinition
         (repositoryRoot: string)
@@ -312,251 +335,295 @@ module ValidationLanes =
         : LaneDefinition =
         let laneDir = laneDirectory runRoot laneId
 
-        { Id = laneId
-          DisplayName = displayName
-          Description = description
-          ReadinessRole = role
-          Command = command
-          WorkingDirectory = repositoryRoot
-          Timeout = TimeSpan.FromMinutes timeoutMinutes
-          NoProgressTimeout = noProgressMinutes |> Option.map TimeSpan.FromMinutes
-          ProgressInterval = TimeSpan.FromSeconds progressSeconds
-          EvidenceDirectory = laneDir
-          LogPath = Path.Combine(laneDir, "log.txt")
-          ResultPath = Path.Combine(laneDir, "result.json")
-          DiagnosticsPath = Path.Combine(laneDir, "diagnostics.md")
-          OutputRoot = Path.Combine(laneDir, "out")
-          ConcurrencyGroup = concurrencyGroup
-          OutputScope = outputScope
-          IsAggregate = isAggregate
-          SubstitutesFor = substitutesFor }
+        {
+            Id = laneId
+            DisplayName = displayName
+            Description = description
+            ReadinessRole = role
+            Command = command
+            WorkingDirectory = repositoryRoot
+            Timeout = TimeSpan.FromMinutes timeoutMinutes
+            NoProgressTimeout = noProgressMinutes |> Option.map TimeSpan.FromMinutes
+            ProgressInterval = TimeSpan.FromSeconds progressSeconds
+            EvidenceDirectory = laneDir
+            LogPath = Path.Combine(laneDir, "log.txt")
+            ResultPath = Path.Combine(laneDir, "result.json")
+            DiagnosticsPath = Path.Combine(laneDir, "diagnostics.md")
+            OutputRoot = Path.Combine(laneDir, "out")
+            ConcurrencyGroup = concurrencyGroup
+            OutputScope = outputScope
+            IsAggregate = isAggregate
+            SubstitutesFor = substitutesFor
+        }
 
     let defaultLaneDefinitions repositoryRoot runRoot =
-        [ laneDefinition
-              repositoryRoot
-              runRoot
-              "build"
-              "Build"
-              "Build verification for the solution."
-              Required
-              { FileName = "dotnet"
-                Arguments = [ "build"; "FS.GG.Rendering.slnx"; "-c"; "Release"; "--no-restore" ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-build")
-              (Some "solution-build-release")
-              false
-              None
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "library-tests"
-              "Library Tests"
-              "Fast library and package validation not tied to one sample."
-              Required
-              { FileName = "dotnet"
-                Arguments = [ "test"; "tests/Lib.Tests/Lib.Tests.fsproj"; "-c"; "Release"; "--no-restore" ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "tests/Lib.Tests/bin/Release")
-              false
-              None
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "package-proof"
-              "Package Proof"
-              "Package pin and local-feed source proof for package-consuming samples."
-              Required
-              { FileName = "dotnet"
-                Arguments =
-                    [ "fsi"
-                      "scripts/refresh-local-feed-and-samples.fsx"
-                      "--sample"
-                      "samples/AntShowcase"
-                      "--mode"
-                      "proof"
-                      "--isolated-cache"
-                      Path.Combine(runRoot, "package-proof", "nuget-cache")
-                      "--out"
-                      Path.Combine(runRoot, "package-proof", "package-proof") ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "package-feed")
-              (Some "samples/AntShowcase/package-proof")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "controls"
-              "Controls"
-              "Controls package and rendering-control behavior validation."
-              Required
-              { FileName = "dotnet"
-                Arguments =
-                    [ "test"
-                      "tests/Controls.Tests/Controls.Tests.fsproj"
-                      "-c"
-                      "Release"
-                      "--no-restore"
-                      "--logger"
-                      "trx;LogFileName=controls.trx"
-                      "--results-directory"
-                      Path.Combine(runRoot, "controls", "TestResults")
-                      "--blame-hang"
-                      "--blame-hang-timeout"
-                      "2m" ] }
-              15.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "tests/Controls.Tests/bin/Release")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "rendering-harness"
-              "Rendering Harness"
-              "Rendering harness contracts, package-feed helpers, and lane runner tests."
-              Required
-              { FileName = "dotnet"
-                Arguments =
-                    [ "test"
-                      "tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj"
-                      "-c"
-                      "Release"
-                      "--no-restore"
-                      "--filter"
-                      "Feature166"
-                      "--logger"
-                      "trx;LogFileName=rendering-harness.trx"
-                      "--results-directory"
-                      Path.Combine(runRoot, "rendering-harness", "TestResults")
-                      "--blame-hang"
-                      "--blame-hang-timeout"
-                      "2m" ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "tests/Rendering.Harness.Tests/bin/Release")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "diagnostics"
-              "Runtime Diagnostics"
-              "Runtime diagnostics taxonomy, readiness, artifact, and console validation."
-              Optional
-              { FileName = "dotnet"
-                Arguments =
-                    [ "test"
-                      "tests/Diagnostics.Tests/Diagnostics.Tests.fsproj"
-                      "-c"
-                      "Release"
-                      "--no-restore"
-                      "--filter"
-                      "Feature169"
-                      "--logger"
-                      "trx;LogFileName=diagnostics.trx"
-                      "--results-directory"
-                      Path.Combine(runRoot, "diagnostics", "TestResults")
-                      "--blame-hang"
-                      "--blame-hang-timeout"
-                      "2m" ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "tests/Diagnostics.Tests/bin/Release")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "antshowcase-sample"
-              "AntShowcase Sample"
-              "Package-consuming AntShowcase sample validation."
-              Required
-              { FileName = "dotnet"
-                Arguments =
-                    [ "test"
-                      "samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj"
-                      "-c"
-                      "Release"
-                      "--no-restore"
-                      "--logger"
-                      "trx;LogFileName=antshowcase-sample.trx"
-                      "--results-directory"
-                      Path.Combine(runRoot, "antshowcase-sample", "TestResults")
-                      "--blame-hang"
-                      "--blame-hang-timeout"
-                      "2m" ] }
-              10.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "samples/AntShowcase/AntShowcase.Tests/bin/Release")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "retained-inspection"
-              "Retained Inspection"
-              "On-demand retained-render inspection, damage locality, harness registration, and AntShowcase adoption validation."
-              Optional
-              { FileName = "bash"
-                Arguments =
-                    [ "-lc"
-                      String.concat
-                          " && "
-                          [ "dotnet test tests/Controls.Tests/Controls.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-controls.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "controls") + "\""
-                            "dotnet test tests/Testing.Tests/Testing.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-testing.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "testing") + "\""
-                            "dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-harness.trx\" --results-directory \"" + Path.Combine(runRoot, "retained-inspection", "TestResults", "harness") + "\""
-                            "dotnet run --project samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release --no-restore -- --filter-test-list Feature170 --summary" ] ] }
-              5.0
-              (Some 2.0)
-              60.0
-              (Some "dotnet-test")
-              (Some "retained-inspection")
-              false
-              (Some "aggregate-solution")
-          laneDefinition
-              repositoryRoot
-              runRoot
-              "aggregate-solution"
-              "Aggregate Solution"
-              "Full solution validation recorded separately from focused lanes."
-              Optional
-              { FileName = "dotnet"
-                Arguments =
-                    [ "test"
-                      "FS.GG.Rendering.slnx"
-                      "-c"
-                      "Release"
-                      "--no-restore"
-                      "--logger"
-                      "trx;LogFileName=aggregate-solution.trx"
-                      "--results-directory"
-                      Path.Combine(runRoot, "aggregate-solution", "TestResults")
-                      "--blame-hang"
-                      "--blame-hang-timeout"
-                      "3m" ] }
-              20.0
-              (Some 3.0)
-              60.0
-              (Some "aggregate")
-              (Some "solution-test-release")
-              true
-              None ]
+        [
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "build"
+                "Build"
+                "Build verification for the solution."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments = [ "build"; "FS.GG.Rendering.slnx"; "-c"; "Release"; "--no-restore" ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-build")
+                (Some "solution-build-release")
+                false
+                None
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "library-tests"
+                "Library Tests"
+                "Fast library and package validation not tied to one sample."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments = [ "test"; "tests/Lib.Tests/Lib.Tests.fsproj"; "-c"; "Release"; "--no-restore" ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "tests/Lib.Tests/bin/Release")
+                false
+                None
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "package-proof"
+                "Package Proof"
+                "Package pin and local-feed source proof for package-consuming samples."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "fsi"
+                            "scripts/refresh-local-feed-and-samples.fsx"
+                            "--sample"
+                            "samples/AntShowcase"
+                            "--mode"
+                            "proof"
+                            "--isolated-cache"
+                            Path.Combine(runRoot, "package-proof", "nuget-cache")
+                            "--out"
+                            Path.Combine(runRoot, "package-proof", "package-proof")
+                        ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "package-feed")
+                (Some "samples/AntShowcase/package-proof")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "controls"
+                "Controls"
+                "Controls package and rendering-control behavior validation."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "test"
+                            "tests/Controls.Tests/Controls.Tests.fsproj"
+                            "-c"
+                            "Release"
+                            "--no-restore"
+                            "--logger"
+                            "trx;LogFileName=controls.trx"
+                            "--results-directory"
+                            Path.Combine(runRoot, "controls", "TestResults")
+                            "--blame-hang"
+                            "--blame-hang-timeout"
+                            "2m"
+                        ]
+                }
+                15.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "tests/Controls.Tests/bin/Release")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "rendering-harness"
+                "Rendering Harness"
+                "Rendering harness contracts, package-feed helpers, and lane runner tests."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "test"
+                            "tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj"
+                            "-c"
+                            "Release"
+                            "--no-restore"
+                            "--filter"
+                            "Feature166"
+                            "--logger"
+                            "trx;LogFileName=rendering-harness.trx"
+                            "--results-directory"
+                            Path.Combine(runRoot, "rendering-harness", "TestResults")
+                            "--blame-hang"
+                            "--blame-hang-timeout"
+                            "2m"
+                        ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "tests/Rendering.Harness.Tests/bin/Release")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "diagnostics"
+                "Runtime Diagnostics"
+                "Runtime diagnostics taxonomy, readiness, artifact, and console validation."
+                Optional
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "test"
+                            "tests/Diagnostics.Tests/Diagnostics.Tests.fsproj"
+                            "-c"
+                            "Release"
+                            "--no-restore"
+                            "--filter"
+                            "Feature169"
+                            "--logger"
+                            "trx;LogFileName=diagnostics.trx"
+                            "--results-directory"
+                            Path.Combine(runRoot, "diagnostics", "TestResults")
+                            "--blame-hang"
+                            "--blame-hang-timeout"
+                            "2m"
+                        ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "tests/Diagnostics.Tests/bin/Release")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "antshowcase-sample"
+                "AntShowcase Sample"
+                "Package-consuming AntShowcase sample validation."
+                Required
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "test"
+                            "samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj"
+                            "-c"
+                            "Release"
+                            "--no-restore"
+                            "--logger"
+                            "trx;LogFileName=antshowcase-sample.trx"
+                            "--results-directory"
+                            Path.Combine(runRoot, "antshowcase-sample", "TestResults")
+                            "--blame-hang"
+                            "--blame-hang-timeout"
+                            "2m"
+                        ]
+                }
+                10.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "samples/AntShowcase/AntShowcase.Tests/bin/Release")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "retained-inspection"
+                "Retained Inspection"
+                "On-demand retained-render inspection, damage locality, harness registration, and AntShowcase adoption validation."
+                Optional
+                {
+                    FileName = "bash"
+                    Arguments =
+                        [
+                            "-lc"
+                            String.concat
+                                " && "
+                                [
+                                    "dotnet test tests/Controls.Tests/Controls.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-controls.trx\" --results-directory \""
+                                    + Path.Combine(runRoot, "retained-inspection", "TestResults", "controls")
+                                    + "\""
+                                    "dotnet test tests/Testing.Tests/Testing.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-testing.trx\" --results-directory \""
+                                    + Path.Combine(runRoot, "retained-inspection", "TestResults", "testing")
+                                    + "\""
+                                    "dotnet test tests/Rendering.Harness.Tests/Rendering.Harness.Tests.fsproj -c Release --no-restore --filter Feature170 --logger \"trx;LogFileName=feature170-harness.trx\" --results-directory \""
+                                    + Path.Combine(runRoot, "retained-inspection", "TestResults", "harness")
+                                    + "\""
+                                    "dotnet run --project samples/AntShowcase/AntShowcase.Tests/AntShowcase.Tests.fsproj -c Release --no-restore -- --filter-test-list Feature170 --summary"
+                                ]
+                        ]
+                }
+                5.0
+                (Some 2.0)
+                60.0
+                (Some "dotnet-test")
+                (Some "retained-inspection")
+                false
+                (Some "aggregate-solution")
+            laneDefinition
+                repositoryRoot
+                runRoot
+                "aggregate-solution"
+                "Aggregate Solution"
+                "Full solution validation recorded separately from focused lanes."
+                Optional
+                {
+                    FileName = "dotnet"
+                    Arguments =
+                        [
+                            "test"
+                            "FS.GG.Rendering.slnx"
+                            "-c"
+                            "Release"
+                            "--no-restore"
+                            "--logger"
+                            "trx;LogFileName=aggregate-solution.trx"
+                            "--results-directory"
+                            Path.Combine(runRoot, "aggregate-solution", "TestResults")
+                            "--blame-hang"
+                            "--blame-hang-timeout"
+                            "3m"
+                        ]
+                }
+                20.0
+                (Some 3.0)
+                60.0
+                (Some "aggregate")
+                (Some "solution-test-release")
+                true
+                None
+        ]
 
     let duplicateItems items =
         items
@@ -564,18 +631,23 @@ module ValidationLanes =
         |> List.choose (fun (value, count) -> if count > 1 then Some value else None)
 
     let diagnostic code message laneIds =
-        { Code = code
-          Message = message
-          LaneIds = laneIds }
+        {
+            Code = code
+            Message = message
+            LaneIds = laneIds
+        }
 
-    let pathKey (path: string) =
-        path.Replace('\\', '/').TrimEnd('/')
+    let pathKey (path: string) = path.Replace('\\', '/').TrimEnd('/')
 
     let selectedLaneIdsForRequest (lanes: LaneDefinition list) (request: RunRequest) : SelectionMode * string list =
         if request.ListOnly then
             ListOnlySelection, []
         elif request.RequestedLaneIds.IsEmpty then
-            let required = lanes |> List.filter (fun lane -> lane.ReadinessRole = Required) |> List.map _.Id
+            let required =
+                lanes
+                |> List.filter (fun lane -> lane.ReadinessRole = Required)
+                |> List.map _.Id
+
             RequiredSelection, required @ request.IncludeOptionalLaneIds
         else
             ExplicitSelection, request.RequestedLaneIds @ request.IncludeOptionalLaneIds
@@ -591,25 +663,21 @@ module ValidationLanes =
         let known = lanes |> List.map _.Id |> Set.ofList
         let laneById = lanes |> List.map (fun lane -> lane.Id, lane) |> Map.ofList
 
-        let duplicateCatalogIds =
-            lanes |> List.map _.Id |> duplicateItems
+        let duplicateCatalogIds = lanes |> List.map _.Id |> duplicateItems
 
-        let duplicateRequestedIds =
-            selectedIds |> duplicateItems
+        let duplicateRequestedIds = selectedIds |> duplicateItems
 
         let unknown =
-            selectedIds |> List.filter (fun laneId -> not (known.Contains laneId)) |> List.distinct
+            selectedIds
+            |> List.filter (fun laneId -> not (known.Contains laneId))
+            |> List.distinct
 
         let includeOptionalErrors =
             request.IncludeOptionalLaneIds
             |> List.choose (fun laneId ->
                 laneById
                 |> Map.tryFind laneId
-                |> Option.bind (fun lane ->
-                    if lane.ReadinessRole = Optional then
-                        None
-                    else
-                        Some lane.Id))
+                |> Option.bind (fun lane -> if lane.ReadinessRole = Optional then None else Some lane.Id))
 
         let selected: LaneDefinition list =
             selectedIds
@@ -620,11 +688,15 @@ module ValidationLanes =
             selected |> List.map (fun lane -> pathKey lane.ResultPath) |> duplicateItems
 
         let duplicateEvidencePaths =
-            selected |> List.map (fun lane -> pathKey lane.EvidenceDirectory) |> duplicateItems
+            selected
+            |> List.map (fun lane -> pathKey lane.EvidenceDirectory)
+            |> duplicateItems
 
         let timeoutErrors =
             selected
-            |> List.filter (fun lane -> lane.Timeout <= TimeSpan.Zero || lane.ProgressInterval > TimeSpan.FromSeconds 60.0)
+            |> List.filter (fun lane ->
+                lane.Timeout <= TimeSpan.Zero
+                || lane.ProgressInterval > TimeSpan.FromSeconds 60.0)
             |> List.map _.Id
 
         let unsafeSchedule =
@@ -654,39 +726,71 @@ module ValidationLanes =
                 Directory.CreateDirectory request.OutDir |> ignore
                 None
             with ex ->
-                Some(diagnostic "output-root-unwritable" $"output root `{request.OutDir}` is not writable: {ex.Message}" [])
+                Some(
+                    diagnostic
+                        "output-root-unwritable"
+                        $"output root `{request.OutDir}` is not writable: {ex.Message}"
+                        []
+                )
 
         let runRootDiagnostic: PreflightDiagnostic option =
             if Directory.Exists runRoot && not request.ReplaceRun then
-                Some(diagnostic "run-id-exists" $"run id `{runId}` already exists under `{request.OutDir}`; pass --replace-run {runId} to replace it" [])
+                Some(
+                    diagnostic
+                        "run-id-exists"
+                        $"run id `{runId}` already exists under `{request.OutDir}`; pass --replace-run {runId} to replace it"
+                        []
+                )
             else
                 None
 
         let diagnostics =
-            [ if not (Directory.Exists repositoryRoot) then
-                  yield diagnostic "repository-root-missing" $"repository root `{repositoryRoot}` does not exist" []
-              if not duplicateCatalogIds.IsEmpty then
-                  yield diagnostic "duplicate-lane-id" "lane catalog contains duplicate lane ids" duplicateCatalogIds
-              if not duplicateRequestedIds.IsEmpty then
-                  yield diagnostic "duplicate-requested-lane" "request contains duplicate lane ids" duplicateRequestedIds
-              if not unknown.IsEmpty then
-                  yield diagnostic "unknown-lane" "request contains unknown lane ids" unknown
-              if not includeOptionalErrors.IsEmpty then
-                  yield diagnostic "--include-optional-role" "--include-optional accepts optional lane ids only" includeOptionalErrors
-              if not duplicateResultPaths.IsEmpty then
-                  yield diagnostic "duplicate-result-path" "selected lanes share result paths" duplicateResultPaths
-              if not duplicateEvidencePaths.IsEmpty then
-                  yield diagnostic "duplicate-evidence-path" "selected lanes share evidence directories" duplicateEvidencePaths
-              if not timeoutErrors.IsEmpty then
-                  yield diagnostic "invalid-time-budget" "selected lanes must have positive timeout and progress interval at most 60 seconds" timeoutErrors
-              for conflict in unsafeSchedule do
-                  yield diagnostic "unsafe-schedule" "parallel lane request would share a concurrency group or output scope; run sequentially or isolate outputs" conflict
-              match outputRootDiagnostic with
-              | Some d -> yield d
-              | None -> ()
-              match runRootDiagnostic with
-              | Some d -> yield d
-              | None -> () ]
+            [
+                if not (Directory.Exists repositoryRoot) then
+                    yield diagnostic "repository-root-missing" $"repository root `{repositoryRoot}` does not exist" []
+                if not duplicateCatalogIds.IsEmpty then
+                    yield diagnostic "duplicate-lane-id" "lane catalog contains duplicate lane ids" duplicateCatalogIds
+                if not duplicateRequestedIds.IsEmpty then
+                    yield
+                        diagnostic
+                            "duplicate-requested-lane"
+                            "request contains duplicate lane ids"
+                            duplicateRequestedIds
+                if not unknown.IsEmpty then
+                    yield diagnostic "unknown-lane" "request contains unknown lane ids" unknown
+                if not includeOptionalErrors.IsEmpty then
+                    yield
+                        diagnostic
+                            "--include-optional-role"
+                            "--include-optional accepts optional lane ids only"
+                            includeOptionalErrors
+                if not duplicateResultPaths.IsEmpty then
+                    yield diagnostic "duplicate-result-path" "selected lanes share result paths" duplicateResultPaths
+                if not duplicateEvidencePaths.IsEmpty then
+                    yield
+                        diagnostic
+                            "duplicate-evidence-path"
+                            "selected lanes share evidence directories"
+                            duplicateEvidencePaths
+                if not timeoutErrors.IsEmpty then
+                    yield
+                        diagnostic
+                            "invalid-time-budget"
+                            "selected lanes must have positive timeout and progress interval at most 60 seconds"
+                            timeoutErrors
+                for conflict in unsafeSchedule do
+                    yield
+                        diagnostic
+                            "unsafe-schedule"
+                            "parallel lane request would share a concurrency group or output scope; run sequentially or isolate outputs"
+                            conflict
+                match outputRootDiagnostic with
+                | Some d -> yield d
+                | None -> ()
+                match runRootDiagnostic with
+                | Some d -> yield d
+                | None -> ()
+            ]
 
         if diagnostics.IsEmpty then
             let replacement =
@@ -696,13 +800,15 @@ module ValidationLanes =
                     None
 
             Ok
-                { Request = request
-                  RunId = runId
-                  SelectionMode = mode
-                  ArtifactRoot = runRoot
-                  SelectedLanes = selected
-                  Diagnostics = []
-                  ReplacementNotice = replacement }
+                {
+                    Request = request
+                    RunId = runId
+                    SelectionMode = mode
+                    ArtifactRoot = runRoot
+                    SelectedLanes = selected
+                    Diagnostics = []
+                    ReplacementNotice = replacement
+                }
         else
             Error diagnostics
 
@@ -718,8 +824,7 @@ module ValidationLanes =
         | Some summary -> laneStatusFromDiagnosticSummary summary
         | None -> result.Status
 
-    let requiredResult result =
-        result.ReadinessRole = Required
+    let requiredResult result = result.ReadinessRole = Required
 
     let computeOverallReadiness results =
         let required = results |> List.filter requiredResult
@@ -766,14 +871,16 @@ module ValidationLanes =
         |> Option.map _.LaneId
 
     let init lanes =
-        { LaneDefinitions = lanes
-          RunPlan = None
-          ActiveLaneId = None
-          PendingLaneIds = []
-          CompletedResults = []
-          CanceledLaneIds = []
-          Summary = None
-          Diagnostics = [] },
+        {
+            LaneDefinitions = lanes
+            RunPlan = None
+            ActiveLaneId = None
+            PendingLaneIds = []
+            CompletedResults = []
+            CanceledLaneIds = []
+            Summary = None
+            Diagnostics = []
+        },
         [ RegisterCancelHandler ]
 
     let update msg model =
@@ -782,36 +889,47 @@ module ValidationLanes =
         | PreflightPassed plan ->
             { model with
                 RunPlan = Some plan
-                PendingLaneIds = plan.SelectedLanes |> List.map _.Id },
+                PendingLaneIds = plan.SelectedLanes |> List.map _.Id
+            },
             [ CreateRunRoot plan.ArtifactRoot ]
         | PreflightFailed diagnostics ->
-            { model with Diagnostics = diagnostics |> List.map _.Message },
+            { model with
+                Diagnostics = diagnostics |> List.map _.Message
+            },
             []
-        | LaneStarted (laneId, _) ->
+        | LaneStarted(laneId, _) ->
             { model with
                 ActiveLaneId = Some laneId
-                PendingLaneIds = model.PendingLaneIds |> List.filter ((<>) laneId) },
+                PendingLaneIds = model.PendingLaneIds |> List.filter ((<>) laneId)
+            },
             [ PollProcess laneId ]
-        | LaneOutputReceived (laneId, output, _) -> model, [ AppendLaneLog(laneId, output); PollProcess laneId ]
-        | LaneHeartbeatDue (laneId, _) -> model, [ PublishHeartbeat laneId; PollProcess laneId ]
+        | LaneOutputReceived(laneId, output, _) -> model, [ AppendLaneLog(laneId, output); PollProcess laneId ]
+        | LaneHeartbeatDue(laneId, _) -> model, [ PublishHeartbeat laneId; PollProcess laneId ]
         | LaneCompleted result ->
             { model with
                 ActiveLaneId = None
-                CompletedResults = model.CompletedResults @ [ result ] },
+                CompletedResults = model.CompletedResults @ [ result ]
+            },
             [ WriteLaneResult result.LaneId ]
-        | LaneTimedOut (laneId, reason) ->
-            { model with Diagnostics = model.Diagnostics @ [ reason ] },
+        | LaneTimedOut(laneId, reason) ->
+            { model with
+                Diagnostics = model.Diagnostics @ [ reason ]
+            },
             [ StopProcess laneId; WriteLaneResult laneId ]
-        | LaneNoProgressTimedOut (laneId, reason) ->
-            { model with Diagnostics = model.Diagnostics @ [ reason ] },
+        | LaneNoProgressTimedOut(laneId, reason) ->
+            { model with
+                Diagnostics = model.Diagnostics @ [ reason ]
+            },
             [ StopProcess laneId; WriteLaneResult laneId ]
-        | InfrastructureErrorRaised (laneId, reason) ->
+        | InfrastructureErrorRaised(laneId, reason) ->
             let laneDiagnostics =
                 match laneId with
                 | Some id -> $"{id}: {reason}"
                 | None -> reason
 
-            { model with Diagnostics = model.Diagnostics @ [ laneDiagnostics ] },
+            { model with
+                Diagnostics = model.Diagnostics @ [ laneDiagnostics ]
+            },
             [ WriteSummary ]
         | OperatorCanceled reason ->
             let cancelEffects =
@@ -826,16 +944,20 @@ module ValidationLanes =
                     @ (model.ActiveLaneId |> Option.toList)
                     @ model.PendingLaneIds
                 PendingLaneIds = []
-                ActiveLaneId = None },
+                ActiveLaneId = None
+            },
             cancelEffects @ [ WriteSummary ]
-        | LaneCanceled (laneId, reason) ->
+        | LaneCanceled(laneId, reason) ->
             { model with
                 CanceledLaneIds = model.CanceledLaneIds @ [ laneId ]
-                Diagnostics = model.Diagnostics @ [ reason ] },
+                Diagnostics = model.Diagnostics @ [ reason ]
+            },
             [ StopProcess laneId; WriteLaneResult laneId ]
         | SummaryRequested -> model, [ WriteSummary ]
-        | SummaryWritten (markdownPath, jsonPath) ->
-            { model with Diagnostics = model.Diagnostics @ [ markdownPath; jsonPath ] },
+        | SummaryWritten(markdownPath, jsonPath) ->
+            { model with
+                Diagnostics = model.Diagnostics @ [ markdownPath; jsonPath ]
+            },
             []
 
     let ensureParentDirectory (path: string) =
@@ -861,28 +983,30 @@ module ValidationLanes =
         (diagnostics: string list)
         (caveats: string list)
         : LaneResult =
-        { LaneId = lane.Id
-          ReadinessRole = lane.ReadinessRole
-          Status = status
-          Command = commandText lane.Command
-          StartedUtc = started
-          CompletedUtc = completed
-          Elapsed = elapsed
-          TimeoutBudget = Some lane.Timeout
-          LastActivityUtc = lastActivityUtc
-          LastActivityText = lastActivityText
-          ExitCode = exitCode
-          LogPath = lane.LogPath
-          ResultPath = lane.ResultPath
-          DiagnosticsPath = lane.DiagnosticsPath
-          ResultArtifacts = [ lane.ResultPath; lane.LogPath; lane.DiagnosticsPath ]
-          RuntimeDiagnostics = None
-          Reason = reason
-          Diagnostics = diagnostics
-          Caveats = caveats
-          AcceptedEnvironmentLimitation = None
-          Substitution = lane.SubstitutesFor
-          IsAggregate = lane.IsAggregate }
+        {
+            LaneId = lane.Id
+            ReadinessRole = lane.ReadinessRole
+            Status = status
+            Command = commandText lane.Command
+            StartedUtc = started
+            CompletedUtc = completed
+            Elapsed = elapsed
+            TimeoutBudget = Some lane.Timeout
+            LastActivityUtc = lastActivityUtc
+            LastActivityText = lastActivityText
+            ExitCode = exitCode
+            LogPath = lane.LogPath
+            ResultPath = lane.ResultPath
+            DiagnosticsPath = lane.DiagnosticsPath
+            ResultArtifacts = [ lane.ResultPath; lane.LogPath; lane.DiagnosticsPath ]
+            RuntimeDiagnostics = None
+            Reason = reason
+            Diagnostics = diagnostics
+            Caveats = caveats
+            AcceptedEnvironmentLimitation = None
+            Substitution = lane.SubstitutesFor
+            IsAggregate = lane.IsAggregate
+        }
 
     let laneResultArtifacts (lane: LaneDefinition) =
         if Directory.Exists lane.EvidenceDirectory then
@@ -907,7 +1031,11 @@ module ValidationLanes =
 
             match tryGetRuntimeProperty "status" root with
             | Some statusValue when statusValue.ValueKind = JsonValueKind.String ->
-                match statusValue.GetString() |> Option.ofObj |> Option.bind FS.GG.UI.Diagnostics.RuntimeDiagnostics.tryParseReadinessStatus with
+                match
+                    statusValue.GetString()
+                    |> Option.ofObj
+                    |> Option.bind FS.GG.UI.Diagnostics.RuntimeDiagnostics.tryParseReadinessStatus
+                with
                 | Some status ->
                     let runId =
                         match tryGetRuntimeProperty "runId" root with
@@ -927,18 +1055,20 @@ module ValidationLanes =
                         | _ -> [ path ]
 
                     Some
-                        { RunId = runId
-                          Status = status
-                          CountsBySeverity = []
-                          CountsByCategory = []
-                          BlockerCount = 0
-                          UnclassifiedCount = 0
-                          ReviewRequiredCount = 0
-                          ExceptionCount = 0
-                          ArtifactPaths = artifactPaths
-                          Groups = []
-                          Exceptions = []
-                          ArtifactWriteDiagnostics = [] }
+                        {
+                            RunId = runId
+                            Status = status
+                            CountsBySeverity = []
+                            CountsByCategory = []
+                            BlockerCount = 0
+                            UnclassifiedCount = 0
+                            ReviewRequiredCount = 0
+                            ExceptionCount = 0
+                            ArtifactPaths = artifactPaths
+                            Groups = []
+                            Exceptions = []
+                            ArtifactWriteDiagnostics = []
+                        }
                 | None -> None
             | _ -> None
         with _ ->
@@ -954,15 +1084,22 @@ module ValidationLanes =
 
     let withDiscoveredArtifacts (lane: LaneDefinition) (result: LaneResult) =
         let discovered = laneResultArtifacts lane
+
         match discoveredRuntimeDiagnostics lane with
-        | None -> { result with ResultArtifacts = (result.ResultArtifacts @ discovered) |> List.distinct }
+        | None ->
+            { result with
+                ResultArtifacts = (result.ResultArtifacts @ discovered) |> List.distinct
+            }
         | Some diagnostics ->
             let status = laneStatusFromDiagnosticSummary diagnostics
+
             let reason =
                 match result.Reason, diagnostics.Status with
                 | Some reason, _ -> Some reason
                 | None, FS.GG.UI.Diagnostics.ReadinessDiagnosticStatus.Accepted -> None
-                | None, status -> Some $"runtime diagnostics status {FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken status}"
+                | None, status ->
+                    Some
+                        $"runtime diagnostics status {FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken status}"
 
             let acceptedEnvironmentLimitation =
                 match diagnostics.Status with
@@ -976,17 +1113,20 @@ module ValidationLanes =
                 Reason = reason
                 AcceptedEnvironmentLimitation = acceptedEnvironmentLimitation
                 RuntimeDiagnostics = Some diagnostics
-                ResultArtifacts = (result.ResultArtifacts @ discovered @ diagnostics.ArtifactPaths) |> List.distinct }
+                ResultArtifacts =
+                    (result.ResultArtifacts @ discovered @ diagnostics.ArtifactPaths)
+                    |> List.distinct
+            }
 
-    let jsonString (value: string) =
-        JsonSerializer.Serialize(value)
+    let jsonString (value: string) = JsonSerializer.Serialize(value)
 
     let jsonStringOption value =
         value |> Option.map jsonString |> Option.defaultValue "null"
 
     let jsonDate value =
         value
-        |> Option.map (fun (date: DateTime) -> jsonString (date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)))
+        |> Option.map (fun (date: DateTime) ->
+            jsonString (date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)))
         |> Option.defaultValue "null"
 
     let jsonTimeSpan value =
@@ -997,25 +1137,31 @@ module ValidationLanes =
     let jsonStringArray values =
         values |> List.map jsonString |> String.concat "," |> sprintf "[%s]"
 
-    let boolString value =
-        if value then "true" else "false"
+    let boolString value = if value then "true" else "false"
 
     let writeDiagnostics (result: LaneResult) =
         let reason = result.Reason |> Option.defaultValue "none"
         let lastActivity = result.LastActivityText |> Option.defaultValue "none"
 
         let lines =
-            [ $"# Lane Diagnostics: {result.LaneId}"
-              ""
-              $"- Status: `{statusToken result.Status}`"
-              $"- Reason: `{reason}`"
-              $"- Last activity: `{lastActivity}`"
-              ""
-              "## Diagnostics" ]
-            @ (if result.Diagnostics.IsEmpty then [ "- None." ] else result.Diagnostics |> List.map (fun d -> "- " + d))
-            @ [ ""
-                "## Caveats" ]
-            @ (if result.Caveats.IsEmpty then [ "- None." ] else result.Caveats |> List.map (fun d -> "- " + d))
+            [
+                $"# Lane Diagnostics: {result.LaneId}"
+                ""
+                $"- Status: `{statusToken result.Status}`"
+                $"- Reason: `{reason}`"
+                $"- Last activity: `{lastActivity}`"
+                ""
+                "## Diagnostics"
+            ]
+            @ (if result.Diagnostics.IsEmpty then
+                   [ "- None." ]
+               else
+                   result.Diagnostics |> List.map (fun d -> "- " + d))
+            @ [ ""; "## Caveats" ]
+            @ (if result.Caveats.IsEmpty then
+                   [ "- None." ]
+               else
+                   result.Caveats |> List.map (fun d -> "- " + d))
 
         writeAllText result.DiagnosticsPath (String.concat Environment.NewLine lines + Environment.NewLine)
 
@@ -1023,37 +1169,42 @@ module ValidationLanes =
         "{"
         + String.concat
             ","
-            [ "\"laneId\":" + jsonString result.LaneId
-              "\"readinessRole\":" + jsonString (roleToken result.ReadinessRole)
-              "\"status\":" + jsonString (statusToken result.Status)
-              "\"command\":" + jsonString result.Command
-              "\"startedUtc\":" + jsonDate result.StartedUtc
-              "\"completedUtc\":" + jsonDate result.CompletedUtc
-              "\"elapsed\":" + jsonTimeSpan result.Elapsed
-              "\"timeoutBudget\":" + jsonTimeSpan result.TimeoutBudget
-              "\"lastActivityUtc\":" + jsonDate result.LastActivityUtc
-              "\"lastActivityText\":" + jsonStringOption result.LastActivityText
-              "\"exitCode\":" + (result.ExitCode |> Option.map string |> Option.defaultValue "null")
-              "\"logPath\":" + jsonString result.LogPath
-              "\"resultPath\":" + jsonString result.ResultPath
-              "\"diagnosticsPath\":" + jsonString result.DiagnosticsPath
-              "\"artifacts\":" + jsonStringArray result.ResultArtifacts
-              "\"runtimeDiagnosticsStatus\":"
-              + (result.RuntimeDiagnostics
-                 |> Option.map (fun summary -> FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken summary.Status)
-                 |> jsonStringOption)
-              "\"runtimeDiagnosticsArtifacts\":"
-              + (result.RuntimeDiagnostics
-                 |> Option.map _.ArtifactPaths
-                 |> Option.defaultValue []
-                 |> jsonStringArray)
-              "\"reason\":" + jsonStringOption result.Reason
-              "\"diagnostics\":" + jsonStringArray result.Diagnostics
-              "\"caveats\":" + jsonStringArray result.Caveats
-              "\"acceptedEnvironmentLimitation\":" + jsonStringOption result.AcceptedEnvironmentLimitation
-              "\"substitution\":" + jsonStringOption result.Substitution
-              "\"isAggregate\":" + boolString result.IsAggregate
-              "\"required\":" + boolString (result.ReadinessRole = Required) ]
+            [
+                "\"laneId\":" + jsonString result.LaneId
+                "\"readinessRole\":" + jsonString (roleToken result.ReadinessRole)
+                "\"status\":" + jsonString (statusToken result.Status)
+                "\"command\":" + jsonString result.Command
+                "\"startedUtc\":" + jsonDate result.StartedUtc
+                "\"completedUtc\":" + jsonDate result.CompletedUtc
+                "\"elapsed\":" + jsonTimeSpan result.Elapsed
+                "\"timeoutBudget\":" + jsonTimeSpan result.TimeoutBudget
+                "\"lastActivityUtc\":" + jsonDate result.LastActivityUtc
+                "\"lastActivityText\":" + jsonStringOption result.LastActivityText
+                "\"exitCode\":"
+                + (result.ExitCode |> Option.map string |> Option.defaultValue "null")
+                "\"logPath\":" + jsonString result.LogPath
+                "\"resultPath\":" + jsonString result.ResultPath
+                "\"diagnosticsPath\":" + jsonString result.DiagnosticsPath
+                "\"artifacts\":" + jsonStringArray result.ResultArtifacts
+                "\"runtimeDiagnosticsStatus\":"
+                + (result.RuntimeDiagnostics
+                   |> Option.map (fun summary ->
+                       FS.GG.UI.Diagnostics.RuntimeDiagnostics.readinessStatusToken summary.Status)
+                   |> jsonStringOption)
+                "\"runtimeDiagnosticsArtifacts\":"
+                + (result.RuntimeDiagnostics
+                   |> Option.map _.ArtifactPaths
+                   |> Option.defaultValue []
+                   |> jsonStringArray)
+                "\"reason\":" + jsonStringOption result.Reason
+                "\"diagnostics\":" + jsonStringArray result.Diagnostics
+                "\"caveats\":" + jsonStringArray result.Caveats
+                "\"acceptedEnvironmentLimitation\":"
+                + jsonStringOption result.AcceptedEnvironmentLimitation
+                "\"substitution\":" + jsonStringOption result.Substitution
+                "\"isAggregate\":" + boolString result.IsAggregate
+                "\"required\":" + boolString (result.ReadinessRole = Required)
+            ]
         + "}"
 
     let writeLaneResult (result: LaneResult) =
@@ -1131,10 +1282,12 @@ module ValidationLanes =
     // The TimedOut vs NoProgressTimedOut distinction (contract C-4) is preserved here.
     // Monitor returns (status, exitCode, reason, diagnostics).
     type TimeoutManager =
-        { LaneId: string
-          WallClock: TimeSpan
-          NoProgress: TimeSpan option
-          ProgressInterval: TimeSpan }
+        {
+            LaneId: string
+            WallClock: TimeSpan
+            NoProgress: TimeSpan option
+            ProgressInterval: TimeSpan
+        }
 
         member this.Monitor
             (runner: ProcessRunner, output: OutputBuffer, started: DateTime)
@@ -1196,8 +1349,17 @@ module ValidationLanes =
             let completed = DateTime.UtcNow
 
             resultForLane
-                lane status (Some started) (Some completed) (Some(completed - started))
-                (Some output.LastActivityUtc) (Some output.LastActivityText) exitCode reason diagnostics []
+                lane
+                status
+                (Some started)
+                (Some completed)
+                (Some(completed - started))
+                (Some output.LastActivityUtc)
+                (Some output.LastActivityText)
+                exitCode
+                reason
+                diagnostics
+                []
             |> withDiscoveredArtifacts lane
 
         try
@@ -1207,15 +1369,19 @@ module ValidationLanes =
             use runner = new ProcessRunner(lane, output)
 
             if not (runner.Start()) then
-                let result = completion InfrastructureError None (Some "process did not start") [ "process did not start" ]
+                let result =
+                    completion InfrastructureError None (Some "process did not start") [ "process did not start" ]
+
                 writeLaneResult result
                 result
             else
                 let manager =
-                    { LaneId = lane.Id
-                      WallClock = lane.Timeout
-                      NoProgress = lane.NoProgressTimeout
-                      ProgressInterval = lane.ProgressInterval }
+                    {
+                        LaneId = lane.Id
+                        WallClock = lane.Timeout
+                        NoProgress = lane.NoProgressTimeout
+                        ProgressInterval = lane.ProgressInterval
+                    }
 
                 let status, exitCode, reason, diagnostics = manager.Monitor(runner, output, started)
                 let text, _, _ = output.Snapshot()
@@ -1245,7 +1411,9 @@ module ValidationLanes =
             $"| `{result.LaneId}` | `{roleToken result.ReadinessRole}` | `{statusToken result.Status}` | `{elapsedText result}` | `{result.LogPath}` | {reason} |")
 
     let renderSummaryMarkdown (summary: ValidationSummary) =
-        let required = summary.LaneResults |> List.filter (fun result -> result.ReadinessRole = Required)
+        let required =
+            summary.LaneResults
+            |> List.filter (fun result -> result.ReadinessRole = Required)
 
         let optional =
             summary.LaneResults
@@ -1259,60 +1427,83 @@ module ValidationLanes =
 
         let substitutionRows =
             summary.LaneResults
-            |> List.choose (fun result -> result.Substitution |> Option.map (fun target -> $"- `{result.LaneId}` substitutes for `{target}`"))
+            |> List.choose (fun result ->
+                result.Substitution
+                |> Option.map (fun target -> $"- `{result.LaneId}` substitutes for `{target}`"))
 
-        let firstBlockingRequiredLane = summary.FirstBlockingRequiredLane |> Option.defaultValue "none"
+        let firstBlockingRequiredLane =
+            summary.FirstBlockingRequiredLane |> Option.defaultValue "none"
+
         let summaryJsonPath = Path.Combine(summary.ArtifactRoot, "summary.json")
 
         String.concat
             Environment.NewLine
-            ([ "# Validation Lanes Summary"
-               ""
-               $"- Run id: `{summary.RunId}`"
-               $"- Overall readiness: `{readinessToken summary.OverallReadiness}`"
-               $"- First blocking required lane: `{firstBlockingRequiredLane}`"
-               $"- Aggregate status: `{aggregateStatus}`"
-               $"- Artifact root: `{summary.ArtifactRoot}`"
-               $"- Summary JSON: `{summaryJsonPath}`" ]
-             @ (summary.ReplacementNotice |> Option.map (fun notice -> [ $"- Replacement notice: {notice}" ]) |> Option.defaultValue [])
-             @ [ ""
+            ([
+                "# Validation Lanes Summary"
+                ""
+                $"- Run id: `{summary.RunId}`"
+                $"- Overall readiness: `{readinessToken summary.OverallReadiness}`"
+                $"- First blocking required lane: `{firstBlockingRequiredLane}`"
+                $"- Aggregate status: `{aggregateStatus}`"
+                $"- Artifact root: `{summary.ArtifactRoot}`"
+                $"- Summary JSON: `{summaryJsonPath}`"
+             ]
+             @ (summary.ReplacementNotice
+                |> Option.map (fun notice -> [ $"- Replacement notice: {notice}" ])
+                |> Option.defaultValue [])
+             @ [
+                 ""
                  "## Required Lanes"
                  ""
                  "| Lane | Role | Status | Elapsed | Log | Reason |"
-                 "|------|------|--------|---------|-----|--------|" ]
+                 "|------|------|--------|---------|-----|--------|"
+             ]
              @ markdownTableRows required
-             @ [ ""
+             @ [
+                 ""
                  "## Optional and Informational Lanes"
                  ""
                  "| Lane | Role | Status | Elapsed | Log | Reason |"
-                 "|------|------|--------|---------|-----|--------|" ]
-             @ (if optional.IsEmpty then [ "| none |  |  |  |  |  |" ] else markdownTableRows optional)
-             @ [ ""
-                 "## Substitutions"
-                 "" ]
-             @ (if substitutionRows.IsEmpty then [ "- None." ] else substitutionRows)
-             @ [ ""
-                 "## Caveats"
-                 "" ]
-             @ (if summary.Caveats.IsEmpty then [ "- None." ] else summary.Caveats |> List.map (fun c -> "- " + c)))
+                 "|------|------|--------|---------|-----|--------|"
+             ]
+             @ (if optional.IsEmpty then
+                    [ "| none |  |  |  |  |  |" ]
+                else
+                    markdownTableRows optional)
+             @ [ ""; "## Substitutions"; "" ]
+             @ (if substitutionRows.IsEmpty then
+                    [ "- None." ]
+                else
+                    substitutionRows)
+             @ [ ""; "## Caveats"; "" ]
+             @ (if summary.Caveats.IsEmpty then
+                    [ "- None." ]
+                else
+                    summary.Caveats |> List.map (fun c -> "- " + c)))
         + Environment.NewLine
 
     let renderSummaryJson (summary: ValidationSummary) =
-        let lanes = summary.LaneResults |> List.map renderLaneResultJson |> String.concat ","
+        let lanes =
+            summary.LaneResults |> List.map renderLaneResultJson |> String.concat ","
 
         "{"
         + String.concat
             ","
-            [ "\"runId\":" + jsonString summary.RunId
-              "\"policyVersion\":" + jsonString summary.PolicyVersion
-              "\"overallReadiness\":" + jsonString (readinessToken summary.OverallReadiness)
-              "\"artifactRoot\":" + jsonString summary.ArtifactRoot
-              "\"startedUtc\":" + jsonString (summary.StartedUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))
-              "\"completedUtc\":" + jsonString (summary.CompletedUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))
-              "\"firstBlockingRequiredLane\":" + jsonStringOption summary.FirstBlockingRequiredLane
-              "\"lanes\":[" + lanes + "]"
-              "\"caveats\":" + jsonStringArray summary.Caveats
-              "\"replacementNotice\":" + jsonStringOption summary.ReplacementNotice ]
+            [
+                "\"runId\":" + jsonString summary.RunId
+                "\"policyVersion\":" + jsonString summary.PolicyVersion
+                "\"overallReadiness\":" + jsonString (readinessToken summary.OverallReadiness)
+                "\"artifactRoot\":" + jsonString summary.ArtifactRoot
+                "\"startedUtc\":"
+                + jsonString (summary.StartedUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))
+                "\"completedUtc\":"
+                + jsonString (summary.CompletedUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))
+                "\"firstBlockingRequiredLane\":"
+                + jsonStringOption summary.FirstBlockingRequiredLane
+                "\"lanes\":[" + lanes + "]"
+                "\"caveats\":" + jsonStringArray summary.Caveats
+                "\"replacementNotice\":" + jsonStringOption summary.ReplacementNotice
+            ]
         + "}"
 
     // A LaneResult's evidence paths are already fully qualified in the same base as runRoot: production
@@ -1338,7 +1529,8 @@ module ValidationLanes =
         let escaping =
             summary.LaneResults
             |> List.collect (fun result ->
-                laneEvidenceEscaping runRoot result |> List.map (fun path -> $"{result.LaneId} -> {path}"))
+                laneEvidenceEscaping runRoot result
+                |> List.map (fun path -> $"{result.LaneId} -> {path}"))
 
         if not escaping.IsEmpty then
             invalidOp (
@@ -1351,7 +1543,14 @@ module ValidationLanes =
             writeLaneResult result
 
         match summary.ReplacementNotice with
-        | Some notice -> writeAllText (Path.Combine(runRoot, "replacement-notice.md")) ("# Replacement Notice" + Environment.NewLine + Environment.NewLine + notice + Environment.NewLine)
+        | Some notice ->
+            writeAllText
+                (Path.Combine(runRoot, "replacement-notice.md"))
+                ("# Replacement Notice"
+                 + Environment.NewLine
+                 + Environment.NewLine
+                 + notice
+                 + Environment.NewLine)
         | None -> ()
 
         let markdown = Path.Combine(runRoot, "summary.md")
@@ -1360,7 +1559,10 @@ module ValidationLanes =
         writeAllText json (renderSummaryJson summary + Environment.NewLine)
         [ markdown; json ]
 
-    let runRequest (repositoryRoot: string) (request: RunRequest) : Result<ValidationSummary, PreflightDiagnostic list> =
+    let runRequest
+        (repositoryRoot: string)
+        (request: RunRequest)
+        : Result<ValidationSummary, PreflightDiagnostic list> =
         let seedRunId = request.RunId |> Option.defaultWith createRunId
         let seedRoot = Path.Combine(request.OutDir, seedRunId)
         let seedCatalog = defaultLaneDefinitions repositoryRoot seedRoot
@@ -1387,27 +1589,31 @@ module ValidationLanes =
                         Some $"{aggregate.Id} was not selected; required readiness is based on focused lanes.")
 
             let caveats =
-                [ match omittedAggregate with
-                  | Some caveat -> yield caveat
-                  | None -> ()
-                  if results |> List.exists (fun result -> result.Status <> Passed) then
-                      yield "non-passing lanes are not counted as green"
-                  for result in results do
-                      match result.Substitution with
-                      | Some target -> yield $"{result.LaneId} is a targeted substitute for {target}"
-                      | None -> () ]
+                [
+                    match omittedAggregate with
+                    | Some caveat -> yield caveat
+                    | None -> ()
+                    if results |> List.exists (fun result -> result.Status <> Passed) then
+                        yield "non-passing lanes are not counted as green"
+                    for result in results do
+                        match result.Substitution with
+                        | Some target -> yield $"{result.LaneId} is a targeted substitute for {target}"
+                        | None -> ()
+                ]
 
             let summary =
-                { RunId = plan.RunId
-                  PolicyVersion = policyVersion
-                  OverallReadiness = computeOverallReadiness results
-                  ArtifactRoot = plan.ArtifactRoot
-                  StartedUtc = started
-                  CompletedUtc = completed
-                  FirstBlockingRequiredLane = firstBlockingRequiredLane results
-                  LaneResults = results
-                  Caveats = caveats
-                  ReplacementNotice = plan.ReplacementNotice }
+                {
+                    RunId = plan.RunId
+                    PolicyVersion = policyVersion
+                    OverallReadiness = computeOverallReadiness results
+                    ArtifactRoot = plan.ArtifactRoot
+                    StartedUtc = started
+                    CompletedUtc = completed
+                    FirstBlockingRequiredLane = firstBlockingRequiredLane results
+                    LaneResults = results
+                    Caveats = caveats
+                    ReplacementNotice = plan.ReplacementNotice
+                }
 
             writeSummary plan.ArtifactRoot summary |> ignore
             Ok summary
@@ -1415,7 +1621,8 @@ module ValidationLanes =
     let runLanes (repositoryRoot: string) (outDir: string) (selectedLaneIds: string list) : ValidationSummary =
         let request =
             { defaultRunRequest outDir with
-                RequestedLaneIds = selectedLaneIds }
+                RequestedLaneIds = selectedLaneIds
+            }
 
         match runRequest repositoryRoot request with
         | Ok summary -> summary

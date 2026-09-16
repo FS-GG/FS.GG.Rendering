@@ -5,39 +5,45 @@ open FS.GG.UI.Scene
 
 /// Request used to inspect a rendered control tree as structured visual facts.
 type ControlInspectionRequest<'msg> =
-    { Scope: VisualInspectionScope
-      Theme: Theme
-      OutputSize: Size
-      Control: Control<'msg>
-      Presentation: string
-      RunId: string option
-      RelatedVisualEvidence: string list }
+    {
+        Scope: VisualInspectionScope
+        Theme: Theme
+        OutputSize: Size
+        Control: Control<'msg>
+        Presentation: string
+        RunId: string option
+        RelatedVisualEvidence: string list
+    }
 
 /// One retained-render transition to inspect.
 ///
 /// Supply a prior control when validating a before/after retained step; omit it
 /// for first-frame evidence where damage is expected to be `NotInspected`.
 type RetainedControlTransition<'msg> =
-    { TransitionId: string
-      PriorControl: Control<'msg> option
-      CurrentControl: Control<'msg>
-      InteractionId: string option
-      ExpectedAffectedRegionIds: string list
-      MaximumDirtyPercentage: float option
-      IntentionalExceptions: IntentionalDamageException list }
+    {
+        TransitionId: string
+        PriorControl: Control<'msg> option
+        CurrentControl: Control<'msg>
+        InteractionId: string option
+        ExpectedAffectedRegionIds: string list
+        MaximumDirtyPercentage: float option
+        IntentionalExceptions: IntentionalDamageException list
+    }
 
 /// Request used to inspect retained-render output and damage facts.
 ///
 /// This request runs the real retained render path and links any related
 /// screenshot or visual-readiness artifacts through `RelatedVisualEvidence`.
 type RetainedControlInspectionRequest<'msg> =
-    { Scope: VisualInspectionScope
-      Theme: Theme
-      OutputSize: Size
-      Presentation: string
-      RunId: string option
-      Transition: RetainedControlTransition<'msg>
-      RelatedVisualEvidence: string list }
+    {
+        Scope: VisualInspectionScope
+        Theme: Theme
+        OutputSize: Size
+        Presentation: string
+        RunId: string option
+        Transition: RetainedControlTransition<'msg>
+        RelatedVisualEvidence: string list
+    }
 
 /// Controls-owned adapter from `Control.renderTree` output to visual inspection artifacts.
 module ControlInspection =

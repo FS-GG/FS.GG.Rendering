@@ -15,23 +15,38 @@ open Expecto
 open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
-let private repositoryPath (rel: string) = Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-let private skillBody = File.ReadAllText(repositoryPath "template/product-skills/fs-gg-line-drawing/SKILL.md")
-let private helperSource = repositoryPath "template/fragments/line-drawing/src/Product/LineDrawing.fs"
-let private productFsproj = File.ReadAllText(repositoryPath "template/base/src/Product/Product.fsproj")
-let private scaffoldMap = File.ReadAllText(repositoryPath "template/base/docs/scaffold-map.md")
-let private templateJson = File.ReadAllText(repositoryPath ".template.config/template.json")
-let private manifest = File.ReadAllText(repositoryPath "template/skill-manifest/skill-manifest.json")
+let private repositoryPath (rel: string) =
+    Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let private skillBody =
+    File.ReadAllText(repositoryPath "template/product-skills/fs-gg-line-drawing/SKILL.md")
+
+let private helperSource =
+    repositoryPath "template/fragments/line-drawing/src/Product/LineDrawing.fs"
+
+let private productFsproj =
+    File.ReadAllText(repositoryPath "template/base/src/Product/Product.fsproj")
+
+let private scaffoldMap =
+    File.ReadAllText(repositoryPath "template/base/docs/scaffold-map.md")
+
+let private templateJson =
+    File.ReadAllText(repositoryPath ".template.config/template.json")
+
+let private manifest =
+    File.ReadAllText(repositoryPath "template/skill-manifest/skill-manifest.json")
 
 let private simGate = "(profile == \"game\" || profile == \"sample-pack\")"
 
 /// Read a JSON string element, coercing null to "" (nullable-reference-types is on here).
-let private gs (el: JsonElement) = el.GetString() |> Option.ofObj |> Option.defaultValue ""
+let private gs (el: JsonElement) =
+    el.GetString() |> Option.ofObj |> Option.defaultValue ""
 
 /// The condition string on the template.json `sources[]` row whose `source` equals `srcPath`, if any.
 let private sourceCondition (srcPath: string) : string option =
     use doc = JsonDocument.Parse templateJson
+
     doc.RootElement.GetProperty("sources").EnumerateArray()
     |> Seq.tryPick (fun s ->
         match s.TryGetProperty "source" with
@@ -46,56 +61,92 @@ let feature248LineDrawingSkillTests =
     testList
         "Feature248 line-drawing skill + import-and-adapt helper (US1/US2/US3)"
         [
-          // ---- US2: the skill exists, is named correctly, reuses the primitives, cites the ref -----
-          test "the fs-gg-line-drawing skill declares its name, reuses Cell, cites Red Blob Games" {
-              Expect.stringContains skillBody "name: fs-gg-line-drawing" "frontmatter name matches the id"
-              Expect.stringContains skillBody "Cell" "grid vocabulary reuses the shared Cell"
-              Expect.stringContains skillBody "Pathfinding" "reuses the Pathfinding predicate convention"
-              Expect.stringContains skillBody "LineDrawing.fs" "points at the adaptable helper source"
-              Expect.stringContains skillBody "redblobgames.com/grids/line-drawing" "cites the Red Blob Games reference"
-          }
+            // ---- US2: the skill exists, is named correctly, reuses the primitives, cites the ref -----
+            test "the fs-gg-line-drawing skill declares its name, reuses Cell, cites Red Blob Games" {
+                Expect.stringContains skillBody "name: fs-gg-line-drawing" "frontmatter name matches the id"
+                Expect.stringContains skillBody "Cell" "grid vocabulary reuses the shared Cell"
+                Expect.stringContains skillBody "Pathfinding" "reuses the Pathfinding predicate convention"
+                Expect.stringContains skillBody "LineDrawing.fs" "points at the adaptable helper source"
 
-          test "the skill materializes for game/sample-pack in the manifest" {
-              use doc = JsonDocument.Parse manifest
-              let entry =
-                  doc.RootElement.GetProperty("skills").EnumerateArray()
-                  |> Seq.tryFind (fun e -> gs (e.GetProperty("id")) = "fs-gg-line-drawing")
-              Expect.isSome entry "fs-gg-line-drawing is in the manifest"
-              Expect.equal (gs (entry.Value.GetProperty("materializes-when"))) "profile in [game, sample-pack]" "gated to the sim profiles"
-          }
+                Expect.stringContains
+                    skillBody
+                    "redblobgames.com/grids/line-drawing"
+                    "cites the Red Blob Games reference"
+            }
 
-          // ---- US1: the adaptable helper fragment exists and is delete-safe-wired -----------------
-          test "the helper fragment source exists with the intended surface" {
-              Expect.isTrue (File.Exists helperSource) "LineDrawing.fs fragment exists"
-              let src = File.ReadAllText helperSource
-              Expect.stringContains src "namespace AppRoot" "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
-              Expect.stringContains src "module LineDrawing" "the LineDrawing module"
-              Expect.stringContains src "open FS.GG.Game.Core" "reuses the shared Cell from FS.GG.Game.Core (ADR-0022 P5: moved from FS.GG.UI.Canvas)"
-              for fn in [ "line"; "supercover"; "lineOfSight" ] do
-                  Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)
-          }
+            test "the skill materializes for game/sample-pack in the manifest" {
+                use doc = JsonDocument.Parse manifest
 
-          test "Product.fsproj compiles LineDrawing.fs profile-gated and Exists-guarded (delete-safe)" {
-              Expect.stringContains
-                  productFsproj
-                  "<Compile Include=\"LineDrawing.fs\" Condition=\"Exists('LineDrawing.fs')\" />"
-                  "the compile item is Exists-guarded so deleting the file keeps the build green"
-              // it sits inside the game/sample-pack #if region and before Model.fs
-              let idx (s: string) = productFsproj.IndexOf(s, System.StringComparison.Ordinal)
-              Expect.isLessThan (idx "LineDrawing.fs") (idx "Compile Include=\"Model.fs\"") "LineDrawing.fs compiles before Model.fs (usable from update/view)"
-              Expect.isGreaterThan (idx "LineDrawing.fs") (idx "profile == \"game\" || profile == \"sample-pack\"") "LineDrawing.fs is inside the sim-profile gate"
-          }
+                let entry =
+                    doc.RootElement.GetProperty("skills").EnumerateArray()
+                    |> Seq.tryFind (fun e -> gs (e.GetProperty("id")) = "fs-gg-line-drawing")
 
-          test "both template.json sources (skill + fragment) are gated to game/sample-pack" {
-              Expect.equal (sourceCondition "template/product-skills/fs-gg-line-drawing/") (Some simGate) "skill source gated to sim profiles"
-              Expect.equal (sourceCondition "template/fragments/line-drawing/src/") (Some simGate) "fragment source gated to sim profiles"
-          }
+                Expect.isSome entry "fs-gg-line-drawing is in the manifest"
 
-          // ---- US3: swap-guidance surfaces list the helper as consumer-owned replaceable source ----
-          // The fs-gg-model-swap half was removed with ADR-0063 (FS.GG.Rendering#965): model-swap is no
-          // longer shipped by this provider (owner-sourced from FS.GG.Game.Skills), so its body is not
-          // present here to assert against. scaffold-map is Rendering's and still classifies the helper.
-          test "scaffold-map classifies LineDrawing.fs as replaceable/adaptable" {
-              Expect.stringContains scaffoldMap "LineDrawing.fs" "scaffold-map classifies the line-drawing helper"
-          }
+                Expect.equal
+                    (gs (entry.Value.GetProperty("materializes-when")))
+                    "profile in [game, sample-pack]"
+                    "gated to the sim profiles"
+            }
+
+            // ---- US1: the adaptable helper fragment exists and is delete-safe-wired -----------------
+            test "the helper fragment source exists with the intended surface" {
+                Expect.isTrue (File.Exists helperSource) "LineDrawing.fs fragment exists"
+                let src = File.ReadAllText helperSource
+
+                Expect.stringContains
+                    src
+                    "namespace AppRoot"
+                    "literal AppRoot identifier namespace (the product-name identifier token, derived to the product namespace on scaffold)"
+
+                Expect.stringContains src "module LineDrawing" "the LineDrawing module"
+
+                Expect.stringContains
+                    src
+                    "open FS.GG.Game.Core"
+                    "reuses the shared Cell from FS.GG.Game.Core (ADR-0022 P5: moved from FS.GG.UI.Canvas)"
+
+                for fn in [ "line"; "supercover"; "lineOfSight" ] do
+                    Expect.stringContains src (sprintf "let %s" fn) (sprintf "exposes %s" fn)
+            }
+
+            test "Product.fsproj compiles LineDrawing.fs profile-gated and Exists-guarded (delete-safe)" {
+                Expect.stringContains
+                    productFsproj
+                    "<Compile Include=\"LineDrawing.fs\" Condition=\"Exists('LineDrawing.fs')\" />"
+                    "the compile item is Exists-guarded so deleting the file keeps the build green"
+                // it sits inside the game/sample-pack #if region and before Model.fs
+                let idx (s: string) =
+                    productFsproj.IndexOf(s, System.StringComparison.Ordinal)
+
+                Expect.isLessThan
+                    (idx "LineDrawing.fs")
+                    (idx "Compile Include=\"Model.fs\"")
+                    "LineDrawing.fs compiles before Model.fs (usable from update/view)"
+
+                Expect.isGreaterThan
+                    (idx "LineDrawing.fs")
+                    (idx "profile == \"game\" || profile == \"sample-pack\"")
+                    "LineDrawing.fs is inside the sim-profile gate"
+            }
+
+            test "both template.json sources (skill + fragment) are gated to game/sample-pack" {
+                Expect.equal
+                    (sourceCondition "template/product-skills/fs-gg-line-drawing/")
+                    (Some simGate)
+                    "skill source gated to sim profiles"
+
+                Expect.equal
+                    (sourceCondition "template/fragments/line-drawing/src/")
+                    (Some simGate)
+                    "fragment source gated to sim profiles"
+            }
+
+            // ---- US3: swap-guidance surfaces list the helper as consumer-owned replaceable source ----
+            // The fs-gg-model-swap half was removed with ADR-0063 (FS.GG.Rendering#965): model-swap is no
+            // longer shipped by this provider (owner-sourced from FS.GG.Game.Skills), so its body is not
+            // present here to assert against. scaffold-map is Rendering's and still classifies the helper.
+            test "scaffold-map classifies LineDrawing.fs as replaceable/adaptable" {
+                Expect.stringContains scaffoldMap "LineDrawing.fs" "scaffold-map classifies the line-drawing helper"
+            }
         ]

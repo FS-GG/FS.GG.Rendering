@@ -13,7 +13,10 @@ module internal SceneHash =
         // `uint64` mixers below are unchanged, so the fingerprint is byte-identical.
         let mutable h = Hashing.offsetBasis // mutable: hot path / FNV-1a accumulator
         let mix (x: uint64) = h <- Hashing.step h x
-        let bits (d: float) = uint64 (System.BitConverter.DoubleToInt64Bits d)
+
+        let bits (d: float) =
+            uint64 (System.BitConverter.DoubleToInt64Bits d)
+
         let mixTag (t: int) = mix (uint64 (uint32 t))
         let mixBool (v: bool) = mix (if v then 1UL else 0UL)
         let mixByte (v: byte) = mix (uint64 v)
@@ -22,6 +25,7 @@ module internal SceneHash =
 
         let mixStr (s: string) =
             mix (uint64 s.Length)
+
             for c in s do
                 mix (uint64 (uint16 c))
 

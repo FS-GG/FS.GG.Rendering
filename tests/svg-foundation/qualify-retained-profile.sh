@@ -16,6 +16,7 @@ sha() { sha256sum "$1" | cut -d' ' -f1; }
 [[ -x "$QUINT_BIN" && "$(sha "$QUINT_BIN")" == "$quint_sha" ]] || fail 'Quint object mismatch'
 [[ -x "$LMT_BIN" && "$(sha "$LMT_BIN")" == "$lmt_sha" ]] || fail 'lmt object mismatch'
 [[ "$($QUINT_BIN --version)" == '0.32.0' ]] || fail 'Quint version mismatch'
+dotnet tool restore --tool-manifest "$root/.config/dotnet-tools.json" >/dev/null
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/svg-retained-profile.XXXXXX")"
 trap 'rm -rf -- "$scratch"' EXIT
@@ -85,6 +86,9 @@ author_once() {
 
 author_once "$scratch/author-a"
 author_once "$scratch/author-b"
+find "$scratch/author-a/readiness/svg-qual-01-2" "$scratch/author-b/readiness/svg-qual-01-2" \
+  -type f \( -name '*.fs' -o -name '*.fsi' -o -name '*.fsx' \) -print0 \
+  | xargs -0 -r dotnet fantomas
 diff -ru "$scratch/author-a/readiness/svg-qual-01-2" "$scratch/author-b/readiness/svg-qual-01-2" >/dev/null \
   || fail 'two offline installed author runs diverged'
 diff -ru "$root/readiness/svg-qual-01-2" "$scratch/author-a/readiness/svg-qual-01-2" >/dev/null \

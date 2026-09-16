@@ -6,10 +6,12 @@ open FS.GG.UI.Scene
 
 /// Browser host dimensions and accessible name for one retained SVG root.
 type SvgBrowserOptions =
-    { Width: float
-      Height: float
-      AccessibleLabel: string
-      WheelZoomFactor: float }
+    {
+        Width: float
+        Height: float
+        AccessibleLabel: string
+        WheelZoomFactor: float
+    }
 
 /// Why a retained browser root could not be mounted.
 [<RequireQualifiedAccess>]
@@ -26,10 +28,12 @@ type SvgDocumentBrowserError =
 
 /// Browser-observed state for one declared local font.
 type SvgBrowserFontObservation =
-    { DefinitionId: string
-      Family: string
-      Ready: bool
-      Diagnostic: string option }
+    {
+        DefinitionId: string
+        Family: string
+        Ready: bool
+        Diagnostic: string option
+    }
 
 /// A mounted identified SVG document. Validation and export finish before any DOM mutation.
 [<Sealed>]
@@ -50,13 +54,15 @@ type SvgDocumentBrowserHost =
 
 /// Observable resource and scene state for lifecycle and early-cost evidence.
 type SvgBrowserObservation =
-    { RootId: string
-      Revision: int
-      LayerCount: int
-      ObjectCount: int
-      SvgNodeCount: int
-      OwnedListenerCount: int
-      ScheduledFrameCount: int }
+    {
+        RootId: string
+        Revision: int
+        LayerCount: int
+        ObjectCount: int
+        SvgNodeCount: int
+        OwnedListenerCount: int
+        ScheduledFrameCount: int
+    }
 
 /// A mounted retained SVG root. All state changes pass through the portable reducer.
 [<Sealed>]
@@ -92,11 +98,11 @@ module SvgBrowser =
         options: SvgBrowserOptions ->
         scene: RetainedScene ->
         onTransition: (RetainedInteractionResult -> unit) ->
-        Result<SvgBrowserHost, SvgBrowserMountError>
+            Result<SvgBrowserHost, SvgBrowserMountError>
 
     /// Mount an identified document under a unique namespace using its complete exported SVG.
     val mountDocument:
         container: HTMLElement ->
         mountNamespace: string ->
         document: SvgDocument ->
-        Result<SvgDocumentBrowserHost, SvgDocumentBrowserError>
+            Result<SvgDocumentBrowserHost, SvgDocumentBrowserError>

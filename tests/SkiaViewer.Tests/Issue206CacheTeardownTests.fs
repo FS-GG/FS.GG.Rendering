@@ -39,100 +39,111 @@ let private writePng (path: string) (fill: SKColor) =
     data.SaveTo file
 
 let private tempDir () =
-    let dir = Path.Combine(Path.GetTempPath(), "issue206-" + Guid.NewGuid().ToString("N"))
+    let dir =
+        Path.Combine(Path.GetTempPath(), "issue206-" + Guid.NewGuid().ToString("N"))
+
     Directory.CreateDirectory dir |> ignore
     dir
 
 let private sansSpec: FontSpec =
-    { Family = Some "Noto Sans"
-      Size = 21.0
-      Weight = None }
+    {
+        Family = Some "Noto Sans"
+        Size = 21.0
+        Weight = None
+    }
 
 [<Tests>]
 let tests =
     testSequenced
     <| testList
         "cache teardown (issue #206)"
-        [ test "teardown disposes every decoded image and empties the image cache" {
-              let dir = tempDir ()
+        [
+            test "teardown disposes every decoded image and empties the image cache" {
+                let dir = tempDir ()
 
-              try
-                  let file = Path.Combine(dir, "sprite.png")
-                  writePng file SKColors.Red
+                try
+                    let file = Path.Combine(dir, "sprite.png")
+                    writePng file SKColors.Red
 
-                  let image = SceneRenderer.ImageCache.resolve file
-                  Expect.isNotNull image "the source decodes"
-                  Expect.equal (SceneRenderer.ImageCache.count ()) 1 "one resident entry"
+                    let image = SceneRenderer.ImageCache.resolve file
+                    Expect.isNotNull image "the source decodes"
+                    Expect.equal (SceneRenderer.ImageCache.count ()) 1 "one resident entry"
 
-                  SceneRenderer.ImageCache.dispose ()
+                    SceneRenderer.ImageCache.dispose ()
 
-                  Expect.equal (SceneRenderer.ImageCache.count ()) 0 "teardown empties the cache"
-                  Expect.isTrue (isDisposed image) "the decoded image's native handle was released"
-              finally
-                  SceneRenderer.ImageCache.dispose ()
-                  Directory.Delete(dir, true)
-          }
+                    Expect.equal (SceneRenderer.ImageCache.count ()) 0 "teardown empties the cache"
+                    Expect.isTrue (isDisposed image) "the decoded image's native handle was released"
+                finally
+                    SceneRenderer.ImageCache.dispose ()
+                    Directory.Delete(dir, true)
+            }
 
-          test "a run after teardown re-decodes rather than serving a disposed image" {
-              let dir = tempDir ()
+            test "a run after teardown re-decodes rather than serving a disposed image" {
+                let dir = tempDir ()
 
-              try
-                  let file = Path.Combine(dir, "sprite.png")
-                  writePng file SKColors.Blue
+                try
+                    let file = Path.Combine(dir, "sprite.png")
+                    writePng file SKColors.Blue
 
-                  let first = SceneRenderer.ImageCache.resolve file
-                  SceneRenderer.ImageCache.dispose ()
-                  let second = SceneRenderer.ImageCache.resolve file
+                    let first = SceneRenderer.ImageCache.resolve file
+                    SceneRenderer.ImageCache.dispose ()
+                    let second = SceneRenderer.ImageCache.resolve file
 
-                  Expect.isNotNull second "the source decodes again after teardown"
-                  Expect.isFalse (isDisposed second) "the second run's image is live"
-                  Expect.isFalse (Object.ReferenceEquals(first, second)) "it is a fresh decode, not the disposed one"
-                  Expect.equal (SceneRenderer.ImageCache.count ()) 1 "the cache repopulated"
-              finally
-                  SceneRenderer.ImageCache.dispose ()
-                  Directory.Delete(dir, true)
-          }
+                    Expect.isNotNull second "the source decodes again after teardown"
+                    Expect.isFalse (isDisposed second) "the second run's image is live"
+                    Expect.isFalse (Object.ReferenceEquals(first, second)) "it is a fresh decode, not the disposed one"
+                    Expect.equal (SceneRenderer.ImageCache.count ()) 1 "the cache repopulated"
+                finally
+                    SceneRenderer.ImageCache.dispose ()
+                    Directory.Delete(dir, true)
+            }
 
-          test "teardown disposes every cached font and empties the font caches" {
-              let font = Fonts.resolveFont sansSpec
-              Expect.isGreaterThan (Fonts.fontCacheCount ()) 0 "resolving a spec makes a resident font"
+            test "teardown disposes every cached font and empties the font caches" {
+                let font = Fonts.resolveFont sansSpec
+                Expect.isGreaterThan (Fonts.fontCacheCount ()) 0 "resolving a spec makes a resident font"
 
-              Fonts.disposeCaches ()
+                Fonts.disposeCaches ()
 
-              Expect.equal (Fonts.fontCacheCount ()) 0 "teardown empties the font cache"
-              Expect.isTrue (isDisposed font) "the cached font's native handle was released"
-          }
+                Expect.equal (Fonts.fontCacheCount ()) 0 "teardown empties the font cache"
+                Expect.isTrue (isDisposed font) "the cached font's native handle was released"
+            }
 
-          test "a run after teardown rebuilds the fonts rather than serving a disposed one" {
-              Fonts.resolveFont sansSpec |> ignore
-              Fonts.disposeCaches ()
+            test "a run after teardown rebuilds the fonts rather than serving a disposed one" {
+                Fonts.resolveFont sansSpec |> ignore
+                Fonts.disposeCaches ()
 
-              let rebuilt = Fonts.resolveFont sansSpec
+                let rebuilt = Fonts.resolveFont sansSpec
 
-              Expect.isFalse (isDisposed rebuilt) "the second run's font is live"
-              Expect.equal (Fonts.fontCacheCount ()) 1 "the cache repopulated"
+                Expect.isFalse (isDisposed rebuilt) "the second run's font is live"
+                Expect.equal (Fonts.fontCacheCount ()) 1 "the cache repopulated"
 
-              // The typeface behind it was disposed too, so this measures only if it was rebuilt with it.
-              Expect.isGreaterThan (float (rebuilt.MeasureText "fs.gg")) 0.0 "the rebuilt font measures text"
-          }
+                // The typeface behind it was disposed too, so this measures only if it was rebuilt with it.
+                Expect.isGreaterThan (float (rebuilt.MeasureText "fs.gg")) 0.0 "the rebuilt font measures text"
+            }
 
-          test "text still resolves and draws after a teardown" {
-              Fonts.disposeCaches ()
+            test "text still resolves and draws after a teardown" {
+                Fonts.disposeCaches ()
 
-              use surface = SKSurface.Create(SKImageInfo(64, 32))
-              surface.Canvas.Clear SKColors.White
+                use surface = SKSurface.Create(SKImageInfo(64, 32))
+                surface.Canvas.Clear SKColors.White
 
-              let node =
-                  TextRun
-                      { Text = "fs.gg"
-                        Position = { X = 2.0; Y = 20.0 }
-                        Font = sansSpec
-                        Paint = { Paint.fill Colors.black with Antialias = true } }
+                let node =
+                    TextRun
+                        {
+                            Text = "fs.gg"
+                            Position = { X = 2.0; Y = 20.0 }
+                            Font = sansSpec
+                            Paint =
+                                { Paint.fill Colors.black with
+                                    Antialias = true
+                                }
+                        }
 
-              SceneRenderer.paintNode surface.Canvas node
+                SceneRenderer.paintNode surface.Canvas node
 
-              use snapshot = surface.Snapshot()
-              use data = snapshot.Encode(SKEncodedImageFormat.Png, 100)
-              Expect.isGreaterThan (data.ToArray()).Length 0 "a frame after teardown paints text"
-              Expect.isGreaterThan (Fonts.fontCacheCount ()) 0 "and repopulated the font cache"
-          } ]
+                use snapshot = surface.Snapshot()
+                use data = snapshot.Encode(SKEncodedImageFormat.Png, 100)
+                Expect.isGreaterThan (data.ToArray()).Length 0 "a frame after teardown paints text"
+                Expect.isGreaterThan (Fonts.fontCacheCount ()) 0 "and repopulated the font cache"
+            }
+        ]

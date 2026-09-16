@@ -15,7 +15,13 @@ let source: Point = { X = 0.0; Y = 0.0 }
 let target: Point = { X = 10.0; Y = 0.0 }
 
 // A single wall segment sitting directly between the source and the target.
-let wall: Visibility.Segment list = [ { A = { X = 5.0; Y = -5.0 }; B = { X = 5.0; Y = 5.0 } } ]
+let wall: Visibility.Segment list =
+    [
+        {
+            A = { X = 5.0; Y = -5.0 }
+            B = { X = 5.0; Y = 5.0 }
+        }
+    ]
 
 // Line-of-sight: hidden behind the wall, visible once the wall is gone.
 printfn "target hidden behind wall = %b" (not (Visibility.isVisible source target wall))
@@ -24,16 +30,26 @@ printfn "target visible, no wall   = %b" (Visibility.isVisible source target [])
 // The visibility polygon: a bounded, closed ring of hit points around the source.
 let poly = Visibility.polygon { Radius = 20.0 } source wall
 printfn "polygon vertex count      = %d" (List.length poly.Vertices)
-printfn "every vertex within bound = %b"
-    (poly.Vertices |> List.forall (fun v -> abs v.X <= 20.0 + 1e-6 && abs v.Y <= 20.0 + 1e-6))
+
+printfn
+    "every vertex within bound = %b"
+    (poly.Vertices
+     |> List.forall (fun v -> abs v.X <= 20.0 + 1e-6 && abs v.Y <= 20.0 + 1e-6))
 
 // Determinism: identical inputs -> byte-identical polygon.
-printfn "deterministic             = %b"
-    (Visibility.polygon { Radius = 20.0 } source wall = poly)
+printfn "deterministic             = %b" (Visibility.polygon { Radius = 20.0 } source wall = poly)
 
 // #261 — a wall spanning the sight box with BOTH endpoints outside it still occludes. Bucketing the
 // segment by its endpoints culled it, and the ring escaped past the wall to the bound.
 let viewpoint: Point = { X = 0.0; Y = -10.0 }
-let spanning: Visibility.Segment list = [ { A = { X = -1000.0; Y = 0.0 }; B = { X = 1000.0; Y = 0.0 } } ]
+
+let spanning: Visibility.Segment list =
+    [
+        {
+            A = { X = -1000.0; Y = 0.0 }
+            B = { X = 1000.0; Y = 0.0 }
+        }
+    ]
+
 let spanned = Visibility.polygon { Radius = 50.0 } viewpoint spanning
 printfn "spanning wall occludes    = %b" (spanned.Vertices |> List.forall (fun v -> v.Y <= 1e-9))

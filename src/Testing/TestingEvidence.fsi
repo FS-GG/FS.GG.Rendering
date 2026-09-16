@@ -16,8 +16,10 @@ module GeneratedProductAssertions =
 module LocalConsumerPackages =
     /// Public contract function exposed by this FS.GG.UI package.
     val report: feedPath: string -> packages: LocalConsumerPackage list -> LocalConsumerPackageReport
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val classifyDrift: expected: LocalConsumerPackage list -> actual: LocalConsumerPackage list -> LocalConsumerPackageDrift list
+    val classifyDrift:
+        expected: LocalConsumerPackage list -> actual: LocalConsumerPackage list -> LocalConsumerPackageDrift list
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedConsumerValidation =
@@ -29,8 +31,11 @@ module GeneratedConsumerValidation =
     val verifyGeneratedTests: check: GeneratedTestExecutionCheck -> GeneratedTestExecutionResult
     /// Public contract function exposed by this FS.GG.UI package.
     val selectVisualEvidence: request: VisualEvidenceRequest -> VisualEvidenceResult
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val validateVisualEvidenceCommandOutput: check: GeneratedVisualEvidenceCommandCheck -> GeneratedVisualEvidenceCommandResult
+    val validateVisualEvidenceCommandOutput:
+        check: GeneratedVisualEvidenceCommandCheck -> GeneratedVisualEvidenceCommandResult
+
     /// Public contract function exposed by this FS.GG.UI package.
     val buildValidationContractOutput: check: GeneratedValidationContractCheck -> GeneratedValidationContractResult
 
@@ -89,4 +94,3 @@ module LayoutReadiness =
     val statusText: status: LayoutReadinessStatus -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val validate: report: LayoutReadinessReport -> LayoutReadinessValidationResult
-

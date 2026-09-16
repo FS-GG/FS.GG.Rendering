@@ -6,11 +6,13 @@ open FS.GG.UI.KeyboardInput
 /// player sees; `Order` is explicit rather than inherited from key ordering. `Binding = None` keeps
 /// an unbound/displaced action visible, and `DefaultBinding` supplies reset-to-default state.
 type KeyRebindAction =
-    { Command: CommandId
-      Label: string
-      Order: int
-      Binding: KeyId option
-      DefaultBinding: KeyId option }
+    {
+        Command: CommandId
+        Label: string
+        Order: int
+        Binding: KeyId option
+        DefaultBinding: KeyId option
+    }
 
 /// Issue 335 (epic 330): the key-rebind config-screen control. Lists the rebindable commands and their
 /// current key bindings, surfaces keymap conflicts (issue 332 `Keymap.validate`), and offers a per-command

@@ -25,7 +25,9 @@ open Expecto
 open FS.GG.TestSupport
 
 let private root = RepositoryRoot.value
-let private repo (path: string) = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
+
+let private repo (path: string) =
+    Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar))
 
 let private nuspecPath = repo "src/Meta/FS.GG.UI.nuspec"
 
@@ -54,10 +56,15 @@ let private discoveredMembers () : Set<string> = PackablePackages.memberPackageI
 /// (id, rawVersionString) for every <dependency> in the nuspec.
 let private nuspecDependencies () : (string * string) list =
     let doc = XDocument.Load nuspecPath
+
     doc.Descendants()
     |> Seq.filter (fun e -> e.Name.LocalName = "dependency")
     |> Seq.choose (fun e ->
-        let attr n = e.Attributes() |> Seq.tryFind (fun a -> a.Name.LocalName = n) |> Option.map _.Value
+        let attr n =
+            e.Attributes()
+            |> Seq.tryFind (fun a -> a.Name.LocalName = n)
+            |> Option.map _.Value
+
         match attr "id", attr "version" with
         | Some id, Some v -> Some(id, v)
         | _ -> None)
@@ -65,39 +72,60 @@ let private nuspecDependencies () : (string * string) list =
 
 [<Tests>]
 let feature207BomMembershipTests =
-    testList "Feature207 BOM membership parity" [
+    testList
+        "Feature207 BOM membership parity"
+        [
 
-        // BM-A / CP-C / FR-003: the membership list equals the discovered packable set, tracked as a
-        // SET (count derived from discovery, never a hard-coded literal). Drift in either direction reds.
-        test "nuspec dependency-id set equals the discovered packable FS.GG.UI.* set" {
-            let members = discoveredMembers ()
-            let depIds = nuspecDependencies () |> List.map fst |> Set.ofList
-            let missingFromBom = Set.difference members depIds
-            let extraInBom = Set.difference depIds members
-            Expect.isEmpty missingFromBom (sprintf "members not pinned by the BOM (add to nuspec): %A" missingFromBom)
-            Expect.isEmpty extraInBom (sprintf "BOM pins non-members (remove from nuspec or the project is no longer packable): %A" extraInBom)
-            Expect.equal depIds members "BOM dependency-id set must equal the discovered packable FS.GG.UI.* set"
-            // count tracks the discovered set (16 today) — asserted via the set, not pinned as a magic number
-            Expect.equal (nuspecDependencies ()).Length members.Count "one dependency per discovered member (no dupes, no omissions)"
-        }
+            // BM-A / CP-C / FR-003: the membership list equals the discovered packable set, tracked as a
+            // SET (count derived from discovery, never a hard-coded literal). Drift in either direction reds.
+            test "nuspec dependency-id set equals the discovered packable FS.GG.UI.* set" {
+                let members = discoveredMembers ()
+                let depIds = nuspecDependencies () |> List.map fst |> Set.ofList
+                let missingFromBom = Set.difference members depIds
+                let extraInBom = Set.difference depIds members
 
-        // INV-1 / FR-009: every version is the single `[$version$]` token — no second version literal.
-        test "every dependency version is the single [$version$] token" {
-            for id, v in nuspecDependencies () do
-                Expect.equal v "[$version$]" (sprintf "%s must use the single [$version$] token, found %s" id v)
-        }
+                Expect.isEmpty
+                    missingFromBom
+                    (sprintf "members not pinned by the BOM (add to nuspec): %A" missingFromBom)
 
-        // R1 / FR-004: every version is exact-bracket form (not a floating lower bound).
-        test "every dependency version is exact-bracket form (loud in both directions)" {
-            for id, v in nuspecDependencies () do
-                Expect.isTrue (v.StartsWith "[" && v.EndsWith "]" && not (v.Contains ",")) (sprintf "%s version %s is not exact-bracket [..]" id v)
-        }
+                Expect.isEmpty
+                    extraInBom
+                    (sprintf
+                        "BOM pins non-members (remove from nuspec or the project is no longer packable): %A"
+                        extraInBom)
 
-        // E1: the BOM ships no assembly — explicit empty <files/>, and it does not list itself.
-        test "BOM is dependencies-only and does not pin itself" {
-            let text = File.ReadAllText nuspecPath
-            Expect.stringContains text "<files />" "explicit empty <files/> keeps the package dependencies-only (no lib/, no build output)"
-            let depIds = nuspecDependencies () |> List.map fst
-            Expect.isFalse (List.contains "FS.GG.UI" depIds) "the bare FS.GG.UI BOM must not depend on itself"
-        }
-    ]
+                Expect.equal depIds members "BOM dependency-id set must equal the discovered packable FS.GG.UI.* set"
+                // count tracks the discovered set (16 today) — asserted via the set, not pinned as a magic number
+                Expect.equal
+                    (nuspecDependencies ()).Length
+                    members.Count
+                    "one dependency per discovered member (no dupes, no omissions)"
+            }
+
+            // INV-1 / FR-009: every version is the single `[$version$]` token — no second version literal.
+            test "every dependency version is the single [$version$] token" {
+                for id, v in nuspecDependencies () do
+                    Expect.equal v "[$version$]" (sprintf "%s must use the single [$version$] token, found %s" id v)
+            }
+
+            // R1 / FR-004: every version is exact-bracket form (not a floating lower bound).
+            test "every dependency version is exact-bracket form (loud in both directions)" {
+                for id, v in nuspecDependencies () do
+                    Expect.isTrue
+                        (v.StartsWith "[" && v.EndsWith "]" && not (v.Contains ","))
+                        (sprintf "%s version %s is not exact-bracket [..]" id v)
+            }
+
+            // E1: the BOM ships no assembly — explicit empty <files/>, and it does not list itself.
+            test "BOM is dependencies-only and does not pin itself" {
+                let text = File.ReadAllText nuspecPath
+
+                Expect.stringContains
+                    text
+                    "<files />"
+                    "explicit empty <files/> keeps the package dependencies-only (no lib/, no build output)"
+
+                let depIds = nuspecDependencies () |> List.map fst
+                Expect.isFalse (List.contains "FS.GG.UI" depIds) "the bare FS.GG.UI BOM must not depend on itself"
+            }
+        ]

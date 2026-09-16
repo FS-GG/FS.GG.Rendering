@@ -44,27 +44,31 @@ type AutoField =
 
 /// Feature 200 — an opt-in auto-label projection request (FR-001).
 type AutoLabelSpec =
-    { Fields: AutoField list
-      Separator: string }
+    {
+        Fields: AutoField list
+        Separator: string
+    }
 
 type Token =
-    { Cx: float
-      Cy: float
-      R: float
-      Heading: float
-      SecondaryHeading: float option
-      Faction: Faction
-      Klass: Klass
-      Sigil: Sigil
-      State: TokenState
-      Threat: float
-      Charge: float
-      Speed: int
-      Health: float
-      Shield: bool
-      Label: LabelText option
-      AutoLabel: AutoLabelSpec option
-      LabelMotion: LabelMotion option }
+    {
+        Cx: float
+        Cy: float
+        R: float
+        Heading: float
+        SecondaryHeading: float option
+        Faction: Faction
+        Klass: Klass
+        Sigil: Sigil
+        State: TokenState
+        Threat: float
+        Charge: float
+        Speed: int
+        Health: float
+        Shield: bool
+        Label: LabelText option
+        AutoLabel: AutoLabelSpec option
+        LabelMotion: LabelMotion option
+    }
 
 [<RequireQualifiedAccess>]
 type Grammar =
@@ -88,7 +92,10 @@ module Symbology =
     // Linear interpolate a -> b by t in [0,1]; pure and deterministic.
     let private lerpColor (a: Color) (b: Color) (t: float) : Color =
         let t = clamp01 t
-        let lerp (x: byte) (y: byte) = byte (float x + (float y - float x) * t)
+
+        let lerp (x: byte) (y: byte) =
+            byte (float x + (float y - float x) * t)
+
         Colors.rgba (lerp a.Red b.Red) (lerp a.Green b.Green) (lerp a.Blue b.Blue) (lerp a.Alpha b.Alpha)
 
     // Rotate p about (cx,cy) by `angle` radians. The "point transform" heading channel — the body,
@@ -98,20 +105,39 @@ module Symbology =
         let c = cos angle
         let dx = p.X - cx
         let dy = p.Y - cy
-        { X = cx + dx * c - dy * s
-          Y = cy + dx * s + dy * c }
+
+        {
+            X = cx + dx * c - dy * s
+            Y = cy + dx * s + dy * c
+        }
 
     // Class -> fixed silhouette (unit coords, north-up nose at (0,-1)). FR-005.
     let private silhouette (k: Klass) : (float * float) list =
         match k with
         | Mobile -> [ (0.0, -1.0); (0.78, 0.62); (0.0, 0.28); (-0.78, 0.62) ]
-        | Heavy -> [ (0.0, -0.9); (0.78, -0.45); (0.78, 0.45); (0.0, 0.9); (-0.78, 0.45); (-0.78, -0.45) ]
+        | Heavy ->
+            [
+                (0.0, -0.9)
+                (0.78, -0.45)
+                (0.78, 0.45)
+                (0.0, 0.9)
+                (-0.78, 0.45)
+                (-0.78, -0.45)
+            ]
         | Scout -> [ (0.0, -1.0); (0.45, 0.0); (0.0, 1.0); (-0.45, 0.0) ]
 
     let private bodyPath (t: Token) : PathSpec =
         let pts =
             silhouette t.Klass
-            |> List.map (fun (ux, uy) -> rotate t.Cx t.Cy t.Heading { X = t.Cx + ux * t.R; Y = t.Cy + uy * t.R })
+            |> List.map (fun (ux, uy) ->
+                rotate
+                    t.Cx
+                    t.Cy
+                    t.Heading
+                    {
+                        X = t.Cx + ux * t.R
+                        Y = t.Cy + uy * t.R
+                    })
 
         match pts with
         | [] -> Path.create Winding []
@@ -147,18 +173,35 @@ module Symbology =
             let center = { X = t.Cx; Y = t.Cy }
             let shader = RadialGradient(center, t.R * 0.95, [ inner; outer ])
             let paint = Paint.fill Colors.transparent |> Paint.withShader shader
-            let bounds = { X = t.Cx - t.R; Y = t.Cy - t.R; Width = t.R * 2.0; Height = t.R * 2.0 }
+
+            let bounds =
+                {
+                    X = t.Cx - t.R
+                    Y = t.Cy - t.R
+                    Width = t.R * 2.0
+                    Height = t.R * 2.0
+                }
+
             Scene.ellipse bounds paint
 
     // Centre identity mark (rotates with the body). No label text (FR-022).
     let private sigilScene (t: Token) : Scene =
         let paint = Paint.stroke (factionColor t.Faction) 1.5 |> Paint.withStrokeCap Round
         let r = t.R * 0.42
-        let pt ux uy = rotate t.Cx t.Cy t.Heading { X = t.Cx + ux * r; Y = t.Cy + uy * r }
+
+        let pt ux uy =
+            rotate t.Cx t.Cy t.Heading { X = t.Cx + ux * r; Y = t.Cy + uy * r }
 
         match t.Sigil with
         | Ring ->
-            let bounds = { X = t.Cx - r; Y = t.Cy - r; Width = r * 2.0; Height = r * 2.0 }
+            let bounds =
+                {
+                    X = t.Cx - r
+                    Y = t.Cy - r
+                    Width = r * 2.0
+                    Height = r * 2.0
+                }
+
             Scene.ellipse bounds paint
         | Bolt ->
             let p1 = pt 0.2 (-0.9)
@@ -169,10 +212,12 @@ module Symbology =
             Scene.path
                 (Path.create
                     Winding
-                    [ Path.moveTo p1.X p1.Y
-                      Path.lineTo p2.X p2.Y
-                      Path.lineTo p3.X p3.Y
-                      Path.lineTo p4.X p4.Y ])
+                    [
+                        Path.moveTo p1.X p1.Y
+                        Path.lineTo p2.X p2.Y
+                        Path.lineTo p3.X p3.Y
+                        Path.lineTo p4.X p4.Y
+                    ])
                 paint
         | Fang ->
             let p1 = pt (-0.6) (-0.5)
@@ -182,10 +227,12 @@ module Symbology =
             Scene.path
                 (Path.create
                     Winding
-                    [ Path.moveTo p1.X p1.Y
-                      Path.lineTo p2.X p2.Y
-                      Path.lineTo p3.X p3.Y
-                      Path.close ])
+                    [
+                        Path.moveTo p1.X p1.Y
+                        Path.lineTo p2.X p2.Y
+                        Path.lineTo p3.X p3.Y
+                        Path.close
+                    ])
                 paint
         | Mark spec -> Scene.path spec paint
 
@@ -199,7 +246,15 @@ module Symbology =
             let red = Colors.rgb 245uy 34uy 45uy
             let color = lerpColor red green h
             let ar = t.R * 1.18
-            let bounds = { X = t.Cx - ar; Y = t.Cy - ar; Width = ar * 2.0; Height = ar * 2.0 }
+
+            let bounds =
+                {
+                    X = t.Cx - ar
+                    Y = t.Cy - ar
+                    Width = ar * 2.0
+                    Height = ar * 2.0
+                }
+
             let sweep = 130.0 * h
             let start = 90.0 - sweep / 2.0
             let paint = Paint.stroke color 3.0 |> Paint.withStrokeCap Round
@@ -215,11 +270,23 @@ module Symbology =
             let color = factionColor t.Faction
 
             let beads =
-                [ for i in 1..n ->
-                      let dist = 1.1 + 0.42 * float i
-                      let p = rotate t.Cx t.Cy t.Heading { X = t.Cx; Y = t.Cy + dist * t.R * 0.5 }
-                      let br = t.R * (0.16 - 0.015 * float i)
-                      Scene.circle p (max 1.0 br) color ]
+                [
+                    for i in 1..n ->
+                        let dist = 1.1 + 0.42 * float i
+
+                        let p =
+                            rotate
+                                t.Cx
+                                t.Cy
+                                t.Heading
+                                {
+                                    X = t.Cx
+                                    Y = t.Cy + dist * t.R * 0.5
+                                }
+
+                        let br = t.R * (0.16 - 0.015 * float i)
+                        Scene.circle p (max 1.0 br) color
+                ]
 
             Scene.group beads
 
@@ -229,7 +296,13 @@ module Symbology =
             Scene.empty
         else
             let color = Colors.rgb 19uy 194uy 194uy
-            let p = { X = t.Cx + t.R * 0.85; Y = t.Cy - t.R * 0.85 }
+
+            let p =
+                {
+                    X = t.Cx + t.R * 0.85
+                    Y = t.Cy - t.R * 0.85
+                }
+
             Scene.circle p (max 2.0 (t.R * 0.18)) color
 
     // FR-020: a Token with no drawable area renders a visible placeholder, never a blank/crash.
@@ -241,16 +314,20 @@ module Symbology =
         let rectPath =
             Path.create
                 Winding
-                [ Path.moveTo (t.Cx - s) (t.Cy - s)
-                  Path.lineTo (t.Cx + s) (t.Cy - s)
-                  Path.lineTo (t.Cx + s) (t.Cy + s)
-                  Path.lineTo (t.Cx - s) (t.Cy + s)
-                  Path.close ]
+                [
+                    Path.moveTo (t.Cx - s) (t.Cy - s)
+                    Path.lineTo (t.Cx + s) (t.Cy - s)
+                    Path.lineTo (t.Cx + s) (t.Cy + s)
+                    Path.lineTo (t.Cx - s) (t.Cy + s)
+                    Path.close
+                ]
 
         Scene.group
-            [ Scene.path rectPath paint
-              Scene.line { X = t.Cx - s; Y = t.Cy - s } { X = t.Cx + s; Y = t.Cy + s } paint
-              Scene.line { X = t.Cx - s; Y = t.Cy + s } { X = t.Cx + s; Y = t.Cy - s } paint ]
+            [
+                Scene.path rectPath paint
+                Scene.line { X = t.Cx - s; Y = t.Cy - s } { X = t.Cx + s; Y = t.Cy + s } paint
+                Scene.line { X = t.Cx - s; Y = t.Cy + s } { X = t.Cx + s; Y = t.Cy - s } paint
+            ]
 
     // Secondary heading -> a centre-out barrel with a tip mark (feature 254, FR-003). Angle 0 points
     // north, matching `Heading` (the Token nose at (0,-1), the Badge pip, the Ring needle). The barrel
@@ -276,43 +353,55 @@ module Symbology =
 
     let private secondaryHeadingIndicator (outer: float) (width: float) (t: Token) (angle: float) : Scene list =
         let color = factionColor t.Faction
-        let at radius = { X = t.Cx + sin angle * t.R * radius; Y = t.Cy - cos angle * t.R * radius }
+
+        let at radius =
+            {
+                X = t.Cx + sin angle * t.R * radius
+                Y = t.Cy - cos angle * t.R * radius
+            }
+
         let tip = at outer
 
-        [ Scene.line (at secondaryHeadingInner) tip (Paint.stroke color width |> Paint.withStrokeCap Round)
-          Scene.circle tip (secondaryHeadingTipRadius t) color ]
+        [
+            Scene.line (at secondaryHeadingInner) tip (Paint.stroke color width |> Paint.withStrokeCap Round)
+            Scene.circle tip (secondaryHeadingTipRadius t) color
+        ]
 
     let defaultToken: Token =
-        { Cx = 0.0
-          Cy = 0.0
-          R = 1.0
-          Heading = 0.0
-          SecondaryHeading = None
-          Faction = Neutral
-          Klass = Mobile
-          Sigil = Ring
-          State = Confirmed
-          Threat = 0.5
-          Charge = 0.5
-          Speed = 0
-          Health = 0.5
-          Shield = false
-          Label = None
-          AutoLabel = None
-          LabelMotion = None }
+        {
+            Cx = 0.0
+            Cy = 0.0
+            R = 1.0
+            Heading = 0.0
+            SecondaryHeading = None
+            Faction = Neutral
+            Klass = Mobile
+            Sigil = Ring
+            State = Confirmed
+            Threat = 0.5
+            Charge = 0.5
+            Speed = 0
+            Health = 0.5
+            Shield = false
+            Label = None
+            AutoLabel = None
+            LabelMotion = None
+        }
 
     // ---- Rich-text label constructors (feature 198) ----
     let plainLabel (text: string) : LabelText = LabelText.Plain text
 
     let run (text: string) : LabelRun =
-        { Text = text
-          Color = None
-          Weight = None
-          Scale = None
-          Italic = None
-          Underline = None
-          Strike = None
-          Tracking = None }
+        {
+            Text = text
+            Color = None
+            Weight = None
+            Scale = None
+            Italic = None
+            Underline = None
+            Strike = None
+            Tracking = None
+        }
 
     let richLabel (runs: LabelRun list) : LabelText = LabelText.Rich runs
 
@@ -327,7 +416,10 @@ module Symbology =
     let autoLabel (fields: AutoField list) : AutoLabelSpec = { Fields = fields; Separator = " " }
 
     let autoLabelSep (separator: string) (fields: AutoField list) : AutoLabelSpec =
-        { Fields = fields; Separator = separator }
+        {
+            Fields = fields
+            Separator = separator
+        }
 
     let labelMotion (kind: LabelMotion) : LabelMotion = kind
 
@@ -369,9 +461,7 @@ module Symbology =
     // label (FR-004/FR-012). The result rides the existing `LabelText.Plain` path (zero new vocabulary).
     let private projectAutoLabel (t: Token) (spec: AutoLabelSpec) : LabelText option =
         let joined =
-            spec.Fields
-            |> List.choose (renderAutoField t)
-            |> String.concat spec.Separator
+            spec.Fields |> List.choose (renderAutoField t) |> String.concat spec.Separator
 
         if String.IsNullOrWhiteSpace joined then
             None
@@ -382,7 +472,8 @@ module Symbology =
     // none. Exactly one resolved label or none — never two stacked. A Token opting into neither reaches
     // `labelDispatch` with `resolveLabel t = t.Label`, hitting the EXACT spec-199 path (zero drift, FR-008).
     let private resolveLabel (t: Token) : LabelText option =
-        t.Label |> Option.orElseWith (fun () -> t.AutoLabel |> Option.bind (projectAutoLabel t))
+        t.Label
+        |> Option.orElseWith (fun () -> t.AutoLabel |> Option.bind (projectAutoLabel t))
 
     // Assembly-internal so `Legibility.scoreIn` scores the very text the grammar draws, rather than a
     // second copy of the resolution order that would drift from this one.
@@ -430,23 +521,49 @@ module Symbology =
     let private tokenLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.5
         let budget = labelLineBudget Grammar.Token
-        labelNodesAt t.Cx (t.Cy + t.R * 1.5) (t.R * 1.9) baseSize (LabelLayout.lineHeightOf baseSize) budget t labelPhase
+
+        labelNodesAt
+            t.Cx
+            (t.Cy + t.R * 1.5)
+            (t.R * 1.9)
+            baseSize
+            (LabelLayout.lineHeightOf baseSize)
+            budget
+            t
+            labelPhase
 
     let private badgeLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.42
         let budget = labelLineBudget Grammar.Badge
-        labelNodesAt t.Cx (t.Cy + t.R * 1.42) (t.R * 1.7) baseSize (LabelLayout.lineHeightOf baseSize) budget t labelPhase
+
+        labelNodesAt
+            t.Cx
+            (t.Cy + t.R * 1.42)
+            (t.R * 1.7)
+            baseSize
+            (LabelLayout.lineHeightOf baseSize)
+            budget
+            t
+            labelPhase
 
     let private ringLabelNodes (t: Token) (labelPhase: float) : Scene list =
         let baseSize = t.R * 0.34
         let budget = labelLineBudget Grammar.Ring
-        labelNodesAt t.Cx (t.Cy + t.R * 0.52) (t.R * 1.05) baseSize (LabelLayout.lineHeightOf baseSize) budget t labelPhase
+
+        labelNodesAt
+            t.Cx
+            (t.Cy + t.R * 0.52)
+            (t.R * 1.05)
+            baseSize
+            (LabelLayout.lineHeightOf baseSize)
+            budget
+            t
+            labelPhase
 
     // Append the label line nodes to a grammar's child list as bare siblings (research.md R5): `[]` ⇒
     // `Scene.group nodes` (byte-identical to no-label), `[one]` ⇒ `nodes @ [one]` (byte-identical to the
     // spec-196 single-line label). Never wraps the lines in an extra group — that would drift the goldens.
-    let private withLabel (lineNodes: Scene list) (nodes: Scene list) : Scene =
-        Scene.group (nodes @ lineNodes)
+    let private withLabel (lineNodes: Scene list) (nodes: Scene list) : Scene = Scene.group (nodes @ lineNodes)
 
     // The placeholder guard (`R <= 0`) stays BEFORE label resolution/animation so it always wins (FR-014).
     let private drawSymbolAt (labelPhase: float) (t: Token) : Scene =
@@ -455,17 +572,19 @@ module Symbology =
         else
             withLabel
                 (tokenLabelNodes t labelPhase)
-                [ yield chargeFill t
-                  yield Scene.path (bodyPath t) (strokePaint t)
-                  yield sigilScene t
-                  yield tailBeads t
-                  yield healthArc t
-                  yield shieldMount t
-                  // Here the primary heading IS the rotated silhouette, so the barrel only has to clear
-                  // the hull (1.0R) and the belly arc (1.18R) to read as a separate channel.
-                  match t.SecondaryHeading with
-                  | Some angle -> yield! secondaryHeadingIndicator 1.32 2.5 t angle
-                  | None -> () ]
+                [
+                    yield chargeFill t
+                    yield Scene.path (bodyPath t) (strokePaint t)
+                    yield sigilScene t
+                    yield tailBeads t
+                    yield healthArc t
+                    yield shieldMount t
+                    // Here the primary heading IS the rotated silhouette, so the barrel only has to clear
+                    // the hull (1.0R) and the belly arc (1.18R) to read as a separate channel.
+                    match t.SecondaryHeading with
+                    | Some angle -> yield! secondaryHeadingIndicator 1.32 2.5 t angle
+                    | None -> ()
+                ]
 
     let private drawSymbol (t: Token) : Scene = drawSymbolAt restPhase t
 
@@ -488,10 +607,12 @@ module Symbology =
 
                 let ring =
                     Scene.ellipse
-                        { X = t.Cx - rr
-                          Y = t.Cy - rr
-                          Width = rr * 2.0
-                          Height = rr * 2.0 }
+                        {
+                            X = t.Cx - rr
+                            Y = t.Cy - rr
+                            Width = rr * 2.0
+                            Height = rr * 2.0
+                        }
                         (Paint.stroke (Colors.rgba c.Red c.Green c.Blue alpha) 2.0)
 
                 Scene.group [ baseSymbol; ring ]
@@ -502,12 +623,23 @@ module Symbology =
             let p2 = rotate t.Cx t.Cy ang { X = t.Cx; Y = t.Cy - rr * 1.25 }
 
             Scene.group
-                [ baseSymbol
-                  Scene.line p1 p2 (Paint.stroke (factionColor t.Faction) 2.5 |> Paint.withStrokeCap Round) ]
+                [
+                    baseSymbol
+                    Scene.line p1 p2 (Paint.stroke (factionColor t.Faction) 2.5 |> Paint.withStrokeCap Round)
+                ]
         | Blink ->
             if ph < 0.5 then
-                let p = { X = t.Cx - t.R * 0.85; Y = t.Cy - t.R * 0.85 }
-                Scene.group [ baseSymbol; Scene.circle p (max 2.0 (t.R * 0.2)) (Colors.rgb 245uy 34uy 45uy) ]
+                let p =
+                    {
+                        X = t.Cx - t.R * 0.85
+                        Y = t.Cy - t.R * 0.85
+                    }
+
+                Scene.group
+                    [
+                        baseSymbol
+                        Scene.circle p (max 2.0 (t.R * 0.2)) (Colors.rgb 245uy 34uy 45uy)
+                    ]
             else
                 baseSymbol
         | Damage ->
@@ -515,18 +647,38 @@ module Symbology =
             let wash = Colors.rgba 245uy 34uy 45uy 90uy
 
             Scene.group
-                [ baseSymbol
-                  Scene.ellipse
-                      { X = t.Cx - rr
-                        Y = t.Cy - rr
-                        Width = rr * 2.0
-                        Height = rr * 2.0 }
-                      (Paint.stroke wash 3.0) ]
+                [
+                    baseSymbol
+                    Scene.ellipse
+                        {
+                            X = t.Cx - rr
+                            Y = t.Cy - rr
+                            Width = rr * 2.0
+                            Height = rr * 2.0
+                        }
+                        (Paint.stroke wash 3.0)
+                ]
         | Moving ->
-            let off = rotate t.Cx t.Cy t.Heading { X = t.Cx; Y = t.Cy + t.R * (0.6 + ph) }
+            let off =
+                rotate
+                    t.Cx
+                    t.Cy
+                    t.Heading
+                    {
+                        X = t.Cx
+                        Y = t.Cy + t.R * (0.6 + ph)
+                    }
+
             let dx = off.X - t.Cx
             let dy = off.Y - t.Cy
-            let echo = drawSymbol { t with Cx = t.Cx - dx * 0.5; Cy = t.Cy - dy * 0.5 }
+
+            let echo =
+                drawSymbol
+                    { t with
+                        Cx = t.Cx - dx * 0.5
+                        Cy = t.Cy - dy * 0.5
+                    }
+
             Scene.group [ echo; baseSymbol ]
 
     let gallery (cols: int) (spacing: float) (tokens: Token list) : Scene =
@@ -546,7 +698,9 @@ module Symbology =
     // `secondaryHeadingMaxExtent` (1.42R) — so a filmstrip of turreted units would overrun its
     // neighbour. Widen to fit the barrel, and only when one is present.
     let private filmstripSpacing (entries: (Motion * Token) list) (maxR: float) : float =
-        let anyBarrel = entries |> List.exists (fun (_, tk) -> Option.isSome tk.SecondaryHeading)
+        let anyBarrel =
+            entries |> List.exists (fun (_, tk) -> Option.isSome tk.SecondaryHeading)
+
         maxR * (if anyBarrel then 2.0 * secondaryHeadingMaxExtent else 2.6)
 
     let filmstrip (samples: int) (entries: (Motion * Token) list) : Scene =
@@ -556,11 +710,13 @@ module Symbology =
 
         entries
         |> List.mapi (fun row (m, tk) ->
-            [ for s in 0 .. samples - 1 ->
-                  let phase = if samples = 1 then 0.0 else float s / float (samples - 1)
-                  let cx = spacing * (float s + 0.5)
-                  let cy = spacing * (float row + 0.5)
-                  animate m { tk with Cx = cx; Cy = cy } phase ])
+            [
+                for s in 0 .. samples - 1 ->
+                    let phase = if samples = 1 then 0.0 else float s / float (samples - 1)
+                    let cx = spacing * (float s + 0.5)
+                    let cy = spacing * (float row + 0.5)
+                    animate m { tk with Cx = cx; Cy = cy } phase
+            ])
         |> List.concat
         |> Scene.group
 
@@ -576,18 +732,33 @@ module Symbology =
     // Badge frame polygon — class drives the corner profile (Klass channel). Screen-aligned (no rotation).
     let private badgeFramePoints (k: Klass) (cx: float) (cy: float) (s: float) : Point list =
         match k with
-        | Heavy -> [ { X = cx - s; Y = cy - s }; { X = cx + s; Y = cy - s }; { X = cx + s; Y = cy + s }; { X = cx - s; Y = cy + s } ]
-        | Scout -> [ { X = cx; Y = cy - s }; { X = cx + s; Y = cy }; { X = cx; Y = cy + s }; { X = cx - s; Y = cy } ]
+        | Heavy ->
+            [
+                { X = cx - s; Y = cy - s }
+                { X = cx + s; Y = cy - s }
+                { X = cx + s; Y = cy + s }
+                { X = cx - s; Y = cy + s }
+            ]
+        | Scout ->
+            [
+                { X = cx; Y = cy - s }
+                { X = cx + s; Y = cy }
+                { X = cx; Y = cy + s }
+                { X = cx - s; Y = cy }
+            ]
         | Mobile ->
             let o = s * 0.41
-            [ { X = cx - o; Y = cy - s }
-              { X = cx + o; Y = cy - s }
-              { X = cx + s; Y = cy - o }
-              { X = cx + s; Y = cy + o }
-              { X = cx + o; Y = cy + s }
-              { X = cx - o; Y = cy + s }
-              { X = cx - s; Y = cy + o }
-              { X = cx - s; Y = cy - o } ]
+
+            [
+                { X = cx - o; Y = cy - s }
+                { X = cx + o; Y = cy - s }
+                { X = cx + s; Y = cy - o }
+                { X = cx + s; Y = cy + o }
+                { X = cx + o; Y = cy + s }
+                { X = cx - o; Y = cy + s }
+                { X = cx - s; Y = cy + o }
+                { X = cx - s; Y = cy - o }
+            ]
 
     let private polyPath (pts: Point list) : PathSpec =
         match pts with
@@ -624,7 +795,11 @@ module Symbology =
             let y = t.Cy + t.R * 0.68
             let gap = t.R * 0.34
             let x0 = t.Cx - gap * float (n - 1) / 2.0
-            Scene.group [ for i in 0 .. n - 1 -> Scene.circle { X = x0 + gap * float i; Y = y } (max 1.0 (t.R * 0.09)) color ]
+
+            Scene.group
+                [
+                    for i in 0 .. n - 1 -> Scene.circle { X = x0 + gap * float i; Y = y } (max 1.0 (t.R * 0.09)) color
+                ]
 
     // Discrete edge pip -> heading (FR-006). The frame stays screen-aligned; only the pip moves around it.
     // Heading 0 points north (matches the Token nose at (0,-1)).
@@ -633,7 +808,13 @@ module Symbology =
             Scene.empty
         else
             let r = t.R * 1.0
-            let p = { X = t.Cx + sin t.Heading * r; Y = t.Cy - cos t.Heading * r }
+
+            let p =
+                {
+                    X = t.Cx + sin t.Heading * r
+                    Y = t.Cy - cos t.Heading * r
+                }
+
             Scene.circle p (max 1.5 (t.R * 0.12)) (factionColor t.Faction)
 
     let private drawBadgeAt (labelPhase: float) (t: Token) : Scene =
@@ -642,20 +823,22 @@ module Symbology =
         else
             withLabel
                 (badgeLabelNodes t labelPhase)
-                [ yield chargeFill t
-                  yield Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
-                  yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
-                  yield badgeSpeedPips t
-                  yield badgeHealthBar t
-                  yield shieldMount t
-                  yield badgeHeadingPip t
-                  // Stops WELL inside the frame. The rim pip carrying the primary heading sits at 1.0R
-                  // with radius 0.12R, so a barrel reaching 0.86R would have its 0.10R tip mark merge
-                  // into the pip whenever the two headings agree — and "turret forward" is the common
-                  // rest state. Ending at 0.70R leaves a visible gap in exactly that case.
-                  match t.SecondaryHeading with
-                  | Some angle -> yield! secondaryHeadingIndicator 0.7 2.0 t angle
-                  | None -> () ]
+                [
+                    yield chargeFill t
+                    yield Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy t.R)) (strokePaint t)
+                    yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity (heading is the edge pip)
+                    yield badgeSpeedPips t
+                    yield badgeHealthBar t
+                    yield shieldMount t
+                    yield badgeHeadingPip t
+                    // Stops WELL inside the frame. The rim pip carrying the primary heading sits at 1.0R
+                    // with radius 0.12R, so a barrel reaching 0.86R would have its 0.10R tip mark merge
+                    // into the pip whenever the two headings agree — and "turret forward" is the common
+                    // rest state. Ending at 0.70R leaves a visible gap in exactly that case.
+                    match t.SecondaryHeading with
+                    | Some angle -> yield! secondaryHeadingIndicator 0.7 2.0 t angle
+                    | None -> ()
+                ]
 
     let private drawBadge (t: Token) : Scene = drawBadgeAt restPhase t
 
@@ -679,16 +862,26 @@ module Symbology =
         else
             let color = lerpColor healthRed healthGreen (clamp01 t.Health)
             let ar = t.R * 1.16
-            let bounds = { X = t.Cx - ar; Y = t.Cy - ar; Width = ar * 2.0; Height = ar * 2.0 }
+
+            let bounds =
+                {
+                    X = t.Cx - ar
+                    Y = t.Cy - ar
+                    Width = ar * 2.0
+                    Height = ar * 2.0
+                }
+
             let maxSweep = 300.0
             let segSweep = maxSweep / float ringMaxHealthSegments
             let start0 = -90.0 // top, fixed screen-aligned start
             let paint = Paint.stroke color 3.0 |> Paint.withStrokeCap Round
 
             Scene.group
-                [ for i in 0 .. lit - 1 ->
-                      let a = start0 + segSweep * float i
-                      Scene.arc bounds a (segSweep * 0.85) paint ]
+                [
+                    for i in 0 .. lit - 1 ->
+                        let a = start0 + segSweep * float i
+                        Scene.arc bounds a (segSweep * 0.85) paint
+                ]
 
     // Rim beads -> speed (0..4). Spread along the bottom rim; screen-aligned.
     let private ringSpeedBeads (t: Token) : Scene =
@@ -701,15 +894,25 @@ module Symbology =
             let rr = t.R * 0.82
 
             Scene.group
-                [ for i in 0 .. n - 1 ->
-                      let ang = Math.PI / 2.0 + (float i - float (n - 1) / 2.0) * 0.5
-                      let p = { X = t.Cx + cos ang * rr; Y = t.Cy + sin ang * rr }
-                      Scene.circle p (max 1.0 (t.R * 0.08)) color ]
+                [
+                    for i in 0 .. n - 1 ->
+                        let ang = Math.PI / 2.0 + (float i - float (n - 1) / 2.0) * 0.5
+
+                        let p =
+                            {
+                                X = t.Cx + cos ang * rr
+                                Y = t.Cy + sin ang * rr
+                            }
+
+                        Scene.circle p (max 1.0 (t.R * 0.08)) color
+                ]
 
     // Inner glyph -> class. Reuses the Badge per-class corner profile at a smaller radius so Klass reads
     // distinctly inside the ring (screen-aligned).
     let private ringClassGlyph (t: Token) : Scene =
-        let paint = Paint.stroke (factionColor t.Faction) 1.5 |> Paint.withStrokeJoin RoundJoin
+        let paint =
+            Paint.stroke (factionColor t.Faction) 1.5 |> Paint.withStrokeJoin RoundJoin
+
         Scene.path (polyPath (badgeFramePoints t.Klass t.Cx t.Cy (t.R * 0.32))) paint
 
     // Heading needle from centre -> heading (FR-006). Only the needle turns; the ring stays screen-aligned.
@@ -719,31 +922,50 @@ module Symbology =
         else
             let inner = t.R * 0.15
             let outer = t.R * 0.95
-            let p1 = { X = t.Cx + sin t.Heading * inner; Y = t.Cy - cos t.Heading * inner }
-            let p2 = { X = t.Cx + sin t.Heading * outer; Y = t.Cy - cos t.Heading * outer }
+
+            let p1 =
+                {
+                    X = t.Cx + sin t.Heading * inner
+                    Y = t.Cy - cos t.Heading * inner
+                }
+
+            let p2 =
+                {
+                    X = t.Cx + sin t.Heading * outer
+                    Y = t.Cy - cos t.Heading * outer
+                }
+
             Scene.line p1 p2 (Paint.stroke (factionColor t.Faction) 2.0 |> Paint.withStrokeCap Round)
 
     let private drawRingAt (labelPhase: float) (t: Token) : Scene =
         if t.R <= 0.0 then
             placeholder t
         else
-            let bounds = { X = t.Cx - t.R; Y = t.Cy - t.R; Width = t.R * 2.0; Height = t.R * 2.0 }
+            let bounds =
+                {
+                    X = t.Cx - t.R
+                    Y = t.Cy - t.R
+                    Width = t.R * 2.0
+                    Height = t.R * 2.0
+                }
 
             withLabel
                 (ringLabelNodes t labelPhase)
-                [ yield chargeFill t
-                  yield Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
-                  yield ringClassGlyph t
-                  yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity
-                  yield ringSpeedBeads t
-                  yield ringHealthArc t
-                  yield shieldMount t
-                  yield ringHeadingNeedle t
-                  // The primary needle stops inside the ring (0.95R); the barrel pushes its tip mark
-                  // outside it, so the two are told apart by extent even when they point the same way.
-                  match t.SecondaryHeading with
-                  | Some angle -> yield! secondaryHeadingIndicator 1.3 1.5 t angle
-                  | None -> () ]
+                [
+                    yield chargeFill t
+                    yield Scene.ellipse bounds (strokePaint t) // outer ring: hue=faction, width=threat, dash=state
+                    yield ringClassGlyph t
+                    yield sigilScene { t with Heading = 0.0 } // screen-aligned centre identity
+                    yield ringSpeedBeads t
+                    yield ringHealthArc t
+                    yield shieldMount t
+                    yield ringHeadingNeedle t
+                    // The primary needle stops inside the ring (0.95R); the barrel pushes its tip mark
+                    // outside it, so the two are told apart by extent even when they point the same way.
+                    match t.SecondaryHeading with
+                    | Some angle -> yield! secondaryHeadingIndicator 1.3 1.5 t angle
+                    | None -> ()
+                ]
 
     let private drawRing (t: Token) : Scene = drawRingAt restPhase t
 
@@ -794,19 +1016,39 @@ module Symbology =
 
                 Some(
                     Scene.ellipse
-                        { X = t.Cx - rr; Y = t.Cy - rr; Width = rr * 2.0; Height = rr * 2.0 }
+                        {
+                            X = t.Cx - rr
+                            Y = t.Cy - rr
+                            Width = rr * 2.0
+                            Height = rr * 2.0
+                        }
                         (Paint.stroke (Colors.rgba c.Red c.Green c.Blue alpha) 2.0)
                 )
             | Blink ->
                 if ph < 0.5 then
-                    let p = { X = t.Cx - t.R * 0.85; Y = t.Cy - t.R * 0.85 }
+                    let p =
+                        {
+                            X = t.Cx - t.R * 0.85
+                            Y = t.Cy - t.R * 0.85
+                        }
+
                     Some(Scene.circle p (max 2.0 (t.R * 0.2)) (Colors.rgb 245uy 34uy 45uy))
                 else
                     None
             | Damage ->
                 let rr = t.R * (1.0 + 0.15 * sin (ph * 2.0 * Math.PI))
                 let wash = Colors.rgba 245uy 34uy 45uy 90uy
-                Some(Scene.ellipse { X = t.Cx - rr; Y = t.Cy - rr; Width = rr * 2.0; Height = rr * 2.0 } (Paint.stroke wash 3.0))
+
+                Some(
+                    Scene.ellipse
+                        {
+                            X = t.Cx - rr
+                            Y = t.Cy - rr
+                            Width = rr * 2.0
+                            Height = rr * 2.0
+                        }
+                        (Paint.stroke wash 3.0)
+                )
             | Idle
             | Spin
             | Moving -> None
@@ -832,10 +1074,12 @@ module Symbology =
 
             entries
             |> List.mapi (fun row (m, tk) ->
-                [ for s in 0 .. samples - 1 ->
-                      let phase = if samples = 1 then 0.0 else float s / float (samples - 1)
-                      let cx = spacing * (float s + 0.5)
-                      let cy = spacing * (float row + 0.5)
-                      animateIn g m { tk with Cx = cx; Cy = cy } phase ])
+                [
+                    for s in 0 .. samples - 1 ->
+                        let phase = if samples = 1 then 0.0 else float s / float (samples - 1)
+                        let cx = spacing * (float s + 0.5)
+                        let cy = spacing * (float row + 0.5)
+                        animateIn g m { tk with Cx = cx; Cy = cy } phase
+                ])
             |> List.concat
             |> Scene.group

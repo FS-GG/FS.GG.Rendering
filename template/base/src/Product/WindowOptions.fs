@@ -9,11 +9,13 @@ open AppRoot.View
 //#if (profile == "app" || profile == "sample-pack" || profile == "game")
 
 type WindowBehaviorSettings =
-    { Resize: string
-      Maximize: string
-      Startup: string
-      Position: string
-      Backend: string }
+    {
+        Resize: string
+        Maximize: string
+        Startup: string
+        Position: string
+        Backend: string
+    }
 
 let windowBehaviorArgsFromFile path =
     if String.IsNullOrWhiteSpace path || not (File.Exists path) then
@@ -45,48 +47,50 @@ let windowBehaviorArgsFromFile path =
 let parseWindowBehavior args =
     let rec loop remaining behavior =
         match remaining with
-        | "--window-options-file" :: path :: tail ->
-            loop (windowBehaviorArgsFromFile path @ tail) behavior
-        | "--window-resize" :: "fixed-size" :: tail ->
-            loop tail { behavior with Resize = "fixed-size" }
-        | "--window-resize" :: "resizable" :: tail ->
-            loop tail { behavior with Resize = "resizable" }
+        | "--window-options-file" :: path :: tail -> loop (windowBehaviorArgsFromFile path @ tail) behavior
+        | "--window-resize" :: "fixed-size" :: tail -> loop tail { behavior with Resize = "fixed-size" }
+        | "--window-resize" :: "resizable" :: tail -> loop tail { behavior with Resize = "resizable" }
         | "--window-maximize" :: "not-maximizable" :: tail ->
-            loop tail { behavior with Maximize = "not-maximizable" }
+            loop
+                tail
+                { behavior with
+                    Maximize = "not-maximizable"
+                }
         | "--window-maximize" :: "maximizable" :: tail ->
-            loop tail { behavior with Maximize = "maximizable" }
-        | "--window-startup" :: "normal" :: tail ->
-            loop tail { behavior with Startup = "normal" }
-        | "--window-startup" :: "maximized" :: tail ->
-            loop tail { behavior with Startup = "maximized" }
-        | "--window-startup" :: "minimized" :: tail ->
-            loop tail { behavior with Startup = "minimized" }
-        | "--window-startup" :: "fullscreen" :: tail ->
-            loop tail { behavior with Startup = "fullscreen" }
+            loop
+                tail
+                { behavior with
+                    Maximize = "maximizable"
+                }
+        | "--window-startup" :: "normal" :: tail -> loop tail { behavior with Startup = "normal" }
+        | "--window-startup" :: "maximized" :: tail -> loop tail { behavior with Startup = "maximized" }
+        | "--window-startup" :: "minimized" :: tail -> loop tail { behavior with Startup = "minimized" }
+        | "--window-startup" :: "fullscreen" :: tail -> loop tail { behavior with Startup = "fullscreen" }
         | "--window-startup" :: "windowed-fullscreen" :: tail ->
-            loop tail { behavior with Startup = "windowed-fullscreen" }
-        | "--window-position" :: value :: tail ->
-            loop tail { behavior with Position = value }
-        | "--window-backend" :: "default" :: tail ->
-            loop tail { behavior with Backend = "default" }
-        | "--window-backend" :: "vulkan" :: tail ->
-            loop tail { behavior with Backend = "vulkan" }
-        | "--window-backend" :: "opengl" :: tail ->
-            loop tail { behavior with Backend = "opengl" }
-        | "--window-backend" :: "software" :: tail ->
-            loop tail { behavior with Backend = "software" }
+            loop
+                tail
+                { behavior with
+                    Startup = "windowed-fullscreen"
+                }
+        | "--window-position" :: value :: tail -> loop tail { behavior with Position = value }
+        | "--window-backend" :: "default" :: tail -> loop tail { behavior with Backend = "default" }
+        | "--window-backend" :: "vulkan" :: tail -> loop tail { behavior with Backend = "vulkan" }
+        | "--window-backend" :: "opengl" :: tail -> loop tail { behavior with Backend = "opengl" }
+        | "--window-backend" :: "software" :: tail -> loop tail { behavior with Backend = "software" }
         | _ :: tail -> loop tail behavior
         | [] -> behavior
 
     loop
         args
-        { Resize = "resizable"
-          Maximize = "maximizable"
-          // Exclusive fullscreen is the safe no-flag default; an explicit --window-startup
-          // selection overrides it (the last-specified value wins on conflict).
-          Startup = "fullscreen"
-          Position = "centered"
-          Backend = "default" }
+        {
+            Resize = "resizable"
+            Maximize = "maximizable"
+            // Exclusive fullscreen is the safe no-flag default; an explicit --window-startup
+            // selection overrides it (the last-specified value wins on conflict).
+            Startup = "fullscreen"
+            Position = "centered"
+            Backend = "default"
+        }
 
 let toViewerWindowBehavior behavior = behavior
 
@@ -109,22 +113,33 @@ let toViewerLaunchRequest behavior : ViewerWindowBehaviorRequest =
             match value.Split(',', StringSplitOptions.TrimEntries) with
             | [| x; y |] ->
                 match Int32.TryParse x, Int32.TryParse y with
-                | (true, parsedX), (true, parsedY) when parsedX >= 0 && parsedY >= 0 -> Some(Coordinates(parsedX, parsedY))
+                | (true, parsedX), (true, parsedY) when parsedX >= 0 && parsedY >= 0 ->
+                    Some(Coordinates(parsedX, parsedY))
                 | _ -> Some Centered
             | _ -> Some Centered
 
-    { ResizePolicy = (if behavior.Resize = "fixed-size" then FixedSize else Resizable)
-      MaximizePolicy = (if behavior.Maximize = "not-maximizable" then NotMaximizable else Maximizable)
-      StartupState = startupState
-      StartupPosition = startupPosition
-      BackendPreference =
-        // Qualify the cases: ViewerBackendPreference.Vulkan clashes with
-        // ViewerDiagnosticCategory.Vulkan (bare `Vulkan` resolves to the latter).
-        match behavior.Backend with
-        | "vulkan" -> Some ViewerBackendPreference.Vulkan
-        | "opengl" -> Some ViewerBackendPreference.OpenGL
-        | "software" -> Some ViewerBackendPreference.Software
-        | _ -> Some ViewerBackendPreference.DefaultBackend }
+    {
+        ResizePolicy =
+            (if behavior.Resize = "fixed-size" then
+                 FixedSize
+             else
+                 Resizable)
+        MaximizePolicy =
+            (if behavior.Maximize = "not-maximizable" then
+                 NotMaximizable
+             else
+                 Maximizable)
+        StartupState = startupState
+        StartupPosition = startupPosition
+        BackendPreference =
+            // Qualify the cases: ViewerBackendPreference.Vulkan clashes with
+            // ViewerDiagnosticCategory.Vulkan (bare `Vulkan` resolves to the latter).
+            match behavior.Backend with
+            | "vulkan" -> Some ViewerBackendPreference.Vulkan
+            | "opengl" -> Some ViewerBackendPreference.OpenGL
+            | "software" -> Some ViewerBackendPreference.Software
+            | _ -> Some ViewerBackendPreference.DefaultBackend
+    }
 
 /// True when any explicit --window-* selection flag is present. When false the
 /// generated app launches through the durable runApp path and inherits the
@@ -172,9 +187,13 @@ let manualWindowOptionResults behavior =
         match behavior.Startup with
         | "normal" -> "honored", "normal", "Normal startup state can be honored by the viewer host."
         | "maximized" -> "honored", "maximized", "Maximized startup state can be requested."
-        | "minimized" -> "unsupported", "none", "Minimized startup is not accepted for visible interactive launch validation."
+        | "minimized" ->
+            "unsupported", "none", "Minimized startup is not accepted for visible interactive launch validation."
         | "fullscreen" -> "honored", "fullscreen", "Fullscreen startup can be honored by the viewer host."
-        | "windowed-fullscreen" -> "honored", "windowed-fullscreen", "Windowed-fullscreen startup (borderless work-area coverage) can be honored by the viewer host."
+        | "windowed-fullscreen" ->
+            "honored",
+            "windowed-fullscreen",
+            "Windowed-fullscreen startup (borderless work-area coverage) can be honored by the viewer host."
         | _ -> "failed", "none", "Startup state is not recognized."
 
     let backendStatus, backendObserved, backendMessage =
@@ -185,12 +204,22 @@ let manualWindowOptionResults behavior =
         | "software" -> "unsupported", "none", "Software backend preference is not supported by this viewer host."
         | _ -> "degraded", "default", "No backend requested; default backend will be selected."
 
-    [ "initial-size", $"{viewerInitialSize.Width}x{viewerInitialSize.Height}", $"{viewerInitialSize.Width}x{viewerInitialSize.Height}", "honored", "Initial window size is positive and can be requested."
-      "resize", behavior.Resize, behavior.Resize, "honored", "Resize policy can be honored by the viewer host."
-      "maximize", behavior.Maximize, behavior.Maximize, "honored", "Maximize policy can be honored by the viewer host."
-      "startup-state", behavior.Startup, startupObserved, startupStatus, startupMessage
-      "startup-position", behavior.Position, positionObserved, positionStatus, positionMessage
-      "backend", behavior.Backend, backendObserved, backendStatus, backendMessage ]
+    [
+        "initial-size",
+        $"{viewerInitialSize.Width}x{viewerInitialSize.Height}",
+        $"{viewerInitialSize.Width}x{viewerInitialSize.Height}",
+        "honored",
+        "Initial window size is positive and can be requested."
+        "resize", behavior.Resize, behavior.Resize, "honored", "Resize policy can be honored by the viewer host."
+        "maximize",
+        behavior.Maximize,
+        behavior.Maximize,
+        "honored",
+        "Maximize policy can be honored by the viewer host."
+        "startup-state", behavior.Startup, startupObserved, startupStatus, startupMessage
+        "startup-position", behavior.Position, positionObserved, positionStatus, positionMessage
+        "backend", behavior.Backend, backendObserved, backendStatus, backendMessage
+    ]
 
 let windowOptionsReport evidencePath behavior =
     let request = toViewerWindowBehavior behavior
@@ -199,11 +228,11 @@ let windowOptionsReport evidencePath behavior =
         $"status={windowOptionStatusText status} mode=interactive-window command=--window-options option={option} requested={requested} observed={observed} diagnostic-class=window-options message={message}"
 
     let lines =
-        [ "validation-contract=Viewer.validateWindowLaunchBehavior viewerOptions.InitialSize"
-          "schema=option=resize option=maximize option=startup-state option=startup-position option=backend status=unsupported"
-          yield!
-              manualWindowOptionResults request
-              |> List.map optionLine ]
+        [
+            "validation-contract=Viewer.validateWindowLaunchBehavior viewerOptions.InitialSize"
+            "schema=option=resize option=maximize option=startup-state option=startup-position option=backend status=unsupported"
+            yield! manualWindowOptionResults request |> List.map optionLine
+        ]
 
     writeWindowOptionLines evidencePath 0 lines |> ignore
     lines |> List.iter (printfn "%s")

@@ -7,9 +7,7 @@ open System.Security.Cryptography
 open System.Text
 open SceneWire
 
-type ProtocolVersion =
-    { Major: int
-      Minor: int }
+type ProtocolVersion = { Major: int; Minor: int }
 
 type RequirementLevel =
     | Required
@@ -21,10 +19,12 @@ type DegradationPolicy =
     | Ignore
 
 type CapabilityRequirement =
-    { CapabilityId: string
-      RequirementLevel: RequirementLevel
-      DegradationPolicy: DegradationPolicy
-      AffectedScenePaths: string list }
+    {
+        CapabilityId: string
+        RequirementLevel: RequirementLevel
+        DegradationPolicy: DegradationPolicy
+        AffectedScenePaths: string list
+    }
 
 type ResourceKind =
     | ImageResource
@@ -32,13 +32,15 @@ type ResourceKind =
     | BinaryResource of string
 
 type ResourceEntry =
-    { ResourceId: string
-      Kind: ResourceKind
-      ContentHash: string
-      ByteLength: int64 option
-      Required: bool
-      MediaType: string option
-      SourceLabel: string option }
+    {
+        ResourceId: string
+        Kind: ResourceKind
+        ContentHash: string
+        ByteLength: int64 option
+        Required: bool
+        MediaType: string option
+        SourceLabel: string option
+    }
 
 type ResourceAvailabilityStatus =
     | ResourceAvailable
@@ -48,24 +50,32 @@ type ResourceAvailabilityStatus =
     | ResourceDuplicated
 
 type ResourceAvailability =
-    { ResourceId: string
-      Kind: ResourceKind option
-      ContentHash: string option
-      ByteLength: int64 option
-      Status: ResourceAvailabilityStatus }
+    {
+        ResourceId: string
+        Kind: ResourceKind option
+        ContentHash: string option
+        ByteLength: int64 option
+        Status: ResourceAvailabilityStatus
+    }
 
 type TargetCapabilityProfile =
-    { ProfileId: string
-      SupportedCapabilities: string list }
+    {
+        ProfileId: string
+        SupportedCapabilities: string list
+    }
 
 type PackageExportOptions =
-    { ProfileId: string
-      Resources: ResourceEntry list
-      OptionalCapabilities: string list }
+    {
+        ProfileId: string
+        Resources: ResourceEntry list
+        OptionalCapabilities: string list
+    }
 
 type PackageInspectionOptions =
-    { TargetProfile: TargetCapabilityProfile option
-      Resources: ResourceAvailability list }
+    {
+        TargetProfile: TargetCapabilityProfile option
+        Resources: ResourceAvailability list
+    }
 
 type PackageDiagnosticStage =
     | Parse
@@ -76,12 +86,14 @@ type PackageDiagnosticStage =
     | TextPayload
 
 type PackageDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: PackageDiagnosticStage
-      Message: string
-      ScenePath: string option
-      CapabilityId: string option
-      ResourceId: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: PackageDiagnosticStage
+        Message: string
+        ScenePath: string option
+        CapabilityId: string option
+        ResourceId: string option
+    }
 
 type PackageInspectionStatus =
     | PackageAccepted
@@ -89,55 +101,65 @@ type PackageInspectionStatus =
     | PackageRejected
 
 type CapabilityVerdict =
-    { Requirement: CapabilityRequirement
-      Supported: bool
-      Degraded: bool
-      Diagnostics: PackageDiagnostic list }
+    {
+        Requirement: CapabilityRequirement
+        Supported: bool
+        Degraded: bool
+        Diagnostics: PackageDiagnostic list
+    }
 
 type ResourceVerdict =
-    { Entry: ResourceEntry
-      Availability: ResourceAvailability option
-      Accepted: bool
-      Degraded: bool
-      Diagnostics: PackageDiagnostic list }
+    {
+        Entry: ResourceEntry
+        Availability: ResourceAvailability option
+        Accepted: bool
+        Degraded: bool
+        Diagnostics: PackageDiagnostic list
+    }
 
 type PortableScenePackage =
-    { Version: ProtocolVersion
-      ProfileId: string
-      Capabilities: CapabilityRequirement list
-      Resources: ResourceEntry list
-      Scene: Scene
-      CanonicalBytes: byte[]
-      PackageIdentity: string
-      Diagnostics: PackageDiagnostic list }
+    {
+        Version: ProtocolVersion
+        ProfileId: string
+        Capabilities: CapabilityRequirement list
+        Resources: ResourceEntry list
+        Scene: Scene
+        CanonicalBytes: byte[]
+        PackageIdentity: string
+        Diagnostics: PackageDiagnostic list
+    }
 
 type PackageInspectionReport =
-    { Status: PackageInspectionStatus
-      PackageIdentity: string option
-      Version: ProtocolVersion option
-      ProfileId: string option
-      CapabilityVerdicts: CapabilityVerdict list
-      ResourceVerdicts: ResourceVerdict list
-      Diagnostics: PackageDiagnostic list }
+    {
+        Status: PackageInspectionStatus
+        PackageIdentity: string option
+        Version: ProtocolVersion option
+        ProfileId: string option
+        CapabilityVerdicts: CapabilityVerdict list
+        ResourceVerdicts: ResourceVerdict list
+        Diagnostics: PackageDiagnostic list
+    }
 
 type SemanticComparison =
-    { Equivalent: bool
-      ExpectedCapabilities: SceneElementKind list
-      ActualCapabilities: SceneElementKind list
-      Diagnostics: PackageDiagnostic list }
+    {
+        Equivalent: bool
+        ExpectedCapabilities: SceneElementKind list
+        ActualCapabilities: SceneElementKind list
+        Diagnostics: PackageDiagnostic list
+    }
 
 module SceneCodec =
     let magicHeader = "FSGGSCENE"
     let supportedVersion = { Major = 1; Minor = 0 }
 
     let defaultExportOptions =
-        { ProfileId = "scene-portable/v1"
-          Resources = []
-          OptionalCapabilities = [] }
+        {
+            ProfileId = "scene-portable/v1"
+            Resources = []
+            OptionalCapabilities = []
+        }
 
-    let defaultInspectionOptions =
-        { TargetProfile = None
-          Resources = [] }
+    let defaultInspectionOptions = { TargetProfile = None; Resources = [] }
 
     let private requiredProfileTag = 1
     let private requiredCapabilitiesTag = 2
@@ -156,12 +178,14 @@ module SceneCodec =
         (capabilityId: string option)
         (resourceId: string option)
         : PackageDiagnostic =
-        { Severity = severity
-          Stage = stage
-          Message = message
-          ScenePath = scenePath
-          CapabilityId = capabilityId
-          ResourceId = resourceId }
+        {
+            Severity = severity
+            Stage = stage
+            Message = message
+            ScenePath = scenePath
+            CapabilityId = capabilityId
+            ResourceId = resourceId
+        }
 
     let private error (stage: PackageDiagnosticStage) (message: string) =
         diagnostic DiagnosticSeverity.Error stage message None None None
@@ -170,10 +194,11 @@ module SceneCodec =
         diagnostic DiagnosticSeverity.Warning stage message None None None
 
     let private sha256Hex (bytes: byte[]) =
-        SHA256.HashData bytes |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
+        SHA256.HashData bytes
+        |> Convert.ToHexString
+        |> fun value -> value.ToLowerInvariant()
 
-    let packageIdentity (bytes: byte[]) =
-        "sha256:" + sha256Hex bytes
+    let packageIdentity (bytes: byte[]) = "sha256:" + sha256Hex bytes
 
     let private stringHash (value: string) =
         value |> Encoding.UTF8.GetBytes |> sha256Hex
@@ -198,10 +223,12 @@ module SceneCodec =
         writeList writer writeString requirement.AffectedScenePaths
 
     let private readCapabilityRequirement (reader: BinaryReader) : CapabilityRequirement =
-        { CapabilityId = readString reader
-          RequirementLevel = readRequirementLevel reader
-          DegradationPolicy = readDegradationPolicy reader
-          AffectedScenePaths = readList reader readString }
+        {
+            CapabilityId = readString reader
+            RequirementLevel = readRequirementLevel reader
+            DegradationPolicy = readDegradationPolicy reader
+            AffectedScenePaths = readList reader readString
+        }
 
     let private writeResourceKind (writer: BinaryWriter) (kind: ResourceKind) =
         match kind with
@@ -228,13 +255,15 @@ module SceneCodec =
         writeStringOption writer entry.SourceLabel
 
     let private readResourceEntry (reader: BinaryReader) : ResourceEntry =
-        { ResourceId = readString reader
-          Kind = readResourceKind reader
-          ContentHash = readString reader
-          ByteLength = readInt64Option reader
-          Required = reader.ReadBoolean()
-          MediaType = readStringOption reader
-          SourceLabel = readStringOption reader }
+        {
+            ResourceId = readString reader
+            Kind = readResourceKind reader
+            ContentHash = readString reader
+            ByteLength = readInt64Option reader
+            Required = reader.ReadBoolean()
+            MediaType = readStringOption reader
+            SourceLabel = readStringOption reader
+        }
 
     let private writeSection (writer: BinaryWriter) (tag: int) (writePayload: BinaryWriter -> unit) =
         use stream = new MemoryStream()
@@ -246,7 +275,12 @@ module SceneCodec =
         writer.Write(bytes.Length)
         writer.Write(bytes)
 
-    let private writeEnvelope (profile: string) (capabilities: CapabilityRequirement list) (resources: ResourceEntry list) (scene: Scene) =
+    let private writeEnvelope
+        (profile: string)
+        (capabilities: CapabilityRequirement list)
+        (resources: ResourceEntry list)
+        (scene: Scene)
+        =
         use stream = new MemoryStream()
         use writer = new BinaryWriter(stream, Encoding.UTF8, true)
         writer.Write(Encoding.ASCII.GetBytes magicHeader)
@@ -286,20 +320,31 @@ module SceneCodec =
 
     let private sourceMediaType (source: string) =
         let lower = source.ToLowerInvariant()
-        if lower.EndsWith(".png", StringComparison.Ordinal) then Some "image/png"
-        elif lower.EndsWith(".jpg", StringComparison.Ordinal) || lower.EndsWith(".jpeg", StringComparison.Ordinal) then Some "image/jpeg"
-        elif lower.EndsWith(".webp", StringComparison.Ordinal) then Some "image/webp"
-        else Some "application/octet-stream"
+
+        if lower.EndsWith(".png", StringComparison.Ordinal) then
+            Some "image/png"
+        elif
+            lower.EndsWith(".jpg", StringComparison.Ordinal)
+            || lower.EndsWith(".jpeg", StringComparison.Ordinal)
+        then
+            Some "image/jpeg"
+        elif lower.EndsWith(".webp", StringComparison.Ordinal) then
+            Some "image/webp"
+        else
+            Some "application/octet-stream"
 
     let private autoResource (source: string) (index: int) : ResourceEntry =
         let resourceId = sprintf "image-%04d" index
-        { ResourceId = resourceId
-          Kind = ImageResource
-          ContentHash = "unresolved:" + stringHash source
-          ByteLength = None
-          Required = true
-          MediaType = sourceMediaType source
-          SourceLabel = Some source }
+
+        {
+            ResourceId = resourceId
+            Kind = ImageResource
+            ContentHash = "unresolved:" + stringHash source
+            ByteLength = None
+            Required = true
+            MediaType = sourceMediaType source
+            SourceLabel = Some source
+        }
 
     let private normalizeSceneResources (provided: ResourceEntry list) (scene: Scene) : Scene * ResourceEntry list =
         let bySource =
@@ -324,7 +369,9 @@ module SceneCodec =
                     entry
 
         let rec sceneWithResources (scene: Scene) : Scene =
-            { Nodes = scene.Nodes |> List.map nodeWithResources }
+            {
+                Nodes = scene.Nodes |> List.map nodeWithResources
+            }
 
         and nodeWithResources (node: SceneNode) : SceneNode =
             match node with
@@ -335,9 +382,17 @@ module SceneCodec =
             | ClipNode(clip, scene) -> ClipNode(clip, sceneWithResources scene)
             | ColorSpaceNode(colorSpace, scene) -> ColorSpaceNode(colorSpace, sceneWithResources scene)
             | PerspectiveNode(transform, scene) -> PerspectiveNode(transform, sceneWithResources scene)
-            | PictureNode picture -> PictureNode { picture with Scene = sceneWithResources picture.Scene }
+            | PictureNode picture ->
+                PictureNode
+                    { picture with
+                        Scene = sceneWithResources picture.Scene
+                    }
             | Translate(offset, scene) -> Translate(offset, sceneWithResources scene)
-            | CachedSubtree boundary -> CachedSubtree { boundary with Scene = sceneWithResources boundary.Scene }
+            | CachedSubtree boundary ->
+                CachedSubtree
+                    { boundary with
+                        Scene = sceneWithResources boundary.Scene
+                    }
             | other -> other
 
         let transformed = sceneWithResources scene
@@ -366,7 +421,9 @@ module SceneCodec =
             | Group scenes ->
                 scenes
                 |> List.mapi (fun index scene -> index, scene)
-                |> List.fold (fun state (index, scene) -> walkScene (path + $"/group/{index}") state scene) (add GroupElement path acc)
+                |> List.fold
+                    (fun state (index, scene) -> walkScene (path + $"/group/{index}") state scene)
+                    (add GroupElement path acc)
             | Rectangle _ -> add RectangleElement path acc
             | PaintedRectangle _ -> add RectangleElement path acc
             | Circle _ -> add CircleElement path acc
@@ -397,69 +454,96 @@ module SceneCodec =
 
     let private requirementsFor (optionalCapabilityIds: string list) (scene: Scene) : CapabilityRequirement list =
         let optional = optionalCapabilityIds |> Set.ofList
+
         let required =
             capabilityPaths scene
             |> List.map (fun (id, paths) ->
-                { CapabilityId = id
-                  RequirementLevel = if Set.contains id optional then Optional else Required
-                  DegradationPolicy = if Set.contains id optional then Degrade else Reject
-                  AffectedScenePaths = paths })
+                {
+                    CapabilityId = id
+                    RequirementLevel = if Set.contains id optional then Optional else Required
+                    DegradationPolicy = if Set.contains id optional then Degrade else Reject
+                    AffectedScenePaths = paths
+                })
 
         let extras =
             optionalCapabilityIds
             |> List.filter (fun id -> required |> List.exists (fun item -> item.CapabilityId = id) |> not)
             |> List.map (fun id ->
-                { CapabilityId = id
-                  RequirementLevel = Optional
-                  DegradationPolicy = Degrade
-                  AffectedScenePaths = [] })
+                {
+                    CapabilityId = id
+                    RequirementLevel = Optional
+                    DegradationPolicy = Degrade
+                    AffectedScenePaths = []
+                })
 
         (required @ extras) |> List.sortBy _.CapabilityId
 
     let exportScene (options: PackageExportOptions) (scene: Scene) =
         let normalizedScene, resources = normalizeSceneResources options.Resources scene
         let capabilities = requirementsFor options.OptionalCapabilities normalizedScene
-        let canonicalBytes = writeEnvelope options.ProfileId capabilities resources normalizedScene
 
-        { Version = supportedVersion
-          ProfileId = options.ProfileId
-          Capabilities = capabilities
-          Resources = resources
-          Scene = normalizedScene
-          CanonicalBytes = canonicalBytes
-          PackageIdentity = packageIdentity canonicalBytes
-          Diagnostics = [] }
+        let canonicalBytes =
+            writeEnvelope options.ProfileId capabilities resources normalizedScene
+
+        {
+            Version = supportedVersion
+            ProfileId = options.ProfileId
+            Capabilities = capabilities
+            Resources = resources
+            Scene = normalizedScene
+            CanonicalBytes = canonicalBytes
+            PackageIdentity = packageIdentity canonicalBytes
+            Diagnostics = []
+        }
 
     let export scene = exportScene defaultExportOptions scene
 
     type private ParsedSections =
-        { ProfileId: string option
-          Capabilities: CapabilityRequirement list option
-          Resources: ResourceEntry list option
-          Scene: Scene option
-          Diagnostics: PackageDiagnostic list }
+        {
+            ProfileId: string option
+            Capabilities: CapabilityRequirement list option
+            Resources: ResourceEntry list option
+            Scene: Scene option
+            Diagnostics: PackageDiagnostic list
+        }
 
-    let private emptySections : ParsedSections =
-        { ProfileId = None
-          Capabilities = None
-          Resources = None
-          Scene = None
-          Diagnostics = [] }
+    let private emptySections: ParsedSections =
+        {
+            ProfileId = None
+            Capabilities = None
+            Resources = None
+            Scene = None
+            Diagnostics = []
+        }
 
     let private parseSection (tag: int) (payload: byte[]) (sections: ParsedSections) : ParsedSections =
         use stream = new MemoryStream(payload)
         use reader = new BinaryReader(stream, Encoding.UTF8, true)
 
         match tag with
-        | tag when tag = requiredProfileTag -> { sections with ProfileId = Some(readString reader) }
-        | tag when tag = requiredCapabilitiesTag -> { sections with Capabilities = Some(readList reader readCapabilityRequirement) }
-        | tag when tag = requiredResourcesTag -> { sections with Resources = Some(readList reader readResourceEntry) }
-        | tag when tag = requiredSceneTag -> { sections with Scene = Some(readScene reader) }
+        | tag when tag = requiredProfileTag ->
+            { sections with
+                ProfileId = Some(readString reader)
+            }
+        | tag when tag = requiredCapabilitiesTag ->
+            { sections with
+                Capabilities = Some(readList reader readCapabilityRequirement)
+            }
+        | tag when tag = requiredResourcesTag ->
+            { sections with
+                Resources = Some(readList reader readResourceEntry)
+            }
+        | tag when tag = requiredSceneTag ->
+            { sections with
+                Scene = Some(readScene reader)
+            }
         | tag when tag >= 1000 ->
             { sections with
-                Diagnostics = warning Parse $"Skipped unknown optional package tag {tag}." :: sections.Diagnostics }
-        | tag ->
-            failwithf "Unknown required package tag %d" tag
+                Diagnostics =
+                    warning Parse $"Skipped unknown optional package tag {tag}."
+                    :: sections.Diagnostics
+            }
+        | tag -> failwithf "Unknown required package tag %d" tag
 
     let importPackage (bytes: byte[]) =
         try
@@ -474,70 +558,95 @@ module SceneCodec =
                     Result.Error [ error Parse $"Invalid package magic header '{magic}'." ]
                 else
                     let version =
-                        { Major = reader.ReadInt32()
-                          Minor = reader.ReadInt32() }
+                        {
+                            Major = reader.ReadInt32()
+                            Minor = reader.ReadInt32()
+                        }
 
                     let mutable sections = emptySections
 
                     while stream.Position < stream.Length do
                         let tag = reader.ReadInt32()
                         let length = reader.ReadInt32()
+
                         if length < 0 || stream.Position + int64 length > stream.Length then
                             failwithf "Invalid length %d for package tag %d" length tag
+
                         let payload = reader.ReadBytes(length)
                         sections <- parseSection tag payload sections
 
                     let missing =
-                        [ if sections.ProfileId.IsNone then "profile"
-                          if sections.Capabilities.IsNone then "capabilities"
-                          if sections.Resources.IsNone then "resources"
-                          if sections.Scene.IsNone then "scene" ]
+                        [
+                            if sections.ProfileId.IsNone then
+                                "profile"
+                            if sections.Capabilities.IsNone then
+                                "capabilities"
+                            if sections.Resources.IsNone then
+                                "resources"
+                            if sections.Scene.IsNone then
+                                "scene"
+                        ]
 
                     if not missing.IsEmpty then
-                        Result.Error [ error Parse ("Package is missing required sections: " + String.concat ", " missing) ]
+                        Result.Error
+                            [
+                                error Parse ("Package is missing required sections: " + String.concat ", " missing)
+                            ]
                     else
                         let diagnostics =
-                            [ yield! List.rev sections.Diagnostics
-                              if version.Major <> supportedVersion.Major then
-                                  yield error Version $"Producer protocol {version.Major}.{version.Minor} is outside supported major {supportedVersion.Major}.x."
-                              elif version.Minor > supportedVersion.Minor then
-                                  yield warning Version $"Producer protocol minor {version.Minor} is newer than supported minor {supportedVersion.Minor}; required tags and capabilities will decide acceptance." ]
+                            [
+                                yield! List.rev sections.Diagnostics
+                                if version.Major <> supportedVersion.Major then
+                                    yield
+                                        error
+                                            Version
+                                            $"Producer protocol {version.Major}.{version.Minor} is outside supported major {supportedVersion.Major}.x."
+                                elif version.Minor > supportedVersion.Minor then
+                                    yield
+                                        warning
+                                            Version
+                                            $"Producer protocol minor {version.Minor} is newer than supported minor {supportedVersion.Minor}; required tags and capabilities will decide acceptance."
+                            ]
 
                         Result.Ok
-                            { Version = version
-                              ProfileId = sections.ProfileId.Value
-                              Capabilities = sections.Capabilities.Value
-                              Resources = sections.Resources.Value
-                              Scene = sections.Scene.Value
-                              CanonicalBytes = Array.copy bytes
-                              PackageIdentity = packageIdentity bytes
-                              Diagnostics = diagnostics }
+                            {
+                                Version = version
+                                ProfileId = sections.ProfileId.Value
+                                Capabilities = sections.Capabilities.Value
+                                Resources = sections.Resources.Value
+                                Scene = sections.Scene.Value
+                                CanonicalBytes = Array.copy bytes
+                                PackageIdentity = packageIdentity bytes
+                                Diagnostics = diagnostics
+                            }
         with ex ->
             Result.Error [ error Parse ex.Message ]
 
     let private allKnownCapabilities =
-        [ EmptyElement
-          GroupElement
-          RectangleElement
-          CircleElement
-          EllipseElement
-          LineElement
-          PathElement
-          PointsElement
-          VerticesElement
-          ArcElement
-          TextElement
-          TextRunElement
-          ImageElement
-          ClipElement
-          RegionElement
-          ColorSpaceElement
-          PerspectiveElement
-          PictureElement
-          ChartElement
-          TranslateElement
-          SizedTextElement
-          GlyphRunElement ]
+        [
+            EmptyElement
+            GroupElement
+            RectangleElement
+            CircleElement
+            EllipseElement
+            LineElement
+            PathElement
+            PointsElement
+            VerticesElement
+            ArcElement
+            TextElement
+            TextRunElement
+            ImageElement
+            ClipElement
+            RegionElement
+            ColorSpaceElement
+            PerspectiveElement
+            PictureElement
+            ChartElement
+            TranslateElement
+            SizedTextElement
+            GlyphRunElement
+        ]
         |> List.map capabilityId
 
     let private duplicateResourceIds (resources: ResourceAvailability list) =
@@ -546,7 +655,10 @@ module SceneCodec =
         |> List.choose (fun (id, items) -> if List.length items > 1 then Some id else None)
         |> Set.ofList
 
-    let private capabilityVerdicts (options: PackageInspectionOptions) (package: PortableScenePackage) : CapabilityVerdict list =
+    let private capabilityVerdicts
+        (options: PackageInspectionOptions)
+        (package: PortableScenePackage)
+        : CapabilityVerdict list =
         let supported =
             options.TargetProfile
             |> Option.map _.SupportedCapabilities
@@ -556,25 +668,45 @@ module SceneCodec =
         package.Capabilities
         |> List.map (fun (requirement: CapabilityRequirement) ->
             let isSupported = Set.contains requirement.CapabilityId supported
-            let degraded = (not isSupported) && requirement.RequirementLevel = Optional && requirement.DegradationPolicy <> Reject
+
+            let degraded =
+                (not isSupported)
+                && requirement.RequirementLevel = Optional
+                && requirement.DegradationPolicy <> Reject
+
             let diagnostics =
-                [ if not isSupported then
-                      let severity = if requirement.RequirementLevel = Required || requirement.DegradationPolicy = Reject then DiagnosticSeverity.Error else DiagnosticSeverity.Warning
-                      yield
-                          diagnostic
-                              severity
-                              Capability
-                              $"Capability '{requirement.CapabilityId}' is not supported by the target profile."
-                              (requirement.AffectedScenePaths |> List.tryHead)
-                              (Some requirement.CapabilityId)
-                              None ]
+                [
+                    if not isSupported then
+                        let severity =
+                            if
+                                requirement.RequirementLevel = Required
+                                || requirement.DegradationPolicy = Reject
+                            then
+                                DiagnosticSeverity.Error
+                            else
+                                DiagnosticSeverity.Warning
 
-            { Requirement = requirement
-              Supported = isSupported
-              Degraded = degraded
-              Diagnostics = diagnostics })
+                        yield
+                            diagnostic
+                                severity
+                                Capability
+                                $"Capability '{requirement.CapabilityId}' is not supported by the target profile."
+                                (requirement.AffectedScenePaths |> List.tryHead)
+                                (Some requirement.CapabilityId)
+                                None
+                ]
 
-    let private resourceVerdicts (options: PackageInspectionOptions) (package: PortableScenePackage) : ResourceVerdict list =
+            {
+                Requirement = requirement
+                Supported = isSupported
+                Degraded = degraded
+                Diagnostics = diagnostics
+            })
+
+    let private resourceVerdicts
+        (options: PackageInspectionOptions)
+        (package: PortableScenePackage)
+        : ResourceVerdict list =
         let availabilityById =
             options.Resources
             |> List.groupBy (fun (availability: ResourceAvailability) -> availability.ResourceId)
@@ -582,24 +714,27 @@ module SceneCodec =
 
         package.Resources
         |> List.map (fun (entry: ResourceEntry) ->
-            let observed : ResourceAvailability option =
+            let observed: ResourceAvailability option =
                 Map.tryFind entry.ResourceId availabilityById |> Option.bind List.tryHead
-            let duplicated = duplicateResourceIds options.Resources |> Set.contains entry.ResourceId
 
-            let status : ResourceAvailabilityStatus option =
-                if duplicated then Some ResourceDuplicated
-                else observed |> Option.map _.Status
+            let duplicated =
+                duplicateResourceIds options.Resources |> Set.contains entry.ResourceId
 
-            let accepted, degraded, diagnostics : bool * bool * PackageDiagnostic list =
+            let status: ResourceAvailabilityStatus option =
+                if duplicated then
+                    Some ResourceDuplicated
+                else
+                    observed |> Option.map _.Status
+
+            let accepted, degraded, diagnostics: bool * bool * PackageDiagnostic list =
                 match status, observed with
                 | Some ResourceAvailable, Some availability ->
-                    let kindMismatch =
-                        availability.Kind
-                        |> Option.exists ((<>) entry.Kind)
+                    let kindMismatch = availability.Kind |> Option.exists ((<>) entry.Kind)
 
                     let hashMismatch =
                         availability.ContentHash
-                        |> Option.exists (fun hash -> not (String.Equals(hash, entry.ContentHash, StringComparison.Ordinal)))
+                        |> Option.exists (fun hash ->
+                            not (String.Equals(hash, entry.ContentHash, StringComparison.Ordinal)))
 
                     let lengthMismatch =
                         match availability.ByteLength, entry.ByteLength with
@@ -607,49 +742,106 @@ module SceneCodec =
                         | _ -> false
 
                     if kindMismatch || hashMismatch || lengthMismatch then
-                        false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' metadata does not match the manifest." None None (Some entry.ResourceId) ]
+                        false,
+                        false,
+                        [
+                            diagnostic
+                                DiagnosticSeverity.Error
+                                Resource
+                                $"Resource '{entry.ResourceId}' metadata does not match the manifest."
+                                None
+                                None
+                                (Some entry.ResourceId)
+                        ]
                     else
                         true, false, []
                 | Some ResourceAvailable, None ->
-                    false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' was marked available without metadata." None None (Some entry.ResourceId) ]
+                    false,
+                    false,
+                    [
+                        diagnostic
+                            DiagnosticSeverity.Error
+                            Resource
+                            $"Resource '{entry.ResourceId}' was marked available without metadata."
+                            None
+                            None
+                            (Some entry.ResourceId)
+                    ]
                 | Some ResourceHashMismatch, _
                 | Some ResourceCorrupted, _
                 | Some ResourceDuplicated, _ ->
-                    false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Resource '{entry.ResourceId}' is not usable: {status.Value}." None None (Some entry.ResourceId) ]
+                    false,
+                    false,
+                    [
+                        diagnostic
+                            DiagnosticSeverity.Error
+                            Resource
+                            $"Resource '{entry.ResourceId}' is not usable: {status.Value}."
+                            None
+                            None
+                            (Some entry.ResourceId)
+                    ]
                 | Some ResourceMissing, _
                 | None, _ ->
                     if entry.Required then
-                        false, false, [ diagnostic DiagnosticSeverity.Error Resource $"Required resource '{entry.ResourceId}' is unavailable." None None (Some entry.ResourceId) ]
+                        false,
+                        false,
+                        [
+                            diagnostic
+                                DiagnosticSeverity.Error
+                                Resource
+                                $"Required resource '{entry.ResourceId}' is unavailable."
+                                None
+                                None
+                                (Some entry.ResourceId)
+                        ]
                     else
-                        true, true, [ diagnostic DiagnosticSeverity.Warning Resource $"Optional resource '{entry.ResourceId}' is unavailable and will degrade." None None (Some entry.ResourceId) ]
+                        true,
+                        true,
+                        [
+                            diagnostic
+                                DiagnosticSeverity.Warning
+                                Resource
+                                $"Optional resource '{entry.ResourceId}' is unavailable and will degrade."
+                                None
+                                None
+                                (Some entry.ResourceId)
+                        ]
 
-            { Entry = entry
-              Availability = observed
-              Accepted = accepted
-              Degraded = degraded
-              Diagnostics = diagnostics })
+            {
+                Entry = entry
+                Availability = observed
+                Accepted = accepted
+                Degraded = degraded
+                Diagnostics = diagnostics
+            })
 
     let inspectWith (options: PackageInspectionOptions) (bytes: byte[]) =
         match importPackage bytes with
         | Result.Error diagnostics ->
-            { Status = PackageRejected
-              PackageIdentity = Some(packageIdentity bytes)
-              Version = None
-              ProfileId = None
-              CapabilityVerdicts = []
-              ResourceVerdicts = []
-              Diagnostics = diagnostics }
+            {
+                Status = PackageRejected
+                PackageIdentity = Some(packageIdentity bytes)
+                Version = None
+                ProfileId = None
+                CapabilityVerdicts = []
+                ResourceVerdicts = []
+                Diagnostics = diagnostics
+            }
         | Result.Ok package ->
-            let capabilityVerdicts : CapabilityVerdict list = capabilityVerdicts options package
-            let resourceVerdicts : ResourceVerdict list = resourceVerdicts options package
+            let capabilityVerdicts: CapabilityVerdict list = capabilityVerdicts options package
+            let resourceVerdicts: ResourceVerdict list = resourceVerdicts options package
 
             let diagnostics =
-                [ yield! package.Diagnostics
-                  yield! capabilityVerdicts |> List.collect _.Diagnostics
-                  yield! resourceVerdicts |> List.collect _.Diagnostics ]
+                [
+                    yield! package.Diagnostics
+                    yield! capabilityVerdicts |> List.collect _.Diagnostics
+                    yield! resourceVerdicts |> List.collect _.Diagnostics
+                ]
 
             let rejected =
-                diagnostics |> List.exists (fun d -> d.Severity = DiagnosticSeverity.Error || d.Severity = DiagnosticSeverity.Fatal)
+                diagnostics
+                |> List.exists (fun d -> d.Severity = DiagnosticSeverity.Error || d.Severity = DiagnosticSeverity.Fatal)
 
             let degraded =
                 capabilityVerdicts |> List.exists _.Degraded
@@ -661,13 +853,15 @@ module SceneCodec =
                 elif degraded then PackageAcceptedWithDegradation
                 else PackageAccepted
 
-            { Status = status
-              PackageIdentity = Some package.PackageIdentity
-              Version = Some package.Version
-              ProfileId = Some package.ProfileId
-              CapabilityVerdicts = capabilityVerdicts
-              ResourceVerdicts = resourceVerdicts
-              Diagnostics = diagnostics }
+            {
+                Status = status
+                PackageIdentity = Some package.PackageIdentity
+                Version = Some package.Version
+                ProfileId = Some package.ProfileId
+                CapabilityVerdicts = capabilityVerdicts
+                ResourceVerdicts = resourceVerdicts
+                Diagnostics = diagnostics
+            }
 
     let inspect (bytes: byte[]) =
         inspectWith defaultInspectionOptions bytes
@@ -677,22 +871,53 @@ module SceneCodec =
         let actualCapabilities = Scene.describe actual
 
         let diagnostics =
-            [ if expectedCapabilities <> actualCapabilities then
-                  yield diagnostic DiagnosticSeverity.Error ScenePayload "Scene capability sequence differs." None None None
-              if expected <> actual then
-                  yield diagnostic DiagnosticSeverity.Error ScenePayload "Scene payload differs after import." None None None ]
+            [
+                if expectedCapabilities <> actualCapabilities then
+                    yield
+                        diagnostic
+                            DiagnosticSeverity.Error
+                            ScenePayload
+                            "Scene capability sequence differs."
+                            None
+                            None
+                            None
+                if expected <> actual then
+                    yield
+                        diagnostic
+                            DiagnosticSeverity.Error
+                            ScenePayload
+                            "Scene payload differs after import."
+                            None
+                            None
+                            None
+            ]
 
-        { Equivalent = diagnostics.IsEmpty
-          ExpectedCapabilities = expectedCapabilities
-          ActualCapabilities = actualCapabilities
-          Diagnostics = diagnostics }
+        {
+            Equivalent = diagnostics.IsEmpty
+            ExpectedCapabilities = expectedCapabilities
+            ActualCapabilities = actualCapabilities
+            Diagnostics = diagnostics
+        }
 
     let formatDiagnostics diagnostics =
         diagnostics
         |> List.map (fun diagnostic ->
             let severity = string diagnostic.Severity
             let stage = string diagnostic.Stage
-            let path = diagnostic.ScenePath |> Option.map (sprintf " scene=%s") |> Option.defaultValue ""
-            let cap = diagnostic.CapabilityId |> Option.map (sprintf " capability=%s") |> Option.defaultValue ""
-            let res = diagnostic.ResourceId |> Option.map (sprintf " resource=%s") |> Option.defaultValue ""
+
+            let path =
+                diagnostic.ScenePath
+                |> Option.map (sprintf " scene=%s")
+                |> Option.defaultValue ""
+
+            let cap =
+                diagnostic.CapabilityId
+                |> Option.map (sprintf " capability=%s")
+                |> Option.defaultValue ""
+
+            let res =
+                diagnostic.ResourceId
+                |> Option.map (sprintf " resource=%s")
+                |> Option.defaultValue ""
+
             $"{severity} {stage}: {diagnostic.Message}{path}{cap}{res}")

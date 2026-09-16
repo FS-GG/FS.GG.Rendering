@@ -44,5 +44,7 @@ module SurfaceSignature =
     /// module or type), so in practice it is always non-empty; a caller that wants nested-only can still
     /// gate on its length. Group `name` is the identifier a call site spells.
     let publicValRegex =
-        Regex(@"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:", RegexOptions.Compiled)
-
+        Regex(
+            @"^(?<indent>\s*)val\s+(?!internal\b)(?:inline\s+)?(?<name>[a-z][A-Za-z0-9_]*'?)\s*:",
+            RegexOptions.Compiled
+        )

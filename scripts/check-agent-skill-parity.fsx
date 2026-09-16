@@ -26,9 +26,11 @@ match Process.Start psi with
     proc.OutputDataReceived.Add(fun eventArgs ->
         if not (isNull eventArgs.Data) then
             stdout.WriteLine eventArgs.Data)
+
     proc.ErrorDataReceived.Add(fun eventArgs ->
         if not (isNull eventArgs.Data) then
             stderr.WriteLine eventArgs.Data)
+
     proc.BeginOutputReadLine()
     proc.BeginErrorReadLine()
     proc.WaitForExit()

@@ -34,7 +34,12 @@ let targetFromArgs args =
 
 let writeLog target =
     Directory.CreateDirectory("readiness/logs") |> ignore
-    File.WriteAllText(Path.Combine("readiness", "logs", target + ".txt"), $"{target} completed for generated product.{Environment.NewLine}")
+
+    File.WriteAllText(
+        Path.Combine("readiness", "logs", target + ".txt"),
+        $"{target} completed for generated product.{Environment.NewLine}"
+    )
+
     printfn "%s completed for generated product" target
 
 // Fail-closed half of the SDD-lane guard. `sdd` (the default) and explicit `typed-sdd`
@@ -77,7 +82,8 @@ let private fsSkiaUiVersion () =
     if not (File.Exists propsPath) then
         failwithf "Cannot resolve the FS.GG.UI engine version: %s is missing." propsPath
 
-    let m = Regex.Match(File.ReadAllText propsPath, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
+    let m =
+        Regex.Match(File.ReadAllText propsPath, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
 
     if m.Success then
         m.Groups.[1].Value.Trim()
@@ -86,8 +92,20 @@ let private fsSkiaUiVersion () =
 
 let private nugetPackagesRoot () =
     match Environment.GetEnvironmentVariable "NUGET_PACKAGES" with
-    | null -> path [ Environment.GetFolderPath Environment.SpecialFolder.UserProfile; ".nuget"; "packages" ]
-    | "" -> path [ Environment.GetFolderPath Environment.SpecialFolder.UserProfile; ".nuget"; "packages" ]
+    | null ->
+        path
+            [
+                Environment.GetFolderPath Environment.SpecialFolder.UserProfile
+                ".nuget"
+                "packages"
+            ]
+    | "" ->
+        path
+            [
+                Environment.GetFolderPath Environment.SpecialFolder.UserProfile
+                ".nuget"
+                "packages"
+            ]
     | dir -> dir
 
 // Probe the NuGet global-packages cache for an assembly by simple name, preferring net10.0.
@@ -120,8 +138,11 @@ let private restoreEngine (version: string) =
         proj,
         "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
         + "  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>\n  </PropertyGroup>\n"
-        + sprintf "  <ItemGroup>\n    <PackageReference Include=\"FS.GG.UI.Build\" Version=\"%s\" />\n  </ItemGroup>\n" version
-        + "</Project>\n")
+        + sprintf
+            "  <ItemGroup>\n    <PackageReference Include=\"FS.GG.UI.Build\" Version=\"%s\" />\n  </ItemGroup>\n"
+            version
+        + "</Project>\n"
+    )
 
     let psi = ProcessStartInfo("dotnet", sprintf "restore \"%s\"" proj)
     psi.RedirectStandardOutput <- true
@@ -129,7 +150,12 @@ let private restoreEngine (version: string) =
     psi.UseShellExecute <- false
     psi.WorkingDirectory <- tmp
 
-    match (try Process.Start psi |> Option.ofObj with _ -> None) with
+    match
+        (try
+            Process.Start psi |> Option.ofObj
+         with _ ->
+             None)
+    with
     | None -> ()
     | Some p ->
         let outTask = p.StandardOutput.ReadToEndAsync()
@@ -143,7 +169,16 @@ let private engineAssembly =
         (let version = fsSkiaUiVersion ()
          let nugetPackages = nugetPackagesRoot ()
          // NuGet lowercases package-id folders in the global-packages cache.
-         let dll = path [ nugetPackages; "fs.gg.ui.build"; version; "lib"; "net10.0"; "FS.GG.UI.Build.dll" ]
+         let dll =
+             path
+                 [
+                     nugetPackages
+                     "fs.gg.ui.build"
+                     version
+                     "lib"
+                     "net10.0"
+                     "FS.GG.UI.Build.dll"
+                 ]
 
          if not (File.Exists dll) then
              restoreEngine version
@@ -163,7 +198,8 @@ let private engineAssembly =
 
                  match probeCachedAssembly nugetPackages simple with
                  | Some path -> Assembly.LoadFrom path
-                 | None -> null))
+                 | None -> null)
+         )
 
          Assembly.LoadFrom dll)
 
@@ -343,7 +379,12 @@ let runInteractiveProcess (target: string) (fileName: string) (arguments: string
 
     let output = lock outputLock (fun () -> sawOutput)
 
-    if output && File.Exists logPath && (File.ReadAllText logPath).IndexOf("NU1603", StringComparison.OrdinalIgnoreCase) >= 0 then
+    if
+        output
+        && File.Exists logPath
+        && (File.ReadAllText logPath).IndexOf("NU1603", StringComparison.OrdinalIgnoreCase)
+           >= 0
+    then
         failwithf "%s failed package-resolution: NU1603 fallback is not authoritative generated-product evidence" target
 
     if proc.ExitCode <> 0 then
@@ -365,22 +406,41 @@ let private singleRootSolution () =
 let private singleSrcProject () =
     let srcRoot = path [ Directory.GetCurrentDirectory(); "src" ]
 
-    match (if Directory.Exists srcRoot then Directory.GetDirectories srcRoot else [||]) with
+    match
+        (if Directory.Exists srcRoot then
+             Directory.GetDirectories srcRoot
+         else
+             [||])
+    with
     | [| d |] -> Path.GetFileName d
     | [||] -> failwith "No src/<project> directory found in the product root."
     | many -> failwithf "Expected exactly one src/<project>; found %d." many.Length
 
 let runPerformanceEvidence () =
     let project = singleSrcProject ()
-    runProcess "PerformanceEvidence" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-evidence readiness/performance-evidence.json" project)
+
+    runProcess
+        "PerformanceEvidence"
+        "dotnet"
+        (sprintf "run -c Release --project src/%s -- --performance-evidence readiness/performance-evidence.json" project)
 
 let runPerformanceCriticRequest () =
     let project = singleSrcProject ()
-    runProcess "PerformanceCriticRequest" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-critic-request readiness/performance-critic-request.json" project)
+
+    runProcess
+        "PerformanceCriticRequest"
+        "dotnet"
+        (sprintf
+            "run -c Release --project src/%s -- --performance-critic-request readiness/performance-critic-request.json"
+            project)
 
 let runPerformanceIntent () =
     let project = singleSrcProject ()
-    runProcess "PerformanceIntent" "dotnet" (sprintf "run -c Release --project src/%s -- --performance-intent readiness/performance-intent.yml" project)
+
+    runProcess
+        "PerformanceIntent"
+        "dotnet"
+        (sprintf "run -c Release --project src/%s -- --performance-intent readiness/performance-intent.yml" project)
 
 let run target =
     match target with
@@ -389,10 +449,12 @@ let run target =
     | "TemplateDrift" -> writeLog target
     | "EvidenceGraph" ->
         let exitCode = runGeneratedEvidence "EvidenceGraph"
+
         if exitCode <> 0 then
             failwithf "EvidenceGraph failed with exit code %d; see readiness/evidence-graph.md" exitCode
     | "EvidenceAudit" ->
         let exitCode = runGeneratedEvidence "EvidenceAudit"
+
         if exitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" exitCode
     // Feature 212 (R3 / FR-007): pass-through build-graph targets over the single root .slnx. These
@@ -413,21 +475,23 @@ let run target =
         // ADR-0056 §Decision.2: fail closed BEFORE any other audit work — a lifecycle-less sdd tree
         // is not a completable feature, so the merge-gate audit must not even begin.
         assertLifecycleSupplied ()
-        [ "Dev"; "GeneratedGuidanceCheck"; "TemplateDrift" ]
-        |> List.iter writeLog
+        [ "Dev"; "GeneratedGuidanceCheck"; "TemplateDrift" ] |> List.iter writeLog
         let graphExitCode = runGeneratedEvidence "EvidenceGraph"
+
         if graphExitCode <> 0 then
             failwithf "EvidenceGraph failed with exit code %d; see readiness/evidence-graph.md" graphExitCode
+
         let auditExitCode = runGeneratedEvidence "EvidenceAudit"
+
         if auditExitCode <> 0 then
             failwithf "EvidenceAudit failed with exit code %d; see readiness/evidence-audit.md" auditExitCode
+
         runGeneratedTests ()
         runPerformanceIntent ()
         runPerformanceEvidence ()
         writeLog "Verify"
         printfn "Verify completed for generated product"
-    | other ->
-        failwithf "Unknown generated product target: %s" other
+    | other -> failwithf "Unknown generated product target: %s" other
 
 // Feature 242 (spec 242-scaffold-discoverability, §2.3): surface the load-bearing build-target
 // semantics at the entry point, so a developer never mistakes a green `Dev` for a passing compile.

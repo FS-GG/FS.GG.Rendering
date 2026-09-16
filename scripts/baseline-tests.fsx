@@ -42,12 +42,14 @@ let isUnderBuildOutput (path: string) =
 
 let discover (relRoot: string) =
     let root = Path.Combine(repoRoot, relRoot)
+
     if Directory.Exists root then
         Directory.EnumerateFiles(root, "*.Tests.fsproj", SearchOption.AllDirectories)
         |> Seq.filter (not << isUnderBuildOutput)
         |> Seq.sort
         |> Seq.toList
-    else []
+    else
+        []
 
 let projects = discover "tests" @ discover "samples"
 
@@ -59,10 +61,12 @@ let rel (full: string) = Path.GetRelativePath(repoRoot, full)
 
 // --- run --------------------------------------------------------------------
 type Outcome =
-    { Project: string
-      Passed: bool
-      Summary: string
-      ExitCode: int }
+    {
+        Project: string
+        Passed: bool
+        Summary: string
+        ExitCode: int
+    }
 
 let run (proj: string) =
     let psi = ProcessStartInfo("dotnet")
@@ -82,15 +86,24 @@ let run (proj: string) =
         (stdout + "\n" + stderr).Split('\n')
         |> Array.map (fun l -> l.Trim())
         |> Array.filter (fun l ->
-            l.Contains("Passed!") || l.Contains("Failed!")
-            || l.StartsWith("error ") || l.Contains("Build FAILED"))
+            l.Contains("Passed!")
+            || l.Contains("Failed!")
+            || l.StartsWith("error ")
+            || l.Contains("Build FAILED"))
         |> Array.tryLast
-        |> Option.defaultValue (if proc.ExitCode = 0 then "(no summary line; exit 0)" else "(no summary line; build/restore failure)")
+        |> Option.defaultValue (
+            if proc.ExitCode = 0 then
+                "(no summary line; exit 0)"
+            else
+                "(no summary line; build/restore failure)"
+        )
 
-    { Project = rel proj
-      Passed = proc.ExitCode = 0
-      Summary = summaryLine
-      ExitCode = proc.ExitCode }
+    {
+        Project = rel proj
+        Passed = proc.ExitCode = 0
+        Summary = summaryLine
+        ExitCode = proc.ExitCode
+    }
 
 printfn "Running %d test projects (config %s)…\n" projects.Length config
 
@@ -116,14 +129,18 @@ let report =
     line ""
     line "| Project | Result | Summary |"
     line "|---|---|---|"
+
     for r in results do
         let status = if r.Passed then "🟢 PASS" else "🔴 FAIL"
         line $"| `{r.Project}` | {status} | {r.Summary} |"
+
     if not red.IsEmpty then
         line ""
         line "## Red projects (known pre-existing failures unless this is a regression)"
+
         for r in red do
             line $"- `{r.Project}` (exit {r.ExitCode}): {r.Summary}"
+
     sb.ToString()
 
 printfn "\n%s" report

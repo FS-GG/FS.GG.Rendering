@@ -24,30 +24,35 @@ open FS.GG.UI.Themes.Default
 module internal InteractionRepro =
 
     type Session<'model, 'msg> =
-        { Host: InteractiveAppHost<'model, 'msg>
-          Size: Size
-          Model: 'model
-          Retained: RetainedRender<'msg>
-          Render: ControlRenderResult<'msg>
-          Pointer: PointerState
-          /// Messages the most recent `click` dispatched (empty if the click hit nothing bindable).
-          LastMsgs: 'msg list
-          /// Scroll deltas (scroll-viewer id, deltaY, contentHeight, viewportHeight) the most recent
-          /// click resolved — the value the host folds into its persistent scroll offset.
-          LastScrollDeltas: (ControlId * float * float * float) list }
+        {
+            Host: InteractiveAppHost<'model, 'msg>
+            Size: Size
+            Model: 'model
+            Retained: RetainedRender<'msg>
+            Render: ControlRenderResult<'msg>
+            Pointer: PointerState
+            /// Messages the most recent `click` dispatched (empty if the click hit nothing bindable).
+            LastMsgs: 'msg list
+            /// Scroll deltas (scroll-viewer id, deltaY, contentHeight, viewportHeight) the most recent
+            /// click resolved — the value the host folds into its persistent scroll offset.
+            LastScrollDeltas: (ControlId * float * float * float) list
+        }
 
     /// Start a session: init the host and render the first retained frame.
     let start (size: Size) (host: InteractiveAppHost<'model, 'msg>) : Session<'model, 'msg> =
         let model = fst (host.Init())
         let r0 = RetainedRender.init host.Theme size (host.View size model)
-        { Host = host
-          Size = size
-          Model = model
-          Retained = r0.Retained
-          Render = r0.Render
-          Pointer = Pointer.init ()
-          LastMsgs = []
-          LastScrollDeltas = [] }
+
+        {
+            Host = host
+            Size = size
+            Model = model
+            Retained = r0.Retained
+            Render = r0.Render
+            Pointer = Pointer.init ()
+            LastMsgs = []
+            LastScrollDeltas = []
+        }
 
     let private centerOf (id: ControlId) (s: Session<'model, 'msg>) =
         match s.Render.Bounds |> List.tryFind (fun (cid, _) -> cid = id) with
@@ -59,26 +64,54 @@ module internal InteractionRepro =
                 (s.Render.Bounds |> List.map fst |> String.concat ", ")
 
     let private pointerAt phase x y : ViewerPointerInput =
-        { Phase = phase; X = x; Y = y; Button = Some ViewerPointerButtonKind.Primary; DeltaX = 0.0; DeltaY = 0.0 }
+        {
+            Phase = phase
+            X = x
+            Y = y
+            Button = Some ViewerPointerButtonKind.Primary
+            DeltaX = 0.0
+            DeltaY = 0.0
+        }
 
     /// Click the control with id `id` (press + release at its center): route both phases through the
     /// retained pointer path, fold the dispatched messages into the model, re-render, and return the
     /// next session. `LastMsgs` carries what the click dispatched.
     let click (id: ControlId) (s: Session<'model, 'msg>) : Session<'model, 'msg> =
         let x, y = centerOf id s
+
         let p1, _, _, _ =
-            ControlsElmish.routeRetainedPointer s.Host s.Retained s.Render s.Pointer s.Size s.Model (pointerAt ViewerPointerPhaseKind.Pressed x y)
+            ControlsElmish.routeRetainedPointer
+                s.Host
+                s.Retained
+                s.Render
+                s.Pointer
+                s.Size
+                s.Model
+                (pointerAt ViewerPointerPhaseKind.Pressed x y)
+
         let p2, msgs, _, scrolls =
-            ControlsElmish.routeRetainedPointer s.Host s.Retained s.Render p1 s.Size s.Model (pointerAt ViewerPointerPhaseKind.Released x y)
+            ControlsElmish.routeRetainedPointer
+                s.Host
+                s.Retained
+                s.Render
+                p1
+                s.Size
+                s.Model
+                (pointerAt ViewerPointerPhaseKind.Released x y)
+
         let model' = msgs |> List.fold (fun m msg -> fst (s.Host.Update msg m)) s.Model
-        let stepped = RetainedRender.step s.Host.Theme s.Size s.Retained (s.Host.View s.Size model')
+
+        let stepped =
+            RetainedRender.step s.Host.Theme s.Size s.Retained (s.Host.View s.Size model')
+
         { s with
             Model = model'
             Retained = stepped.Retained
             Render = stepped.Render
             Pointer = p2
             LastMsgs = msgs
-            LastScrollDeltas = scrolls }
+            LastScrollDeltas = scrolls
+        }
 
     /// The stable focus identity resolved at the center of control `id` in the CURRENT frame —
     /// distinguishes unkeyed same-kind siblings (the Feature 175 nav-focus bleed the templates caught).
@@ -102,29 +135,35 @@ let private toggleHost: InteractiveAppHost<bool, Msg> =
             { FS.GG.UI.Controls.Typed.ToggleButton.defaults with
                 Text = "T"
                 IsOn = on
-                OnToggle = Some(fun b -> SetOn b) }
+                OnToggle = Some(fun b -> SetOn b)
+            }
         |> Widget.toControl
         |> Control.withKey "tog"
         |> fun t -> Stack.create [ Stack.children [ t ] ]
-    { Init = fun () -> true, []
-      Update = fun (SetOn b) _ -> b, []
-      View = view
-      Theme = Theme.light
-      MapKey = fun _ _ -> None
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+
+    {
+        Init = fun () -> true, []
+        Update = fun (SetOn b) _ -> b, []
+        View = view
+        Theme = Theme.light
+        MapKey = fun _ _ -> None
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 [<Tests>]
 let tests =
-    testList "Feature175InteractionRepro" [
-        test "the reusable harness reproduces the toggle flip-both-ways bug in a few lines" {
-            let s1 = InteractionRepro.start size toggleHost |> InteractionRepro.click "tog"
-            Expect.equal s1.LastMsgs [ SetOn false ] "first click (on) turns it OFF"
+    testList
+        "Feature175InteractionRepro"
+        [
+            test "the reusable harness reproduces the toggle flip-both-ways bug in a few lines" {
+                let s1 = InteractionRepro.start size toggleHost |> InteractionRepro.click "tog"
+                Expect.equal s1.LastMsgs [ SetOn false ] "first click (on) turns it OFF"
 
-            let s2 = InteractionRepro.click "tog" s1
-            Expect.equal s2.LastMsgs [ SetOn true ] "second click (off) turns it back ON (not stuck off)"
-        }
-    ]
+                let s2 = InteractionRepro.click "tog" s1
+                Expect.equal s2.LastMsgs [ SetOn true ] "second click (off) turns it back ON (not stuck off)"
+            }
+        ]

@@ -16,15 +16,16 @@ let private usage () =
     printfn "  SampleApps coverage [--out <file>]"
 
 /// Tiny flag reader: value following `--name`, if present.
-let private flag (name: string) (args: string list): string option =
+let private flag (name: string) (args: string list) : string option =
     let rec loop =
         function
         | k :: v :: _ when k = name -> Some v
         | _ :: rest -> loop rest
         | [] -> None
+
     loop args
 
-let private parseMode (args: string list): ThemeMode =
+let private parseMode (args: string list) : ThemeMode =
     match flag "--theme" args with
     | Some "dark" -> Dark
     | _ -> Light
@@ -32,6 +33,7 @@ let private parseMode (args: string list): ThemeMode =
 let private listSamples () =
     if List.isEmpty Registry.all then
         printfn "sample-apps: 0 samples registered."
+
     for e in Registry.all do
         printfn
             "  %-10s %-13s %-26s inputs=[%s] controls=[%s]"
@@ -51,9 +53,11 @@ let main argv =
     | "coverage" :: rest ->
         let report = Coverage.render ()
         printfn "%s" report
+
         match flag "--out" rest with
         | Some path -> File.WriteAllText(path, report)
         | None -> ()
+
         if Coverage.isClean (Coverage.check ()) then 0 else 1
 
     | "interactive" :: id :: rest -> Interactive.run id (parseMode rest)

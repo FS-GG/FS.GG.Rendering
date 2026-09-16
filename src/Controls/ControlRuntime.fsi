@@ -1,29 +1,30 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 /// The text caret position (`Index`) within a focused control identified by `ControlId`.
-type ControlCaret =
-    { ControlId: ControlId
-      Index: int }
+type ControlCaret = { ControlId: ControlId; Index: int }
 
 /// A text selection range (`Start`..`End`) within the control identified by `ControlId`.
 type ControlSelection =
-    { ControlId: ControlId
-      Start: int
-      End: int }
+    {
+        ControlId: ControlId
+        Start: int
+        End: int
+    }
 
 /// In-flight IME composition `Text` being entered into the control identified by `ControlId`.
-type ControlComposition =
-    { ControlId: ControlId
-      Text: string }
+type ControlComposition = { ControlId: ControlId; Text: string }
 
 /// An active pointer drag on `ControlId`, tracking start (`StartX`/`StartY`) and current (`CurrentX`/`CurrentY`) coordinates.
 type ControlDrag =
-    { ControlId: ControlId
-      StartX: float
-      StartY: float
-      CurrentX: float
-      CurrentY: float }
+    {
+        ControlId: ControlId
+        StartX: float
+        StartY: float
+        CurrentX: float
+        CurrentY: float
+    }
 
 /// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, scroll, diagnostics).
 type ControlRuntimeEffect =
@@ -42,32 +43,38 @@ type ControlRuntimeEffect =
 
 /// The aggregate runtime interaction state: focused/hovered/pressed controls, `Caret`, `Selection`, `Composition`, `ActiveDrag`, and accumulated `Diagnostics`.
 type ControlRuntimeModel =
-    { FocusedControl: ControlId option
-      HoveredControl: ControlId option
-      PressedControls: Set<ControlId>
-      Caret: ControlCaret option
-      Selection: ControlSelection option
-      Composition: ControlComposition option
-      ActiveDrag: ControlDrag option
-      /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
-      ScrollOffsets: Map<ControlId, ScrollState>
-      Diagnostics: ControlDiagnostic list
-      RecentEffects: ControlRuntimeEffect list }
+    {
+        FocusedControl: ControlId option
+        HoveredControl: ControlId option
+        PressedControls: Set<ControlId>
+        Caret: ControlCaret option
+        Selection: ControlSelection option
+        Composition: ControlComposition option
+        ActiveDrag: ControlDrag option
+        /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
+        ScrollOffsets: Map<ControlId, ScrollState>
+        Diagnostics: ControlDiagnostic list
+        RecentEffects: ControlRuntimeEffect list
+    }
 
 /// Host-owned overlay bridge data. `ControlRuntime` carries this value at the edge
 /// without making product-owned overlay visibility part of `ControlRuntimeModel`.
 type OverlayRuntimeBridge =
-    { Overlay: OverlayState
-      Effects: OverlayEffect list }
+    {
+        Overlay: OverlayState
+        Effects: OverlayEffect list
+    }
 
 /// Runtime audit record for an interpreted overlay effect. These records are
 /// derived from effects and do not add open or selected state to
 /// `ControlRuntimeModel`.
 type OverlayRuntimeDispatchRecord =
-    { SurfaceId: ControlId option
-      Kind: string
-      Payload: string option
-      ProductVisible: bool }
+    {
+        SurfaceId: ControlId option
+        Kind: string
+        Payload: string option
+        ProductVisible: bool
+    }
 
 /// An input message driving the runtime transition, e.g. `FocusControl`, `HoverControl`, `PressControl`, `SetCaret`, `StartDrag`, or `Reset`.
 type ControlRuntimeMsg =
@@ -98,8 +105,10 @@ type ControlRuntimeMsg =
 /// and Controls.Tests via InternalsVisibleTo. `RuntimeStateTouchedNodeCount` is `0` on a no-change frame
 /// and far below the node count on a localized hover/focus/press change.
 type internal RuntimeStampResult<'msg> =
-    { Stamped: Control<'msg>
-      RuntimeStateTouchedNodeCount: int }
+    {
+        Stamped: Control<'msg>
+        RuntimeStateTouchedNodeCount: int
+    }
 
 /// MVU runtime tracking control focus, hover, press, caret/selection, composition, drag, scroll, and derived visual state.
 module ControlRuntime =

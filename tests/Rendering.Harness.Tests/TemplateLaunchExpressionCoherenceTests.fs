@@ -68,10 +68,11 @@ let private persistentHost = @"(?:generatedHost|interactiveHost)"
 /// A launch that HONOURS both effects: SOME launcher (ANY overload name) applied to `viewerOptions` and,
 /// as its terminal arguments, the audio sink (PlayAudio -> its sink) then the persistent host (Persist
 /// honoured). Only the effect arguments are matched. `[^\n]*` tolerates the window-behavior request the
-/// `--window-*` overload threads between `viewerOptions` and the sink. This is exactly what a sanctioned
+/// `--window-*` overload threads between `viewerOptions` and the sink. The bounded cross-line span
+/// tolerates Fantomas placing each argument on its own line. This is exactly what a sanctioned
 /// launcher upgrade must keep satisfying.
 let private effectHonouringLaunch =
-    Regex($@"[A-Za-z_][\w.]*\s+viewerOptions\b[^\n]*\baudioSink\s+{persistentHost}\b")
+    Regex($@"[A-Za-z_][\w.]*\s+viewerOptions\b[\s\S]{{0,500}}?\baudioSink\s+{persistentHost}\b")
 
 /// The SINKLESS launch shape #436 forbids: the persistent host threaded DIRECTLY after `viewerOptions`
 /// with NO audio sink between them — the sink-discarding overload that left `app`/`sample-pack` silent.
@@ -104,59 +105,61 @@ let templateLaunchExpressionCoherenceTests =
     testList
         "Template launch-expression coherence (FS.GG.Rendering#350, behavior contract per Governance#297)"
         [
-          // The behavior residue of #350, launcher-name-agnostic. Non-vacuous by construction: the
-          // default branch MUST contain an effect-honouring launch, or a refactor that stopped emitting
-          // one would reduce this to a green check of nothing.
-          test "the generated Program.fs default launch honours the launch effects (the audio sink and the persistent host reach the launcher)" {
-              let defaultBranch = programDefaultBranch ()
+            // The behavior residue of #350, launcher-name-agnostic. Non-vacuous by construction: the
+            // default branch MUST contain an effect-honouring launch, or a refactor that stopped emitting
+            // one would reduce this to a green check of nothing.
+            test
+                "the generated Program.fs default launch honours the launch effects (the audio sink and the persistent host reach the launcher)" {
+                let defaultBranch = programDefaultBranch ()
 
-              Expect.isTrue
-                  (effectHonouringLaunch.IsMatch defaultBranch)
-                  "Program.fs default branch must thread `viewerOptions`, the audio sink, and the \
+                Expect.isTrue
+                    (effectHonouringLaunch.IsMatch defaultBranch)
+                    "Program.fs default branch must thread `viewerOptions`, the audio sink, and the \
                    persistent host into a launcher — the host honours PlayAudio (the effect reaches its \
                    sink) and Persist (the persistent interactive host) — regardless of the launcher \
                    overload name"
-          }
+            }
 
-          // The #436 invariant, stated where it can be enforced against the template text and by ARGUMENT
-          // SHAPE, so a launcher rename cannot smuggle a silent launch past it.
-          test "no product family launches through a sink-discarding overload (#436), whatever the launcher is named" {
-              let defaultBranch = programDefaultBranch ()
+            // The #436 invariant, stated where it can be enforced against the template text and by ARGUMENT
+            // SHAPE, so a launcher rename cannot smuggle a silent launch past it.
+            test "no product family launches through a sink-discarding overload (#436), whatever the launcher is named" {
+                let defaultBranch = programDefaultBranch ()
 
-              Expect.isFalse
-                  (sinklessLaunch.IsMatch defaultBranch)
-                  "no family may thread the persistent host DIRECTLY after `viewerOptions` with no audio \
+                Expect.isFalse
+                    (sinklessLaunch.IsMatch defaultBranch)
+                    "no family may thread the persistent host DIRECTLY after `viewerOptions` with no audio \
                    sink between them — that is the silent, sink-discarding launch #436 removed (it left \
                    `app`/`sample-pack` mute while every positive check stayed green). The sink must reach \
                    every launcher; matched by argument shape, so a launcher rename cannot disguise one"
-          }
+            }
 
-          // The survival proof Governance#297/#981 asks for: the behavior contract holds across a
-          // sanctioned launcher upgrade (a persistence/pointer-capable runner rename) WITHOUT editing the
-          // suite, and the retired literal-substring pin demonstrably would NOT — which is the exact
-          // brittleness that forced edits on Rougue1 M9 and TowerDefense1 M8.
-          test "the behavior contract survives a sanctioned launcher upgrade (a persistence/pointer-capable runner rename) without editing the suite" {
-              // A sanctioned upgrade renames the RUNNER and keeps handing it the same effect arguments.
-              let upgraded =
-                  "            Viewer.runPersistentPointerAppWithAudio viewerOptions audioSink generatedHost"
+            // The survival proof Governance#297/#981 asks for: the behavior contract holds across a
+            // sanctioned launcher upgrade (a persistence/pointer-capable runner rename) WITHOUT editing the
+            // suite, and the retired literal-substring pin demonstrably would NOT — which is the exact
+            // brittleness that forced edits on Rougue1 M9 and TowerDefense1 M8.
+            test
+                "the behavior contract survives a sanctioned launcher upgrade (a persistence/pointer-capable runner rename) without editing the suite" {
+                // A sanctioned upgrade renames the RUNNER and keeps handing it the same effect arguments.
+                let upgraded =
+                    "            Viewer.runPersistentPointerAppWithAudio viewerOptions audioSink generatedHost"
 
-              Expect.isTrue
-                  (effectHonouringLaunch.IsMatch upgraded)
-                  "a renamed persistence/pointer-capable runner still threads the audio sink and the \
+                Expect.isTrue
+                    (effectHonouringLaunch.IsMatch upgraded)
+                    "a renamed persistence/pointer-capable runner still threads the audio sink and the \
                    persistent host — the behavior contract holds with no edit to this suite"
 
-              Expect.isFalse
-                  (sinklessLaunch.IsMatch upgraded)
-                  "the upgraded launch still carries the sink between `viewerOptions` and the host, so it \
+                Expect.isFalse
+                    (sinklessLaunch.IsMatch upgraded)
+                    "the upgraded launch still carries the sink between `viewerOptions` and the host, so it \
                    is not the sinkless shape"
 
-              // The retired literal-substring pin does NOT match the renamed launcher — this is the
-              // brittleness Governance#297 removed, made visible so a future edit cannot quietly restore
-              // it (guard the guard, mirroring the #111 pattern in GovernanceTests.fs).
-              Expect.isFalse
-                  (upgraded.Contains "Viewer.runAppWithAudio viewerOptions audioSink generatedHost")
-                  "the retired literal launch-overload substring pin does NOT match a renamed launcher — \
+                // The retired literal-substring pin does NOT match the renamed launcher — this is the
+                // brittleness Governance#297 removed, made visible so a future edit cannot quietly restore
+                // it (guard the guard, mirroring the #111 pattern in GovernanceTests.fs).
+                Expect.isFalse
+                    (upgraded.Contains "Viewer.runAppWithAudio viewerOptions audioSink generatedHost")
+                    "the retired literal launch-overload substring pin does NOT match a renamed launcher — \
                    demonstrating exactly the brittleness (Rougue1 M9's 4 edits, TowerDefense1 M8's suite) \
                    that Governance#297 replaced with the behavior contract above"
-          }
+            }
         ]

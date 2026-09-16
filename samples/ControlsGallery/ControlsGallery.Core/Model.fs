@@ -12,25 +12,27 @@ open FS.GG.UI.DesignSystem
 /// no control renders empty (FR-004) and so interactive controls have somewhere to
 /// record a visible state change (FR-012).
 type DemoState =
-    { ButtonClicks: int
-      TextValue: string
-      AreaValue: string
-      NumericValue: float
-      SliderValue: float
-      Checked: bool
-      SwitchOn: bool
-      ToggleOn: bool
-      RadioSelected: string
-      ComboSelected: string
-      ListSelected: string
-      MultiSelected: string list
-      TreeSelected: string
-      Tab: string
-      MenuSelected: string
-      ProgressValue: float
-      ColorSelected: string
-      OverlayOpen: bool
-      DialogOpen: bool }
+    {
+        ButtonClicks: int
+        TextValue: string
+        AreaValue: string
+        NumericValue: float
+        SliderValue: float
+        Checked: bool
+        SwitchOn: bool
+        ToggleOn: bool
+        RadioSelected: string
+        ComboSelected: string
+        ListSelected: string
+        MultiSelected: string list
+        TreeSelected: string
+        Tab: string
+        MenuSelected: string
+        ProgressValue: float
+        ColorSelected: string
+        OverlayOpen: bool
+        DialogOpen: bool
+    }
 
 /// Control-interaction events routed to the active page (FR-012). Kept flat and pure;
 /// every case maps to a single field transition in `update`.
@@ -63,29 +65,38 @@ type GalleryMsg =
 
 /// One of the exactly-10 navigable pages (data-model.md "GalleryPage").
 type GalleryPage =
-    { Id: string
-      Index: int
-      Title: string
-      Family: string
-      ControlIds: string list
-      Build: DemoState -> Control<GalleryMsg> }
+    {
+        Id: string
+        Index: int
+        Title: string
+        Family: string
+        ControlIds: string list
+        Build: DemoState -> Control<GalleryMsg>
+    }
 
 /// Outcome of the coverage check (FR-003): empty/empty ⇒ pass.
 type CoverageResult =
-    { Unreferenced: string list
-      Duplicated: string list }
+    {
+        Unreferenced: string list
+        Duplicated: string list
+    }
 
 /// The MVU model.
 type GalleryModel =
-    { CurrentPage: string
-      Mode: ThemeMode
-      Accent: Color
-      PageState: DemoState }
+    {
+        CurrentPage: string
+        Mode: ThemeMode
+        Accent: Color
+        PageState: DemoState
+    }
 
 /// Pure interaction reducer for the active page.
-let updatePage (msg: PageMsg) (state: DemoState): DemoState =
+let updatePage (msg: PageMsg) (state: DemoState) : DemoState =
     match msg with
-    | ButtonClicked -> { state with ButtonClicks = state.ButtonClicks + 1 }
+    | ButtonClicked ->
+        { state with
+            ButtonClicks = state.ButtonClicks + 1
+        }
     | TextChanged v -> { state with TextValue = v }
     | AreaChanged v -> { state with AreaValue = v }
     | NumericChanged v -> { state with NumericValue = v }
@@ -106,7 +117,7 @@ let updatePage (msg: PageMsg) (state: DemoState): DemoState =
 
 /// Pure top-level reducer (Principle IV). Theme/accent changes alter only resolved
 /// visuals downstream — never the control-tree shape (FR-006/SC-003).
-let update (msg: GalleryMsg) (model: GalleryModel): GalleryModel =
+let update (msg: GalleryMsg) (model: GalleryModel) : GalleryModel =
     match msg with
     | SelectPage id -> { model with CurrentPage = id }
     | ToggleTheme ->
@@ -114,6 +125,10 @@ let update (msg: GalleryMsg) (model: GalleryModel): GalleryModel =
             match model.Mode with
             | Light -> Dark
             | Dark -> Light
+
         { model with Mode = flipped }
     | SelectAccent c -> { model with Accent = c }
-    | PageMsg pm -> { model with PageState = updatePage pm model.PageState }
+    | PageMsg pm ->
+        { model with
+            PageState = updatePage pm model.PageState
+        }

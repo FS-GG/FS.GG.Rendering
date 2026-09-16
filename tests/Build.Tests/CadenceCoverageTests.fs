@@ -14,7 +14,8 @@ open FS.GG.TestSupport
 
 let private repoRoot = RepositoryRoot.value
 
-let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+let private repoPath (rel: string) =
+    Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
 // Every `tests/<Name>.Tests` project the slnx builds — the authoritative test set the gate must cover.
 // (`TestSupport` is a helper lib, not a `.Tests` project, so it does not appear here.)
@@ -28,6 +29,7 @@ let private repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Pat
 let private slnxTestNames =
     let suffix = ".Tests.fsproj"
     let slnx = File.ReadAllText(repoPath "FS.GG.Rendering.slnx")
+
     Regex.Matches(slnx, "Path=\"([^\"]+\\.fsproj)\"")
     |> Seq.map (fun m -> m.Groups.[1].Value.Replace('\\', '/'))
     |> Seq.filter (fun p -> p.StartsWith("tests/") && p.EndsWith(suffix))
@@ -44,7 +46,9 @@ let private gateYml = File.ReadAllText(repoPath ".github/workflows/gate.yml")
 let private glTestNames =
     let m = Regex.Match(gateYml, "GL_TEST_PROJECTS:\\s*\"([^\"]*)\"")
     Expect.isTrue m.Success "gate.yml must declare a GL_TEST_PROJECTS env list"
-    m.Groups.[1].Value.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries) |> Set.ofArray
+
+    m.Groups.[1].Value.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+    |> Set.ofArray
 
 // Every `X.Tests` name a doc legitimately names besides the slnx set: the release-only lanes.
 //
@@ -63,53 +67,67 @@ let private retiredTestNames = Set.ofList [ "Color"; "Input" ]
 // All backtick-quoted `X.Tests` tokens a doc mentions, returned as bare names (no `.Tests`).
 let private docTestNames (relDoc: string) =
     let text = File.ReadAllText(repoPath relDoc)
+
     Regex.Matches(text, "`([A-Za-z][A-Za-z.]*)\\.Tests`")
     |> Seq.map (fun m -> m.Groups.[1].Value)
     |> Set.ofSeq
 
 [<Tests>]
 let cadenceCoverageTests =
-    testList "Feature 235 — CI cadence coverage" [
+    testList
+        "Feature 235 — CI cadence coverage"
+        [
 
-        test "every slnx test project is covered by exactly one gate lane (deterministic ∪ GL == slnx)" {
-            // GL_TEST_PROJECTS may not name a phantom (a project not in the slnx)...
-            let phantomGl = Set.difference glTestNames slnxTestNames
-            Expect.isEmpty phantomGl (sprintf "GL_TEST_PROJECTS names non-slnx project(s): %A" phantomGl)
+            test "every slnx test project is covered by exactly one gate lane (deterministic ∪ GL == slnx)" {
+                // GL_TEST_PROJECTS may not name a phantom (a project not in the slnx)...
+                let phantomGl = Set.difference glTestNames slnxTestNames
+                Expect.isEmpty phantomGl (sprintf "GL_TEST_PROJECTS names non-slnx project(s): %A" phantomGl)
 
-            // ...and the deterministic tier (slnx − GL) plus the GL step exactly reconstitute the
-            // slnx test set, with no overlap. This is what "gate's test list == slnx test folder"
-            // means: no member is dropped, none is double-run.
-            let deterministic = Set.difference slnxTestNames glTestNames
-            Expect.isEmpty (Set.intersect deterministic glTestNames) "a project cannot be both deterministic and GL"
-            Expect.equal (Set.union deterministic glTestNames) slnxTestNames "deterministic ∪ GL must equal the slnx test set"
-            Expect.isNonEmpty deterministic "the deterministic tier must be non-empty"
-        }
+                // ...and the deterministic tier (slnx − GL) plus the GL step exactly reconstitute the
+                // slnx test set, with no overlap. This is what "gate's test list == slnx test folder"
+                // means: no member is dropped, none is double-run.
+                let deterministic = Set.difference slnxTestNames glTestNames
+                Expect.isEmpty (Set.intersect deterministic glTestNames) "a project cannot be both deterministic and GL"
 
-        test "the deterministic tier is DERIVED from the slnx, not a hardcoded project list" {
-            // Guards against a regression back to `for p in Scene Layout ...`: the loop MUST read the
-            // slnx so new test projects are covered by construction (the original P4 bug).
-            Expect.isTrue
-                (gateYml.Contains "grep -oE 'tests/[^\"]+\\.Tests\\.fsproj' FS.GG.Rendering.slnx")
-                "gate.yml deterministic tier must derive its project list from FS.GG.Rendering.slnx"
-            Expect.isFalse
-                (Regex.IsMatch(gateYml, "for p in Scene Layout"))
-                "gate.yml must not hardcode the deterministic project list"
-        }
+                Expect.equal
+                    (Set.union deterministic glTestNames)
+                    slnxTestNames
+                    "deterministic ∪ GL must equal the slnx test set"
 
-        // Both auditable cadence docs must stay coherent with the slnx in BOTH directions (the P4
-        // drift): every slnx test project is named, and no name is stale (retired or non-existent).
-        for doc in [ "docs/ci/cadence-map.md"; "docs/validation/validation-set.md" ] do
-            test (sprintf "%s names every slnx test project and no stale ones" doc) {
-                let named = docTestNames doc
-
-                let missing = Set.difference slnxTestNames named
-                Expect.isEmpty missing (sprintf "%s omits slnx test project(s): %A" doc missing)
-
-                let retiredStillListed = Set.intersect named retiredTestNames
-                Expect.isEmpty retiredStillListed (sprintf "%s still lists retired project(s): %A" doc retiredStillListed)
-
-                // Any other `X.Tests` a doc names must be a real slnx member or a known release-only lane.
-                let unknown = Set.difference named (Set.unionMany [ slnxTestNames; releaseOnlyTestNames ])
-                Expect.isEmpty unknown (sprintf "%s names unknown/stale test project(s): %A" doc unknown)
+                Expect.isNonEmpty deterministic "the deterministic tier must be non-empty"
             }
-    ]
+
+            test "the deterministic tier is DERIVED from the slnx, not a hardcoded project list" {
+                // Guards against a regression back to `for p in Scene Layout ...`: the loop MUST read the
+                // slnx so new test projects are covered by construction (the original P4 bug).
+                Expect.isTrue
+                    (gateYml.Contains "grep -oE 'tests/[^\"]+\\.Tests\\.fsproj' FS.GG.Rendering.slnx")
+                    "gate.yml deterministic tier must derive its project list from FS.GG.Rendering.slnx"
+
+                Expect.isFalse
+                    (Regex.IsMatch(gateYml, "for p in Scene Layout"))
+                    "gate.yml must not hardcode the deterministic project list"
+            }
+
+            // Both auditable cadence docs must stay coherent with the slnx in BOTH directions (the P4
+            // drift): every slnx test project is named, and no name is stale (retired or non-existent).
+            for doc in [ "docs/ci/cadence-map.md"; "docs/validation/validation-set.md" ] do
+                test (sprintf "%s names every slnx test project and no stale ones" doc) {
+                    let named = docTestNames doc
+
+                    let missing = Set.difference slnxTestNames named
+                    Expect.isEmpty missing (sprintf "%s omits slnx test project(s): %A" doc missing)
+
+                    let retiredStillListed = Set.intersect named retiredTestNames
+
+                    Expect.isEmpty
+                        retiredStillListed
+                        (sprintf "%s still lists retired project(s): %A" doc retiredStillListed)
+
+                    // Any other `X.Tests` a doc names must be a real slnx member or a known release-only lane.
+                    let unknown =
+                        Set.difference named (Set.unionMany [ slnxTestNames; releaseOnlyTestNames ])
+
+                    Expect.isEmpty unknown (sprintf "%s names unknown/stale test project(s): %A" doc unknown)
+                }
+        ]

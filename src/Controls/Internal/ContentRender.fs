@@ -13,6 +13,7 @@ module internal ContentRender =
     open ChartGeometry
     open WidgetGeometry
     open DataGridGeometry
+
     /// Dispatch a rich-family control to its faithful geometry (within `box`, below the title).
     let faithfulContent (theme: Theme) (box: Rect) (control: Control<'msg>) : Scene list =
         let label = control.Content |> Option.defaultValue ""
@@ -88,7 +89,8 @@ module internal ContentRender =
         // here — see `DataGridGeometry`.
         | "data-grid-header-cell" -> headerCellGeom theme box classes state label
         | "data-grid-cell" -> cellGeom theme box classes state label
-        | "radio-group" -> radioGeom theme box classes state (stringListOf "items" control) (textValueOf "value" control)
+        | "radio-group" ->
+            radioGeom theme box classes state (stringListOf "items" control) (textValueOf "value" control)
         | "tabs" -> tabsGeom theme box (stringListOf "items" control) (textValueOf "value" control)
         | "slider" -> sliderGeom theme box classes state (floatValue "value" 0.5 control.Attributes)
         | "progress-bar" -> progressGeom theme box (floatValue "value" 0.0 control.Attributes)
@@ -111,7 +113,8 @@ module internal ContentRender =
         | "panel" -> nestedOrSchematic (fun () -> panelGeom theme box (if label = "" then "Panel content" else label))
         | "border" -> nestedOrSchematic (fun () -> borderGeom theme box (if label = "" then "Bordered" else label))
         | "scroll-viewer" -> scrollViewerGeom theme box (if label = "" then "Scrollable content" else label)
-        | "overlay" -> nestedOrSchematic (fun () -> overlayGeom theme box (if label = "" then "Overlaid content" else label))
+        | "overlay" ->
+            nestedOrSchematic (fun () -> overlayGeom theme box (if label = "" then "Overlaid content" else label))
         | "date-picker"
         | "time-picker" -> pickerGeom theme box (control.Content |> Option.defaultValue control.Kind)
         | "color-picker" -> swatchGeom theme box
@@ -128,7 +131,13 @@ module internal ContentRender =
         | "avatar" -> avatarGeom theme box label
         | "card" -> nestedOrSchematic (fun () -> cardGeom theme box label)
         | "descriptions" -> descriptionsGeom theme box (stringListOf "items" control)
-        | "statistic" -> statisticGeom theme box (textValueOf "value" control |> Option.orElse (control.Content) |> Option.defaultValue "")
+        | "statistic" ->
+            statisticGeom
+                theme
+                box
+                (textValueOf "value" control
+                 |> Option.orElse (control.Content)
+                 |> Option.defaultValue "")
         | "timeline" -> timelineGeom theme box (stringListOf "items" control)
         | "empty" -> emptyGeom theme box label
         | "skeleton" -> skeletonGeom theme box
@@ -159,6 +168,7 @@ module internal ContentRender =
                 control.Content
                 |> Option.orElseWith (fun () -> textValueOf "text" control)
                 |> Option.defaultValue "icon"
+
             iconGeom theme box name
         | other -> emptyState theme box other
 

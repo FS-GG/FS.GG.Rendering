@@ -1,31 +1,41 @@
 namespace FS.GG.UI.Scene
 
 type SvgCamera =
-    { PanX: float
-      PanY: float
-      Zoom: float }
+    {
+        PanX: float
+        PanY: float
+        Zoom: float
+    }
 
 type SemanticSceneObject =
-    { Id: string
-      Selectable: bool
-      AccessibleLabel: string
-      Content: Scene }
+    {
+        Id: string
+        Selectable: bool
+        AccessibleLabel: string
+        Content: Scene
+    }
 
 type RetainedSceneLayer =
-    { Id: string
-      Visible: bool
-      Objects: SemanticSceneObject list }
+    {
+        Id: string
+        Visible: bool
+        Objects: SemanticSceneObject list
+    }
 
 type RetainedScene =
-    { RootId: string
-      Revision: int
-      Camera: SvgCamera
-      Layers: RetainedSceneLayer list }
+    {
+        RootId: string
+        Revision: int
+        Camera: SvgCamera
+        Layers: RetainedSceneLayer list
+    }
 
 type SvgAdapterIssue =
-    { ObjectId: string option
-      NodePath: int list
-      Reason: string }
+    {
+        ObjectId: string option
+        NodePath: int list
+        Reason: string
+    }
 
 [<RequireQualifiedAccess>]
 type SvgAdapterResult =
@@ -56,14 +66,18 @@ type RetainedInteractionError =
     | PointerNotCaptured of int
 
 type RetainedInteractionState =
-    { Scene: RetainedScene
-      SelectedObjectId: string option
-      FocusedObjectId: string option
-      CapturedPointerId: int option }
+    {
+        Scene: RetainedScene
+        SelectedObjectId: string option
+        FocusedObjectId: string option
+        CapturedPointerId: int option
+    }
 
 type RetainedInteractionResult =
-    { State: RetainedInteractionState
-      Error: RetainedInteractionError option }
+    {
+        State: RetainedInteractionState
+        Error: RetainedInteractionError option
+    }
 
 [<RequireQualifiedAccess>]
 module SvgRetained =
@@ -71,70 +85,131 @@ module SvgRetained =
         not (System.Double.IsNaN value || System.Double.IsInfinity value)
 
     let private validCamera (camera: SvgCamera) =
-        finite camera.PanX && finite camera.PanY && finite camera.Zoom && camera.Zoom > 0.0
+        finite camera.PanX
+        && finite camera.PanY
+        && finite camera.Zoom
+        && camera.Zoom > 0.0
 
     let private issue (objectId: string option) (path: int list) (reason: string) : SvgAdapterIssue =
-        { ObjectId = objectId
-          NodePath = path
-          Reason = reason }
+        {
+            ObjectId = objectId
+            NodePath = path
+            Reason = reason
+        }
 
     let private validatePoint objectId path (point: Point) =
-        if finite point.X && finite point.Y then []
-        else [ issue objectId path "point contains a non-finite coordinate" ]
+        if finite point.X && finite point.Y then
+            []
+        else
+            [ issue objectId path "point contains a non-finite coordinate" ]
 
     let private validateRect objectId path (rect: Rect) =
-        if finite rect.X && finite rect.Y && finite rect.Width && finite rect.Height then []
-        else [ issue objectId path "rectangle contains a non-finite coordinate" ]
+        if finite rect.X && finite rect.Y && finite rect.Width && finite rect.Height then
+            []
+        else
+            [ issue objectId path "rectangle contains a non-finite coordinate" ]
 
     let private validateColor _objectId _path (_color: Color) : SvgAdapterIssue list = []
 
     let private validateStroke objectId path (stroke: Stroke) =
-        if finite stroke.Width && finite stroke.Miter && stroke.Width >= 0.0 && stroke.Miter >= 0.0 then []
-        else [ issue objectId path "stroke width and miter must be finite and non-negative" ]
+        if
+            finite stroke.Width
+            && finite stroke.Miter
+            && stroke.Width >= 0.0
+            && stroke.Miter >= 0.0
+        then
+            []
+        else
+            [ issue objectId path "stroke width and miter must be finite and non-negative" ]
 
-    let private validatePathEffect objectId path = function
+    let private validatePathEffect objectId path =
+        function
         | PathEffect.NoPathEffect -> [], []
         | PathEffect.Dash(intervals, phase) ->
             let invalid =
-                [ if intervals.IsEmpty || intervals |> List.exists (fun value -> not (finite value) || value <= 0.0) then
-                      issue objectId path "dash intervals must be finite, positive and non-empty"
-                  if not (finite phase) then issue objectId path "dash phase must be finite" ]
+                [
+                    if
+                        intervals.IsEmpty
+                        || intervals |> List.exists (fun value -> not (finite value) || value <= 0.0)
+                    then
+                        issue objectId path "dash intervals must be finite, positive and non-empty"
+                    if not (finite phase) then
+                        issue objectId path "dash phase must be finite"
+                ]
+
             invalid, []
-        | PathEffect.Discrete _ -> [], [ issue objectId path "discrete path effects are outside the selected SVG subset" ]
-        | PathEffect.Corner _ -> [], [ issue objectId path "corner path effects are outside the selected SVG subset" ]
+        | PathEffect.Discrete _ ->
+            [],
+            [
+                issue objectId path "discrete path effects are outside the selected SVG subset"
+            ]
+        | PathEffect.Corner _ ->
+            [],
+            [
+                issue objectId path "corner path effects are outside the selected SVG subset"
+            ]
 
     let private validatePaint objectId path (paint: Paint) =
         let numeric =
-            [ if not (finite paint.Opacity) || paint.Opacity < 0.0 || paint.Opacity > 1.0 then
-                  issue objectId path "paint opacity must be finite and between zero and one"
-              match paint.Stroke with
-              | Some stroke -> yield! validateStroke objectId path stroke
-              | None -> () ]
+            [
+                if not (finite paint.Opacity) || paint.Opacity < 0.0 || paint.Opacity > 1.0 then
+                    issue objectId path "paint opacity must be finite and between zero and one"
+                match paint.Stroke with
+                | Some stroke -> yield! validateStroke objectId path stroke
+                | None -> ()
+            ]
 
         let shaderInvalid, shaderUnsupported =
             match paint.Shader with
             | None
             | Some(Shader.SolidColor _) -> [], []
             | Some(Shader.LinearGradient(startPoint, finish, colors)) ->
-                let invalid = validatePoint objectId path startPoint @ validatePoint objectId path finish
-                let invalid = if colors.IsEmpty then issue objectId path "linear gradient must contain at least one color" :: invalid else invalid
+                let invalid =
+                    validatePoint objectId path startPoint @ validatePoint objectId path finish
+
+                let invalid =
+                    if colors.IsEmpty then
+                        issue objectId path "linear gradient must contain at least one color" :: invalid
+                    else
+                        invalid
+
                 invalid, []
             | Some(Shader.RadialGradient(center, radius, colors)) ->
                 let invalid = validatePoint objectId path center
-                let invalid = if not (finite radius) || radius <= 0.0 then issue objectId path "radial gradient radius must be finite and positive" :: invalid else invalid
-                let invalid = if colors.IsEmpty then issue objectId path "radial gradient must contain at least one color" :: invalid else invalid
-                invalid, []
-            | Some(Shader.SweepGradient _) -> [], [ issue objectId path "sweep gradients are outside the selected SVG subset" ]
 
-        let effectInvalid, effectUnsupported = validatePathEffect objectId path paint.PathEffect
+                let invalid =
+                    if not (finite radius) || radius <= 0.0 then
+                        issue objectId path "radial gradient radius must be finite and positive"
+                        :: invalid
+                    else
+                        invalid
+
+                let invalid =
+                    if colors.IsEmpty then
+                        issue objectId path "radial gradient must contain at least one color" :: invalid
+                    else
+                        invalid
+
+                invalid, []
+            | Some(Shader.SweepGradient _) ->
+                [], [ issue objectId path "sweep gradients are outside the selected SVG subset" ]
+
+        let effectInvalid, effectUnsupported =
+            validatePathEffect objectId path paint.PathEffect
 
         let unsupported =
-            [ if paint.BlendMode <> BlendMode.SrcOver then yield issue objectId path "blend mode is outside the SVG foundation subset"
-              if paint.ColorFilter <> ColorFilter.NoColorFilter then yield issue objectId path "color filter is outside the SVG foundation subset"
-              if paint.MaskFilter <> MaskFilter.NoMaskFilter then yield issue objectId path "mask filter is outside the SVG foundation subset"
-              if paint.ImageFilter <> ImageFilter.NoImageFilter then yield issue objectId path "image filter is outside the SVG foundation subset"
-              yield! shaderUnsupported
-              yield! effectUnsupported ]
+            [
+                if paint.BlendMode <> BlendMode.SrcOver then
+                    yield issue objectId path "blend mode is outside the SVG foundation subset"
+                if paint.ColorFilter <> ColorFilter.NoColorFilter then
+                    yield issue objectId path "color filter is outside the SVG foundation subset"
+                if paint.MaskFilter <> MaskFilter.NoMaskFilter then
+                    yield issue objectId path "mask filter is outside the SVG foundation subset"
+                if paint.ImageFilter <> ImageFilter.NoImageFilter then
+                    yield issue objectId path "image filter is outside the SVG foundation subset"
+                yield! shaderUnsupported
+                yield! effectUnsupported
+            ]
 
         numeric @ shaderInvalid @ effectInvalid, unsupported
 
@@ -142,25 +217,35 @@ module SvgRetained =
         pathSpec.Commands
         |> List.mapi (fun index command ->
             let commandPath = path @ [ index ]
+
             match command with
             | PathCommand.MoveTo point
             | PathCommand.LineTo point -> validatePoint objectId commandPath point
-            | PathCommand.QuadTo(control, point) -> validatePoint objectId commandPath control @ validatePoint objectId commandPath point
+            | PathCommand.QuadTo(control, point) ->
+                validatePoint objectId commandPath control
+                @ validatePoint objectId commandPath point
             | PathCommand.CubicTo(control1, control2, point) ->
-                validatePoint objectId commandPath control1 @ validatePoint objectId commandPath control2 @ validatePoint objectId commandPath point
+                validatePoint objectId commandPath control1
+                @ validatePoint objectId commandPath control2
+                @ validatePoint objectId commandPath point
             | PathCommand.ArcTo(bounds, startAngle, sweepAngle) ->
-                [ yield! validateRect objectId commandPath bounds
-                  if not (finite startAngle && finite sweepAngle) then
-                      yield issue objectId commandPath "arc angles must be finite"
-                  if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
-                      yield issue objectId commandPath "arc bounds must have positive width and height" ]
+                [
+                    yield! validateRect objectId commandPath bounds
+                    if not (finite startAngle && finite sweepAngle) then
+                        yield issue objectId commandPath "arc angles must be finite"
+                    if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
+                        yield issue objectId commandPath "arc bounds must have positive width and height"
+                ]
             | PathCommand.Close -> [])
         |> List.concat
 
     let rec private validateScene (objectId: string option) (prefix: int list) (scene: Scene) =
         scene.Nodes
         |> List.mapi (fun index node -> validateNode objectId (prefix @ [ index ]) node)
-        |> List.fold (fun (invalid, unsupported) (nodeInvalid, nodeUnsupported) -> invalid @ nodeInvalid, unsupported @ nodeUnsupported) ([], [])
+        |> List.fold
+            (fun (invalid, unsupported) (nodeInvalid, nodeUnsupported) ->
+                invalid @ nodeInvalid, unsupported @ nodeUnsupported)
+            ([], [])
 
     and private validateNode (objectId: string option) (path: int list) (node: SceneNode) =
         let supported invalid unsupported = invalid, unsupported
@@ -171,76 +256,134 @@ module SvgRetained =
         | SceneNode.Group scenes ->
             scenes
             |> List.mapi (fun index scene -> validateScene objectId (path @ [ index ]) scene)
-            |> List.fold (fun (invalid, rejected) (nextInvalid, nextRejected) -> invalid @ nextInvalid, rejected @ nextRejected) ([], [])
+            |> List.fold
+                (fun (invalid, rejected) (nextInvalid, nextRejected) -> invalid @ nextInvalid, rejected @ nextRejected)
+                ([], [])
         | SceneNode.Rectangle((x, y, width, height), color) ->
             let invalid =
-                [ yield! validateRect objectId path { X = x; Y = y; Width = width; Height = height }
-                  if width < 0.0 || height < 0.0 then
-                      yield issue objectId path "rectangle width and height must be non-negative" ]
+                [
+                    yield!
+                        validateRect
+                            objectId
+                            path
+                            {
+                                X = x
+                                Y = y
+                                Width = width
+                                Height = height
+                            }
+                    if width < 0.0 || height < 0.0 then
+                        yield issue objectId path "rectangle width and height must be non-negative"
+                ]
+
             supported (invalid @ validateColor objectId path color) []
         | SceneNode.PaintedRectangle(bounds, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
+
             let invalidBounds =
-                [ yield! validateRect objectId path bounds
-                  if bounds.Width < 0.0 || bounds.Height < 0.0 then
-                      yield issue objectId path "rectangle width and height must be non-negative" ]
+                [
+                    yield! validateRect objectId path bounds
+                    if bounds.Width < 0.0 || bounds.Height < 0.0 then
+                        yield issue objectId path "rectangle width and height must be non-negative"
+                ]
+
             supported (invalidBounds @ invalidPaint) unsupportedPaint
         | SceneNode.Ellipse(bounds, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
             supported (validateRect objectId path bounds @ invalidPaint) unsupportedPaint
         | SceneNode.Circle(center, radius, color) ->
-            let radiusIssue = if finite radius && radius >= 0.0 then [] else [ issue objectId path "circle radius must be finite and non-negative" ]
-            supported (validatePoint objectId path center @ radiusIssue @ validateColor objectId path color) []
+            let radiusIssue =
+                if finite radius && radius >= 0.0 then
+                    []
+                else
+                    [ issue objectId path "circle radius must be finite and non-negative" ]
+
+            supported
+                (validatePoint objectId path center
+                 @ radiusIssue
+                 @ validateColor objectId path color)
+                []
         | SceneNode.FilledEllipse(bounds, color) ->
             supported (validateRect objectId path bounds @ validateColor objectId path color) []
         | SceneNode.Line(startPoint, endPoint, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
-            supported (validatePoint objectId path startPoint @ validatePoint objectId path endPoint @ invalidPaint) unsupportedPaint
+
+            supported
+                (validatePoint objectId path startPoint
+                 @ validatePoint objectId path endPoint
+                 @ invalidPaint)
+                unsupportedPaint
         | SceneNode.Path(pathSpec, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
             supported (invalidPaint @ validatePath objectId path pathSpec) unsupportedPaint
         | SceneNode.Text((x, y), _, color) ->
-            let invalid = if finite x && finite y then [] else [ issue objectId path "text position contains a non-finite coordinate" ]
+            let invalid =
+                if finite x && finite y then
+                    []
+                else
+                    [ issue objectId path "text position contains a non-finite coordinate" ]
+
             supported (invalid @ validateColor objectId path color) []
         | SceneNode.SizedText((x, y), _, size, color) ->
             let invalid =
-                [ if not (finite x && finite y) then issue objectId path "text position contains a non-finite coordinate"
-                  if not (finite size) || size <= 0.0 then issue objectId path "text size must be finite and positive" ]
+                [
+                    if not (finite x && finite y) then
+                        issue objectId path "text position contains a non-finite coordinate"
+                    if not (finite size) || size <= 0.0 then
+                        issue objectId path "text size must be finite and positive"
+                ]
+
             supported (invalid @ validateColor objectId path color) []
         | SceneNode.TextRun run ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path run.Paint
+
             let invalid =
-                [ yield! validatePoint objectId path run.Position
-                  if not (finite run.Font.Size) || run.Font.Size <= 0.0 then
-                      yield issue objectId path "text-run font size must be finite and positive"
-                  if run.Font.Family |> Option.exists System.String.IsNullOrWhiteSpace then
-                      yield issue objectId path "text-run font family must not be blank"
-                  if run.Font.Weight |> Option.exists (fun value -> value < 1 || value > 1000) then
-                      yield issue objectId path "text-run font weight must be between 1 and 1000"
-                  yield! invalidPaint ]
+                [
+                    yield! validatePoint objectId path run.Position
+                    if not (finite run.Font.Size) || run.Font.Size <= 0.0 then
+                        yield issue objectId path "text-run font size must be finite and positive"
+                    if run.Font.Family |> Option.exists System.String.IsNullOrWhiteSpace then
+                        yield issue objectId path "text-run font family must not be blank"
+                    if run.Font.Weight |> Option.exists (fun value -> value < 1 || value > 1000) then
+                        yield issue objectId path "text-run font weight must be between 1 and 1000"
+                    yield! invalidPaint
+                ]
+
             supported invalid unsupportedPaint
         | SceneNode.Arc(bounds, startAngle, sweepAngle, paint) ->
             let invalidPaint, unsupportedPaint = validatePaint objectId path paint
+
             let invalid =
-                [ yield! validateRect objectId path bounds
-                  if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
-                      yield issue objectId path "arc bounds must have positive width and height"
-                  if not (finite startAngle && finite sweepAngle) then
-                      yield issue objectId path "arc angles must be finite"
-                  yield! invalidPaint ]
+                [
+                    yield! validateRect objectId path bounds
+                    if bounds.Width <= 0.0 || bounds.Height <= 0.0 then
+                        yield issue objectId path "arc bounds must have positive width and height"
+                    if not (finite startAngle && finite sweepAngle) then
+                        yield issue objectId path "arc angles must be finite"
+                    yield! invalidPaint
+                ]
+
             supported invalid unsupportedPaint
         | SceneNode.ClipNode(clip, child) ->
             let clipInvalid =
                 match clip with
                 | Clip.RectClip bounds ->
-                    [ yield! validateRect objectId path bounds
-                      if bounds.Width < 0.0 || bounds.Height < 0.0 then
-                          yield issue objectId path "clip rectangle width and height must be non-negative" ]
+                    [
+                        yield! validateRect objectId path bounds
+                        if bounds.Width < 0.0 || bounds.Height < 0.0 then
+                            yield issue objectId path "clip rectangle width and height must be non-negative"
+                    ]
                 | Clip.PathClip pathSpec -> validatePath objectId path pathSpec
+
             let childInvalid, childUnsupported = validateScene objectId path child
             supported (clipInvalid @ childInvalid) childUnsupported
         | SceneNode.Translate((x, y), child) ->
-            let invalid = if finite x && finite y then [] else [ issue objectId path "translation contains a non-finite coordinate" ]
+            let invalid =
+                if finite x && finite y then
+                    []
+                else
+                    [ issue objectId path "translation contains a non-finite coordinate" ]
+
             let childInvalid, childUnsupported = validateScene objectId path child
             supported (invalid @ childInvalid) childUnsupported
         | SceneNode.Points _ -> unsupported "Points is outside the SVG foundation subset"
@@ -259,41 +402,65 @@ module SvgRetained =
         ids
         |> List.countBy id
         |> List.choose (fun (value, count) ->
-            if count > 1 then Some(issue None [] (kind + " id is duplicated: " + value)) else None)
+            if count > 1 then
+                Some(issue None [] (kind + " id is duplicated: " + value))
+            else
+                None)
 
     let project (scene: RetainedScene) =
         let objects = scene.Layers |> List.collect (fun layer -> layer.Objects)
+
         let identityIssues =
-            [ if System.String.IsNullOrWhiteSpace scene.RootId then yield issue None [] "root id must not be blank"
-              if scene.Revision < 0 then yield issue None [] "revision must be non-negative"
-              if not (validCamera scene.Camera) then yield issue None [] "camera pan must be finite and zoom must be finite and positive"
-              for layer in scene.Layers do
-                  if System.String.IsNullOrWhiteSpace layer.Id then yield issue None [] "layer id must not be blank"
-              for objectValue in objects do
-                  if System.String.IsNullOrWhiteSpace objectValue.Id then yield issue None [] "object id must not be blank"
-                  if System.String.IsNullOrWhiteSpace objectValue.AccessibleLabel then yield issue (Some objectValue.Id) [] "accessible label must not be blank"
-              yield! duplicateIssues "layer" (scene.Layers |> List.map (fun layer -> layer.Id))
-              yield! duplicateIssues "object" (objects |> List.map (fun objectValue -> objectValue.Id)) ]
+            [
+                if System.String.IsNullOrWhiteSpace scene.RootId then
+                    yield issue None [] "root id must not be blank"
+                if scene.Revision < 0 then
+                    yield issue None [] "revision must be non-negative"
+                if not (validCamera scene.Camera) then
+                    yield issue None [] "camera pan must be finite and zoom must be finite and positive"
+                for layer in scene.Layers do
+                    if System.String.IsNullOrWhiteSpace layer.Id then
+                        yield issue None [] "layer id must not be blank"
+                for objectValue in objects do
+                    if System.String.IsNullOrWhiteSpace objectValue.Id then
+                        yield issue None [] "object id must not be blank"
+
+                    if System.String.IsNullOrWhiteSpace objectValue.AccessibleLabel then
+                        yield issue (Some objectValue.Id) [] "accessible label must not be blank"
+                yield! duplicateIssues "layer" (scene.Layers |> List.map (fun layer -> layer.Id))
+                yield! duplicateIssues "object" (objects |> List.map (fun objectValue -> objectValue.Id))
+            ]
 
         let invalidNodes, unsupportedNodes =
             objects
             |> List.map (fun objectValue -> validateScene (Some objectValue.Id) [] objectValue.Content)
-            |> List.fold (fun (invalid, unsupported) (nextInvalid, nextUnsupported) -> invalid @ nextInvalid, unsupported @ nextUnsupported) ([], [])
+            |> List.fold
+                (fun (invalid, unsupported) (nextInvalid, nextUnsupported) ->
+                    invalid @ nextInvalid, unsupported @ nextUnsupported)
+                ([], [])
 
         let invalid = identityIssues @ invalidNodes
-        if not invalid.IsEmpty then SvgAdapterResult.Invalid invalid
-        elif not unsupportedNodes.IsEmpty then SvgAdapterResult.Unsupported unsupportedNodes
-        else SvgAdapterResult.Rendered scene
+
+        if not invalid.IsEmpty then
+            SvgAdapterResult.Invalid invalid
+        elif not unsupportedNodes.IsEmpty then
+            SvgAdapterResult.Unsupported unsupportedNodes
+        else
+            SvgAdapterResult.Rendered scene
 
     let toScreenPoint (camera: SvgCamera) (point: Point) : Point =
-        { X = camera.PanX + camera.Zoom * point.X
-          Y = camera.PanY + camera.Zoom * point.Y }
+        {
+            X = camera.PanX + camera.Zoom * point.X
+            Y = camera.PanY + camera.Zoom * point.Y
+        }
 
     let tryToScenePoint (camera: SvgCamera) (point: Point) : Point option =
         if validCamera camera then
             Some
-                { X = (point.X - camera.PanX) / camera.Zoom
-                  Y = (point.Y - camera.PanY) / camera.Zoom }
+                {
+                    X = (point.X - camera.PanX) / camera.Zoom
+                    Y = (point.Y - camera.PanY) / camera.Zoom
+                }
         else
             None
 
@@ -301,10 +468,12 @@ module SvgRetained =
         match project scene with
         | SvgAdapterResult.Rendered _ ->
             Ok
-                { Scene = scene
-                  SelectedObjectId = None
-                  FocusedObjectId = None
-                  CapturedPointerId = None }
+                {
+                    Scene = scene
+                    SelectedObjectId = None
+                    FocusedObjectId = None
+                    CapturedPointerId = None
+                }
         | SvgAdapterResult.Invalid issues -> Error(RetainedInteractionError.InvalidScene issues)
         | SvgAdapterResult.Unsupported issues -> Error(RetainedInteractionError.UnsupportedScene issues)
 
@@ -330,12 +499,15 @@ module SvgRetained =
 
     let private moveFocus direction (state: RetainedInteractionState) =
         let candidates = selectableObjects state.Scene
+
         match candidates with
         | [] -> accept { state with FocusedObjectId = None }
         | _ ->
             let currentIndex =
                 state.FocusedObjectId
-                |> Option.bind (fun current -> candidates |> List.tryFindIndex (fun candidate -> candidate.Id = current))
+                |> Option.bind (fun current ->
+                    candidates |> List.tryFindIndex (fun candidate -> candidate.Id = current))
+
             let nextIndex =
                 match direction, currentIndex with
                 | 1, Some index -> (index + 1) % candidates.Length
@@ -343,7 +515,11 @@ module SvgRetained =
                 | 1, None -> 0
                 | _, None -> candidates.Length - 1
                 | _ -> 0
-            accept { state with FocusedObjectId = Some candidates[nextIndex].Id }
+
+            accept
+                { state with
+                    FocusedObjectId = Some candidates[nextIndex].Id
+                }
 
     let update message (state: RetainedInteractionState) =
         match message with
@@ -356,31 +532,50 @@ module SvgRetained =
                 | SvgAdapterResult.Unsupported issues -> reject (RetainedInteractionError.UnsupportedScene issues) state
                 | SvgAdapterResult.Rendered _ ->
                     let remainsSelectable id =
-                        findObject id candidate |> Option.exists (fun objectValue -> objectValue.Selectable)
+                        findObject id candidate
+                        |> Option.exists (fun objectValue -> objectValue.Selectable)
+
                     accept
                         { state with
                             Scene = candidate
                             SelectedObjectId = state.SelectedObjectId |> Option.filter remainsSelectable
-                            FocusedObjectId = state.FocusedObjectId |> Option.filter remainsSelectable }
+                            FocusedObjectId = state.FocusedObjectId |> Option.filter remainsSelectable
+                        }
         | RetainedInteractionMessage.Select(expected, objectId) ->
             requireRevision expected state (fun () ->
                 match findObject objectId state.Scene with
                 | None -> reject (RetainedInteractionError.UnknownObject objectId) state
-                | Some objectValue when not objectValue.Selectable -> reject (RetainedInteractionError.ObjectNotSelectable objectId) state
-                | Some _ -> accept { state with SelectedObjectId = Some objectId; FocusedObjectId = Some objectId })
+                | Some objectValue when not objectValue.Selectable ->
+                    reject (RetainedInteractionError.ObjectNotSelectable objectId) state
+                | Some _ ->
+                    accept
+                        { state with
+                            SelectedObjectId = Some objectId
+                            FocusedObjectId = Some objectId
+                        })
         | RetainedInteractionMessage.ClearSelection expected ->
             requireRevision expected state (fun () -> accept { state with SelectedObjectId = None })
-        | RetainedInteractionMessage.FocusNext expected ->
-            requireRevision expected state (fun () -> moveFocus 1 state)
+        | RetainedInteractionMessage.FocusNext expected -> requireRevision expected state (fun () -> moveFocus 1 state)
         | RetainedInteractionMessage.FocusPrevious expected ->
             requireRevision expected state (fun () -> moveFocus -1 state)
         | RetainedInteractionMessage.SetCamera(expected, camera) ->
             requireRevision expected state (fun () ->
-                if validCamera camera then accept { state with Scene = { state.Scene with Camera = camera } }
-                else reject RetainedInteractionError.InvalidCamera state)
+                if validCamera camera then
+                    accept
+                        { state with
+                            Scene = { state.Scene with Camera = camera }
+                        }
+                else
+                    reject RetainedInteractionError.InvalidCamera state)
         | RetainedInteractionMessage.CapturePointer(expected, pointerId) ->
-            requireRevision expected state (fun () -> accept { state with CapturedPointerId = Some pointerId })
+            requireRevision expected state (fun () ->
+                accept
+                    { state with
+                        CapturedPointerId = Some pointerId
+                    })
         | RetainedInteractionMessage.ReleasePointer(expected, pointerId) ->
             requireRevision expected state (fun () ->
-                if state.CapturedPointerId = Some pointerId then accept { state with CapturedPointerId = None }
-                else reject (RetainedInteractionError.PointerNotCaptured pointerId) state)
+                if state.CapturedPointerId = Some pointerId then
+                    accept { state with CapturedPointerId = None }
+                else
+                    reject (RetainedInteractionError.PointerNotCaptured pointerId) state)

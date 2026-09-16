@@ -16,14 +16,16 @@ type TextFixtureCategory =
     | NegativeMissingGlyph
 
 type TextShapingFixture =
-    { Id: string
-      Category: TextFixtureCategory
-      Text: string
-      Font: FontSpec
-      ExpectedDirection: TextDirection
-      ExpectedScript: TextScript
-      ExpectsFallback: bool
-      ExpectsMissingGlyph: bool }
+    {
+        Id: string
+        Category: TextFixtureCategory
+        Text: string
+        Font: FontSpec
+        ExpectedDirection: TextDirection
+        ExpectedScript: TextScript
+        ExpectsFallback: bool
+        ExpectsMissingGlyph: bool
+    }
 
 module TextShapingFixtures =
     val all: TextShapingFixture list

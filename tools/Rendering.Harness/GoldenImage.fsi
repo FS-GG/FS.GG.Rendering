@@ -25,19 +25,23 @@ module GoldenImage =
 
     /// Per-pixel comparison metrics over two equally-sized decoded images.
     type ImageComparison =
-        { Width: int
-          Height: int
-          TotalPixels: int
-          /// Count of pixels whose worst channel (R/G/B/A) absolute delta exceeds `ChannelTolerance`.
-          DiffPixelCount: int
-          /// Worst single-channel absolute delta anywhere in the image (0..255).
-          MaxChannelDelta: int }
+        {
+            Width: int
+            Height: int
+            TotalPixels: int
+            /// Count of pixels whose worst channel (R/G/B/A) absolute delta exceeds `ChannelTolerance`.
+            DiffPixelCount: int
+            /// Worst single-channel absolute delta anywhere in the image (0..255).
+            MaxChannelDelta: int
+        }
 
     /// The perceptual budget. `ChannelTolerance` is the per-channel absolute delta under which a pixel
     /// counts as unchanged; `MaxDiffPixels` is how many still-changed pixels remain `Equivalent`.
     type GoldenTolerance =
-        { ChannelTolerance: int
-          MaxDiffPixels: int }
+        {
+            ChannelTolerance: int
+            MaxDiffPixels: int
+        }
 
     /// The typed outcome of one comparison. ONLY `Equivalent` is a pass.
     type GoldenOutcome =
@@ -56,9 +60,11 @@ module GoldenImage =
 
     /// One corpus scene's golden result.
     type SceneGolden =
-        { ScenarioId: string
-          Status: CandidateStatus
-          Diagnostics: string list }
+        {
+            ScenarioId: string
+            Status: CandidateStatus
+            Diagnostics: string list
+        }
 
     /// Byte-exact budget (0 channel delta, 0 diff pixels) — the strictest gate.
     val exact: GoldenTolerance
@@ -75,7 +81,8 @@ module GoldenImage =
 
     /// Render one corpus scene through the in-process CPU raster and compare it against its committed
     /// reference under `tolerance`. Never returns a false pass (see the module doc).
-    val gateScene: tolerance: GoldenTolerance -> referenceDirectory: string -> item: RenderAnywhere.CorpusItem -> SceneGolden
+    val gateScene:
+        tolerance: GoldenTolerance -> referenceDirectory: string -> item: RenderAnywhere.CorpusItem -> SceneGolden
 
     /// `gateScene` over the whole `RenderAnywhere.corpus ()`.
     val gateCorpus: tolerance: GoldenTolerance -> referenceDirectory: string -> SceneGolden list

@@ -59,7 +59,9 @@ open FS.GG.TestSupport
 // laundered into "documented" by being listed here.
 
 let private repositoryRoot = RepositoryRoot.value
-let private repositoryPath (rel: string) = Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let private repositoryPath (rel: string) =
+    Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
 let private apiSurfaceRoot = repositoryPath "template/base/docs/api-surface"
 let private productSkillsRoot = repositoryPath "template/product-skills"
@@ -98,18 +100,12 @@ let private publicValRegex = SurfaceSignature.publicValRegex
 let private moduleAccess = @"(?:rec\s+|public\s+|private\s+|internal\s+)*"
 
 let private moduleRegex =
-    Regex(
-        $@"^(?<indent>\s*)module\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*=",
-        RegexOptions.Compiled
-    )
+    Regex($@"^(?<indent>\s*)module\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*=", RegexOptions.Compiled)
 
 /// The `namespace` a signature file opens with — everything below it is qualified by it. The file-level
 /// `module A.B.C` form (no `=`) plays exactly the same role, so it is taken here too.
 let private rootRegex =
-    Regex(
-        $@"^(?:namespace|module)\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*$",
-        RegexOptions.Compiled
-    )
+    Regex($@"^(?:namespace|module)\s+{moduleAccess}(?<name>[A-Z][\w']*(?:\.[A-Z][\w']*)*)\s*$", RegexOptions.Compiled)
 
 /// Every public val one signature file declares: `name, the .fsi, the FULLY-QUALIFIED module that declares it`.
 ///
@@ -121,7 +117,8 @@ let private shippedValsIn (rel: string) (lines: string seq) =
     ||> Seq.fold (fun (root, scopes, acc) line ->
         // Scopes are held outermost-first and their indents strictly increase, so "pop every module this line
         // has dedented out of" is exactly "keep the ones indented less than this line".
-        let enclosing (indent: int) = scopes |> List.filter (fun (i, _) -> i < indent)
+        let enclosing (indent: int) =
+            scopes |> List.filter (fun (i, _) -> i < indent)
 
         let rootMatch = rootRegex.Match line
         let moduleMatch = moduleRegex.Match line
@@ -163,7 +160,8 @@ let private shippedSurface = byName (fun (_, file, _) -> file)
 
 /// name -> the fully-qualified module(s) that DECLARE it: `subscriptions` is
 /// `FS.GG.UI.Controls.Elmish.ControlsElmish`, and `runScriptToModel` is that module's nested `….Perf`.
-let private declaringModules = byName (fun (_, _, declaringModule) -> declaringModule)
+let private declaringModules =
+    byName (fun (_, _, declaringModule) -> declaringModule)
 
 /// Everything the product is TOLD, as one body of text. Concatenated on purpose: S-DOC asks whether a
 /// surface is documented AT ALL, and which skill says it is R-REACH's question, not this one.
@@ -184,7 +182,8 @@ let private productSkillText =
 
 /// An inline code span: one or more backticks, the shortest run closed by the same number. Confined to a
 /// single line, which is what every citation in these skills actually is.
-let private inlineCodeRegex = Regex(@"(?<ticks>`+)(?<code>[^\n`](?:[^\n]*?[^\n`])?)\k<ticks>(?!`)", RegexOptions.Compiled)
+let private inlineCodeRegex =
+    Regex(@"(?<ticks>`+)(?<code>[^\n`](?:[^\n]*?[^\n`])?)\k<ticks>(?!`)", RegexOptions.Compiled)
 
 /// The code a skill SHOWS, split out from the prose it writes: fenced blocks, plus inline code spans taken
 /// from the unfenced lines (the fences themselves would otherwise read as inline delimiters).
@@ -223,9 +222,11 @@ let private inlineCodeRegex = Regex(@"(?<ticks>`+)(?<code>[^\n`](?:[^\n]*?[^\n`]
 /// one — which the caller must treat as defects, not curiosities. See `skillsWithUnclosedFence` and
 /// `skillsWithUntaggedFence`.
 type private SkillCode =
-    { Code: string
-      UnclosedFence: bool
-      UntaggedFences: int }
+    {
+        Code: string
+        UnclosedFence: bool
+        UntaggedFences: int
+    }
 
 /// #1168: `bareCite`/`citedQualifiers`/`bindsName` are raw-text regexes with no concept of "inside a string
 /// literal". An ordinary English word sitting in an `Expect.*` assertion message — "HUD regions do not
@@ -290,11 +291,13 @@ let private stripStringLiterals (code: string) : string =
     let keepInterpolationHole () =
         keep () // '{'
         let mutable depth = 1
+
         while i < n && depth > 0 do
             match code.[i] with
             | '{' -> depth <- depth + 1
             | '}' -> depth <- depth - 1
             | _ -> ()
+
             keep ()
 
     // Consumes a line comment (`//`, which also covers the `///` doc-comment spelling — it starts the same
@@ -434,13 +437,16 @@ let private codeReferencesIn (markdown: string) =
     // #1168: strip F# string-literal CONTENTS before any citation regex sees this corpus, so a word that
     // merely spells a public API name inside a quoted message (an Expecto assertion, a log line, anything a
     // skill's example happens to say) cannot be mistaken for a citation of it.
-    { Code = stripStringLiterals (code.ToString())
-      UnclosedFence = scanned.UnclosedFence
-      UntaggedFences = scanned.UntaggedFences }
+    {
+        Code = stripStringLiterals (code.ToString())
+        UnclosedFence = scanned.UnclosedFence
+        UntaggedFences = scanned.UntaggedFences
+    }
 
 let private skillCode =
     Directory.EnumerateFiles(productSkillsRoot, "SKILL.md", SearchOption.AllDirectories)
-    |> Seq.map (fun path -> Path.GetRelativePath(productSkillsRoot, path).Replace('\\', '/'), codeReferencesIn (File.ReadAllText path))
+    |> Seq.map (fun path ->
+        Path.GetRelativePath(productSkillsRoot, path).Replace('\\', '/'), codeReferencesIn (File.ReadAllText path))
     |> Seq.toList
 
 /// Everything the product is told IN CODE — the only thing that can document a surface (#654).
@@ -502,7 +508,9 @@ let private citedQualifiers (corpus: string) (name: string) =
 ///
 /// `AppRoot.Model` is a suffix of nothing this package ships. That is the whole of #713.
 let private isSpellingOf (modulePath: string) (qualifier: string) =
-    let segments (s: string) = s.Split '.' |> Array.filter (fun part -> part <> "")
+    let segments (s: string) =
+        s.Split '.' |> Array.filter (fun part -> part <> "")
+
     let declared = segments modulePath
     let written = segments qualifier
 
@@ -521,7 +529,8 @@ let private isSpellingOf (modulePath: string) (qualifier: string) =
 /// PRODUCT'S OWN FUNCTION — the `visible` failure of #692, one hop further out, surviving through the very
 /// hatch #692 opened.
 let private qualifiedCite (corpus: string) (name: string) =
-    let declaring = declaringModules |> Map.tryFind name |> Option.defaultValue Set.empty
+    let declaring =
+        declaringModules |> Map.tryFind name |> Option.defaultValue Set.empty
 
     citedQualifiers corpus name
     |> Seq.exists (fun qualifier -> declaring |> Set.exists (fun declared -> isSpellingOf declared qualifier))
@@ -609,7 +618,11 @@ let private ledger =
     |> Array.filter (fun l -> l <> "" && not (l.StartsWith "#"))
     |> Array.choose (fun l ->
         let parts = l.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
-        if parts.Length >= 2 then Some(parts.[1], parts.[0]) else None)
+
+        if parts.Length >= 2 then
+            Some(parts.[1], parts.[0])
+        else
+            None)
     |> Map.ofArray
 
 /// The categories a ledger line may carry. Adding one is a DELIBERATE act — a line whose category is not here
@@ -641,236 +654,239 @@ let private knownCategories =
 /// A public val is COVERED when a product skill documents it, or the ledger declares it under ANY category —
 /// the exemption side of S-DOC rule 1. Factored out so the guard tests can exercise the EXACT predicate the
 /// rule uses, rather than a paraphrase that could drift from it.
-let private isCovered (name: string) = isDocumented name || ledger.ContainsKey name
+let private isCovered (name: string) =
+    isDocumented name || ledger.ContainsKey name
 
 let private commaSep (items: string seq) = String.Join(", ", Seq.sort items)
 
 [<Tests>]
 let surfaceDocCoverageTests =
-    testList "Surface documentation coverage (S-DOC, #507)" [
+    testList
+        "Surface documentation coverage (S-DOC, #507)"
+        [
 
-        // Every input must be non-empty, or every assertion below passes by checking nothing — which is the
-        // failure mode this whole item is about (FS-GG/.github#266).
-        test "the inputs are real (S-DOC is not vacuous)" {
-            Expect.isNonEmpty (Map.toList shippedSurface) "the shipped api-surface declares public vals"
-            Expect.isNonEmpty productSkillText "the product skills carry prose"
-            Expect.isNonEmpty productSkillCode "the product skills cite code"
-            Expect.isNonEmpty (Map.toList ledger) $"{ledgerRel} declares exemptions"
+            // Every input must be non-empty, or every assertion below passes by checking nothing — which is the
+            // failure mode this whole item is about (FS-GG/.github#266).
+            test "the inputs are real (S-DOC is not vacuous)" {
+                Expect.isNonEmpty (Map.toList shippedSurface) "the shipped api-surface declares public vals"
+                Expect.isNonEmpty productSkillText "the product skills carry prose"
+                Expect.isNonEmpty productSkillCode "the product skills cite code"
+                Expect.isNonEmpty (Map.toList ledger) $"{ledgerRel} declares exemptions"
 
-            Expect.isTrue
-                (shippedSurface.Count > 100)
-                $"the api-surface parse found {shippedSurface.Count} public vals — far fewer than the ~428 this \
+                Expect.isTrue
+                    (shippedSurface.Count > 100)
+                    $"the api-surface parse found {shippedSurface.Count} public vals — far fewer than the ~428 this \
                   repo ships, so the extractor has stopped seeing the surface. That is a defect in this test, \
                   not a smaller surface."
 
-            // ...and the MODULE half of that parse, which #713 turns the whole qualified-citation rule on. If
-            // the `module`/`namespace` walk ever stops seeing a declaration, the vals under it get an empty or
-            // truncated path, no qualifier can be a suffix of it, and every QUALIFIED citation silently stops
-            // crediting — reporting correct, documented surfaces as undeclared. That is the gate inventing
-            // violations (#598), and it is the direction this fix can fail in, so it is asserted by name.
-            let rootless =
-                shippedVals
-                |> List.filter (fun (_, _, declaringModule) -> not (declaringModule.Contains "."))
-                |> List.map (fun (name, file, declaringModule) -> $"{name} ({file}: '{declaringModule}')")
-                |> List.distinct
+                // ...and the MODULE half of that parse, which #713 turns the whole qualified-citation rule on. If
+                // the `module`/`namespace` walk ever stops seeing a declaration, the vals under it get an empty or
+                // truncated path, no qualifier can be a suffix of it, and every QUALIFIED citation silently stops
+                // crediting — reporting correct, documented surfaces as undeclared. That is the gate inventing
+                // violations (#598), and it is the direction this fix can fail in, so it is asserted by name.
+                let rootless =
+                    shippedVals
+                    |> List.filter (fun (_, _, declaringModule) -> not (declaringModule.Contains "."))
+                    |> List.map (fun (name, file, declaringModule) -> $"{name} ({file}: '{declaringModule}')")
+                    |> List.distinct
 
-            Expect.isEmpty
-                rootless
-                $"these public vals resolved to no namespace-qualified declaring module, so the `module` / \
+                Expect.isEmpty
+                    rootless
+                    $"these public vals resolved to no namespace-qualified declaring module, so the `module` / \
                   `namespace` walk has stopped seeing the shape of the signature file. Every qualified citation \
                   of them would silently STOP crediting — which reports correct docs as undeclared, rather than \
                   letting an undocumented surface through. Fix the walk, not the docs. Rootless: {commaSep rootless}"
 
-            // The code extractor is the half that can fail SILENTLY. If `codeReferencesIn` ever stops seeing
-            // fences or backticks it returns little or nothing, and then NOTHING is documented — which reds
-            // rule 1 loudly, but makes both anti-rot rules pass by checking nothing, and those are the two
-            // that keep the ledger a ratchet. So measure the credit it actually issues, not just that it ran.
-            let documented = shippedSurface |> Map.toList |> List.filter (fun (name, _) -> isDocumented name)
+                // The code extractor is the half that can fail SILENTLY. If `codeReferencesIn` ever stops seeing
+                // fences or backticks it returns little or nothing, and then NOTHING is documented — which reds
+                // rule 1 loudly, but makes both anti-rot rules pass by checking nothing, and those are the two
+                // that keep the ledger a ratchet. So measure the credit it actually issues, not just that it ran.
+                let documented =
+                    shippedSurface |> Map.toList |> List.filter (fun (name, _) -> isDocumented name)
 
-            Expect.isTrue
-                (documented.Length > 100)
-                $"only {documented.Length} of {shippedSurface.Count} public vals are cited as code by any \
+                Expect.isTrue
+                    (documented.Length > 100)
+                    $"only {documented.Length} of {shippedSurface.Count} public vals are cited as code by any \
                   product skill — far fewer than the 100+ that were, so the code extractor has stopped seeing \
                   the skills' fenced blocks or backticks. That is a defect in this test, not a documentation \
                   regression."
 
-            // ...and the floor above CANNOT catch the failure that matters most, because that one makes the
-            // number go up. An unclosed fence spills the rest of the file into the code corpus, and the
-            // skill's prose starts documenting APIs again — silently, which is exactly #654.
-            Expect.isEmpty
-                skillsWithUnclosedFence
-                $"these product skills end with a code fence still OPEN: {commaSep skillsWithUnclosedFence}. \
+                // ...and the floor above CANNOT catch the failure that matters most, because that one makes the
+                // number go up. An unclosed fence spills the rest of the file into the code corpus, and the
+                // skill's prose starts documenting APIs again — silently, which is exactly #654.
+                Expect.isEmpty
+                    skillsWithUnclosedFence
+                    $"these product skills end with a code fence still OPEN: {commaSep skillsWithUnclosedFence}. \
                   Every line after the stray fence is then read as CODE, so the skill's PROSE can document an \
                   API again by using its name as an English word — the #654 homonym, reopened in the file that \
                   closed it. Close the fence."
 
-            // The corpus is F#-ONLY (#664), so a fence that does not say what it is cannot be placed: crediting
-            // it reopens the homonym, dropping it silently un-documents whatever it cites. Neither is a thing a
-            // gate may decide on the author's behalf, so it is the author's to say.
-            Expect.isEmpty
-                skillsWithUntaggedFence
-                $"these product skills open a fenced block with NO language tag: {commaSep skillsWithUntaggedFence}. \
+                // The corpus is F#-ONLY (#664), so a fence that does not say what it is cannot be placed: crediting
+                // it reopens the homonym, dropping it silently un-documents whatever it cites. Neither is a thing a
+                // gate may decide on the author's behalf, so it is the author's to say.
+                Expect.isEmpty
+                    skillsWithUntaggedFence
+                    $"these product skills open a fenced block with NO language tag: {commaSep skillsWithUntaggedFence}. \
                   Only F#-tagged blocks document a surface (#664 — a bare word in a `bash` block credited \
                   `push`, `fill`, `count` … by homonym), so an untagged block is ambiguous: it either documents \
                   by accident or documents nothing, silently. Say what it is — ```fsharp if it is F# and you \
                   want its APIs credited, ```bash / ```text / ```json if it is not."
-        }
+            }
 
-        // S-DOC. The rule.
-        test "every public api-surface val is documented in a product skill, or declared in the ledger" {
-            let undeclared =
-                shippedSurface
-                |> Map.toList
-                |> List.filter (fun (name, _) -> not (isCovered name))
-                |> List.map (fun (name, files) -> $"{name} ({commaSep files})")
+            // S-DOC. The rule.
+            test "every public api-surface val is documented in a product skill, or declared in the ledger" {
+                let undeclared =
+                    shippedSurface
+                    |> Map.toList
+                    |> List.filter (fun (name, _) -> not (isCovered name))
+                    |> List.map (fun (name, files) -> $"{name} ({commaSep files})")
 
-            Expect.isEmpty
-                undeclared
-                $"these public vals ship to a generated product and are named in NO product skill and in NO \
+                Expect.isEmpty
+                    undeclared
+                    $"these public vals ship to a generated product and are named in NO product skill and in NO \
                   ledger line — so a product author cannot find them and nobody decided they should not. \
                   Document the surface in the skill whose profile gate matches the package's reach (R-REACH), \
                   or add it to {ledgerRel} with a category and a reason. Undeclared: {commaSep undeclared}"
-        }
+            }
 
-        // The first anti-rot rule: an exemption a skill has since made good must be DELETED, not left to imply
-        // the surface is still undocumented. Without this the ledger records the problem forever.
-        test "no ledger entry names a surface a product skill now documents" {
-            let stale =
-                ledger
-                |> Map.toList
-                |> List.map fst
-                |> List.filter isDocumented
+            // The first anti-rot rule: an exemption a skill has since made good must be DELETED, not left to imply
+            // the surface is still undocumented. Without this the ledger records the problem forever.
+            test "no ledger entry names a surface a product skill now documents" {
+                let stale = ledger |> Map.toList |> List.map fst |> List.filter isDocumented
 
-            Expect.isEmpty
-                stale
-                $"these are listed in {ledgerRel} as undocumented, and a product skill now documents them. The \
+                Expect.isEmpty
+                    stale
+                    $"these are listed in {ledgerRel} as undocumented, and a product skill now documents them. The \
                   ledger only shrinks: delete the line. Stale: {commaSep stale}"
-        }
+            }
 
-        // The second: an exemption for a val that no longer exists is a line nobody will ever remove, and it
-        // quietly makes the ledger look bigger — i.e. the gap look worse — than it is.
-        test "no ledger entry names a surface the api-surface no longer ships" {
-            let phantom =
-                ledger
-                |> Map.toList
-                |> List.map fst
-                |> List.filter (fun name -> not (shippedSurface.ContainsKey name))
+            // The second: an exemption for a val that no longer exists is a line nobody will ever remove, and it
+            // quietly makes the ledger look bigger — i.e. the gap look worse — than it is.
+            test "no ledger entry names a surface the api-surface no longer ships" {
+                let phantom =
+                    ledger
+                    |> Map.toList
+                    |> List.map fst
+                    |> List.filter (fun name -> not (shippedSurface.ContainsKey name))
 
-            Expect.isEmpty
-                phantom
-                $"these are listed in {ledgerRel} but are not public vals in the shipped api-surface — the \
+                Expect.isEmpty
+                    phantom
+                    $"these are listed in {ledgerRel} but are not public vals in the shipped api-surface — the \
                   surface moved and the exemption outlived it. Delete the line. Phantom: {commaSep phantom}"
-        }
+            }
 
-        // Every category is one the ledger's format legend and this file both KNOW. A category is a promise
-        // about a line's future — pending `tracked` vs terminal `vocabulary` / `owner-sourced` /
-        // `owner-documented` — so an invented or mistyped one is a line no rule and no reader can honour. That
-        // is the silent-append failure this file refuses, in the category column: adding a disposition must be
-        // a decision (a line in `knownCategories`, with the paragraph that says what it promises), not a typo.
-        test "every ledger category is a known disposition" {
-            let unknown =
-                ledger
-                |> Map.toList
-                |> List.filter (fun (_, category) -> not (knownCategories.Contains category))
-                |> List.map (fun (name, category) -> $"{name} ({category})")
+            // Every category is one the ledger's format legend and this file both KNOW. A category is a promise
+            // about a line's future — pending `tracked` vs terminal `vocabulary` / `owner-sourced` /
+            // `owner-documented` — so an invented or mistyped one is a line no rule and no reader can honour. That
+            // is the silent-append failure this file refuses, in the category column: adding a disposition must be
+            // a decision (a line in `knownCategories`, with the paragraph that says what it promises), not a typo.
+            test "every ledger category is a known disposition" {
+                let unknown =
+                    ledger
+                    |> Map.toList
+                    |> List.filter (fun (_, category) -> not (knownCategories.Contains category))
+                    |> List.map (fun (name, category) -> $"{name} ({category})")
 
-            Expect.isEmpty
-                unknown
-                $"these {ledgerRel} lines carry a category not in knownCategories ({commaSep knownCategories}) — \
+                Expect.isEmpty
+                    unknown
+                    $"these {ledgerRel} lines carry a category not in knownCategories ({commaSep knownCategories}) — \
                   a typo, or a new disposition added without a decision. Fix the spelling, or add the category \
                   to knownCategories with the paragraph that says what it promises. Unknown: {commaSep unknown}"
-        }
+            }
 
-        // #998 — the `owner-documented` TERMINAL disposition. The 37 Ai/Ballistics/Dice/Effects vals are
-        // VENDORED into this mirror (#984) but documented in FS.GG.Game's `fs-gg-game-core` BODY
-        // (FS.GG.Game#466/#472), a corpus S-DOC cannot read here because ADR-0063 (#965) retired the local
-        // copy. Adjudicated (option 3 of #998) as a PERMANENT category, distinct from the pending `tracked`
-        // gap they sat in through #984/#993. These two guards pin what the category PROMISES: that a val in it
-        // is covered and never stale, and — its mirror — that the exemption is not a blanket.
-        test "the `owner-documented` category satisfies coverage and is terminal (#998)" {
-            let ownerDocumented =
-                ledger
-                |> Map.toList
-                |> List.filter (fun (_, category) -> category = "owner-documented")
-                |> List.map fst
+            // #998 — the `owner-documented` TERMINAL disposition. The 37 Ai/Ballistics/Dice/Effects vals are
+            // VENDORED into this mirror (#984) but documented in FS.GG.Game's `fs-gg-game-core` BODY
+            // (FS.GG.Game#466/#472), a corpus S-DOC cannot read here because ADR-0063 (#965) retired the local
+            // copy. Adjudicated (option 3 of #998) as a PERMANENT category, distinct from the pending `tracked`
+            // gap they sat in through #984/#993. These two guards pin what the category PROMISES: that a val in it
+            // is covered and never stale, and — its mirror — that the exemption is not a blanket.
+            test "the `owner-documented` category satisfies coverage and is terminal (#998)" {
+                let ownerDocumented =
+                    ledger
+                    |> Map.toList
+                    |> List.filter (fun (_, category) -> category = "owner-documented")
+                    |> List.map fst
 
-            // Non-vacuous: the category must actually be populated, or this guard passes by checking nothing —
-            // the FS-GG/.github#266 failure. #998 moved 37 rows into it; if they were retired or renamed,
-            // retire this guard with them rather than letting it go quietly green.
-            Expect.isNonEmpty
-                ownerDocumented
-                $"no {ledgerRel} line carries the `owner-documented` category — #998 moved the 37 \
+                // Non-vacuous: the category must actually be populated, or this guard passes by checking nothing —
+                // the FS-GG/.github#266 failure. #998 moved 37 rows into it; if they were retired or renamed,
+                // retire this guard with them rather than letting it go quietly green.
+                Expect.isNonEmpty
+                    ownerDocumented
+                    $"no {ledgerRel} line carries the `owner-documented` category — #998 moved the 37 \
                   Ai/Ballistics/Dice/Effects vals into it. If the category is genuinely empty now, delete this \
                   guard; do not let it pass vacuously."
 
-            for name in ownerDocumented do
-                // Rule 1: COVERED. A product author is not left unable to find them — the ledger records the
-                // cross-repo documentation decision, so S-DOC does not report them undeclared.
-                Expect.isTrue
-                    (isCovered name)
-                    $"`{name}` is `owner-documented` but S-DOC does not count it as covered — the coverage \
+                for name in ownerDocumented do
+                    // Rule 1: COVERED. A product author is not left unable to find them — the ledger records the
+                    // cross-repo documentation decision, so S-DOC does not report them undeclared.
+                    Expect.isTrue
+                        (isCovered name)
+                        $"`{name}` is `owner-documented` but S-DOC does not count it as covered — the coverage \
                       predicate and the ledger disagree, which would red rule 1 against a declared line."
 
-                // TERMINAL, not pending. The whole point: the citations live in FS.GG.Game's `fs-gg-game-core`,
-                // which this corpus cannot read, so NO local skill can cite these — rule 2 can never fire and
-                // the line is never `tracked`-stale. If one ever DID become locally documented, that is a real
-                // event (delete its line); this guard names it rather than letting rule 2 red cryptically.
-                Expect.isFalse
-                    (isDocumented name)
-                    $"`{name}` is `owner-documented` — permanently satisfied by cross-repo owner documentation — \
+                    // TERMINAL, not pending. The whole point: the citations live in FS.GG.Game's `fs-gg-game-core`,
+                    // which this corpus cannot read, so NO local skill can cite these — rule 2 can never fire and
+                    // the line is never `tracked`-stale. If one ever DID become locally documented, that is a real
+                    // event (delete its line); this guard names it rather than letting rule 2 red cryptically.
+                    Expect.isFalse
+                        (isDocumented name)
+                        $"`{name}` is `owner-documented` — permanently satisfied by cross-repo owner documentation — \
                       yet a LOCAL product skill now cites it. The surface is documented HERE now: delete its \
                       ledger line (rule 2 would otherwise red). `owner-documented` is for surfaces no local \
                       skill can reach."
 
-                // ...and it still SHIPS, or it is a phantom (rule 3) and the category has outlived its subject.
-                Expect.isTrue
-                    (shippedSurface.ContainsKey name)
-                    $"`{name}` is `owner-documented` but the api-surface no longer ships it. #984's vendoring is \
+                    // ...and it still SHIPS, or it is a phantom (rule 3) and the category has outlived its subject.
+                    Expect.isTrue
+                        (shippedSurface.ContainsKey name)
+                        $"`{name}` is `owner-documented` but the api-surface no longer ships it. #984's vendoring is \
                       the reason the category exists; if the surface was un-vendored, retire the line (rule 3)."
-        }
+            }
 
-        // The MIRROR of the coverage guard, and the reason the exemption cannot be a blanket. A surface neither
-        // documented nor listed under ANY category — the #507 shape — must STILL red rule 1. #998 widened the
-        // set of terminal dispositions; it must not have widened what counts as covered to everything.
-        test "a val in NO category and documented by no skill still reds" {
-            let probe = "zzUnlistedSurfaceProbe998"
+            // The MIRROR of the coverage guard, and the reason the exemption cannot be a blanket. A surface neither
+            // documented nor listed under ANY category — the #507 shape — must STILL red rule 1. #998 widened the
+            // set of terminal dispositions; it must not have widened what counts as covered to everything.
+            test "a val in NO category and documented by no skill still reds" {
+                let probe = "zzUnlistedSurfaceProbe998"
 
-            Expect.isFalse (ledger.ContainsKey probe) "the probe name is deliberately absent from the ledger"
-            Expect.isFalse (isDocumented probe) "...and cited by no product skill"
+                Expect.isFalse (ledger.ContainsKey probe) "the probe name is deliberately absent from the ledger"
+                Expect.isFalse (isDocumented probe) "...and cited by no product skill"
 
-            Expect.isFalse
-                (isCovered probe)
-                "a val in no ledger category and documented nowhere is NOT covered — S-DOC rule 1 must still \
+                Expect.isFalse
+                    (isCovered probe)
+                    "a val in no ledger category and documented nowhere is NOT covered — S-DOC rule 1 must still \
                  red for it, or the exemption has become a blanket that excuses every undocumented surface, \
                  which is the #507 gap this gate exists to hold."
-        }
+            }
 
-        // The responsiveness self-contradiction, asserted where it can be seen. The skills MANDATE this
-        // evidence; these are the only surfaces that can produce it. If they ever fall back off the skills,
-        // the mandate becomes unmeetable again and this says so by name rather than as one of 236.
-        test "the instruments for the responsiveness evidence the skills MANDATE are documented" {
-            let mandate = "Responsiveness evidence must validate pointer and keyboard activation"
+            // The responsiveness self-contradiction, asserted where it can be seen. The skills MANDATE this
+            // evidence; these are the only surfaces that can produce it. If they ever fall back off the skills,
+            // the mandate becomes unmeetable again and this says so by name rather than as one of 236.
+            test "the instruments for the responsiveness evidence the skills MANDATE are documented" {
+                let mandate =
+                    "Responsiveness evidence must validate pointer and keyboard activation"
 
-            Expect.isTrue
-                (productSkillText.Contains mandate)
-                "a product skill still mandates responsiveness evidence (if this mandate is ever dropped, drop \
+                Expect.isTrue
+                    (productSkillText.Contains mandate)
+                    "a product skill still mandates responsiveness evidence (if this mandate is ever dropped, drop \
                  this test with it — but do not drop the instruments and keep the mandate, which is #507)"
 
-            for instrument in
-                [ "respondsProofOf" // Responded | Inert — the one class that tells "renders" from "responds"
-                  "captureRespondsProof"
-                  "compositorDiagnostics" // the latency half: routing vs update vs render vs present
-                  "layoutMetrics"
-                  "responsivenessTimingContribution" ] do
-                Expect.isTrue
-                    (isDocumented instrument)
-                    $"`{instrument}` is public, ships to a generated product, and is the instrument for the \
+                for instrument in
+                    [
+                        "respondsProofOf" // Responded | Inert — the one class that tells "renders" from "responds"
+                        "captureRespondsProof"
+                        "compositorDiagnostics" // the latency half: routing vs update vs render vs present
+                        "layoutMetrics"
+                        "responsivenessTimingContribution"
+                    ] do
+                    Expect.isTrue
+                        (isDocumented instrument)
+                        $"`{instrument}` is public, ships to a generated product, and is the instrument for the \
                       responsiveness evidence the product skills MANDATE — so it must be documented in a skill, \
                       not merely absent from the ledger. It belongs in a skill whose profile gate matches \
                       FS.GG.UI.Controls.Elmish's reach [app, sample-pack, game] — i.e. fs-gg-elmish, NOT \
                       fs-gg-testing (which also ships to headless-scene/governed and may not name it, R-REACH)."
-        }
-    ]
+            }
+        ]
 
 // THE INSTRUMENT, not the corpus (#664). Everything above measures the SKILLS; a gate is only ever as good as
 // the extractor underneath it, and `codeReferencesIn` is the half of S-DOC that can fail silently — which is
@@ -883,27 +899,31 @@ let surfaceDocCoverageTests =
 // wrote a `bash` block.
 [<Tests>]
 let surfaceDocExtractorTests =
-    let cites markdown name = citesName (codeReferencesIn markdown).Code name
+    let cites markdown name =
+        citesName (codeReferencesIn markdown).Code name
 
     // What a SKILL credits, shadowing included (#692) — the question `isDocumented` actually asks, per skill.
-    let skillDocuments markdown name = skillCites (codeReferencesIn markdown).Code name
+    let skillDocuments markdown name =
+        skillCites (codeReferencesIn markdown).Code name
 
-    testList "S-DOC code extractor (#664)" [
+    testList
+        "S-DOC code extractor (#664)"
+        [
 
-        // ---- #692: the SAME-LANGUAGE homonym. -------------------------------------------------------
-        //
-        // These are latent in the corpus too, in the direction that matters: with the bug in place every
-        // assertion above still passes, because the false credit makes a surface look DOCUMENTED — and a
-        // surface that looks documented is one the gate stops asking about. That is the failure mode #654
-        // records ("it makes the number go UP, not down"), one language in. So it is pinned here.
+            // ---- #692: the SAME-LANGUAGE homonym. -------------------------------------------------------
+            //
+            // These are latent in the corpus too, in the direction that matters: with the bug in place every
+            // assertion above still passes, because the false credit makes a surface look DOCUMENTED — and a
+            // surface that looks documented is one the gate stops asking about. That is the failure mode #654
+            // records ("it makes the number go UP, not down"), one language in. So it is pinned here.
 
-        test "a skill that DEFINES `let describe` does not thereby document `Scene.describe`" {
-            // The bug, exactly as it shipped. `fs-gg-persistence`'s canonical body (a FROZEN MIRROR of
-            // FS.GG.Game's — we cannot edit it) carries an unrelated example helper called `describe`. That
-            // binding credited `Scene.describe`, a BLESSED `vocabulary` line, and the anti-rot rule then
-            // demanded the line be deleted — a one-way door onto a fact that was still true (#692, PR #691).
-            let markdown =
-                """
+            test "a skill that DEFINES `let describe` does not thereby document `Scene.describe`" {
+                // The bug, exactly as it shipped. `fs-gg-persistence`'s canonical body (a FROZEN MIRROR of
+                // FS.GG.Game's — we cannot edit it) carries an unrelated example helper called `describe`. That
+                // binding credited `Scene.describe`, a BLESSED `vocabulary` line, and the anti-rot rule then
+                // demanded the line be deleted — a one-way door onto a fact that was still true (#692, PR #691).
+                let markdown =
+                    """
 ```fsharp
 let describe (outcome: PersistenceOutcome) : string =
     match outcome with
@@ -911,19 +931,19 @@ let describe (outcome: PersistenceOutcome) : string =
 ```
 """
 
-            Expect.isFalse
-                (skillDocuments markdown "describe")
-                "a skill DEFINING `describe` is not citing `Scene.describe` — a binding site is not a citation"
-        }
+                Expect.isFalse
+                    (skillDocuments markdown "describe")
+                    "a skill DEFINING `describe` is not citing `Scene.describe` — a binding site is not a citation"
+            }
 
-        test "...and a USE of that local binding does not document it either" {
-            // Why counting is not enough, and this is the case that settles the design. `fs-gg-game-core`
-            // binds `let visible : Rect` and then USES it on the next line — so "occurrences (2) exceed
-            // definition sites (1)" credits it, and `Attr.visible` (a real shipped control attribute, beside
-            // `enabled`/`readOnly`) is documented by a rectangle in a skill about game simulation. Once the
-            // name is bound, every unqualified use of it is the LOCAL one: that is F# shadowing, not a guess.
-            let markdown =
-                """
+            test "...and a USE of that local binding does not document it either" {
+                // Why counting is not enough, and this is the case that settles the design. `fs-gg-game-core`
+                // binds `let visible : Rect` and then USES it on the next line — so "occurrences (2) exceed
+                // definition sites (1)" credits it, and `Attr.visible` (a real shipped control attribute, beside
+                // `enabled`/`readOnly`) is documented by a rectangle in a skill about game simulation. Once the
+                // name is bound, every unqualified use of it is the LOCAL one: that is F# shadowing, not a guess.
+                let markdown =
+                    """
 ```fsharp
 let visible : Rect = { X = 0.0; Y = 0.0; Width = 1280.0; Height = 720.0 }
 
@@ -932,16 +952,16 @@ let onScreen (bounds: Rect list) : Rect list =
 ```
 """
 
-            Expect.isFalse
-                (skillDocuments markdown "visible")
-                "a local binding and its own uses cannot document `Attr.visible` — counting cannot see scope"
-        }
+                Expect.isFalse
+                    (skillDocuments markdown "visible")
+                    "a local binding and its own uses cannot document `Attr.visible` — counting cannot see scope"
+            }
 
-        test "a QUALIFIED citation reaches past a local binding of the same name" {
-            // The other half, or the rule would be a blunt instrument: a skill may legitimately bind a helper
-            // AND cite the API it shadows. Naming the module is exactly how you say which one you mean.
-            let markdown =
-                """
+            test "a QUALIFIED citation reaches past a local binding of the same name" {
+                // The other half, or the rule would be a blunt instrument: a skill may legitimately bind a helper
+                // AND cite the API it shadows. Naming the module is exactly how you say which one you mean.
+                let markdown =
+                    """
 ```fsharp
 let describe (outcome: Outcome) : string = "..."
 
@@ -949,68 +969,70 @@ let kinds = Scene.describe hud
 ```
 """
 
-            Expect.isTrue
-                (skillDocuments markdown "describe")
-                "`Scene.describe` names its module, so it cites the API even where `describe` is also bound"
-        }
-
-        test "a skill that does NOT bind the name still cites it bare" {
-            // The rule must not cost the corpus its ordinary citations. Backticks are a citation (#654), and
-            // most of the corpus cites unqualified — so shadowing may only bite where a binding really exists.
-            let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
-
-            Expect.isTrue
-                (skillDocuments markdown "respondsProofOf")
-                "no binding, so the bare name still cites — shadowing narrows nothing it should not"
-        }
-
-        test "every binding form is a binding, not a citation" {
-            // The modifiers are not decoration: miss one and the homonym walks straight back through it.
-            for binding in
-                [ "let describe x = x"
-                  "let rec describe x = x"
-                  "let private describe x = x"
-                  "let inline describe x = x"
-                  "let mutable describe = 1"
-                  "and describe x = x"
-                  "use describe = foo ()"
-                  "member this.describe x = x"
-                  "member _.describe x = x"
-                  "member val describe = 1"
-                  "let f = items |> List.map (fun describe -> describe)"
-                  "for describe in scenes do ignore describe" ] do
-                let markdown = $"```fsharp\n{binding}\n```\n"
-
-                Expect.isFalse
+                Expect.isTrue
                     (skillDocuments markdown "describe")
-                    $"`{binding}` BINDS `describe`; it does not cite `Scene.describe`"
+                    "`Scene.describe` names its module, so it cites the API even where `describe` is also bound"
+            }
 
-            // ...and the shape that is NOT a binding must still cite, or the regex is over-reaching and would
-            // silently un-credit honest docs — the "rule INVENTS violations" failure (#598), inverted.
-            Expect.isTrue
-                (skillDocuments "```fsharp\nlet kinds = describe hud\n```\n" "describe")
-                "`describe` on the RIGHT of a binding is a USE of it — the binder here is `kinds`"
-        }
-        // ---- end #692 -------------------------------------------------------------------------------
+            test "a skill that does NOT bind the name still cites it bare" {
+                // The rule must not cost the corpus its ordinary citations. Backticks are a citation (#654), and
+                // most of the corpus cites unqualified — so shadowing may only bite where a binding really exists.
+                let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
+
+                Expect.isTrue
+                    (skillDocuments markdown "respondsProofOf")
+                    "no binding, so the bare name still cites — shadowing narrows nothing it should not"
+            }
+
+            test "every binding form is a binding, not a citation" {
+                // The modifiers are not decoration: miss one and the homonym walks straight back through it.
+                for binding in
+                    [
+                        "let describe x = x"
+                        "let rec describe x = x"
+                        "let private describe x = x"
+                        "let inline describe x = x"
+                        "let mutable describe = 1"
+                        "and describe x = x"
+                        "use describe = foo ()"
+                        "member this.describe x = x"
+                        "member _.describe x = x"
+                        "member val describe = 1"
+                        "let f = items |> List.map (fun describe -> describe)"
+                        "for describe in scenes do ignore describe"
+                    ] do
+                    let markdown = $"```fsharp\n{binding}\n```\n"
+
+                    Expect.isFalse
+                        (skillDocuments markdown "describe")
+                        $"`{binding}` BINDS `describe`; it does not cite `Scene.describe`"
+
+                // ...and the shape that is NOT a binding must still cite, or the regex is over-reaching and would
+                // silently un-credit honest docs — the "rule INVENTS violations" failure (#598), inverted.
+                Expect.isTrue
+                    (skillDocuments "```fsharp\nlet kinds = describe hud\n```\n" "describe")
+                    "`describe` on the RIGHT of a binding is a USE of it — the binder here is `kinds`"
+            }
+            // ---- end #692 -------------------------------------------------------------------------------
 
 
-        // ---- #713: the qualified hatch did not check WHICH module. --------------------------------------
-        //
-        // #692's escape hatch asked only that a qualifier EXIST and start uppercase. A product module
-        // satisfies that as readily as a shipped one, so the homonym walked out through the hatch itself —
-        // and, as ever, in the direction that makes a surface look DOCUMENTED, which is the direction the
-        // gate stops asking about (#654: "it makes the number go UP").
-        //
-        // These are the bug and its cascade. The cascade cases are not decoration: a naive "the qualifier
-        // must EQUAL the declaring module" would red the gate against docs that are correct, which is the
-        // "rule INVENTS violations" failure (#598) and the reason this could not be a line in #692.
+            // ---- #713: the qualified hatch did not check WHICH module. --------------------------------------
+            //
+            // #692's escape hatch asked only that a qualifier EXIST and start uppercase. A product module
+            // satisfies that as readily as a shipped one, so the homonym walked out through the hatch itself —
+            // and, as ever, in the direction that makes a surface look DOCUMENTED, which is the direction the
+            // gate stops asking about (#654: "it makes the number go UP").
+            //
+            // These are the bug and its cascade. The cascade cases are not decoration: a naive "the qualifier
+            // must EQUAL the declaring module" would red the gate against docs that are correct, which is the
+            // "rule INVENTS violations" failure (#598) and the reason this could not be a line in #692.
 
-        test "a PRODUCT module's homonym does not document the shipped surface it shadows" {
-            // The bug, exactly as it shipped. `fs-gg-elmish` binds the product's own `subscriptions` and cites
-            // the product's own module — and thereby credited the shipped `ControlsElmish.subscriptions`, the
-            // keyboard+controls MERGE helper, which no skill taught and no ledger line declared.
-            let markdown =
-                """
+            test "a PRODUCT module's homonym does not document the shipped surface it shadows" {
+                // The bug, exactly as it shipped. `fs-gg-elmish` binds the product's own `subscriptions` and cites
+                // the product's own module — and thereby credited the shipped `ControlsElmish.subscriptions`, the
+                // keyboard+controls MERGE helper, which no skill taught and no ledger line declared.
+                let markdown =
+                    """
 ```fsharp
 let subscriptions _ : AdapterSubscription<Msg> list = Sub.none
 
@@ -1019,356 +1041,369 @@ let adapterProgram =
 ```
 """
 
-            Expect.isFalse
-                (skillDocuments markdown "subscriptions")
-                "`AppRoot.Model` is a PRODUCT module — it declares nothing this package ships, so it cannot \
+                Expect.isFalse
+                    (skillDocuments markdown "subscriptions")
+                    "`AppRoot.Model` is a PRODUCT module — it declares nothing this package ships, so it cannot \
                  document `ControlsElmish.subscriptions`. An uppercase qualifier is not a citation of the API; \
                  naming the module the API COMES FROM is."
 
-            // ...and the same block's honest citation is untouched, or the rule is a blunt instrument.
-            Expect.isTrue
-                (skillDocuments markdown "program")
-                "`ControlsElmish.program` names the module that really declares `program` — it still cites"
-        }
+                // ...and the same block's honest citation is untouched, or the rule is a blunt instrument.
+                Expect.isTrue
+                    (skillDocuments markdown "program")
+                    "`ControlsElmish.program` names the module that really declares `program` — it still cites"
+            }
 
-        test "a NESTED module qualifies the surface it declares" {
-            // Cascade 1, and the one that would have broken first. `runScriptToModel` is declared in
-            // `FS.GG.UI.Controls.Elmish.ControlsElmish.Perf` — a module nested INSIDE `ControlsElmish` — and
-            // `fs-gg-elmish` cites it as `Perf.runScriptToModel`, which is what `open`ing the parent gives you.
-            // A rule demanding the qualifier EQUAL the declaring module would un-credit this correct doc.
-            let markdown = "Call `Perf.runScriptToModel` to fold a script to a final model."
+            test "a NESTED module qualifies the surface it declares" {
+                // Cascade 1, and the one that would have broken first. `runScriptToModel` is declared in
+                // `FS.GG.UI.Controls.Elmish.ControlsElmish.Perf` — a module nested INSIDE `ControlsElmish` — and
+                // `fs-gg-elmish` cites it as `Perf.runScriptToModel`, which is what `open`ing the parent gives you.
+                // A rule demanding the qualifier EQUAL the declaring module would un-credit this correct doc.
+                let markdown = "Call `Perf.runScriptToModel` to fold a script to a final model."
 
-            Expect.isTrue
-                (skillDocuments markdown "runScriptToModel")
-                "`Perf` is the LAST segment of the declaring module's path, which is exactly how F# lets you \
+                Expect.isTrue
+                    (skillDocuments markdown "runScriptToModel")
+                    "`Perf` is the LAST segment of the declaring module's path, which is exactly how F# lets you \
                  write it once its parent is opened — a suffix of the path is a spelling of the module"
 
-            Expect.isTrue
-                (skillDocuments "```fsharp\nlet m = ControlsElmish.Perf.runScriptToModel script\n```\n" "runScriptToModel")
-                "...and so is the longer spelling, which names the parent too"
-        }
+                Expect.isTrue
+                    (skillDocuments
+                        "```fsharp\nlet m = ControlsElmish.Perf.runScriptToModel script\n```\n"
+                        "runScriptToModel")
+                    "...and so is the longer spelling, which names the parent too"
+            }
 
-        test "a SIBLING module qualifies the surface it declares" {
-            // Cascade 2. `AdapterCmd` and `ControlsElmish` are two top-level modules of ONE signature file
-            // (#663 found that pair), so a reader keyed on the FILE cannot tell them apart — which is precisely
-            // why the old map, keyed `name -> .fsi files`, could not answer "which module?" at all.
-            Expect.isTrue
-                (skillDocuments "Route `AdapterCmd.diagnostics` at the host boundary." "diagnostics")
-                "`AdapterCmd` declares `diagnostics`, so it cites it — a sibling module in the same file is \
+            test "a SIBLING module qualifies the surface it declares" {
+                // Cascade 2. `AdapterCmd` and `ControlsElmish` are two top-level modules of ONE signature file
+                // (#663 found that pair), so a reader keyed on the FILE cannot tell them apart — which is precisely
+                // why the old map, keyed `name -> .fsi files`, could not answer "which module?" at all.
+                Expect.isTrue
+                    (skillDocuments "Route `AdapterCmd.diagnostics` at the host boundary." "diagnostics")
+                    "`AdapterCmd` declares `diagnostics`, so it cites it — a sibling module in the same file is \
                  still the declaring module"
-        }
+            }
 
-        test "the fully-spelled path is a spelling too, and a foreign PREFIX is not" {
-            // A qualifier is legal exactly when it is a contiguous SUFFIX of the declaring module's path,
-            // because every legal spelling drops a PREFIX (whatever you opened) and keeps the rest.
-            Expect.isTrue
-                (skillDocuments "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.ControlsElmish.program a b c d\n```\n" "program")
-                "the whole path names the declaring module — nothing is dropped, so nothing is wrong"
+            test "the fully-spelled path is a spelling too, and a foreign PREFIX is not" {
+                // A qualifier is legal exactly when it is a contiguous SUFFIX of the declaring module's path,
+                // because every legal spelling drops a PREFIX (whatever you opened) and keeps the rest.
+                Expect.isTrue
+                    (skillDocuments
+                        "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.ControlsElmish.program a b c d\n```\n"
+                        "program")
+                    "the whole path names the declaring module — nothing is dropped, so nothing is wrong"
 
-            // The mirror. A path that shares the package's PREFIX but not its tail is a different module, and
-            // suffix-matching is what tells them apart — `Elmish.Program` is not `Elmish.ControlsElmish`.
-            Expect.isFalse
-                (skillDocuments "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.Program.program a b c d\n```\n" "program")
-                "a real-looking prefix does not make `Program` the declaring module — it declares nothing"
-        }
+                // The mirror. A path that shares the package's PREFIX but not its tail is a different module, and
+                // suffix-matching is what tells them apart — `Elmish.Program` is not `Elmish.ControlsElmish`.
+                Expect.isFalse
+                    (skillDocuments
+                        "```fsharp\nlet p = FS.GG.UI.Controls.Elmish.Program.program a b c d\n```\n"
+                        "program")
+                    "a real-looking prefix does not make `Program` the declaring module — it declares nothing"
+            }
 
-        test "an unbound name is not credited by a foreign qualifier either" {
-            // The half that keeps the fix from holding by COINCIDENCE. Shadowing only routes a name through
-            // `qualifiedCite` when the skill BINDS it — and `AppRoot.Model.subscriptions` also satisfies the
-            // bare-name matcher, because `.` is not a word character. So a skill that cites the product module
-            // WITHOUT binding the name (delete the `let subscriptions` line above and this is the corpus) would
-            // walk the same false credit straight back in through the other branch.
-            let markdown =
-                """
+            test "an unbound name is not credited by a foreign qualifier either" {
+                // The half that keeps the fix from holding by COINCIDENCE. Shadowing only routes a name through
+                // `qualifiedCite` when the skill BINDS it — and `AppRoot.Model.subscriptions` also satisfies the
+                // bare-name matcher, because `.` is not a word character. So a skill that cites the product module
+                // WITHOUT binding the name (delete the `let subscriptions` line above and this is the corpus) would
+                // walk the same false credit straight back in through the other branch.
+                let markdown =
+                    """
 ```fsharp
 let adapterProgram =
     ControlsElmish.program AppRoot.Model.init AppRoot.Model.update view AppRoot.Model.subscriptions
 ```
 """
 
-            Expect.isFalse
-                (skillDocuments markdown "subscriptions")
-                "nothing here BINDS `subscriptions`, so the unbound branch judges it — and it must reach the \
+                Expect.isFalse
+                    (skillDocuments markdown "subscriptions")
+                    "nothing here BINDS `subscriptions`, so the unbound branch judges it — and it must reach the \
                  same verdict, or #713's fix would depend on an unrelated `let` staying where it is"
 
-            // ...and the bare citation the unbound branch exists for still works. Backticks are a citation.
-            Expect.isTrue
-                (skillDocuments "Call `respondsProofOf` to tell renders from responds." "respondsProofOf")
-                "an unqualified name in backticks still cites — excluding the dot narrows nothing it should not"
-        }
+                // ...and the bare citation the unbound branch exists for still works. Backticks are a citation.
+                Expect.isTrue
+                    (skillDocuments "Call `respondsProofOf` to tell renders from responds." "respondsProofOf")
+                    "an unqualified name in backticks still cites — excluding the dot narrows nothing it should not"
+            }
 
-        // The walk underneath all of the above. Everything #713 decides rests on `shippedValsIn` resolving the
-        // right declaring module, and the three shapes below are the ones it has to tell apart. The DEDENT is
-        // the one nothing else pins: `program` sits back in `ControlsElmish` after `Perf` closed, and a fold
-        // that forgot to pop would file it under `…ControlsElmish.Perf` and un-credit every honest citation.
-        test "the module walk sees siblings, nesting, and the dedent back out" {
-            let lines =
-                [ "namespace FS.GG.UI.Controls.Elmish"
-                  ""
-                  "module AdapterCmd ="
-                  "    val diagnostics: int"
-                  ""
-                  "module ControlsElmish ="
-                  "    val subscriptions: int"
-                  ""
-                  "    module Perf ="
-                  "        val runScriptToModel: int"
-                  ""
-                  "    val program: int" ]
+            // The walk underneath all of the above. Everything #713 decides rests on `shippedValsIn` resolving the
+            // right declaring module, and the three shapes below are the ones it has to tell apart. The DEDENT is
+            // the one nothing else pins: `program` sits back in `ControlsElmish` after `Perf` closed, and a fold
+            // that forgot to pop would file it under `…ControlsElmish.Perf` and un-credit every honest citation.
+            test "the module walk sees siblings, nesting, and the dedent back out" {
+                let lines =
+                    [
+                        "namespace FS.GG.UI.Controls.Elmish"
+                        ""
+                        "module AdapterCmd ="
+                        "    val diagnostics: int"
+                        ""
+                        "module ControlsElmish ="
+                        "    val subscriptions: int"
+                        ""
+                        "    module Perf ="
+                        "        val runScriptToModel: int"
+                        ""
+                        "    val program: int"
+                    ]
 
-            Expect.equal
-                (shippedValsIn "ControlsElmish.fsi" lines |> List.map (fun (name, _, m) -> name, m))
-                [ "diagnostics", "FS.GG.UI.Controls.Elmish.AdapterCmd"
-                  "subscriptions", "FS.GG.UI.Controls.Elmish.ControlsElmish"
-                  "runScriptToModel", "FS.GG.UI.Controls.Elmish.ControlsElmish.Perf"
-                  "program", "FS.GG.UI.Controls.Elmish.ControlsElmish" ]
-                "two top-level modules in one file are SIBLINGS, `Perf` is NESTED, and `program` DEDENTS back \
+                Expect.equal
+                    (shippedValsIn "ControlsElmish.fsi" lines
+                     |> List.map (fun (name, _, m) -> name, m))
+                    [
+                        "diagnostics", "FS.GG.UI.Controls.Elmish.AdapterCmd"
+                        "subscriptions", "FS.GG.UI.Controls.Elmish.ControlsElmish"
+                        "runScriptToModel", "FS.GG.UI.Controls.Elmish.ControlsElmish.Perf"
+                        "program", "FS.GG.UI.Controls.Elmish.ControlsElmish"
+                    ]
+                    "two top-level modules in one file are SIBLINGS, `Perf` is NESTED, and `program` DEDENTS back \
                  into `ControlsElmish` — the three shapes the whole qualified-citation rule is decided on"
-        }
+            }
 
-        test "an access-modified module still declares its members" {
-            // Latent: the api-surface carries no `module internal` today, so the CORPUS cannot witness this and
-            // every assertion above passes with the bug in place. It is pinned here because the failure is
-            // silent and lands in the dangerous direction — a module the walk fails to match does not vanish,
-            // it hands its vals to the module ENCLOSING it, so a skill that correctly cites `Foo.bar` finds
-            // `Foo` is a suffix of nothing, loses its credit, and S-DOC accuses a correct doc (#598). The
-            // mirror is already known to leak `internal` declarations (S-INT, #585), so the shape is real.
-            let lines =
-                [ "namespace FS.GG.UI.Controls"
-                  ""
-                  "module internal Foo ="
-                  "    val bar: int -> int" ]
+            test "an access-modified module still declares its members" {
+                // Latent: the api-surface carries no `module internal` today, so the CORPUS cannot witness this and
+                // every assertion above passes with the bug in place. It is pinned here because the failure is
+                // silent and lands in the dangerous direction — a module the walk fails to match does not vanish,
+                // it hands its vals to the module ENCLOSING it, so a skill that correctly cites `Foo.bar` finds
+                // `Foo` is a suffix of nothing, loses its credit, and S-DOC accuses a correct doc (#598). The
+                // mirror is already known to leak `internal` declarations (S-INT, #585), so the shape is real.
+                let lines =
+                    [
+                        "namespace FS.GG.UI.Controls"
+                        ""
+                        "module internal Foo ="
+                        "    val bar: int -> int"
+                    ]
 
-            Expect.equal
-                (shippedValsIn "Fake.fsi" lines)
-                [ "bar", "Fake.fsi", "FS.GG.UI.Controls.Foo" ]
-                "an access modifier does not change WHICH module a val belongs to — `bar` is `Foo`'s, and a \
+                Expect.equal
+                    (shippedValsIn "Fake.fsi" lines)
+                    [ "bar", "Fake.fsi", "FS.GG.UI.Controls.Foo" ]
+                    "an access modifier does not change WHICH module a val belongs to — `bar` is `Foo`'s, and a \
                  walk that skipped the line would silently file it under the namespace instead"
-        }
-        // ---- end #713 -------------------------------------------------------------------------------
+            }
+            // ---- end #713 -------------------------------------------------------------------------------
 
 
-        // ---- #1168: a word inside a string literal is not a citation. -----------------------------------
-        //
-        // The bug, reproduced at source. #654 moved the corpus from prose to code; #664 restricted it to
-        // F#-tagged fences; #692/#713 taught it that a BINDING site or a foreign module's qualifier is not a
-        // citation. None of them taught it that an F# STRING LITERAL is not code a citation can come from —
-        // so an ordinary English word inside an `Expect.*` assertion message, sitting in an otherwise
-        // legitimate `fsharp` fence, was credited exactly as if it were a real use of the API it happens to
-        // spell. Latent in the corpus today (see #1168's own investigation: the reproducing skill text has
-        // since been reworded), so it is pinned directly, the way #692/#713's own bugs are pinned above.
+            // ---- #1168: a word inside a string literal is not a citation. -----------------------------------
+            //
+            // The bug, reproduced at source. #654 moved the corpus from prose to code; #664 restricted it to
+            // F#-tagged fences; #692/#713 taught it that a BINDING site or a foreign module's qualifier is not a
+            // citation. None of them taught it that an F# STRING LITERAL is not code a citation can come from —
+            // so an ordinary English word inside an `Expect.*` assertion message, sitting in an otherwise
+            // legitimate `fsharp` fence, was credited exactly as if it were a real use of the API it happens to
+            // spell. Latent in the corpus today (see #1168's own investigation: the reproducing skill text has
+            // since been reworded), so it is pinned directly, the way #692/#713's own bugs are pinned above.
 
-        test "a name occurring only inside a string literal does not document the API it spells" {
-            // The bug, exactly as it shipped: two Expecto assertion messages spelling `MapGen.regions` and
-            // `SkiaViewer.present` as ordinary English words, credited as citations of surfaces neither
-            // fence teaches, demonstrates, or even mentions as code.
-            let markdown =
-                """
+            test "a name occurring only inside a string literal does not document the API it spells" {
+                // The bug, exactly as it shipped: two Expecto assertion messages spelling `MapGen.regions` and
+                // `SkiaViewer.present` as ordinary English words, credited as citations of surfaces neither
+                // fence teaches, demonstrates, or even mentions as code.
+                let markdown =
+                    """
 ```fsharp
 Expect.isFalse (anyOverlap hudRegions) "HUD regions do not overlap"
 Expect.sequenceEqual (hudRegions |> List.map _.Id) HudRegionId.all "every named HUD region is present"
 ```
 """
 
-            Expect.isFalse
-                (cites markdown "regions")
-                "`regions` appears only inside a quoted assertion message — it does not cite `MapGen.regions`"
+                Expect.isFalse
+                    (cites markdown "regions")
+                    "`regions` appears only inside a quoted assertion message — it does not cite `MapGen.regions`"
 
-            Expect.isFalse
-                (cites markdown "present")
-                "`present` appears only inside a quoted assertion message — it does not cite `SkiaViewer.present`"
+                Expect.isFalse
+                    (cites markdown "present")
+                    "`present` appears only inside a quoted assertion message — it does not cite `SkiaViewer.present`"
 
-            // ...and the fence's real, non-literal occurrence of `hudRegions` (a bare argument, twice) is
-            // UNCHANGED by the fix — it is not inside any string, so it still cites, the way any ordinary
-            // identifier use does. (It happens to name no shipped surface here; the point is only that the
-            // fix does not touch code outside a literal.)
-            Expect.isTrue
-                (cites markdown "hudRegions")
-                "`hudRegions` is used as a real, unquoted argument — the string-literal fix must not touch it"
-        }
+                // ...and the fence's real, non-literal occurrence of `hudRegions` (a bare argument, twice) is
+                // UNCHANGED by the fix — it is not inside any string, so it still cites, the way any ordinary
+                // identifier use does. (It happens to name no shipped surface here; the point is only that the
+                // fix does not touch code outside a literal.)
+                Expect.isTrue
+                    (cites markdown "hudRegions")
+                    "`hudRegions` is used as a real, unquoted argument — the string-literal fix must not touch it"
+            }
 
-        test "a literal alongside a real citation elsewhere still credits" {
-            // The acceptance's other half: excluding string content must not cost the corpus an HONEST
-            // citation sitting next to a message string in the same fence, or the fix is a blunt instrument.
-            let markdown =
-                """
+            test "a literal alongside a real citation elsewhere still credits" {
+                // The acceptance's other half: excluding string content must not cost the corpus an HONEST
+                // citation sitting next to a message string in the same fence, or the fix is a blunt instrument.
+                let markdown =
+                    """
 ```fsharp
 let model = Resolution.push model shot
 Expect.isTrue true "push should not appear as a bare citation only because of this message"
 ```
 """
 
-            Expect.isTrue
-                (cites markdown "push")
-                "`Resolution.push` is a real, unqualified citation in the same fence — the string alongside it \
+                Expect.isTrue
+                    (cites markdown "push")
+                    "`Resolution.push` is a real, unqualified citation in the same fence — the string alongside it \
                  does not un-credit it"
-        }
+            }
 
-        test "triple-quoted and verbatim string contents do not credit either" {
-            // The other two F# string FORMS a real lexer has to tell apart from `"…"` — a triple-quoted
-            // literal (no escapes, ends at the next `\"\"\"`) and a verbatim literal (`@\"…\"`, where `\"\"` is
-            // a doubled, embedded quote rather than the terminator). Both are common in Expecto messages that
-            // themselves quote something.
-            let tripleQuoted =
-                "```fsharp\nExpect.isTrue true \"\"\"the series does not regress\"\"\"\n```\n"
+            test "triple-quoted and verbatim string contents do not credit either" {
+                // The other two F# string FORMS a real lexer has to tell apart from `"…"` — a triple-quoted
+                // literal (no escapes, ends at the next `\"\"\"`) and a verbatim literal (`@\"…\"`, where `\"\"` is
+                // a doubled, embedded quote rather than the terminator). Both are common in Expecto messages that
+                // themselves quote something.
+                let tripleQuoted =
+                    "```fsharp\nExpect.isTrue true \"\"\"the series does not regress\"\"\"\n```\n"
 
-            let verbatim =
-                "```fsharp\nExpect.isTrue true @\"a path like C:\\Charts\\series\\ is fine\"\n```\n"
+                let verbatim =
+                    "```fsharp\nExpect.isTrue true @\"a path like C:\\Charts\\series\\ is fine\"\n```\n"
 
-            Expect.isFalse (cites tripleQuoted "series") "a triple-quoted message's words are not citations"
-            Expect.isFalse (cites verbatim "series") "a verbatim string's words are not citations either"
-        }
+                Expect.isFalse (cites tripleQuoted "series") "a triple-quoted message's words are not citations"
+                Expect.isFalse (cites verbatim "series") "a verbatim string's words are not citations either"
+            }
 
-        test "an interpolation hole is still code, not string content" {
-            // The trap the obvious fix (blank everything between the quotes) falls into: an interpolated
-            // string's `{ … }` hole holds a real expression — `$"'{id}' must be a bound control"` cites `id`
-            // exactly as #654 established backticks do — so only the literal TEXT around the hole may be
-            // blanked, never the hole's own contents.
-            let markdown =
-                """
+            test "an interpolation hole is still code, not string content" {
+                // The trap the obvious fix (blank everything between the quotes) falls into: an interpolated
+                // string's `{ … }` hole holds a real expression — `$"'{id}' must be a bound control"` cites `id`
+                // exactly as #654 established backticks do — so only the literal TEXT around the hole may be
+                // blanked, never the hole's own contents.
+                let markdown =
+                    """
 ```fsharp
 Expect.isTrue true $"{present} value stays silent"
 ```
 """
 
-            Expect.isTrue
-                (cites markdown "present")
-                "`present` sits INSIDE the interpolation hole — that is code, not message text"
-
-            Expect.isFalse
-                (cites markdown "silent")
-                "`silent` sits in the string's literal text around the hole — it is not a citation"
-        }
-
-        test "known bare collisions still credit through real, non-literal code (no regression)" {
-            // #1168's own trap: three names already credit today via legitimate, pre-existing skill content —
-            // `Layout.bounds`/`Scene.bounds`, `Attributes.on`, and `Charts.series`. Stripping string literals
-            // must not silently un-credit them — that would replace one false report (a false POSITIVE, the
-            // homonym) with another (a false NEGATIVE, an undeclared surface that is actually documented) —
-            // so this pins them against the LIVE product-skill corpus, not a synthetic fixture, the same way
-            // the responsiveness-mandate test above does.
-            for name in [ "bounds"; "on"; "series" ] do
                 Expect.isTrue
-                    (isDocumented name)
-                    $"`{name}` was documented via real code in the product skills before #1168's string-literal \
+                    (cites markdown "present")
+                    "`present` sits INSIDE the interpolation hole — that is code, not message text"
+
+                Expect.isFalse
+                    (cites markdown "silent")
+                    "`silent` sits in the string's literal text around the hole — it is not a citation"
+            }
+
+            test "known bare collisions still credit through real, non-literal code (no regression)" {
+                // #1168's own trap: three names already credit today via legitimate, pre-existing skill content —
+                // `Layout.bounds`/`Scene.bounds`, `Attributes.on`, and `Charts.series`. Stripping string literals
+                // must not silently un-credit them — that would replace one false report (a false POSITIVE, the
+                // homonym) with another (a false NEGATIVE, an undeclared surface that is actually documented) —
+                // so this pins them against the LIVE product-skill corpus, not a synthetic fixture, the same way
+                // the responsiveness-mandate test above does.
+                for name in [ "bounds"; "on"; "series" ] do
+                    Expect.isTrue
+                        (isDocumented name)
+                        $"`{name}` was documented via real code in the product skills before #1168's string-literal \
                       fix — it must still be documented after it, or the fix traded a false positive for a \
                       false negative"
-        }
+            }
 
-        // ---- #1173: the lexer desyncs on a `"` inside a char literal or a comment. -----------------------
-        //
-        // Independent review of this PR (round 1) found #1168's own fix reopens the exact defect it exists
-        // to close, through two token kinds the walk did not model: a char literal (`'"'`) and a comment
-        // (`// … "`). Both fixtures below are the critic's own reproductions, taken verbatim.
+            // ---- #1173: the lexer desyncs on a `"` inside a char literal or a comment. -----------------------
+            //
+            // Independent review of this PR (round 1) found #1168's own fix reopens the exact defect it exists
+            // to close, through two token kinds the walk did not model: a char literal (`'"'`) and a comment
+            // (`// … "`). Both fixtures below are the critic's own reproductions, taken verbatim.
 
-        test "a quote inside a char literal does not open a phantom string (#1173, false positive)" {
-            // The bug, exactly as the critic ran it. `'"'` is a CHAR literal — the F# character for a
-            // double-quote — not a string. Before this repair, the walk did not know that, read the `"`
-            // inside it as a real string's OPENER, and searched forward for the next `"` to close it — which
-            // it found at the END of the genuine message string. Everything between — including the genuine
-            // string's own content — was then judged to be OUTSIDE any string (the walk thought it had
-            // already closed one), so "chart" stayed in the corpus as bare CODE and was credited: #1168's own
-            // bug, back through a different door.
-            let markdown =
-                """
+            test "a quote inside a char literal does not open a phantom string (#1173, false positive)" {
+                // The bug, exactly as the critic ran it. `'"'` is a CHAR literal — the F# character for a
+                // double-quote — not a string. Before this repair, the walk did not know that, read the `"`
+                // inside it as a real string's OPENER, and searched forward for the next `"` to close it — which
+                // it found at the END of the genuine message string. Everything between — including the genuine
+                // string's own content — was then judged to be OUTSIDE any string (the walk thought it had
+                // already closed one), so "chart" stayed in the corpus as bare CODE and was credited: #1168's own
+                // bug, back through a different door.
+                let markdown =
+                    """
 ```fsharp
 let c = '"' in Expect.isTrue true "a message mentioning chart here"
 ```
 """
 
-            Expect.isFalse
-                (cites markdown "chart")
-                "`chart` sits only inside the genuine message string — the `'\"'` char literal beside it \
+                Expect.isFalse
+                    (cites markdown "chart")
+                    "`chart` sits only inside the genuine message string — the `'\"'` char literal beside it \
                  must not desync the walk into reading that string's content as code"
-        }
+            }
 
-        test "a quote inside a comment does not open a phantom string (#1173, false negative)" {
-            // The other direction, and the worse one: a false positive credits something undocumented; a
-            // false negative — this one — HIDES an undocumented surface entirely. `isn"t` is prose inside a
-            // `//` comment, not a string opener, but the walk (before this repair) could not tell the
-            // difference: it read that `"` as a real string's start, found no closing `"` before the
-            // newline, and — per the "give up cleanly at end of line" rule for an ordinary string — blanked
-            // everything from there to the end of the line, INCLUDING the real citation `Scene.chart` sitting
-            // right there in plain, uncommented... except it was never uncommented at all; it was always
-            // just comment text, which #1168 never claimed to strip and which must stay exactly as legible
-            // to the citation matchers as it was before this PR.
-            let markdown =
-                """
+            test "a quote inside a comment does not open a phantom string (#1173, false negative)" {
+                // The other direction, and the worse one: a false positive credits something undocumented; a
+                // false negative — this one — HIDES an undocumented surface entirely. `isn"t` is prose inside a
+                // `//` comment, not a string opener, but the walk (before this repair) could not tell the
+                // difference: it read that `"` as a real string's start, found no closing `"` before the
+                // newline, and — per the "give up cleanly at end of line" rule for an ordinary string — blanked
+                // everything from there to the end of the line, INCLUDING the real citation `Scene.chart` sitting
+                // right there in plain, uncommented... except it was never uncommented at all; it was always
+                // just comment text, which #1168 never claimed to strip and which must stay exactly as legible
+                // to the citation matchers as it was before this PR.
+                let markdown =
+                    """
 ```fsharp
 // this isn"t obviously a string opener Scene.chart data
 ```
 """
 
-            Expect.isTrue
-                (cites markdown "chart")
-                "`Scene.chart` is plain comment text, sitting after a stray `\"` in `isn\"t` — a phantom \
+                Expect.isTrue
+                    (cites markdown "chart")
+                    "`Scene.chart` is plain comment text, sitting after a stray `\"` in `isn\"t` — a phantom \
                  string opened by that stray quote must not blank it out of the corpus"
-        }
+            }
 
-        test "an escaped char literal is consumed as one unit, not left to strand a quote (#1173)" {
-            // The disambiguation `tryConsumeCharLiteral` exists for. `'\''` (open, backslash, escaped quote,
-            // close — 4 characters) must close at its REAL closing `'`, not at the escaped quote one
-            // character early: a check that does not exclude a backslash body from the plain 3-character
-            // shape reads `'\''` as closing after only 3 chars, stranding the true closing `'` to be
-            // re-examined on its own. Placed immediately before another `'"'`-shaped char literal, that
-            // stranded quote coincides with it to form a SECOND, spurious 3-character match — silently
-            // eating the genuine string-opening `"` that follows, and reopening #1173's own false-positive
-            // bug one level in: `chart` is genuinely inside a real string here (`"' chart"`, a literal quote
-            // and a space, then the word) and must not be credited. (The space before `chart` matters for a
-            // reason unrelated to this bug: `bareCite`'s own lookbehind already excludes a name directly
-            // preceded by `'` — #713's prime-awareness — so without it the fixture would pass FOR THE WRONG
-            // REASON regardless of how the char literal is handled, and prove nothing.)
-            let markdown =
-                """
+            test "an escaped char literal is consumed as one unit, not left to strand a quote (#1173)" {
+                // The disambiguation `tryConsumeCharLiteral` exists for. `'\''` (open, backslash, escaped quote,
+                // close — 4 characters) must close at its REAL closing `'`, not at the escaped quote one
+                // character early: a check that does not exclude a backslash body from the plain 3-character
+                // shape reads `'\''` as closing after only 3 chars, stranding the true closing `'` to be
+                // re-examined on its own. Placed immediately before another `'"'`-shaped char literal, that
+                // stranded quote coincides with it to form a SECOND, spurious 3-character match — silently
+                // eating the genuine string-opening `"` that follows, and reopening #1173's own false-positive
+                // bug one level in: `chart` is genuinely inside a real string here (`"' chart"`, a literal quote
+                // and a space, then the word) and must not be credited. (The space before `chart` matters for a
+                // reason unrelated to this bug: `bareCite`'s own lookbehind already excludes a name directly
+                // preceded by `'` — #713's prime-awareness — so without it the fixture would pass FOR THE WRONG
+                // REASON regardless of how the char literal is handled, and prove nothing.)
+                let markdown =
+                    """
 ```fsharp
 '\''"' chart"
 ```
 """
 
-            Expect.isFalse
-                (cites markdown "chart")
-                "`chart` sits inside a genuine string that starts right after the escaped char literal \
+                Expect.isFalse
+                    (cites markdown "chart")
+                    "`chart` sits inside a genuine string that starts right after the escaped char literal \
                  `'\\''` — mis-consuming that literal must not strand a quote that swallows the real \
                  string's opener and leaves `chart` looking like bare code"
-        }
+            }
 
-        test "an unbalanced quote inside a block comment does not swallow real code after it (#1173)" {
-            // #1173's own acceptance names this third case explicitly (a `(* ... *)` block comment,
-            // alongside the char-literal and line-comment reproductions above): the SAME false-negative
-            // direction as the line-comment fixture, through the other F# comment form. Before this repair,
-            // the stray `"` in `isn"t` was read as a real string's opener; with no second `"` before the end
-            // of input to close it, the walk gave up at end of line — blanking everything from the phantom
-            // open onward, INCLUDING the genuine, real citation `Scene.chart` sitting outside the comment
-            // entirely.
-            let markdown =
-                """
+            test "an unbalanced quote inside a block comment does not swallow real code after it (#1173)" {
+                // #1173's own acceptance names this third case explicitly (a `(* ... *)` block comment,
+                // alongside the char-literal and line-comment reproductions above): the SAME false-negative
+                // direction as the line-comment fixture, through the other F# comment form. Before this repair,
+                // the stray `"` in `isn"t` was read as a real string's opener; with no second `"` before the end
+                // of input to close it, the walk gave up at end of line — blanking everything from the phantom
+                // open onward, INCLUDING the genuine, real citation `Scene.chart` sitting outside the comment
+                // entirely.
+                let markdown =
+                    """
 ```fsharp
 (* isn"t a string opener *) Scene.chart
 ```
 """
 
-            Expect.isTrue
-                (cites markdown "chart")
-                "`Scene.chart` is real code AFTER the block comment closes — a stray `\"` inside `isn\"t` \
+                Expect.isTrue
+                    (cites markdown "chart")
+                    "`Scene.chart` is real code AFTER the block comment closes — a stray `\"` inside `isn\"t` \
                  must not desync the walk into blanking it as if it were string content"
-        }
-        // ---- end #1173 ------------------------------------------------------------------------------
-        // ---- end #1168 ------------------------------------------------------------------------------
+            }
+            // ---- end #1173 ------------------------------------------------------------------------------
+            // ---- end #1168 ------------------------------------------------------------------------------
 
 
-        test "a fence indented inside a list item still opens a block" {
-            // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list
-            // item is legitimately indented past it. The block then never opened, every line of its code landed
-            // in the PROSE buffer where it can document nothing, and a surface cited only here was reported
-            // undeclared — the gate inventing a violation against a doc that is correct.
-            //
-            // The fixture says `ControlsElmish.program`, and it MUST, now that #713 checks which module a
-            // qualifier names. It used to say `Program.program` — and there is no `Program` module in the
-            // shipped api-surface, so that citation was never one. The fiction was invisible while any
-            // uppercase qualifier would do; the rule that catches `AppRoot.Model` catches this too, and the
-            // fix is to cite the module the surface actually comes from.
-            let markdown =
-                """
+            test "a fence indented inside a list item still opens a block" {
+                // Hole 1. `^ {0,3}` is CommonMark's indent allowance AT THE TOP LEVEL, and a fence nested in a list
+                // item is legitimately indented past it. The block then never opened, every line of its code landed
+                // in the PROSE buffer where it can document nothing, and a surface cited only here was reported
+                // undeclared — the gate inventing a violation against a doc that is correct.
+                //
+                // The fixture says `ControlsElmish.program`, and it MUST, now that #713 checks which module a
+                // qualifier names. It used to say `Program.program` — and there is no `Program` module in the
+                // shipped api-surface, so that citation was never one. The fiction was invisible while any
+                // uppercase qualifier would do; the rule that catches `AppRoot.Model` catches this too, and the
+                // fix is to cite the module the surface actually comes from.
+                let markdown =
+                    """
 - To drive the program headlessly:
 
       ```fsharp
@@ -1376,16 +1411,16 @@ let c = '"' in Expect.isTrue true "a message mentioning chart here"
       ```
 """
 
-            Expect.isTrue (cites markdown "program") "a list-indented `fsharp` fence documents the API it shows"
-            Expect.isFalse (cites markdown "headlessly") "...and the prose around it still documents nothing"
-        }
+                Expect.isTrue (cites markdown "program") "a list-indented `fsharp` fence documents the API it shows"
+                Expect.isFalse (cites markdown "headlessly") "...and the prose around it still documents nothing"
+            }
 
-        test "a bash block cannot document an API by homonym" {
-            // Hole 2 — #654's bug, moved one level in. `Resolution.push` is a real public val that #654 ledgered
-            // as a `tracked` gap (#663); an ordinary `git push` line credited it as documented, which declares
-            // that correct ledger line STALE and reds `main`. Exactly what FS.GG.Game#240's prose did to `block`.
-            let markdown =
-                """
+            test "a bash block cannot document an API by homonym" {
+                // Hole 2 — #654's bug, moved one level in. `Resolution.push` is a real public val that #654 ledgered
+                // as a `tracked` gap (#663); an ordinary `git push` line credited it as documented, which declares
+                // that correct ledger line STALE and reds `main`. Exactly what FS.GG.Game#240's prose did to `block`.
+                let markdown =
+                    """
 Publish the product:
 
 ```bash
@@ -1393,106 +1428,114 @@ git push origin main
 ```
 """
 
-            Expect.isFalse (cites markdown "push") "`git push` does not document `Resolution.push`"
-            Expect.isFalse (cites markdown "origin") "...nor does any other ordinary word that happens to be a surface"
-        }
+                Expect.isFalse (cites markdown "push") "`git push` does not document `Resolution.push`"
 
-        test "an F# block documents the API it shows" {
-            let markdown =
-                """
+                Expect.isFalse
+                    (cites markdown "origin")
+                    "...nor does any other ordinary word that happens to be a surface"
+            }
+
+            test "an F# block documents the API it shows" {
+                let markdown =
+                    """
 ```fsharp
 let model = Resolution.push model shot
 ```
 """
 
-            Expect.isTrue (cites markdown "push") "an `fsharp` block IS a citation — that is the whole corpus"
-        }
+                Expect.isTrue (cites markdown "push") "an `fsharp` block IS a citation — that is the whole corpus"
+            }
 
-        test "every spelling of F# is a citation, because a missed one accuses a correct doc" {
-            // The asymmetry in `MarkdownFences`' F#-language set (#669 moved it there, and the fence-level
-            // conformance now lives beside it in `MarkdownFencesTests`; this case stays because it is S-DOC's
-            // own composition — tag set THROUGH the code/prose split — not the scanner's).
-            //
-            // A tag the set does not know is dropped SILENTLY — it has a
-            // language, so `skillsWithUntaggedFence` does not catch it — and the surfaces it cites are then
-            // reported undeclared. That is the gate inventing a violation against a doc that is correct, which
-            // is the same failure as hole 1. `fsi` is not hypothetical here: this repo ships FSI transcripts.
-            for tag in [ "fsharp"; "fs"; "f#"; "fsx"; "fsi"; "FSharp" ] do
-                let markdown = $"```{tag}\nlet model = Resolution.push model shot\n```\n"
+            test "every spelling of F# is a citation, because a missed one accuses a correct doc" {
+                // The asymmetry in `MarkdownFences`' F#-language set (#669 moved it there, and the fence-level
+                // conformance now lives beside it in `MarkdownFencesTests`; this case stays because it is S-DOC's
+                // own composition — tag set THROUGH the code/prose split — not the scanner's).
+                //
+                // A tag the set does not know is dropped SILENTLY — it has a
+                // language, so `skillsWithUntaggedFence` does not catch it — and the surfaces it cites are then
+                // reported undeclared. That is the gate inventing a violation against a doc that is correct, which
+                // is the same failure as hole 1. `fsi` is not hypothetical here: this repo ships FSI transcripts.
+                for tag in [ "fsharp"; "fs"; "f#"; "fsx"; "fsi"; "FSharp" ] do
+                    let markdown = $"```{tag}\nlet model = Resolution.push model shot\n```\n"
 
-                Expect.isTrue (cites markdown "push") $"a ```{tag} block documents the API it shows"
-                Expect.equal (codeReferencesIn markdown).UntaggedFences 0 $"a ```{tag} block is tagged, not bare"
+                    Expect.isTrue (cites markdown "push") $"a ```{tag} block documents the API it shows"
+                    Expect.equal (codeReferencesIn markdown).UntaggedFences 0 $"a ```{tag} block is tagged, not bare"
 
-            // ...and the exclusion still holds where it must, or the homonym is back.
-            for tag in [ "bash"; "json"; "text"; "console" ] do
-                let markdown = $"```{tag}\ngit push origin main\n```\n"
+                // ...and the exclusion still holds where it must, or the homonym is back.
+                for tag in [ "bash"; "json"; "text"; "console" ] do
+                    let markdown = $"```{tag}\ngit push origin main\n```\n"
 
-                Expect.isFalse (cites markdown "push") $"a ```{tag} block documents nothing"
-        }
+                    Expect.isFalse (cites markdown "push") $"a ```{tag} block documents nothing"
+            }
 
-        test "a non-F# block's backticks cannot leak back in through the prose buffer" {
-            // The obvious way to write hole 2's fix — send a non-F# block to the PROSE buffer rather than the
-            // code one — hands the homonym straight back, because prose is mined for inline spans and a shell
-            // block is full of backticks. So a dropped block is dropped from BOTH. This is that decision, pinned.
-            let markdown =
-                """
+            test "a non-F# block's backticks cannot leak back in through the prose buffer" {
+                // The obvious way to write hole 2's fix — send a non-F# block to the PROSE buffer rather than the
+                // code one — hands the homonym straight back, because prose is mined for inline spans and a shell
+                // block is full of backticks. So a dropped block is dropped from BOTH. This is that decision, pinned.
+                let markdown =
+                    """
 ```bash
 echo `push` > /dev/null
 ```
 """
 
-            Expect.isFalse (cites markdown "push") "a backtick inside a dropped block is not an inline citation"
-        }
+                Expect.isFalse (cites markdown "push") "a backtick inside a dropped block is not an inline citation"
+            }
 
-        test "an inline code span still documents, whatever the sentence around it is about" {
-            let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
+            test "an inline code span still documents, whatever the sentence around it is about" {
+                let markdown = "Call `respondsProofOf` to tell \"renders\" from \"responds\"."
 
-            Expect.isTrue (cites markdown "respondsProofOf") "backticks are a citation — that is what they mean (#654)"
-        }
+                Expect.isTrue
+                    (cites markdown "respondsProofOf")
+                    "backticks are a citation — that is what they mean (#654)"
+            }
 
-        test "prose still documents nothing (#654 holds)" {
-            let markdown = "The block above can bind all four the same way."
+            test "prose still documents nothing (#654 holds)" {
+                let markdown = "The block above can bind all four the same way."
 
-            Expect.isFalse (cites markdown "block") "an English word is not a citation of `RichText.block`"
-        }
+                Expect.isFalse (cites markdown "block") "an English word is not a citation of `RichText.block`"
+            }
 
-        test "an unclosed fence is still caught, at any indent" {
-            // The unbounded indent must not cost the #654 guard its teeth: an unclosed fence spills the rest of
-            // the file into a block, and that is the one failure that makes the documented count go UP.
-            let closed =
-                """
+            test "an unclosed fence is still caught, at any indent" {
+                // The unbounded indent must not cost the #654 guard its teeth: an unclosed fence spills the rest of
+                // the file into a block, and that is the one failure that makes the documented count go UP.
+                let closed =
+                    """
 ```fsharp
 let x = 1
 ```
 """
 
-            let unclosed =
-                """
+                let unclosed =
+                    """
 - like so:
 
       ```fsharp
       let x = 1
 """
 
-            Expect.isFalse (codeReferencesIn closed).UnclosedFence "a closed fence is closed"
-            Expect.isTrue (codeReferencesIn unclosed).UnclosedFence "a list-indented fence that never closes is not"
-        }
+                Expect.isFalse (codeReferencesIn closed).UnclosedFence "a closed fence is closed"
+                Expect.isTrue (codeReferencesIn unclosed).UnclosedFence "a list-indented fence that never closes is not"
+            }
 
-        test "an untagged fence is reported rather than guessed at" {
-            // The price of the F#-only corpus, and why `skillsWithUntaggedFence` exists. An untagged block is
-            // ambiguous — credit it and the homonym is back; drop it and a genuine F# example silently stops
-            // documenting its surfaces, sending the author to the ledger to excuse a surface they DID document.
-            // So: drop it (safe direction) AND red the gate by name (so the drop can never be silent).
-            let markdown =
-                """
+            test "an untagged fence is reported rather than guessed at" {
+                // The price of the F#-only corpus, and why `skillsWithUntaggedFence` exists. An untagged block is
+                // ambiguous — credit it and the homonym is back; drop it and a genuine F# example silently stops
+                // documenting its surfaces, sending the author to the ledger to excuse a surface they DID document.
+                // So: drop it (safe direction) AND red the gate by name (so the drop can never be silent).
+                let markdown =
+                    """
 ```
 let model = Resolution.push model shot
 ```
 """
 
-            let extracted = codeReferencesIn markdown
+                let extracted = codeReferencesIn markdown
 
-            Expect.equal extracted.UntaggedFences 1 "the bare fence is counted"
-            Expect.isFalse (citesName extracted.Code "push") "an untagged block is not credited — it might not be F#"
-        }
-    ]
+                Expect.equal extracted.UntaggedFences 1 "the bare fence is counted"
+
+                Expect.isFalse
+                    (citesName extracted.Code "push")
+                    "an untagged block is not credited — it might not be F#"
+            }
+        ]

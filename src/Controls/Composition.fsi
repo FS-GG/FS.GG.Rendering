@@ -9,10 +9,12 @@ open FS.GG.UI.Scene
 module internal Composition =
 
     type EffectInvalidation =
-        { AffectsLayout: bool
-          AffectsPaint: bool
-          AffectsOrder: bool
-          Reason: string }
+        {
+            AffectsLayout: bool
+            AffectsPaint: bool
+            AffectsOrder: bool
+            Reason: string
+        }
 
     type ModifierEffect =
         | Clip of Clip
@@ -36,18 +38,20 @@ module internal Composition =
         | GlyphRunProof
 
     type ModifierEntry =
-        { Effect: ModifierEffect
-          Source: ModifierSource }
+        {
+            Effect: ModifierEffect
+            Source: ModifierSource
+        }
 
-    type ModifierDiagnostic =
-        { Code: string
-          Message: string }
+    type ModifierDiagnostic = { Code: string; Message: string }
 
     type ModifierChain =
-        { Effects: ModifierEntry list
-          NormalizedEffects: ModifierEntry list
-          FingerprintInput: string
-          Diagnostics: ModifierDiagnostic list }
+        {
+            Effects: ModifierEntry list
+            NormalizedEffects: ModifierEntry list
+            FingerprintInput: string
+            Diagnostics: ModifierDiagnostic list
+        }
 
     val classificationTable: (string * EffectInvalidation) list
     val classify: effect: ModifierEffect -> EffectInvalidation
@@ -58,21 +62,25 @@ module internal Composition =
     /// Feature 141 (R1b): retained reuse reads this normalized composition evidence instead of owning a
     /// second modifier/layer/portal invalidation table.
     type RetainedReuseEvidence =
-        { NormalizedModifierFingerprint: uint64
-          AffectsLayout: bool
-          AffectsPaint: bool
-          AffectsOrder: bool
-          Reasons: string list }
+        {
+            NormalizedModifierFingerprint: uint64
+            AffectsLayout: bool
+            AffectsPaint: bool
+            AffectsOrder: bool
+            Reasons: string list
+        }
 
     val retainedReuseEvidence: chain: ModifierChain -> RetainedReuseEvidence
 
     type OrderedContribution =
-        { Id: string
-          DeclIndex: int
-          LocalZ: int
-          Layer: string
-          Scene: Scene list
-          HitBounds: Rect option }
+        {
+            Id: string
+            DeclIndex: int
+            LocalZ: int
+            Layer: string
+            Scene: Scene list
+            HitBounds: Rect option
+        }
 
     val contribution:
         id: string ->
@@ -88,36 +96,43 @@ module internal Composition =
     val hitOrder: contributions: OrderedContribution list -> OrderedContribution list
 
     type LayerHost =
-        { Id: string
-          Order: int
-          EscapesClip: bool }
+        {
+            Id: string
+            Order: int
+            EscapesClip: bool
+        }
 
     type Portal =
-        { TargetLayer: string
-          AnchorId: string option
-          AnchorBounds: Rect option
-          Content: OrderedContribution }
+        {
+            TargetLayer: string
+            AnchorId: string option
+            AnchorBounds: Rect option
+            Content: OrderedContribution
+        }
 
     type PortalDiagnostic =
-        { Code: string
-          Message: string
-          TargetLayer: string option
-          AnchorId: string option }
+        {
+            Code: string
+            Message: string
+            TargetLayer: string option
+            AnchorId: string option
+        }
 
     type LayerComposition =
-        { Paint: OrderedContribution list
-          Hit: OrderedContribution list
-          Diagnostics: PortalDiagnostic list }
+        {
+            Paint: OrderedContribution list
+            Hit: OrderedContribution list
+            Diagnostics: PortalDiagnostic list
+        }
 
     val layerHost: id: string -> order: int -> escapesClip: bool -> LayerHost
+
     val portal:
         targetLayer: string ->
         anchorId: string option ->
         anchorBounds: Rect option ->
         content: OrderedContribution ->
             Portal
+
     val composeLayers:
-        hosts: LayerHost list ->
-        inFlow: OrderedContribution list ->
-        portals: Portal list ->
-            LayerComposition
+        hosts: LayerHost list -> inFlow: OrderedContribution list -> portals: Portal list -> LayerComposition

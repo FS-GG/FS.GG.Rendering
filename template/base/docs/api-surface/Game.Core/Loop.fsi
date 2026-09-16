@@ -12,9 +12,11 @@ namespace FS.GG.Game.Core
 /// `integrate` reproduces an identical `StepState` chain, which is what makes replay a value
 /// comparison rather than a tolerance check.
 type StepState<'world> =
-    { Current: 'world
-      Previous: 'world
-      Accumulator: float }
+    {
+        Current: 'world
+        Previous: 'world
+        Accumulator: float
+    }
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
 /// The fixed-step double-buffered loop, built on `FixedStep.drain` — one hardened accumulator in the
@@ -56,7 +58,10 @@ module Loop =
     /// `floor((Accumulator + 0.25) / dt)` calls to `integrate`. Choose `dt` as a sim rate, not a
     /// resolution knob.
     val advance:
-        dt: float -> integrate: ('world -> float -> 'world) -> frameTime: float -> state: StepState<'world> ->
+        dt: float ->
+        integrate: ('world -> float -> 'world) ->
+        frameTime: float ->
+        state: StepState<'world> ->
             StepState<'world>
 
     /// Public contract function exposed by the FS.GG.Game.Core package.

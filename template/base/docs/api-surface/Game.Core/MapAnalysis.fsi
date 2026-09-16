@@ -19,12 +19,14 @@ type Rule =
 /// facts (`Connected`/`ComponentCount`/`Diameter`/`BorderOpenings`) are always populated, so a caller can
 /// read them whether or not it passed.
 type Report =
-    { Passed: bool
-      Failures: string list
-      Connected: bool
-      ComponentCount: int
-      Diameter: int
-      BorderOpenings: int }
+    {
+        Passed: bool
+        Failures: string list
+        Connected: bool
+        ComponentCount: int
+        Diameter: int
+        BorderOpenings: int
+    }
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
 /// Producer-agnostic analysis over a map — a `TileMap`, or (like `Pathfinding`) a `Cell -> bool`
@@ -92,7 +94,8 @@ module MapAnalysis =
     /// Each `spawn` that can reach a `resource` mapped to its nearest-resource **hop distance** (BFS over the
     /// map's corner-cut-aware adjacency under `neighbourhood`) — a spread of these values tells a designer
     /// whether spawns are treated fairly. A spawn that reaches no resource is omitted. Total.
-    val fairness: spawns: Cell list -> resources: Cell list -> neighbourhood: Neighbourhood -> map: TileMap -> Map<Cell, int>
+    val fairness:
+        spawns: Cell list -> resources: Cell list -> neighbourhood: Neighbourhood -> map: TileMap -> Map<Cell, int>
 
     /// The fraction of `Floor` cells within `radius` hops of some cell in `points` (BFS over the map's
     /// corner-cut-aware adjacency). 0.0 when there is no floor or no point. Total.

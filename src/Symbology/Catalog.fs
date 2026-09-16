@@ -10,9 +10,7 @@ module Catalog =
         | Shown of token: string
         | Hidden of reason: string
 
-    type Entry =
-        { Element: string
-          Visual: Visual }
+    type Entry = { Element: string; Visual: Visual }
 
     type Catalog = { Entries: Entry list }
 
@@ -27,25 +25,31 @@ module Catalog =
         | UnsupportedHidden
 
     type BindingFinding =
-        { Element: string
-          Gap: BindingGap
-          Message: string }
+        {
+            Element: string
+            Gap: BindingGap
+            Message: string
+        }
 
     type BindingVerdict =
         | Complete
         | Incomplete
 
     type EvidenceDigests =
-        { Inventory: string
-          Catalog: string
-          Render: string }
+        {
+            Inventory: string
+            Catalog: string
+            Render: string
+        }
 
     type BindingReport =
-        { DeclaredElements: string list
-          EvidenceDigests: EvidenceDigests
-          Findings: BindingFinding list
-          OptedOut: (string * string) list
-          Verdict: BindingVerdict }
+        {
+            DeclaredElements: string list
+            EvidenceDigests: EvidenceDigests
+            Findings: BindingFinding list
+            OptedOut: (string * string) list
+            Verdict: BindingVerdict
+        }
 
     /// The versioned header line every artifact carries — a machine-readable format marker #994's gate
     /// can key on, and the first thing `parse` validates.
@@ -98,6 +102,7 @@ module Catalog =
         let registered = Set.ofList registeredBindings
         let observed = Set.ofList observedBindings
         let declaredSet = Set.ofList declared
+
         let duplicateDeclared =
             declared
             |> List.countBy id
@@ -108,64 +113,80 @@ module Catalog =
 
         if List.isEmpty declared then
             findings.Add
-                { Element = "<inventory>"
-                  Gap = BindingGap.EmptyInventory
-                  Message =
-                    "the production gameplay-visual inventory is empty — declare every gameplay-relevant element before assessing visual coverage" }
+                {
+                    Element = "<inventory>"
+                    Gap = BindingGap.EmptyInventory
+                    Message =
+                        "the production gameplay-visual inventory is empty — declare every gameplay-relevant element before assessing visual coverage"
+                }
 
         for element in duplicateDeclared do
             findings.Add
-                { Element = element
-                  Gap = BindingGap.DuplicateDeclared
-                  Message = sprintf "gameplay element %s occurs more than once in the production inventory" element }
+                {
+                    Element = element
+                    Gap = BindingGap.DuplicateDeclared
+                    Message = sprintf "gameplay element %s occurs more than once in the production inventory" element
+                }
 
         for element in declared |> List.distinct do
             match tryFind element catalog with
             | None ->
                 findings.Add
-                    { Element = element
-                      Gap = BindingGap.Missing
-                      Message = sprintf "gameplay element %s is declared by production but missing from the visual catalog" element }
+                    {
+                        Element = element
+                        Gap = BindingGap.Missing
+                        Message =
+                            sprintf
+                                "gameplay element %s is declared by production but missing from the visual catalog"
+                                element
+                    }
             | Some(Shown handle) when not (registered.Contains(element, handle)) ->
                 findings.Add
-                    { Element = element
-                      Gap = BindingGap.Unbound
-                      Message =
-                        sprintf
-                            "gameplay element %s names visual handle %s, but the production visual registry cannot resolve it"
-                            element
-                            handle }
+                    {
+                        Element = element
+                        Gap = BindingGap.Unbound
+                        Message =
+                            sprintf
+                                "gameplay element %s names visual handle %s, but the production visual registry cannot resolve it"
+                                element
+                                handle
+                    }
             | Some(Shown handle) when not (observed.Contains(element, handle)) ->
                 findings.Add
-                    { Element = element
-                      Gap = BindingGap.Unobserved
-                      Message =
-                        sprintf
-                            "gameplay element %s resolves visual handle %s, but representative production rendering never exercised it"
-                            element
-                            handle }
+                    {
+                        Element = element
+                        Gap = BindingGap.Unobserved
+                        Message =
+                            sprintf
+                                "gameplay element %s resolves visual handle %s, but representative production rendering never exercised it"
+                                element
+                                handle
+                    }
             | Some(Shown _) -> ()
-            | Some(Hidden reason) when hiddenReasonIsMechanical reason ->
-                optedOut.Add(element, reason.Trim())
+            | Some(Hidden reason) when hiddenReasonIsMechanical reason -> optedOut.Add(element, reason.Trim())
             | Some(Hidden reason) ->
                 findings.Add
-                    { Element = element
-                      Gap = BindingGap.UnsupportedHidden
-                      Message =
-                        sprintf
-                            "gameplay element %s has an unsupported hidden disposition %A — use '<mechanic>: <why it suppresses the visual>'"
-                            element
-                            reason }
+                    {
+                        Element = element
+                        Gap = BindingGap.UnsupportedHidden
+                        Message =
+                            sprintf
+                                "gameplay element %s has an unsupported hidden disposition %A — use '<mechanic>: <why it suppresses the visual>'"
+                                element
+                                reason
+                    }
 
         for entry in catalog.Entries do
             if not (declaredSet.Contains entry.Element) then
                 findings.Add
-                    { Element = entry.Element
-                      Gap = BindingGap.Stale
-                      Message =
-                        sprintf
-                            "visual catalog row %s is stale: production does not declare that gameplay element"
-                            entry.Element }
+                    {
+                        Element = entry.Element
+                        Gap = BindingGap.Stale
+                        Message =
+                            sprintf
+                                "visual catalog row %s is stale: production does not declare that gameplay element"
+                                entry.Element
+                    }
 
         let digestsBound =
             [ evidenceDigests.Inventory; evidenceDigests.Catalog; evidenceDigests.Render ]
@@ -173,17 +194,21 @@ module Catalog =
 
         if not digestsBound then
             findings.Add
-                { Element = "<evidence>"
-                  Gap = BindingGap.Unobserved
-                  Message = "inventory, catalog, and runtime-render evidence digests must all be bound" }
+                {
+                    Element = "<evidence>"
+                    Gap = BindingGap.Unobserved
+                    Message = "inventory, catalog, and runtime-render evidence digests must all be bound"
+                }
 
         let result = List.ofSeq findings
 
-        { DeclaredElements = declared |> List.distinct
-          EvidenceDigests = evidenceDigests
-          Findings = result
-          OptedOut = List.ofSeq optedOut
-          Verdict = if List.isEmpty result then Complete else Incomplete }
+        {
+            DeclaredElements = declared |> List.distinct
+            EvidenceDigests = evidenceDigests
+            Findings = result
+            OptedOut = List.ofSeq optedOut
+            Verdict = if List.isEmpty result then Complete else Incomplete
+        }
 
     let render (catalog: Catalog) : string =
         let sb = StringBuilder()
@@ -195,13 +220,7 @@ module Catalog =
                 | Shown handle -> "shown", handle
                 | Hidden reason -> "hidden", reason
 
-            sb
-                .Append(entry.Element)
-                .Append('\t')
-                .Append(disposition)
-                .Append('\t')
-                .Append(payload)
-                .Append('\n')
+            sb.Append(entry.Element).Append('\t').Append(disposition).Append('\t').Append(payload).Append('\n')
             |> ignore
 
         sb.ToString()
@@ -209,7 +228,8 @@ module Catalog =
     let parse (text: string) : Result<Catalog, string> =
         // Deterministic, IO-free: split on line boundaries, validate the header, then fold the rows.
         let lines =
-            (text: string).Replace("\r\n", "\n").Replace("\r", "\n").Split('\n') |> Array.toList
+            (text: string).Replace("\r\n", "\n").Replace("\r", "\n").Split('\n')
+            |> Array.toList
 
         // The first non-blank line must be the version header.
         let rec skipBlanks =
@@ -241,8 +261,7 @@ module Catalog =
                                 if secondTab < 0 then
                                     afterElement.Trim(), ""
                                 else
-                                    afterElement.Substring(0, secondTab).Trim(),
-                                    afterElement.Substring(secondTab + 1)
+                                    afterElement.Substring(0, secondTab).Trim(), afterElement.Substring(secondTab + 1)
 
                             if element = "" then
                                 Error(sprintf "malformed row (blank element id): %s" line)
@@ -261,15 +280,19 @@ module Catalog =
                                         )
                                     else
                                         loop
-                                            ({ Element = element
-                                               Visual = Shown handle }
+                                            ({
+                                                Element = element
+                                                Visual = Shown handle
+                                             }
                                              :: acc)
                                             (seen.Add element)
                                             rest
                                 | "hidden" ->
                                     loop
-                                        ({ Element = element
-                                           Visual = Hidden(payload.Trim()) }
+                                        ({
+                                            Element = element
+                                            Visual = Hidden(payload.Trim())
+                                         }
                                          :: acc)
                                         (seen.Add element)
                                         rest

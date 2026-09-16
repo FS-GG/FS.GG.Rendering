@@ -57,23 +57,27 @@ module SkillParity =
     /// the artifacts it can actually resolve. Themes whose prose named no repository artifact were not
     /// retained; see `specs/235-gate-cadence-from-slnx/guidance-rule-disposition.md`.
     type GuardedTheme =
-        { ThemeId: string
-          Intent: string
-          Artifacts: ArtifactRef list
-          ApplicablePatterns: string list }
+        {
+            ThemeId: string
+            Intent: string
+            Artifacts: ArtifactRef list
+            ApplicablePatterns: string list
+        }
 
     /// One `GuardedTheme` resolved against one in-scope skill.
     type ArtifactReference =
-        { ThemeId: string
-          /// The theme's `Intent`, carried so a finding can say what the missing guidance was for.
-          Intent: string
-          SkillName: string
-          SurfaceId: string
-          Path: string
-          /// The artifact the skill named — `None` exactly when `Status` is `ArtifactUnnamed`.
-          Reference: ArtifactRef option
-          Expected: ArtifactRef list
-          Status: ArtifactStatus }
+        {
+            ThemeId: string
+            /// The theme's `Intent`, carried so a finding can say what the missing guidance was for.
+            Intent: string
+            SkillName: string
+            SurfaceId: string
+            Path: string
+            /// The artifact the skill named — `None` exactly when `Status` is `ArtifactUnnamed`.
+            Reference: ArtifactRef option
+            Expected: ArtifactRef list
+            Status: ArtifactStatus
+        }
 
     type FindingSeverity =
         | Info
@@ -121,57 +125,67 @@ module SkillParity =
         | CommandWrappers
 
     type SkillSurface =
-        { SurfaceId: string
-          DisplayName: string
-          /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
-          /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
-          /// file. This is the only source of paths the resolver has, and it is what the report's
-          /// `Root` column and the summary JSON's `roots` publish.
-          Roots: string list
-          /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
-          Selector: SurfaceSelector
-          Kind: SurfaceKind
-          Agent: AgentSurface
-          IsRequired: bool
-          Notes: string list }
+        {
+            SurfaceId: string
+            DisplayName: string
+            /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
+            /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
+            /// file. This is the only source of paths the resolver has, and it is what the report's
+            /// `Root` column and the summary JSON's `roots` publish.
+            Roots: string list
+            /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
+            Selector: SurfaceSelector
+            Kind: SurfaceKind
+            Agent: AgentSurface
+            IsRequired: bool
+            Notes: string list
+        }
 
     type WrapperTarget =
-        { RawTarget: string
-          ResolvedPath: string
-          Exists: bool
-          CanonicalSkillName: string option
-          CanonicalDescription: string option
-          TargetHash: string option }
+        {
+            RawTarget: string
+            ResolvedPath: string
+            Exists: bool
+            CanonicalSkillName: string option
+            CanonicalDescription: string option
+            TargetHash: string option
+        }
 
     type SkillEntry =
-        { SkillName: string
-          Description: string
-          Path: string
-          AbsolutePath: string
-          SurfaceId: string
-          EntryKind: EntryKind
-          Metadata: Map<string, string>
-          BodyHash: string
-          Content: string
-          WrapperTarget: WrapperTarget option }
+        {
+            SkillName: string
+            Description: string
+            Path: string
+            AbsolutePath: string
+            SurfaceId: string
+            EntryKind: EntryKind
+            Metadata: Map<string, string>
+            BodyHash: string
+            Content: string
+            WrapperTarget: WrapperTarget option
+        }
 
     /// One `Module.member` a skill documents, resolved against the surface baseline and the test corpus.
     type ApiSymbol =
-        { Symbol: string
-          SkillName: string
-          SurfaceId: string
-          Path: string
-          Status: SymbolStatus }
+        {
+            Symbol: string
+            SkillName: string
+            SurfaceId: string
+            Path: string
+            Status: SymbolStatus
+        }
 
     type IntentionalException =
-        { ExceptionId: string
-          SkillName: string
-          SurfaceId: string
-          Category: string
-          Reason: string
-          Owner: string
-          ReviewDate: string
-          Scope: string }
+        {
+            ExceptionId: string
+            SkillName: string
+            SurfaceId: string
+            Category: string
+            Reason: string
+            Owner: string
+            ReviewDate: string
+            Scope: string
+        }
 
     /// Why a file that `filesForSurface` ENUMERATED never became a `SkillEntry`. The two cases are kept
     /// apart on purpose (#1093): an unreadable file is a fact about the repository, an unexpected defect is
@@ -193,84 +207,100 @@ module SkillParity =
     /// path(s) that led here when they differ. Reporting the enumerated path instead would send a reader to
     /// fix a file that reads perfectly.
     type SurfaceReadFailure =
-        { SurfaceId: string
-          Path: string
-          Kind: SurfaceReadFailureKind
-          ExceptionType: string
-          Reason: string
-          ReachedFrom: string list }
+        {
+            SurfaceId: string
+            Path: string
+            Kind: SurfaceReadFailureKind
+            ExceptionType: string
+            Reason: string
+            ReachedFrom: string list
+        }
 
     type ParityFinding =
-        { FindingId: string
-          SkillName: string
-          SurfaceId: string
-          Category: FindingCategory
-          Severity: FindingSeverity
-          CanonicalPath: string option
-          WrapperPath: string option
-          Symbol: string option
-          Message: string
-          Remediation: string
-          ExceptionId: string option }
+        {
+            FindingId: string
+            SkillName: string
+            SurfaceId: string
+            Category: FindingCategory
+            Severity: FindingSeverity
+            CanonicalPath: string option
+            WrapperPath: string option
+            Symbol: string option
+            Message: string
+            Remediation: string
+            ExceptionId: string option
+        }
 
     type SeverityCounts =
-        { Critical: int
-          High: int
-          Warning: int
-          Info: int }
+        {
+            Critical: int
+            High: int
+            Warning: int
+            Info: int
+        }
 
     type SkillSymbolSummary =
-        { SkillName: string
-          Documented: int
-          Exercised: int
-          Unexercised: int
-          Unresolved: int }
+        {
+            SkillName: string
+            Documented: int
+            Exercised: int
+            Unexercised: int
+            Unresolved: int
+        }
 
     type ThemeArtifactSummary =
-        { ThemeId: string
-          Scoped: int
-          Resolved: int
-          Dangling: int
-          Unnamed: int }
+        {
+            ThemeId: string
+            Scoped: int
+            Resolved: int
+            Dangling: int
+            Unnamed: int
+        }
 
     type ParityReport =
-        { CheckedAtUtc: DateTime
-          RepositoryRoot: string
-          OverallStatus: OverallStatus
-          SupportedSurfaces: SkillSurface list
-          CanonicalSourceCount: int
-          WrapperCount: int
-          FindingCountsBySeverity: SeverityCounts
-          ApiSymbolCoverage: SkillSymbolSummary list
-          GuardedThemeCoverage: ThemeArtifactSummary list
-          Findings: ParityFinding list
-          IntentionalExceptions: IntentionalException list
-          GeneratedReportPath: string
-          StructuredSummaryPath: string
-          Caveats: string list
-          Command: string }
+        {
+            CheckedAtUtc: DateTime
+            RepositoryRoot: string
+            OverallStatus: OverallStatus
+            SupportedSurfaces: SkillSurface list
+            CanonicalSourceCount: int
+            WrapperCount: int
+            FindingCountsBySeverity: SeverityCounts
+            ApiSymbolCoverage: SkillSymbolSummary list
+            GuardedThemeCoverage: ThemeArtifactSummary list
+            Findings: ParityFinding list
+            IntentionalExceptions: IntentionalException list
+            GeneratedReportPath: string
+            StructuredSummaryPath: string
+            Caveats: string list
+            Command: string
+        }
 
     type ParityCheckRequest =
-        { RepositoryRoot: string
-          OutDir: string
-          ReportPath: string
-          SummaryJsonPath: string
-          FixtureMode: string option
-          SurfaceOverrides: (string * string) list
-          AllowedExceptionIds: Set<string>
-          FailOnSeverity: FindingSeverity
-          ListSymbolsOnly: bool
-          JsonOutput: bool }
+        {
+            RepositoryRoot: string
+            OutDir: string
+            ReportPath: string
+            SummaryJsonPath: string
+            FixtureMode: string option
+            SurfaceOverrides: (string * string) list
+            AllowedExceptionIds: Set<string>
+            FailOnSeverity: FindingSeverity
+            ListSymbolsOnly: bool
+            JsonOutput: bool
+        }
 
     type Model =
-        { Request: ParityCheckRequest
-          Surfaces: SkillSurface list
-          Entries: SkillEntry list
-          Findings: ParityFinding list
-          Symbols: ApiSymbol list
-          Artifacts: ArtifactReference list
-          Report: ParityReport option
-          Diagnostics: string list }
+        {
+            Request: ParityCheckRequest
+            Surfaces: SkillSurface list
+            Entries: SkillEntry list
+            Findings: ParityFinding list
+            Symbols: ApiSymbol list
+            Artifacts: ArtifactReference list
+            Report: ParityReport option
+            Diagnostics: string list
+        }
 
     type Msg =
         | InventoryRequested
@@ -338,10 +368,7 @@ module SkillParity =
     val loadExercisedSymbols: repositoryRoot: string -> Set<string> option
 
     val evaluateApiSymbols:
-        surfaceMembers: Map<string, Set<string>> ->
-        exercised: Set<string> ->
-        entries: SkillEntry list ->
-            ApiSymbol list
+        surfaceMembers: Map<string, Set<string>> -> exercised: Set<string> -> entries: SkillEntry list -> ApiSymbol list
 
     /// The process-guidance themes that survived the deleted substring layer, each narrowed to the
     /// repository artifacts it can resolve.

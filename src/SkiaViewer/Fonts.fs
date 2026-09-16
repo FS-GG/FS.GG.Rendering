@@ -19,61 +19,82 @@ module Fonts =
         | Tofu of original: char
 
     type ResolvedChar =
-        { Original: char
-          Rendered: char
-          Font: SKFont
-          Resolution: FallbackResolution }
+        {
+            Original: char
+            Rendered: char
+            Font: SKFont
+            Resolution: FallbackResolution
+        }
 
     type FallbackReport =
-        { SubstitutedCount: int
-          TofuCount: int
-          AffectedCodePoints: int list }
+        {
+            SubstitutedCount: int
+            TofuCount: int
+            AffectedCodePoints: int list
+        }
 
     type TextShapingProviderStatus =
-        { Evidence: ShapingProviderEvidence
-          Diagnostics: string list }
+        {
+            Evidence: ShapingProviderEvidence
+            Diagnostics: string list
+        }
 
     let defaultSansFamily = "Noto Sans"
     let defaultMonoFamily = "Noto Sans Mono"
     let private harfbuzzProviderId = "harfbuzz-skiasharp"
-    let private harfbuzzVersionBucket = $"SkiaSharp.HarfBuzz/{typeof<SKShaper>.Assembly.GetName().Version}"
+
+    let private harfbuzzVersionBucket =
+        $"SkiaSharp.HarfBuzz/{typeof<SKShaper>.Assembly.GetName().Version}"
+
     let private fallbackVersionBucket = "skia-bundled-font-fallback/v1"
 
     let private installedEvidence () =
-        { Availability = ProviderInstalled
-          ProviderId = harfbuzzProviderId
-          VersionBucket = harfbuzzVersionBucket
-          Failure = None }
+        {
+            Availability = ProviderInstalled
+            ProviderId = harfbuzzProviderId
+            VersionBucket = harfbuzzVersionBucket
+            Failure = None
+        }
 
     let private clearedEvidence () =
-        { Availability = ProviderCleared
-          ProviderId = harfbuzzProviderId
-          VersionBucket = fallbackVersionBucket
-          Failure = None }
+        {
+            Availability = ProviderCleared
+            ProviderId = harfbuzzProviderId
+            VersionBucket = fallbackVersionBucket
+            Failure = None
+        }
 
     let private failedEvidence message =
-        { Availability = ProviderFailed
-          ProviderId = harfbuzzProviderId
-          VersionBucket = harfbuzzVersionBucket
-          Failure = Some message }
+        {
+            Availability = ProviderFailed
+            ProviderId = harfbuzzProviderId
+            VersionBucket = harfbuzzVersionBucket
+            Failure = Some message
+        }
 
-    let private providerGate = obj()
+    let private providerGate = obj ()
     let mutable private providerEvidence = clearedEvidence ()
 
     let private providerDiagnostics evidence =
-        [ match evidence.Availability with
-          | ProviderInstalled -> $"text-shaping-provider: installed {evidence.ProviderId} ({evidence.VersionBucket})"
-          | ProviderCleared -> $"text-shaping-provider: cleared; using bundled-font fallback ({evidence.VersionBucket})"
-          | ProviderUnavailable -> $"text-shaping-provider: unavailable {evidence.ProviderId} ({evidence.VersionBucket})"
-          | ProviderFailed -> $"text-shaping-provider: failed {evidence.ProviderId} ({evidence.VersionBucket})"
-          match evidence.Failure with
-          | Some failure -> $"text-shaping-provider-failure: {failure}"
-          | None -> () ]
+        [
+            match evidence.Availability with
+            | ProviderInstalled -> $"text-shaping-provider: installed {evidence.ProviderId} ({evidence.VersionBucket})"
+            | ProviderCleared ->
+                $"text-shaping-provider: cleared; using bundled-font fallback ({evidence.VersionBucket})"
+            | ProviderUnavailable ->
+                $"text-shaping-provider: unavailable {evidence.ProviderId} ({evidence.VersionBucket})"
+            | ProviderFailed -> $"text-shaping-provider: failed {evidence.ProviderId} ({evidence.VersionBucket})"
+            match evidence.Failure with
+            | Some failure -> $"text-shaping-provider-failure: {failure}"
+            | None -> ()
+        ]
 
     let shapingProviderStatus () : TextShapingProviderStatus =
         lock providerGate (fun () ->
-            { Evidence = providerEvidence
-              Diagnostics = providerDiagnostics providerEvidence })
+            {
+                Evidence = providerEvidence
+                Diagnostics = providerDiagnostics providerEvidence
+            })
 
     // Manifest-resource logical-name prefix (matches the explicit <LogicalName> in SkiaViewer.fsproj).
     let private resourcePrefix = "FS.GG.UI.SkiaViewer.Fonts."
@@ -81,21 +102,25 @@ module Fonts =
     // (canonical family, isBold, resource leaf) for every bundled face. Bold rows present only where a
     // real bold face is bundled; a bold request for a family without one falls to its regular face.
     let private faceAssets: (string * bool * string) list =
-        [ "Noto Sans", false, "NotoSans-Regular.ttf"
-          "Noto Sans", true, "NotoSans-Bold.ttf"
-          "Noto Sans Mono", false, "NotoSansMono-Regular.ttf"
-          "Inter", false, "Inter-Regular.ttf"
-          "Inter", true, "Inter-Bold.ttf"
-          "JetBrains Mono", false, "JetBrainsMono-Regular.ttf"
-          "DejaVu Sans", false, "DejaVuSans.ttf"
-          "DejaVu Sans", true, "DejaVuSans-Bold.ttf"
-          "DejaVu Sans Mono", false, "DejaVuSansMono.ttf" ]
+        [
+            "Noto Sans", false, "NotoSans-Regular.ttf"
+            "Noto Sans", true, "NotoSans-Bold.ttf"
+            "Noto Sans Mono", false, "NotoSansMono-Regular.ttf"
+            "Inter", false, "Inter-Regular.ttf"
+            "Inter", true, "Inter-Bold.ttf"
+            "JetBrains Mono", false, "JetBrainsMono-Regular.ttf"
+            "DejaVu Sans", false, "DejaVuSans.ttf"
+            "DejaVu Sans", true, "DejaVuSans-Bold.ttf"
+            "DejaVu Sans Mono", false, "DejaVuSansMono.ttf"
+        ]
 
     // Fixed fallback orders (data-model §2): a glyph missing in one family is sought in the next
     // before any substitute/tofu. The requested family is tried first, then the rest of its chain.
     let private sansChain = [ "Noto Sans"; "Inter"; "DejaVu Sans" ]
     let private monoChain = [ "Noto Sans Mono"; "JetBrains Mono"; "DejaVu Sans Mono" ]
-    let private monoFamilies = set [ "Noto Sans Mono"; "JetBrains Mono"; "DejaVu Sans Mono" ]
+
+    let private monoFamilies =
+        set [ "Noto Sans Mono"; "JetBrains Mono"; "DejaVu Sans Mono" ]
 
     let private gate = obj ()
     let private typefaceCache = Dictionary<struct (string * bool), SKTypeface>()
@@ -172,7 +197,8 @@ module Fonts =
             faceAssets
             |> List.tryPick (fun (f, b, leaf) -> if f = family && b = bold then Some leaf else None)
             |> Option.orElseWith (fun () ->
-                faceAssets |> List.tryPick (fun (f, b, leaf) -> if f = family && not b then Some leaf else None))
+                faceAssets
+                |> List.tryPick (fun (f, b, leaf) -> if f = family && not b then Some leaf else None))
 
         match leaf with
         | None -> failwithf "Fonts: no bundled face for family '%s'" family
@@ -254,12 +280,14 @@ module Fonts =
     let private canonicalFamily (name: string) : string option =
         let n = name.Trim().ToLowerInvariant()
 
-        [ "noto sans mono", "Noto Sans Mono"
-          "dejavu sans mono", "DejaVu Sans Mono"
-          "jetbrains mono", "JetBrains Mono"
-          "noto sans", "Noto Sans"
-          "dejavu sans", "DejaVu Sans"
-          "inter", "Inter" ]
+        [
+            "noto sans mono", "Noto Sans Mono"
+            "dejavu sans mono", "DejaVu Sans Mono"
+            "jetbrains mono", "JetBrains Mono"
+            "noto sans", "Noto Sans"
+            "dejavu sans", "DejaVu Sans"
+            "inter", "Inter"
+        ]
         |> List.tryPick (fun (k, v) -> if n.Contains k then Some v else None)
 
     let private looksMonospace (name: string) =
@@ -280,11 +308,14 @@ module Fonts =
             | Some name ->
                 match canonicalFamily name with
                 | Some fam -> fam, monoFamilies.Contains fam
-                | None -> if looksMonospace name then defaultMonoFamily, true else defaultSansFamily, false
+                | None ->
+                    if looksMonospace name then
+                        defaultMonoFamily, true
+                    else
+                        defaultSansFamily, false
             | None -> defaultSansFamily, false
 
-        let chain =
-            (primary :: (if mono then monoChain else sansChain)) |> List.distinct
+        let chain = (primary :: (if mono then monoChain else sansChain)) |> List.distinct
 
         bold, primary, chain, size
 
@@ -304,29 +335,40 @@ module Fonts =
 
         match chain |> List.tryPick (fun fam -> covers fam c |> Option.map (fun f -> f, fam)) with
         | Some(f, fam) ->
-            { Original = c
-              Rendered = c
-              Font = f
-              Resolution = FallbackResolution.Authored fam }
+            {
+                Original = c
+                Rendered = c
+                Font = f
+                Resolution = FallbackResolution.Authored fam
+            }
         | None ->
             match substitute c with
             | Some sub ->
-                match chain |> List.tryPick (fun fam -> covers fam sub |> Option.map (fun f -> f, fam)) with
+                match
+                    chain
+                    |> List.tryPick (fun fam -> covers fam sub |> Option.map (fun f -> f, fam))
+                with
                 | Some(f, fam) ->
-                    { Original = c
-                      Rendered = sub
-                      Font = f
-                      Resolution = FallbackResolution.Substituted(c, sub, fam) }
+                    {
+                        Original = c
+                        Rendered = sub
+                        Font = f
+                        Resolution = FallbackResolution.Substituted(c, sub, fam)
+                    }
                 | None ->
-                    { Original = c
-                      Rendered = c
-                      Font = cachedFont primary bold size
-                      Resolution = FallbackResolution.Tofu c }
+                    {
+                        Original = c
+                        Rendered = c
+                        Font = cachedFont primary bold size
+                        Resolution = FallbackResolution.Tofu c
+                    }
             | None ->
-                { Original = c
-                  Rendered = c
-                  Font = cachedFont primary bold size
-                  Resolution = FallbackResolution.Tofu c }
+                {
+                    Original = c
+                    Rendered = c
+                    Font = cachedFont primary bold size
+                    Resolution = FallbackResolution.Tofu c
+                }
 
     let resolveFont (font: FontSpec) : SKFont =
         let bold, primary, _, size = setup font
@@ -351,9 +393,11 @@ module Fonts =
         let size = max 1.0 font.Size
         // Width from real advances; Height/Baseline kept identical to the pure heuristic so only the
         // truncation-causing width is corrected (no line-height ripple).
-        { Width = measureWidth font text
-          Height = size
-          Baseline = size * 0.8 }
+        {
+            Width = measureWidth font text
+            Height = size
+            Baseline = size * 0.8
+        }
 
     let report (resolved: ResolvedChar list) : FallbackReport =
         let substituted =
@@ -370,10 +414,15 @@ module Fonts =
                 | FallbackResolution.Tofu _ -> true
                 | _ -> false)
 
-        { SubstitutedCount = List.length substituted
-          TofuCount = List.length tofu
-          AffectedCodePoints =
-            (substituted @ tofu) |> List.map (fun rc -> int rc.Original) |> List.distinct |> List.sort }
+        {
+            SubstitutedCount = List.length substituted
+            TofuCount = List.length tofu
+            AffectedCodePoints =
+                (substituted @ tofu)
+                |> List.map (fun rc -> int rc.Original)
+                |> List.distinct
+                |> List.sort
+        }
 
     let diagnostics (resolved: ResolvedChar list) : string list =
         resolved
@@ -382,7 +431,8 @@ module Fonts =
             | FallbackResolution.Authored _ -> None
             | FallbackResolution.Substituted(o, s, fam) ->
                 Some(sprintf "text-fallback: substituted U+%04X '%c' -> '%c' (family %s)" (int o) o s fam)
-            | FallbackResolution.Tofu o -> Some(sprintf "text-fallback: tofu U+%04X '%c' (no bundled coverage)" (int o) o))
+            | FallbackResolution.Tofu o ->
+                Some(sprintf "text-fallback: tofu U+%04X '%c' (no bundled coverage)" (int o) o))
 
     let private resolvedFamily rc =
         match rc.Resolution with
@@ -414,14 +464,22 @@ module Fonts =
             |> Seq.choose (fun ch ->
                 let code = int ch
 
-                if (code >= 0x0041 && code <= 0x024F) then Some LatinScript
-                elif code >= 0x0600 && code <= 0x06FF then Some ArabicScript
-                elif code >= 0x0900 && code <= 0x097F then Some DevanagariScript
-                elif code >= 0x0E00 && code <= 0x0E7F then Some ThaiScript
-                elif code >= 0x2600 && code <= 0x27BF then Some SymbolScript
-                elif Char.IsSurrogate ch then Some EmojiScript
-                elif Char.IsLetterOrDigit ch then Some UnknownScript
-                else None)
+                if (code >= 0x0041 && code <= 0x024F) then
+                    Some LatinScript
+                elif code >= 0x0600 && code <= 0x06FF then
+                    Some ArabicScript
+                elif code >= 0x0900 && code <= 0x097F then
+                    Some DevanagariScript
+                elif code >= 0x0E00 && code <= 0x0E7F then
+                    Some ThaiScript
+                elif code >= 0x2600 && code <= 0x27BF then
+                    Some SymbolScript
+                elif Char.IsSurrogate ch then
+                    Some EmojiScript
+                elif Char.IsLetterOrDigit ch then
+                    Some UnknownScript
+                else
+                    None)
             |> Seq.distinct
             |> Seq.toList
 
@@ -448,7 +506,10 @@ module Fonts =
         if hasTofu then
             MissingGlyphs(resolved |> List.map (fun rc -> string rc.Original) |> String.concat "")
         elif not substituted.IsEmpty then
-            SubstitutedFace(font.Family |> Option.defaultValue defaultSansFamily, substituted |> List.distinct |> String.concat ",")
+            SubstitutedFace(
+                font.Family |> Option.defaultValue defaultSansFamily,
+                substituted |> List.distinct |> String.concat ","
+            )
         else
             let family =
                 resolved
@@ -459,22 +520,29 @@ module Fonts =
             AuthoredFace family
 
     let private unsupportedDiagnostics (text: string) =
-        [ if text.Contains("\n") || text.Contains("\r") then
-              "text-shaping: newline control handled as deterministic single-line control character; paragraph layout is out of scope."
-          for ch in text do
-              let code = int ch
-              if (code >= 0x202A && code <= 0x202E) || (code >= 0x2066 && code <= 0x2069) then
-                  $"text-shaping: unsupported bidi control U+{code:X4} disclosed; paragraph bidi layout is out of scope." ]
+        [
+            if text.Contains("\n") || text.Contains("\r") then
+                "text-shaping: newline control handled as deterministic single-line control character; paragraph layout is out of scope."
+            for ch in text do
+                let code = int ch
+
+                if (code >= 0x202A && code <= 0x202E) || (code >= 0x2066 && code <= 0x2069) then
+                    $"text-shaping: unsupported bidi control U+{code:X4} disclosed; paragraph bidi layout is out of scope."
+        ]
 
     let private fallbackResultWith evidence mode extraDiagnostics text font =
         let fallback = Scene.buildFallbackShapedText text font
+
         let result =
             { fallback with
                 Provider = evidence
                 Diagnostics = fallback.Diagnostics @ extraDiagnostics @ providerDiagnostics evidence
-                FallbackMode = mode }
+                FallbackMode = mode
+            }
 
-        { result with Fingerprint = Scene.shapedTextFingerprint result }
+        { result with
+            Fingerprint = Scene.shapedTextFingerprint result
+        }
 
     /// Shape text and also surface the per-character resolution it computed, so a caller that needs
     /// both the shaped result and the fallback events (the draw path) resolves the string once here
@@ -507,6 +575,7 @@ module Fonts =
                 let resolvedLast = resolvedArr.Length - 1
                 let width = float shaped.Width
                 let size = max 1.0 font.Size
+
                 let pointAt index =
                     if index >= 0 && index < points.Length then
                         points.[index]
@@ -538,6 +607,7 @@ module Fonts =
                                 index
 
                         let point = pointAt index
+
                         let nextX =
                             if index + 1 < points.Length then
                                 float (pointAt (index + 1)).X
@@ -545,6 +615,7 @@ module Fonts =
                                 width
 
                         let x = float point.X
+
                         let resolvedFace =
                             if resolvedLast >= 0 then
                                 resolvedArr.[max 0 (min resolvedLast cluster)]
@@ -553,57 +624,77 @@ module Fonts =
                             else
                                 font.Family
 
-                        { GlyphId = int glyphId
-                          SourceCluster = cluster
-                          SourceText = sourceAt cluster
-                          ResolvedFace = resolvedFace
-                          Advance = max 0.0 (nextX - x)
-                          Offset = { X = 0.0; Y = float point.Y }
-                          Position = { X = x; Y = 0.0 }
-                          Missing = isMissing cluster (int glyphId) })
+                        {
+                            GlyphId = int glyphId
+                            SourceCluster = cluster
+                            SourceText = sourceAt cluster
+                            ResolvedFace = resolvedFace
+                            Advance = max 0.0 (nextX - x)
+                            Offset = { X = 0.0; Y = float point.Y }
+                            Position = { X = x; Y = 0.0 }
+                            Missing = isMissing cluster (int glyphId)
+                        })
                     |> Array.toList
 
                 let metrics =
-                    { Advance = width
-                      Width = width
-                      Height = size
-                      Baseline = size * 0.8
-                      Bounds =
-                        Some
-                            { X = 0.0
-                              Y = -(size * 0.8)
-                              Width = width
-                              Height = size } }
+                    {
+                        Advance = width
+                        Width = width
+                        Height = size
+                        Baseline = size * 0.8
+                        Bounds =
+                            Some
+                                {
+                                    X = 0.0
+                                    Y = -(size * 0.8)
+                                    Width = width
+                                    Height = size
+                                }
+                    }
 
                 let run =
-                    { TextRange = (0, text.Length)
-                      SourceText = text
-                      ResolvedFont = resolved |> List.tryPick resolvedFamily |> Option.orElse font.Family
-                      Direction = directionOf text
-                      Script = scriptOf text
-                      FallbackDecision = fallbackDecision font resolved
-                      Glyphs = glyphs
-                      Advance = width
-                      Diagnostics = fallbackDiagnostics @ extraDiagnostics }
+                    {
+                        TextRange = (0, text.Length)
+                        SourceText = text
+                        ResolvedFont = resolved |> List.tryPick resolvedFamily |> Option.orElse font.Family
+                        Direction = directionOf text
+                        Script = scriptOf text
+                        FallbackDecision = fallbackDecision font resolved
+                        Glyphs = glyphs
+                        Advance = width
+                        Diagnostics = fallbackDiagnostics @ extraDiagnostics
+                    }
 
                 let result =
-                    { Text = text
-                      Font = font
-                      Provider = evidence
-                      Runs = [ run ]
-                      Glyphs = glyphs
-                      Metrics = metrics
-                      Diagnostics = fallbackDiagnostics @ extraDiagnostics @ providerDiagnostics evidence
-                      Fingerprint = ""
-                      FallbackMode = Shaped }
+                    {
+                        Text = text
+                        Font = font
+                        Provider = evidence
+                        Runs = [ run ]
+                        Glyphs = glyphs
+                        Metrics = metrics
+                        Diagnostics = fallbackDiagnostics @ extraDiagnostics @ providerDiagnostics evidence
+                        Fingerprint = ""
+                        FallbackMode = Shaped
+                    }
 
-                { result with Fingerprint = Scene.shapedTextFingerprint result }, resolved
+                { result with
+                    Fingerprint = Scene.shapedTextFingerprint result
+                },
+                resolved
             with ex ->
                 pooledTypeface |> Option.iter evictShaper
                 let failed = failedEvidence ex.Message
                 lock providerGate (fun () -> providerEvidence <- failed)
                 Scene.setTextMeasurementVersionBucket failed.VersionBucket
-                fallbackResultWith failed ShapingFailedFallback [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ] text font, []
+
+                fallbackResultWith
+                    failed
+                    ShapingFailedFallback
+                    [ $"text-shaping: HarfBuzz shaping failed: {ex.Message}" ]
+                    text
+                    font,
+                []
         | ProviderCleared -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
         | ProviderUnavailable -> fallbackResultWith evidence ProviderUnavailableFallback [] text font, []
         | ProviderFailed -> fallbackResultWith evidence ShapingFailedFallback [] text font, []
@@ -619,7 +710,14 @@ module Fonts =
     let installShapingProvider () : TextShapingProviderStatus =
         let evidence =
             try
-                let font = resolveFont { Family = None; Size = 16.0; Weight = None }
+                let font =
+                    resolveFont
+                        {
+                            Family = None
+                            Size = 16.0
+                            Weight = None
+                        }
+
                 use _shaper = new SKShaper(font.Typeface)
                 installedEvidence ()
             with ex ->
@@ -635,8 +733,10 @@ module Fonts =
             Scene.setRealTextMeasurer (Some realMeasure)
             Scene.setTextMeasurementVersionBucket evidence.VersionBucket
 
-        { Evidence = evidence
-          Diagnostics = providerDiagnostics evidence }
+        {
+            Evidence = evidence
+            Diagnostics = providerDiagnostics evidence
+        }
 
     let clearShapingProvider () : TextShapingProviderStatus =
         let evidence = clearedEvidence ()
@@ -644,8 +744,10 @@ module Fonts =
         Scene.setRealTextMeasurer (Some realMeasure)
         Scene.setTextMeasurementVersionBucket evidence.VersionBucket
 
-        { Evidence = evidence
-          Diagnostics = providerDiagnostics evidence }
+        {
+            Evidence = evidence
+            Diagnostics = providerDiagnostics evidence
+        }
 
     let private restoreShapingProvider evidence =
         lock providerGate (fun () -> providerEvidence <- evidence)
@@ -702,64 +804,77 @@ module Fonts =
                 let current = x
                 x <- x + advance
 
-                { GlyphId = int rc.Rendered
-                  SourceText = string rc.Original
-                  Advance = advance
-                  Offset = { X = 0.0; Y = 0.0 }
-                  Cluster = index
-                  Position = { X = current; Y = 0.0 }
-                  ResolvedFace = resolvedFamily rc |> Option.orElse font.Family
-                  Missing =
-                    match rc.Resolution with
-                    | FallbackResolution.Tofu _ -> true
-                    | _ -> false })
+                {
+                    GlyphId = int rc.Rendered
+                    SourceText = string rc.Original
+                    Advance = advance
+                    Offset = { X = 0.0; Y = 0.0 }
+                    Cluster = index
+                    Position = { X = current; Y = 0.0 }
+                    ResolvedFace = resolvedFamily rc |> Option.orElse font.Family
+                    Missing =
+                        match rc.Resolution with
+                        | FallbackResolution.Tofu _ -> true
+                        | _ -> false
+                })
 
         let measured = realMeasure text font
+
         let glyphMetrics =
-            { Advance = measured.Width
-              Height = measured.Height
-              Baseline = measured.Baseline }
+            {
+                Advance = measured.Width
+                Height = measured.Height
+                Baseline = measured.Baseline
+            }
 
         let shapedGlyphs =
             glyphs
             |> List.map (fun g ->
-                ({ GlyphId = g.GlyphId
-                   SourceCluster = g.Cluster
-                   SourceText = g.SourceText
-                   ResolvedFace = g.ResolvedFace
-                   Advance = g.Advance
-                   Offset = g.Offset
-                   Position = g.Position
-                   Missing = g.Missing }
-                 : ShapedGlyph))
+                ({
+                    GlyphId = g.GlyphId
+                    SourceCluster = g.Cluster
+                    SourceText = g.SourceText
+                    ResolvedFace = g.ResolvedFace
+                    Advance = g.Advance
+                    Offset = g.Offset
+                    Position = g.Position
+                    Missing = g.Missing
+                }
+                : ShapedGlyph))
 
         let runDiagnostics = diagnostics resolved
 
         let run =
-            { TextRange = (0, text.Length)
-              SourceText = text
-              ResolvedFont = resolved |> List.tryPick resolvedFamily |> Option.orElse font.Family
-              Direction = directionOf text
-              Script = scriptOf text
-              FallbackDecision = fallbackDecision font resolved
-              Glyphs = shapedGlyphs
-              Advance = measured.Width
-              Diagnostics = runDiagnostics }
+            {
+                TextRange = (0, text.Length)
+                SourceText = text
+                ResolvedFont = resolved |> List.tryPick resolvedFamily |> Option.orElse font.Family
+                Direction = directionOf text
+                Script = scriptOf text
+                FallbackDecision = fallbackDecision font resolved
+                Glyphs = shapedGlyphs
+                Advance = measured.Width
+                Diagnostics = runDiagnostics
+            }
 
         let evidence = clearedEvidence ()
 
         let data =
-            { Text = text
-              Font = font
-              Provider = evidence
-              Runs = [ run ]
-              Glyphs = glyphs
-              Metrics = glyphMetrics
-              Fingerprint = ""
-              FallbackMode = ProviderUnavailableFallback
-              FallbackDiagnostics = runDiagnostics }
+            {
+                Text = text
+                Font = font
+                Provider = evidence
+                Runs = [ run ]
+                Glyphs = glyphs
+                Metrics = glyphMetrics
+                Fingerprint = ""
+                FallbackMode = ProviderUnavailableFallback
+                FallbackDiagnostics = runDiagnostics
+            }
 
-        { data with Fingerprint = Scene.glyphRunFingerprint data }
+        { data with
+            Fingerprint = Scene.glyphRunFingerprint data
+        }
 
     let installMeasurementSeam () =
         Scene.setRealTextMeasurer (Some realMeasure)

@@ -12,13 +12,15 @@ type ThemeMode =
     | Dark
 
 type RolePalette =
-    { Mode: ThemeMode
-      Background: Color
-      Foreground: Color
-      Accent: Color
-      Danger: Color
-      Muted: Color
-      FocusRing: Color }
+    {
+        Mode: ThemeMode
+        Background: Color
+        Foreground: Color
+        Accent: Color
+        Danger: Color
+        Muted: Color
+        FocusRing: Color
+    }
 
 module Theming =
     let private baseThemeFor =
@@ -29,15 +31,17 @@ module Theming =
     let resolve (mode: ThemeMode) (accent: Color) : RolePalette =
         let baseTheme = baseThemeFor mode
 
-        { Mode = mode
-          Background = baseTheme.Background
-          Foreground = baseTheme.Foreground
-          Accent = accent
-          Danger = baseTheme.Danger
-          Muted = baseTheme.Muted
-          // The focus ring tracks the accent so a re-accented theme keeps the ring visible against
-          // the same backgrounds (the ControlsShowcase3 author's hand-rolled rule).
-          FocusRing = accent }
+        {
+            Mode = mode
+            Background = baseTheme.Background
+            Foreground = baseTheme.Foreground
+            Accent = accent
+            Danger = baseTheme.Danger
+            Muted = baseTheme.Muted
+            // The focus ring tracks the accent so a re-accented theme keeps the ring visible against
+            // the same backgrounds (the ControlsShowcase3 author's hand-rolled rule).
+            FocusRing = accent
+        }
 
     let toTheme (palette: RolePalette) : Theme =
         // Seed from the palette's OWN mode base (Review P3 / #46): the earlier code always seeded from
@@ -49,4 +53,5 @@ module Theming =
             Background = palette.Background
             Accent = palette.Accent
             Danger = palette.Danger
-            Muted = palette.Muted }
+            Muted = palette.Muted
+        }

@@ -56,16 +56,27 @@ let private run (workingDir: string) (exe: string) (args: string list) =
 /// commit. Returns `Error` if the input or git history cannot be verified, so the caller fails CLOSED
 /// rather than treating an unknown release window as steady state.
 let bumpedInCommitUnderTest (repoRoot: string) (rel: string) (element: string) : Result<bool, string> =
-    let explicitBase = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA"
+    let explicitBase =
+        Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_BASE_SHA"
 
-    if not (String.IsNullOrEmpty explicitBase) && not (Regex.IsMatch(explicitBase, "^[0-9a-f]{40}$")) then
+    if
+        not (String.IsNullOrEmpty explicitBase)
+        && not (Regex.IsMatch(explicitBase, "^[0-9a-f]{40}$"))
+    then
         Error $"FS_GG_VERSION_COHERENCE_BASE_SHA must be a full lowercase git SHA, got {explicitBase}"
     else
-        let baseRevision = if String.IsNullOrEmpty explicitBase then "HEAD~1" else explicitBase
-        let verifyEc, _ = run repoRoot "git" [ "rev-parse"; "--verify"; baseRevision + "^{commit}" ]
+        let baseRevision =
+            if String.IsNullOrEmpty explicitBase then
+                "HEAD~1"
+            else
+                explicitBase
+
+        let verifyEc, _ =
+            run repoRoot "git" [ "rev-parse"; "--verify"; baseRevision + "^{commit}" ]
 
         if verifyEc <> 0 then
-            Error $"release-window base {baseRevision} is not a resolvable commit — need full history (fetch-depth: 0); fail closed rather than green-by-absence"
+            Error
+                $"release-window base {baseRevision} is not a resolvable commit — need full history (fetch-depth: 0); fail closed rather than green-by-absence"
         else
             let ec, out =
                 run repoRoot "git" [ "diff"; baseRevision; "HEAD"; "--unified=0"; "--"; rel ]
@@ -112,16 +123,21 @@ let versionAheadOfTags
     : Result<bool, string> =
     let parse (value: string) =
         let value = value.Trim()
+
         let core, pre =
             match value.IndexOf '-' with
             | -1 -> value, [||]
             | i -> value.Substring(0, i), value.Substring(i + 1).Split('.')
+
         let parts = core.Split('.')
+
         if parts.Length < 2 || parts.Length > 3 then
             Error $"malformed version core: {value}"
         else
             let parsed = parts |> Array.map Int32.TryParse
-            if parsed |> Array.exists (fst >> not) then Error $"malformed version core: {value}"
+
+            if parsed |> Array.exists (fst >> not) then
+                Error $"malformed version core: {value}"
             else
                 let nums = parsed |> Array.map snd
                 Ok(nums.[0], nums.[1], (if nums.Length = 3 then nums.[2] else 0), pre)
@@ -135,23 +151,38 @@ let versionAheadOfTags
 
     let compareVersions left right =
         match parse left, parse right with
-        | Error e, _ | _, Error e -> Error e
+        | Error e, _
+        | _, Error e -> Error e
         | Ok(lmaj, lmin, lpatch, lpre), Ok(rmaj, rmin, rpatch, rpre) ->
             let core = compare (lmaj, lmin, lpatch) (rmaj, rmin, rpatch)
-            if core <> 0 then Ok core
-            elif lpre.Length = 0 && rpre.Length = 0 then Ok 0
-            elif lpre.Length = 0 then Ok 1
-            elif rpre.Length = 0 then Ok -1
+
+            if core <> 0 then
+                Ok core
+            elif lpre.Length = 0 && rpre.Length = 0 then
+                Ok 0
+            elif lpre.Length = 0 then
+                Ok 1
+            elif rpre.Length = 0 then
+                Ok -1
             else
                 let mutable verdict = 0
                 let mutable index = 0
+
                 while verdict = 0 && index < min lpre.Length rpre.Length do
                     verdict <- compareIdentifiers lpre.[index] rpre.[index]
                     index <- index + 1
-                Ok(if verdict <> 0 then verdict else compare lpre.Length rpre.Length)
+
+                Ok(
+                    if verdict <> 0 then
+                        verdict
+                    else
+                        compare lpre.Length rpre.Length
+                )
 
     let ec, output = run repoRoot "git" [ "tag"; "--list"; tagGlob ]
-    if ec <> 0 then Error $"git tag --list {tagGlob} failed"
+
+    if ec <> 0 then
+        Error $"git tag --list {tagGlob} failed"
     else
         let tags =
             output.Replace("\r\n", "\n").Split('\n')
@@ -160,13 +191,15 @@ let versionAheadOfTags
             |> Array.map (fun tag -> tag.Substring(tagPrefix.Length))
             |> Array.filter (fun tag -> Regex.IsMatch(tag, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$"))
 
-        if tags.Length = 0 then Error $"no {tagGlob} tags visible — need fetch-depth: 0"
+        if tags.Length = 0 then
+            Error $"no {tagGlob} tags visible — need fetch-depth: 0"
         else
             tags
             |> Array.fold
                 (fun state tag ->
                     match state, compareVersions version tag with
-                    | Error e, _ | _, Error e -> Error e
+                    | Error e, _
+                    | _, Error e -> Error e
                     | Ok ahead, Ok comparison -> Ok(ahead && comparison > 0))
                 (Ok true)
 

@@ -7,7 +7,7 @@ module SampleApps.App.Interactive
 open FS.GG.UI.Themes.Default.Theming
 open SampleApps.Core
 
-let run (sampleId: string) (mode: ThemeMode): int =
+let run (sampleId: string) (mode: ThemeMode) : int =
     match Registry.all |> List.tryFind (fun e -> e.Id = sampleId) with
     | Some entry -> entry.Interactive mode
     | None ->

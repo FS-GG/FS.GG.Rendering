@@ -8,25 +8,31 @@ open FS.GG.UI.SkiaViewer
 module Tiers =
 
     // A deterministic, non-blank demo scene: a filled rectangle on the offscreen target.
-    let demoScene: SceneNode =
-        Rectangle((20.0, 20.0, 160.0, 120.0), Colors.white)
+    let demoScene: SceneNode = Rectangle((20.0, 20.0, 160.0, 120.0), Colors.white)
 
     let capture (path: string) (w: int) (h: int) : ScreenshotEvidenceResult =
         let request: ScreenshotEvidenceRequest =
-            { Command = "screenshot"
-              AppOrSample = "harness"
-              OutputPath = path
-              Width = w
-              Height = h
-              RendererMode = "viewer-render-target"
-              CaptureMode = ViewerRenderTargetPng
-              HostFacts = []
-              Timeout = TimeSpan.FromSeconds 10.0 }
+            {
+                Command = "screenshot"
+                AppOrSample = "harness"
+                OutputPath = path
+                Width = w
+                Height = h
+                RendererMode = "viewer-render-target"
+                CaptureMode = ViewerRenderTargetPng
+                HostFacts = []
+                Timeout = TimeSpan.FromSeconds 10.0
+            }
+
         let options: ViewerOptions =
-            { Title = "harness"
-              InitialSize = { Width = w; Height = h }
-              PresentMode = ViewerPresentMode.OffscreenReadback
-              FrameRateCap = None; LogicalSize = None }
+            {
+                Title = "harness"
+                InitialSize = { Width = w; Height = h }
+                PresentMode = ViewerPresentMode.OffscreenReadback
+                FrameRateCap = None
+                LogicalSize = None
+            }
+
         Viewer.captureScreenshotEvidence request options demoScene
 
     let nonBlank (r: ScreenshotEvidenceResult) =
@@ -50,22 +56,36 @@ module Tiers =
             if tier = T0 then
                 let path2 = Path.Combine(outDir, "frame2.png")
                 capture path2 w h |> ignore
-                try File.ReadAllBytes path1 = File.ReadAllBytes path2 with _ -> false
-            else true
-        let status = if nb && deterministic then RunStatus.Passed else RunStatus.Failed
+
+                try
+                    File.ReadAllBytes path1 = File.ReadAllBytes path2
+                with _ ->
+                    false
+            else
+                true
+
+        let status =
+            if nb && deterministic then
+                RunStatus.Passed
+            else
+                RunStatus.Failed
+
         let evidence: Evidence.Evidence =
-            { RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
-              Tier = tier
-              Subcommand = "offscreen"
-              Status = status
-              SkipReason = None
-              ProofLevel = p.ClaimableProof
-              AuthoritativeFor = p.AuthoritativeFor
-              NotAuthoritativeFor = p.NotAuthoritativeFor
-              Facts = facts
-              Frames = 1
-              P50Ms = None
-              P95Ms = None
-              P99Ms = None
-              Artifacts = [ "frame.png"; "summary.md" ] }
+            {
+                RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
+                Tier = tier
+                Subcommand = "offscreen"
+                Status = status
+                SkipReason = None
+                ProofLevel = p.ClaimableProof
+                AuthoritativeFor = p.AuthoritativeFor
+                NotAuthoritativeFor = p.NotAuthoritativeFor
+                Facts = facts
+                Frames = 1
+                P50Ms = None
+                P95Ms = None
+                P99Ms = None
+                Artifacts = [ "frame.png"; "summary.md" ]
+            }
+
         evidence, [ sw.Elapsed.TotalMilliseconds ]

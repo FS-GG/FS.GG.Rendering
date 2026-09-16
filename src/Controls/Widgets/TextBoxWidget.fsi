@@ -6,12 +6,14 @@ open FS.GG.UI.DesignSystem
 /// Immutable, compiler-checked authoring surface for a text box. `Id` is required
 /// identity for a stateful control. `OnChanged = None` lowers to no binding.
 type TextBoxProps<'msg> =
-    { Id: ControlId
-      Mode: TextInputMode
-      Value: string
-      ReadOnly: bool
-      Validation: ValidationState
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Mode: TextInputMode
+        Value: string
+        ReadOnly: bool
+        Validation: ValidationState
+        OnChanged: (string -> 'msg) option
+    }
 
 /// Typed Props front door for the `TextBox` control.
 module TextBox =

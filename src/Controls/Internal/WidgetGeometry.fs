@@ -37,8 +37,10 @@ module internal WidgetGeometry =
                         else theme.Background
 
                     Scene.group
-                        [ Scene.rectangle (box.X, ry, box.Width, rowH - 1.5) bg
-                          mkText theme (box.X + theme.SpaceSm) (ry + rowH * 0.62) 12.0 theme.Foreground it ])
+                        [
+                            Scene.rectangle (box.X, ry, box.Width, rowH - 1.5) bg
+                            mkText theme (box.X + theme.SpaceSm) (ry + rowH * 0.62) 12.0 theme.Foreground it
+                        ])
 
             [ Scene.clipped (RectClip box) (Scene.group rows) ]
 
@@ -52,28 +54,65 @@ module internal WidgetGeometry =
         let rh = box.Height / float (rows + 1)
         let frame = Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.5)
         let header = Scene.rectangle (box.X, box.Y, box.Width, rh) theme.Muted
+
         let rowLines =
-            [ for r in 1..rows -> Scene.line { X = box.X; Y = box.Y + float r * rh } { X = box.X + box.Width; Y = box.Y + float r * rh } (Paint.stroke theme.Muted 1.0) ]
+            [
+                for r in 1..rows ->
+                    Scene.line
+                        { X = box.X; Y = box.Y + float r * rh }
+                        {
+                            X = box.X + box.Width
+                            Y = box.Y + float r * rh
+                        }
+                        (Paint.stroke theme.Muted 1.0)
+            ]
+
         let colLines =
-            [ for c in 1 .. cols - 1 -> Scene.line { X = box.X + float c * cw; Y = box.Y } { X = box.X + float c * cw; Y = box.Y + box.Height } (Paint.stroke theme.Muted 1.0) ]
+            [
+                for c in 1 .. cols - 1 ->
+                    Scene.line
+                        { X = box.X + float c * cw; Y = box.Y }
+                        {
+                            X = box.X + float c * cw
+                            Y = box.Y + box.Height
+                        }
+                        (Paint.stroke theme.Muted 1.0)
+            ]
+
         let texts =
             cells
             |> List.truncate (cols * (rows + 1))
             |> List.mapi (fun i s ->
                 let r = i / cols
                 let c = i % cols
-                mkText theme (box.X + float c * cw + theme.SpaceXs) (box.Y + float r * rh + rh * 0.66) 11.0 theme.Foreground s)
+
+                mkText
+                    theme
+                    (box.X + float c * cw + theme.SpaceXs)
+                    (box.Y + float r * rh + rh * 0.66)
+                    11.0
+                    theme.Foreground
+                    s)
+
         frame :: header :: (rowLines @ colLines @ texts)
 
     // Feature 096 (R1): RadioGroup joins the migrated kinds — each item's ring + label paint flow
     // through `Style.resolve`. The per-item base reproduces the prior procedural colours (accent ring
     // when selected, muted otherwise; foreground label), so `resolve theme base [] Normal = base` is
     // byte-identical (FR-006); the control's runtime visual state composes on top of every item.
-    let radioGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (items: string list) (selected: string option) : Scene list =
+    let radioGeom
+        theme
+        (box: Rect)
+        (classes: StyleClass list)
+        (state: VisualState)
+        (items: string list)
+        (selected: string option)
+        : Scene list =
         match items with
         | [] -> emptyState theme box "(empty)"
         | _ ->
             let rowH = min theme.ControlHeight (box.Height / float (List.length items))
+
             items
             |> List.mapi (fun i it ->
                 let cy = box.Y + float i * rowH + rowH / 2.0
@@ -81,22 +120,41 @@ module internal WidgetGeometry =
                 let isSel = selected = Some it
 
                 let baseStyle: ResolvedStyle =
-                    { Foreground = theme.Foreground
-                      Fill = (if isSel then theme.Accent else theme.Muted)
-                      Stroke = theme.Accent
-                      StrokeWidth = 0.0
-                      StrokeDash = []
-                      FontFamily = theme.FontFamily
-                      FontSize = 12.0
-                      FontWeight = None }
+                    {
+                        Foreground = theme.Foreground
+                        Fill = (if isSel then theme.Accent else theme.Muted)
+                        Stroke = theme.Accent
+                        StrokeWidth = 0.0
+                        StrokeDash = []
+                        FontFamily = theme.FontFamily
+                        FontSize = 12.0
+                        FontWeight = None
+                    }
 
                 let style = Style.resolve theme baseStyle classes state
                 let outer = Scene.circle { X = cx; Y = cy } 7.0 style.Fill
-                let inner = if isSel then [ Scene.circle { X = cx; Y = cy } 3.0 theme.Background ] else []
+
+                let inner =
+                    if isSel then
+                        [ Scene.circle { X = cx; Y = cy } 3.0 theme.Background ]
+                    else
+                        []
                 // #383: feed the RESOLVER's typography through (not a literal), so a theme can restyle
                 // the label font. Byte-identical today: `style.FontSize` == the former literal (base 12.0)
                 // and `style.FontWeight` is `None`, and `mkTextW … None` emits the same run as `mkText`.
-                Scene.group (outer :: inner @ [ mkTextW theme (cx + theme.SpaceMd) (cy + 4.0) style.FontSize style.FontWeight style.Foreground it ]))
+                Scene.group (
+                    outer :: inner
+                    @ [
+                        mkTextW
+                            theme
+                            (cx + theme.SpaceMd)
+                            (cy + 4.0)
+                            style.FontSize
+                            style.FontWeight
+                            style.Foreground
+                            it
+                    ]
+                ))
 
     let tabsGeom theme (box: Rect) (items: string list) (selected: string option) : Scene list =
         match items with
@@ -105,13 +163,17 @@ module internal WidgetGeometry =
             let n = List.length items
             let tw = box.Width / float n
             let stripH = min theme.ControlHeight box.Height
+
             items
             |> List.mapi (fun i it ->
                 let tx = box.X + float i * tw
                 let active = selected = Some it
+
                 Scene.group
-                    [ Scene.rectangle (tx, box.Y, tw - 2.0, stripH) (if active then theme.Accent else theme.Muted)
-                      mkText theme (tx + theme.SpaceXs) (box.Y + stripH * 0.62) 11.0 theme.Foreground it ])
+                    [
+                        Scene.rectangle (tx, box.Y, tw - 2.0, stripH) (if active then theme.Accent else theme.Muted)
+                        mkText theme (tx + theme.SpaceXs) (box.Y + stripH * 0.62) 11.0 theme.Foreground it
+                    ])
 
     // Feature 096 (R1): Slider joins the migrated kinds — its filled track + thumb paint flow through
     // `Style.resolve`. The base reproduces the prior procedural `theme.Accent`, so
@@ -122,34 +184,54 @@ module internal WidgetGeometry =
         let cy = box.Y + box.Height / 2.0
 
         let baseStyle: ResolvedStyle =
-            { Foreground = theme.Foreground
-              Fill = theme.Accent
-              Stroke = theme.Accent
-              StrokeWidth = 0.0
-              StrokeDash = []
-              FontFamily = theme.FontFamily
-              FontSize = 13.0
-              FontWeight = None }
+            {
+                Foreground = theme.Foreground
+                Fill = theme.Accent
+                Stroke = theme.Accent
+                StrokeWidth = 0.0
+                StrokeDash = []
+                FontFamily = theme.FontFamily
+                FontSize = 13.0
+                FontWeight = None
+            }
 
         let style = Style.resolve theme baseStyle classes state
 
         let trackH = theme.SpaceXs
-        [ Scene.rectangle (box.X, cy - trackH / 2.0, box.Width, trackH) theme.Muted
-          Scene.rectangle (box.X, cy - trackH / 2.0, box.Width * v, trackH) style.Fill
-          Scene.circle { X = box.X + box.Width * v; Y = cy } 8.0 style.Fill ]
+
+        [
+            Scene.rectangle (box.X, cy - trackH / 2.0, box.Width, trackH) theme.Muted
+            Scene.rectangle (box.X, cy - trackH / 2.0, box.Width * v, trackH) style.Fill
+            Scene.circle { X = box.X + box.Width * v; Y = cy } 8.0 style.Fill
+        ]
 
     let progressGeom theme (box: Rect) (value: float) : Scene list =
         let v = max 0.0 (min 1.0 value)
         let barH = theme.SpaceMd
         let by = box.Y + box.Height / 2.0 - barH / 2.0
-        [ Scene.rectangle (box.X, by, box.Width, barH) theme.Muted
-          Scene.rectangle (box.X, by, box.Width * v, barH) theme.Accent ]
+
+        [
+            Scene.rectangle (box.X, by, box.Width, barH) theme.Muted
+            Scene.rectangle (box.X, by, box.Width * v, barH) theme.Accent
+        ]
 
     let numericGeom theme (box: Rect) (value: float) : Scene list =
         let cy = box.Y + box.Height / 2.0
-        [ Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
-          mkText theme (box.X + theme.SpaceSm) (cy + 5.0) 16.0 theme.Foreground (sprintf "%g" value)
-          Scene.line { X = box.X + box.Width - theme.SpaceMd; Y = cy } { X = box.X + box.Width - theme.SpaceXs; Y = cy } (Paint.stroke theme.Muted 2.0) ]
+
+        [
+            Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
+            mkText theme (box.X + theme.SpaceSm) (cy + 5.0) 16.0 theme.Foreground (sprintf "%g" value)
+            Scene.line
+                {
+                    X = box.X + box.Width - theme.SpaceMd
+                    Y = cy
+                }
+                {
+                    X = box.X + box.Width - theme.SpaceXs
+                    Y = cy
+                }
+                (Paint.stroke theme.Muted 2.0)
+        ]
 
     // Feature 096 (R1): Switch joins the migrated kinds — its track paint flows through `Style.resolve`.
     // `on` still selects the base track colour (accent vs muted) so `resolve theme base [] Normal = base`
@@ -163,67 +245,104 @@ module internal WidgetGeometry =
         let thumbX = if on then box.X + w - thumbInset else box.X + thumbInset
 
         let baseStyle: ResolvedStyle =
-            { Foreground = theme.Foreground
-              Fill = (if on then theme.Accent else theme.Muted)
-              Stroke = theme.Accent
-              StrokeWidth = 0.0
-              StrokeDash = []
-              FontFamily = theme.FontFamily
-              FontSize = 13.0
-              FontWeight = None }
+            {
+                Foreground = theme.Foreground
+                Fill = (if on then theme.Accent else theme.Muted)
+                Stroke = theme.Accent
+                StrokeWidth = 0.0
+                StrokeDash = []
+                FontFamily = theme.FontFamily
+                FontSize = 13.0
+                FontWeight = None
+            }
 
         let style = Style.resolve theme baseStyle classes state
 
-        [ Scene.rectangle (box.X, cy - trackH / 2.0, w, trackH) style.Fill
-          Scene.circle { X = thumbX; Y = cy } 10.0 theme.Background ]
+        [
+            Scene.rectangle (box.X, cy - trackH / 2.0, w, trackH) style.Fill
+            Scene.circle { X = thumbX; Y = cy } 10.0 theme.Background
+        ]
 
     // Feature 093 (E3): CheckBox (rich-geometry migrant) — paint flows through `Style.resolve`.
     // `on` still drives WHICH geometry is drawn (filled box + tick vs outlined box); the resolver
     // supplies the colours. The base reproduces the prior procedural colours exactly, so
     // `resolve theme base [] Normal = base` is byte-identical (FR-005, SC-003). Attached classes /
     // visual state compose on top per the fixed precedence (FR-001/FR-003/FR-004).
-    let checkboxGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (on: bool) (label: string) : Scene list =
+    let checkboxGeom
+        theme
+        (box: Rect)
+        (classes: StyleClass list)
+        (state: VisualState)
+        (on: bool)
+        (label: string)
+        : Scene list =
         let s = theme.ControlHeightSm + theme.SpaceXs
         let bx = box.X
         let cy = box.Y + box.Height / 2.0
         let by = cy - s / 2.0
-        let boxRect = { X = bx; Y = by; Width = s; Height = s }
+
+        let boxRect =
+            {
+                X = bx
+                Y = by
+                Width = s
+                Height = s
+            }
 
         let baseStyle: ResolvedStyle =
             if on then
                 // Filled accent box, theme-background tick, foreground label.
-                { Foreground = theme.Foreground
-                  Fill = theme.Accent
-                  Stroke = theme.Background
-                  StrokeWidth = 3.0
-                  StrokeDash = []
-                  FontFamily = theme.FontFamily
-                  FontSize = 13.0
-                  FontWeight = None }
+                {
+                    Foreground = theme.Foreground
+                    Fill = theme.Accent
+                    Stroke = theme.Background
+                    StrokeWidth = 3.0
+                    StrokeDash = []
+                    FontFamily = theme.FontFamily
+                    FontSize = 13.0
+                    FontWeight = None
+                }
             else
                 // Outlined (foreground-stroked) empty box, foreground label.
-                { Foreground = theme.Foreground
-                  Fill = Colors.transparent
-                  Stroke = theme.Foreground
-                  StrokeWidth = 2.0
-                  StrokeDash = []
-                  FontFamily = theme.FontFamily
-                  FontSize = 13.0
-                  FontWeight = None }
+                {
+                    Foreground = theme.Foreground
+                    Fill = Colors.transparent
+                    Stroke = theme.Foreground
+                    StrokeWidth = 2.0
+                    StrokeDash = []
+                    FontFamily = theme.FontFamily
+                    FontSize = 13.0
+                    FontWeight = None
+                }
 
         let style = Style.resolve theme baseStyle classes state
 
         let fill =
-            if on then [ Scene.rectangle (bx, by, s, s) style.Fill ]
-            else [ Scene.rectangleWithPaint boxRect (Paint.stroke style.Stroke 2.0) ]
+            if on then
+                [ Scene.rectangle (bx, by, s, s) style.Fill ]
+            else
+                [ Scene.rectangleWithPaint boxRect (Paint.stroke style.Stroke 2.0) ]
+
         let tick =
             if on then
-                [ Scene.line { X = bx + 6.0; Y = by + 15.0 } { X = bx + 12.0; Y = by + 21.0 } (Paint.stroke style.Stroke 3.0)
-                  Scene.line { X = bx + 12.0; Y = by + 21.0 } { X = bx + 23.0; Y = by + 7.0 } (Paint.stroke style.Stroke 3.0) ]
+                [
+                    Scene.line
+                        { X = bx + 6.0; Y = by + 15.0 }
+                        { X = bx + 12.0; Y = by + 21.0 }
+                        (Paint.stroke style.Stroke 3.0)
+                    Scene.line
+                        { X = bx + 12.0; Y = by + 21.0 }
+                        { X = bx + 23.0; Y = by + 7.0 }
+                        (Paint.stroke style.Stroke 3.0)
+                ]
             else
                 []
         // #383: honor the resolved typography (byte-identical: base FontSize == the former 13.0 literal).
-        let text = [ mkTextW theme (bx + s + theme.SpaceSm) (cy + 5.0) style.FontSize style.FontWeight style.Foreground label ]
+        let text =
+            [
+                mkTextW theme (bx + s + theme.SpaceSm) (cy + 5.0) style.FontSize style.FontWeight style.Foreground label
+            ]
+
         fill @ tick @ text
 
     let toggleGeom theme (box: Rect) (on: bool) (label: string) : Scene list =
@@ -231,39 +350,89 @@ module internal WidgetGeometry =
         let h = theme.ControlHeight
         let w = min box.Width 150.0
         let by = box.Y + box.Height / 2.0 - h / 2.0
-        let rect = { X = box.X; Y = by; Width = w; Height = h }
+
+        let rect =
+            {
+                X = box.X
+                Y = by
+                Width = w
+                Height = h
+            }
+
         let textColor = if on then theme.Background else theme.Foreground
+
         let surface =
-            if on then [ Scene.rectangle (box.X, by, w, h) theme.Accent ]
-            else [ Scene.rectangleWithPaint rect (Paint.stroke theme.Accent 2.0) ]
-        surface @ [ mkText theme (box.X + theme.SpaceSm) (by + h / 2.0 + 5.0) 14.0 textColor label ]
+            if on then
+                [ Scene.rectangle (box.X, by, w, h) theme.Accent ]
+            else
+                [ Scene.rectangleWithPaint rect (Paint.stroke theme.Accent 2.0) ]
+
+        surface
+        @ [
+            mkText theme (box.X + theme.SpaceSm) (by + h / 2.0 + 5.0) 14.0 textColor label
+        ]
 
     let pickerGeom theme (box: Rect) (text: string) : Scene list =
         let frame = Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
+
         let segs =
-            [ for f in [ 0.34; 0.67 ] ->
-                  Scene.line { X = box.X + box.Width * f; Y = box.Y } { X = box.X + box.Width * f; Y = box.Y + box.Height } (Paint.stroke theme.Muted 1.0) ]
-        frame :: mkText theme (box.X + theme.SpaceSm) (box.Y + box.Height / 2.0 + 5.0) 14.0 theme.Foreground text :: segs
+            [
+                for f in [ 0.34; 0.67 ] ->
+                    Scene.line
+                        { X = box.X + box.Width * f; Y = box.Y }
+                        {
+                            X = box.X + box.Width * f
+                            Y = box.Y + box.Height
+                        }
+                        (Paint.stroke theme.Muted 1.0)
+            ]
+
+        frame
+        :: mkText theme (box.X + theme.SpaceSm) (box.Y + box.Height / 2.0 + 5.0) 14.0 theme.Foreground text
+        :: segs
 
     let swatchGeom theme (box: Rect) : Scene list =
         let n = 5
         let sw = box.Width / float n
-        [ for i in 0 .. n - 1 -> Scene.rectangle (box.X + float i * sw, box.Y, sw - 3.0, box.Height) (colorAt theme i) ]
+
+        [
+            for i in 0 .. n - 1 -> Scene.rectangle (box.X + float i * sw, box.Y, sw - 3.0, box.Height) (colorAt theme i)
+        ]
 
     let spinnerGeom theme (box: Rect) : Scene list =
         let r = (min box.Width box.Height) / 2.0 - 8.0
         let cx = box.X + box.Width / 2.0
         let cy = box.Y + box.Height / 2.0
-        let bounds: Rect = { X = cx - r; Y = cy - r; Width = 2.0 * r; Height = 2.0 * r }
+
+        let bounds: Rect =
+            {
+                X = cx - r
+                Y = cy - r
+                Width = 2.0 * r
+                Height = 2.0 * r
+            }
         // A faint full-circle track plus a bold accent sweep with a gap reads as a busy spinner.
-        [ Scene.arc bounds 0.0 360.0 (Paint.stroke theme.Muted 7.0)
-          Scene.arc bounds -90.0 280.0 (Paint.stroke theme.Accent 7.0) ]
+        [
+            Scene.arc bounds 0.0 360.0 (Paint.stroke theme.Muted 7.0)
+            Scene.arc bounds -90.0 280.0 (Paint.stroke theme.Accent 7.0)
+        ]
 
     let imageGeom theme (box: Rect) (source: string) : Scene list =
-        [ Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
-          Scene.line { X = box.X; Y = box.Y } { X = box.X + box.Width; Y = box.Y + box.Height } (Paint.stroke theme.Muted 1.5)
-          Scene.line { X = box.X + box.Width; Y = box.Y } { X = box.X; Y = box.Y + box.Height } (Paint.stroke theme.Muted 1.5)
-          mkText theme (box.X + theme.SpaceXs) (box.Y + box.Height - theme.SpaceXs) 11.0 theme.Foreground source ]
+        [
+            Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
+            Scene.line
+                { X = box.X; Y = box.Y }
+                {
+                    X = box.X + box.Width
+                    Y = box.Y + box.Height
+                }
+                (Paint.stroke theme.Muted 1.5)
+            Scene.line
+                { X = box.X + box.Width; Y = box.Y }
+                { X = box.X; Y = box.Y + box.Height }
+                (Paint.stroke theme.Muted 1.5)
+            mkText theme (box.X + theme.SpaceXs) (box.Y + box.Height - theme.SpaceXs) 11.0 theme.Foreground source
+        ]
 
     let iconGeom theme (box: Rect) (name: string) : Scene list =
         // Feature 386: the glyph a name maps to is a design-system concern (`IconGlyphs`), no longer a
@@ -273,8 +442,11 @@ module internal WidgetGeometry =
         let cx = box.X + 22.0
         let cy = box.Y + box.Height / 2.0
         let r = 16.0
-        [ Scene.path (IconGlyphs.pathFor name cx cy r) (Paint.fill theme.Accent)
-          mkText theme (cx + r + theme.SpaceSm) (cy + 5.0) 14.0 theme.Foreground name ]
+
+        [
+            Scene.path (IconGlyphs.pathFor name cx cy r) (Paint.fill theme.Accent)
+            mkText theme (cx + r + theme.SpaceSm) (cy + 5.0) 14.0 theme.Foreground name
+        ]
 
     // ---- command / button geometry ----------------------------------------------------------
 
@@ -291,16 +463,40 @@ module internal WidgetGeometry =
     // theme's policy is `IntentPolicy.neutral`, which ignores intent and returns the structural base —
     // so default-theme output stays byte-identical across every intent and visual state (FR-003,
     // SC-001). A theme with a divergent policy (AntDesign) reaches the screen through this same call.
-    let buttonGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (kind: string) (intent: string) (label: string) : Scene list =
+    let buttonGeom
+        theme
+        (box: Rect)
+        (classes: StyleClass list)
+        (state: VisualState)
+        (kind: string)
+        (intent: string)
+        (label: string)
+        : Scene list =
         let h = theme.ControlHeight
         let style = StyleResolver.resolve theme kind intent classes state
         // #384: measure the width at the RESOLVED typography (was a frozen 15.0), so the button
         // still fits its label once `theme.FontSize`, the theme's `IntentPolicy`, or a
         // `StyleClass.Font` has changed the size/weight the label is actually painted at (line below).
-        let textW = (measureText label { Family = style.FontFamily; Size = style.FontSize; Weight = style.FontWeight }).Width
+        let textW =
+            (measureText
+                label
+                {
+                    Family = style.FontFamily
+                    Size = style.FontSize
+                    Weight = style.FontWeight
+                })
+                .Width
+
         let w = min box.Width (max 70.0 (textW + 2.0 * theme.SpaceMd))
         let by = box.Y + box.Height / 2.0 - h / 2.0
-        let rect = { X = box.X; Y = by; Width = w; Height = h }
+
+        let rect =
+            {
+                X = box.X
+                Y = by
+                Width = w
+                Height = h
+            }
 
         // A resolved `StrokeDash` is a real dash pattern (Feature 173); `[]` leaves the stroke solid.
         let strokePaint (color: Color) (width: float) =
@@ -342,25 +538,56 @@ module internal WidgetGeometry =
             | _ -> style.Fill
 
         if kind = "button" then
-            [ Scene.rectangle (box.X, by, w, h) buttonFill
-              // #383 wired the resolved typography to the label; #384 made the width `measureText`
-              // above track that same resolved size, so paint and measure agree once FontSize is themed.
-              mkTextW theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
+            [
+                Scene.rectangle (box.X, by, w, h) buttonFill
+                // #383 wired the resolved typography to the label; #384 made the width `measureText`
+                // above track that same resolved size, so paint and measure agree once FontSize is themed.
+                mkTextW
+                    theme
+                    (box.X + theme.SpaceMd)
+                    (by + h / 2.0 + 5.0)
+                    style.FontSize
+                    style.FontWeight
+                    style.Foreground
+                    label
+            ]
             @ border
             @ focusRing
         else
-            [ Scene.rectangleWithPaint rect (strokePaint style.Stroke 2.0)
-              // #383: resolved typography reaches the icon-button label; #384 themed the base FontSize.
-              mkTextW theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) style.FontSize style.FontWeight style.Foreground label ]
+            [
+                Scene.rectangleWithPaint rect (strokePaint style.Stroke 2.0)
+                // #383: resolved typography reaches the icon-button label; #384 themed the base FontSize.
+                mkTextW
+                    theme
+                    (box.X + theme.SpaceMd)
+                    (by + h / 2.0 + 5.0)
+                    style.FontSize
+                    style.FontWeight
+                    style.Foreground
+                    label
+            ]
 
     /// A compact accent pill with light text — a status badge.
     let badgeGeom theme (box: Rect) (label: string) : Scene list =
         let h = theme.ControlHeightSm
-        let textW = (measureText label { Family = theme.FontFamily; Size = 12.0; Weight = None }).Width
+
+        let textW =
+            (measureText
+                label
+                {
+                    Family = theme.FontFamily
+                    Size = 12.0
+                    Weight = None
+                })
+                .Width
+
         let w = max 40.0 (textW + theme.SpaceMd + theme.SpaceXs)
         let by = box.Y + box.Height / 2.0 - h / 2.0
-        [ Scene.rectangle (box.X, by, w, h) theme.Accent
-          mkText theme (box.X + theme.SpaceSm) (by + h / 2.0 + 4.0) 12.0 theme.Background label ]
+
+        [
+            Scene.rectangle (box.X, by, w, h) theme.Accent
+            mkText theme (box.X + theme.SpaceSm) (by + h / 2.0 + 4.0) 12.0 theme.Background label
+        ]
 
     /// A primary command button joined to a dropdown trigger (caret) — a split button.
     let splitGeom theme (box: Rect) (label: string) : Scene list =
@@ -370,28 +597,36 @@ module internal WidgetGeometry =
         let primaryW = min (box.Width - triggerW - 2.0) 160.0
         let caretX = box.X + primaryW + 2.0 + triggerW / 2.0
         let caretY = by + h / 2.0
+
         let caret =
             Path.create
                 Winding
-                [ Path.moveTo (caretX - 6.0) (caretY - 3.0)
-                  Path.lineTo (caretX + 6.0) (caretY - 3.0)
-                  Path.lineTo caretX (caretY + 5.0)
-                  Path.close ]
-        [ Scene.rectangle (box.X, by, primaryW, h) theme.Accent
-          // #384: the split-button preview's primary label tracks the theme body size (was a frozen
-          // 15.0), matching `buttonGeom` — the typed SplitButton already lowers to themed buttons.
-          mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) theme.FontSize theme.Background label
-          Scene.rectangle (box.X + primaryW + 2.0, by, triggerW, h) theme.Muted
-          Scene.path caret (Paint.fill theme.Foreground) ]
+                [
+                    Path.moveTo (caretX - 6.0) (caretY - 3.0)
+                    Path.lineTo (caretX + 6.0) (caretY - 3.0)
+                    Path.lineTo caretX (caretY + 5.0)
+                    Path.close
+                ]
+
+        [
+            Scene.rectangle (box.X, by, primaryW, h) theme.Accent
+            // #384: the split-button preview's primary label tracks the theme body size (was a frozen
+            // 15.0), matching `buttonGeom` — the typed SplitButton already lowers to themed buttons.
+            mkText theme (box.X + theme.SpaceMd) (by + h / 2.0 + 5.0) theme.FontSize theme.Background label
+            Scene.rectangle (box.X + primaryW + 2.0, by, triggerW, h) theme.Muted
+            Scene.path caret (Paint.fill theme.Foreground)
+        ]
 
     // ---- layout / container geometry --------------------------------------------------------
 
     /// A bordered, filled, labelled region — the building block for container schematics so every
     /// region is visible against the canvas (a `theme.Background` fill alone would be invisible).
     let regionRect theme (x: float) (y: float) (w: float) (h: float) (fill: Color) (label: string) : Scene list =
-        [ Scene.rectangle (x, y, w, h) fill
-          Scene.rectangleWithPaint { X = x; Y = y; Width = w; Height = h } (Paint.stroke theme.Foreground 1.0)
-          mkText theme (x + theme.SpaceXs) (y + h / 2.0 + 4.0) 12.0 theme.Foreground label ]
+        [
+            Scene.rectangle (x, y, w, h) fill
+            Scene.rectangleWithPaint { X = x; Y = y; Width = w; Height = h } (Paint.stroke theme.Foreground 1.0)
+            mkText theme (x + theme.SpaceXs) (y + h / 2.0 + 4.0) 12.0 theme.Foreground label
+        ]
 
     let itemsOr (fallback: string list) (items: string list) =
         match items with
@@ -403,7 +638,10 @@ module internal WidgetGeometry =
         let shown = items |> itemsOr [ "One"; "Two"; "Three" ] |> List.truncate 4
         let n = max 1 (List.length shown)
         let rowH = box.Height / float n
-        shown |> List.mapi (fun i it -> regionRect theme box.X (box.Y + float i * rowH) box.Width (rowH - 4.0) theme.Muted it) |> List.concat
+
+        shown
+        |> List.mapi (fun i it -> regionRect theme box.X (box.Y + float i * rowH) box.Width (rowH - 4.0) theme.Muted it)
+        |> List.concat
 
     /// A 2-column cell grid — `grid` (distinct from `data-grid`'s tabular `gridGeom`).
     let gridLayoutGeom theme (box: Rect) (items: string list) : Scene list =
@@ -412,8 +650,17 @@ module internal WidgetGeometry =
         let cw = box.Width / float cols
         let rows = max 1 ((List.length shown + cols - 1) / cols)
         let rh = box.Height / float rows
+
         shown
-        |> List.mapi (fun i it -> regionRect theme (box.X + float (i % cols) * cw) (box.Y + float (i / cols) * rh) (cw - 5.0) (rh - 5.0) theme.Muted it)
+        |> List.mapi (fun i it ->
+            regionRect
+                theme
+                (box.X + float (i % cols) * cw)
+                (box.Y + float (i / cols) * rh)
+                (cw - 5.0)
+                (rh - 5.0)
+                theme.Muted
+                it)
         |> List.concat
 
     /// Small chips flowing left-to-right and wrapping — `wrap`.
@@ -423,11 +670,20 @@ module internal WidgetGeometry =
         let chipH = 26.0
         let gap = 7.0
         let perRow = max 1 (int (box.Width / (chipW + gap)))
+
         shown
         |> List.mapi (fun i it ->
             let r = i / perRow
             let c = i % perRow
-            regionRect theme (box.X + float c * (chipW + gap)) (box.Y + float r * (chipH + gap)) chipW chipH theme.Muted it)
+
+            regionRect
+                theme
+                (box.X + float c * (chipW + gap))
+                (box.Y + float r * (chipH + gap))
+                chipW
+                chipH
+                theme.Muted
+                it)
         |> List.concat
 
     /// A docked top bar plus a left rail and a filled centre — `dock`.
@@ -437,17 +693,42 @@ module internal WidgetGeometry =
         let leftW = 72.0
         let bodyY = box.Y + topH + 2.0
         let bodyH = box.Height - topH - 2.0
+
         regionRect theme box.X box.Y box.Width topH theme.Accent (List.tryItem 0 shown |> Option.defaultValue "Top")
         @ regionRect theme box.X bodyY leftW bodyH theme.Muted "Left"
-        @ regionRect theme (box.X + leftW + 2.0) bodyY (box.Width - leftW - 2.0) bodyH theme.Background (List.tryItem 1 shown |> Option.defaultValue "Fill")
+        @ regionRect
+            theme
+            (box.X + leftW + 2.0)
+            bodyY
+            (box.Width - leftW - 2.0)
+            bodyH
+            theme.Background
+            (List.tryItem 1 shown |> Option.defaultValue "Fill")
 
     /// Two side-by-side panes with a divider — `split-view`.
     let splitViewGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Left"; "Right" ]
         let half = box.Width / 2.0
-        regionRect theme box.X box.Y (half - 4.0) box.Height theme.Muted (List.tryItem 0 shown |> Option.defaultValue "Left")
-        @ [ Scene.rectangle (box.X + half - 2.0, box.Y, 4.0, box.Height) theme.Foreground ]
-        @ regionRect theme (box.X + half + 4.0) box.Y (half - 4.0) box.Height theme.Background (List.tryItem 1 shown |> Option.defaultValue "Right")
+
+        regionRect
+            theme
+            box.X
+            box.Y
+            (half - 4.0)
+            box.Height
+            theme.Muted
+            (List.tryItem 0 shown |> Option.defaultValue "Left")
+        @ [
+            Scene.rectangle (box.X + half - 2.0, box.Y, 4.0, box.Height) theme.Foreground
+        ]
+        @ regionRect
+            theme
+            (box.X + half + 4.0)
+            box.Y
+            (half - 4.0)
+            box.Height
+            theme.Background
+            (List.tryItem 1 shown |> Option.defaultValue "Right")
 
     /// A command strip of horizontal buttons — `toolbar`.
     let toolbarGeom theme (box: Rect) (items: string list) : Scene list =
@@ -455,32 +736,60 @@ module internal WidgetGeometry =
         let stripH = theme.ControlHeight
         let strip = Scene.rectangle (box.X, box.Y, box.Width, stripH) theme.Muted
         let bw = 42.0
+
         let btns =
             shown
-            |> List.mapi (fun i it -> regionRect theme (box.X + theme.SpaceSm + float i * (bw + theme.SpaceXs)) (box.Y + theme.SpaceXs) bw (stripH - 2.0 * theme.SpaceXs) theme.Background it)
+            |> List.mapi (fun i it ->
+                regionRect
+                    theme
+                    (box.X + theme.SpaceSm + float i * (bw + theme.SpaceXs))
+                    (box.Y + theme.SpaceXs)
+                    bw
+                    (stripH - 2.0 * theme.SpaceXs)
+                    theme.Background
+                    it)
             |> List.concat
+
         strip :: btns
 
     /// A surface with a header band and a body — `panel`.
     let panelGeom theme (box: Rect) (label: string) : Scene list =
         let headH = theme.ControlHeight
-        [ Scene.rectangle (box.X, box.Y, box.Width, headH) theme.Accent
-          Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.0) ]
-        @ [ mkText theme (box.X + theme.SpaceSm) (box.Y + box.Height / 2.0 + 8.0) 12.0 theme.Foreground label ]
+
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, headH) theme.Accent
+            Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 1.0)
+        ]
+        @ [
+            mkText theme (box.X + theme.SpaceSm) (box.Y + box.Height / 2.0 + 8.0) 12.0 theme.Foreground label
+        ]
 
     /// A thick border framing inner content — `border`.
     let borderGeom theme (box: Rect) (label: string) : Scene list =
         let inset = theme.SpaceSm
+
         [ Scene.rectangleWithPaint box (Paint.stroke theme.Accent 4.0) ]
-        @ regionRect theme (box.X + inset) (box.Y + inset) (box.Width - 2.0 * inset) (box.Height - 2.0 * inset) theme.Muted label
+        @ regionRect
+            theme
+            (box.X + inset)
+            (box.Y + inset)
+            (box.Width - 2.0 * inset)
+            (box.Height - 2.0 * inset)
+            theme.Muted
+            label
 
     /// A scrollable viewport: content area plus a vertical scrollbar thumb — `scroll-viewer`.
     let scrollViewerGeom theme (box: Rect) (label: string) : Scene list =
         let barW = theme.SpaceSm
         let contentW = box.Width - barW - theme.SpaceXs
+
         regionRect theme box.X box.Y contentW box.Height theme.Muted label
-        @ [ Scene.rectangle (box.X + contentW + theme.SpaceXs, box.Y, barW, box.Height) theme.Muted
-            Scene.rectangle (box.X + contentW + theme.SpaceXs, box.Y + theme.SpaceXs, barW, box.Height * 0.4) theme.Accent ]
+        @ [
+            Scene.rectangle (box.X + contentW + theme.SpaceXs, box.Y, barW, box.Height) theme.Muted
+            Scene.rectangle
+                (box.X + contentW + theme.SpaceXs, box.Y + theme.SpaceXs, barW, box.Height * 0.4)
+                theme.Accent
+        ]
 
     /// Feature 137 (US3) — the scroll affordance painted by a `scroll-viewer` *container* (the leaf
     /// `scrollViewerGeom` above is the no-content placeholder). A track at the right edge plus a thumb;
@@ -496,16 +805,17 @@ module internal WidgetGeometry =
         let trackX = box.X + box.Width - barW
         let track = Scene.rectangle (trackX, box.Y, barW, box.Height) theme.Muted
         let thumbH = ScrollState.thumbHeight state
+
         if thumbH <= 0.0 then
             [ track ]
         else
             let thumbY = box.Y + ScrollState.thumbPosition box.Height state
-            [ track
-              Scene.rectangle (trackX, thumbY, barW, thumbH) theme.Accent ]
+            [ track; Scene.rectangle (trackX, thumbY, barW, thumbH) theme.Accent ]
 
     /// Two layered, offset surfaces suggesting stacked content — `overlay`.
     let overlayGeom theme (box: Rect) (label: string) : Scene list =
         let off = theme.SpaceMd
+
         regionRect theme box.X box.Y (box.Width - off) (box.Height - off) theme.Muted ""
         @ regionRect theme (box.X + off) (box.Y + off) (box.Width - off) (box.Height - off) theme.Background label
 
@@ -521,52 +831,97 @@ module internal WidgetGeometry =
     let textFieldGeom theme (box: Rect) (classes: StyleClass list) (state: VisualState) (value: string) : Scene list =
         let h = min box.Height theme.ControlHeightLg
         let by = box.Y + box.Height / 2.0 - h / 2.0
-        let field: Rect = { X = box.X; Y = by; Width = box.Width; Height = h }
+
+        let field: Rect =
+            {
+                X = box.X
+                Y = by
+                Width = box.Width
+                Height = h
+            }
+
         let textX = box.X + theme.SpaceSm
         let baseline = by + h / 2.0 + 5.0
 
         let baseStyle: ResolvedStyle =
-            { Foreground = theme.Foreground
-              Fill = theme.Background
-              Stroke = theme.Foreground
-              StrokeWidth = 2.0
-              StrokeDash = []
-              FontFamily = theme.FontFamily
-              // #384: track the theme's body size (was a frozen 15.0), like the button base.
-              FontSize = theme.FontSize
-              FontWeight = None }
+            {
+                Foreground = theme.Foreground
+                Fill = theme.Background
+                Stroke = theme.Foreground
+                StrokeWidth = 2.0
+                StrokeDash = []
+                FontFamily = theme.FontFamily
+                // #384: track the theme's body size (was a frozen 15.0), like the button base.
+                FontSize = theme.FontSize
+                FontWeight = None
+            }
 
         let style = Style.resolve theme baseStyle classes state
         // #384: place the caret using the RESOLVED typography (was a frozen 15.0), so it stays at the
         // end of the text once the theme (or a `StyleClass.Font`) has changed the painted size/weight.
-        let textW = (measureText value { Family = style.FontFamily; Size = style.FontSize; Weight = style.FontWeight }).Width
+        let textW =
+            (measureText
+                value
+                {
+                    Family = style.FontFamily
+                    Size = style.FontSize
+                    Weight = style.FontWeight
+                })
+                .Width
+
         let caretX = min (box.X + box.Width - theme.SpaceSm) (textX + textW + 3.0)
 
-        [ Scene.rectangle (box.X, by, box.Width, h) theme.Background
-          Scene.rectangleWithPaint field (Paint.stroke style.Stroke 2.0)
-          Scene.clipped
-              (RectClip field)
-              // #383: resolved typography reaches the field text; #384 themed the base FontSize and the
-              // caret measure above, so both track `theme.FontSize` / any `StyleClass.Font` override.
-              (mkTextW theme textX baseline style.FontSize style.FontWeight style.Foreground value)
-          Scene.line { X = caretX; Y = by + 7.0 } { X = caretX; Y = by + h - 7.0 } (Paint.stroke theme.Accent 2.0) ]
+        [
+            Scene.rectangle (box.X, by, box.Width, h) theme.Background
+            Scene.rectangleWithPaint field (Paint.stroke style.Stroke 2.0)
+            Scene.clipped
+                (RectClip field)
+                // #383: resolved typography reaches the field text; #384 themed the base FontSize and the
+                // caret measure above, so both track `theme.FontSize` / any `StyleClass.Font` override.
+                (mkTextW theme textX baseline style.FontSize style.FontWeight style.Foreground value)
+            Scene.line { X = caretX; Y = by + 7.0 } { X = caretX; Y = by + h - 7.0 } (Paint.stroke theme.Accent 2.0)
+        ]
 
     /// A bordered multi-line input field showing each value line plus a caret — `text-area`.
     let textAreaFieldGeom theme (box: Rect) (value: string) : Scene list =
         let lineH = 22.0
-        let lines = value.Replace("\r\n", "\n").Split('\n') |> Array.toList |> List.truncate 4
+
+        let lines =
+            value.Replace("\r\n", "\n").Split('\n') |> Array.toList |> List.truncate 4
+
         let firstBaseline = box.Y + 22.0
+
         let texts =
             lines
-            |> List.mapi (fun i ln -> mkText theme (box.X + theme.SpaceSm) (firstBaseline + float i * lineH) 14.0 theme.Foreground ln)
+            |> List.mapi (fun i ln ->
+                mkText theme (box.X + theme.SpaceSm) (firstBaseline + float i * lineH) 14.0 theme.Foreground ln)
+
         let lastLine = lines |> List.tryLast |> Option.defaultValue ""
-        let lastW = (measureText lastLine { Family = theme.FontFamily; Size = 14.0; Weight = None }).Width
-        let caretX = min (box.X + box.Width - theme.SpaceSm) (box.X + theme.SpaceSm + lastW + 3.0)
+
+        let lastW =
+            (measureText
+                lastLine
+                {
+                    Family = theme.FontFamily
+                    Size = 14.0
+                    Weight = None
+                })
+                .Width
+
+        let caretX =
+            min (box.X + box.Width - theme.SpaceSm) (box.X + theme.SpaceSm + lastW + 3.0)
+
         let caretY = firstBaseline + float (max 0 (List.length lines - 1)) * lineH
-        [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Background
-          Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
-          Scene.clipped (RectClip box) (Scene.group texts)
-          Scene.line { X = caretX; Y = caretY - 13.0 } { X = caretX; Y = caretY + 3.0 } (Paint.stroke theme.Accent 2.0) ]
+
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Background
+            Scene.rectangleWithPaint box (Paint.stroke theme.Foreground 2.0)
+            Scene.clipped (RectClip box) (Scene.group texts)
+            Scene.line
+                { X = caretX; Y = caretY - 13.0 }
+                { X = caretX; Y = caretY + 3.0 }
+                (Paint.stroke theme.Accent 2.0)
+        ]
 
     /// Styled runs flowing left-to-right with per-run colour and weight — `rich-text`. Each run
     /// keeps its own `Foreground`/`Weight`, so the preview demonstrates rich formatting rather
@@ -576,11 +931,19 @@ module internal WidgetGeometry =
         | [] -> emptyState theme box "(no runs)"
         | _ ->
             let baseline = box.Y + box.Height / 2.0 + 6.0
+
             runs
             |> List.fold
                 (fun (x, acc) (text, fg, fontSize, weight) ->
                     let size = max 8.0 fontSize
-                    let font: FontSpec = { Family = theme.FontFamily; Size = size; Weight = Some weight }
+
+                    let font: FontSpec =
+                        {
+                            Family = theme.FontFamily
+                            Size = size
+                            Weight = Some weight
+                        }
+
                     let w = (measureText text font).Width
                     let node = mkTextW theme x baseline size (Some weight) fg text
                     x + w, node :: acc)
@@ -591,7 +954,10 @@ module internal WidgetGeometry =
     /// A horizontal divider rule centred in the canvas — `separator`.
     let separatorGeom theme (box: Rect) : Scene list =
         let cy = box.Y + box.Height / 2.0
-        [ Scene.line { X = box.X; Y = cy } { X = box.X + box.Width; Y = cy } (Paint.stroke theme.Foreground 3.0) ]
+
+        [
+            Scene.line { X = box.X; Y = cy } { X = box.X + box.Width; Y = cy } (Paint.stroke theme.Foreground 3.0)
+        ]
 
     // ---- Feature 132 (D2.1) net-new Ant-overview control geometry ---------------------------
     // Generic, theme-agnostic schematics for the net-new controls. Each reads ONLY `theme` roles
@@ -603,27 +969,49 @@ module internal WidgetGeometry =
 
     /// A coloured status chip — `tag`.
     let tagGeom theme (box: Rect) (label: string) : Scene list =
-        snd (pillGeom theme box.X (box.Y + box.Height / 2.0) theme.Accent theme.Background (if label = "" then "tag" else label))
+        snd (
+            pillGeom
+                theme
+                box.X
+                (box.Y + box.Height / 2.0)
+                theme.Accent
+                theme.Background
+                (if label = "" then "tag" else label)
+        )
 
     /// A round monogram — `avatar`.
     let avatarGeom theme (box: Rect) (label: string) : Scene list =
         let r = 18.0
         let cx = box.X + r
         let cy = box.Y + box.Height / 2.0
-        [ Scene.circle { X = cx; Y = cy } r theme.Accent
-          mkText theme (cx - 9.0) (cy + 5.0) 13.0 theme.Background (if label = "" then "?" else label) ]
+
+        [
+            Scene.circle { X = cx; Y = cy } r theme.Accent
+            mkText theme (cx - 9.0) (cy + 5.0) 13.0 theme.Background (if label = "" then "?" else label)
+        ]
 
     /// A framed surface with a header band — `card`.
     let cardGeom theme (box: Rect) (title: string) : Scene list =
         let headH = theme.ControlHeight
-        [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
-          Scene.rectangle (box.X, box.Y, box.Width, headH) theme.Muted
-          mkText theme (box.X + theme.SpaceSm) (box.Y + 19.0) 14.0 theme.Foreground (if title = "" then "Card" else title)
-          mkText theme (box.X + theme.SpaceSm) (box.Y + headH + 22.0) 12.0 theme.Foreground "Card content" ]
+
+        [
+            Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
+            Scene.rectangle (box.X, box.Y, box.Width, headH) theme.Muted
+            mkText
+                theme
+                (box.X + theme.SpaceSm)
+                (box.Y + 19.0)
+                14.0
+                theme.Foreground
+                (if title = "" then "Card" else title)
+            mkText theme (box.X + theme.SpaceSm) (box.Y + headH + 22.0) 12.0 theme.Foreground "Card content"
+        ]
 
     /// A label : value term list — `descriptions`.
     let descriptionsGeom theme (box: Rect) (items: string list) : Scene list =
-        let shown = items |> itemsOr [ "Name"; "Ant"; "Status"; "Active" ] |> List.truncate 6
+        let shown =
+            items |> itemsOr [ "Name"; "Ant"; "Status"; "Active" ] |> List.truncate 6
+
         let n = max 1 (List.length shown)
         // Feature 136 (US3/T033): scale the row spacing to the box height (capped at the natural 22px)
         // instead of a fixed 22px stride that runs past the box, and clip to the box — descriptions
@@ -641,24 +1029,41 @@ module internal WidgetGeometry =
 
     /// A large emphasised metric over a caption — `statistic`.
     let statisticGeom theme (box: Rect) (value: string) : Scene list =
-        [ mkText theme box.X (box.Y + 18.0) 12.0 theme.Muted "Total"
-          mkText theme box.X (box.Y + 46.0) 28.0 theme.Accent (if value = "" then "0" else value) ]
+        [
+            mkText theme box.X (box.Y + 18.0) 12.0 theme.Muted "Total"
+            mkText theme box.X (box.Y + 46.0) 28.0 theme.Accent (if value = "" then "0" else value)
+        ]
 
     /// A vertical dotted event rail — `timeline`.
     let timelineGeom theme (box: Rect) (items: string list) : Scene list =
-        let shown = items |> itemsOr [ "Created"; "Shipped"; "Delivered" ] |> List.truncate 6
+        let shown =
+            items |> itemsOr [ "Created"; "Shipped"; "Delivered" ] |> List.truncate 6
+
         shown
         |> List.mapi (fun i it ->
             let y = box.Y + 16.0 + float i * 24.0
-            [ Scene.circle { X = box.X + 6.0; Y = y - 4.0 } 4.0 theme.Accent
-              mkText theme (box.X + 20.0) y 12.0 theme.Foreground it ])
+
+            [
+                Scene.circle { X = box.X + 6.0; Y = y - 4.0 } 4.0 theme.Accent
+                mkText theme (box.X + 20.0) y 12.0 theme.Foreground it
+            ])
         |> List.concat
 
     /// A muted "no data" placeholder with a framed glyph — `empty`.
     let emptyGeom theme (box: Rect) (caption: string) : Scene list =
         let cx = box.X + box.Width / 2.0
-        [ Scene.rectangleWithPaint { X = cx - 28.0; Y = box.Y + 10.0; Width = 56.0; Height = 36.0 } (Paint.stroke theme.Muted 1.0)
-          mkText theme (cx - 28.0) (box.Y + 64.0) 12.0 theme.Muted (if caption = "" then "No data" else caption) ]
+
+        [
+            Scene.rectangleWithPaint
+                {
+                    X = cx - 28.0
+                    Y = box.Y + 10.0
+                    Width = 56.0
+                    Height = 36.0
+                }
+                (Paint.stroke theme.Muted 1.0)
+            mkText theme (cx - 28.0) (box.Y + 64.0) 12.0 theme.Muted (if caption = "" then "No data" else caption)
+        ]
 
     /// Grey placeholder bars — `skeleton`.
     let skeletonGeom theme (box: Rect) : Scene list =
@@ -677,10 +1082,15 @@ module internal WidgetGeometry =
         let cell = side / float n
 
         let modules =
-            [ for r in 0 .. n - 1 do
-                  for c in 0 .. n - 1 do
-                      if (r + c + r * c) % 2 = 0 then
-                          yield Scene.rectangle (box.X + float c * cell, box.Y + float r * cell, cell - 1.0, cell - 1.0) theme.Foreground ]
+            [
+                for r in 0 .. n - 1 do
+                    for c in 0 .. n - 1 do
+                        if (r + c + r * c) % 2 = 0 then
+                            yield
+                                Scene.rectangle
+                                    (box.X + float c * cell, box.Y + float r * cell, cell - 1.0, cell - 1.0)
+                                    theme.Foreground
+            ]
 
         [ Scene.clipped (RectClip box) (Scene.group modules) ]
 
@@ -688,34 +1098,77 @@ module internal WidgetGeometry =
     let watermarkGeom theme (box: Rect) (label: string) : Scene list =
         let text = if label = "" then "FS.GG" else label
         let paintFaint = Paint.withOpacity 0.25 (Paint.fill theme.Muted)
-        [ for r in 0 .. 2 do
-            yield Scene.textRun
-                { Text = text
-                  Position = { X = box.X + float (r % 2) * 60.0; Y = box.Y + 24.0 + float r * 28.0 }
-                  Font = { Family = theme.FontFamily; Size = 14.0; Weight = None }
-                  Paint = paintFaint } ]
+
+        [
+            for r in 0..2 do
+                yield
+                    Scene.textRun
+                        {
+                            Text = text
+                            Position =
+                                {
+                                    X = box.X + float (r % 2) * 60.0
+                                    Y = box.Y + 24.0 + float r * 28.0
+                                }
+                            Font =
+                                {
+                                    Family = theme.FontFamily
+                                    Size = 14.0
+                                    Weight = None
+                                }
+                            Paint = paintFaint
+                        }
+        ]
 
     /// A coloured information banner — `alert` (warning role so it diverges from accent controls).
     let alertGeom theme (box: Rect) (label: string) : Scene list =
         let h = theme.ControlHeight
-        [ Scene.rectangle (box.X, box.Y, box.Width, h) theme.Warning
-          Scene.rectangle (box.X, box.Y, theme.SpaceXs, h) theme.Danger
-          mkText theme (box.X + theme.SpaceSm) (box.Y + h / 2.0 + 4.0) 13.0 theme.Background (if label = "" then "Alert" else label) ]
+
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, h) theme.Warning
+            Scene.rectangle (box.X, box.Y, theme.SpaceXs, h) theme.Danger
+            mkText
+                theme
+                (box.X + theme.SpaceSm)
+                (box.Y + h / 2.0 + 4.0)
+                13.0
+                theme.Background
+                (if label = "" then "Alert" else label)
+        ]
 
     /// A centred outcome panel: status dot + title — `result`.
     let resultGeom theme (box: Rect) (title: string) : Scene list =
         let cx = box.X + box.Width / 2.0
-        [ Scene.circle { X = cx; Y = box.Y + 26.0 } 14.0 theme.Success
-          mkText theme (cx - 30.0) (box.Y + 62.0) 14.0 theme.Foreground (if title = "" then "Success" else title) ]
+
+        [
+            Scene.circle { X = cx; Y = box.Y + 26.0 } 14.0 theme.Success
+            mkText theme (cx - 30.0) (box.Y + 62.0) 14.0 theme.Foreground (if title = "" then "Success" else title)
+        ]
 
     /// A right-edge sliding surface — `drawer`.
     let drawerGeom theme (box: Rect) (title: string) : Scene list =
         let w = box.Width * 0.55
         let x = box.X + box.Width - w
-        [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Muted
-          Scene.rectangle (x, box.Y, w, box.Height) theme.Background
-          Scene.rectangleWithPaint { X = x; Y = box.Y; Width = w; Height = box.Height } (Paint.stroke theme.Muted 1.0)
-          mkText theme (x + theme.SpaceSm) (box.Y + 22.0) 13.0 theme.Foreground (if title = "" then "Drawer" else title) ]
+
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, box.Height) theme.Muted
+            Scene.rectangle (x, box.Y, w, box.Height) theme.Background
+            Scene.rectangleWithPaint
+                {
+                    X = x
+                    Y = box.Y
+                    Width = w
+                    Height = box.Height
+                }
+                (Paint.stroke theme.Muted 1.0)
+            mkText
+                theme
+                (x + theme.SpaceSm)
+                (box.Y + 22.0)
+                13.0
+                theme.Foreground
+                (if title = "" then "Drawer" else title)
+        ]
 
     /// A small floating callout box — `popover` (and the base for popconfirm/tour).
     // Feature 183 (US3): `popoverGeom`'s `withActions: bool` becomes a 2-case kind so the 3 call sites
@@ -728,10 +1181,27 @@ module internal WidgetGeometry =
         let withActions = kind = WithActions
         let w = min box.Width 180.0
         let h = if withActions then 70.0 else 50.0
+
         let baseScene =
-            [ Scene.rectangle (box.X, box.Y, w, h) theme.Background
-              Scene.rectangleWithPaint { X = box.X; Y = box.Y; Width = w; Height = h } (Paint.stroke theme.Muted 1.0)
-              mkText theme (box.X + theme.SpaceSm) (box.Y + 24.0) 12.0 theme.Foreground (if label = "" then "Popover" else label) ]
+            [
+                Scene.rectangle (box.X, box.Y, w, h) theme.Background
+                Scene.rectangleWithPaint
+                    {
+                        X = box.X
+                        Y = box.Y
+                        Width = w
+                        Height = h
+                    }
+                    (Paint.stroke theme.Muted 1.0)
+                mkText
+                    theme
+                    (box.X + theme.SpaceSm)
+                    (box.Y + 24.0)
+                    12.0
+                    theme.Foreground
+                    (if label = "" then "Popover" else label)
+            ]
+
         if withActions then
             baseScene
             @ snd (pillGeom theme (box.X + w - 64.0) (box.Y + h - 16.0) theme.Accent theme.Background "OK")
@@ -743,22 +1213,44 @@ module internal WidgetGeometry =
         let r = 22.0
         let cx = box.X + box.Width - r - 6.0
         let cy = box.Y + box.Height - r - 6.0
-        [ Scene.circle { X = cx; Y = cy } r theme.Accent
-          mkText theme (cx - 5.0) (cy + 6.0) 18.0 theme.Background (if label = "" then "+" else label) ]
+
+        [
+            Scene.circle { X = cx; Y = cy } r theme.Accent
+            mkText theme (cx - 5.0) (cy + 6.0) 18.0 theme.Background (if label = "" then "+" else label)
+        ]
 
     /// A trail of separated path labels — `breadcrumb`.
     let breadcrumbGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Home"; "Library"; "Item" ]
         let cy = box.Y + box.Height / 2.0
         let mutable x = box.X
-        [ for i, it in List.indexed shown do
-            let fg = if i = List.length shown - 1 then theme.Foreground else theme.Muted
-            yield mkText theme x (cy + 4.0) 13.0 fg it
-            let w = (measureText it { Family = theme.FontFamily; Size = 13.0; Weight = None }).Width
-            x <- x + w + 8.0
-            if i < List.length shown - 1 then
-                yield mkText theme x (cy + 4.0) 13.0 theme.Muted "/"
-                x <- x + 12.0 ]
+
+        [
+            for i, it in List.indexed shown do
+                let fg =
+                    if i = List.length shown - 1 then
+                        theme.Foreground
+                    else
+                        theme.Muted
+
+                yield mkText theme x (cy + 4.0) 13.0 fg it
+
+                let w =
+                    (measureText
+                        it
+                        {
+                            Family = theme.FontFamily
+                            Size = 13.0
+                            Weight = None
+                        })
+                        .Width
+
+                x <- x + w + 8.0
+
+                if i < List.length shown - 1 then
+                    yield mkText theme x (cy + 4.0) 13.0 theme.Muted "/"
+                    x <- x + 12.0
+        ]
 
     /// Numbered horizontal progress steps — `steps`.
     let stepsGeom theme (box: Rect) (items: string list) : Scene list =
@@ -766,13 +1258,17 @@ module internal WidgetGeometry =
         let n = max 1 (List.length shown)
         let stepW = box.Width / float n
         let cy = box.Y + 22.0
+
         shown
         |> List.mapi (fun i it ->
             let cx = box.X + float i * stepW + 16.0
             let fill = if i = 0 then theme.Accent else theme.Muted
-            [ Scene.circle { X = cx; Y = cy } 12.0 fill
-              mkText theme (cx - 4.0) (cy + 5.0) 13.0 theme.Background (string (i + 1))
-              mkText theme (cx - 14.0) (cy + 30.0) 11.0 theme.Foreground it ])
+
+            [
+                Scene.circle { X = cx; Y = cy } 12.0 fill
+                mkText theme (cx - 4.0) (cy + 5.0) 13.0 theme.Background (string (i + 1))
+                mkText theme (cx - 14.0) (cy + 30.0) 11.0 theme.Foreground it
+            ])
         |> List.concat
 
     /// A row of page-number chips — `pagination`.
@@ -780,67 +1276,110 @@ module internal WidgetGeometry =
         let n = max 1 (min total 6)
         let cy = box.Y + box.Height / 2.0
         let mutable x = box.X
-        [ for i in 1 .. n do
-            let fill = if i = 1 then theme.Accent else theme.Background
-            let fg = if i = 1 then theme.Background else theme.Foreground
-            let w, scene = pillGeom theme x cy fill fg (string i)
-            yield! scene
-            x <- x + w + 6.0 ]
+
+        [
+            for i in 1..n do
+                let fill = if i = 1 then theme.Accent else theme.Background
+                let fg = if i = 1 then theme.Background else theme.Foreground
+                let w, scene = pillGeom theme x cy fill fg (string i)
+                yield! scene
+                x <- x + w + 6.0
+        ]
 
     /// A connected single-select segment row — `segmented`.
     let segmentedGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Day"; "Week"; "Month" ] |> List.truncate 5
         let cy = box.Y + box.Height / 2.0
         let mutable x = box.X
-        [ yield Scene.rectangle (box.X, cy - theme.ControlHeight / 2.0, box.Width, theme.ControlHeight) theme.Muted
-          for i, it in List.indexed shown do
-            let fill = if i = 0 then theme.Background else theme.Muted
-            let fg = if i = 0 then theme.Accent else theme.Foreground
-            let w, scene = pillGeom theme (x + 2.0) cy fill fg it
-            yield! scene
-            x <- x + w + 4.0 ]
+
+        [
+            yield Scene.rectangle (box.X, cy - theme.ControlHeight / 2.0, box.Width, theme.ControlHeight) theme.Muted
+            for i, it in List.indexed shown do
+                let fill = if i = 0 then theme.Background else theme.Muted
+                let fg = if i = 0 then theme.Accent else theme.Foreground
+                let w, scene = pillGeom theme (x + 2.0) cy fill fg it
+                yield! scene
+                x <- x + w + 4.0
+        ]
 
     /// A vertical in-page link list — `anchor`.
     let anchorGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Intro"; "Usage"; "API" ] |> List.truncate 6
-        [ yield Scene.rectangle (box.X, box.Y, 2.0, box.Height) theme.Muted
-          for i, it in List.indexed shown do
-            let fg = if i = 0 then theme.Accent else theme.Muted
-            yield mkText theme (box.X + 12.0) (box.Y + 16.0 + float i * 22.0) 12.0 fg it ]
+
+        [
+            yield Scene.rectangle (box.X, box.Y, 2.0, box.Height) theme.Muted
+            for i, it in List.indexed shown do
+                let fg = if i = 0 then theme.Accent else theme.Muted
+                yield mkText theme (box.X + 12.0) (box.Y + 16.0 + float i * 22.0) 12.0 fg it
+        ]
 
     /// A pinned-to-top bar — `affix`.
     let affixGeom theme (box: Rect) (label: string) : Scene list =
-        [ Scene.rectangle (box.X, box.Y, box.Width, theme.ControlHeight) theme.Accent
-          mkText theme (box.X + theme.SpaceSm) (box.Y + 20.0) 13.0 theme.Background (if label = "" then "Affixed" else label) ]
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, theme.ControlHeight) theme.Accent
+            mkText
+                theme
+                (box.X + theme.SpaceSm)
+                (box.Y + 20.0)
+                13.0
+                theme.Background
+                (if label = "" then "Affixed" else label)
+        ]
 
     /// Stacked expandable section headers — `collapse`.
     let collapseGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Panel 1"; "Panel 2"; "Panel 3" ] |> List.truncate 5
+
         shown
         |> List.mapi (fun i it ->
             let y = box.Y + float i * theme.ControlHeight
-            [ Scene.rectangle (box.X, y, box.Width, theme.ControlHeight - theme.SpaceXs) theme.Muted
-              mkText theme (box.X + theme.SpaceLg) (y + 19.0) 12.0 theme.Foreground it
-              mkText theme (box.X + theme.SpaceSm) (y + 19.0) 12.0 theme.Accent (if i = 0 then "-" else "+") ])
+
+            [
+                Scene.rectangle (box.X, y, box.Width, theme.ControlHeight - theme.SpaceXs) theme.Muted
+                mkText theme (box.X + theme.SpaceLg) (y + 19.0) 12.0 theme.Foreground it
+                mkText theme (box.X + theme.SpaceSm) (y + 19.0) 12.0 theme.Accent (if i = 0 then "-" else "+")
+            ])
         |> List.concat
 
     /// A row of star glyphs, the leading ones filled — `rate`.
     let rateGeom theme (box: Rect) (value: float) : Scene list =
         let filled = int (value + 0.5)
         let cy = box.Y + box.Height / 2.0
-        [ for i in 0 .. 4 do
-            let color = if i < filled then theme.Warning else theme.Muted
-            yield Scene.circle { X = box.X + 14.0 + float i * 26.0; Y = cy } 9.0 color ]
+
+        [
+            for i in 0..4 do
+                let color = if i < filled then theme.Warning else theme.Muted
+
+                yield
+                    Scene.circle
+                        {
+                            X = box.X + 14.0 + float i * 26.0
+                            Y = cy
+                        }
+                        9.0
+                        color
+        ]
 
     /// A framed slide with position dots — `carousel`.
     let carouselGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Slide 1"; "Slide 2"; "Slide 3" ]
         let label = List.head shown
-        [ yield Scene.rectangle (box.X, box.Y, box.Width, box.Height - 16.0) theme.Muted
-          yield mkText theme (box.X + 12.0) (box.Y + box.Height / 2.0) 14.0 theme.Foreground label
-          for i in 0 .. List.length shown - 1 do
-            let color = if i = 0 then theme.Accent else theme.Background
-            yield Scene.circle { X = box.X + box.Width / 2.0 - 12.0 + float i * 12.0; Y = box.Y + box.Height - 6.0 } 4.0 color ]
+
+        [
+            yield Scene.rectangle (box.X, box.Y, box.Width, box.Height - 16.0) theme.Muted
+            yield mkText theme (box.X + 12.0) (box.Y + box.Height / 2.0) 14.0 theme.Foreground label
+            for i in 0 .. List.length shown - 1 do
+                let color = if i = 0 then theme.Accent else theme.Background
+
+                yield
+                    Scene.circle
+                        {
+                            X = box.X + box.Width / 2.0 - 12.0 + float i * 12.0
+                            Y = box.Y + box.Height - 6.0
+                        }
+                        4.0
+                        color
+        ]
 
     /// A month day-cell grid — `calendar`.
     let calendarGeom theme (box: Rect) : Scene list =
@@ -848,39 +1387,106 @@ module internal WidgetGeometry =
         let rows = 4
         let cw = box.Width / float cols
         let rh = (box.Height - 4.0) / float rows
-        [ for r in 0 .. rows - 1 do
-            for c in 0 .. cols - 1 do
-                let day = r * cols + c + 1
-                yield Scene.rectangleWithPaint
-                          { X = box.X + float c * cw; Y = box.Y + float r * rh; Width = cw - 2.0; Height = rh - 2.0 }
-                          (Paint.stroke theme.Muted 1.0)
-                yield mkText theme (box.X + float c * cw + 4.0) (box.Y + float r * rh + 14.0) 10.0 theme.Foreground (string day) ]
+
+        [
+            for r in 0 .. rows - 1 do
+                for c in 0 .. cols - 1 do
+                    let day = r * cols + c + 1
+
+                    yield
+                        Scene.rectangleWithPaint
+                            {
+                                X = box.X + float c * cw
+                                Y = box.Y + float r * rh
+                                Width = cw - 2.0
+                                Height = rh - 2.0
+                            }
+                            (Paint.stroke theme.Muted 1.0)
+
+                    yield
+                        mkText
+                            theme
+                            (box.X + float c * cw + 4.0)
+                            (box.Y + float r * rh + 14.0)
+                            10.0
+                            theme.Foreground
+                            (string day)
+        ]
 
     /// Cascading selection columns — `cascader`.
     let cascaderGeom theme (box: Rect) (items: string list) : Scene list =
         let shown = items |> itemsOr [ "Region"; "City"; "District" ]
         let colW = box.Width / 3.0
-        [ for ci in 0 .. 2 do
-            yield Scene.rectangleWithPaint
-                      { X = box.X + float ci * colW; Y = box.Y; Width = colW - 2.0; Height = box.Height }
-                      (Paint.stroke theme.Muted 1.0)
-            let label = List.tryItem ci shown |> Option.defaultValue ""
-            if label <> "" then
-                yield mkText theme (box.X + float ci * colW + 6.0) (box.Y + 18.0) 11.0 theme.Foreground label ]
+
+        [
+            for ci in 0..2 do
+                yield
+                    Scene.rectangleWithPaint
+                        {
+                            X = box.X + float ci * colW
+                            Y = box.Y
+                            Width = colW - 2.0
+                            Height = box.Height
+                        }
+                        (Paint.stroke theme.Muted 1.0)
+
+                let label = List.tryItem ci shown |> Option.defaultValue ""
+
+                if label <> "" then
+                    yield mkText theme (box.X + float ci * colW + 6.0) (box.Y + 18.0) 11.0 theme.Foreground label
+        ]
 
     /// A text field with a suggestion dropdown — `auto-complete`.
     let autoCompleteGeom theme (box: Rect) (value: string) : Scene list =
         let dropY = box.Y + theme.ControlHeight + theme.SpaceXs
-        [ Scene.rectangleWithPaint { X = box.X; Y = box.Y; Width = box.Width; Height = theme.ControlHeight } (Paint.stroke theme.Accent 1.5)
-          mkText theme (box.X + theme.SpaceSm) (box.Y + 20.0) 13.0 theme.Foreground (if value = "" then "Search…" else value)
-          Scene.rectangle (box.X, dropY, box.Width, 54.0) theme.Background
-          Scene.rectangleWithPaint { X = box.X; Y = dropY; Width = box.Width; Height = 54.0 } (Paint.stroke theme.Muted 1.0)
-          mkText theme (box.X + theme.SpaceSm) (box.Y + 52.0) 12.0 theme.Muted "Suggestion 1"
-          mkText theme (box.X + theme.SpaceSm) (box.Y + 74.0) 12.0 theme.Muted "Suggestion 2" ]
+
+        [
+            Scene.rectangleWithPaint
+                {
+                    X = box.X
+                    Y = box.Y
+                    Width = box.Width
+                    Height = theme.ControlHeight
+                }
+                (Paint.stroke theme.Accent 1.5)
+            mkText
+                theme
+                (box.X + theme.SpaceSm)
+                (box.Y + 20.0)
+                13.0
+                theme.Foreground
+                (if value = "" then "Search…" else value)
+            Scene.rectangle (box.X, dropY, box.Width, 54.0) theme.Background
+            Scene.rectangleWithPaint
+                {
+                    X = box.X
+                    Y = dropY
+                    Width = box.Width
+                    Height = 54.0
+                }
+                (Paint.stroke theme.Muted 1.0)
+            mkText theme (box.X + theme.SpaceSm) (box.Y + 52.0) 12.0 theme.Muted "Suggestion 1"
+            mkText theme (box.X + theme.SpaceSm) (box.Y + 74.0) 12.0 theme.Muted "Suggestion 2"
+        ]
 
     /// A dashed drop zone with an upload action — `upload`.
     let uploadGeom theme (box: Rect) (label: string) : Scene list =
-        [ Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
-          mkText theme (box.X + box.Width / 2.0 - 40.0) (box.Y + box.Height / 2.0 - 6.0) 12.0 theme.Muted "Drop files here" ]
-        @ snd (pillGeom theme (box.X + box.Width / 2.0 - 30.0) (box.Y + box.Height / 2.0 + 18.0) theme.Accent theme.Background (if label = "" then "Upload" else label))
-
+        [
+            Scene.rectangleWithPaint box (Paint.stroke theme.Muted 1.0)
+            mkText
+                theme
+                (box.X + box.Width / 2.0 - 40.0)
+                (box.Y + box.Height / 2.0 - 6.0)
+                12.0
+                theme.Muted
+                "Drop files here"
+        ]
+        @ snd (
+            pillGeom
+                theme
+                (box.X + box.Width / 2.0 - 30.0)
+                (box.Y + box.Height / 2.0 + 18.0)
+                theme.Accent
+                theme.Background
+                (if label = "" then "Upload" else label)
+        )

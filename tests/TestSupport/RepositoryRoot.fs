@@ -41,9 +41,7 @@ module RepositoryRoot =
                 match Directory.GetParent directory |> Option.ofObj with
                 | Some parent -> walk parent.FullName
                 | None ->
-                    failwithf
-                        "Could not locate repository root: no *.sln/*.slnx/build.fsx marker at or above %s"
-                        start
+                    failwithf "Could not locate repository root: no *.sln/*.slnx/build.fsx marker at or above %s" start
 
         walk start
 

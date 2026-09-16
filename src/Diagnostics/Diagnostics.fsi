@@ -22,61 +22,73 @@ type ReadinessDiagnosticStatus =
     | EnvironmentLimitedStatus
 
 type DiagnosticSource =
-    { PackageId: string option
-      Subsystem: string
-      LaneId: string option
-      SampleId: string option }
+    {
+        PackageId: string option
+        Subsystem: string
+        LaneId: string option
+        SampleId: string option
+    }
 
 type DiagnosticContext =
-    { RunId: string option
-      TimestampUtc: System.DateTime option
-      OutputPath: string option
-      Details: (string * string) list }
+    {
+        RunId: string option
+        TimestampUtc: System.DateTime option
+        OutputPath: string option
+        Details: (string * string) list
+    }
 
 type RuntimeDiagnostic =
-    { Id: string
-      Source: DiagnosticSource
-      Code: string option
-      Severity: DiagnosticSeverity option
-      Category: DiagnosticCategory option
-      Message: string
-      Action: string option
-      Context: DiagnosticContext
-      Fingerprint: string }
+    {
+        Id: string
+        Source: DiagnosticSource
+        Code: string option
+        Severity: DiagnosticSeverity option
+        Category: DiagnosticCategory option
+        Message: string
+        Action: string option
+        Context: DiagnosticContext
+        Fingerprint: string
+    }
 
 type DiagnosticException =
-    { ExceptionId: string
-      Scope: string
-      Reason: string
-      ExpiresOn: System.DateOnly option
-      AcceptedBy: string option }
+    {
+        ExceptionId: string
+        Scope: string
+        Reason: string
+        ExpiresOn: System.DateOnly option
+        AcceptedBy: string option
+    }
 
 type AggregatedDiagnostic =
-    { Fingerprint: string
-      Source: DiagnosticSource
-      Code: string option
-      Severity: DiagnosticSeverity option
-      Category: DiagnosticCategory option
-      Message: string
-      Action: string option
-      OccurrenceCount: int
-      FirstOccurrence: DiagnosticContext
-      LastOccurrence: DiagnosticContext
-      ExampleIds: string list }
+    {
+        Fingerprint: string
+        Source: DiagnosticSource
+        Code: string option
+        Severity: DiagnosticSeverity option
+        Category: DiagnosticCategory option
+        Message: string
+        Action: string option
+        OccurrenceCount: int
+        FirstOccurrence: DiagnosticContext
+        LastOccurrence: DiagnosticContext
+        ExampleIds: string list
+    }
 
 type DiagnosticSummary =
-    { RunId: string option
-      Status: ReadinessDiagnosticStatus
-      CountsBySeverity: (DiagnosticSeverity * int) list
-      CountsByCategory: (DiagnosticCategory * int) list
-      BlockerCount: int
-      UnclassifiedCount: int
-      ReviewRequiredCount: int
-      ExceptionCount: int
-      ArtifactPaths: string list
-      Groups: AggregatedDiagnostic list
-      Exceptions: DiagnosticException list
-      ArtifactWriteDiagnostics: RuntimeDiagnostic list }
+    {
+        RunId: string option
+        Status: ReadinessDiagnosticStatus
+        CountsBySeverity: (DiagnosticSeverity * int) list
+        CountsByCategory: (DiagnosticCategory * int) list
+        BlockerCount: int
+        UnclassifiedCount: int
+        ReviewRequiredCount: int
+        ExceptionCount: int
+        ArtifactPaths: string list
+        Groups: AggregatedDiagnostic list
+        Exceptions: DiagnosticException list
+        ArtifactWriteDiagnostics: RuntimeDiagnostic list
+    }
 
 /// Single canonical readiness vocabulary shared by every readiness consumer (Feature 180).
 /// Tokens match the existing per-domain statusText tables byte-for-byte; the few domains whose
@@ -163,11 +175,7 @@ module RuntimeDiagnostics =
 
     val renderJsonLines: diagnostics: RuntimeDiagnostic list -> string
 
-    val renderConsole:
-        verbose: bool ->
-        maxDefaultLines: int ->
-        summary: DiagnosticSummary ->
-            string list
+    val renderConsole: verbose: bool -> maxDefaultLines: int -> summary: DiagnosticSummary -> string list
 
     val writeArtifacts:
         outputDirectory: string ->

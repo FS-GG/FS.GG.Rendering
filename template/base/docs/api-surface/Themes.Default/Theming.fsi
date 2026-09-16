@@ -22,15 +22,17 @@ type ThemeMode =
 /// Feature 108 (US6, FR-017): the role colours `toTheme` projects onto the framework `Theme` — the
 /// live-theming primitive the ControlsShowcase3 author re-derived by hand. A small closed record.
 type RolePalette =
-    { /// The mode this palette was resolved against; `toTheme` seeds the framework `Theme` from the
-      /// matching base (so `Success`/`Warning`/`Name` and the non-colour fields are mode-correct).
-      Mode: ThemeMode
-      Background: Color
-      Foreground: Color
-      Accent: Color
-      Danger: Color
-      Muted: Color
-      FocusRing: Color }
+    {
+        /// The mode this palette was resolved against; `toTheme` seeds the framework `Theme` from the
+        /// matching base (so `Success`/`Warning`/`Name` and the non-colour fields are mode-correct).
+        Mode: ThemeMode
+        Background: Color
+        Foreground: Color
+        Accent: Color
+        Danger: Color
+        Muted: Color
+        FocusRing: Color
+    }
 
 /// Feature 108 (US6, FR-017/018): resolve a theme mode + accent into a role palette and project it
 /// back onto the framework `Theme`. Pure, total; never throws.

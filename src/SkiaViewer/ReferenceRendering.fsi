@@ -17,31 +17,37 @@ type ReferenceFailureClassification =
 
 /// Request for rendering portable scene package bytes through the Skia reference path.
 type ReferenceRenderingRequest =
-    { PackageBytes: byte[]
-      OutputDirectory: string
-      OutputSize: Size
-      Resources: ResourceAvailability list }
+    {
+        PackageBytes: byte[]
+        OutputDirectory: string
+        OutputSize: Size
+        Resources: ResourceAvailability list
+    }
 
 /// Metadata emitted by the reference rendering oracle.
 type ReferenceRenderingEvidence =
-    { PackageIdentity: string
-      ProtocolVersion: ProtocolVersion option
-      CapabilityProfile: string
-      ResourceStatus: string
-      OutputSize: Size
-      ImagePath: string option
-      ImageIdentity: string option
-      RendererIdentity: string
-      Verdict: ReferenceRenderVerdict
-      Classification: ReferenceFailureClassification option
-      Diagnostics: string list }
+    {
+        PackageIdentity: string
+        ProtocolVersion: ProtocolVersion option
+        CapabilityProfile: string
+        ResourceStatus: string
+        OutputSize: Size
+        ImagePath: string option
+        ImageIdentity: string option
+        RendererIdentity: string
+        Verdict: ReferenceRenderVerdict
+        Classification: ReferenceFailureClassification option
+        Diagnostics: string list
+    }
 
 /// Pure workflow state for the reference rendering oracle.
 type ReferenceRenderingModel =
-    { Request: ReferenceRenderingRequest
-      Inspection: PackageInspectionReport option
-      Evidence: ReferenceRenderingEvidence option
-      Diagnostics: string list }
+    {
+        Request: ReferenceRenderingRequest
+        Inspection: PackageInspectionReport option
+        Evidence: ReferenceRenderingEvidence option
+        Diagnostics: string list
+    }
 
 /// Messages accepted by the pure reference rendering workflow.
 type ReferenceRenderingMsg =
@@ -67,7 +73,10 @@ module ReferenceRendering =
     val init: request: ReferenceRenderingRequest -> ReferenceRenderingModel * ReferenceRenderingEffect list
 
     /// Pure workflow transition.
-    val update: msg: ReferenceRenderingMsg -> model: ReferenceRenderingModel -> ReferenceRenderingModel * ReferenceRenderingEffect list
+    val update:
+        msg: ReferenceRenderingMsg ->
+        model: ReferenceRenderingModel ->
+            ReferenceRenderingModel * ReferenceRenderingEffect list
 
     /// Run the Skia-backed render edge for a package.
     val renderPackage: request: ReferenceRenderingRequest -> ReferenceRenderingEvidence
